@@ -27,4 +27,4 @@ black==23.11.0
 isort==5.12.0
 
 # 包含基础依赖
--r requirements.txt 
+-r requirements.txt
