@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # 数据库配置
-    DATABASE_URL: str = "sqlite:///./ai_pic.db"
+    DATABASE_URL: str = "mysql+pymysql://root:Pa88word@127.0.0.1:13306/ai_video_studio?charset=utf8mb4"
     
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379"

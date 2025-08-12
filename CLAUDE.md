@@ -41,8 +41,26 @@ python run_tests.py lint
 
 **Database:**
 ```bash
-# Run migrations
-python migrate.py
+# Django-style Management (Recommended)
+python manage.py migration init       # Initialize database
+python manage.py migration upgrade    # Run migrations
+python manage.py migration status     # Check status
+python manage.py quickstart          # One-command setup
+
+# MySQL Specific
+python migrate_mysql.py init          # Initialize MySQL database
+python migrate_mysql.py upgrade       # Run migrations
+python migrate_mysql.py test          # Test connection
+
+# Migration Management
+python manage.py migration create -m "description"  # Create new migration
+python manage.py migration current                  # Show current version
+python manage.py migration history                  # Show migration history
+python manage.py migration validate                 # Validate migrations
+
+# Data Seeds
+python manage.py seed create -n "initial_data"     # Create seed file
+python manage.py seed run --all                    # Run all seeds
 ```
 
 ### Frontend (ai-pic-frontend/)
@@ -125,6 +143,16 @@ The platform integrates multiple AI services:
 ## Environment Configuration
 
 ### Backend (.env in ai-pic-backend/)
+
+**MySQL (Production Recommended):**
+```bash
+SECRET_KEY=your-secret-key
+DATABASE_URL=mysql+pymysql://root:Pa88word@127.0.0.1:13306/ai_video_studio?charset=utf8mb4
+OPENAI_API_KEY=your-openai-key
+STABILITY_API_KEY=your-stability-key
+```
+
+**SQLite (Development):**
 ```bash
 SECRET_KEY=your-secret-key
 DATABASE_URL=sqlite:///./ai_pic.db
@@ -147,14 +175,45 @@ The backend uses a comprehensive testing approach:
 
 Testing is managed through the `run_tests.py` script with multiple execution modes.
 
+## Migration System
+
+The project features a comprehensive database migration system that extends Alembic with FastAPI integration:
+
+**Key Features:**
+- Django-style management commands (`manage.py`)
+- REST API endpoints for migration status and control
+- Data seeding system with rollback support
+- Automatic safety checks and data integrity validation
+- Migration templates with utility functions
+- Backup and rollback point management
+- Real-time migration status monitoring via middleware
+
+**Quick Commands:**
+```bash
+python manage.py quickstart           # One-command project setup
+python manage.py migration status     # Check migration status
+python manage.py dev check           # Project health check
+python manage.py server run          # Start development server
+```
+
+**Migration API Endpoints:**
+- `GET /api/v1/migrations/status` - Migration status
+- `GET /api/v1/migrations/health` - System health check
+- `POST /api/v1/migrations/upgrade` - Upgrade database
+- `POST /api/v1/migrations/seeds/run` - Run data seeds
+
+See `MIGRATION_SYSTEM_GUIDE.md` for detailed documentation.
+
 ## Key Dependencies
 
 **Backend:**
 - FastAPI for API framework
 - SQLAlchemy for ORM
-- Alembic for migrations
+- Alembic for migrations (extended)
 - Pydantic for data validation
 - pytest for testing
+- Click for CLI commands
+- PyMySQL for MySQL support
 
 **Frontend:**
 - Next.js 15 with App Router
