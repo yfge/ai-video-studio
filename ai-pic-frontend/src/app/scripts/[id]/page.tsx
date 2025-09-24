@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { scriptAPI } from '@/utils/api';
+import { scriptAPI, aiAPI } from '@/utils/api';
 import { Script } from '@/utils/api';
 
 export default function ScriptDetailPage() {
@@ -13,6 +13,13 @@ export default function ScriptDetailPage() {
   const [script, setScript] = useState<Script | null>(null);
   const [loading, setLoading] = useState(true);
   const [showFullContent, setShowFullContent] = useState(false);
+  const [storyboard, setStoryboard] = useState<any>({ frames: [] })
+  const [sbLoading, setSbLoading] = useState(false)
+  const [models, setModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([])
+  const [sbForm, setSbForm] = useState({ model: '', temperature: 0.7 })
+  const [framesPerScene, setFramesPerScene] = useState(3)
+  const [sbPrompt, setSbPrompt] = useState('')
+  const [expandedScenes, setExpandedScenes] = useState<number[]>([1])
 
   useEffect(() => {
     loadScript();
@@ -25,6 +32,10 @@ export default function ScriptDetailPage() {
       
       if (response.success && response.data) {
         setScript(response.data);
+        setSbLoading(true)
+        const sb = await (scriptAPI as any).getStoryboard(scriptId)
+        if (sb.success && sb.data) setStoryboard(sb.data as any)
+        setSbLoading(false)
       } else {
         alert('加载剧本失败：' + (response.error || '未知错误'));
       }
@@ -106,6 +117,12 @@ export default function ScriptDetailPage() {
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
               >
                 返回剧集
+              </button>
+              <button
+                onClick={() => router.push(`/episodes/${script.episode_id}/storyboard`)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+              >
+                分镜管理
               </button>
               <div className="relative">
                 <button
@@ -278,6 +295,201 @@ export default function ScriptDetailPage() {
             </div>
           </div>
         )}
+
+        {/* 分镜 */}
+        <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">分镜（Storyboard）</h3>
+            <div className="flex items-center gap-2">
+              <button onClick={async () => {
+                setSbPrompt('加载中...')
+                const r = await (scriptAPI as any).previewStoryboardPrompt(scriptId)
+                if (r.success && r.data) setSbPrompt((r.data as any).prompt)
+                else setSbPrompt('预览失败')
+              }} className="text-sm text-purple-600 hover:text-purple-800">提示词预览</button>
+              <button onClick={async () => {
+                setSbLoading(true)
+                const r = await (scriptAPI as any).generateStoryboard(scriptId, { ...sbForm, frames_per_scene: framesPerScene, scene_numbers: (storyboard as any).selectedScenes || [] })
+                if (r.success) {
+                  const sb = await (scriptAPI as any).getStoryboard(scriptId)
+                  if (sb.success && sb.data) setStoryboard(sb.data as any)
+                } else {
+                  alert('生成分镜失败')
+                }
+                setSbLoading(false)
+              }} className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">生成分镜</button>
+            </div>
+          </div>
+          {/* 选择场景（移动到分镜模块内部） */}
+          {script.scenes && script.scenes.length > 0 && (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">选择要生成分镜的场景（可多选）</label>
+              <div className="flex flex-wrap gap-2">
+                {script.scenes.map((_: any, idx: number) => (
+                  <label key={idx} className={`px-3 py-1 text-xs rounded-full border cursor-pointer ${(storyboard as any).selectedScenes?.includes?.(idx+1)?'bg-blue-500 text-white border-blue-500':'bg-white text-gray-700 border-gray-300'}`}
+                    onClick={() => {
+                      const current = (storyboard as any).selectedScenes || []
+                      const exists = current.includes(idx+1)
+                      const updated = exists ? current.filter((n:number)=>n!==idx+1) : [...current, idx+1]
+                      setStoryboard({ ...storyboard, selectedScenes: updated })
+                    }}
+                  >
+                    场景 {idx+1}
+                  </label>
+                ))}
+                {(storyboard as any).selectedScenes?.length>0 && (
+                  <button onClick={()=> setStoryboard({ ...storyboard, selectedScenes: [] })} className="text-xs text-gray-600 underline">清空选择</button>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">模型</label>
+              <select value={sbForm.model} onChange={e => setSbForm(prev => ({...prev, model: e.target.value}))} className="w-full px-3 py-2 border rounded">
+                <option value="">Auto（推荐）</option>
+                {models.map(m => (
+                  <option key={m.model_id} value={m.model_id}>{m.name || m.id} — {m.provider}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">温度（{sbForm.temperature.toFixed(1)}）</label>
+              <input type="range" min={0} max={1.5} step={0.1} value={sbForm.temperature} onChange={e => setSbForm(prev => ({...prev, temperature: parseFloat(e.target.value)}))} className="w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">每场景分镜数</label>
+              <input type="number" min={1} max={10} value={framesPerScene} onChange={e => setFramesPerScene(parseInt(e.target.value)||3)} className="w-full px-3 py-2 border rounded" />
+            </div>
+            <div className="flex items-end gap-2">
+              <button onClick={async () => {
+                setSbLoading(true)
+                const r = await (scriptAPI as any).generateStoryboard(scriptId, { ...sbForm, frames_per_scene: framesPerScene, /* 全部场景 */ })
+                if (r.success) {
+                  const sb = await (scriptAPI as any).getStoryboard(scriptId)
+                  if (sb.success && sb.data) setStoryboard(sb.data as any)
+                } else {
+                  alert('生成分镜失败')
+                }
+                setSbLoading(false)
+              }} className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700">生成全部场景</button>
+              <button onClick={async () => {
+                setSbLoading(true)
+                const r = await (scriptAPI as any).generateStoryboard(scriptId, { ...sbForm, frames_per_scene: framesPerScene, use_plan: true })
+                if (r.success) {
+                  const sb = await (scriptAPI as any).getStoryboard(scriptId)
+                  if (sb.success && sb.data) setStoryboard(sb.data as any)
+                } else {
+                  alert('生成分镜失败')
+                }
+                setSbLoading(false)
+              }} className="bg-purple-600 text-white px-3 py-2 rounded text-sm hover:bg-purple-700">规划后生成全部</button>
+              <button onClick={async () => {
+                const frames = (storyboard?.frames || []).map((_: any, idx: number) => idx)
+                const r = await (scriptAPI as any).generateStoryboardVideo(scriptId, frames)
+                if (r.success) alert('已创建视频生成任务')
+                else alert('视频生成失败')
+              }} className="bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700">批量生成视频</button>
+              <button onClick={async () => {
+                const frames = (storyboard?.frames || []).map((_: any, idx: number) => idx)
+                const r = await (scriptAPI as any).generateStoryboardImages(scriptId, { frames })
+                if (r.success) alert('已创建图像生成任务')
+                else alert('图像生成失败')
+              }} className="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700">批量生成图像</button>
+            </div>
+          </div>
+          {sbPrompt && (
+            <div className="mb-3 bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">{sbPrompt}</div>
+          )}
+          {sbLoading ? (
+            <div className="text-gray-500">分镜加载中...</div>
+          ) : (storyboard?.frames || []).length === 0 ? (
+            <div className="text-gray-500">暂无分镜，点击上方按钮生成</div>
+          ) : (
+            <div className="space-y-4">
+              {(() => {
+                const frames: any[] = storyboard.frames || []
+                const scenesArr: any[] = (script as any).scenes || []
+                const maxScene = Math.max(
+                  scenesArr.length || 0,
+                  ...frames.map(fr => { const sn = typeof fr.scene_number === 'string' ? parseInt(fr.scene_number, 10) : (fr.scene_number || 0); return sn; })
+                )
+                const groups: { scene: number; frames: Array<any & { __index: number }> }[] = []
+                for (let sn = 1; sn <= (maxScene || 1); sn++) {
+                  const group = frames
+                    .map((fr, idx) => ({ ...fr, __index: idx }))
+                    .filter(fr => { const v = typeof fr.scene_number === 'string' ? parseInt(fr.scene_number, 10) : (fr.scene_number || 0); return v === sn })
+                  if (group.length > 0) groups.push({ scene: sn, frames: group })
+                }
+                const unassigned = frames
+                  .map((fr, idx) => ({ ...fr, __index: idx }))
+                  .filter(fr => !fr.scene_number)
+                if (unassigned.length > 0) groups.push({ scene: 0, frames: unassigned })
+
+                return groups.map(g => (
+                  <div key={g.scene} className="border rounded">
+                    <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
+                      <div className="text-sm font-medium text-gray-900">
+                        {g.scene === 0 ? '未分配场景' : `场景 ${g.scene}`} {g.scene>0 && scenesArr[g.scene-1]?.description ? `— ${String(scenesArr[g.scene-1]?.description).slice(0,30)}` : ''}
+                      </div>
+                      <button onClick={() => setExpandedScenes(prev => prev.includes(g.scene) ? prev.filter(n => n!==g.scene) : [...prev, g.scene])} className="text-xs text-blue-600 hover:text-blue-800">
+                        {expandedScenes.includes(g.scene) ? '收起' : '展开'}
+                      </button>
+                    </div>
+                    {expandedScenes.includes(g.scene) && (
+                      <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {g.frames.map(fr => (
+                          <div key={fr.__index} className="border rounded p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="font-medium text-gray-900">分镜 {fr.frame_number ?? (fr.__index+1)}</div>
+                              {fr.shot_type && <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">{fr.shot_type}</span>}
+                            </div>
+                            <div className="text-xs text-gray-600 mb-1">场景：{fr.scene_number ?? '-'}</div>
+                            <div className="text-sm text-gray-800 mb-2">{fr.description}</div>
+                            <div className="text-xs text-gray-600">运镜：{fr.camera_movement || '-'}</div>
+                            <div className="text-xs text-gray-600">构图：{fr.composition || '-'}</div>
+                            <div className="text-xs text-gray-600">时长：{fr.duration_seconds || '-'}s</div>
+                            {fr.image_url && (
+                              <div className="mt-2">
+                                <div className="text-xs text-gray-700 mb-1">图像预览：</div>
+                                <a href={fr.image_url} target="_blank" className="block border rounded overflow-hidden">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={fr.image_url} alt="frame image" className="w-full h-28 object-cover" />
+                                </a>
+                              </div>
+                            )}
+                            <div className="mt-2 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <button onClick={async () => {
+                                  const r = await (scriptAPI as any).generateStoryboardImages(scriptId, { frames: [fr.__index] })
+                                  if (r.success) alert('已创建图像生成任务')
+                                  else alert('图像生成失败')
+                                }} className="text-sm text-green-600 hover:text-green-800">生成图像</button>
+                                <button onClick={async () => {
+                                  const r = await (scriptAPI as any).generateStoryboardVideo(scriptId, [fr.__index])
+                                  if (r.success) alert('已创建视频生成任务')
+                                  else alert('视频生成失败')
+                                }} className="text-sm text-blue-600 hover:text-blue-800">生成视频</button>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                {fr.video_url && (
+                                  <a href={fr.video_url} target="_blank" className="text-sm text-blue-600 hover:text-blue-800">查看视频</a>
+                                )}
+                                {fr.image_url && (
+                                  <a href={fr.image_url} target="_blank" className="text-sm text-green-600 hover:text-green-800">查看图像</a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              })()}
+            </div>
+          )}
+        </div>
 
         {/* 生成信息 */}
         {script.generation_prompt && (

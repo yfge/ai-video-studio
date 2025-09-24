@@ -2,17 +2,167 @@ import httpx
 import asyncio
 import base64
 import json
+import os
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 from app.core.config import settings
+from app.core.logging import get_logger
+from app.prompts.manager import prompt_manager
+from app.prompts.templates import PromptTemplate
+from app.schemas.generation import (
+    StoryOutlineModel, ScriptModel, EpisodePlanModel, StoryboardModel,
+    StoryboardPlanModel, StoryboardPlanScene
+)
+from app.services.storyboard_reasoner import StoryboardReActReasoner, LANGGRAPH_AVAILABLE
+# 尝试导入AI服务管理器，如果失败则使用None
+try:
+    from .ai_service_manager import AIServiceManager, AIServiceConfig, ProviderWeight, ProviderPriority
+    from .providers.base import ProviderConfig
+    AI_MANAGER_AVAILABLE = True
+except ImportError as e:
+    logger = get_logger()
+    logger.warning(f"AI服务管理器导入失败，将使用fallback模式: {e}")
+    AIServiceManager = None
+    AIServiceConfig = None
+    ProviderWeight = None
+    ProviderPriority = None
+    ProviderConfig = None
+    AI_MANAGER_AVAILABLE = False
+from .storage.oss_service import oss_service
 
 class AIService:
-    """AI服务接口"""
+    """AI服务接口 - 集成新的多提供商系统"""
     
     def __init__(self):
+        self.logger = get_logger()
+        self.logger.info("Initializing AI Service")
+        
+        # 保持向后兼容的配置
         self.base_url = settings.AI_SERVICE_URL
         self.api_key = settings.AI_API_KEY
         self.openai_api_key = settings.OPENAI_API_KEY
         self.stability_api_key = settings.STABILITY_API_KEY
+        
+        # 初始化多提供商AI服务管理器
+        self.ai_manager = self._initialize_ai_manager()
+        self.storyboard_reasoner = StoryboardReActReasoner(self) if LANGGRAPH_AVAILABLE else None
+    
+    def _initialize_ai_manager(self) -> Optional[AIServiceManager]:
+        """初始化AI服务管理器"""
+        if not AI_MANAGER_AVAILABLE:
+            self.logger.warning("AI服务管理器不可用，使用fallback模式")
+            return None
+            
+        try:
+            # 构建提供商配置
+            providers = {}
+            provider_weights = {}
+            
+            # OpenAI配置
+            if self.openai_api_key:
+                providers["openai"] = ProviderConfig(
+                    name="openai",
+                    api_key=self.openai_api_key,
+                    base_url="https://api.openai.com/v1",
+                    timeout=120.0
+                )
+                provider_weights["openai"] = ProviderWeight(
+                    provider_name="openai",
+                    weight=1.0,
+                    priority=ProviderPriority.HIGH,
+                    enabled=True,
+                    max_requests_per_minute=100
+                )
+            
+            # 其他提供商配置（支持双密钥认证）
+            # 可灵AI（快手）
+            if settings.KELING_API_KEY and settings.KELING_SECRET_KEY:
+                providers["keling"] = ProviderConfig(
+                    name="keling",
+                    api_key=settings.KELING_API_KEY,
+                    api_secret=settings.KELING_SECRET_KEY,
+                    base_url="https://klingai.com/api/v1",
+                    timeout=120.0
+                )
+                provider_weights["keling"] = ProviderWeight(
+                    provider_name="keling",
+                    weight=0.8,
+                    priority=ProviderPriority.MEDIUM,
+                    enabled=True,
+                    max_requests_per_minute=60
+                )
+            
+            # 即梦AI
+            if settings.JIMENG_API_KEY and settings.JIMENG_SECRET_KEY:
+                providers["jimeng"] = ProviderConfig(
+                    name="jimeng",
+                    api_key=settings.JIMENG_API_KEY,
+                    api_secret=settings.JIMENG_SECRET_KEY,
+                    base_url="https://api.jimeng.ai/v1",
+                    timeout=120.0
+                )
+                provider_weights["jimeng"] = ProviderWeight(
+                    provider_name="jimeng",
+                    weight=0.8,
+                    priority=ProviderPriority.MEDIUM,
+                    enabled=True,
+                    max_requests_per_minute=60
+                )
+            
+            # DeepSeek（单密钥）
+            if settings.DEEPSEEK_API_KEY:
+                providers["deepseek"] = ProviderConfig(
+                    name="deepseek",
+                    api_key=settings.DEEPSEEK_API_KEY,
+                    base_url="https://api.deepseek.com/v1",
+                    timeout=120.0
+                )
+                provider_weights["deepseek"] = ProviderWeight(
+                    provider_name="deepseek",
+                    weight=0.8,
+                    priority=ProviderPriority.MEDIUM,
+                    enabled=True,
+                    max_requests_per_minute=60
+                )
+            
+            # 火山引擎
+            if settings.VOLCENGINE_API_KEY and settings.VOLCENGINE_SECRET_KEY:
+                providers["volcengine"] = ProviderConfig(
+                    name="volcengine",
+                    api_key=settings.VOLCENGINE_API_KEY,
+                    api_secret=settings.VOLCENGINE_SECRET_KEY,
+                    base_url="https://open.volcengineapi.com",
+                    timeout=120.0
+                )
+                provider_weights["volcengine"] = ProviderWeight(
+                    provider_name="volcengine",
+                    weight=0.7,
+                    priority=ProviderPriority.MEDIUM,
+                    enabled=True,
+                    max_requests_per_minute=50
+                )
+            
+            # 如果没有配置任何provider，返回None
+            if not providers:
+                # self.logger.warning("警告: 没有配置任何AI服务提供商，将使用fallback模式")
+                print("警告: 没有配置任何AI服务提供商，将使用fallback模式")
+                return None
+            
+            # 创建AI服务配置
+            config = AIServiceConfig(
+                providers=providers,
+                provider_weights=provider_weights,
+                enable_fallback=True,
+                enable_load_balancing=True,
+                default_timeout=120.0,
+                max_retries=3
+            )
+            
+            return AIServiceManager(config)
+        except Exception as e:
+            # self.logger.error(f"AI服务管理器初始化失败: {e}")
+            print(f"AI服务管理器初始化失败: {e}")
+            return None
     
     async def generate_story_outline(
         self,
@@ -27,68 +177,87 @@ class AIService:
         world_building: Optional[str] = None,
         additional_requirements: Optional[str] = None,
         style_preferences: Optional[List[str]] = None,
-        content_restrictions: Optional[List[str]] = None
+        content_restrictions: Optional[List[str]] = None,
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        prefer_provider: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """生成故事概要"""
         
-        # 构建角色描述
-        character_descriptions = []
-        for char in characters:
-            desc = f"- {char.get('name', '未命名角色')}"
-            if char.get('description'):
-                desc += f": {char['description']}"
-            if char.get('background_story'):
-                desc += f" 背景: {char['background_story']}"
-            character_descriptions.append(desc)
-        
-        # 构建基础提示词
-        prompt = f"""请为以下短剧创作一个完整的故事概要：
-
-标题: {title}
-类型: {genre}
-主题: {theme or '待定'}
-目标受众: {target_audience or '普通观众'}
-总时长: {duration_minutes or '待定'}分钟
-
-主要角色:
-{chr(10).join(character_descriptions)}
-
-设定:
-- 时间: {setting_time or '现代'}
-- 地点: {setting_location or '待定'}
-- 世界观: {world_building or '现实世界'}
-
-请生成包含以下内容的故事概要:
-1. 故事前提 (premise)
-2. 详细概要 (synopsis)
-3. 主要冲突 (main_conflict)
-4. 解决方案 (resolution)
-5. 角色关系 (character_relationships)
-6. 主要角色信息 (main_characters)
-
-格式要求:
-- 使用JSON格式返回
-- 内容要符合{genre}类型的特点
-- 适合{target_audience or '普通观众'}观看
-- 故事要有完整的起承转合结构"""
-
-        if additional_requirements:
-            prompt += f"\n\n额外要求: {additional_requirements}"
-        
-        if style_preferences:
-            prompt += f"\n\n风格偏好: {', '.join(style_preferences)}"
-        
-        if content_restrictions:
-            prompt += f"\n\n内容限制: {', '.join(content_restrictions)}"
-        
-        # 调用AI服务生成
+        # 使用提示词管理器渲染模板
         try:
-            result = await self._call_text_generation_service(prompt, "story_outline")
-            if result:
+            variables = {
+                "title": title,
+                "genre": genre,
+                "characters": characters,
+                "theme": theme,
+                "target_audience": target_audience,
+                "duration_minutes": duration_minutes,
+                "setting_time": setting_time,
+                "setting_location": setting_location,
+                "world_building": world_building,
+                "additional_requirements": additional_requirements,
+                "style_preferences": style_preferences or [],
+                "content_restrictions": content_restrictions or []
+            }
+            
+            prompt = prompt_manager.render_prompt(
+                PromptTemplate.STORY_OUTLINE.value,
+                variables
+            )
+            
+            # 使用新的AI服务管理器生成
+            # 优先使用结构化JSON Schema
+            story_schema = StoryOutlineModel.model_json_schema()
+            response = await self.ai_manager.generate_text(
+                prompt=prompt,
+                max_tokens=4000,
+                temperature=temperature,
+                model=model,
+                json_schema={"name": "story_outline", "schema": story_schema},
+                prefer_provider=prefer_provider,
+                system_prompt="你是一个专业的编剧和故事创作者，擅长创作各种类型的短剧剧本。请根据用户的要求生成高质量的故事内容。"
+            )
+            
+            if response.success:
+                # 校验与兼容解析
+                content_text = response.data if isinstance(response.data, str) else str(response.data)
+                try:
+                    data = json.loads(content_text)
+                    StoryOutlineModel.model_validate(data)
+                    normalized = data
+                except Exception as e:
+                    # 简单重试一次，提示严格JSON
+                    retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
+                    retry = await self.ai_manager.generate_text(
+                        prompt=retry_prompt,
+                        max_tokens=4000,
+                        temperature=temperature,
+                        model=model,
+                        json_schema={"name": "story_outline", "schema": story_schema},
+                        prefer_provider=prefer_provider,
+                        system_prompt="你是一个专业的编剧和故事创作者，返回内容必须是严格的JSON，符合提供的Schema。"
+                    )
+                    if retry.success:
+                        try:
+                            data = json.loads(retry.data)
+                            StoryOutlineModel.model_validate(data)
+                            normalized = data
+                            content_text = retry.data
+                        except Exception:
+                            normalized = None
+                    else:
+                        normalized = None
+
                 return {
-                    "content": result,
+                    "content": content_text,
+                    "normalized": normalized,
                     "prompt": prompt,
-                    "generation_method": "ai_story_generation"
+                    "generation_method": f"ai_{response.provider}",
+                    "template_used": PromptTemplate.STORY_OUTLINE.value,
+                    "provider_used": response.provider,
+                    "model_used": response.model,
+                    "usage": response.usage
                 }
         except Exception as e:
             print(f"故事概要生成失败: {e}")
@@ -104,72 +273,195 @@ class AIService:
         plot_complexity: str = "medium",
         pacing: str = "medium",
         additional_requirements: Optional[str] = None,
-        style_preferences: Optional[List[str]] = None
+        style_preferences: Optional[List[str]] = None,
+        model: Optional[str] = None,
+        prefer_provider: Optional[str] = None,
+        temperature: float = 0.7
     ) -> Optional[Dict[str, Any]]:
         """基于故事概要生成剧集"""
         
-        # 构建剧集生成提示词
-        prompt = f"""基于以下故事概要，生成{episode_count}集的剧集大纲：
-
-故事信息:
-- 标题: {story.get('title', '未命名故事')}
-- 类型: {story.get('genre', '剧情')}
-- 主题: {story.get('theme', '待定')}
-- 故事概要: {story.get('synopsis', '待定')}
-- 主要冲突: {story.get('main_conflict', '待定')}
-- 解决方案: {story.get('resolution', '待定')}
-
-剧集参数:
-- 总集数: {episode_count}集
-- 每集时长: {episode_duration or '待定'}分钟
-- 情节复杂度: {plot_complexity}
-- 节奏: {pacing}
-
-主要角色:
-{json.dumps(story.get('main_characters', []), ensure_ascii=False, indent=2)}
-
-角色关系:
-{json.dumps(story.get('character_relationships', {}), ensure_ascii=False, indent=2)}"""
-
-        if focus_characters:
-            focus_names = [char.get('name', '未命名') for char in focus_characters]
-            prompt += f"\n\n重点角色: {', '.join(focus_names)}"
+        # 首先尝试使用AI服务管理器
+        if self.ai_manager:
+            try:
+                variables = {
+                    "story": story,
+                    "episode_count": episode_count,
+                    "episode_duration": episode_duration,
+                    "focus_characters": focus_characters or [],
+                    "plot_complexity": plot_complexity,
+                    "pacing": pacing,
+                    "additional_requirements": additional_requirements,
+                    "style_preferences": style_preferences or []
+                }
+                
+                prompt = prompt_manager.render_prompt(
+                    PromptTemplate.EPISODE_GENERATION.value,
+                    variables
+                )
+                
+                plan_schema = EpisodePlanModel.model_json_schema()
+                response = await self.ai_manager.generate_text(
+                    prompt=prompt,
+                    max_tokens=4000,
+                    temperature=temperature,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    json_schema={"name": "episode_plan", "schema": plan_schema},
+                    system_prompt="你是一个专业的编剧和故事创作者，擅长创作各种类型的短剧剧本。请根据用户的要求生成高质量的剧集规划。"
+                )
+                
+                if response.success:
+                    content_text = response.data if isinstance(response.data, str) else str(response.data)
+                    try:
+                        data = json.loads(content_text)
+                        EpisodePlanModel.model_validate(data)
+                    except Exception:
+                        retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
+                        retry = await self.ai_manager.generate_text(
+                            prompt=retry_prompt,
+                            max_tokens=4000,
+                            temperature=temperature,
+                            model=model,
+                            prefer_provider=prefer_provider,
+                            json_schema={"name": "episode_plan", "schema": plan_schema},
+                            system_prompt="你是一个专业的编剧和故事创作者，返回内容必须是严格的JSON，符合提供的Schema。"
+                        )
+                        if retry.success:
+                            content_text = retry.data
+                    return {
+                        "content": content_text,
+                        "prompt": prompt,
+                        "generation_method": f"ai_{response.provider}",
+                        "template_used": PromptTemplate.EPISODE_GENERATION.value,
+                        "provider_used": response.provider,
+                        "model_used": response.model,
+                        "usage": response.usage
+                    }
+            except Exception as e:
+                print(f"AI服务管理器剧集生成失败: {e}")
         
-        prompt += f"""
-
-请为每一集生成以下内容:
-1. 集数和标题
-2. 剧集概要 (summary)
-3. 主要情节点 (plot_points)
-4. 角色发展 (character_arcs)
-5. 冲突设置 (conflicts)
-6. 场景数量估计 (scene_count)
-
-要求:
-- 确保整体故事的连贯性和完整性
-- 每集都有明确的开始、发展、高潮和结尾
-- 角色发展要符合整体故事弧线
-- 冲突要逐步升级，最终在适当的集数达到高潮
-- 使用JSON格式返回，包含episodes数组"""
-
-        if additional_requirements:
-            prompt += f"\n\n额外要求: {additional_requirements}"
-        
-        if style_preferences:
-            prompt += f"\n\n风格偏好: {', '.join(style_preferences)}"
-        
+        # 如果AI服务管理器失败，尝试传统方法
         try:
+            prompt = self._build_episode_generation_prompt(
+                story, episode_count, episode_duration, 
+                focus_characters, plot_complexity, pacing, 
+                additional_requirements, style_preferences
+            )
+            
             result = await self._call_text_generation_service(prompt, "episode_generation")
             if result:
                 return {
                     "content": result,
                     "prompt": prompt,
-                    "generation_method": "ai_episode_generation"
+                    "generation_method": "ai_fallback",
+                    "template_used": "manual_prompt",
+                    "provider_used": "fallback",
+                    "model_used": "unknown",
+                    "usage": {}
                 }
         except Exception as e:
-            print(f"剧集生成失败: {e}")
+            print(f"传统剧集生成方法失败: {e}")
         
-        return None
+        # 最终回退到模拟服务
+        return await self._generate_mock_episodes(story, episode_count, episode_duration)
+    
+    def _build_episode_generation_prompt(
+        self, story, episode_count, episode_duration, 
+        focus_characters, plot_complexity, pacing, 
+        additional_requirements, style_preferences
+    ) -> str:
+        """构建剧集生成提示词"""
+        prompt = f"""你是一个专业的剧集编剧，擅长将故事概要分解为具体的剧集内容。请基于以下故事信息生成{episode_count}集的剧集大纲：
+
+## 故事信息
+故事标题：{story.get('title', '未命名故事')}
+类型：{story.get('genre', '剧情')}
+故事概要：{story.get('synopsis', '暂无概要')}
+主要冲突：{story.get('main_conflict', '暂无')}
+
+## 剧集参数
+总集数：{episode_count}集
+每集时长：{episode_duration or 30}分钟
+情节复杂度：{plot_complexity}
+节奏控制：{pacing}
+"""
+        
+        if focus_characters:
+            prompt += "\n## 重点角色\n"
+            for char in focus_characters:
+                prompt += f"- {char.get('name', '未知')}: {char.get('description', '暂无描述')}\n"
+        
+        if additional_requirements:
+            prompt += f"\n## 特殊要求\n{additional_requirements}\n"
+        
+        prompt += """
+## 输出格式
+请以JSON格式返回，包含episodes数组，每集包含：
+- episode_number: 集数
+- title: 剧集标题 
+- summary: 剧集概要
+- plot_points: 主要情节点列表
+- character_arcs: 角色发展安排
+- conflicts: 本集的冲突设置
+- scene_count: 预估场景数量
+
+示例格式：
+{
+    "episodes": [
+        {
+            "episode_number": 1,
+            "title": "新的开始",
+            "summary": "介绍主要角色和背景设定",
+            "plot_points": [{"description": "角色出场", "timing": "开场"}],
+            "character_arcs": {"protagonist": "初始状态展示"},
+            "conflicts": [{"description": "内心困扰", "intensity": "low"}],
+            "scene_count": 5
+        }
+    ]
+}
+"""
+        return prompt
+    
+    async def _generate_mock_episodes(
+        self, story: Dict[str, Any], episode_count: int, episode_duration: Optional[int]
+    ) -> Dict[str, Any]:
+        """生成模拟剧集内容"""
+        await asyncio.sleep(1)  # 模拟处理时间
+        
+        episodes = []
+        story_title = story.get('title', '未命名故事')
+        
+        for i in range(episode_count):
+            episode_num = i + 1
+            episodes.append({
+                "episode_number": episode_num,
+                "title": f"第{episode_num}集" if episode_num > 1 else "初始篇章",
+                "summary": f"这是{story_title}第{episode_num}集的内容概要。本集将继续推进故事发展，展现角色成长。",
+                "plot_points": [
+                    {"description": f"第{episode_num}集开场情节", "timing": "开场"},
+                    {"description": f"第{episode_num}集发展情节", "timing": "中段"},
+                    {"description": f"第{episode_num}集结尾情节", "timing": "结尾"}
+                ],
+                "character_arcs": {"protagonist": f"第{episode_num}集的角色发展"},
+                "conflicts": [
+                    {"description": f"第{episode_num}集的主要冲突", "intensity": "medium"}
+                ],
+                "scene_count": 4 + (episode_num % 3)  # 4-6个场景
+            })
+        
+        content = json.dumps({
+            "episodes": episodes
+        }, ensure_ascii=False, indent=2)
+        
+        return {
+            "content": content,
+            "prompt": "模拟剧集生成提示词",
+            "generation_method": "mock_service",
+            "template_used": "mock_template",
+            "provider_used": "mock",
+            "model_used": "mock_model",
+            "usage": {}
+        }
     
     async def generate_script(
         self,
@@ -180,70 +472,69 @@ class AIService:
         dialogue_style: str = "natural",
         scene_detail_level: str = "medium",
         additional_requirements: Optional[str] = None,
-        style_preferences: Optional[List[str]] = None
+        style_preferences: Optional[List[str]] = None,
+        model: Optional[str] = None,
+        prefer_provider: Optional[str] = None,
+        temperature: float = 0.7
     ) -> Optional[Dict[str, Any]]:
         """基于剧集信息生成详细剧本"""
         
-        # 构建剧本生成提示词
-        prompt = f"""基于以下剧集信息，生成完整的{format_type}格式剧本：
-
-故事背景:
-- 标题: {story.get('title', '未命名故事')}
-- 类型: {story.get('genre', '剧情')}
-- 世界观: {story.get('world_building', '现实世界')}
-- 时间设定: {story.get('setting_time', '现代')}
-- 地点设定: {story.get('setting_location', '待定')}
-
-剧集信息:
-- 第{episode.get('episode_number', 1)}集: {episode.get('title', '未命名剧集')}
-- 剧集概要: {episode.get('summary', '待定')}
-- 预计时长: {episode.get('duration_minutes', '待定')}分钟
-- 场景数量: {episode.get('scene_count', '待定')}个
-
-情节要点:
-{json.dumps(episode.get('plot_points', []), ensure_ascii=False, indent=2)}
-
-角色发展:
-{json.dumps(episode.get('character_arcs', {}), ensure_ascii=False, indent=2)}
-
-冲突设置:
-{json.dumps(episode.get('conflicts', []), ensure_ascii=False, indent=2)}
-
-主要角色:
-{json.dumps(story.get('main_characters', []), ensure_ascii=False, indent=2)}
-
-剧本参数:
-- 格式: {format_type}
-- 语言: {language}
-- 对话风格: {dialogue_style}
-- 场景描述详细程度: {scene_detail_level}
-
-请生成包含以下内容的完整剧本:
-1. 完整的剧本内容 (content)
-2. 场景列表 (scenes)
-3. 对话列表 (dialogues)
-4. 舞台指示 (stage_directions)
-
-格式要求:
-- 使用标准的{format_type}格式
-- 对话要{dialogue_style}，符合角色性格
-- 场景描述要{scene_detail_level}详细
-- 确保剧本结构完整，包含开场、发展、高潮、结尾
-- 使用JSON格式返回结果"""
-
-        if additional_requirements:
-            prompt += f"\n\n额外要求: {additional_requirements}"
-        
-        if style_preferences:
-            prompt += f"\n\n风格偏好: {', '.join(style_preferences)}"
-        
+        # 使用提示词管理器渲染模板
         try:
-            result = await self._call_text_generation_service(prompt, "script_generation")
-            if result:
+            variables = {
+                "story": story,
+                "episode": episode,
+                "format_type": format_type,
+                "language": language,
+                "dialogue_style": dialogue_style,
+                "scene_detail_level": scene_detail_level,
+                "additional_requirements": additional_requirements,
+                "style_preferences": style_preferences or []
+            }
+            
+            prompt = prompt_manager.render_prompt(
+                PromptTemplate.SCRIPT_GENERATION.value,
+                variables
+            )
+            
+            script_schema = ScriptModel.model_json_schema()
+            response = await self.ai_manager.generate_text(
+                prompt=prompt,
+                max_tokens=4000,
+                temperature=temperature,
+                model=model,
+                prefer_provider=prefer_provider,
+                json_schema={"name": "script", "schema": script_schema},
+                system_prompt="你是一个专业的编剧和故事创作者，擅长创作各种类型的短剧剧本。请根据用户的要求生成高质量的剧本内容。"
+            )
+            
+            if response.success:
+                content_text = response.data if isinstance(response.data, str) else str(response.data)
+                try:
+                    data = json.loads(content_text)
+                    ScriptModel.model_validate(data)
+                except Exception:
+                    # 重试一次
+                    retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
+                    retry = await self.ai_manager.generate_text(
+                        prompt=retry_prompt,
+                        max_tokens=4000,
+                        temperature=temperature,
+                        model=model,
+                        prefer_provider=prefer_provider,
+                        json_schema={"name": "script", "schema": script_schema},
+                        system_prompt="你是一个专业的编剧和故事创作者，返回内容必须是严格的JSON，符合提供的Schema。"
+                    )
+                    if retry.success:
+                        content_text = retry.data
                 return {
-                    "content": result,
+                    "content": content_text,
                     "prompt": prompt,
-                    "generation_method": "ai_script_generation"
+                    "generation_method": f"ai_{response.provider}",
+                    "template_used": PromptTemplate.SCRIPT_GENERATION.value,
+                    "provider_used": response.provider,
+                    "model_used": response.model,
+                    "usage": response.usage
                 }
         except Exception as e:
             print(f"剧本生成失败: {e}")
@@ -256,7 +547,8 @@ class AIService:
         # 尝试不同的AI服务
         services = [
             self._generate_with_openai_gpt,
-            self._generate_with_custom_service
+            self._generate_with_custom_service,
+            self._generate_with_mock_service  # 添加模拟服务作为后备
         ]
         
         for service in services:
@@ -268,6 +560,198 @@ class AIService:
                 print(f"服务 {service.__name__} 失败: {e}")
                 continue
         
+        return None
+
+    async def generate_storyboard(
+        self,
+        script: Dict[str, Any],
+        style_preferences: Optional[List[str]] = None,
+        additional_requirements: Optional[str] = None,
+        model: Optional[str] = None,
+        prefer_provider: Optional[str] = None,
+        temperature: float = 0.7,
+        frames_per_scene: int = 3,
+        max_frames: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """基于剧本信息生成分镜（Storyboard）"""
+        if self.ai_manager:
+            try:
+                variables = {
+                    "script": script,
+                    "style_preferences": style_preferences or [],
+                    "additional_requirements": additional_requirements or "",
+                }
+                # 构造更强提示词，包含故事/剧集上下文与场景角色信息
+                context = {
+                    "story": (script or {}).get("story"),
+                    "episode": (script or {}).get("episode"),
+                    "scenes_count": len((script or {}).get("scenes") or []),
+                }
+                prompt = (
+                    "你是具备导演、摄影与美术能力的专业分镜师。请采用 ReAct 思考流程：先在内心推理每个场景应该呈现的节奏与视觉差异，再输出最终JSON。\n"
+                    "必须遵循：\n"
+                    f"- 每个场景生成约 {frames_per_scene} 个分镜，保证镜头间明显差异（景别/运镜/构图/叙事重点不得重复）\n"
+                    f"- 总数不超过 {max_frames if max_frames else '合理范围'}\n"
+                    "- 每个分镜必须包含且不为空：scene_number, shot_type, camera_movement, composition, description, duration_seconds, ai_prompt\n"
+                    "- shot_type 需覆盖远景/中景/近景/特写等不同镜别，避免同一场景内重复\n"
+                    "- camera_movement 应在固定/推/拉/摇/移/跟/变焦等之间切换，体现叙事意图\n"
+                    "- composition 需覆盖三分法/对称/前后景/对角线/中心对称等多样构图\n"
+                    "- description 要具体描述人物/动作/光线/情绪，不能简单复述场景标题\n"
+                    "- ai_prompt 包含主体、时间地点、情绪氛围、镜头语言关键词，且与 description 区分表述\n"
+                    "- 仅输出严格JSON：{\"frames\":[...]}，禁止额外文本或思维过程\n\n"
+                    "请在内部完成推理后再给出JSON结果，保证每条记录独特且自洽。\n"
+                    f"上下文（截断）：{json.dumps(context, ensure_ascii=False)[:1200]}\n"
+                    f"剧本（截断）：{json.dumps(script, ensure_ascii=False)[:2500]}"
+                )
+                schema = StoryboardModel.model_json_schema()
+                response = await self.ai_manager.generate_text(
+                    prompt=prompt,
+                    max_tokens=4000,
+                    temperature=temperature,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    json_schema={"name": "storyboard", "schema": schema},
+                    system_prompt="返回内容必须是严格的JSON，符合给定的Schema。"
+                )
+                if response.success:
+                    content_text = response.data if isinstance(response.data, str) else str(response.data)
+                    try:
+                        data = json.loads(content_text)
+                        StoryboardModel.model_validate(data)
+                    except Exception:
+                        retry = await self.ai_manager.generate_text(
+                            prompt=prompt + "\n\n只返回JSON，不要任何多余文本。",
+                            max_tokens=4000,
+                            temperature=temperature,
+                            model=model,
+                            prefer_provider=prefer_provider,
+                            json_schema={"name": "storyboard", "schema": schema},
+                            system_prompt="返回内容必须是严格的JSON，符合给定的Schema。"
+                        )
+                        if retry.success:
+                            content_text = retry.data
+                    return {
+                        "content": content_text,
+                        "prompt": prompt,
+                        "generation_method": f"ai_{response.provider}",
+                        "template_used": "storyboard_generation",
+                        "provider_used": response.provider,
+                        "model_used": response.model,
+                        "usage": response.usage,
+                    }
+            except Exception as e:
+                print(f"分镜生成失败: {e}")
+        return None
+
+    async def generate_storyboard_plan(
+        self,
+        script: Dict[str, Any],
+        frames_per_scene: int = 7,
+        selected_scenes: Optional[List[int]] = None,
+        model: Optional[str] = None,
+        prefer_provider: Optional[str] = None,
+        temperature: float = 0.3,
+    ) -> Optional[Dict[str, Any]]:
+        """先生成分镜规划：每个场景的帧数与每帧的镜别/运镜/构图/意图。"""
+        if not self.ai_manager:
+            return None
+        try:
+            scenes = (script or {}).get("scenes") or []
+            target_scenes = selected_scenes or list(range(1, len(scenes) + 1))
+            context = {
+                "story": (script or {}).get("story"),
+                "episode": (script or {}).get("episode"),
+                "scenes_count": len(scenes),
+                "selected_scenes": target_scenes,
+            }
+            prompt = (
+                "你是专业分镜导演。请采用 ReAct 风格在心中完成推理，最终只输出JSON。\n"
+                "步骤：首先构思每个场景的节奏与冲突，再给出多样化的镜头规划。\n"
+                "必须返回严格JSON：{\"scenes\":[{\"scene_number\":int,\"target_frames\":int,\"frames\":[{\"shot_type\":str,\"camera_movement\":str,\"composition\":str,\"intent\":str}...]}...]}。\n"
+                "要求：shot_type 覆盖远景/中景/近景/特写；camera_movement 在固定/推/拉/摇/移/跟/变焦中多样化；composition 在三分法/对称/前后景/对角线/中心对称中选择；intent 需说明情绪或叙事作用。\n"
+                f"每个选定场景 target_frames={frames_per_scene}，不足也尽量给足，禁止镜头意图重复。\n"
+                f"上下文（截断）：{json.dumps(context, ensure_ascii=False)[:1200]}\n"
+                f"剧本（截断）：{json.dumps(script, ensure_ascii=False)[:2500]}"
+            )
+            schema = StoryboardPlanModel.model_json_schema()
+            response = await self.ai_manager.generate_text(
+                prompt=prompt,
+                max_tokens=3000,
+                temperature=temperature,
+                model=model,
+                prefer_provider=prefer_provider,
+                json_schema={"name": "storyboard_plan", "schema": schema},
+                system_prompt="只返回严格JSON，符合给定的Schema"
+            )
+            if response.success:
+                content_text = response.data if isinstance(response.data, str) else str(response.data)
+                try:
+                    data = json.loads(content_text)
+                    StoryboardPlanModel.model_validate(data)
+                except Exception:
+                    return None
+                return {
+                    "content": content_text,
+                    "normalized": data,
+                    "provider_used": response.provider,
+                    "model_used": response.model,
+                    "usage": response.usage
+                }
+        except Exception as e:
+            print(f"分镜规划生成失败: {e}")
+        return None
+
+    async def generate_storyboard_from_plan_for_scene(
+        self,
+        script: Dict[str, Any],
+        scene_plan: StoryboardPlanScene,
+        model: Optional[str] = None,
+        prefer_provider: Optional[str] = None,
+        temperature: float = 0.7,
+        max_frames: Optional[int] = None,
+    ) -> Optional[List[Dict[str, Any]]]:
+        """根据某一场景的规划，细化生成该场景的分镜帧（一次一场景）。"""
+        if not self.ai_manager:
+            return None
+        try:
+            script_brief = {
+                "story": (script or {}).get("story"),
+                "episode": (script or {}).get("episode"),
+                "scene": (script or {}).get("scenes")[scene_plan.scene_number - 1] if (script or {}).get("scenes") and 0 < scene_plan.scene_number <= len((script or {}).get("scenes")) else None,
+            }
+            prompt = (
+                "你是专业分镜师。请先在心中分析规划中每条镜头的差异化表达，再生成最终分镜帧列表。\n"
+                "必须返回严格JSON：{\"frames\":[{scene_number, shot_type, camera_movement, composition, description, duration_seconds, ai_prompt, reference_images}...]}。\n"
+                "字段要求与取值范围同前，且 description、shot_type、camera_movement、composition 在同一场景内要有明显差异；duration_seconds 取 2–12 之间并根据节奏适度变化。\n"
+                "ai_prompt 需要补充画面细节、光线、情绪、材质等元素，避免与 description 完全重复。\n"
+                f"规划（仅此场景）：{json.dumps(scene_plan.dict(), ensure_ascii=False)}\n"
+                f"上下文（截断）：{json.dumps(script_brief, ensure_ascii=False)[:1500]}\n"
+                f"若有 max_frames 限制，总数不超过 {max_frames if max_frames else '合理范围'}。"
+            )
+            schema = StoryboardModel.model_json_schema()
+            response = await self.ai_manager.generate_text(
+                prompt=prompt,
+                max_tokens=2500,
+                temperature=temperature,
+                model=model,
+                prefer_provider=prefer_provider,
+                json_schema={"name": "storyboard", "schema": schema},
+                system_prompt="只返回严格JSON，符合Schema。"
+            )
+            if response.success:
+                content_text = response.data if isinstance(response.data, str) else str(response.data)
+                try:
+                    data = json.loads(content_text)
+                    StoryboardModel.model_validate(data)
+                    frames = data.get("frames") or []
+                    # 统一 scene_number
+                    for fr in frames:
+                        fr["scene_number"] = scene_plan.scene_number
+                    return frames
+                except Exception:
+                    return None
+        except Exception as e:
+            print(f"基于规划生成分镜失败: {e}")
         return None
     
     async def _generate_with_openai_gpt(self, prompt: str, task_type: str) -> Optional[str]:
@@ -342,6 +826,67 @@ class AIService:
             print(f"自定义文本生成服务失败: {e}")
             return None
     
+    async def _generate_with_mock_service(self, prompt: str, task_type: str) -> Optional[str]:
+        """模拟AI服务（用于测试和演示）"""
+        await asyncio.sleep(1)  # 模拟处理时间
+        
+        if task_type == "story_outline":
+            return """{
+                "premise": "这是一个关于友情与成长的现代都市故事。",
+                "synopsis": "主人公们在面临生活挑战时，通过相互支持和理解，最终实现了个人成长和友谊的升华。故事通过日常生活中的小事件，展现了现代年轻人的生活态度和价值观。",
+                "main_conflict": "主人公面临职业选择和人际关系的双重困扰，需要在理想与现实之间找到平衡。",
+                "resolution": "通过朋友们的帮助和自我反思，主人公找到了适合自己的道路，同时加深了与朋友们的友谊。",
+                "character_relationships": {
+                    "protagonist_friend": "深厚的友谊，相互支持",
+                    "group_dynamics": "团结互助的友好关系"
+                },
+                "main_characters": [
+                    {
+                        "name": "主人公A",
+                        "role": "protagonist",
+                        "description": "积极向上的年轻人"
+                    },
+                    {
+                        "name": "主人公B", 
+                        "role": "supporting",
+                        "description": "智慧可靠的朋友"
+                    }
+                ]
+            }"""
+        elif task_type == "episode_generation":
+            return """{
+                "episodes": [
+                    {
+                        "episode_number": 1,
+                        "title": "新的开始",
+                        "summary": "介绍主要角色和背景设定",
+                        "plot_points": [
+                            {"description": "角色出场", "timing": "开场"},
+                            {"description": "背景介绍", "timing": "前10分钟"},
+                            {"description": "冲突铺垫", "timing": "中段"}
+                        ],
+                        "character_arcs": {"protagonist": "初始状态展示"},
+                        "conflicts": [
+                            {"description": "内心困扰的初步展现", "intensity": "low"}
+                        ],
+                        "scene_count": 5
+                    }
+                ]
+            }"""
+        elif task_type == "script_generation":
+            return """{
+                "content": "FADE IN:\\n\\nINT. 客厅 - 日\\n\\n主人公坐在沙发上，思考着什么...\\n\\n主人公\\n（自言自语）\\n今天又是新的一天呢。\\n\\nFADE OUT.",
+                "scenes": [
+                    {"scene_number": 1, "location": "客厅", "time": "日", "description": "主人公独自思考"}
+                ],
+                "dialogues": [
+                    {"character": "主人公", "content": "今天又是新的一天呢。", "emotion": "thoughtful"}
+                ],
+                "stage_directions": ["主人公坐在沙发上，思考着什么"]
+            }"""
+        
+        return "这是一个模拟的AI生成内容，用于测试和演示目的。"
+    
     # 保持原有的图像生成功能
     async def generate_virtual_ip_image(
         self, 
@@ -349,56 +894,381 @@ class AIService:
         description: str,
         style: str = "realistic",
         category: str = "portrait",
-        additional_prompts: List[str] = None
+        model: str = "dalle-3",
+        additional_prompts: List[str] = None,
+        background_story: str = None
     ) -> Optional[Dict[str, Any]]:
         """为虚拟IP生成图像"""
-        # 构建优化的提示词
-        base_prompt = f"A professional {style} {category} of {ip_name}"
         
-        if description:
-            base_prompt += f", {description}"
-        
-        if additional_prompts:
-            base_prompt += f", {', '.join(additional_prompts)}"
-        
-        # 添加风格和质量提升词
-        quality_enhancers = [
-            "high quality", "detailed", "professional lighting",
-            "sharp focus", "4k resolution", "studio quality"
-        ]
-        
-        if style == "anime":
-            quality_enhancers.extend(["anime style", "manga art", "vibrant colors"])
-        elif style == "cartoon":
-            quality_enhancers.extend(["cartoon style", "clean lines", "bright colors"])
-        elif style == "realistic":
-            quality_enhancers.extend(["photorealistic", "natural lighting", "professional photography"])
-        
-        final_prompt = f"{base_prompt}, {', '.join(quality_enhancers)}"
-        
-        # 尝试不同的AI服务
-        services = [
-            self._generate_with_openai_dalle,
-            self._generate_with_stability,
-            self._generate_with_custom_service
-        ]
-        
-        for service in services:
-            try:
-                result = await service(final_prompt, style, category)
-                if result:
-                    return {
-                        "image_url": result,
-                        "prompt": final_prompt,
-                        "style": style,
-                        "category": category,
-                        "generation_method": service.__name__
-                    }
-            except Exception as e:
-                print(f"服务 {service.__name__} 失败: {e}")
-                continue
+        # 使用提示词管理器生成专业提示词
+        try:
+            variables = {
+                "character_name": ip_name,
+                "character_description": description,
+                "background_story": background_story,
+                "style": style,
+                "category": category,
+                "additional_prompts": additional_prompts or [],
+                "is_default": category == "portrait"
+            }
+            
+            # 生成AI图像提示词
+            prompt_result = prompt_manager.render_prompt(
+                PromptTemplate.IMAGE_GENERATION.value,
+                variables
+            )
+            
+            # 使用简单的提示词，避免复杂的AI管理器调用
+            final_prompt = f"A professional {style} {category} portrait of {ip_name}, {description}"
+            if additional_prompts:
+                final_prompt += f", {', '.join(additional_prompts)}"
+                
+            self.logger.info(f"生成图像提示词: {final_prompt[:200]}...")
+            self.logger.info(f"使用模型: {model}, 风格: {style}, 类别: {category}")
+                
+            # 根据模型选择不同的AI服务
+            if model.startswith("kling-") or model == "keling":
+                # 使用可灵AI生成图像
+                image_url = await self._generate_with_keling_image(final_prompt, style, category, model)
+            elif model.startswith("dall-e") or model.startswith("dalle"):
+                # 使用OpenAI DALL-E生成图像
+                image_url = await self._generate_with_openai_dalle(final_prompt, style, category)
+            elif self.ai_manager:
+                # 使用AI管理器的其他服务
+                response = await self.ai_manager.generate_image(
+                    prompt=final_prompt,
+                    width=1024,
+                    height=1024,
+                    style=style,
+                    model=model
+                )
+                if response.success:
+                    images = response.data.get("images", [])
+                    image_url = images[0] if images else None
+                else:
+                    self.logger.error(f"AI管理器图像生成失败: {response.error}")
+                    image_url = None
+            else:
+                # 默认使用OpenAI DALL-E
+                image_url = await self._generate_with_openai_dalle(final_prompt, style, category)
+            
+            if image_url:
+                # 下载图像到本地
+                local_file_path = await self._download_image(image_url, ip_name, category)
+                if not local_file_path:
+                    self.logger.error("图像下载失败")
+                    return None
+                
+                # 上传到OSS（如果配置了）
+                oss_result = None
+                final_image_url = local_file_path
+                
+                if oss_service:
+                    try:
+                        self.logger.info("准备上传图像到OSS")
+                        # 读取本地文件内容
+                        with open(local_file_path, 'rb') as f:
+                            file_content = f.read()
+                        
+                        filename = os.path.basename(local_file_path)
+                        self.logger.info(f"开始上传文件到OSS: {filename}, 大小: {len(file_content)} bytes")
+                        
+                        # 暂时不设置metadata，避免签名问题
+                        oss_result = await oss_service.upload_file_content(
+                            file_content=file_content,
+                            filename=filename,
+                            file_type="image",
+                            prefix="ai-generated/virtual-ip"
+                            # metadata={
+                            #     "ip_name": ip_name,
+                            #     "style": style,
+                            #     "category": category,
+                            #     "provider": "openai",
+                            #     "model": model,
+                            #     "generation_time": datetime.now().isoformat()
+                            # }
+                        )
+                        if oss_result and oss_result.get("success"):
+                            final_image_url = oss_result.get("file_url")
+                            self.logger.info(f"图像已成功上传到OSS: {final_image_url}")
+                        else:
+                            self.logger.error(f"OSS上传返回失败结果: {oss_result}")
+                    except Exception as e:
+                        self.logger.error(f"OSS上传失败: {e}")
+                else:
+                    self.logger.warning("OSS服务未配置，跳过上传")
+                
+                return {
+                    "image_url": final_image_url,
+                    "local_file_path": local_file_path,
+                    "original_image_url": image_url,
+                    "oss_upload": oss_result,
+                    "prompt": final_prompt,
+                    "style": style,
+                    "category": category,
+                    "generation_method": "openai_dalle",
+                    "template_used": PromptTemplate.IMAGE_GENERATION.value,
+                    "provider_used": "openai",
+                    "model_used": model,
+                    "usage": {}
+                }
+            
+        except Exception as e:
+            print(f"图像生成失败: {e}")
         
         return None
+    
+    async def _download_image(self, image_data: str, ip_name: str, category: str) -> Optional[str]:
+        """处理图像数据（URL或base64）并保存到本地"""
+        import os
+        import uuid
+        import aiofiles
+        import base64
+        
+        try:
+            # 生成唯一文件名
+            file_extension = ".png"  # OpenAI DALL-E默认返回PNG
+            unique_filename = f"{uuid.uuid4().hex}{file_extension}"
+            
+            # 确保目录存在
+            upload_dir = settings.UPLOAD_DIR
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            local_file_path = os.path.join(upload_dir, unique_filename)
+            
+            # 判断是base64数据还是URL
+            if image_data.startswith("data:image"):
+                # 处理base64数据
+                self.logger.info("处理base64图像数据")
+                base64_data = image_data.split(",")[1]  # 移除data:image/png;base64,前缀
+                image_bytes = base64.b64decode(base64_data)
+                
+                # 直接保存base64数据
+                async with aiofiles.open(local_file_path, 'wb') as f:
+                    await f.write(image_bytes)
+            else:
+                # 处理URL（之前的逻辑）
+                self.logger.info(f"下载图像URL: {image_data[:100]}...")
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(image_data, timeout=60.0)
+                    response.raise_for_status()
+                    
+                    # 保存到本地文件
+                    async with aiofiles.open(local_file_path, 'wb') as f:
+                        await f.write(response.content)
+            
+            self.logger.info(f"图像已保存到: {local_file_path}")
+            return local_file_path
+            
+        except Exception as e:
+            self.logger.error(f"图像处理失败: {e}")
+            return None
+    
+    async def generate_video(
+        self,
+        prompt: str = None,
+        image_url: str = None,
+        duration: int = 5,
+        fps: int = 24,
+        resolution: str = "1280x720",
+        style: str = "realistic",
+        prefer_provider: str = None
+    ) -> Optional[Dict[str, Any]]:
+        """生成视频"""
+        try:
+            response = await self.ai_manager.generate_video(
+                prompt=prompt,
+                image_url=image_url,
+                duration=duration,
+                fps=fps,
+                resolution=resolution,
+                prefer_provider=prefer_provider
+            )
+            
+            if response.success:
+                original_video_url = response.data.get("video_url")
+                original_thumbnail_url = response.data.get("thumbnail_url")
+                
+                # 自动上传视频到OSS
+                video_oss_result = None
+                thumbnail_oss_result = None
+                
+                if original_video_url and oss_service:
+                    try:
+                        video_oss_result = await oss_service.upload_from_url(
+                            url=original_video_url,
+                            file_type="video",
+                            prefix="ai-generated/videos",
+                            metadata={
+                                "prompt": prompt or "image_to_video",
+                                "duration": str(duration),
+                                "fps": str(fps),
+                                "resolution": resolution,
+                                "provider": response.provider,
+                                "model": response.model,
+                                "generation_time": datetime.now().isoformat()
+                            }
+                        )
+                    except Exception as e:
+                        print(f"视频OSS上传失败: {e}")
+                
+                if original_thumbnail_url and oss_service:
+                    try:
+                        thumbnail_oss_result = await oss_service.upload_from_url(
+                            url=original_thumbnail_url,
+                            file_type="image",
+                            prefix="ai-generated/thumbnails",
+                            metadata={
+                                "type": "video_thumbnail",
+                                "prompt": prompt or "image_to_video",
+                                "provider": response.provider,
+                                "generation_time": datetime.now().isoformat()
+                            }
+                        )
+                    except Exception as e:
+                        print(f"缩略图OSS上传失败: {e}")
+                
+                return {
+                    "video_url": video_oss_result.get("file_url") if video_oss_result and video_oss_result.get("success") else original_video_url,
+                    "thumbnail_url": thumbnail_oss_result.get("file_url") if thumbnail_oss_result and thumbnail_oss_result.get("success") else original_thumbnail_url,
+                    "original_video_url": original_video_url,
+                    "original_thumbnail_url": original_thumbnail_url,
+                    "video_oss_upload": video_oss_result,
+                    "thumbnail_oss_upload": thumbnail_oss_result,
+                    "duration": response.data.get("duration", duration),
+                    "prompt": prompt,
+                    "image_url": image_url,
+                    "generation_method": f"ai_{response.provider}",
+                    "provider_used": response.provider,
+                    "model_used": response.model,
+                    "metadata": response.metadata
+                }
+        except Exception as e:
+            print(f"视频生成失败: {e}")
+        
+        return None
+    
+    async def generate_speech(
+        self,
+        text: str,
+        voice_type: str = None,
+        speed: float = 1.0,
+        prefer_provider: str = None
+    ) -> Optional[Dict[str, Any]]:
+        """生成语音"""
+        try:
+            response = await self.ai_manager.text_to_speech(
+                text=text,
+                voice_type=voice_type,
+                speed=speed,
+                prefer_provider=prefer_provider
+            )
+            
+            if response.success:
+                original_audio_url = response.data.get("audio_url")
+                
+                # 自动上传音频到OSS
+                audio_oss_result = None
+                if original_audio_url and oss_service:
+                    try:
+                        audio_oss_result = await oss_service.upload_from_url(
+                            url=original_audio_url,
+                            file_type="audio",
+                            prefix="ai-generated/audio",
+                            metadata={
+                                "text": text[:100] + "..." if len(text) > 100 else text,  # 限制长度
+                                "voice_type": voice_type or "default",
+                                "speed": str(speed),
+                                "provider": response.provider,
+                                "model": response.model,
+                                "generation_time": datetime.now().isoformat()
+                            }
+                        )
+                    except Exception as e:
+                        print(f"音频OSS上传失败: {e}")
+                
+                return {
+                    "audio_url": audio_oss_result.get("file_url") if audio_oss_result and audio_oss_result.get("success") else original_audio_url,
+                    "original_audio_url": original_audio_url,
+                    "audio_oss_upload": audio_oss_result,
+                    "duration": response.data.get("duration"),
+                    "text": text,
+                    "voice_type": voice_type,
+                    "speed": speed,
+                    "generation_method": f"ai_{response.provider}",
+                    "provider_used": response.provider,
+                    "model_used": response.model,
+                    "metadata": response.metadata
+                }
+        except Exception as e:
+            print(f"语音生成失败: {e}")
+        
+        return None
+    
+    def get_ai_providers_status(self) -> Dict[str, Any]:
+        """获取AI提供商状态"""
+        return self.ai_manager.get_provider_status()
+    
+    def update_provider_config(
+        self,
+        provider_name: str,
+        enabled: bool = None,
+        weight: float = None,
+        priority: str = None,
+        max_requests_per_minute: int = None
+    ):
+        """更新提供商配置"""
+        priority_enum = None
+        if priority:
+            priority_map = {
+                "high": ProviderPriority.HIGH,
+                "medium": ProviderPriority.MEDIUM,
+                "low": ProviderPriority.LOW
+            }
+            priority_enum = priority_map.get(priority.lower())
+        
+        self.ai_manager.update_provider_config(
+            provider_name=provider_name,
+            enabled=enabled,
+            weight=weight,
+            priority=priority_enum,
+            max_requests_per_minute=max_requests_per_minute
+        )
+    
+    async def _generate_with_keling_image(self, prompt: str, style: str, category: str, model: str = "kling-image") -> Optional[str]:
+        """使用可灵AI生成图像"""
+        if not self.ai_manager:
+            self.logger.warning("AI管理器未初始化，无法使用可灵AI")
+            return None
+        
+        try:
+            self.logger.info(f"使用可灵AI生成图像: {model}")
+            
+            response = await self.ai_manager.generate_image(
+                prompt=prompt,
+                width=1024,
+                height=1024,
+                style=style,
+                model=model,
+                prefer_provider="keling"
+            )
+            
+            if response.success:
+                images = response.data.get("images", [])
+                if images:
+                    image_url = images[0]
+                    self.logger.info(f"可灵AI图像生成成功: {image_url[:100] if isinstance(image_url, str) else str(image_url)[:100]}...")
+                    return image_url
+                else:
+                    self.logger.error("可灵AI返回了空的图像列表")
+                    return None
+            else:
+                self.logger.error(f"可灵AI图像生成失败: {response.error}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"可灵AI图像生成异常: {e}")
+            return None
     
     async def _generate_with_openai_dalle(self, prompt: str, style: str, category: str) -> Optional[str]:
         """使用OpenAI DALL-E生成图像"""
@@ -414,19 +1284,37 @@ class AIService:
                         "Content-Type": "application/json"
                     },
                     json={
-                        "prompt": prompt,
+                        "model": "dall-e-3",
+                        "prompt": prompt[:1000],  # DALL-E 3提示词限制在1000字符内
                         "n": 1,
                         "size": "1024x1024",
                         "quality": "hd",
-                        "style": "vivid" if style != "realistic" else "natural"
+                        "style": "vivid" if style != "realistic" else "natural",
+                        "response_format": "b64_json"  # 使用base64格式避免URL过期问题
                     },
                     timeout=60.0
                 )
                 response.raise_for_status()
                 result = response.json()
-                return result["data"][0]["url"]
+                
+                # 处理base64数据
+                if "b64_json" in result["data"][0]:
+                    base64_data = result["data"][0]["b64_json"]
+                    self.logger.info(f"获取到OpenAI base64图像数据，长度: {len(base64_data)}")
+                    return f"data:image/png;base64,{base64_data}"
+                else:
+                    # 兼容URL格式
+                    image_url = result["data"][0]["url"]
+                    self.logger.info(f"获取到OpenAI图像URL: {image_url[:100]}...")
+                    return image_url
         except Exception as e:
-            print(f"OpenAI DALL-E生成失败: {e}")
+            self.logger.error(f"OpenAI DALL-E生成失败: {e}")
+            if hasattr(e, 'response'):
+                try:
+                    error_detail = e.response.json()
+                    self.logger.error(f"OpenAI API错误详情: {error_detail}")
+                except:
+                    self.logger.error(f"OpenAI API响应: {e.response.text}")
             return None
     
     async def _generate_with_stability(self, prompt: str, style: str, category: str) -> Optional[str]:
@@ -467,7 +1355,7 @@ class AIService:
             print(f"Stability AI生成失败: {e}")
             return None
     
-    async def _generate_with_custom_service(self, prompt: str, style: str, category: str) -> Optional[str]:
+    async def _generate_with_custom_image_service(self, prompt: str, style: str, category: str) -> Optional[str]:
         """使用自定义AI服务生成图像"""
         if not self.base_url or not self.api_key:
             return None

@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { virtualIPAPI, VirtualIP } from '@/utils/api'
+import AuthGuard from '@/components/AuthGuard'
+import Navigation from '@/components/Navigation'
+import SmartInputField from '@/components/SmartInputField'
 
-export default function VirtualIPList() {
+function VirtualIPListContent() {
   const [virtualIPs, setVirtualIPs] = useState<VirtualIP[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -14,7 +17,8 @@ export default function VirtualIPList() {
     name: '',
     description: '',
     tags: [] as string[],
-    background_story: ''
+    background_story: '',
+    biography: ''
   })
 
   // 获取虚拟IP列表
@@ -46,7 +50,7 @@ export default function VirtualIPList() {
       if (response.success && response.data) {
         setVirtualIPs([response.data, ...virtualIPs])
         setShowCreateForm(false)
-        setNewIP({ name: '', description: '', tags: [], background_story: '' })
+        resetForm()
       } else {
         alert('创建失败: ' + (response.error || '未知错误'))
       }
@@ -54,6 +58,11 @@ export default function VirtualIPList() {
       console.error('创建虚拟IP出错:', error)
       alert('创建失败，请重试')
     }
+  }
+
+  // 重置表单
+  const resetForm = () => {
+    setNewIP({ name: '', description: '', tags: [], background_story: '', biography: '' })
   }
 
   // 删除虚拟IP
@@ -94,35 +103,7 @@ export default function VirtualIPList() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-bold text-gray-900">虚拟IP管理</h1>
-              <nav className="flex space-x-8">
-                <Link href="/virtual-ip" className="text-blue-600 border-b-2 border-blue-600 px-3 py-2 text-sm font-medium">
-                  虚拟IP
-                </Link>
-                <Link href="/tasks" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                  任务管理
-                </Link>
-                <Link href="/gallery" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                  图片画廊
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500">欢迎，用户</span>
-              <button className="text-gray-500 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navigation title="虚拟IP管理" />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -161,9 +142,18 @@ export default function VirtualIPList() {
 
             <button
               onClick={() => setShowCreateForm(true)}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center gap-3 shadow-lg"
             >
-              新建虚拟IP
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span className="font-medium">创建虚拟IP</span>
+              <div className="flex items-center gap-1 text-xs bg-white bg-opacity-20 px-2 py-1 rounded-full">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                AI助手
+              </div>
             </button>
           </div>
         </div>
@@ -269,37 +259,66 @@ export default function VirtualIPList() {
       {/* 创建虚拟IP弹窗 */}
       {showCreateForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">创建虚拟IP</h2>
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  创建虚拟IP
+                </h2>
+                <p className="text-sm text-gray-500">
+                  AI智能助手将协助您完成每个字段的填写
+                </p>
+              </div>
+            </div>
             
             <form onSubmit={handleCreateIP}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    名称 *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newIP.name}
-                    onChange={(e) => setNewIP({ ...newIP, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="输入虚拟IP名称"
-                  />
-                </div>
+              <div className="space-y-6">
+                <SmartInputField
+                  label="名称 *"
+                  value={newIP.name}
+                  onChange={(value) => setNewIP({ ...newIP, name: value })}
+                  placeholder="输入虚拟IP名称，如：小雅、李教授、小明等"
+                  type="input"
+                  showAIAssist={false}
+                />
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    描述
-                  </label>
-                  <textarea
-                    value={newIP.description}
-                    onChange={(e) => setNewIP({ ...newIP, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                    placeholder="输入虚拟IP描述"
-                  />
-                </div>
+                <SmartInputField
+                  label="角色描述"
+                  value={newIP.description}
+                  onChange={(value) => setNewIP({ ...newIP, description: value })}
+                  placeholder="描述这个角色的基本特征、性格、外貌等"
+                  type="textarea"
+                  rows={3}
+                  aiSuggestType="description"
+                  contextData={{ name: newIP.name }}
+                />
+
+                <SmartInputField
+                  label="背景故事"
+                  value={newIP.background_story}
+                  onChange={(value) => setNewIP({ ...newIP, background_story: value })}
+                  placeholder="描述角色的成长经历、重要事件、生活背景等"
+                  type="textarea"
+                  rows={4}
+                  aiSuggestType="background_story"
+                  contextData={{ name: newIP.name, description: newIP.description }}
+                />
+
+                <SmartInputField
+                  label="人物小传"
+                  value={newIP.biography}
+                  onChange={(value) => setNewIP({ ...newIP, biography: value })}
+                  placeholder="详细介绍角色的生平、成就、重要关系等"
+                  type="textarea"
+                  rows={4}
+                  aiSuggestType="biography"
+                  contextData={{ name: newIP.name, description: newIP.description, basicInfo: newIP.background_story }}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -350,39 +369,39 @@ export default function VirtualIPList() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    背景故事
-                  </label>
-                  <textarea
-                    value={newIP.background_story}
-                    onChange={(e) => setNewIP({ ...newIP, background_story: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={4}
-                    placeholder="输入虚拟IP的背景故事"
-                  />
-                </div>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="flex justify-end space-x-3 mt-8 pt-4 border-t">
                 <button
                   type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  onClick={() => {
+                    setShowCreateForm(false)
+                    resetForm()
+                  }}
+                  className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg"
                 >
-                  创建
+                  创建虚拟IP
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
+  )
+}
+
+export default function VirtualIPList() {
+  return (
+    <AuthGuard>
+      <VirtualIPListContent />
+    </AuthGuard>
   )
 } 

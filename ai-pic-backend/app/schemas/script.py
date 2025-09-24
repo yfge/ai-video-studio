@@ -58,7 +58,7 @@ class StoryBase(BaseModel):
     status: str = Field("draft", description="状态：draft, approved, published")
     is_public: bool = False
     tags: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
 
 class StoryCreate(StoryBase):
     characters: Optional[List[StoryCharacterCreate]] = None
@@ -85,7 +85,7 @@ class StoryUpdate(BaseModel):
     status: Optional[str] = None
     is_public: Optional[bool] = None
     tags: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
 
 class StoryResponse(StoryBase):
     id: int
@@ -112,7 +112,7 @@ class EpisodeBase(BaseModel):
     scene_count: Optional[int] = Field(None, ge=1)
     status: str = Field("draft", description="状态：draft, approved, published")
     tags: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
 
 class EpisodeCreate(EpisodeBase):
     story_id: int
@@ -128,7 +128,7 @@ class EpisodeUpdate(BaseModel):
     scene_count: Optional[int] = Field(None, ge=1)
     status: Optional[str] = None
     tags: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
 
 class EpisodeResponse(EpisodeBase):
     id: int
@@ -154,7 +154,7 @@ class ScriptBase(BaseModel):
     status: str = Field("draft", description="状态：draft, approved, published")
     version: str = Field("1.0", max_length=20)
     tags: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
 
 class ScriptCreate(ScriptBase):
     episode_id: int
@@ -170,7 +170,7 @@ class ScriptUpdate(BaseModel):
     status: Optional[str] = None
     version: Optional[str] = Field(None, max_length=20)
     tags: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
 
 class ScriptResponse(ScriptBase):
     id: int
@@ -209,6 +209,10 @@ class StoryGenerationRequest(BaseModel):
     style_preferences: Optional[List[str]] = None
     content_restrictions: Optional[List[str]] = None
     
+    # AI参数
+    model: Optional[str] = Field(None, description="指定文本生成模型，如 openai:gpt-4o-mini")
+    temperature: Optional[float] = Field(0.7, ge=0.0, le=1.5, description="创造性温度")
+    
     # 元数据
     tags: Optional[List[str]] = None
 
@@ -225,6 +229,10 @@ class EpisodeGenerationRequest(BaseModel):
     # 额外要求
     additional_requirements: Optional[str] = None
     style_preferences: Optional[List[str]] = None
+    
+    # AI参数
+    model: Optional[str] = Field(None, description="指定文本生成模型，如 openai:gpt-4o-mini")
+    temperature: Optional[float] = Field(0.7, ge=0.0, le=1.5, description="创造性温度")
 
 class ScriptGenerationRequest(BaseModel):
     episode_id: int
@@ -238,6 +246,10 @@ class ScriptGenerationRequest(BaseModel):
     # 额外要求
     additional_requirements: Optional[str] = None
     style_preferences: Optional[List[str]] = None
+    
+    # AI参数
+    model: Optional[str] = Field(None, description="指定文本生成模型，如 openai:gpt-4o-mini")
+    temperature: Optional[float] = Field(0.7, ge=0.0, le=1.5, description="创造性温度")
 
 # 模板相关schemas
 class ScriptTemplateBase(BaseModel):

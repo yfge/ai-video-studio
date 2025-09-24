@@ -1,0 +1,150 @@
+你是一个专业的剧本编剧，擅长将剧集大纲转化为详细的可拍摄剧本。请基于以下信息生成完整的{{ format_type }}格式剧本：
+
+## 故事背景
+故事标题：{{ story.title }}
+类型：{{ story.genre }}
+{% if story.world_building -%}
+世界观：{{ story.world_building }}
+{% endif -%}
+{% if story.setting_time -%}
+时间设定：{{ story.setting_time }}
+{% endif -%}
+{% if story.setting_location -%}
+地点设定：{{ story.setting_location }}
+{% endif -%}
+
+## 剧集信息
+剧集标题：第{{ episode.episode_number }}集 - {{ episode.title }}
+{% if episode.summary -%}
+剧集概要：{{ episode.summary }}
+{% endif -%}
+{% if episode.duration_minutes -%}
+预计时长：{{ episode.duration_minutes }}分钟
+{% endif -%}
+{% if episode.scene_count -%}
+场景数量：{{ episode.scene_count }}个
+{% endif -%}
+
+## 情节要点
+{% if episode.plot_points -%}
+{% for plot_point in episode.plot_points %}
+{{ loop.index }}. {{ plot_point.description }} ({{ plot_point.timing }})
+{% endfor %}
+{% endif -%}
+
+## 角色发展
+{% if episode.character_arcs -%}
+{% for character, arc in episode.character_arcs.items() %}
+- {{ character }}: {{ arc }}
+{% endfor %}
+{% endif -%}
+
+## 冲突设置
+{% if episode.conflicts -%}
+{% for conflict in episode.conflicts %}
+- {{ conflict.type }}: {{ conflict.description }} (强度: {{ conflict.intensity }})
+{% endfor %}
+{% endif -%}
+
+## 主要角色
+{% if story.main_characters -%}
+{% for character in story.main_characters %}
+{{ character.name }}：{{ character.description or character.role }}
+{% endfor %}
+{% endif -%}
+
+## 剧本参数
+格式类型：{{ format_type }}
+语言：{{ language }}
+对话风格：{{ dialogue_style }}
+场景描述详细程度：{{ scene_detail_level }}
+
+{% if additional_requirements -%}
+## 特殊要求
+{{ additional_requirements }}
+{% endif -%}
+
+{% if style_preferences -%}
+## 风格偏好
+{{ style_preferences | join(', ') }}
+{% endif -%}
+
+## 生成要求
+请生成一个完整的可拍摄剧本，包含：
+
+1. **完整剧本内容**: 标准{{ format_type }}格式
+2. **场景列表**: 所有拍摄场景
+3. **对话列表**: 所有角色对话
+4. **舞台指示**: 详细的拍摄指导
+
+## 格式要求
+- 使用标准{{ format_type }}格式
+- 对话要{{ dialogue_style }}，符合角色性格
+- 场景描述要{{ scene_detail_level }}详细
+- 确保剧本结构完整：开场→发展→高潮→结尾
+- 时长控制在{{ episode.duration_minutes or '30' }}分钟左右
+
+## 剧本结构指导
+### 开场 (前10%)
+- 建立场景和氛围
+- 介绍主要角色状态
+- 引入本集核心问题
+
+### 发展 (中70%)
+- 情节逐步推进
+- 角色冲突展开
+- 悬念和张力建立
+
+### 高潮 (后15%)
+- 冲突达到顶点
+- 关键选择时刻
+- 情感爆发点
+
+### 结尾 (最后5%)
+- 问题解决或转折
+- 为下集埋下伏笔
+- 情感落地
+
+## 输出格式
+请以JSON格式返回：
+
+{
+    "content": "完整的剧本内容，使用{{ format_type }}标准格式",
+    "scenes": [
+        {
+            "scene_number": 1,
+            "location": "拍摄地点",
+            "time": "时间（日/夜/黄昏等）",
+            "description": "场景描述",
+            "characters": ["出场角色"],
+            "props": ["需要的道具"],
+            "notes": "拍摄注意事项"
+        }
+    ],
+    "dialogues": [
+        {
+            "scene_number": 1,
+            "character": "角色名",
+            "content": "对话内容",
+            "emotion": "情感状态",
+            "action": "伴随动作",
+            "notes": "表演提示"
+        }
+    ],
+    "stage_directions": [
+        {
+            "scene_number": 1,
+            "timing": "对话前/对话中/对话后",
+            "content": "舞台指示内容",
+            "type": "动作/表情/环境/效果"
+        }
+    ],
+    "metadata": {
+        "total_scenes": 0,
+        "total_dialogues": 0,
+        "estimated_duration": "{{ episode.duration_minutes or 30 }}分钟",
+        "shooting_locations": [],
+        "main_characters": [],
+        "special_effects": []
+    }
+}

@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379"
     
-    # CORS配置
-    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # CORS配置  
+    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "localhost:8000", "127.0.0.1:8000", "*"]
     
     # 文件上传配置
     UPLOAD_DIR: str = "uploads"
@@ -37,11 +37,47 @@ class Settings(BaseSettings):
     # Stability AI配置
     STABILITY_API_KEY: Optional[str] = None
     
+    # 其他AI服务配置
+    # 可灵AI（快手）- 双密钥认证
+    KELING_API_KEY: Optional[str] = None
+    KELING_SECRET_KEY: Optional[str] = None
+    
+    # 即梦AI - 双密钥认证  
+    JIMENG_API_KEY: Optional[str] = None
+    JIMENG_SECRET_KEY: Optional[str] = None
+    
+    # MiniMax配置
+    MINIMAX_API_KEY: Optional[str] = None
+    MINIMAX_GROUP_ID: Optional[str] = None
+    
+    # DeepSeek配置
+    DEEPSEEK_API_KEY: Optional[str] = None
+    
+    # 火山引擎配置
+    VOLCENGINE_API_KEY: Optional[str] = None
+    VOLCENGINE_SECRET_KEY: Optional[str] = None
+    VOLCENGINE_REGION: Optional[str] = None
+    
+    # 阿里云OSS配置
+    ALIYUN_ACCESS_KEY_ID: Optional[str] = None
+    ALIYUN_ACCESS_KEY_SECRET: Optional[str] = None
+    ALIYUN_OSS_ENDPOINT: Optional[str] = None
+    ALIYUN_OSS_BUCKET: Optional[str] = None
+    ALIYUN_OSS_DOMAIN: Optional[str] = None
+    
     # 邮件配置
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
+    
+    # 日志配置
+    LOG_LEVEL: str = "INFO"
+    LOG_DIR: str = "logs"
+    ENABLE_FILE_LOGGING: bool = True
+    ENABLE_CONSOLE_LOGGING: bool = True
+    LOG_BACKUP_COUNT: int = 7
+    FEISHU_WEBHOOK_URL: Optional[str] = None
     
     class Config:
         env_file = ".env"

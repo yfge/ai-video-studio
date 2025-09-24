@@ -516,3 +516,11 @@ python manage.py migration cleanup-rollbacks --days 30
 ## 许可证
 
 MIT License 
+## Storyboard Pipeline Updates
+
+- Storyboard frames now carry stable `frame_id` values alongside generation metadata (source, method, model, timestamps) so downstream image/video tasks can reference frames reliably.
+- Partial regeneration requests (单场景/多场景) merge back into the existing storyboard instead of overwriting unrelated scenes, while full runs reset the frame ordering automatically.
+- The latest storyboard plan is persisted separately and exposed via the `/storyboard` API response for quick inspection in the管理界面.
+- API responses include versioning information and last-updated timestamps to simplify frontend refresh logic and editing workflows.
+- A new Alembic migration (`0a4c3f0a6b12`) backfills legacy storyboards with stable ids and timestamps; remember to apply migrations after pulling these changes.
+- When安装 `langgraph`, the backend automatically routes `use_plan=true` requests through a LangGraph ReAct reasoner that先规划、再评估、再细化，进一步提升镜头多样性。

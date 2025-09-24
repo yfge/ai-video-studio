@@ -1,0 +1,57 @@
+你是一个专业的角色设计师，擅长创造有趣、生动且具有个性的虚拟角色。请根据以下信息为虚拟IP角色生成详细的人物设定：
+
+## 基础信息
+角色名称：{{ name }}
+{% if description -%}
+角色描述：{{ description }}
+{% endif -%}
+{% if age -%}
+年龄：{{ age }}
+{% endif -%}
+{% if gender -%}
+性别：{{ gender }}
+{% endif -%}
+{% if personality_traits -%}
+性格特点：{{ personality_traits | join(', ') }}
+{% endif -%}
+
+## 设计要求
+{% if style_preference -%}
+风格偏好：{{ style_preference }}
+{% endif -%}
+{% if target_audience -%}
+目标受众：{{ target_audience }}
+{% endif -%}
+{% if content_type -%}
+内容类型：{{ content_type }}
+{% endif -%}
+
+## 生成内容
+请为这个虚拟IP生成以下详细信息，以JSON格式返回：
+
+1. **详细描述** (detailed_description): 包含外貌、气质、风格等详细描述
+2. **背景故事** (background_story): 角色的成长经历、重要事件、人生转折点
+3. **性格特征** (personality): 详细的性格分析，包括优点、缺点、行为习惯
+4. **技能特长** (skills): 角色擅长的技能、爱好、专业能力
+5. **人际关系** (relationships): 与其他人的关系类型和相处模式
+6. **生活方式** (lifestyle): 日常生活习惯、价值观、生活理念
+7. **标志性特征** (signature_traits): 让人印象深刻的特殊标识或习惯
+8. **发展潜力** (development_potential): 角色可能的成长方向和故事线
+9. **视觉描述** (visual_description): 适合AI绘画的详细外观描述
+10. **标签建议** (suggested_tags): 5-10个描述角色的关键标签
+
+## 输出格式
+请确保输出的JSON格式正确，所有字段都要填写完整，内容要有创意且符合角色设定。
+
+{
+    "detailed_description": "...",
+    "background_story": "...",
+    "personality": "...",
+    "skills": "...",
+    "relationships": "...",
+    "lifestyle": "...",
+    "signature_traits": "...",
+    "development_potential": "...",
+    "visual_description": "...",
+    "suggested_tags": ["tag1", "tag2", "tag3", ...]
+}

@@ -1,0 +1,210 @@
+"""
+提示词模板定义
+
+定义了各种AI任务的提示词模板常量和枚举
+"""
+
+from enum import Enum
+from typing import Dict, List
+
+class PromptCategory(Enum):
+    """提示词类别枚举"""
+    CHARACTER = "character"  # 角色相关
+    STORY = "story"         # 故事相关  
+    EPISODE = "episode"     # 剧集相关
+    SCRIPT = "script"       # 剧本相关
+    IMAGE = "image"         # 图像相关
+    GENERAL = "general"     # 通用
+
+class PromptTemplate(Enum):
+    """提示词模板枚举"""
+    # 角色相关
+    VIRTUAL_IP_CREATION = "virtual_ip_creation"
+    CHARACTER_PROFILE = "character_profile"
+    
+    # 故事相关
+    STORY_OUTLINE = "story_outline"
+    STORY_SUMMARY = "story_summary"
+    
+    # 剧集相关
+    EPISODE_GENERATION = "episode_generation"
+    EPISODE_OUTLINE = "episode_outline"
+    
+    # 剧本相关
+    SCRIPT_GENERATION = "script_generation"
+    SCENE_WRITING = "scene_writing"
+    DIALOGUE_WRITING = "dialogue_writing"
+    
+    # 图像相关
+    IMAGE_GENERATION = "image_generation"
+    PORTRAIT_GENERATION = "portrait_generation"
+    SCENE_IMAGE = "scene_image"
+
+class ImageStyle(Enum):
+    """图像风格枚举"""
+    REALISTIC = "realistic"
+    ANIME = "anime"
+    CARTOON = "cartoon"
+    PORTRAIT = "portrait"
+    ARTISTIC = "artistic"
+    SKETCH = "sketch"
+    RENDER_3D = "3d"
+
+class ImageCategory(Enum):
+    """图像类别枚举"""
+    PORTRAIT = "portrait"
+    FULL_BODY = "full_body"
+    ACTION = "action"
+    EMOTION = "emotion"
+    SCENE = "scene"
+    CONCEPT = "concept"
+
+class ScriptFormat(Enum):
+    """剧本格式枚举"""
+    SCREENPLAY = "screenplay"      # 电影剧本
+    TELEPLAY = "teleplay"         # 电视剧本
+    STAGE = "stage"               # 舞台剧本
+    AUDIO = "audio"               # 音频剧本
+    ANIMATION = "animation"       # 动画剧本
+
+class DialogueStyle(Enum):
+    """对话风格枚举"""
+    NATURAL = "natural"           # 自然对话
+    FORMAL = "formal"             # 正式对话
+    CASUAL = "casual"             # 随意对话
+    DRAMATIC = "dramatic"         # 戏剧对话
+    COMEDIC = "comedic"          # 喜剧对话
+
+class PlotComplexity(Enum):
+    """情节复杂度枚举"""
+    SIMPLE = "simple"             # 简单
+    MEDIUM = "medium"             # 中等
+    COMPLEX = "complex"           # 复杂
+
+class Pacing(Enum):
+    """节奏枚举"""
+    SLOW = "slow"                 # 慢节奏
+    MEDIUM = "medium"             # 中等节奏
+    FAST = "fast"                 # 快节奏
+
+# 模板分类映射
+TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
+    PromptTemplate.VIRTUAL_IP_CREATION: PromptCategory.CHARACTER,
+    PromptTemplate.CHARACTER_PROFILE: PromptCategory.CHARACTER,
+    
+    PromptTemplate.STORY_OUTLINE: PromptCategory.STORY,
+    PromptTemplate.STORY_SUMMARY: PromptCategory.STORY,
+    
+    PromptTemplate.EPISODE_GENERATION: PromptCategory.EPISODE,
+    PromptTemplate.EPISODE_OUTLINE: PromptCategory.EPISODE,
+    
+    PromptTemplate.SCRIPT_GENERATION: PromptCategory.SCRIPT,
+    PromptTemplate.SCENE_WRITING: PromptCategory.SCRIPT,
+    PromptTemplate.DIALOGUE_WRITING: PromptCategory.SCRIPT,
+    
+    PromptTemplate.IMAGE_GENERATION: PromptCategory.IMAGE,
+    PromptTemplate.PORTRAIT_GENERATION: PromptCategory.IMAGE,
+    PromptTemplate.SCENE_IMAGE: PromptCategory.IMAGE,
+}
+
+# 默认参数配置
+DEFAULT_GENERATION_PARAMS = {
+    "story_outline": {
+        "target_audience": "普通观众",
+        "duration_minutes": 90,
+        "style_preferences": ["正能量", "有趣"],
+        "content_restrictions": ["暴力", "色情"]
+    },
+    
+    "episode_generation": {
+        "episode_duration": 30,
+        "plot_complexity": PlotComplexity.MEDIUM.value,
+        "pacing": Pacing.MEDIUM.value
+    },
+    
+    "script_generation": {
+        "format_type": ScriptFormat.TELEPLAY.value,
+        "language": "zh-CN",
+        "dialogue_style": DialogueStyle.NATURAL.value,
+        "scene_detail_level": "medium"
+    },
+    
+    "image_generation": {
+        "style": ImageStyle.REALISTIC.value,
+        "category": ImageCategory.PORTRAIT.value,
+        "resolution": "512x768",
+        "quality": "high"
+    }
+}
+
+# 质量提升关键词
+QUALITY_ENHANCERS = {
+    "image": {
+        "general": ["high quality", "detailed", "masterpiece", "best quality"],
+        "realistic": ["photorealistic", "8k", "ultra-detailed", "professional photography"],
+        "anime": ["anime masterpiece", "detailed anime", "high resolution anime"],
+        "artistic": ["trending on artstation", "award-winning art", "professional illustration"]
+    },
+    
+    "text": {
+        "creativity": ["创意", "原创", "有趣"],
+        "quality": ["专业", "精彩", "引人入胜"],
+        "structure": ["结构完整", "逻辑清晰", "层次分明"]
+    }
+}
+
+# 负面提示词
+NEGATIVE_PROMPTS = {
+    "image": {
+        "common": ["low quality", "blurry", "distorted", "bad anatomy"],
+        "faces": ["bad face", "ugly face", "asymmetrical eyes"],
+        "hands": ["bad hands", "missing fingers", "extra fingers"],
+        "general": ["worst quality", "low resolution", "jpeg artifacts"]
+    },
+    
+    "text": {
+        "content": ["暴力", "色情", "政治敏感"],
+        "quality": ["低质量", "逻辑混乱", "表达不清"]
+    }
+}
+
+# 模板使用示例
+TEMPLATE_EXAMPLES = {
+    PromptTemplate.VIRTUAL_IP_CREATION: {
+        "name": "小雅",
+        "description": "一个活泼可爱的年轻女孩",
+        "age": "22岁",
+        "gender": "女性",
+        "personality_traits": ["活泼", "好奇", "乐观"],
+        "style_preference": "现代时尚",
+        "target_audience": "年轻人"
+    },
+    
+    PromptTemplate.STORY_OUTLINE: {
+        "title": "友情的力量",
+        "genre": "剧情",
+        "theme": "友情与成长",
+        "characters": [
+            {"name": "小雅", "description": "活泼的大学生"},
+            {"name": "李明", "description": "内向的程序员"}
+        ]
+    },
+    
+    PromptTemplate.IMAGE_GENERATION: {
+        "character_name": "小雅",
+        "character_description": "22岁活泼女孩",
+        "style": "realistic",
+        "category": "portrait"
+    }
+}
+
+def get_template_by_category(category: PromptCategory) -> List[PromptTemplate]:
+    """根据类别获取模板列表"""
+    return [
+        template for template, cat in TEMPLATE_CATEGORIES.items() 
+        if cat == category
+    ]
+
+def get_category_by_template(template: PromptTemplate) -> PromptCategory:
+    """根据模板获取类别"""
+    return TEMPLATE_CATEGORIES.get(template, PromptCategory.GENERAL)

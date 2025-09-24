@@ -3,7 +3,7 @@
 """
 import pytest
 from sqlalchemy.orm import Session
-from app.core.test_database import test_db, reset_test_database
+from tests.unit.test_database import test_db, reset_test_database
 
 
 @pytest.mark.unit

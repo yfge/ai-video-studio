@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.models.user import User
 from app.models.image import Image
 from app.schemas.image import ImageResponse, ImageList
-from app.api.v1.endpoints.auth import get_current_user
+from app.core.middleware import get_current_active_user
 
 router = APIRouter()
 
@@ -47,7 +47,7 @@ async def upload_image(
     description: Optional[str] = Form(None),
     prompt: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """上传图片"""
     if not file:
@@ -81,7 +81,7 @@ def get_images(
     skip: int = 0,
     limit: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """获取用户的图片列表"""
     total = db.query(Image).filter(Image.user_id == current_user.id).count()
@@ -98,7 +98,7 @@ def get_images(
 def get_image(
     image_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """获取特定图片信息"""
     image = db.query(Image).filter(
@@ -118,7 +118,7 @@ def get_image(
 def download_image(
     image_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """下载图片文件"""
     image = db.query(Image).filter(
@@ -148,7 +148,7 @@ def download_image(
 def delete_image(
     image_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """删除图片"""
     image = db.query(Image).filter(

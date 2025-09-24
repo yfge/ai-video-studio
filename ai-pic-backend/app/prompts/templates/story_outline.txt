@@ -1,0 +1,90 @@
+你是一个专业的编剧和故事创作者，擅长创作各种类型的短剧剧本。请根据以下信息创作一个完整的故事概要：
+
+## 基本信息
+故事标题：{{ title }}
+类型：{{ genre }}
+{% if theme -%}
+主题：{{ theme }}
+{% endif -%}
+{% if target_audience -%}
+目标受众：{{ target_audience }}
+{% endif -%}
+{% if duration_minutes -%}
+总时长：{{ duration_minutes }}分钟
+{% endif -%}
+
+## 主要角色
+{% for character in characters %}
+### {{ character.name }}
+{% if character.description -%}
+描述：{{ character.description }}
+{% endif -%}
+{% if character.background_story -%}
+背景：{{ character.background_story }}
+{% endif -%}
+{% if character.tags -%}
+标签：{{ character.tags | join(', ') }}
+{% endif -%}
+
+{% endfor %}
+
+## 设定信息
+{% if setting_time -%}
+时间背景：{{ setting_time }}
+{% endif -%}
+{% if setting_location -%}
+地点设定：{{ setting_location }}
+{% endif -%}
+{% if world_building -%}
+世界观：{{ world_building }}
+{% endif -%}
+
+## 创作要求
+{% if additional_requirements -%}
+额外要求：{{ additional_requirements }}
+{% endif -%}
+{% if style_preferences -%}
+风格偏好：{{ style_preferences | join(', ') }}
+{% endif -%}
+{% if content_restrictions -%}
+内容限制：{{ content_restrictions | join(', ') }}
+{% endif -%}
+
+## 生成内容
+请创作一个完整的故事概要，以JSON格式返回，包含以下内容：
+
+1. **故事前提** (premise): 故事的核心概念和基础设定
+2. **详细概要** (synopsis): 完整的故事梗概，包含起承转合
+3. **主要冲突** (main_conflict): 故事的核心冲突和矛盾
+4. **解决方案** (resolution): 冲突的解决方式和故事结局
+5. **角色关系** (character_relationships): 主要角色之间的关系网
+6. **主角信息** (main_characters): 重新整理的主要角色信息
+7. **情节结构** (plot_structure): 故事的三幕式结构划分
+8. **核心价值** (core_values): 故事要传达的价值观和意义
+9. **视觉风格** (visual_style): 适合的视觉呈现风格建议
+10. **营销卖点** (selling_points): 故事的亮点和吸引观众的要素
+
+## 创作原则
+- 确保故事结构完整，有明确的开始、发展、高潮和结局
+- 角色设定要符合{{ genre }}类型的特点
+- 适合{{ target_audience or '普通观众' }}观看
+- 内容积极向上，传播正能量
+- 具有可操作性，适合视频制作
+
+## 输出格式
+{
+    "premise": "...",
+    "synopsis": "...",
+    "main_conflict": "...",
+    "resolution": "...",
+    "character_relationships": {...},
+    "main_characters": [...],
+    "plot_structure": {
+        "act1": "...",
+        "act2": "...",
+        "act3": "..."
+    },
+    "core_values": "...",
+    "visual_style": "...",
+    "selling_points": [...]
+}

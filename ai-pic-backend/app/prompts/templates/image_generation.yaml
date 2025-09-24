@@ -1,0 +1,116 @@
+name: image_generation
+description: "图像生成提示词模板"
+category: image
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-08-15"
+updated_at: "2025-08-15"
+
+variables:
+  character_name:
+    type: string
+    required: true
+    description: "角色名称"
+    min_length: 1
+    max_length: 50
+  
+  character_description:
+    type: string
+    required: false
+    description: "角色描述"
+    max_length: 500
+  
+  background_story:
+    type: string
+    required: false
+    description: "角色背景故事"
+    max_length: 1000
+  
+  style:
+    type: string
+    required: true
+    description: "图像风格"
+    enum: ["realistic", "anime", "cartoon", "portrait", "artistic", "3d", "sketch"]
+  
+  category:
+    type: string
+    required: true
+    description: "图像类别"
+    enum: ["portrait", "full_body", "action", "emotion", "scene", "concept"]
+  
+  additional_prompts:
+    type: list
+    required: false
+    description: "附加提示词列表"
+  
+  is_default:
+    type: boolean
+    required: false
+    description: "是否为默认头像"
+    default: false
+
+style_guidelines:
+  realistic:
+    keywords: ["photorealistic", "high resolution", "professional photography"]
+    lighting: ["natural lighting", "studio lighting", "golden hour"]
+    quality: ["sharp focus", "detailed texture", "realistic skin"]
+    
+  anime:
+    keywords: ["anime style", "manga art", "cel shading"]
+    features: ["large eyes", "detailed hair", "vibrant colors"]
+    quality: ["clean lines", "smooth shading", "high contrast"]
+    
+  cartoon:
+    keywords: ["cartoon style", "illustration", "colorful"]
+    features: ["simplified features", "exaggerated expressions", "bold outlines"]
+    quality: ["clean art", "bright colors", "vector style"]
+
+category_specifications:
+  portrait:
+    composition: "head and shoulders, close-up"
+    background: "simple, blurred, or studio"
+    focus: "facial features, expression, personality"
+    
+  full_body:
+    composition: "full figure, standing or posed"
+    background: "detailed environment optional"
+    focus: "outfit, posture, overall character design"
+    
+  action:
+    composition: "dynamic pose, movement"
+    background: "action-appropriate environment"
+    focus: "motion, energy, character abilities"
+
+technical_defaults:
+  resolution:
+    portrait: "512x768"
+    full_body: "512x768"
+    landscape: "768x512"
+    square: "512x512"
+  
+  parameters:
+    steps: 30
+    cfg_scale: 7.5
+    sampler: "DPM++ 2M Karras"
+
+quality_enhancers:
+  general: ["high quality", "detailed", "masterpiece", "best quality"]
+  lighting: ["professional lighting", "perfect lighting", "dramatic lighting"]
+  technical: ["sharp focus", "8k", "ultra-detailed", "hyper-realistic"]
+  artistic: ["trending on artstation", "award-winning", "professional art"]
+
+negative_prompts:
+  common: ["low quality", "blurry", "distorted", "bad anatomy"]
+  faces: ["bad face", "ugly face", "asymmetrical eyes", "malformed eyes"]
+  hands: ["bad hands", "missing fingers", "extra fingers", "deformed hands"]
+  general: ["worst quality", "low resolution", "jpeg artifacts"]
+
+output_format: "JSON"
+expected_fields:
+  - positive_prompt
+  - negative_prompt
+  - style_tags
+  - quality_tags
+  - technical_params
+  - variations
+  - description

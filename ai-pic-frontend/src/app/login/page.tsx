@@ -2,27 +2,50 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { authAPI } from '../../utils/api'
+import { useRouter } from 'next/navigation'
+import Navigation from '@/components/Navigation'
 
 export default function Login() {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError('')
     
-    // TODO: 实现登录逻辑
-    console.log('登录信息:', formData)
-    
-    // 模拟API调用
-    setTimeout(() => {
+    try {
+      // 使用API客户端登录
+      const response = await authAPI.login({
+        email: formData.username, // 使用username作为email
+        password: formData.password
+      })
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || '登录失败')
+      }
+      
+      // 保存token到localStorage
+      localStorage.setItem('auth_token', response.data.access_token)
+      localStorage.setItem('user_info', JSON.stringify({
+        username: formData.username,
+        token: response.data.access_token
+      }))
+      
+      // 登录成功后跳转到主页
+      router.push('/')
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '登录失败，请稍后重试')
+    } finally {
       setIsLoading(false)
-      // 登录成功后跳转到任务页面
-      window.location.href = '/tasks'
-    }, 1000)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +56,9 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Navigation />
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -47,21 +72,27 @@ export default function Login() {
           </p>
         </div>
         
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
+            {error}
+          </div>
+        )}
+        
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
-                邮箱地址
+              <label htmlFor="username" className="sr-only">
+                用户名
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="邮箱地址"
-                value={formData.email}
+                placeholder="用户名"
+                value={formData.username}
                 onChange={handleChange}
               />
             </div>
@@ -119,6 +150,7 @@ export default function Login() {
             </button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   )

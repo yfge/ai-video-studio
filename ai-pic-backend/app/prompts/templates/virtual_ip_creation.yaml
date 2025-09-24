@@ -1,0 +1,74 @@
+name: virtual_ip_creation
+description: "虚拟IP角色创建提示词模板"
+category: character
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-08-15"
+updated_at: "2025-08-15"
+
+variables:
+  name:
+    type: string
+    required: true
+    description: "角色名称"
+    min_length: 1
+    max_length: 50
+  
+  description:
+    type: string
+    required: false
+    description: "角色基础描述"
+    max_length: 500
+  
+  age:
+    type: string
+    required: false
+    description: "角色年龄"
+  
+  gender:
+    type: string
+    required: false
+    description: "角色性别"
+  
+  personality_traits:
+    type: list
+    required: false
+    description: "性格特点列表"
+  
+  style_preference:
+    type: string
+    required: false
+    description: "风格偏好"
+  
+  target_audience:
+    type: string
+    required: false
+    description: "目标受众"
+  
+  content_type:
+    type: string
+    required: false
+    description: "内容类型"
+
+usage_examples:
+  - name: "小雅"
+    description: "一个活泼可爱的年轻女孩"
+    age: "22岁"
+    gender: "女性"
+    personality_traits: ["活泼", "好奇", "乐观"]
+    style_preference: "现代时尚"
+    target_audience: "年轻人"
+    content_type: "日常生活"
+
+output_format: "JSON"
+expected_fields:
+  - detailed_description
+  - background_story
+  - personality
+  - skills
+  - relationships
+  - lifestyle
+  - signature_traits
+  - development_potential
+  - visual_description
+  - suggested_tags

@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "total_tests": 4,
+    "passed_tests": 4,
+    "failed_tests": 0,
+    "success_rate": "100.0%",
+    "timestamp": "2025-08-20T17:57:46.792005"
+  },
+  "results": {
+    "环境配置检查": {
+      "success": true,
+      "details": "已配置: 6, 缺失: 0",
+      "error": "",
+      "timestamp": "2025-08-20T17:57:27.425657"
+    },
+    "文件系统": {
+      "success": true,
+      "details": "目录: ./uploads, 读写测试: 通过",
+      "error": "",
+      "timestamp": "2025-08-20T17:57:27.426228"
+    },
+    "OpenAI API": {
+      "success": true,
+      "details": "API正常，使用tokens: 13",
+      "error": "",
+      "timestamp": "2025-08-20T17:57:28.583915"
+    },
+    "图像生成": {
+      "success": true,
+      "details": "图像生成成功，文件: test_1dd3b9dcfbfa4d70a30a5bb80e66b352.png, 大小: 756077 bytes",
+      "error": "",
+      "timestamp": "2025-08-20T17:57:46.791038"
+    }
+  },
+  "errors": []
+}

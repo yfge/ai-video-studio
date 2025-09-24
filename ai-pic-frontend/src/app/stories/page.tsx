@@ -2,16 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { storyAPI, virtualIPAPI } from '@/utils/api';
+import { storyAPI, virtualIPAPI, aiAPI } from '@/utils/api';
 import { Story, VirtualIP, StoryGenerationRequest } from '@/utils/api';
+import Navigation from '@/components/Navigation';
+import AuthGuard from '@/components/AuthGuard';
 
-export default function StoriesPage() {
+function StoriesPageContent() {
   const router = useRouter();
   const [stories, setStories] = useState<Story[]>([]);
   const [virtualIPs, setVirtualIPs] = useState<VirtualIP[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
+  const [textModels, setTextModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([]);
   
   // 筛选状态
   const [selectedGenre, setSelectedGenre] = useState<string>('');
@@ -31,8 +34,13 @@ export default function StoriesPage() {
     additional_requirements: '',
     style_preferences: [],
     content_restrictions: [],
-    tags: []
+    tags: [],
+    model: '',
+    temperature: 0.7
   });
+  const [promptPreview, setPromptPreview] = useState<string>('');
+  const [showPromptPreview, setShowPromptPreview] = useState<boolean>(false);
+  const [useAsync, setUseAsync] = useState<boolean>(true);
 
   const genres = [
     { value: 'drama', label: '剧情' },
@@ -58,16 +66,27 @@ export default function StoriesPage() {
     loadData();
   }, [selectedGenre, selectedStatus]);
 
+  useEffect(() => {
+    // 拉取可用文本模型，用于下拉选择
+    (async () => {
+      const res = await aiAPI.getAvailableModels({ type: 'text' });
+      if (res.success && res.data) {
+        setTextModels((res.data as any).models || []);
+      }
+    })();
+  }, []);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [storiesResponse, virtualIPsResponse] = await Promise.all([
+      const [storiesResponse, virtualIPsResponse, modelsResponse] = await Promise.all([
         storyAPI.getStories({
           genre: selectedGenre || undefined,
           status: selectedStatus || undefined,
           limit: 50
         }),
-        virtualIPAPI.getVirtualIPs()
+        virtualIPAPI.getVirtualIPs(),
+        aiAPI.getAvailableModels({ type: 'text' })
       ]);
 
       if (storiesResponse.success && storiesResponse.data) {
@@ -75,6 +94,10 @@ export default function StoriesPage() {
       }
       if (virtualIPsResponse.success && virtualIPsResponse.data) {
         setVirtualIPs(virtualIPsResponse.data);
+      }
+      // 可用模型
+      if (modelsResponse && modelsResponse.success && modelsResponse.data) {
+        setTextModels((modelsResponse.data as any).models || []);
       }
     } catch (error) {
       console.error('加载数据失败:', error);
@@ -92,10 +115,18 @@ export default function StoriesPage() {
 
     try {
       setGenerating(true);
-      const response = await storyAPI.generateStory(generateForm);
+      const response = useAsync
+        ? await storyAPI.generateStoryAsync(generateForm)
+        : await storyAPI.generateStory(generateForm);
       
       if (response.success && response.data) {
-        setStories(prev => [response.data!, ...prev]);
+        if (!useAsync) {
+          // 同步生成直接返回故事
+          // @ts-ignore
+          setStories(prev => [response.data!, ...prev]);
+        } else {
+          alert('已创建异步任务，稍后在任务页查看进度');
+        }
         setShowGenerateForm(false);
         setGenerateForm({
           title: '',
@@ -110,8 +141,11 @@ export default function StoriesPage() {
           additional_requirements: '',
           style_preferences: [],
           content_restrictions: [],
-          tags: []
+          tags: [],
+          model: '',
+          temperature: 0.7
         });
+        setPromptPreview('');
         alert('故事生成成功！');
       } else {
         alert('故事生成失败：' + (response.error || '未知错误'));
@@ -163,6 +197,7 @@ export default function StoriesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation title="故事管理" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 头部 */}
         <div className="mb-8">
@@ -214,7 +249,7 @@ export default function StoriesPage() {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4">🤖 AI故事生成</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   故事标题 *
@@ -284,29 +319,111 @@ export default function StoriesPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">选择模型</label>
+                <select
+                  value={generateForm.model || ''}
+                  onChange={(e) => setGenerateForm(prev => ({ ...prev, model: e.target.value || '' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Auto（推荐）</option>
+                  {textModels.map(m => (
+                    <option key={m.model_id} value={m.model_id}>
+                      {m.name || m.id} — {m.provider}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">为空将由后端自动挑选最佳提供商与模型</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  温度（0.0 - 1.5）
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1.5"
+                  step="0.1"
+                  value={generateForm.temperature ?? 0.7}
+                  onChange={(e) => setGenerateForm(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                  className="w-full"
+                />
+                <div className="text-sm text-gray-600">当前温度：{generateForm.temperature?.toFixed(1)}</div>
+              </div>
             </div>
 
             {/* 角色选择 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                选择角色 * (至少选择一个)
+                选择角色 * (至少选择一个) 
+                <span className="text-blue-600 ml-2">
+                  已选择: {generateForm.character_ids.length} 个
+                </span>
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
-                {virtualIPs.map(ip => (
-                  <label key={ip.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={generateForm.character_ids.includes(ip.id)}
-                      onChange={() => handleCharacterToggle(ip.id)}
-                      className="mr-3"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">{ip.name}</div>
-                      <div className="text-sm text-gray-500 truncate">{ip.description}</div>
+              
+              {virtualIPs.length === 0 ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <div className="text-gray-400 text-4xl mb-2">👥</div>
+                  <p className="text-gray-600 mb-2">暂无可用角色</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    请先创建虚拟IP角色，然后再生成故事
+                  </p>
+                  <button
+                    onClick={() => router.push('/virtual-ip')}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                  >
+                    创建虚拟IP
+                  </button>
+                </div>
+              ) : (
+                <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                    {virtualIPs.map(ip => (
+                      <label 
+                        key={ip.id} 
+                        className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                          generateForm.character_ids.includes(ip.id)
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={generateForm.character_ids.includes(ip.id)}
+                          onChange={() => handleCharacterToggle(ip.id)}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 mr-3"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate">{ip.name}</div>
+                          <div className="text-sm text-gray-500 line-clamp-2">{ip.description}</div>
+                          {ip.tags && ip.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {ip.tags.slice(0, 2).map((tag, index) => (
+                                <span key={index} className="inline-block bg-gray-200 text-gray-700 text-xs px-1 py-0.5 rounded">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  
+                  {generateForm.character_ids.length > 0 && (
+                    <div className="mt-3 p-2 bg-blue-100 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        ✅ 已选择角色: {generateForm.character_ids.map(id => {
+                          const ip = virtualIPs.find(v => v.id === id);
+                          return ip?.name;
+                        }).filter(Boolean).join(', ')}
+                      </p>
                     </div>
-                  </label>
-                ))}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -363,13 +480,59 @@ export default function StoriesPage() {
               />
             </div>
 
+            {/* 提示词预览 */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    if (!generateForm.title || generateForm.character_ids.length === 0) {
+                      setShowPromptPreview(true);
+                      setPromptPreview('请填写标题并至少选择一个角色后再预览提示词');
+                      return;
+                    }
+                    setShowPromptPreview(true);
+                    setPromptPreview('加载中...');
+                    const res = await storyAPI.previewStoryPrompt(generateForm);
+                    if (res.success && res.data) {
+                      setPromptPreview((res.data as any).prompt || '（空内容）');
+                    } else {
+                      setPromptPreview('生成提示词失败');
+                    }
+                  } catch (e) {
+                    setPromptPreview('预览出错');
+                  }
+                }}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+              >
+                生成提示词预览
+              </button>
+              {showPromptPreview && (
+                <div className="mt-3 p-3 border rounded bg-gray-50 max-h-64 overflow-auto">
+                  <pre className="whitespace-pre-wrap break-words text-sm font-mono text-gray-800">{promptPreview}</pre>
+                </div>
+              )}
+            </div>
+
+            {/* 异步生成开关 */}
+            <div className="mb-4 flex items-center gap-3">
+              <input
+                id="asyncToggle"
+                type="checkbox"
+                checked={useAsync}
+                onChange={(e) => setUseAsync(e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="asyncToggle" className="text-sm text-gray-700">使用异步任务（推荐，支持队列）</label>
+            </div>
+
             <div className="flex gap-2">
               <button
                 onClick={handleGenerateStory}
                 disabled={generating}
                 className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
-                {generating ? '生成中...' : '开始生成'}
+                {generating ? '生成中...' : (useAsync ? '创建异步任务' : '开始生成')}
               </button>
               <button
                 onClick={() => setShowGenerateForm(false)}
@@ -453,4 +616,12 @@ export default function StoriesPage() {
       </div>
     </div>
   );
-} 
+}
+
+export default function StoriesPage() {
+  return (
+    <AuthGuard>
+      <StoriesPageContent />
+    </AuthGuard>
+  )
+}

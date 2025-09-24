@@ -118,6 +118,9 @@ class Script(Base):
     version = Column(String(20), default="1.0", comment="版本号")
     tags = Column(JSON, comment="标签列表")
     extra_metadata = Column(JSON, comment="额外元数据")
+    storyboard_plan = Column(JSON, comment="最新分镜规划")
+    storyboard_version = Column(Integer, default=1, comment="分镜版本号")
+    storyboard_updated_at = Column(DateTime, comment="分镜最近更新时间")
     
     # 时间戳
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")

@@ -1,114 +1,81 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { storyAPI, episodeAPI } from '@/utils/api';
-import { Story, Episode, EpisodeGenerationRequest } from '@/utils/api';
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { storyAPI, episodeAPI, scriptAPI, aiAPI, virtualIPAPI, taskAPI } from '@/utils/api'
+import type { Story, Episode, Script } from '@/utils/api'
 
 export default function StoryDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const storyId = Number(params.id);
+  const params = useParams()
+  const router = useRouter()
+  const storyId = Number(params.id)
 
-  const [story, setStory] = useState<Story | null>(null);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [showGenerateForm, setShowGenerateForm] = useState(false);
-
-  // 剧集生成表单状态
-  const [generateForm, setGenerateForm] = useState<EpisodeGenerationRequest>({
-    story_id: storyId,
-    episode_count: 5,
+  const [story, setStory] = useState<Story | null>(null)
+  const [episodes, setEpisodes] = useState<Episode[]>([])
+  const [scriptsByEpisode, setScriptsByEpisode] = useState<Record<number, Script[]>>({})
+  const [loading, setLoading] = useState(true)
+  const [loadingScripts, setLoadingScripts] = useState(false)
+  const [showPrompt, setShowPrompt] = useState(false)
+  const [genOpen, setGenOpen] = useState(false)
+  const [models, setModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([])
+  const [genForm, setGenForm] = useState({
+    episode_count: 3,
     episode_duration: 30,
-    focus_characters: [],
     plot_complexity: 'medium',
     pacing: 'medium',
     additional_requirements: '',
-    style_preferences: []
-  });
+    style_preferences: [] as string[],
+    model: '',
+    temperature: 0.7,
+  })
+  const [promptPreview, setPromptPreview] = useState('')
+  const [useAsync, setUseAsync] = useState(true)
+  const [vips, setVips] = useState<any[]>([])
+  const [focusCharacters, setFocusCharacters] = useState<number[]>([])
 
   useEffect(() => {
-    loadData();
-  }, [storyId]);
+    loadData()
+  }, [storyId])
+
+  useEffect(() => {
+    (async () => {
+      const res = await aiAPI.getAvailableModels({ type: 'text' })
+      if (res.success && res.data) setModels((res.data as any).models || [])
+      const vr = await virtualIPAPI.getVirtualIPs()
+      if (vr.success && vr.data) setVips(vr.data)
+    })()
+  }, [])
 
   const loadData = async () => {
     try {
-      setLoading(true);
-      const [storyResponse, episodesResponse] = await Promise.all([
+      setLoading(true)
+      const [storyRes, epsRes] = await Promise.all([
         storyAPI.getStory(storyId),
-        episodeAPI.getStoryEpisodes(storyId)
-      ]);
+        episodeAPI.getStoryEpisodes(storyId),
+      ])
 
-      if (storyResponse.success && storyResponse.data) {
-        setStory(storyResponse.data);
+      if (storyRes.success && storyRes.data) setStory(storyRes.data)
+      if (epsRes.success && epsRes.data) setEpisodes(epsRes.data)
+
+      // 拉取每个剧集的剧本列表
+      if (epsRes.success && epsRes.data && epsRes.data.length > 0) {
+        setLoadingScripts(true)
+        const scriptsMap: Record<number, Script[]> = {}
+        const tasks = epsRes.data.map(async (ep) => {
+          const sr = await scriptAPI.getEpisodeScripts(ep.id)
+          scriptsMap[ep.id] = (sr.success && sr.data) ? sr.data : []
+        })
+        await Promise.all(tasks)
+        setScriptsByEpisode(scriptsMap)
       }
-      if (episodesResponse.success && episodesResponse.data) {
-        setEpisodes(episodesResponse.data);
-      }
-    } catch (error) {
-      console.error('加载数据失败:', error);
-      alert('加载数据失败');
+    } catch (e) {
+      console.error('加载故事详情失败', e)
+      alert('加载故事详情失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
+      setLoadingScripts(false)
     }
-  };
-
-  const handleGenerateEpisodes = async () => {
-    try {
-      setGenerating(true);
-      const response = await episodeAPI.generateEpisodes(generateForm);
-      
-      if (response.success && response.data) {
-        setEpisodes(prev => [...prev, ...response.data!]);
-        setShowGenerateForm(false);
-        alert(`成功生成${response.data.length}集剧集！`);
-      } else {
-        alert('剧集生成失败：' + (response.error || '未知错误'));
-      }
-    } catch (error) {
-      console.error('剧集生成失败:', error);
-      alert('剧集生成失败');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleDeleteEpisode = async (episodeId: number) => {
-    if (!confirm('确定要删除这个剧集吗？')) return;
-
-    try {
-      const response = await episodeAPI.deleteEpisode(episodeId);
-      if (response.success) {
-        setEpisodes(prev => prev.filter(episode => episode.id !== episodeId));
-        alert('剧集删除成功');
-      } else {
-        alert('删除失败：' + (response.error || '未知错误'));
-      }
-    } catch (error) {
-      console.error('删除剧集失败:', error);
-      alert('删除剧集失败');
-    }
-  };
-
-  const handleRegenerateEpisode = async (episodeId: number) => {
-    if (!confirm('确定要重新生成这个剧集吗？')) return;
-
-    try {
-      const response = await episodeAPI.regenerateEpisode(episodeId);
-      if (response.success && response.data) {
-        setEpisodes(prev => prev.map(ep => 
-          ep.id === episodeId ? response.data! : ep
-        ));
-        alert('剧集重新生成成功');
-      } else {
-        alert('重新生成失败：' + (response.error || '未知错误'));
-      }
-    } catch (error) {
-      console.error('重新生成剧集失败:', error);
-      alert('重新生成剧集失败');
-    }
-  };
+  }
 
   if (loading) {
     return (
@@ -118,7 +85,7 @@ export default function StoryDetailPage() {
           <p className="mt-4 text-gray-600">加载中...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!story) {
@@ -134,249 +101,263 @@ export default function StoryDetailPage() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 头部 */}
-        <div className="mb-8">
+        {/* 顶部信息 */}
+        <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{story.title}</h1>
-              <p className="mt-2 text-gray-600">
-                {story.genre} • {story.theme} • {story.duration_minutes}分钟
-              </p>
+              <div className="mt-2 flex items-center gap-2 text-sm">
+                <span className="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded">{story.genre}</span>
+                {story.theme && (
+                  <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded">{story.theme}</span>
+                )}
+                <span className="text-gray-500">创建于 {new Date(story.created_at).toLocaleString()}</span>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => router.push('/stories')}
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-              >
-                返回列表
-              </button>
-              <button
-                onClick={() => setShowGenerateForm(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-              >
-                生成剧集
-              </button>
+              >返回列表</button>
             </div>
           </div>
         </div>
 
-        {/* 故事信息 */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">故事概要</h2>
-          
+        {/* 故事概要 */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-3">故事概要</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="font-medium text-gray-900 mb-2">故事前提</h3>
-              <p className="text-gray-600 mb-4">{story.premise || '暂无'}</p>
-              
-              <h3 className="font-medium text-gray-900 mb-2">主要冲突</h3>
-              <p className="text-gray-600 mb-4">{story.main_conflict || '暂无'}</p>
-              
-              <h3 className="font-medium text-gray-900 mb-2">解决方案</h3>
-              <p className="text-gray-600">{story.resolution || '暂无'}</p>
-            </div>
-            
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">详细概要</h3>
-              <p className="text-gray-600 mb-4">{story.synopsis || '暂无'}</p>
-              
-              <h3 className="font-medium text-gray-900 mb-2">设定信息</h3>
-              <div className="space-y-2 text-sm">
-                <div><span className="font-medium">时间:</span> {story.setting_time || '现代'}</div>
-                <div><span className="font-medium">地点:</span> {story.setting_location || '待定'}</div>
-                <div><span className="font-medium">目标受众:</span> {story.target_audience || '普通观众'}</div>
-              </div>
-              
-              {story.world_building && (
-                <>
-                  <h3 className="font-medium text-gray-900 mb-2 mt-4">世界观设定</h3>
-                  <p className="text-gray-600 text-sm">{story.world_building}</p>
-                </>
+              <p className="text-gray-700 whitespace-pre-wrap">{story.synopsis || story.premise || '暂无概要'}</p>
+              {story.main_conflict && (
+                <p className="text-gray-700 mt-3"><span className="font-medium">主要冲突：</span>{story.main_conflict}</p>
+              )}
+              {story.resolution && (
+                <p className="text-gray-700 mt-2"><span className="font-medium">结局趋势：</span>{story.resolution}</p>
               )}
             </div>
+            <div>
+              <div className="text-sm text-gray-600">
+                {story.setting_time && <div>时间设定：{story.setting_time}</div>}
+                {story.setting_location && <div>地点设定：{story.setting_location}</div>}
+                {story.world_building && (
+                  <div className="mt-2">
+                    <div className="font-medium text-gray-800">世界观</div>
+                    <div className="whitespace-pre-wrap">{story.world_building}</div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+          {story.generation_prompt && (
+            <div className="mt-4">
+              <button onClick={() => setShowPrompt(!showPrompt)} className="text-blue-600 hover:text-blue-800 text-sm">
+                {showPrompt ? '收起生成提示词' : '查看生成提示词'}
+              </button>
+              {showPrompt && (
+                <div className="mt-2 bg-gray-50 p-3 rounded text-sm text-gray-700 whitespace-pre-wrap">
+                  {story.generation_prompt}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* 剧集生成表单 */}
-        {showGenerateForm && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">🎬 生成剧集</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  剧集数量
-                </label>
-                <input
-                  type="number"
-                  value={generateForm.episode_count}
-                  onChange={(e) => setGenerateForm(prev => ({ ...prev, episode_count: parseInt(e.target.value) || 5 }))}
-                  min="1"
-                  max="50"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  每集时长（分钟）
-                </label>
-                <input
-                  type="number"
-                  value={generateForm.episode_duration}
-                  onChange={(e) => setGenerateForm(prev => ({ ...prev, episode_duration: parseInt(e.target.value) || 30 }))}
-                  min="1"
-                  max="120"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  情节复杂度
-                </label>
-                <select
-                  value={generateForm.plot_complexity}
-                  onChange={(e) => setGenerateForm(prev => ({ ...prev, plot_complexity: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="simple">简单</option>
-                  <option value="medium">中等</option>
-                  <option value="complex">复杂</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  节奏
-                </label>
-                <select
-                  value={generateForm.pacing}
-                  onChange={(e) => setGenerateForm(prev => ({ ...prev, pacing: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="slow">慢节奏</option>
-                  <option value="medium">中等节奏</option>
-                  <option value="fast">快节奏</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                额外要求
-              </label>
-              <textarea
-                value={generateForm.additional_requirements}
-                onChange={(e) => setGenerateForm(prev => ({ ...prev, additional_requirements: e.target.value }))}
-                placeholder="对剧集生成的特殊要求"
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleGenerateEpisodes}
-                disabled={generating}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
-              >
-                {generating ? '生成中...' : '开始生成'}
-              </button>
-              <button
-                onClick={() => setShowGenerateForm(false)}
-                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
-              >
-                取消
-              </button>
-            </div>
+        {/* 生成剧集 */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">生成剧集</h2>
+            <button onClick={() => setGenOpen(!genOpen)} className="text-blue-600 hover:text-blue-800 text-sm">{genOpen ? '收起' : '展开'}</button>
           </div>
-        )}
+          {genOpen && (
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">生成集数</label>
+                  <input type="number" min={1} max={20} value={genForm.episode_count} onChange={e => setGenForm(prev => ({...prev, episode_count: parseInt(e.target.value)||1}))} className="w-full px-3 py-2 border rounded" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">每集时长（分钟）</label>
+                  <input type="number" min={1} max={120} value={genForm.episode_duration} onChange={e => setGenForm(prev => ({...prev, episode_duration: parseInt(e.target.value)||30}))} className="w-full px-3 py-2 border rounded" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">复杂度</label>
+                  <select value={genForm.plot_complexity} onChange={e => setGenForm(prev => ({...prev, plot_complexity: e.target.value}))} className="w-full px-3 py-2 border rounded">
+                    <option value="simple">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="complex">复杂</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">节奏</label>
+                  <select value={genForm.pacing} onChange={e => setGenForm(prev => ({...prev, pacing: e.target.value}))} className="w-full px-3 py-2 border rounded">
+                    <option value="slow">慢</option>
+                    <option value="medium">中</option>
+                    <option value="fast">快</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">模型</label>
+                  <select value={genForm.model} onChange={e => setGenForm(prev => ({...prev, model: e.target.value}))} className="w-full px-3 py-2 border rounded">
+                    <option value="">Auto（推荐）</option>
+                    {models.map(m => (
+                      <option key={m.model_id} value={m.model_id}>{m.name || m.id} — {m.provider}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">温度（{genForm.temperature.toFixed(1)}）</label>
+                  <input type="range" min={0} max={1.5} step={0.1} value={genForm.temperature} onChange={e => setGenForm(prev => ({...prev, temperature: parseFloat(e.target.value)}))} className="w-full" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">额外要求</label>
+                <textarea value={genForm.additional_requirements} onChange={e => setGenForm(prev => ({...prev, additional_requirements: e.target.value}))} rows={2} className="w-full px-3 py-2 border rounded" />
+              </div>
+              {/* 角色聚焦多选 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">聚焦角色（可选）</label>
+                <div className="flex flex-wrap gap-2">
+                  {vips.map(v => (
+                    <label key={v.id} className={`px-3 py-1 text-xs rounded-full border cursor-pointer ${focusCharacters.includes(v.id) ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300'}`}>
+                      <input type="checkbox" className="hidden" checked={focusCharacters.includes(v.id)} onChange={(e) => {
+                        setFocusCharacters(prev => e.target.checked ? [...prev, v.id] : prev.filter(id => id !== v.id))
+                      }} />
+                      {v.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-        {/* 剧集列表 */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center gap-4">
+                <label className="text-sm text-gray-700 flex items-center gap-2"><input type="checkbox" checked={useAsync} onChange={e => setUseAsync(e.target.checked)} /> 异步任务</label>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setPromptPreview('加载中...')
+                    const res = await episodeAPI.previewEpisodePrompt({
+                      story_id: storyId,
+                      episode_count: genForm.episode_count,
+                      episode_duration: genForm.episode_duration,
+                      plot_complexity: genForm.plot_complexity,
+                      pacing: genForm.pacing,
+                      additional_requirements: genForm.additional_requirements,
+                      style_preferences: genForm.style_preferences,
+                      focus_characters: focusCharacters,
+                    } as any)
+                    if (res.success && res.data) setPromptPreview((res.data as any).prompt)
+                    else setPromptPreview('生成提示词失败')
+                  }}
+                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                >提示词预览</button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const payload = {
+                      story_id: storyId,
+                      episode_count: genForm.episode_count,
+                      episode_duration: genForm.episode_duration,
+                      plot_complexity: genForm.plot_complexity,
+                      pacing: genForm.pacing,
+                      additional_requirements: genForm.additional_requirements,
+                      style_preferences: genForm.style_preferences,
+                      model: genForm.model,
+                      temperature: genForm.temperature,
+                      focus_characters: focusCharacters,
+                    } as any
+                    if (useAsync) {
+                      const r = await episodeAPI.generateEpisodesAsync(payload)
+                      if (r.success) {
+                        alert('已创建任务，请稍后在任务页查看进度')
+                      } else {
+                        alert('生成失败：' + (r.error || '未知错误'))
+                      }
+                    } else {
+                      const r = await episodeAPI.generateEpisodes(payload)
+                      if (r.success) {
+                        await loadData()
+                        alert('生成成功')
+                      } else {
+                        alert('生成失败：' + (r.error || '未知错误'))
+                      }
+                    }
+                  }}
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >开始生成</button>
+              </div>
+              {promptPreview && (
+                <div className="mt-3 bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">{promptPreview}</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 剧集与剧本概览 */}
+        <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">剧集列表</h2>
+            <h2 className="text-xl font-semibold">剧集概览</h2>
             <span className="text-sm text-gray-500">共 {episodes.length} 集</span>
           </div>
 
           {episodes.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-gray-400 text-4xl mb-4">🎬</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">暂无剧集</h3>
-              <p className="text-gray-600 mb-4">开始生成您的第一个剧集吧！</p>
-              <button
-                onClick={() => setShowGenerateForm(true)}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-              >
-                生成剧集
-              </button>
-            </div>
+            <div className="text-center py-10 text-gray-500">暂无剧集</div>
           ) : (
-            <div className="space-y-4">
-              {episodes.map((episode) => (
-                <div key={episode.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                          第{episode.episode_number}集
-                        </span>
-                        <h3 className="font-medium text-gray-900">{episode.title}</h3>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          episode.status === 'published' ? 'bg-green-100 text-green-800' :
-                          episode.status === 'approved' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {episode.status === 'published' ? '已发布' :
-                           episode.status === 'approved' ? '已批准' : '草稿'}
-                        </span>
-                      </div>
-                      
-                      <p className="text-gray-600 text-sm mb-2 line-clamp-2">
-                        {episode.summary || '暂无概要'}
-                      </p>
-                      
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>时长: {episode.duration_minutes || '--'}分钟</span>
-                        <span>场景: {episode.scene_count || '--'}个</span>
-                        <span>创建: {new Date(episode.created_at).toLocaleDateString()}</span>
-                      </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {episodes.map((ep) => {
+                const scripts = scriptsByEpisode[ep.id] || []
+                return (
+                  <div key={ep.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-gray-900">第{ep.episode_number}集 · {ep.title}</div>
+                      <button
+                        onClick={() => router.push(`/episodes/${ep.id}`)}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >查看</button>
                     </div>
-                    
-                    <div className="flex gap-2 ml-4">
-                      <button
-                        onClick={() => router.push(`/episodes/${episode.id}`)}
-                        className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                      >
-                        查看详情
-                      </button>
-                      <button
-                        onClick={() => handleRegenerateEpisode(episode.id)}
-                        className="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700"
-                      >
-                        重新生成
-                      </button>
-                      <button
-                        onClick={() => handleDeleteEpisode(episode.id)}
-                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                      >
-                        删除
-                      </button>
+                    <div className="text-sm text-gray-600 mt-2 line-clamp-3">{ep.summary || '暂无概要'}</div>
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
+                      <span>时长：{ep.duration_minutes || '--'} 分钟</span>
+                      <span>场景：{ep.scene_count || '--'}</span>
+                      <span>剧本：{loadingScripts ? '加载中...' : scripts.length}</span>
                     </div>
+                    {scripts.length > 0 && (
+                        <div className="mt-3 text-sm">
+                          <div className="text-gray-700 mb-1 flex items-center justify-between">
+                            <span>最新剧本：</span>
+                            <button onClick={() => router.push(`/episodes/${ep.id}/storyboard`)} className="text-blue-600 hover:text-blue-800 text-xs">分镜管理</button>
+                          </div>
+                          <div className="space-y-1">
+                          {scripts.slice(0, 2).map((sc) => (
+                            <div key={sc.id} className="flex items-center justify-between">
+                              <div className="truncate mr-2">{sc.title}</div>
+                              <button
+                                onClick={() => router.push(`/scripts/${sc.id}`)}
+                                className="text-blue-600 hover:text-blue-800 text-xs"
+                              >查看</button>
+                            </div>
+                          ))}
+                          {scripts.length > 2 && (
+                            <div className="text-xs text-gray-500">还有 {scripts.length - 2} 个剧本…</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
       </div>
     </div>
-  );
-} 
+  )
+}

@@ -1,0 +1,119 @@
+你是一个专业的AI图像生成提示词专家，擅长为虚拟IP角色创建高质量的图像生成提示词。请基于以下信息生成适合AI绘画的详细提示词：
+
+## 角色基础信息
+角色名称：{{ character_name }}
+{% if character_description -%}
+角色描述：{{ character_description }}
+{% endif -%}
+{% if background_story -%}
+背景故事：{{ background_story }}
+{% endif -%}
+
+## 图像参数
+风格类型：{{ style }}
+图像类别：{{ category }}
+{% if additional_prompts -%}
+附加要求：{{ additional_prompts | join(', ') }}
+{% endif -%}
+{% if is_default -%}
+用途：角色默认头像
+{% endif -%}
+
+## 生成要求
+请生成专业的AI图像生成提示词，确保：
+
+1. **视觉准确性**: 准确描述角色的外观特征
+2. **风格一致性**: 符合指定的{{ style }}风格
+3. **质量优化**: 包含提升图像质量的关键词
+4. **技术规范**: 符合主流AI绘画工具的要求
+
+## 风格指南
+{% if style == "realistic" -%}
+写实风格要求：
+- 使用真实人物摄影的描述方式
+- 注重光影、质感、细节
+- 包含专业摄影术语
+- 避免过度修饰和非现实元素
+{% elif style == "anime" -%}
+动漫风格要求：
+- 使用动漫/二次元的描述方式
+- 强调大眼睛、精致五官
+- 包含动漫特有的表现手法
+- 可以包含一些幻想元素
+{% elif style == "cartoon" -%}
+卡通风格要求：
+- 使用简洁明快的描述
+- 强调可爱、夸张的特征
+- 明亮的色彩搭配
+- 简化的造型设计
+{% elif style == "portrait" -%}
+肖像风格要求：
+- 专注于面部表情和特征
+- 强调个性和气质
+- 适合做头像使用
+- 背景简洁或虚化
+{% endif -%}
+
+## 类别指南
+{% if category == "portrait" -%}
+肖像类图像：
+- 以面部为主要构图
+- 通常为半身或头肩构图
+- 背景简洁，突出人物
+- 适合用作头像或个人形象
+{% elif category == "full_body" -%}
+全身像图像：
+- 展示完整的角色形象
+- 包含服装和姿态设计
+- 环境背景可以更丰富
+- 展示角色的整体风格
+{% elif category == "action" -%}
+动作场景：
+- 展示角色的动态姿势
+- 可以包含相关道具或场景
+- 强调运动感和表现力
+- 适合展示角色特长
+{% elif category == "emotion" -%}
+情感表达：
+- 重点刻画面部表情
+- 展示特定的情感状态
+- 可以通过环境渲染情绪
+- 适合表现角色性格
+{% endif -%}
+
+## 输出格式
+请以JSON格式返回：
+
+{
+    "positive_prompt": "正向提示词，详细描述要生成的内容",
+    "negative_prompt": "负向提示词，描述要避免的内容",
+    "style_tags": ["风格相关的标签"],
+    "quality_tags": ["提升质量的标签"],
+    "technical_params": {
+        "recommended_resolution": "推荐分辨率",
+        "aspect_ratio": "推荐比例",
+        "steps": "推荐步数",
+        "cfg_scale": "推荐CFG值"
+    },
+    "variations": [
+        "变体提示词1",
+        "变体提示词2", 
+        "变体提示词3"
+    ],
+    "description": "提示词使用说明"
+}
+
+## 质量要求
+- 提示词长度适中（50-200词）
+- 结构清晰，逻辑合理
+- 包含足够的细节描述
+- 避免冲突或矛盾的描述
+- 符合目标风格的表达习惯
+
+## 技术优化
+包含以下质量提升元素：
+- 高质量关键词：high quality, detailed, professional
+- 光影描述：lighting, shadows, highlights
+- 材质质感：texture, material, surface
+- 构图要素：composition, framing, perspective
+- 后期效果：depth of field, color grading（如适用）

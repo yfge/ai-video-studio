@@ -11,10 +11,63 @@ export interface ApiResponse<T = any> {
 
 // 用户相关类型
 export interface User {
-  id: string
+  id: number
   username: string
   email: string
-  createdAt: string
+  full_name?: string
+  is_active: boolean
+  is_superuser: boolean
+  is_admin: boolean
+  is_approved: boolean
+  email_verified: boolean
+  last_login_at?: string
+  failed_login_attempts: number
+  is_account_locked: boolean
+  language?: string
+  timezone?: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface AdminUser extends User {
+  approved_at?: string
+  approved_by_user_id?: number
+  activation_token_expires?: string
+  account_locked_until?: string
+}
+
+export interface UserListResponse {
+  users: AdminUser[]
+  total: number
+  page: number
+  size: number
+  pages: number
+}
+
+export interface UserStatsResponse {
+  total_users: number
+  active_users: number
+  pending_approval: number
+  suspended_users: number
+  admin_users: number
+  recent_registrations: number
+}
+
+export interface UserApprovalRequest {
+  action: 'approve' | 'reject'
+  reason?: string
+}
+
+export interface UserAuditLog {
+  id: number
+  user_id: number
+  admin_user_id?: number
+  action: string
+  old_values?: string
+  new_values?: string
+  ip_address?: string
+  user_agent?: string
+  created_at: string
 }
 
 export interface LoginRequest {
@@ -30,15 +83,16 @@ export interface RegisterRequest {
 
 // 任务相关类型
 export interface Task {
-  id: string
+  id: number
   title: string
-  prompt: string
-  platform: 'gpt' | 'keling' | 'jimeng'
+  prompt?: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
-  createdAt: string
-  completedAt?: string
-  imageUrl?: string
-  userId: string
+  created_at: string
+  updated_at?: string
+  description?: string
+  result_file_path?: string
+  error_message?: string
+  user_id: number
 }
 
 export interface CreateTaskRequest {
@@ -64,6 +118,7 @@ export interface VirtualIPImage {
   id: number;
   virtual_ip_id: number;
   file_path: string;
+  oss_url?: string;
   category: string;
   tags: string[];
   is_default: boolean;
@@ -91,8 +146,22 @@ export interface VirtualIPImageUpdate {
 export interface AIImageGenerationRequest {
   style: string;
   category: string;
+  model: string;
   additional_prompts: string;
   is_default: boolean;
+}
+
+export interface AIModel {
+  model_id: string;
+  name: string;
+  provider: string;
+  type: string;
+  capabilities: string[];
+}
+
+export interface AvailableModelsResponse {
+  models: AIModel[];
+  default: string;
 }
 
 // 虚拟IP相关类型
@@ -103,6 +172,7 @@ export interface VirtualIP {
   description?: string
   tags: string[]
   background_story?: string
+  biography?: string
   style_prompt?: string
   style_reference_images?: string[]
   is_active: boolean
@@ -117,6 +187,7 @@ export interface CreateVirtualIPRequest {
   description?: string
   tags?: string[]
   background_story?: string
+  biography?: string
   style_prompt?: string
   style_reference_images?: string[]
   is_active?: boolean
@@ -128,10 +199,52 @@ export interface UpdateVirtualIPRequest {
   description?: string
   tags?: string[]
   background_story?: string
+  biography?: string
   style_prompt?: string
   style_reference_images?: string[]
   is_active?: boolean
   is_public?: boolean
+}
+
+// AI增强虚拟IP创建相关类型
+export interface VirtualIPAICreateRequest {
+  name: string
+  basic_info?: string
+  style_preference?: string
+  tags?: string[]
+  is_active?: boolean
+  is_public?: boolean
+}
+
+export interface VirtualIPAIGenerationRequest {
+  name: string
+  basic_info?: string
+  style_preference?: string
+  image_category?: string
+}
+
+export interface VirtualIPAIGenerationResponse {
+  description: string
+  background_story: string
+  biography: string
+  style_prompt: string
+}
+
+export interface AIGenerationDetails {
+  model: string
+  temperature: number
+  prompts_used: string[]
+  tokens_used: number
+  generation_time: number
+  steps: string[]
+}
+
+export interface VirtualIPAIGenerationDetailedResponse {
+  description: string
+  background_story: string
+  biography: string
+  style_prompt: string
+  generation_details: AIGenerationDetails
 }
 
 // 剧本相关类型
@@ -238,6 +351,8 @@ export interface StoryGenerationRequest {
   style_preferences?: string[];
   content_restrictions?: string[];
   tags?: string[];
+  model?: string;
+  temperature?: number;
 }
 
 export interface EpisodeGenerationRequest {
@@ -276,16 +391,20 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retry: boolean = true
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`
     
+    // 每次请求前更新token
+    this.updateToken()
+    
     const config: RequestInit = {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      ...options,
     }
 
     // 添加认证头
@@ -297,14 +416,39 @@ class ApiClient {
     }
 
     try {
+      console.log(`Making request to ${url}`, { method: config.method, headers: config.headers })
       const response = await fetch(url, config)
+      
+      // 处理401未授权错误
+      if (response.status === 401 && retry) {
+        console.log('Token expired or invalid, redirecting to login...')
+        this.clearToken()
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login'
+        }
+        return {
+          success: false,
+          error: '登录已过期，请重新登录',
+        }
+      }
+      
       const data = await response.json()
+      console.log(`Response from ${url}:`, response.status, data)
 
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`)
+        throw new Error(data.detail || data.message || `HTTP error! status: ${response.status}`)
       }
 
-      return data
+      // 如果后端返回的是标准格式 {success, data}，直接返回
+      if (data.hasOwnProperty('success')) {
+        return data
+      }
+      
+      // 否则封装为标准格式
+      return {
+        success: true,
+        data: data
+      }
     } catch (error) {
       console.error('API request failed:', error)
       return {
@@ -322,6 +466,13 @@ class ApiClient {
     }
   }
 
+  // 更新token（从localStorage重新读取）
+  updateToken() {
+    if (typeof window !== 'undefined') {
+      this.token = localStorage.getItem('auth_token')
+    }
+  }
+
   // 清除认证 token
   clearToken() {
     this.token = null
@@ -331,51 +482,202 @@ class ApiClient {
   }
 
   // 用户认证相关 API
-  async login(credentials: LoginRequest): Promise<ApiResponse<{ user: User; token: string }>> {
-    return this.request('/auth/login', {
+  async login(credentials: LoginRequest): Promise<ApiResponse<{ access_token: string; token_type: string }>> {
+    // 使用URLSearchParams而不是FormData，因为后端期望application/x-www-form-urlencoded格式
+    const formBody = new URLSearchParams()
+    formBody.append('username', credentials.email) // 注意：后端使用username字段
+    formBody.append('password', credentials.password)
+    
+    console.log('Login request:', credentials.email, credentials.password)
+    
+    const response = await this.request('/api/v1/auth/login', {
       method: 'POST',
-      body: JSON.stringify(credentials),
-    })
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formBody.toString(),
+    }, false) // 登录请求不需要重试
+    
+    // 如果登录成功，保存token
+    if (response.success && response.data) {
+      this.setToken(response.data.access_token)
+    }
+    
+    return response
   }
 
-  async register(userData: RegisterRequest): Promise<ApiResponse<{ user: User; token: string }>> {
-    return this.request('/auth/register', {
+  async register(userData: RegisterRequest): Promise<ApiResponse<User>> {
+    return this.request('/api/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     })
   }
 
   async logout(): Promise<ApiResponse> {
-    const response = await this.request('/auth/logout', {
-      method: 'POST',
-    })
     this.clearToken()
-    return response
+    return { success: true }
   }
 
   async getCurrentUser(): Promise<ApiResponse<User>> {
-    return this.request('/auth/me')
+    return this.request('/api/v1/auth/me')
+  }
+
+  // 用户管理相关 API (管理员权限)
+  async getUsers(params?: {
+    page?: number
+    size?: number
+    status_filter?: string
+    role_filter?: string  
+    search?: string
+  }): Promise<ApiResponse<UserListResponse>> {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.size) searchParams.append('size', params.size.toString())
+    if (params?.status_filter) searchParams.append('status_filter', params.status_filter)
+    if (params?.role_filter) searchParams.append('role_filter', params.role_filter)
+    if (params?.search) searchParams.append('search', params.search)
+
+    const queryString = searchParams.toString()
+    const endpoint = queryString ? `/api/v1/admin/users?${queryString}` : '/api/v1/admin/users'
+    
+    return this.request(endpoint)
+  }
+
+  async getUser(userId: number): Promise<ApiResponse<AdminUser>> {
+    return this.request(`/api/v1/admin/users/${userId}`)
+  }
+
+  async approveUser(userId: number, data: UserApprovalRequest): Promise<ApiResponse<AdminUser>> {
+    return this.request(`/api/v1/admin/users/${userId}/approval`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateUserRole(userId: number, data: {
+    is_admin?: boolean
+    is_superuser?: boolean
+    role_change_reason?: string
+  }): Promise<ApiResponse<AdminUser>> {
+    const formData = new URLSearchParams()
+    if (data.is_admin !== undefined) formData.append('is_admin', data.is_admin.toString())
+    if (data.is_superuser !== undefined) formData.append('is_superuser', data.is_superuser.toString())
+    if (data.role_change_reason) formData.append('reason', data.role_change_reason)
+
+    return this.request(`/api/v1/admin/users/${userId}/role`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
+    })
+  }
+
+  async suspendUser(userId: number, data: {
+    duration_hours?: number
+    reason?: string
+  }): Promise<ApiResponse<AdminUser>> {
+    const searchParams = new URLSearchParams()
+    if (data.duration_hours) searchParams.append('duration_hours', data.duration_hours.toString())
+    if (data.reason) searchParams.append('reason', data.reason)
+
+    const queryString = searchParams.toString()
+    const endpoint = queryString ? `/api/v1/admin/users/${userId}/suspend?${queryString}` : `/api/v1/admin/users/${userId}/suspend`
+
+    return this.request(endpoint, {
+      method: 'PUT',
+    })
+  }
+
+  async reactivateUser(userId: number): Promise<ApiResponse<AdminUser>> {
+    return this.request(`/api/v1/admin/users/${userId}/reactivate`, {
+      method: 'PUT',
+    })
+  }
+
+  async deleteUser(userId: number): Promise<ApiResponse<{ message: string; success: boolean }>> {
+    return this.request(`/api/v1/admin/users/${userId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async getUserStats(): Promise<ApiResponse<UserStatsResponse>> {
+    return this.request('/api/v1/admin/stats')
+  }
+
+  async getUserAuditLogs(userId: number, params?: {
+    page?: number
+    size?: number
+  }): Promise<ApiResponse<UserAuditLog[]>> {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.size) searchParams.append('size', params.size.toString())
+
+    const queryString = searchParams.toString()
+    const endpoint = queryString ? `/api/v1/admin/users/${userId}/audit-logs?${queryString}` : `/api/v1/admin/users/${userId}/audit-logs`
+
+    return this.request(endpoint)
+  }
+
+  async resetUserLoginAttempts(userId: number): Promise<ApiResponse<AdminUser>> {
+    return this.request(`/api/v1/admin/users/${userId}/reset-login-attempts`, {
+      method: 'POST',
+    })
+  }
+
+  async generateUserActivationToken(userId: number): Promise<ApiResponse<{ activation_token: string; message: string }>> {
+    return this.request(`/api/v1/admin/users/${userId}/generate-activation-token`, {
+      method: 'POST',
+    })
+  }
+
+  async updateUserAdmin(userId: number, data: {
+    is_active?: boolean
+    is_admin?: boolean
+    is_approved?: boolean
+    email_verified?: boolean
+    failed_login_attempts?: number
+    account_locked_until?: string
+  }): Promise<ApiResponse<AdminUser>> {
+    return this.request(`/api/v1/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
   }
 
   // 任务相关 API
-  async getTasks(): Promise<ApiResponse<Task[]>> {
-    return this.request('/tasks')
+  async getTasks(): Promise<ApiResponse<{ tasks: Task[]; total: number; page: number; size: number }>> {
+    return this.request('/api/v1/tasks')
   }
 
   async createTask(taskData: CreateTaskRequest): Promise<ApiResponse<Task>> {
-    return this.request('/tasks', {
+    // 映射到后端 TaskCreate 结构
+    const backendPayload = {
+      title: taskData.title,
+      description: `${taskData.platform} image generation task`,
+      task_type: 'image_generation',
+      prompt: taskData.prompt,
+      parameters: { platform: taskData.platform },
+    }
+    return this.request('/api/v1/tasks', {
       method: 'POST',
-      body: JSON.stringify(taskData),
+      body: JSON.stringify(backendPayload),
     })
   }
 
   async getTask(id: string): Promise<ApiResponse<Task>> {
-    return this.request(`/tasks/${id}`)
+    return this.request(`/api/v1/tasks/${id}`)
   }
 
   async deleteTask(id: string): Promise<ApiResponse> {
-    return this.request(`/tasks/${id}`, {
+    return this.request(`/api/v1/tasks/${id}`, {
       method: 'DELETE',
+    })
+  }
+
+  async startTask(id: number): Promise<ApiResponse<{ message: string; task_id: number }>> {
+    return this.request(`/api/v1/tasks/${id}/start`, {
+      method: 'POST',
     })
   }
 
@@ -436,32 +738,54 @@ class ApiClient {
     if (params?.limit) searchParams.append('limit', params.limit.toString())
 
     const queryString = searchParams.toString()
-    const endpoint = queryString ? `/ips?${queryString}` : '/ips'
+    const endpoint = queryString ? `/api/v1/virtual-ips/?${queryString}` : '/api/v1/virtual-ips/'
     
     return this.request(endpoint)
   }
 
   async getVirtualIP(id: number): Promise<ApiResponse<VirtualIP>> {
-    return this.request(`/ips/${id}`)
+    return this.request(`/api/v1/virtual-ips/${id}`)
   }
 
   async createVirtualIP(data: CreateVirtualIPRequest): Promise<ApiResponse<VirtualIP>> {
-    return this.request('/ips', {
+    return this.request('/api/v1/virtual-ips/', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
   async updateVirtualIP(id: number, data: UpdateVirtualIPRequest): Promise<ApiResponse<VirtualIP>> {
-    return this.request(`/ips/${id}`, {
+    return this.request(`/api/v1/virtual-ips/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     })
   }
 
   async deleteVirtualIP(id: number): Promise<ApiResponse> {
-    return this.request(`/ips/${id}`, {
+    return this.request(`/api/v1/virtual-ips/${id}`, {
       method: 'DELETE',
+    })
+  }
+
+  // AI增强虚拟IP相关 API
+  async generateAIContent(data: VirtualIPAIGenerationRequest): Promise<ApiResponse<VirtualIPAIGenerationResponse>> {
+    return this.request('/api/v1/virtual-ips/generate-ai-content', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async generateAIContentDetailed(data: VirtualIPAIGenerationRequest): Promise<ApiResponse<VirtualIPAIGenerationDetailedResponse>> {
+    return this.request('/api/v1/virtual-ips/generate-ai-content-detailed', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async createVirtualIPWithAI(data: VirtualIPAICreateRequest): Promise<ApiResponse<VirtualIP>> {
+    return this.request('/api/v1/virtual-ips/create-with-ai', {
+      method: 'POST',
+      body: JSON.stringify(data),
     })
   }
 
@@ -475,7 +799,7 @@ class ApiClient {
     if (params?.subcategory) searchParams.append('subcategory', params.subcategory)
 
     const queryString = searchParams.toString()
-    const endpoint = queryString ? `/ips/${virtual_ip_id}/images?${queryString}` : `/ips/${virtual_ip_id}/images`
+    const endpoint = queryString ? `/api/v1/virtual-ips/${virtual_ip_id}/images?${queryString}` : `/api/v1/virtual-ips/${virtual_ip_id}/images`
     
     return this.request(endpoint)
   }
@@ -501,7 +825,7 @@ class ApiClient {
     if (data.ai_model) formData.append('ai_model', data.ai_model)
     if (data.is_default !== undefined) formData.append('is_default', data.is_default.toString())
 
-    return this.request(`/ips/${virtual_ip_id}/images`, {
+    return this.request(`/api/v1/virtual-ips/${virtual_ip_id}/images`, {
       method: 'POST',
       headers: {
         // 不设置 Content-Type，让浏览器自动设置 multipart/form-data
@@ -511,13 +835,13 @@ class ApiClient {
   }
 
   async deleteVirtualIPImage(virtual_ip_id: number, image_id: number): Promise<ApiResponse> {
-    return this.request(`/ips/${virtual_ip_id}/images/${image_id}`, {
+    return this.request(`/api/v1/virtual-ips/${virtual_ip_id}/images/${image_id}`, {
       method: 'DELETE',
     })
   }
 
   async setDefaultVirtualIPImage(virtual_ip_id: number, image_id: number): Promise<ApiResponse> {
-    return this.request(`/ips/${virtual_ip_id}/images/${image_id}/set-default`, {
+    return this.request(`/api/v1/virtual-ips/${virtual_ip_id}/images/${image_id}/set-default`, {
       method: 'POST',
     })
   }
@@ -544,6 +868,20 @@ class ApiClient {
     });
   }
 
+  async generateStoryAsync(data: StoryGenerationRequest) {
+    return this.request<{ task_id: number; status: string }>('/api/v1/stories/generate-async', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async previewStoryPrompt(data: StoryGenerationRequest) {
+    return this.request<{ prompt: string }>('/api/v1/stories/prompt/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async updateStory(id: number, data: Partial<Story>) {
     return this.request<Story>(`/api/v1/stories/${id}`, {
       method: 'PUT',
@@ -565,6 +903,12 @@ class ApiClient {
     return this.request<Array<{ value: string; label: string }>>('/api/v1/stories/genres');
   }
 
+  // 统一可用模型列表
+  async getAvailableModels(params?: { type?: 'text' | 'image' | 'video' | string }) {
+    const t = params?.type ?? 'text';
+    return this.request<{ models: Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>; count: number }>(`/api/v1/ai/models/available?model_type=${encodeURIComponent(t)}`);
+  }
+
   // 剧集相关方法
   async getEpisodes(params?: { story_id?: number; skip?: number; limit?: number; status?: string }) {
     const searchParams = new URLSearchParams();
@@ -582,6 +926,20 @@ class ApiClient {
 
   async generateEpisodes(data: EpisodeGenerationRequest) {
     return this.request<Episode[]>('/api/v1/episodes/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async previewEpisodePrompt(data: EpisodeGenerationRequest) {
+    return this.request<{ prompt: string }>(`/api/v1/episodes/prompt/preview`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async generateEpisodesAsync(data: EpisodeGenerationRequest) {
+    return this.request<{ task_id: number; status: string }>(`/api/v1/episodes/generate-async`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -633,6 +991,20 @@ class ApiClient {
     });
   }
 
+  async generateScriptAsync(data: ScriptGenerationRequest) {
+    return this.request<{ task_id: number; status: string }>(`/api/v1/scripts/generate-async`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async previewScriptPrompt(data: ScriptGenerationRequest) {
+    return this.request<{ prompt: string }>(`/api/v1/scripts/prompt/preview`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async updateScript(id: number, data: Partial<Script>) {
     return this.request<Script>(`/api/v1/scripts/${id}`, {
       method: 'PUT',
@@ -669,6 +1041,63 @@ class ApiClient {
       method: 'POST',
     });
   }
+
+  // 分镜相关
+  async getStoryboard(scriptId: number) {
+    return this.request<{ frames: any[]; meta?: Record<string, any>; plan?: Record<string, any> }>(`/api/v1/scripts/${scriptId}/storyboard`)
+  }
+  async previewStoryboardPrompt(scriptId: number) {
+    return this.request<{ prompt: string }>(`/api/v1/scripts/${scriptId}/storyboard/preview`, { method: 'POST' })
+  }
+  async generateStoryboard(
+    scriptId: number,
+    data?: { model?: string; temperature?: number; frames_per_scene?: number; max_frames?: number; scene_numbers?: number[]; use_plan?: boolean }
+  ) {
+    const params = new URLSearchParams()
+    if (data?.model) params.append('model', data.model)
+    if (typeof data?.temperature === 'number') params.append('temperature', String(data.temperature))
+    if (typeof data?.frames_per_scene === 'number') params.append('frames_per_scene', String(data.frames_per_scene))
+    if (typeof data?.max_frames === 'number') params.append('max_frames', String(data.max_frames))
+    if (data?.scene_numbers && data.scene_numbers.length > 0) params.append('scene_numbers', data.scene_numbers.join(','))
+    if (data?.use_plan) params.append('use_plan', 'true')
+    const qs = params.toString()
+    return this.request<{ frames: any[]; meta?: Record<string, any>; plan?: Record<string, any> }>(
+      `/api/v1/scripts/${scriptId}/storyboard/generate${qs ? `?${qs}` : ''}`,
+      { method: 'POST' }
+    )
+  }
+  async generateStoryboardVideo(scriptId: number, frames?: number[]) {
+    return this.request(`/api/v1/scripts/${scriptId}/storyboard/generate-video`, {
+      method: 'POST',
+      body: JSON.stringify({ frames: frames || [] })
+    })
+  }
+  async generateStoryboardImages(
+    scriptId: number,
+    payload?: { frames?: number[]; model?: string; width?: number; height?: number; style?: string }
+  ) {
+    return this.request(`/api/v1/scripts/${scriptId}/storyboard/generate-images`, {
+      method: 'POST',
+      body: JSON.stringify({
+        frames: payload?.frames || [],
+        model: payload?.model,
+        width: payload?.width ?? 1024,
+        height: payload?.height ?? 1024,
+        style: payload?.style ?? 'realistic',
+      }),
+    })
+  }
+  async updateStoryboard(scriptId: number, frames: any[]) {
+    return this.request(`/api/v1/scripts/${scriptId}/storyboard/update`, {
+      method: 'POST',
+      body: JSON.stringify({ frames }),
+    })
+  }
+
+  // 公开request方法供其他API使用
+  async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, options);
+  }
 }
 
 // 创建全局 API 客户端实例
@@ -682,11 +1111,27 @@ export const authAPI = {
   getCurrentUser: apiClient.getCurrentUser.bind(apiClient),
 }
 
+export const adminAPI = {
+  getUsers: apiClient.getUsers.bind(apiClient),
+  getUser: apiClient.getUser.bind(apiClient),
+  approveUser: apiClient.approveUser.bind(apiClient),
+  updateUserRole: apiClient.updateUserRole.bind(apiClient),
+  suspendUser: apiClient.suspendUser.bind(apiClient),
+  reactivateUser: apiClient.reactivateUser.bind(apiClient),
+  deleteUser: apiClient.deleteUser.bind(apiClient),
+  getUserStats: apiClient.getUserStats.bind(apiClient),
+  getUserAuditLogs: apiClient.getUserAuditLogs.bind(apiClient),
+  resetUserLoginAttempts: apiClient.resetUserLoginAttempts.bind(apiClient),
+  generateUserActivationToken: apiClient.generateUserActivationToken.bind(apiClient),
+  updateUserAdmin: apiClient.updateUserAdmin.bind(apiClient),
+}
+
 export const taskAPI = {
   getTasks: apiClient.getTasks.bind(apiClient),
   createTask: apiClient.createTask.bind(apiClient),
   getTask: apiClient.getTask.bind(apiClient),
   deleteTask: apiClient.deleteTask.bind(apiClient),
+  startTask: apiClient.startTask.bind(apiClient),
 }
 
 export const imageAPI = {
@@ -702,6 +1147,9 @@ export const virtualIPAPI = {
   createVirtualIP: apiClient.createVirtualIP.bind(apiClient),
   updateVirtualIP: apiClient.updateVirtualIP.bind(apiClient),
   deleteVirtualIP: apiClient.deleteVirtualIP.bind(apiClient),
+  generateAIContent: apiClient.generateAIContent.bind(apiClient),
+  generateAIContentDetailed: apiClient.generateAIContentDetailed.bind(apiClient),
+  createVirtualIPWithAI: apiClient.createVirtualIPWithAI.bind(apiClient),
   getVirtualIPImages: apiClient.getVirtualIPImages.bind(apiClient),
   uploadVirtualIPImage: apiClient.uploadVirtualIPImage.bind(apiClient),
   deleteVirtualIPImage: apiClient.deleteVirtualIPImage.bind(apiClient),
@@ -712,6 +1160,8 @@ export const storyAPI = {
   getStories: apiClient.getStories.bind(apiClient),
   getStory: apiClient.getStory.bind(apiClient),
   generateStory: apiClient.generateStory.bind(apiClient),
+  generateStoryAsync: apiClient.generateStoryAsync.bind(apiClient),
+  previewStoryPrompt: apiClient.previewStoryPrompt.bind(apiClient),
   updateStory: apiClient.updateStory.bind(apiClient),
   deleteStory: apiClient.deleteStory.bind(apiClient),
   getStoryCharacters: apiClient.getStoryCharacters.bind(apiClient),
@@ -732,6 +1182,7 @@ export const scriptAPI = {
   getScripts: apiClient.getScripts.bind(apiClient),
   getScript: apiClient.getScript.bind(apiClient),
   generateScript: apiClient.generateScript.bind(apiClient),
+  generateScriptAsync: apiClient.generateScriptAsync.bind(apiClient),
   updateScript: apiClient.updateScript.bind(apiClient),
   deleteScript: apiClient.deleteScript.bind(apiClient),
   getEpisodeScripts: apiClient.getEpisodeScripts.bind(apiClient),
@@ -739,59 +1190,63 @@ export const scriptAPI = {
   getScriptFormats: apiClient.getScriptFormats.bind(apiClient),
   getScriptLanguages: apiClient.getScriptLanguages.bind(apiClient),
   exportScript: apiClient.exportScript.bind(apiClient),
+  previewScriptPrompt: apiClient.previewScriptPrompt.bind(apiClient),
+  // Storyboard
+  getStoryboard: apiClient.getStoryboard.bind(apiClient),
+  previewStoryboardPrompt: apiClient.previewStoryboardPrompt.bind(apiClient),
+  generateStoryboard: apiClient.generateStoryboard.bind(apiClient),
+  generateStoryboardVideo: apiClient.generateStoryboardVideo.bind(apiClient),
+  generateStoryboardImages: apiClient.generateStoryboardImages.bind(apiClient),
+  updateStoryboard: apiClient.updateStoryboard.bind(apiClient),
 }
 
-// 虚拟IP图像管理API
+export const aiAPI = {
+  getAvailableModels: apiClient.getAvailableModels.bind(apiClient),
+}
+
+// 虚拟IP图像管理API（使用统一的API客户端）
 export const virtualIPImageAPI = {
   // 获取虚拟IP图像列表
-  getImages: async (virtualIPId: number, category?: string): Promise<VirtualIPImage[]> => {
-    const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    
-    const response = await fetch(`${API_BASE_URL}/virtual-ips/${virtualIPId}/images?${params}`);
-    if (!response.ok) throw new Error('获取图像列表失败');
-    return response.json();
-  },
+  getImages: (virtualIPId: number, category?: string) => 
+    apiClient.getVirtualIPImages(virtualIPId, { category }),
 
   // 上传图像
-  uploadImage: async (
+  uploadImage: (
     virtualIPId: number, 
     file: File, 
     category: string = 'portrait',
     tags: string = '',
     isDefault: boolean = false
-  ): Promise<VirtualIPImage> => {
-    const formData = new FormData();
-    formData.append('image', file);
-    formData.append('category', category);
-    formData.append('tags', tags);
-    formData.append('is_default', isDefault.toString());
+  ) => apiClient.uploadVirtualIPImage(virtualIPId, file, {
+    category,
+    tags: tags ? tags.split(',').map(t => t.trim()) : [],
+    is_default: isDefault
+  }),
 
-    const response = await fetch(`${API_BASE_URL}/virtual-ips/${virtualIPId}/images`, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!response.ok) throw new Error('上传图像失败');
-    return response.json();
+  // 获取可用模型
+  getAvailableModels: async (virtualIPId: number): Promise<ApiResponse<AvailableModelsResponse>> => {
+    return apiClient.makeRequest(`/api/v1/virtual-ips/${virtualIPId}/models/available`);
   },
 
   // AI生成图像
   generateImage: async (
     virtualIPId: number,
     request: AIImageGenerationRequest
-  ): Promise<VirtualIPImage> => {
+  ): Promise<ApiResponse<VirtualIPImage>> => {
     const formData = new FormData();
     formData.append('style', request.style);
     formData.append('category', request.category);
+    formData.append('model', request.model);
     formData.append('additional_prompts', request.additional_prompts);
     formData.append('is_default', request.is_default.toString());
 
-    const response = await fetch(`${API_BASE_URL}/virtual-ips/${virtualIPId}/images/generate`, {
+    return apiClient.makeRequest(`/api/v1/virtual-ips/${virtualIPId}/images/generate`, {
       method: 'POST',
+      headers: {
+        // 不设置Content-Type，让浏览器自动设置multipart/form-data
+      },
       body: formData,
     });
-    if (!response.ok) throw new Error('AI图像生成失败');
-    return response.json();
   },
 
   // 更新图像信息
@@ -799,39 +1254,24 @@ export const virtualIPImageAPI = {
     virtualIPId: number,
     imageId: number,
     update: VirtualIPImageUpdate
-  ): Promise<VirtualIPImage> => {
-    const response = await fetch(`${API_BASE_URL}/virtual-ips/${virtualIPId}/images/${imageId}`, {
+  ): Promise<ApiResponse<VirtualIPImage>> => {
+    return apiClient.makeRequest(`/api/v1/virtual-ips/${virtualIPId}/images/${imageId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(update),
     });
-    if (!response.ok) throw new Error('更新图像失败');
-    return response.json();
   },
 
   // 删除图像
-  deleteImage: async (virtualIPId: number, imageId: number): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/virtual-ips/${virtualIPId}/images/${imageId}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) throw new Error('删除图像失败');
-  },
+  deleteImage: (virtualIPId: number, imageId: number) => 
+    apiClient.deleteVirtualIPImage(virtualIPId, imageId),
 
   // 设置默认图像
-  setDefaultImage: async (virtualIPId: number, imageId: number): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/virtual-ips/${virtualIPId}/images/${imageId}/set-default`, {
-      method: 'POST',
-    });
-    if (!response.ok) throw new Error('设置默认图像失败');
-  },
+  setDefaultImage: (virtualIPId: number, imageId: number) =>
+    apiClient.setDefaultVirtualIPImage(virtualIPId, imageId),
 
   // 获取图像分类
-  getCategories: async (virtualIPId: number): Promise<string[]> => {
-    const response = await fetch(`${API_BASE_URL}/virtual-ips/${virtualIPId}/images/categories`);
-    if (!response.ok) throw new Error('获取图像分类失败');
-    return response.json();
+  getCategories: async (virtualIPId: number): Promise<ApiResponse<string[]>> => {
+    return apiClient.makeRequest(`/api/v1/virtual-ips/${virtualIPId}/images/categories`);
   },
 };
 

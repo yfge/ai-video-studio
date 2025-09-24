@@ -1,0 +1,117 @@
+你是一个专业的剧集编剧，擅长将故事概要分解为具体的剧集内容。请基于以下故事信息生成{{ episode_count }}集的剧集大纲：
+
+## 故事信息
+故事标题：{{ story.title }}
+类型：{{ story.genre }}
+{% if story.theme -%}
+主题：{{ story.theme }}
+{% endif -%}
+{% if story.synopsis -%}
+故事概要：{{ story.synopsis }}
+{% endif -%}
+{% if story.main_conflict -%}
+主要冲突：{{ story.main_conflict }}
+{% endif -%}
+{% if story.resolution -%}
+解决方案：{{ story.resolution }}
+{% endif -%}
+
+## 主要角色
+{% if story.main_characters -%}
+{% for character in story.main_characters %}
+- {{ character.name }}: {{ character.description or character.role }}
+{% endfor %}
+{% endif -%}
+
+## 角色关系
+{% if story.character_relationships -%}
+{% for relationship, description in story.character_relationships.items() %}
+- {{ relationship }}: {{ description }}
+{% endfor %}
+{% endif -%}
+
+## 剧集参数
+总集数：{{ episode_count }}集
+{% if episode_duration -%}
+每集时长：{{ episode_duration }}分钟
+{% endif -%}
+情节复杂度：{{ plot_complexity }}
+节奏控制：{{ pacing }}
+
+{% if focus_characters -%}
+## 重点角色
+{% for character in focus_characters %}
+- {{ character.name }}: {{ character.description }}
+{% endfor %}
+{% endif -%}
+
+{% if additional_requirements -%}
+## 特殊要求
+{{ additional_requirements }}
+{% endif -%}
+
+{% if style_preferences -%}
+## 风格偏好
+{{ style_preferences | join(', ') }}
+{% endif -%}
+
+## 生成要求
+请为每一集生成详细的内容规划，确保：
+
+1. **整体连贯性**: 所有剧集构成完整的故事弧线
+2. **节奏控制**: 根据"{{ pacing }}"节奏要求安排情节发展
+3. **复杂度适配**: 按照"{{ plot_complexity }}"复杂度设计情节
+4. **角色发展**: 每个角色都有清晰的成长轨迹
+5. **冲突升级**: 冲突逐步升级，在适当时机达到高潮
+
+## 输出格式
+请以JSON格式返回，包含episodes数组，每集包含：
+
+1. **episode_number**: 集数
+2. **title**: 剧集标题
+3. **summary**: 剧集概要（150-300字）
+4. **plot_points**: 主要情节点列表
+5. **character_arcs**: 角色发展安排
+6. **conflicts**: 本集的冲突设置
+7. **scene_count**: 预估场景数量
+8. **emotional_tone**: 情感基调
+9. **key_moments**: 关键时刻描述
+10. **cliffhanger**: 悬念设置（如果适用）
+
+## 情节发展建议
+- 第1集：角色介绍和背景设定，建立世界观
+- 前1/3：角色关系建立，冲突铺垫
+- 中1/3：冲突发展，情节推进，角色成长
+- 后1/3：冲突高潮，问题解决，情感升华
+- 最后集：故事收尾，角色归宿，主题点题
+
+{
+    "episodes": [
+        {
+            "episode_number": 1,
+            "title": "...",
+            "summary": "...",
+            "plot_points": [
+                {
+                    "sequence": 1,
+                    "description": "...",
+                    "timing": "开场/前段/中段/后段/结尾"
+                }
+            ],
+            "character_arcs": {
+                "character_name": "本集的角色发展"
+            },
+            "conflicts": [
+                {
+                    "type": "内心冲突/人际冲突/环境冲突",
+                    "description": "...",
+                    "intensity": "低/中/高"
+                }
+            ],
+            "scene_count": 5,
+            "emotional_tone": "...",
+            "key_moments": ["..."],
+            "cliffhanger": "..."
+        }
+    ]
+}

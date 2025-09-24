@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.models.script import Story, Episode, Script, StoryCharacter, ScriptTemplate
-from app.core.test_database import test_db
+from tests.unit.test_database import test_db
 
 
 class BaseFactory(factory.alchemy.SQLAlchemyModelFactory):

@@ -13,7 +13,14 @@ class VirtualIPImageBase(BaseModel):
     is_public: bool = True
 
 class VirtualIPImageCreate(VirtualIPImageBase):
-    pass
+    virtual_ip_id: int
+    file_path: str
+    oss_url: Optional[str] = None
+    filename: Optional[str] = None
+    original_filename: Optional[str] = None
+    file_size: Optional[int] = None
+    mime_type: Optional[str] = "image/png"
+    metadata: Optional[Dict[str, Any]] = None
 
 class VirtualIPImageUpdate(VirtualIPImageBase):
     pass
@@ -24,6 +31,7 @@ class VirtualIPImageResponse(VirtualIPImageBase):
     filename: str
     original_filename: str
     file_path: str
+    oss_url: Optional[str] = None
     file_size: int
     mime_type: str
     created_at: datetime
@@ -36,6 +44,7 @@ class VirtualIPBase(BaseModel):
     description: Optional[str] = None
     tags: Optional[List[str]] = []
     background_story: Optional[str] = None
+    biography: Optional[str] = None
     style_prompt: Optional[str] = None
     style_reference_images: Optional[List[str]] = []
     is_active: bool = True
@@ -61,4 +70,44 @@ class VirtualIPListResponse(BaseModel):
     virtual_ips: List[VirtualIPResponse]
     total: int
     page: int
-    size: int 
+    size: int
+
+class VirtualIPAICreateRequest(BaseModel):
+    """AI增强创建虚拟IP的请求"""
+    name: str
+    basic_info: Optional[str] = None  # 用户提供的基本信息
+    style_preference: Optional[str] = None  # 风格偏好
+    tags: Optional[List[str]] = []
+    is_active: bool = True
+    is_public: bool = False
+
+class VirtualIPAIGenerationResponse(BaseModel):
+    """AI生成内容的响应"""
+    description: str
+    background_story: str
+    biography: str
+    style_prompt: str
+
+class AIGenerationDetails(BaseModel):
+    """AI生成详情"""
+    model: str
+    temperature: float
+    prompts_used: List[str]
+    tokens_used: int
+    generation_time: float
+    steps: List[str]
+
+class VirtualIPAIGenerationDetailedResponse(BaseModel):
+    """AI生成内容的详细响应"""
+    description: str
+    background_story: str
+    biography: str
+    style_prompt: str
+    generation_details: AIGenerationDetails
+    
+class VirtualIPAIGenerationRequest(BaseModel):
+    """AI生成内容的请求"""
+    name: str
+    basic_info: Optional[str] = None
+    style_preference: Optional[str] = None
+    image_category: str = "portrait"

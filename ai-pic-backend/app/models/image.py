@@ -7,11 +7,11 @@ class Image(Base):
     __tablename__ = "images"
     
     id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, nullable=False)
-    original_filename = Column(String, nullable=False)
-    file_path = Column(String, nullable=False)
+    filename = Column(String(255), nullable=False)
+    original_filename = Column(String(255), nullable=False)
+    file_path = Column(String(512), nullable=False)
     file_size = Column(Integer, nullable=False)
-    mime_type = Column(String, nullable=False)
+    mime_type = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     prompt = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)

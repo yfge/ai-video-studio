@@ -1,0 +1,87 @@
+name: episode_generation
+description: "剧集生成提示词模板"
+category: episode
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-08-15"
+updated_at: "2025-08-15"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息对象"
+  
+  episode_count:
+    type: number
+    required: true
+    description: "要生成的剧集数量"
+    min: 1
+    max: 50
+  
+  episode_duration:
+    type: number
+    required: false
+    description: "每集时长（分钟）"
+    min: 5
+    max: 120
+  
+  plot_complexity:
+    type: string
+    required: false
+    description: "情节复杂度"
+    default: "medium"
+    enum: ["simple", "medium", "complex"]
+  
+  pacing:
+    type: string
+    required: false
+    description: "节奏控制"
+    default: "medium"
+    enum: ["slow", "medium", "fast"]
+  
+  focus_characters:
+    type: list
+    required: false
+    description: "重点角色列表"
+  
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外要求"
+    max_length: 1000
+  
+  style_preferences:
+    type: list
+    required: false
+    description: "风格偏好列表"
+
+story_structure:
+  act1: "开场和设定（占总集数的25%）"
+  act2: "发展和冲突（占总集数的50%）"
+  act3: "高潮和结局（占总集数的25%）"
+
+output_format: "JSON"
+expected_fields:
+  - episodes
+    - episode_number
+    - title
+    - summary
+    - plot_points
+    - character_arcs
+    - conflicts
+    - scene_count
+    - emotional_tone
+    - key_moments
+    - cliffhanger
+
+guidelines:
+  pacing:
+    slow: "注重角色心理描写和细节刻画"
+    medium: "平衡情节推进和角色发展"
+    fast: "快节奏推进，高密度情节"
+  
+  complexity:
+    simple: "单一主线，清晰明了"
+    medium: "主副线并行，适度复杂"
+    complex: "多线交织，层次丰富"

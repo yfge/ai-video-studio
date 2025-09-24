@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { virtualIPAPI, virtualIPImageAPI } from '@/utils/api';
-import { VirtualIP, VirtualIPImage, AIImageGenerationRequest } from '@/utils/api';
+import { virtualIPAPI, virtualIPImageAPI, taskAPI } from '@/utils/api';
+import { VirtualIP, VirtualIPImage, AIImageGenerationRequest, AIModel, AvailableModelsResponse } from '@/utils/api';
 
 export default function VirtualIPImagesPage() {
   const params = useParams();
@@ -18,11 +18,19 @@ export default function VirtualIPImagesPage() {
   const [generating, setGenerating] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // 统一的后端基础地址（用于拼接本地文件路径）
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+  
+  // 模型相关状态
+  const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
+  const [defaultModel, setDefaultModel] = useState<string>('dalle-3');
+
   // AI生成表单状态
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [generateForm, setGenerateForm] = useState<AIImageGenerationRequest>({
     style: 'realistic',
     category: 'portrait',
+    model: 'dalle-3',
     additional_prompts: '',
     is_default: false
   });
@@ -42,20 +50,47 @@ export default function VirtualIPImagesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [ipResponse, imagesData, categoriesData] = await Promise.all([
+      const [ipResponse, imagesResponse, categoriesResponse, modelsResponse] = await Promise.all([
         virtualIPAPI.getVirtualIP(virtualIPId),
         virtualIPImageAPI.getImages(virtualIPId),
-        virtualIPImageAPI.getCategories(virtualIPId)
+        virtualIPImageAPI.getCategories(virtualIPId),
+        virtualIPImageAPI.getAvailableModels(virtualIPId)
       ]);
       
       if (ipResponse.success && ipResponse.data) {
         setVirtualIP(ipResponse.data);
       }
-      setImages(imagesData);
-      setCategories(categoriesData);
+      
+      // 处理图像数据
+      if (imagesResponse.success && imagesResponse.data) {
+        setImages(imagesResponse.data);
+      } else {
+        setImages([]);
+      }
+      
+      // 处理分类数据
+      if (categoriesResponse.success && categoriesResponse.data) {
+        setCategories(categoriesResponse.data);
+      } else {
+        setCategories([]);
+      }
+      
+      // 处理模型数据
+      if (modelsResponse.success && modelsResponse.data) {
+        setAvailableModels(modelsResponse.data.models);
+        const defaultModelId = modelsResponse.data.default;
+        if (defaultModelId) {
+          setDefaultModel(defaultModelId);
+          setGenerateForm(prev => ({ ...prev, model: defaultModelId }));
+        }
+      }
     } catch (error) {
       console.error('加载数据失败:', error);
       alert('加载数据失败');
+      // 设置默认空值
+      setImages([]);
+      setCategories([]);
+      setAvailableModels([]);
     } finally {
       setLoading(false);
     }
@@ -64,19 +99,25 @@ export default function VirtualIPImagesPage() {
   const handleGenerateImage = async () => {
     try {
       setGenerating(true);
-      const newImage = await virtualIPImageAPI.generateImage(virtualIPId, generateForm);
-      setImages(prev => [newImage, ...prev]);
-      setShowGenerateForm(false);
-      setGenerateForm({
-        style: 'realistic',
-        category: 'portrait',
-        additional_prompts: '',
-        is_default: false
-      });
-      alert('AI图像生成成功！');
+      const response = await virtualIPImageAPI.generateImage(virtualIPId, generateForm);
+      
+      if (response.success && response.data) {
+        setImages(prev => [response.data, ...prev]);
+        setShowGenerateForm(false);
+        setGenerateForm({
+          style: 'realistic',
+          category: 'portrait',
+          model: defaultModel,
+          additional_prompts: '',
+          is_default: false
+        });
+        alert('AI图像生成成功！');
+      } else {
+        throw new Error(response.error || 'AI图像生成失败');
+      }
     } catch (error) {
       console.error('AI图像生成失败:', error);
-      alert('AI图像生成失败');
+      alert('AI图像生成失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setGenerating(false);
     }
@@ -90,24 +131,29 @@ export default function VirtualIPImagesPage() {
 
     try {
       setUploading(true);
-      const newImage = await virtualIPImageAPI.uploadImage(
+      const response = await virtualIPImageAPI.uploadImage(
         virtualIPId,
         uploadForm.file,
         uploadForm.category,
         uploadForm.tags,
         uploadForm.is_default
       );
-      setImages(prev => [newImage, ...prev]);
-      setUploadForm({
-        file: null,
-        category: 'portrait',
-        tags: '',
-        is_default: false
-      });
-      alert('图像上传成功！');
+      
+      if (response.success && response.data) {
+        setImages(prev => [response.data, ...prev]);
+        setUploadForm({
+          file: null,
+          category: 'portrait',
+          tags: '',
+          is_default: false
+        });
+        alert('图像上传成功！');
+      } else {
+        throw new Error(response.error || '图像上传失败');
+      }
     } catch (error) {
       console.error('图像上传失败:', error);
-      alert('图像上传失败');
+      alert('图像上传失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setUploading(false);
     }
@@ -117,26 +163,65 @@ export default function VirtualIPImagesPage() {
     if (!confirm('确定要删除这张图像吗？')) return;
 
     try {
-      await virtualIPImageAPI.deleteImage(virtualIPId, imageId);
-      setImages(prev => prev.filter(img => img.id !== imageId));
-      alert('图像删除成功');
+      const response = await virtualIPImageAPI.deleteImage(virtualIPId, imageId);
+      
+      if (response.success) {
+        setImages(prev => prev.filter(img => img.id !== imageId));
+        alert('图像删除成功');
+      } else {
+        throw new Error(response.error || '删除图像失败');
+      }
     } catch (error) {
       console.error('删除图像失败:', error);
-      alert('删除图像失败');
+      alert('删除图像失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
   const handleSetDefault = async (imageId: number) => {
     try {
-      await virtualIPImageAPI.setDefaultImage(virtualIPId, imageId);
-      setImages(prev => prev.map(img => ({
-        ...img,
-        is_default: img.id === imageId
-      })));
-      alert('默认图像设置成功');
+      const response = await virtualIPImageAPI.setDefaultImage(virtualIPId, imageId);
+      
+      if (response.success) {
+        setImages(prev => prev.map(img => ({
+          ...img,
+          is_default: img.id === imageId
+        })));
+        alert('默认图像设置成功');
+      } else {
+        throw new Error(response.error || '设置默认图像失败');
+      }
     } catch (error) {
       console.error('设置默认图像失败:', error);
-      alert('设置默认图像失败');
+      alert('设置默认图像失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
+  const handleCreateTask = async () => {
+    try {
+      const selectedModel = availableModels.find(m => m.model_id === generateForm.model);
+      
+      const taskData = {
+        title: `${virtualIP?.name} - ${generateForm.category} 图像生成`,
+        prompt: `为虚拟IP "${virtualIP?.name}" 生成${generateForm.category}图像，风格：${generateForm.style}，额外提示：${generateForm.additional_prompts}`,
+        platform: selectedModel?.provider === 'openai' ? 'gpt' : 
+                  selectedModel?.provider === 'keling' ? 'keling' : 'jimeng'
+      };
+
+      const response = await taskAPI.createTask(taskData);
+      
+      if (response.success) {
+        alert('任务创建成功！可以在任务管理页面查看进度。');
+        setShowGenerateForm(false);
+        // 可选择跳转到任务页面
+        if (confirm('是否要查看任务详情？')) {
+          router.push('/tasks');
+        }
+      } else {
+        throw new Error(response.error || '创建任务失败');
+      }
+    } catch (error) {
+      console.error('创建任务失败:', error);
+      alert('创建任务失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -208,13 +293,39 @@ export default function VirtualIPImagesPage() {
             <span>📁</span>
             上传图像
           </button>
+          <button
+            onClick={() => router.push('/tasks')}
+            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
+          >
+            <span>📋</span>
+            查看任务
+          </button>
         </div>
 
         {/* AI生成表单 */}
         {showGenerateForm && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4">🤖 AI图像生成</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  AI模型
+                </label>
+                <select
+                  value={generateForm.model}
+                  onChange={(e) => setGenerateForm(prev => ({ ...prev, model: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {availableModels.map(model => (
+                    <option key={model.model_id} value={model.model_id}>
+                      {model.name} ({model.provider})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {availableModels.find(m => m.model_id === generateForm.model)?.capabilities?.join(', ')}
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   生成风格
@@ -245,7 +356,7 @@ export default function VirtualIPImagesPage() {
                   <option value="emotion">表情</option>
                 </select>
               </div>
-              <div className="md:col-span-2">
+              <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   额外提示词（可选，用逗号分隔）
                 </label>
@@ -257,7 +368,7 @@ export default function VirtualIPImagesPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="md:col-span-2">
+              <div className="md:col-span-3">
                 <label className="flex items-center">
                   <input
                     type="checkbox"
@@ -269,13 +380,20 @@ export default function VirtualIPImagesPage() {
                 </label>
               </div>
             </div>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex gap-2 flex-wrap">
               <button
                 onClick={handleGenerateImage}
                 disabled={generating}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
-                {generating ? '生成中...' : '开始生成'}
+                {generating ? '生成中...' : '立即生成'}
+              </button>
+              <button
+                onClick={handleCreateTask}
+                disabled={generating}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                创建任务
               </button>
               <button
                 onClick={() => setShowGenerateForm(false)}
@@ -390,9 +508,22 @@ export default function VirtualIPImagesPage() {
             <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="relative">
                 <img
-                  src={image.file_path}
+                  src={(() => {
+                    if (image.oss_url) return image.oss_url;
+                    const fp = image.file_path || '';
+                    // 若为相对路径（如 /uploads/xxx.png），拼接后端域名
+                    return fp.startsWith('http') ? fp : `${API_BASE}${fp.startsWith('/') ? '' : '/'}${fp}`;
+                  })()}
                   alt={`${virtualIP.name} - ${image.category}`}
                   className="w-full h-48 object-cover"
+                  onError={(e) => {
+                    // 若首次加载失败，尝试另一种拼接方式作为保底
+                    const fp = image.file_path || '';
+                    const fallback = fp ? `${API_BASE}${fp.startsWith('/') ? '' : '/'}${fp}` : '';
+                    if (fallback && e.currentTarget.src !== fallback) {
+                      e.currentTarget.src = fallback;
+                    }
+                  }}
                 />
                 {image.is_default && (
                   <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs">

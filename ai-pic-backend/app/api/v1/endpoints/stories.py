@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from app.database import get_db
+from app.core.database import get_db
+from app.models.user import User
+from app.core.middleware import get_current_active_user
 from app.models.script import Story, StoryCharacter
 from app.models.virtual_ip import VirtualIP
 from app.schemas.script import (
@@ -9,14 +11,19 @@ from app.schemas.script import (
     StoryGenerationRequest, StoryCharacterResponse
 )
 from app.services.ai_service import ai_service
+from app.utils.story_parser import normalize_story_json_keys, extract_outline_from_text
+from app.prompts.manager import PromptManager
+from app.prompts.templates import PromptTemplate
 import json
+from app.core.database import SessionLocal
+from app.models.task import Task, TaskType, TaskStatus
 
 router = APIRouter()
 
 @router.post("/", response_model=StoryResponse)
 async def create_story(
     story: StoryCreate,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """创建故事"""
     # 创建故事记录
@@ -45,10 +52,10 @@ async def create_story(
     
     return StoryResponse.from_orm(db_story)
 
-@router.post("/generate", response_model=StoryResponse)
+@router.post("/generate")
 async def generate_story(
     request: StoryGenerationRequest,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """使用AI生成故事概要"""
     # 获取角色信息
@@ -67,6 +74,12 @@ async def generate_story(
         })
     
     # 调用AI服务生成故事概要
+    # 解析统一模型ID（provider:model）
+    prefer_provider = None
+    model_id = request.model
+    if model_id and ":" in model_id:
+        prefer_provider, model_id = model_id.split(":", 1)
+
     result = await ai_service.generate_story_outline(
         title=request.title,
         genre=request.genre,
@@ -79,18 +92,28 @@ async def generate_story(
         world_building=request.world_building,
         additional_requirements=request.additional_requirements,
         style_preferences=request.style_preferences,
-        content_restrictions=request.content_restrictions
+        content_restrictions=request.content_restrictions,
+        model=model_id,
+        temperature=request.temperature or 0.7,
+        prefer_provider=prefer_provider
     )
     
     if not result:
         raise HTTPException(status_code=500, detail="AI故事生成失败")
     
     # 解析AI生成的内容
+    # 优先使用AI层已校验的normalized结构
+    normalized = result.get("normalized") if isinstance(result, dict) else None
     try:
-        ai_content = json.loads(result["content"])
-    except json.JSONDecodeError:
-        # 如果不是JSON格式，作为文本处理
-        ai_content = {"synopsis": result["content"]}
+        if normalized:
+            raw = normalized
+        else:
+            raw = json.loads(result["content"])
+        ai_content = normalize_story_json_keys(raw)
+    except Exception:
+        # 如果不是JSON格式，尽力解析关键信息
+        extracted = extract_outline_from_text(result["content"])
+        ai_content = extracted
     
     # 创建故事记录
     story_data = {
@@ -114,9 +137,15 @@ async def generate_story(
             "character_ids": request.character_ids,
             "additional_requirements": request.additional_requirements,
             "style_preferences": request.style_preferences,
-            "content_restrictions": request.content_restrictions
+            "content_restrictions": request.content_restrictions,
+            "model": request.model,
+            "temperature": request.temperature or 0.7
         },
         "tags": request.tags,
+        "extra_metadata": {
+            k: v for k, v in (ai_content.items() if isinstance(ai_content, dict) else {}).items()
+            if k not in {"premise", "synopsis", "main_conflict", "resolution", "main_characters", "character_relationships"}
+        },
         "status": "draft"
     }
     
@@ -138,15 +167,186 @@ async def generate_story(
     db.commit()
     db.refresh(db_story)
     
-    return StoryResponse.from_orm(db_story)
+    return {
+        "success": True,
+        "data": StoryResponse.from_orm(db_story)
+    }
 
-@router.get("/", response_model=List[StoryResponse])
+@router.post("/prompt/preview")
+async def preview_story_prompt(
+    request: StoryGenerationRequest,
+):
+    """返回根据请求生成的最终提示词（不调用模型）"""
+    # 构造用于模板的角色结构
+    characters = []
+    # 仅包含ID，不查库提升性能；前端仅用于预览结构，实际查库在生成接口
+    for char_id in request.character_ids:
+        characters.append({"id": char_id, "name": f"角色#{char_id}", "description": ""})
+
+    variables = {
+        "title": request.title,
+        "genre": request.genre,
+        "characters": characters,
+        "theme": request.theme,
+        "target_audience": request.target_audience,
+        "duration_minutes": request.duration_minutes,
+        "setting_time": request.setting_time,
+        "setting_location": request.setting_location,
+        "world_building": request.world_building,
+        "additional_requirements": request.additional_requirements,
+        "style_preferences": request.style_preferences or [],
+        "content_restrictions": request.content_restrictions or []
+    }
+    prompt = PromptManager().render_prompt(PromptTemplate.STORY_OUTLINE.value, variables)
+    return {"success": True, "data": {"prompt": prompt}}
+
+def _process_story_generation_task(task_id: int, request_dict: dict, user_id: int):
+    """后台处理故事生成任务（同步函数供BackgroundTasks调用）"""
+    db = SessionLocal()
+    try:
+        # 更新任务为 processing
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+
+        # 补充角色详细信息
+        characters = []
+        for char_id in request_dict.get("character_ids", []):
+            vip = db.query(VirtualIP).filter(VirtualIP.id == char_id).first()
+            if vip:
+                characters.append({
+                    "id": vip.id,
+                    "name": vip.name,
+                    "description": vip.description,
+                    "background_story": vip.background_story,
+                    "style_prompt": vip.style_prompt
+                })
+
+        import anyio
+        # 调用AI服务（需要运行异步函数）
+        async def _run():
+            prefer_provider = None
+            model_id = request_dict.get("model")
+            if model_id and ":" in model_id:
+                prefer_provider, model_id = model_id.split(":", 1)
+            return await ai_service.generate_story_outline(
+                title=request_dict.get("title"),
+                genre=request_dict.get("genre"),
+                characters=characters,
+                theme=request_dict.get("theme"),
+                target_audience=request_dict.get("target_audience"),
+                duration_minutes=request_dict.get("duration_minutes"),
+                setting_time=request_dict.get("setting_time"),
+                setting_location=request_dict.get("setting_location"),
+                world_building=request_dict.get("world_building"),
+                additional_requirements=request_dict.get("additional_requirements"),
+                style_preferences=request_dict.get("style_preferences"),
+                content_restrictions=request_dict.get("content_restrictions"),
+                model=model_id,
+                temperature=request_dict.get("temperature", 0.7),
+                prefer_provider=prefer_provider
+            )
+
+        result = anyio.run(_run)
+        if not result:
+            raise RuntimeError("AI故事生成失败")
+
+        # 解析内容并创建故事
+        try:
+            ai_content = json.loads(result["content"])
+        except Exception:
+            ai_content = {"synopsis": result.get("content")}
+
+        story_data = {
+            "title": request_dict.get("title"),
+            "genre": request_dict.get("genre"),
+            "theme": request_dict.get("theme"),
+            "target_audience": request_dict.get("target_audience"),
+            "duration_minutes": request_dict.get("duration_minutes"),
+            "setting_time": request_dict.get("setting_time"),
+            "setting_location": request_dict.get("setting_location"),
+            "world_building": request_dict.get("world_building"),
+            "premise": ai_content.get("premise"),
+            "synopsis": ai_content.get("synopsis"),
+            "main_conflict": ai_content.get("main_conflict"),
+            "resolution": ai_content.get("resolution"),
+            "main_characters": ai_content.get("main_characters"),
+            "character_relationships": ai_content.get("character_relationships"),
+            "generation_prompt": result.get("prompt"),
+            "ai_model": result.get("generation_method"),
+            "generation_params": {
+                **{k: request_dict.get(k) for k in [
+                    "character_ids","additional_requirements","style_preferences","content_restrictions","model","temperature"
+                ]}
+            },
+            "tags": request_dict.get("tags"),
+            "status": "draft"
+        }
+
+        story = Story(**story_data)
+        db.add(story)
+        db.commit()
+        db.refresh(story)
+
+        # 角色关联
+        for cid in request_dict.get("character_ids", []):
+            char = StoryCharacter(
+                story_id=story.id,
+                virtual_ip_id=cid,
+                role_type="protagonist" if cid == request_dict.get("character_ids", [cid])[0] else "supporting",
+                importance=5 if cid == request_dict.get("character_ids", [cid])[0] else 3
+            )
+            db.add(char)
+        db.commit()
+
+        # 完成任务
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.COMPLETED
+            task.result_file_path = f"story:{story.id}"
+            db.commit()
+    except Exception as e:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            db.commit()
+    finally:
+        db.close()
+
+@router.post("/generate-async")
+async def generate_story_async(
+    request: StoryGenerationRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+):
+    """异步生成故事：创建任务并在后台生成"""
+    # 创建任务
+    task = Task(
+        title=f"生成故事 - {request.title}",
+        description="异步故事生成",
+        task_type=TaskType.IMAGE_GENERATION,
+        prompt=f"Story outline: {request.title}",
+        parameters=json.dumps(request.dict()),
+        user_id=current_user.id
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    # 后台处理
+    background_tasks.add_task(_process_story_generation_task, task.id, request.dict(), current_user.id)
+
+    return {"success": True, "data": {"task_id": task.id, "status": task.status}}
+
+@router.get("/")
 async def get_stories(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     genre: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """获取故事列表"""
     query = db.query(Story)
@@ -158,25 +358,31 @@ async def get_stories(
         query = query.filter(Story.status == status)
     
     stories = query.offset(skip).limit(limit).all()
-    return [StoryResponse.from_orm(story) for story in stories]
+    return {
+        "success": True,
+        "data": [StoryResponse.from_orm(story) for story in stories]
+    }
 
-@router.get("/{story_id}", response_model=StoryResponse)
+@router.get("/{story_id}")
 async def get_story(
     story_id: int,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """获取故事详情"""
     story = db.query(Story).filter(Story.id == story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
     
-    return StoryResponse.from_orm(story)
+    return {
+        "success": True,
+        "data": StoryResponse.from_orm(story)
+    }
 
 @router.put("/{story_id}", response_model=StoryResponse)
 async def update_story(
     story_id: int,
     story_update: StoryUpdate,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """更新故事"""
     story = db.query(Story).filter(Story.id == story_id).first()
@@ -195,7 +401,7 @@ async def update_story(
 @router.delete("/{story_id}")
 async def delete_story(
     story_id: int,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """删除故事"""
     story = db.query(Story).filter(Story.id == story_id).first()
@@ -210,7 +416,7 @@ async def delete_story(
 @router.get("/{story_id}/characters", response_model=List[StoryCharacterResponse])
 async def get_story_characters(
     story_id: int,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """获取故事角色列表"""
     story = db.query(Story).filter(Story.id == story_id).first()

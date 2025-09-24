@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from alembic import command
 from alembic.config import Config
 from app.core.database import Base
-from app.core.test_config import test_settings
+from tests.unit.test_config import test_settings
 
 
 class TestDatabase:

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { episodeAPI, scriptAPI } from '@/utils/api';
+import { episodeAPI, scriptAPI, aiAPI } from '@/utils/api';
 import { Episode, Script, ScriptGenerationRequest } from '@/utils/api';
 
 export default function EpisodeDetailPage() {
@@ -15,6 +15,9 @@ export default function EpisodeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
+  const [useAsync, setUseAsync] = useState(true);
+  const [models, setModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([])
+  const [promptPreview, setPromptPreview] = useState('')
 
   // 剧本生成表单状态
   const [generateForm, setGenerateForm] = useState<ScriptGenerationRequest>({
@@ -34,6 +37,13 @@ export default function EpisodeDetailPage() {
     loadData();
     loadOptions();
   }, [episodeId]);
+
+  useEffect(() => {
+    (async () => {
+      const res = await aiAPI.getAvailableModels({ type: 'text' })
+      if (res.success && res.data) setModels((res.data as any).models || [])
+    })()
+  }, [])
 
   const loadData = async () => {
     try {
@@ -78,14 +88,22 @@ export default function EpisodeDetailPage() {
   const handleGenerateScript = async () => {
     try {
       setGenerating(true);
-      const response = await scriptAPI.generateScript(generateForm);
-      
-      if (response.success && response.data) {
-        setScripts(prev => [response.data!, ...prev]);
-        setShowGenerateForm(false);
-        alert('剧本生成成功！');
+      if (useAsync) {
+        const response = await scriptAPI.generateScriptAsync(generateForm as any)
+        if (response.success) {
+          alert('已创建任务，请稍后在任务页查看进度');
+        } else {
+          alert('剧本生成失败：' + (response.error || '未知错误'));
+        }
       } else {
-        alert('剧本生成失败：' + (response.error || '未知错误'));
+        const response = await scriptAPI.generateScript(generateForm);
+        if (response.success && response.data) {
+          setScripts(prev => [response.data!, ...prev]);
+          setShowGenerateForm(false);
+          alert('剧本生成成功！');
+        } else {
+          alert('剧本生成失败：' + (response.error || '未知错误'));
+        }
       }
     } catch (error) {
       console.error('剧本生成失败:', error);
@@ -172,18 +190,24 @@ export default function EpisodeDetailPage() {
                 {episode.duration_minutes}分钟 • {episode.scene_count}个场景
               </p>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => router.push(`/stories/${episode.story_id}`)}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-              >
-                返回故事
-              </button>
-              <button
-                onClick={() => setShowGenerateForm(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-              >
-                生成剧本
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push(`/stories/${episode.story_id}`)}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+            >
+              返回故事
+            </button>
+            <button
+              onClick={() => router.push(`/episodes/${episodeId}/storyboard`)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+            >
+              分镜管理
+            </button>
+            <button
+              onClick={() => setShowGenerateForm(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            >
+              生成剧本
               </button>
             </div>
           </div>
@@ -199,17 +223,26 @@ export default function EpisodeDetailPage() {
               <p className="text-gray-600 mb-4">{episode.summary || '暂无概要'}</p>
               
               <h3 className="font-medium text-gray-900 mb-2">主要情节点</h3>
-              <div className="space-y-2">
-                {episode.plot_points && episode.plot_points.length > 0 ? (
-                  episode.plot_points.map((point, index) => (
-                    <div key={index} className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                      {typeof point === 'string' ? point : JSON.stringify(point)}
+              {episode.plot_points && episode.plot_points.length > 0 ? (
+                <div className="space-y-2">
+                  {episode.plot_points.map((p: any, idx: number) => (
+                    <div key={idx} className="bg-gray-50 p-3 rounded">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-900">{p.description || (typeof p === 'string' ? p : `情节点 ${idx+1}`)}</div>
+                        {p.timing && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">{p.timing}</span>}
+                      </div>
+                      {(p.purpose || p.escalation) && (
+                        <div className="mt-1 text-xs text-gray-600">
+                          {p.purpose && <div>目的：{p.purpose}</div>}
+                          {p.escalation && <div>升级：{p.escalation}</div>}
+                        </div>
+                      )}
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">暂无情节点</p>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">暂无情节点</p>
+              )}
             </div>
             
             <div>
@@ -227,17 +260,25 @@ export default function EpisodeDetailPage() {
               </div>
               
               <h3 className="font-medium text-gray-900 mb-2">冲突设置</h3>
-              <div className="space-y-2">
-                {episode.conflicts && episode.conflicts.length > 0 ? (
-                  episode.conflicts.map((conflict, index) => (
-                    <div key={index} className="text-sm text-gray-600 bg-red-50 p-2 rounded">
-                      {typeof conflict === 'string' ? conflict : JSON.stringify(conflict)}
+              {episode.conflicts && episode.conflicts.length > 0 ? (
+                <div className="space-y-2">
+                  {episode.conflicts.map((c: any, idx: number) => (
+                    <div key={idx} className="bg-red-50 p-3 rounded text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-red-900">{c.description || (typeof c === 'string' ? c : `冲突 ${idx+1}`)}</span>
+                        {c.intensity && (
+                          <span className={`text-xs px-2 py-0.5 rounded ${c.intensity==='high'?'bg-red-200 text-red-800':c.intensity==='medium'?'bg-yellow-200 text-yellow-800':'bg-gray-200 text-gray-800'}`}>{c.intensity}</span>
+                        )}
+                      </div>
+                      {c.parties && Array.isArray(c.parties) && c.parties.length>0 && (
+                        <div className="mt-1 text-xs text-gray-700">涉及：{c.parties.join(' vs ')}</div>
+                      )}
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">暂无冲突设置</p>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">暂无冲突设置</p>
+              )}
             </div>
           </div>
         </div>
@@ -247,7 +288,7 @@ export default function EpisodeDetailPage() {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4">📝 生成剧本</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   剧本格式
@@ -311,20 +352,53 @@ export default function EpisodeDetailPage() {
                   <option value="detailed">详细</option>
                 </select>
               </div>
-            </div>
+              </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                额外要求
-              </label>
-              <textarea
-                value={generateForm.additional_requirements}
-                onChange={(e) => setGenerateForm(prev => ({ ...prev, additional_requirements: e.target.value }))}
-                placeholder="对剧本生成的特殊要求"
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  额外要求
+                </label>
+                <textarea
+                  value={generateForm.additional_requirements}
+                  onChange={(e) => setGenerateForm(prev => ({ ...prev, additional_requirements: e.target.value }))}
+                  placeholder="对剧本生成的特殊要求"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* 模型与温度 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">模型</label>
+                  <select value={(generateForm as any).model || ''} onChange={e => setGenerateForm(prev => ({ ...prev, model: e.target.value }))} className="w-full px-3 py-2 border rounded">
+                    <option value="">Auto（推荐）</option>
+                    {models.map(m => (
+                      <option key={m.model_id} value={m.model_id}>{m.name || m.id} — {m.provider}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">温度（{((generateForm as any).temperature ?? 0.7).toFixed(1)}）</label>
+                  <input type="range" min={0} max={1.5} step={0.1} value={(generateForm as any).temperature ?? 0.7} onChange={e => setGenerateForm(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))} className="w-full" />
+                </div>
+                <div className="flex items-end">
+                  <label className="text-sm text-gray-700 flex items-center gap-2"><input type="checkbox" checked={useAsync} onChange={e => setUseAsync(e.target.checked)} /> 异步任务</label>
+                </div>
+              </div>
+
+              {/* 提示词预览 */}
+              <div className="mb-2">
+                <button type="button" onClick={async () => {
+                  setPromptPreview('加载中...')
+                  const res = await (scriptAPI as any).previewScriptPrompt(generateForm as any)
+                  if (res.success && res.data) setPromptPreview((res.data as any).prompt)
+                  else setPromptPreview('生成提示词失败')
+                }} className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">提示词预览</button>
+              </div>
+              {promptPreview && (
+                <div className="mt-2 bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">{promptPreview}</div>
+              )}
 
             <div className="flex gap-2">
               <button

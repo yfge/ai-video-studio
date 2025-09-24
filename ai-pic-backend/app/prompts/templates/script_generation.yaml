@@ -1,0 +1,107 @@
+name: script_generation
+description: "剧本生成提示词模板"
+category: script
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-08-15"
+updated_at: "2025-08-15"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息对象"
+  
+  episode:
+    type: dict
+    required: true
+    description: "剧集信息对象"
+  
+  format_type:
+    type: string
+    required: true
+    description: "剧本格式类型"
+    default: "screenplay"
+    enum: ["screenplay", "teleplay", "stage", "audio", "animation"]
+  
+  language:
+    type: string
+    required: false
+    description: "剧本语言"
+    default: "zh-CN"
+    enum: ["zh-CN", "en-US", "ja-JP", "ko-KR"]
+  
+  dialogue_style:
+    type: string
+    required: false
+    description: "对话风格"
+    default: "natural"
+    enum: ["natural", "formal", "casual", "dramatic", "comedic"]
+  
+  scene_detail_level:
+    type: string
+    required: false
+    description: "场景描述详细程度"
+    default: "medium"
+    enum: ["minimal", "medium", "detailed", "cinematic"]
+  
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外要求"
+    max_length: 1000
+  
+  style_preferences:
+    type: list
+    required: false
+    description: "风格偏好列表"
+
+format_specifications:
+  screenplay:
+    structure: "电影剧本格式"
+    scene_header: "INT./EXT. 地点 - 时间"
+    character_name: "角色名（居中大写）"
+    dialogue: "对话内容"
+    action: "动作描述（现在时）"
+  
+  teleplay:
+    structure: "电视剧本格式"
+    scene_header: "场景 地点 时间"
+    character_name: "角色名："
+    dialogue: "对话内容"
+    action: "【动作描述】"
+  
+  stage:
+    structure: "舞台剧本格式"
+    scene_header: "第X场"
+    character_name: "角色名："
+    dialogue: "对话内容"
+    action: "（舞台指示）"
+
+dialogue_guidelines:
+  natural: "日常化、生活化的对话"
+  formal: "正式、规范的表达"
+  casual: "轻松、随意的语调"
+  dramatic: "富有张力和戏剧性"
+  comedic: "幽默、诙谐的风格"
+
+scene_detail_guidelines:
+  minimal: "简洁的场景描述，仅关键信息"
+  medium: "适度详细，包含必要的视觉信息"
+  detailed: "详细的场景描述，包含氛围和细节"
+  cinematic: "电影级别的视觉描述，包含镜头语言"
+
+output_format: "JSON"
+expected_fields:
+  - content
+  - scenes
+  - dialogues
+  - stage_directions
+  - metadata
+
+quality_requirements:
+  - "角色对话符合人物性格"
+  - "场景转换自然流畅"
+  - "情节推进逻辑清晰"
+  - "时长控制准确"
+  - "格式规范标准"

@@ -12,6 +12,7 @@ class VirtualIP(Base):
     description = Column(Text, nullable=True)
     tags = Column(JSON, nullable=True)  # 存储标签列表
     background_story = Column(Text, nullable=True)
+    biography = Column(Text, nullable=True)  # 人物小传
     
     # 风格设定
     style_prompt = Column(Text, nullable=True)  # 风格描述，用于AI生成
@@ -40,6 +41,7 @@ class VirtualIPImage(Base):
     filename = Column(String(128), nullable=False)
     original_filename = Column(String(128), nullable=False)
     file_path = Column(String(256), nullable=False)
+    oss_url = Column(String(512), nullable=True)  # OSS存储URL
     file_size = Column(Integer, nullable=False)
     mime_type = Column(String(64), nullable=False)
     

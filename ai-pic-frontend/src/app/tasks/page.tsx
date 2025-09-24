@@ -1,19 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-
-// 任务类型扩展
-interface Task {
-  id: string
-  title: string
-  prompt: string
-  platform: 'gpt' | 'keling' | 'jimeng'
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  createdAt: string
-  completedAt?: string
-  imageUrl?: string
-}
+import { taskAPI, type Task as APITask } from '@/utils/api'
 
 // 新建任务表单类型扩展
 interface NewTaskForm {
@@ -57,34 +46,33 @@ interface GalleryImageItem {
 }
 
 export default function Tasks() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: '风景画生成',
-      prompt: '美丽的山水风景画，夕阳西下，山峰倒影在湖水中',
-      platform: 'gpt',
-      status: 'completed',
-      createdAt: '2024-01-15 10:30',
-      completedAt: '2024-01-15 10:35',
-      imageUrl: 'https://via.placeholder.com/300x300/4F46E5/FFFFFF?text=风景画'
-    },
-    {
-      id: '2',
-      title: '人物肖像',
-      prompt: '现代风格的女性肖像画，优雅的气质，柔和的色调',
-      platform: 'keling',
-      status: 'processing',
-      createdAt: '2024-01-15 11:00'
-    },
-    {
-      id: '3',
-      title: '科幻场景',
-      prompt: '未来城市夜景，霓虹灯闪烁，飞行汽车穿梭',
-      platform: 'jimeng',
-      status: 'pending',
-      createdAt: '2024-01-15 11:15'
+  const [tasks, setTasks] = useState<APITask[]>([])
+  const [loading, setLoading] = useState(true)
+  const [poll, setPoll] = useState(true)
+
+  const loadTasks = async () => {
+    try {
+      const res = await taskAPI.getTasks()
+      if (res.success && res.data) {
+        // @ts-ignore
+        setTasks((res.data as any).tasks || [])
+      }
+    } catch (e) {
+      // noop
+    } finally {
+      setLoading(false)
     }
-  ])
+  }
+
+  useEffect(() => {
+    loadTasks()
+  }, [])
+
+  useEffect(() => {
+    if (!poll) return
+    const t = setInterval(loadTasks, 5000)
+    return () => clearInterval(t)
+  }, [poll])
 
   // 新建任务表单状态
   const [newTask, setNewTask] = useState<NewTaskForm>({
@@ -180,7 +168,7 @@ export default function Tasks() {
     setNewTask({ title: '', prompt: '', platform: [], personImages: [], sceneImages: [], styleImages: [], count: 1 });
   };
 
-  const getStatusColor = (status: Task['status']) => {
+  const getStatusColor = (status: APITask['status']) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800'
       case 'processing': return 'bg-blue-100 text-blue-800'
@@ -190,7 +178,7 @@ export default function Tasks() {
     }
   }
 
-  const getStatusText = (status: Task['status']) => {
+  const getStatusText = (status: APITask['status']) => {
     switch (status) {
       case 'pending': return '等待中'
       case 'processing': return '生成中'
@@ -200,12 +188,23 @@ export default function Tasks() {
     }
   }
 
-  const getPlatformText = (platform: Task['platform']) => {
-    switch (platform) {
-      case 'gpt': return 'GPT'
-      case 'keling': return '可灵'
-      case 'jimeng': return '即梦'
-      default: return '未知'
+  const handleStart = async (id: number) => {
+    const res = await taskAPI.startTask(id)
+    if (res.success) {
+      await loadTasks()
+      alert('任务已开始执行')
+    } else {
+      alert(res.error || '启动任务失败')
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('确定删除该任务吗？')) return
+    const res = await taskAPI.deleteTask(String(id))
+    if (res.success) {
+      setTasks(prev => prev.filter(t => t.id !== id))
+    } else {
+      alert(res.error || '删除任务失败')
     }
   }
 
@@ -231,12 +230,10 @@ export default function Tasks() {
               </nav>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500">欢迎，用户</span>
-              <button className="text-gray-500 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
+              <label className="text-sm text-gray-600 flex items-center gap-2">
+                <input type="checkbox" checked={poll} onChange={e => setPoll(e.target.checked)} /> 自动刷新
+              </label>
+              <button onClick={loadTasks} className="text-sm text-blue-600 hover:text-blue-800">刷新</button>
             </div>
           </div>
         </div>
@@ -600,14 +597,12 @@ export default function Tasks() {
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
                           {getStatusText(task.status)}
                         </span>
-                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                          {getPlatformText(task.platform)}
-                        </span>
+                        {/* 平台标签移除：后端任务未提供平台字段 */}
                       </div>
-                      <p className="text-gray-600 mb-3">{task.prompt}</p>
+                      {task.prompt && <p className="text-gray-600 mb-3">{task.prompt}</p>}
                       <div className="flex items-center space-x-6 text-sm text-gray-500">
-                        <span>创建时间: {task.createdAt}</span>
-                        {task.completedAt && <span>完成时间: {task.completedAt}</span>}
+                        <span>创建时间：{new Date(task.created_at).toLocaleString()}</span>
+                        {task.updated_at && <span>更新时间：{new Date(task.updated_at).toLocaleString()}</span>}
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -627,11 +622,10 @@ export default function Tasks() {
                           <span className="text-blue-600">生成中...</span>
                         </div>
                       )}
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                        </svg>
-                      </button>
+                      {task.status === 'pending' && (
+                        <button onClick={() => handleStart(task.id)} className="text-blue-600 hover:text-blue-800 text-sm">开始</button>
+                      )}
+                      <button onClick={() => handleDelete(task.id)} className="text-red-600 hover:text-red-800 text-sm">删除</button>
                     </div>
                   </div>
                 </div>

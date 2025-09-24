@@ -6,15 +6,41 @@ from app.core.database import get_db
 from app.models.user import User
 from app.models.task import Task, TaskStatus, TaskType
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskList
-from app.api.v1.endpoints.auth import get_current_user
+import json
+from app.core.middleware import get_current_active_user
 
 router = APIRouter()
+
+
+def _serialize_task(task: Task) -> TaskResponse:
+    """将ORM任务对象序列化为响应模型，解析parameters为dict"""
+    params = None
+    if task.parameters:
+        try:
+            params = json.loads(task.parameters)
+        except Exception:
+            params = None
+
+    return TaskResponse(
+        id=task.id,
+        title=task.title,
+        description=task.description,
+        task_type=task.task_type,
+        prompt=task.prompt,
+        parameters=params,
+        status=task.status,
+        result_file_path=task.result_file_path,
+        error_message=task.error_message,
+        user_id=task.user_id,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+    )
 
 @router.post("/", response_model=TaskResponse)
 def create_task(
     task_data: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """创建新任务"""
     # 将参数转换为JSON字符串
@@ -35,7 +61,7 @@ def create_task(
     db.commit()
     db.refresh(db_task)
     
-    return db_task
+    return _serialize_task(db_task)
 
 @router.get("/", response_model=TaskList)
 def get_tasks(
@@ -44,7 +70,7 @@ def get_tasks(
     status_filter: TaskStatus = None,
     task_type: TaskType = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """获取用户的任务列表"""
     query = db.query(Task).filter(Task.user_id == current_user.id)
@@ -59,7 +85,7 @@ def get_tasks(
     tasks = query.offset(skip).limit(limit).all()
     
     return TaskList(
-        tasks=tasks,
+        tasks=[_serialize_task(t) for t in tasks],
         total=total,
         page=skip // limit + 1,
         size=limit
@@ -69,7 +95,7 @@ def get_tasks(
 def get_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """获取特定任务信息"""
     task = db.query(Task).filter(
@@ -83,14 +109,14 @@ def get_task(
             detail="任务不存在"
         )
     
-    return task
+    return _serialize_task(task)
 
 @router.put("/{task_id}", response_model=TaskResponse)
 def update_task(
     task_id: int,
     task_data: TaskUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """更新任务信息"""
     task = db.query(Task).filter(
@@ -123,7 +149,7 @@ def update_task(
 def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """删除任务"""
     task = db.query(Task).filter(
@@ -146,7 +172,7 @@ def delete_task(
 def start_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """开始执行任务"""
     task = db.query(Task).filter(
