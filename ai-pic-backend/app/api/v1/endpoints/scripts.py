@@ -245,6 +245,27 @@ def _build_story_data(
     }
 
 
+def _unwrap_json_block(content: Optional[str]) -> str:
+    """去除被```json ```等Markdown代码块包裹的JSON文本。"""
+    if not content:
+        return ""
+
+    text = content.strip()
+    if text.startswith("```"):
+        text = text[3:]
+        newline = text.find("\n")
+        if newline != -1:
+            language = text[:newline].strip()
+            # 常见语言标签直接跳过
+            if language:
+                text = text[newline + 1 :]
+            else:
+                text = text[newline + 1 :]
+        text = text.rstrip("`")
+
+    return text.strip()
+
+
 def _merge_frames(
     existing_frames: List[Dict[str, Any]],
     new_frames: List[Dict[str, Any]],
@@ -385,6 +406,31 @@ def _compose_fallback_text(
 
 router = APIRouter()
 
+
+@router.get("/formats")
+async def get_script_formats():
+    """获取剧本格式列表"""
+    return [
+        {"value": "screenplay", "label": "影视剧本"},
+        {"value": "stage_play", "label": "舞台剧本"},
+        {"value": "radio_drama", "label": "广播剧本"},
+        {"value": "short_video", "label": "短视频脚本"},
+        {"value": "live_stream", "label": "直播脚本"},
+        {"value": "animation", "label": "动画脚本"},
+    ]
+
+
+@router.get("/languages")
+async def get_script_languages():
+    """获取剧本语言列表"""
+    return [
+        {"value": "zh-CN", "label": "简体中文"},
+        {"value": "zh-TW", "label": "繁体中文"},
+        {"value": "en-US", "label": "英语"},
+        {"value": "ja-JP", "label": "日语"},
+        {"value": "ko-KR", "label": "韩语"},
+    ]
+
 @router.post("/", response_model=ScriptResponse)
 async def create_script(
     script: ScriptCreate,
@@ -465,18 +511,23 @@ async def generate_script(
         raise HTTPException(status_code=500, detail="AI剧本生成失败")
     
     # 解析AI生成的内容
-    try:
-        ai_content = json.loads(result["content"])
-    except json.JSONDecodeError:
-        # 如果不是JSON格式，尝试从纯文本中抽取结构化信息
-        extracted = extract_script_structure(result["content"])
-        ai_content = {
-            "content": extracted.get("content", result["content"]),
-            "scenes": extracted.get("scenes", []),
-            "dialogues": extracted.get("dialogues", []),
-            "stage_directions": extracted.get("stage_directions", []),
-            "metadata": extracted.get("metadata", {})
-        }
+    raw_content = result.get("content")
+    if isinstance(raw_content, dict):
+        ai_content = raw_content
+    else:
+        normalized_text = _unwrap_json_block(raw_content)
+        try:
+            ai_content = json.loads(normalized_text)
+        except (json.JSONDecodeError, TypeError):
+            source_text = normalized_text if normalized_text else (raw_content or "")
+            extracted = extract_script_structure(source_text)
+            ai_content = {
+                "content": extracted.get("content", source_text),
+                "scenes": extracted.get("scenes", []),
+                "dialogues": extracted.get("dialogues", []),
+                "stage_directions": extracted.get("stage_directions", []),
+                "metadata": extracted.get("metadata", {}),
+            }
     
     # 提取剧本内容
     script_content = ai_content.get("content", "")
@@ -613,10 +664,23 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if not result:
             raise RuntimeError("AI剧本生成失败")
 
-        try:
-            ai_content = _json.loads(result["content"]) if isinstance(result["content"], str) else result["content"]
-        except Exception:
-            ai_content = {"content": result.get("content")}
+        raw_content = result.get("content")
+        if isinstance(raw_content, dict):
+            ai_content = raw_content
+        else:
+            normalized_text = _unwrap_json_block(raw_content)
+            try:
+                ai_content = _json.loads(normalized_text)
+            except Exception:
+                source_text = normalized_text if normalized_text else (raw_content or "")
+                extracted = extract_script_structure(source_text)
+                ai_content = {
+                    "content": extracted.get("content", source_text),
+                    "scenes": extracted.get("scenes", []),
+                    "dialogues": extracted.get("dialogues", []),
+                    "stage_directions": extracted.get("stage_directions", []),
+                    "metadata": extracted.get("metadata", {}),
+                }
 
         script_content = ai_content.get("content", "")
         scenes = ai_content.get("scenes", [])
@@ -842,7 +906,12 @@ async def generate_storyboard(
 
     if reasoner_result and reasoner_result.get("content"):
         try:
-            reasoned_payload = json.loads(reasoner_result["content"]) if isinstance(reasoner_result["content"], str) else reasoner_result["content"]
+            reasoned_raw = reasoner_result.get("content")
+            if isinstance(reasoned_raw, dict):
+                reasoned_payload = reasoned_raw
+            else:
+                normalized_text = _unwrap_json_block(reasoned_raw)
+                reasoned_payload = json.loads(normalized_text)
             StoryboardModel.model_validate(reasoned_payload)
             frames_generated = reasoned_payload.get("frames") or []
             provider_used = reasoner_result.get("provider_used") or prefer_provider
@@ -921,7 +990,12 @@ async def generate_storyboard(
             except Exception:
                 pass
             try:
-                sb_raw = json.loads(result["content"]) if isinstance(result.get("content"), str) else result.get("content")
+                sb_raw = result.get("content")
+                if isinstance(sb_raw, dict):
+                    pass
+                else:
+                    normalized_text = _unwrap_json_block(sb_raw)
+                    sb_raw = json.loads(normalized_text)
             except Exception as exc:
                 logger.warning(f"StoryboardGen JSON parse failed: {exc}")
                 sb_raw = None
@@ -1598,17 +1672,22 @@ async def regenerate_script(
         raise HTTPException(status_code=500, detail="AI剧本重新生成失败")
     
     # 解析AI生成的内容
-    try:
-        ai_content = json.loads(result["content"])
-    except json.JSONDecodeError:
-        extracted = extract_script_structure(result["content"])
-        ai_content = {
-            "content": extracted.get("content", result["content"]),
-            "scenes": extracted.get("scenes", []),
-            "dialogues": extracted.get("dialogues", []),
-            "stage_directions": extracted.get("stage_directions", []),
-            "metadata": extracted.get("metadata", {})
-        }
+    raw_content = result.get("content")
+    if isinstance(raw_content, dict):
+        ai_content = raw_content
+    else:
+        normalized_text = _unwrap_json_block(raw_content)
+        try:
+            ai_content = json.loads(normalized_text)
+        except (json.JSONDecodeError, TypeError):
+            extracted = extract_script_structure(normalized_text if normalized_text else (raw_content or ""))
+            ai_content = {
+                "content": extracted.get("content", normalized_text if normalized_text else (raw_content or "")),
+                "scenes": extracted.get("scenes", []),
+                "dialogues": extracted.get("dialogues", []),
+                "stage_directions": extracted.get("stage_directions", []),
+                "metadata": extracted.get("metadata", {}),
+            }
     
     # 更新剧本内容
     script_content = ai_content.get("content", "")
@@ -1628,29 +1707,6 @@ async def regenerate_script(
     db.refresh(script)
     
     return ScriptResponse.from_orm(script)
-
-@router.get("/formats")
-async def get_script_formats():
-    """获取剧本格式列表"""
-    return [
-        {"value": "screenplay", "label": "影视剧本"},
-        {"value": "stage_play", "label": "舞台剧本"},
-        {"value": "radio_drama", "label": "广播剧本"},
-        {"value": "short_video", "label": "短视频脚本"},
-        {"value": "live_stream", "label": "直播脚本"},
-        {"value": "animation", "label": "动画脚本"}
-    ]
-
-@router.get("/languages")
-async def get_script_languages():
-    """获取剧本语言列表"""
-    return [
-        {"value": "zh-CN", "label": "简体中文"},
-        {"value": "zh-TW", "label": "繁体中文"},
-        {"value": "en-US", "label": "英语"},
-        {"value": "ja-JP", "label": "日语"},
-        {"value": "ko-KR", "label": "韩语"}
-    ]
 
 @router.post("/{script_id}/export")
 async def export_script(
