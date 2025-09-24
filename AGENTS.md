@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Commit Message Convention
+
+- Use Conventional Commit prefixes in lowercase, for example `fix:`, `feat:`, `chore:`.
+- Scope is optional; keep the summary concise and imperative (e.g. `fix: storyboard plan rendering`).
+
 ## Project Overview
 
 This is an AI-powered video production workflow platform centered around Virtual IPs (Virtual Intellectual Properties). The platform consists of two main components:
