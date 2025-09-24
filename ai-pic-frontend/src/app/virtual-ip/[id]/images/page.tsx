@@ -77,8 +77,9 @@ export default function VirtualIPImagesPage() {
       
       // 处理模型数据
       if (modelsResponse.success && modelsResponse.data) {
-        setAvailableModels(modelsResponse.data.models);
-        const defaultModelId = modelsResponse.data.default;
+        const models = modelsResponse.data.models || [] as AIModel[];
+        setAvailableModels(models);
+        const defaultModelId = modelsResponse.data.default || (models.length > 0 ? models[0].model_id : '');
         if (defaultModelId) {
           setDefaultModel(defaultModelId);
           setGenerateForm(prev => ({ ...prev, model: defaultModelId }));
