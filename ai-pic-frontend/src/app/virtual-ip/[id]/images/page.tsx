@@ -23,14 +23,15 @@ export default function VirtualIPImagesPage() {
   
   // 模型相关状态
   const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
-  const [defaultModel, setDefaultModel] = useState<string>('dalle-3');
+  const [defaultModel, setDefaultModel] = useState<string>('');
+  const [userPickedModel, setUserPickedModel] = useState<boolean>(false);
 
   // AI生成表单状态
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [generateForm, setGenerateForm] = useState<AIImageGenerationRequest>({
     style: 'realistic',
     category: 'portrait',
-    model: 'dalle-3',
+    model: '',
     additional_prompts: '',
     is_default: false
   });
@@ -77,12 +78,20 @@ export default function VirtualIPImagesPage() {
       
       // 处理模型数据
       if (modelsResponse.success && modelsResponse.data) {
-        const models = modelsResponse.data.models || [] as AIModel[];
+        const models = (modelsResponse.data.models || []) as AIModel[];
         setAvailableModels(models);
-        const defaultModelId = modelsResponse.data.default || (models.length > 0 ? models[0].model_id : '');
-        if (defaultModelId) {
-          setDefaultModel(defaultModelId);
-          setGenerateForm(prev => ({ ...prev, model: defaultModelId }));
+
+        // 优先选择可灵作为默认，其次后端提供的默认，否则第一个
+        const keling = models.find(m => m.provider === 'keling')?.model_id;
+        const backendDefault = (modelsResponse.data as any).default as string | undefined;
+        const first = models[0]?.model_id;
+        const nextDefault = keling || backendDefault || first || '';
+
+        if (nextDefault) {
+          setDefaultModel(nextDefault);
+          if (!userPickedModel) {
+            setGenerateForm(prev => ({ ...prev, model: nextDefault }));
+          }
         }
       }
     } catch (error) {
@@ -313,8 +322,8 @@ export default function VirtualIPImagesPage() {
                   AI模型
                 </label>
                 <select
-                  value={generateForm.model}
-                  onChange={(e) => setGenerateForm(prev => ({ ...prev, model: e.target.value }))}
+                  value={generateForm.model || defaultModel}
+                  onChange={(e) => { setUserPickedModel(true); setGenerateForm(prev => ({ ...prev, model: e.target.value })) }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {availableModels.map(model => (
@@ -324,7 +333,7 @@ export default function VirtualIPImagesPage() {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  {availableModels.find(m => m.model_id === generateForm.model)?.capabilities?.join(', ')}
+                  {availableModels.find(m => m.model_id === (generateForm.model || defaultModel))?.capabilities?.join(', ')}
                 </p>
               </div>
               <div>
