@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
 
 from app.schemas.generation import StoryboardModel, StoryboardPlanModel, StoryboardPlanScene
 from app.core.logging import get_logger
@@ -14,6 +14,40 @@ except ImportError:  # pragma: no cover - optional dependency
 
 if TYPE_CHECKING:
     from .ai_service import AIService
+
+
+SHOT_CYCLE = ["远景", "中景", "近景", "特写"]
+MOVEMENT_CYCLE = ["固定", "推", "拉", "摇", "移", "跟", "变焦"]
+COMPOSITION_CYCLE = ["三分法", "对称", "前后景", "对角线", "中心对称"]
+
+
+def _cycle_value(cycle: List[str], position: int) -> str:
+    if not cycle:
+        return ""
+    return cycle[position % len(cycle)]
+
+
+def _sanitize_outline(scene_number: int | None, index: int, outline: Dict[str, Any]) -> Tuple[Dict[str, Any], bool]:
+    changed = False
+    shot = outline.get("shot_type")
+    movement = outline.get("camera_movement")
+    composition = outline.get("composition")
+    if not shot:
+        shot = _cycle_value(SHOT_CYCLE, index + (scene_number or 0))
+        outline["shot_type"] = shot
+        changed = True
+    if not movement:
+        movement = _cycle_value(MOVEMENT_CYCLE, index)
+        outline["camera_movement"] = movement
+        changed = True
+    if not composition:
+        composition = _cycle_value(COMPOSITION_CYCLE, index)
+        outline["composition"] = composition
+        changed = True
+    if not outline.get("intent"):
+        outline["intent"] = f"强调{movement}镜头表现" if movement else "突出叙事节奏"
+        changed = True
+    return outline, changed
 
 
 class StoryboardReActReasoner:
@@ -49,43 +83,54 @@ class StoryboardReActReasoner:
                 temperature=min(0.35, temperature),
             )
             if not plan_resp or not plan_resp.get("normalized"):
-                return {"error": "plan_failed"}
+                return {"error": "plan_failed", "reasoning": state.get("reasoning", []) + ["plan_failed"]}
             try:
                 StoryboardPlanModel.model_validate(plan_resp["normalized"])
             except Exception as exc:  # pragma: no cover - schema guard
                 self.logger.warning(f"LangGraph plan validation failed: {exc}")
-                return {"error": "plan_invalid"}
+                return {"error": "plan_invalid", "reasoning": state.get("reasoning", []) + ["plan_invalid"]}
+            reasoning = state.get("reasoning", []) + ["plan_ready"]
             return {
                 "plan": plan_resp["normalized"],
                 "provider": plan_resp.get("provider_used"),
                 "model_used": plan_resp.get("model_used"),
-                "reasoning": state.get("reasoning", []) + ["plan_ready"],
+                "reasoning": reasoning,
             }
-
         def critique_node(state: Dict[str, Any]) -> Dict[str, Any]:
             plan = state.get("plan") or {}
-            duplicates: List[int] = []
+            fixes: List[str] = []
             for scene in plan.get("scenes", []):
+                outlines = scene.get("frames") or []
                 combos = set()
-                for frame in scene.get("frames", []):
-                    key = (
-                        frame.get("shot_type"),
-                        frame.get("camera_movement"),
-                        frame.get("intent"),
-                    )
+                scene_no = scene.get("scene_number")
+                for idx, frame in enumerate(outlines):
+                    frame, changed = _sanitize_outline(scene_no, idx, frame)
+                    key = (frame.get("shot_type"), frame.get("camera_movement"), frame.get("intent"))
                     if key in combos:
-                        duplicates.append(scene.get("scene_number"))
-                        break
+                        shot = _cycle_value(SHOT_CYCLE, idx + 1)
+                        move = _cycle_value(MOVEMENT_CYCLE, idx + 2)
+                        comp = _cycle_value(COMPOSITION_CYCLE, idx + 3)
+                        frame["shot_type"] = shot
+                        frame["camera_movement"] = move
+                        frame["composition"] = comp
+                        frame["intent"] = frame.get("intent") or f"镜头强调{move}"
+                        combos.add((shot, move, frame["intent"]))
+                        fixes.append(f"scene {scene_no} frame {idx} varied")
+                        continue
                     combos.add(key)
-            if duplicates:
-                self.logger.info(f"LangGraph critique: scenes {duplicates} contain repetitive outlines")
-            return {"reasoning": state.get("reasoning", []) + ["plan_reviewed"]}
+                    if changed:
+                        fixes.append(f"scene {scene_no} frame {idx} normalized")
+            if fixes:
+                self.logger.info("LangGraph critique applied: %s", "; ".join(fixes))
+            reasoning = state.get("reasoning", []) + ["plan_reviewed"]
+            return {"plan": plan, "reasoning": reasoning, "fixes": fixes}
 
         async def finalize_node(state: Dict[str, Any]) -> Dict[str, Any]:
             plan = state.get("plan") or {}
             frames_all: List[Dict[str, Any]] = []
             provider_used = state.get("provider")
             model_used = state.get("model_used")
+            per_scene_logs: List[str] = []
             for scene in plan.get("scenes", []):
                 try:
                     scene_plan = StoryboardPlanScene.model_validate(scene)
@@ -101,18 +146,25 @@ class StoryboardReActReasoner:
                 )
                 if frames_scene:
                     frames_all.extend(frames_scene)
+                    per_scene_logs.append(f"scene {scene_plan.scene_number}: {len(frames_scene)} frames")
             if not frames_all:
-                return {"frames": [], "reasoning": state.get("reasoning", []) + ["frames_empty"]}
+                reasoning = state.get("reasoning", []) + ["frames_empty"]
+                return {"frames": [], "reasoning": reasoning, "plan": plan}
             try:
                 StoryboardModel.model_validate({"frames": frames_all})
             except Exception as exc:  # pragma: no cover - schema guard
                 self.logger.warning(f"LangGraph storyboard validation failed: {exc}")
-                return {"frames": [], "error": "final_invalid"}
+                reasoning = state.get("reasoning", []) + ["frames_invalid"]
+                return {"frames": [], "error": "final_invalid", "reasoning": reasoning, "plan": plan}
+            if per_scene_logs:
+                self.logger.info("LangGraph finalize produced frames: %s", "; ".join(per_scene_logs))
+            reasoning = state.get("reasoning", []) + ["frames_ready"]
             return {
                 "frames": frames_all,
                 "provider": provider_used,
                 "model_used": model_used,
-                "reasoning": state.get("reasoning", []) + ["frames_ready"],
+                "reasoning": reasoning,
+                "plan": plan,
             }
 
         graph.add_node("plan", plan_node)
@@ -126,9 +178,9 @@ class StoryboardReActReasoner:
 
         app = graph.compile()
         result = await app.ainvoke({"reasoning": []})
-        frames = result.get("frames")
-        if not frames:
+        if result.get("error") or result.get("frames") is None:
             return None
+        frames = result.get("frames") or []
         content = json.dumps({"frames": frames}, ensure_ascii=False)
         return {
             "content": content,
@@ -137,6 +189,8 @@ class StoryboardReActReasoner:
             "model_used": result.get("model_used"),
             "usage": None,
             "reasoning_trace": result.get("reasoning"),
+            "plan": result.get("plan"),
+            "fixes": result.get("fixes"),
         }
 
 
