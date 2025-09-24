@@ -235,6 +235,8 @@ async def generate_virtual_ip_image(
     additional_prompts_value = payload.get("additional_prompts", additional_prompts) or ""
     is_default_value = payload.get("is_default", is_default)
     selected_model = (payload.get("model_id") or model_id or raw_model or "dalle-3").strip()
+    if not selected_model:
+        selected_model = "dalle-3"
 
     additional_prompt_list = [p.strip() for p in additional_prompts_value.split(",") if p.strip()]
 

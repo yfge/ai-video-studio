@@ -106,11 +106,15 @@ export default function VirtualIPImagesPage() {
     }
   };
 
-  const handleGenerateImage = async () => {
+ const handleGenerateImage = async () => {
     try {
       setGenerating(true);
-      const response = await virtualIPImageAPI.generateImage(virtualIPId, generateForm);
-      
+      const modelToUse = generateForm.model || defaultModel;
+      const response = await virtualIPImageAPI.generateImage(virtualIPId, {
+        ...generateForm,
+        model: modelToUse,
+      });
+
       if (response.success && response.data) {
         setImages(prev => [response.data, ...prev]);
         setShowGenerateForm(false);
