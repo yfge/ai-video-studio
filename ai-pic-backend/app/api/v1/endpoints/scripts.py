@@ -121,6 +121,130 @@ def _augment_frames(
     return augmented
 
 
+def _collect_previous_episode_summaries(
+    db: Session,
+    story_id: int,
+    current_episode_number: int,
+    limit: int = 3,
+) -> List[Dict[str, Any]]:
+    """收集前情提要信息，默认回溯最近几集。"""
+    if current_episode_number <= 1:
+        return []
+
+    previous_episodes = (
+        db.query(Episode)
+        .filter(
+            Episode.story_id == story_id,
+            Episode.episode_number < current_episode_number,
+        )
+        .order_by(Episode.episode_number.desc())
+        .limit(limit)
+        .all()
+    )
+
+    summaries: List[Dict[str, Any]] = []
+    for ep in reversed(previous_episodes):
+        summaries.append(
+            {
+                "episode_number": ep.episode_number,
+                "title": ep.title,
+                "summary": ep.summary or "",
+                "plot_points": ep.plot_points or [],
+                "conflicts": ep.conflicts or [],
+            }
+        )
+    return summaries
+
+
+def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
+    """汇总故事角色设定，为提示词提供丰富的角色介绍。"""
+
+    profiles: Dict[str, Dict[str, Any]] = {}
+
+    def _ensure_profile(name: str) -> Dict[str, Any]:
+        profile = profiles.setdefault(name, {"name": name})
+        return profile
+
+    main_chars = story.main_characters if isinstance(story.main_characters, list) else []
+    for raw in main_chars:
+        if isinstance(raw, dict):
+            name = raw.get("name") or raw.get("character_name") or raw.get("id")
+            if not name:
+                continue
+            profile = _ensure_profile(str(name))
+            profile.setdefault("role", raw.get("role") or raw.get("type") or raw.get("role_type"))
+            profile.setdefault("description", raw.get("description") or raw.get("summary"))
+            profile.setdefault("personality", raw.get("personality") or raw.get("traits"))
+            profile.setdefault("motivation", raw.get("motivation") or raw.get("goal"))
+            profile.setdefault("arc", raw.get("arc") or raw.get("character_arc"))
+        elif isinstance(raw, str):
+            profile = _ensure_profile(raw)
+            profile.setdefault("description", "主要角色")
+
+    story_characters = getattr(story, "story_characters", []) or []
+    for sc in story_characters:
+        name = getattr(sc, "character_name", None)
+        if not name and getattr(sc, "virtual_ip", None):
+            name = getattr(sc.virtual_ip, "name", None)
+        if not name:
+            continue
+        profile = _ensure_profile(str(name))
+        profile.setdefault("role", getattr(sc, "role_type", None))
+        profile.setdefault("description", getattr(sc, "background", None))
+        profile.setdefault("personality", getattr(sc, "personality", None))
+        profile.setdefault("motivation", getattr(sc, "motivation", None))
+        profile.setdefault("arc", getattr(sc, "character_arc", None))
+        relationships = getattr(sc, "relationships", None)
+        if relationships and not profile.get("relationships"):
+            profile["relationships"] = relationships
+        if getattr(sc, "virtual_ip", None):
+            vip_desc = getattr(sc.virtual_ip, "description", None)
+            if vip_desc and not profile.get("description"):
+                profile["description"] = vip_desc
+
+    cleaned_profiles: List[Dict[str, Any]] = []
+    for profile in profiles.values():
+        cleaned_profiles.append({k: v for k, v in profile.items() if v not in (None, "", [], {}, set())})
+
+    return cleaned_profiles
+
+
+def _build_episode_data(episode: Episode) -> Dict[str, Any]:
+    return {
+        "episode_number": episode.episode_number,
+        "title": episode.title,
+        "summary": episode.summary,
+        "plot_points": episode.plot_points,
+        "character_arcs": episode.character_arcs,
+        "conflicts": episode.conflicts,
+        "duration_minutes": episode.duration_minutes,
+        "scene_count": episode.scene_count,
+    }
+
+
+def _build_story_data(
+    story: Story,
+    *,
+    previous_episode_summaries: List[Dict[str, Any]],
+    character_profiles: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    return {
+        "title": story.title,
+        "genre": story.genre,
+        "theme": story.theme,
+        "synopsis": story.synopsis,
+        "main_conflict": story.main_conflict,
+        "resolution": story.resolution,
+        "main_characters": story.main_characters,
+        "character_relationships": story.character_relationships,
+        "world_building": story.world_building,
+        "setting_time": story.setting_time,
+        "setting_location": story.setting_location,
+        "previous_episode_summaries": previous_episode_summaries,
+        "character_profiles": character_profiles,
+    }
+
+
 def _merge_frames(
     existing_frames: List[Dict[str, Any]],
     new_frames: List[Dict[str, Any]],
@@ -303,32 +427,18 @@ async def generate_script(
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
     
+    previous_episode_summaries = _collect_previous_episode_summaries(db, story.id, episode.episode_number)
+    character_profiles = _build_character_profiles(story)
+
     # 构建剧集数据
-    episode_data = {
-        "episode_number": episode.episode_number,
-        "title": episode.title,
-        "summary": episode.summary,
-        "plot_points": episode.plot_points,
-        "character_arcs": episode.character_arcs,
-        "conflicts": episode.conflicts,
-        "duration_minutes": episode.duration_minutes,
-        "scene_count": episode.scene_count
-    }
-    
+    episode_data = _build_episode_data(episode)
+
     # 构建故事数据
-    story_data = {
-        "title": story.title,
-        "genre": story.genre,
-        "theme": story.theme,
-        "synopsis": story.synopsis,
-        "main_conflict": story.main_conflict,
-        "resolution": story.resolution,
-        "main_characters": story.main_characters,
-        "character_relationships": story.character_relationships,
-        "world_building": story.world_building,
-        "setting_time": story.setting_time,
-        "setting_location": story.setting_location
-    }
+    story_data = _build_story_data(
+        story,
+        previous_episode_summaries=previous_episode_summaries,
+        character_profiles=character_profiles,
+    )
     
     # 调用AI服务生成剧本
     # 解析模型与提供商
@@ -428,29 +538,15 @@ async def preview_script_prompt(
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
-    episode_data = {
-        "episode_number": episode.episode_number,
-        "title": episode.title,
-        "summary": episode.summary,
-        "plot_points": episode.plot_points,
-        "character_arcs": episode.character_arcs,
-        "conflicts": episode.conflicts,
-        "duration_minutes": episode.duration_minutes,
-        "scene_count": episode.scene_count
-    }
-    story_data = {
-        "title": story.title,
-        "genre": story.genre,
-        "theme": story.theme,
-        "synopsis": story.synopsis,
-        "main_conflict": story.main_conflict,
-        "resolution": story.resolution,
-        "main_characters": story.main_characters,
-        "character_relationships": story.character_relationships,
-        "world_building": story.world_building,
-        "setting_time": story.setting_time,
-        "setting_location": story.setting_location
-    }
+    previous_episode_summaries = _collect_previous_episode_summaries(db, story.id, episode.episode_number)
+    character_profiles = _build_character_profiles(story)
+
+    episode_data = _build_episode_data(episode)
+    story_data = _build_story_data(
+        story,
+        previous_episode_summaries=previous_episode_summaries,
+        character_profiles=character_profiles,
+    )
     variables = {
         "story": story_data,
         "episode": episode_data,
@@ -482,29 +578,15 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if not story:
             raise RuntimeError("故事不存在")
 
-        episode_data = {
-            "episode_number": episode.episode_number,
-            "title": episode.title,
-            "summary": episode.summary,
-            "plot_points": episode.plot_points,
-            "character_arcs": episode.character_arcs,
-            "conflicts": episode.conflicts,
-            "duration_minutes": episode.duration_minutes,
-            "scene_count": episode.scene_count
-        }
-        story_data = {
-            "title": story.title,
-            "genre": story.genre,
-            "theme": story.theme,
-            "synopsis": story.synopsis,
-            "main_conflict": story.main_conflict,
-            "resolution": story.resolution,
-            "main_characters": story.main_characters,
-            "character_relationships": story.character_relationships,
-            "world_building": story.world_building,
-            "setting_time": story.setting_time,
-            "setting_location": story.setting_location
-        }
+        previous_episode_summaries = _collect_previous_episode_summaries(db, story.id, episode.episode_number)
+        character_profiles = _build_character_profiles(story)
+
+        episode_data = _build_episode_data(episode)
+        story_data = _build_story_data(
+            story,
+            previous_episode_summaries=previous_episode_summaries,
+            character_profiles=character_profiles,
+        )
 
         import anyio, json as _json
 

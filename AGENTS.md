@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Use Conventional Commit prefixes in lowercase, for example `fix:`, `feat:`, `chore:`.
 - Scope is optional; keep the summary concise and imperative (e.g. `fix: storyboard plan rendering`).
+- Any backend change must finish with `pytest` locally before handing results back to the user.
 
 ## Project Overview
 

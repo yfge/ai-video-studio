@@ -25,6 +25,27 @@
 场景数量：{{ episode.scene_count }}个
 {% endif -%}
 
+## 前情提要
+{% if story.previous_episode_summaries -%}
+{% for prev in story.previous_episode_summaries %}
+- 第{{ prev.episode_number }}集《{{ prev.title }}》：{{ prev.summary or '暂无概要' }}
+  {% if prev.plot_points -%}
+  关键事件：
+  {% for point in prev.plot_points %}
+  · {{ point.description if point.description is defined else point }}{% if point.timing is defined and point.timing %}（{{ point.timing }}）{% endif %}
+  {% endfor %}
+  {% endif -%}
+  {% if prev.conflicts -%}
+  主要冲突：
+  {% for conflict in prev.conflicts %}
+  · {% if conflict.type is defined and conflict.type %}{{ conflict.type }}：{% endif %}{{ conflict.description if conflict.description is defined else conflict }}{% if conflict.intensity is defined and conflict.intensity %}（强度：{{ conflict.intensity }}）{% endif %}
+  {% endfor %}
+  {% endif -%}
+{% endfor %}
+{% else -%}
+暂无前情信息，可直接聚焦本集。
+{% endif -%}
+
 ## 情节要点
 {% if episode.plot_points -%}
 {% for plot_point in episode.plot_points %}
@@ -46,11 +67,31 @@
 {% endfor %}
 {% endif -%}
 
-## 主要角色
-{% if story.main_characters -%}
-{% for character in story.main_characters %}
-{{ character.name }}：{{ character.description or character.role }}
+## 角色设定
+{% if story.character_profiles -%}
+{% for character in story.character_profiles %}
+- {{ character.name }}{% if character.role %}（{{ character.role }}）{% endif %}
+  {% if character.description %}背景/定位：{{ character.description }}{% endif %}
+  {% if character.personality %}性格特质：{{ character.personality }}{% endif %}
+  {% if character.motivation %}目标动机：{{ character.motivation }}{% endif %}
+  {% if character.arc %}角色弧线：{{ character.arc }}{% endif %}
+  {% if character.relationships %}
+  人际关系：
+    {% if character.relationships is mapping %}
+    {% for rel_name, rel_desc in character.relationships.items() %}
+    · {{ rel_name }}：{{ rel_desc }}
+    {% endfor %}
+    {% else %}
+    · {{ character.relationships }}
+    {% endif %}
+  {% endif %}
 {% endfor %}
+{% elif story.main_characters -%}
+{% for character in story.main_characters %}
+- {{ character.name if character.name is defined else character }}：{{ character.description if character.description is defined else character.role if character.role is defined else '' }}
+{% endfor %}
+{% else -%}
+暂无角色资料，请根据设定保持人物一致性。
 {% endif -%}
 
 ## 剧本参数
