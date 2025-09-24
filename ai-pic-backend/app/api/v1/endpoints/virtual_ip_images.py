@@ -210,6 +210,7 @@ async def generate_virtual_ip_image(
     style: str = Form("realistic"),
     category: str = Form("portrait"),
     model: str = Form("dalle-3"),
+    model_id: Optional[str] = Form(None),
     additional_prompts: str = Form(""),
     is_default: bool = Form(False),
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
@@ -224,9 +225,10 @@ async def generate_virtual_ip_image(
     additional_prompt_list = [p.strip() for p in additional_prompts.split(",") if p.strip()]
     
     # 记录收到的表单参数，便于排查模型选择问题
+    selected_model = model_id or model
     try:
         from app.core.logging import get_logger
-        get_logger().info(f"VirtualIP image gen | ip={virtual_ip_id} model={model} style={style} category={category} prompts={additional_prompts}")
+        get_logger().info(f"VirtualIP image gen | ip={virtual_ip_id} model={selected_model} style={style} category={category} prompts={additional_prompts}")
     except Exception:
         pass
 
@@ -235,7 +237,7 @@ async def generate_virtual_ip_image(
         description=virtual_ip.description or "",
         style=style,
         category=category,
-        model=model,
+        model=selected_model,
         additional_prompts=additional_prompt_list
     )
     

@@ -1228,24 +1228,20 @@ export const virtualIPImageAPI = {
     return apiClient.makeRequest(`/api/v1/virtual-ips/${virtualIPId}/models/available`);
   },
 
-  // AI生成图像
+  // AI生成图像（统一JSON）
   generateImage: async (
     virtualIPId: number,
     request: AIImageGenerationRequest
   ): Promise<ApiResponse<VirtualIPImage>> => {
-    const formData = new FormData();
-    formData.append('style', request.style);
-    formData.append('category', request.category);
-    formData.append('model', request.model);
-    formData.append('additional_prompts', request.additional_prompts);
-    formData.append('is_default', request.is_default.toString());
-
     return apiClient.makeRequest(`/api/v1/virtual-ips/${virtualIPId}/images/generate`, {
       method: 'POST',
-      headers: {
-        // 不设置Content-Type，让浏览器自动设置multipart/form-data
-      },
-      body: formData,
+      body: JSON.stringify({
+        style: request.style,
+        category: request.category,
+        model: request.model,
+        additional_prompts: request.additional_prompts,
+        is_default: request.is_default,
+      }),
     });
   },
 
