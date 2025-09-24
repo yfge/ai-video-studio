@@ -1,9 +1,9 @@
 import os
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
@@ -207,12 +207,13 @@ async def get_available_models(
 @router.post("/{virtual_ip_id}/images/generate", response_model=VirtualIPImageResponse)
 async def generate_virtual_ip_image(
     virtual_ip_id: int,
-    style: str = Form("realistic"),
-    category: str = Form("portrait"),
-    model: str = Form("dalle-3"),
+    request: Request,
+    style: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    model: Optional[str] = Form(None),
     model_id: Optional[str] = Form(None),
-    additional_prompts: str = Form(""),
-    is_default: bool = Form(False),
+    additional_prompts: Optional[str] = Form(None),
+    is_default: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """使用AI生成虚拟IP图像"""
@@ -221,14 +222,39 @@ async def generate_virtual_ip_image(
     if not virtual_ip:
         raise HTTPException(status_code=404, detail="虚拟IP不存在")
     
-    # 使用AI服务生成图像
-    additional_prompt_list = [p.strip() for p in additional_prompts.split(",") if p.strip()]
-    
-    # 记录收到的表单参数，便于排查模型选择问题
-    selected_model = model_id or model
+    payload: Dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+
+    style = payload.get("style", style) or "realistic"
+    category = payload.get("category", category) or "portrait"
+    raw_model = payload.get("model", model)
+    additional_prompts_value = payload.get("additional_prompts", additional_prompts) or ""
+    is_default_value = payload.get("is_default", is_default)
+    selected_model = (payload.get("model_id") or model_id or raw_model or "dalle-3").strip()
+
+    additional_prompt_list = [p.strip() for p in additional_prompts_value.split(",") if p.strip()]
+
+    is_default_bool = False
+    if isinstance(is_default_value, bool):
+        is_default_bool = is_default_value
+    elif isinstance(is_default_value, str):
+        is_default_bool = is_default_value.lower() in {"true", "1", "yes", "on"}
+
+    # 记录收到的参数，便于排查模型选择问题
     try:
         from app.core.logging import get_logger
-        get_logger().info(f"VirtualIP image gen | ip={virtual_ip_id} model={selected_model} style={style} category={category} prompts={additional_prompts}")
+        get_logger().info(
+            "VirtualIP image gen | ip=%s model=%s style=%s category=%s prompts=%s",
+            virtual_ip_id,
+            selected_model,
+            style,
+            category,
+            additional_prompts_value,
+        )
     except Exception:
         pass
 
@@ -245,7 +271,7 @@ async def generate_virtual_ip_image(
         raise HTTPException(status_code=500, detail="AI图像生成失败")
     
     # 如果设置为默认图像，先取消其他默认图像
-    if is_default:
+    if is_default_bool:
         db.query(VirtualIPImage).filter(
             VirtualIPImage.virtual_ip_id == virtual_ip_id,
             VirtualIPImage.is_default == True
@@ -284,7 +310,7 @@ async def generate_virtual_ip_image(
         prompt=result["prompt"],
         ai_model=result["model_used"],
         generation_params=result.get("usage", {}),
-        is_default=is_default,
+        is_default=is_default_bool,
         metadata={
             "generation_method": result["generation_method"],
             "prompt": result["prompt"],
