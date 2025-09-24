@@ -223,6 +223,13 @@ async def generate_virtual_ip_image(
     # 使用AI服务生成图像
     additional_prompt_list = [p.strip() for p in additional_prompts.split(",") if p.strip()]
     
+    # 记录收到的表单参数，便于排查模型选择问题
+    try:
+        from app.core.logging import get_logger
+        get_logger().info(f"VirtualIP image gen | ip={virtual_ip_id} model={model} style={style} category={category} prompts={additional_prompts}")
+    except Exception:
+        pass
+
     result = await ai_service.generate_virtual_ip_image(
         ip_name=virtual_ip.name,
         description=virtual_ip.description or "",
@@ -459,4 +466,3 @@ async def set_default_image(
     db.commit()
     
     return {"message": "默认图像设置成功"}
-
