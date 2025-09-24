@@ -1065,12 +1065,13 @@ class AIService:
             generation_method = "openai_dalle"
             image_url = None
 
-            if model and (model.startswith("keling-") or model.startswith("kling-") or model in ("keling", "kling")):
+            normalized_model = (model or "").lower()
+            if normalized_model.startswith("keling-") or normalized_model.startswith("kling-") or normalized_model in {"keling", "kling"}:
                 # 使用可灵AI生成图像
                 image_url = await self._generate_with_keling_image(final_prompt, style, category, model)
                 provider_used = "keling"
                 generation_method = "keling_image"
-            elif model and (model.startswith("dall-e") or model.startswith("dalle")):
+            elif normalized_model.startswith("dall-e") or normalized_model.startswith("dalle"):
                 # 使用OpenAI DALL-E生成图像
                 image_url = await self._generate_with_openai_dalle(final_prompt, style, category)
                 provider_used = "openai"
