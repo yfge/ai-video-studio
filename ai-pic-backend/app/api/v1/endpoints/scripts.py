@@ -173,6 +173,92 @@ def _enforce_storyboard_variety(frames: List[Dict[str, Any]]) -> List[Dict[str, 
     return frames
 
 
+def _trim_local(value: Any, limit: int = 120) -> str:
+    if value is None:
+        return ""
+    text = str(value).replace("\n", " ").strip()
+    return text[:limit] + ("…" if len(text) > limit else "")
+
+
+def _collect_dialogues_for_scene(script_obj: Script, scene_number: Optional[int], limit: int = 2) -> List[str]:
+    results: List[str] = []
+    for item in script_obj.dialogues or []:
+        if isinstance(item, dict):
+            sn = _to_int(item.get("scene_number"))
+            content = item.get("content") or item.get("text")
+        else:
+            sn = None
+            content = str(item)
+        if scene_number is not None and sn != scene_number:
+            continue
+        if not content:
+            continue
+        results.append(_trim_local(content, 80))
+        if len(results) >= limit:
+            break
+    return results
+
+
+def _collect_stage_for_scene(script_obj: Script, scene_number: Optional[int], limit: int = 2) -> List[str]:
+    results: List[str] = []
+    for item in script_obj.stage_directions or []:
+        if isinstance(item, dict):
+            sn = _to_int(item.get("scene_number"))
+            content = item.get("content") or item.get("direction")
+        else:
+            sn = None
+            content = str(item)
+        if scene_number is not None and sn != scene_number:
+            continue
+        if not content:
+            continue
+        results.append(_trim_local(content, 80))
+        if len(results) >= limit:
+            break
+    return results
+
+
+def _compose_fallback_text(
+    scene_payload: Any,
+    scene_number: Optional[int],
+    *,
+    script_obj: Script,
+    base_text: str,
+    shot: str,
+    movement: str,
+    composition: str,
+) -> tuple[str, str]:
+    details: List[str] = []
+    if isinstance(scene_payload, dict):
+        location = scene_payload.get("location") or scene_payload.get("place")
+        time_info = scene_payload.get("time") or scene_payload.get("period")
+        characters = scene_payload.get("characters") or scene_payload.get("cast")
+        notes = scene_payload.get("notes")
+        if location:
+            details.append(f"地点:{_trim_local(location, 50)}")
+        if time_info:
+            details.append(f"时间:{_trim_local(time_info, 40)}")
+        if characters:
+            if isinstance(characters, list):
+                details.append(f"角色:{_trim_local(', '.join(map(str, characters)), 80)}")
+            else:
+                details.append(f"角色:{_trim_local(characters, 80)}")
+        if notes:
+            details.append(f"备注:{_trim_local(notes, 80)}")
+    dialogues = _collect_dialogues_for_scene(script_obj, scene_number)
+    if dialogues:
+        details.append("对白:" + " / ".join(dialogues))
+    stage = _collect_stage_for_scene(script_obj, scene_number)
+    if stage:
+        details.append("舞台:" + " / ".join(stage))
+    details.append("内容:" + _trim_local(base_text, 140))
+
+    description = "；".join(details)[:200] if details else _trim_local(base_text, 200)
+    prompt_parts = details + [f"镜头语言:{shot}/{movement}/{composition}"]
+    ai_prompt = "；".join(prompt_parts)[:500]
+    return description, ai_prompt
+
+
 router = APIRouter()
 
 @router.post("/", response_model=ScriptResponse)
@@ -612,6 +698,7 @@ async def generate_storyboard(
         "scenes": scenes_filtered,
         "dialogues": script.dialogues,
         "stage_directions": script.stage_directions,
+        "scene_indices": scene_order,
         "episode": {
             "episode_number": episode.episode_number if episode else None,
             "title": episode.title if episode else None,
@@ -795,16 +882,25 @@ async def generate_storyboard(
                     shot = shot_cycle[variant % len(shot_cycle)]
                     movement = movement_cycle[variant % len(movement_cycle)]
                     composition = composition_cycle[variant % len(composition_cycle)]
-                    prompt_parts = [text.strip()[:200], f"景别:{shot}", f"运镜:{movement}", f"构图:{composition}"]
+                    description, ai_prompt = _compose_fallback_text(
+                        sc if isinstance(sc, dict) else None,
+                        real_scene_number,
+                        script_obj=script,
+                        base_text=text,
+                        shot=shot,
+                        movement=movement,
+                        composition=composition,
+                    )
+                    duration = max(2, min(12, 3 + (variant % 3) - 1))
                     frames_fallback.append({
                         "frame_number": frame_no,
                         "scene_number": real_scene_number,
                         "shot_type": shot,
                         "camera_movement": movement,
                         "composition": composition,
-                        "description": text.strip()[:200],
-                        "duration_seconds": 3 + (variant % 3) - 1,
-                        "ai_prompt": "；".join(prompt_parts)[:500],
+                        "description": description,
+                        "duration_seconds": duration,
+                        "ai_prompt": ai_prompt,
                         "reference_images": [],
                     })
                     frame_no += 1
@@ -820,16 +916,25 @@ async def generate_storyboard(
                 shot = shot_cycle[variant % len(shot_cycle)]
                 movement = movement_cycle[variant % len(movement_cycle)]
                 composition = composition_cycle[variant % len(composition_cycle)]
-                prompt_parts = [text, f"景别:{shot}", f"运镜:{movement}", f"构图:{composition}"]
+                description, ai_prompt = _compose_fallback_text(
+                    None,
+                    None,
+                    script_obj=script,
+                    base_text=text,
+                    shot=shot,
+                    movement=movement,
+                    composition=composition,
+                )
+                duration = max(2, min(12, 3 + (variant % 3) - 1))
                 frames_fallback.append({
                     "frame_number": frame_no,
                     "scene_number": None,
                     "shot_type": shot,
                     "camera_movement": movement,
                     "composition": composition,
-                    "description": text,
-                    "duration_seconds": 3 + (variant % 3) - 1,
-                    "ai_prompt": "；".join(prompt_parts)[:500],
+                    "description": description,
+                    "duration_seconds": duration,
+                    "ai_prompt": ai_prompt,
                     "reference_images": [],
                 })
                 frame_no += 1

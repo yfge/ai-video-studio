@@ -30,6 +30,141 @@ except ImportError as e:
     AI_MANAGER_AVAILABLE = False
 from .storage.oss_service import oss_service
 
+def _trim_text(value: str | None, limit: int = 160) -> str:
+    if not value:
+        return ""
+    text = str(value).replace("\n", " ").strip()
+    return text[:limit] + ("…" if len(text) > limit else "")
+
+
+def _to_int_safe(value: Any) -> Optional[int]:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _collect_scene_dialogues(script: Dict[str, Any], scene_number: Optional[int], limit: int = 2) -> List[str]:
+    dialogues = []
+    for item in script.get("dialogues") or []:
+        if isinstance(item, dict):
+            sn = _to_int_safe(item.get("scene_number"))
+            if scene_number is not None and sn != scene_number:
+                continue
+            content = item.get("content") or item.get("text")
+        else:
+            sn = None
+            content = str(item)
+        if scene_number is not None and sn != scene_number:
+            continue
+        if not content:
+            continue
+        dialogues.append(_trim_text(content, 80))
+        if len(dialogues) >= limit:
+            break
+    return dialogues
+
+
+def _collect_stage_notes(script: Dict[str, Any], scene_number: Optional[int], limit: int = 2) -> List[str]:
+    notes = []
+    for item in script.get("stage_directions") or []:
+        if isinstance(item, dict):
+            sn = _to_int_safe(item.get("scene_number"))
+            content = item.get("content") or item.get("direction")
+        else:
+            sn = None
+            content = str(item)
+        if scene_number is not None and sn != scene_number:
+            continue
+        if not content:
+            continue
+        notes.append(_trim_text(content, 80))
+        if len(notes) >= limit:
+            break
+    return notes
+
+
+def _build_storyboard_context(script: Dict[str, Any]) -> str:
+    story = script.get("story") or {}
+    episode = script.get("episode") or {}
+    scenes = script.get("scenes") or []
+    scene_indices = script.get("scene_indices") or []
+
+    sections: List[str] = []
+    if story:
+        story_bits = []
+        if story.get("title"):
+            story_bits.append(str(story["title"]))
+        if story.get("genre"):
+            story_bits.append(f"类型:{story['genre']}")
+        if story.get("theme"):
+            story_bits.append(f"主题:{_trim_text(story['theme'], 80)}")
+        if story.get("world_building"):
+            story_bits.append(f"设定:{_trim_text(story['world_building'], 100)}")
+        if story_bits:
+            sections.append("故事背景：" + "，".join(story_bits))
+
+    if episode:
+        epi_bits = []
+        if episode.get("episode_number"):
+            epi_bits.append(f"第{episode['episode_number']}集")
+        if episode.get("title"):
+            epi_bits.append(str(episode["title"]))
+        if episode.get("summary"):
+            epi_bits.append(f"概要:{_trim_text(episode['summary'], 120)}")
+        if episode.get("duration_minutes"):
+            epi_bits.append(f"时长:{episode['duration_minutes']}分钟")
+        if episode.get("scene_count"):
+            epi_bits.append(f"场景数:{episode['scene_count']}")
+        if epi_bits:
+            sections.append("剧集信息：" + "，".join(epi_bits))
+
+    for idx, raw_scene in enumerate(scenes):
+        if isinstance(raw_scene, dict):
+            scene_dict = raw_scene
+            description = scene_dict.get("description")
+            location = scene_dict.get("location") or scene_dict.get("place")
+            time = scene_dict.get("time") or scene_dict.get("period")
+            characters = scene_dict.get("characters") or scene_dict.get("cast")
+            notes = scene_dict.get("notes")
+        else:
+            scene_dict = {}
+            description = str(raw_scene)
+            location = time = characters = notes = None
+
+        scene_no = scene_indices[idx] if idx < len(scene_indices) else idx + 1
+        heading = f"场景 {scene_no}"
+        details: List[str] = []
+        if location:
+            details.append(f"地点:{_trim_text(location, 50)}")
+        if time:
+            details.append(f"时间:{_trim_text(time, 40)}")
+        if characters:
+            if isinstance(characters, list):
+                details.append(f"角色:{_trim_text(', '.join(map(str, characters)), 80)}")
+            else:
+                details.append(f"角色:{_trim_text(str(characters), 80)}")
+        if notes:
+            details.append(f"备注:{_trim_text(notes, 80)}")
+        details.append(f"描述:{_trim_text(description, 120)}")
+
+        dialogues = _collect_scene_dialogues(script, scene_no)
+        if dialogues:
+            details.append("对白:" + " / ".join(dialogues))
+        stage_notes = _collect_stage_notes(script, scene_no)
+        if stage_notes:
+            details.append("舞台:" + " / ".join(stage_notes))
+
+        sections.append(f"{heading} -> " + "；".join(details))
+
+    content_excerpt = _trim_text(script.get("content"), 400)
+    if content_excerpt:
+        sections.append(f"剧本文本片段：{content_excerpt}")
+
+    context = "\n".join(sections)
+    return context[:4000]
+
+
 class AIService:
     """AI服务接口 - 集成新的多提供商系统"""
     
@@ -587,6 +722,7 @@ class AIService:
                     "episode": (script or {}).get("episode"),
                     "scenes_count": len((script or {}).get("scenes") or []),
                 }
+                context_text = _build_storyboard_context(script)
                 prompt = (
                     "你是具备导演、摄影与美术能力的专业分镜师。请采用 ReAct 思考流程：先在内心推理每个场景应该呈现的节奏与视觉差异，再输出最终JSON。\n"
                     "必须遵循：\n"
@@ -595,13 +731,11 @@ class AIService:
                     "- 每个分镜必须包含且不为空：scene_number, shot_type, camera_movement, composition, description, duration_seconds, ai_prompt\n"
                     "- shot_type 需覆盖远景/中景/近景/特写等不同镜别，避免同一场景内重复\n"
                     "- camera_movement 应在固定/推/拉/摇/移/跟/变焦等之间切换，体现叙事意图\n"
-                    "- composition 需覆盖三分法/对称/前后景/对角线/中心对称等多样构图\n"
-                    "- description 要具体描述人物/动作/光线/情绪，不能简单复述场景标题\n"
-                    "- ai_prompt 包含主体、时间地点、情绪氛围、镜头语言关键词，且与 description 区分表述\n"
+                    "- composition 要在三分法/对称/前后景/对角线/中心对称等方案中选择，突出叙事重点\n"
+                    "- description 要结合人物/动作/情绪/光线，避免模糊词语；ai_prompt 需补充画面细节与风格关键词，与 description 保持互补\n"
                     "- 仅输出严格JSON：{\"frames\":[...]}，禁止额外文本或思维过程\n\n"
                     "请在内部完成推理后再给出JSON结果，保证每条记录独特且自洽。\n"
-                    f"上下文（截断）：{json.dumps(context, ensure_ascii=False)[:1200]}\n"
-                    f"剧本（截断）：{json.dumps(script, ensure_ascii=False)[:2500]}"
+                    f"剧作上下文：\n{context_text}\n"
                 )
                 schema = StoryboardModel.model_json_schema()
                 response = await self.ai_manager.generate_text(

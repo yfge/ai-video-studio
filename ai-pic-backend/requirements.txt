@@ -13,7 +13,7 @@ cryptography>=41.0.7
 pydantic==2.5.0
 pydantic-settings==2.1.0
 httpx==0.25.2
-pillow==10.1.0
+pillow==11.0.0
 aiofiles==23.2.1
 redis==5.0.1
 celery==5.3.4
