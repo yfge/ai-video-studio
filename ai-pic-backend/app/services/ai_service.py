@@ -1061,12 +1061,20 @@ class AIService:
             self.logger.info(f"使用模型: {model}, 风格: {style}, 类别: {category}")
                 
             # 根据模型选择不同的AI服务
-            if model.startswith("kling-") or model == "keling":
+            provider_used = "openai"
+            generation_method = "openai_dalle"
+            image_url = None
+
+            if model and (model.startswith("keling-") or model.startswith("kling-") or model in ("keling", "kling")):
                 # 使用可灵AI生成图像
                 image_url = await self._generate_with_keling_image(final_prompt, style, category, model)
-            elif model.startswith("dall-e") or model.startswith("dalle"):
+                provider_used = "keling"
+                generation_method = "keling_image"
+            elif model and (model.startswith("dall-e") or model.startswith("dalle")):
                 # 使用OpenAI DALL-E生成图像
                 image_url = await self._generate_with_openai_dalle(final_prompt, style, category)
+                provider_used = "openai"
+                generation_method = "openai_dalle"
             elif self.ai_manager:
                 # 使用AI管理器的其他服务
                 response = await self.ai_manager.generate_image(
@@ -1079,12 +1087,16 @@ class AIService:
                 if response.success:
                     images = response.data.get("images", [])
                     image_url = images[0] if images else None
+                    provider_used = response.provider or provider_used
+                    generation_method = f"ai_{provider_used}"
                 else:
                     self.logger.error(f"AI管理器图像生成失败: {response.error}")
                     image_url = None
             else:
                 # 默认使用OpenAI DALL-E
                 image_url = await self._generate_with_openai_dalle(final_prompt, style, category)
+                provider_used = "openai"
+                generation_method = "openai_dalle"
             
             if image_url:
                 # 下载图像到本地
@@ -1140,9 +1152,9 @@ class AIService:
                     "prompt": final_prompt,
                     "style": style,
                     "category": category,
-                    "generation_method": "openai_dalle",
+                    "generation_method": generation_method,
                     "template_used": PromptTemplate.IMAGE_GENERATION.value,
-                    "provider_used": "openai",
+                    "provider_used": provider_used,
                     "model_used": model,
                     "usage": {}
                 }
