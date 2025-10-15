@@ -5,7 +5,7 @@ This document is the single source of truth for every coding assistant (Claude C
 ## Instruction Precedence & Mirrors
 
 - Respect instruction order: system / developer → user → this file → everything else.
-- The following files must be kept as symlinks (or exact copies) of `AGENTS.md`: `CLAUDE.md`, `GEMINI.md`, `.claude/AGENTS.md` (if present in the future).
+- The following files must be kept as symlinks (or exact copies) of `AGENTS.md`: `CLAUDE.md`, `GEMINI.md`.
 - When this file is updated, ensure mirrored files stay in sync within the same commit.
 
 ## Mission & Scope
@@ -15,7 +15,7 @@ ai-video-studio is an AI-powered virtual IP production platform composed of:
 - `ai-pic-backend/`: FastAPI + SQLAlchemy service orchestrating AI image/video generation, story workflows, and OSS persistence.
 - `ai-pic-frontend/`: Next.js 15 (App Router) application for operators to manage virtual IPs, galleries, stories, episodes, and scripts.
 
-The codebase must remain production-grade, auditable, and reproducible. Every meaningful code change needs traceable documentation and automated validation.
+The codebase must remain production-grade, auditable, and reproducible. Every meaningful code change needs traceable documentation, automated validation, and a matching ledger entry.
 
 ## Repository Expectations
 
@@ -28,7 +28,7 @@ The codebase must remain production-grade, auditable, and reproducible. Every me
 
 We operate with the same rigor as the reference repositories (`talkReplay`, `orion`, `ai-shifu`, `talkreplay.com`). Follow these rules exactly:
 
-1. Directory structure: `agent_chats/YYYY/MM/DD/`. Create folders as needed; never place files directly under `agent_chats/` except `.gitkeep`.
+1. Directory structure: `agent_chats/YYYY/MM/DD/`. Create folders as needed; never place files directly under `agent_chats/`.
 2. File naming: `YYYY-MM-DDTHH-MM-SSZ-kebab-topic.md` (UTC timestamps). Example: `2025-10-23T07-30-03Z-backend-fastapi-refactor.md`.
 3. YAML frontmatter is **required**:
    ```yaml
@@ -52,7 +52,8 @@ We operate with the same rigor as the reference repositories (`talkReplay`, `ori
    - `## Linked Commits`
 5. Reference all touched files under `related_paths` using repository-relative paths.
 6. Every commit that touches code in `ai-pic-backend/`, `ai-pic-frontend/`, `scripts/`, or modifies this document must include at least **one** staged ledger entry.
-7. Keep `agent_chats/` clean: no unstaged edits, no binary files, redact secrets, prefer ASCII.
+7. After completing each atomic piece of work, stage the matching files and commit immediately. Keep commits minimal, focused, and easily traceable with their corresponding ledger record.
+8. Keep `agent_chats/` clean: no unstaged edits, no binary files, redact secrets, prefer ASCII.
 
 The helper `scripts/check_agent_chats.py` (wired into pre-commit) enforces naming, frontmatter, and section requirements. The hook fails when code changes lack a matching ledger entry or when ledger files are malformed.
 
@@ -100,7 +101,7 @@ We adopt a strict workflow similar to the reference projects:
 - Conventional Commit messages (lowercase type, ≤72 chars). Examples: `feat(backend): add retry policy`, `fix(frontend): guard auth redirects`.
 - Always stage the matching `agent_chats` entry with the code changes.
 - Prefer focused commits; large changes should be split logically and each accompanied by its own ledger entry.
-- Default branch protection: treat `main` as immutable via PRs; feature branches should use prefixes `feat/`, `fix/`, `chore/`, etc.
+- Treat `main` as protected: work in topic branches (`feat/*`, `fix/*`, `chore/*`) when collaborating.
 
 ## Delivery Checklist for Agents
 
