@@ -1,0 +1,79 @@
+minimum_pre_commit_version: "3.6.0"
+
+default_language_version:
+  python: python3
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.8
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        files: ^ai-pic-backend/.*\.py$
+      - id: ruff-format
+        files: ^ai-pic-backend/.*\.py$
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: ^ai-pic-backend/.*\.py$
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile=black"]
+        files: ^ai-pic-backend/.*\.py$
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.3.3
+    hooks:
+      - id: prettier
+        additional_dependencies: ["prettier@3.3.3"]
+        files: \.(json|ya?ml|md|tsx?|css|scss)$
+
+  - repo: local
+    hooks:
+      - id: agent-chats-ledger
+        name: agent_chats ledger enforcement
+        entry: scripts/check_agent_chats.py
+        language: python
+        additional_dependencies:
+          - pyyaml==6.0.2
+        pass_filenames: false
+
+      - id: backend-pytest
+        name: pytest (backend quick gate)
+        entry: bash -lc 'cd ai-pic-backend && pytest'
+        language: system
+        pass_filenames: false
+        files: ^ai-pic-backend/
+
+      - id: frontend-lint
+        name: frontend lint
+        entry: bash -lc 'cd ai-pic-frontend && npm run lint'
+        language: system
+        pass_filenames: false
+        files: ^ai-pic-frontend/src/
+
+  - repo: https://github.com/conventional-changelog/commitlint
+    rev: v19.5.0
+    hooks:
+      - id: commitlint
+        name: commitlint conventional commits
+        entry: commitlint --config commitlint.config.cjs --edit
+        language: node
+        additional_dependencies:
+          - "@commitlint/config-conventional@19.5.0"
+        stages: [commit-msg]
+        pass_filenames: false
