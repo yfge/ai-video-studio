@@ -232,20 +232,24 @@ def client(db_session):
     # 确保存在默认活跃管理员用户，便于通过权限校验
     from app.models.user import User
 
-    admin_user = User(
-        username="test_admin",
-        email="test_admin@example.com",
-        hashed_password="not-used-in-tests",
-        full_name="Test Admin",
-        is_active=True,
-        is_approved=True,
-        email_verified=True,
-        is_admin=True,
-        is_superuser=True,
+    admin_user = (
+        db_session.query(User).filter(User.username == "test_admin").first()
     )
-    db_session.add(admin_user)
-    db_session.commit()
-    db_session.refresh(admin_user)
+    if not admin_user:
+        admin_user = User(
+            username="test_admin",
+            email="test_admin@example.com",
+            hashed_password="not-used-in-tests",
+            full_name="Test Admin",
+            is_active=True,
+            is_approved=True,
+            email_verified=True,
+            is_admin=True,
+            is_superuser=True,
+        )
+        db_session.add(admin_user)
+        db_session.commit()
+        db_session.refresh(admin_user)
 
     def override_get_db():
         try:
