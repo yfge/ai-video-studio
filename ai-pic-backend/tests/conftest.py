@@ -12,6 +12,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
+from typing import Generator
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -19,6 +20,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from main import app
 from app.core.database import Base, get_db
 from app.core.config import settings
+from tests.unit.test_database import get_test_db as unit_get_test_db
+
+
+def get_test_db() -> Generator:
+    """兼容旧测试导入路径，复用单元测试数据库会话生成器。"""
+    yield from unit_get_test_db()
+
+
+def override_get_db() -> Generator:
+    """用于 FastAPI 依赖覆盖的数据库会话生成器。"""
+    yield from get_test_db()
 
 
 @pytest.fixture(scope="session")
