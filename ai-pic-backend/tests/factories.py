@@ -116,11 +116,12 @@ class EpisodeFactory(BaseFactory):
     episode_number = factory.Sequence(lambda n: n)
     title = factory.Faker("sentence", nb_words=3)
     summary = factory.Faker("text", max_nb_chars=300)
-    duration_minutes = factory.Faker("random_int", min=5, max=30)
-    scene_descriptions = factory.LazyFunction(lambda: [{"scene": 1, "description": "Opening scene"}])
+    plot_points = factory.LazyFunction(
+        lambda: [{"order": 1, "description": "Opening scene"}]
+    )
     character_arcs = factory.LazyFunction(lambda: {"Character1": "Development arc"})
-    key_events = factory.LazyFunction(lambda: ["Event 1", "Event 2"])
-    emotional_beats = factory.LazyFunction(lambda: ["Happy", "Sad", "Exciting"])
+    conflicts = factory.LazyFunction(lambda: ["Conflict A", "Conflict B"])
+    duration_minutes = factory.Faker("random_int", min=5, max=30)
     scene_count = factory.Faker("random_int", min=3, max=10)
     generation_prompt = factory.Faker("text", max_nb_chars=200)
     ai_model = "gpt-4"
@@ -140,11 +141,26 @@ class ScriptFactory(BaseFactory):
     episode = factory.SubFactory(EpisodeFactory)
     title = factory.Faker("sentence", nb_words=3)
     content = factory.Faker("text", max_nb_chars=1000)
-    format_type = "standard"
-    scene_headings = factory.LazyFunction(lambda: ["INT. ROOM - DAY"])
-    character_list = factory.LazyFunction(lambda: ["Character1", "Character2"])
-    dialogue_count = factory.Faker("random_int", min=10, max=50)
-    action_count = factory.Faker("random_int", min=5, max=20)
+    scenes = factory.LazyFunction(
+        lambda: [
+            {
+                "scene_number": 1,
+                "slug_line": "INT. ROOM - DAY",
+                "summary": "Opening conversation",
+            }
+        ]
+    )
+    dialogues = factory.LazyFunction(
+        lambda: [
+            {"scene_number": 1, "character": "Character1", "content": "Hello!"}
+        ]
+    )
+    stage_directions = factory.LazyFunction(
+        lambda: [{"scene_number": 1, "direction": "Camera pans across the room."}]
+    )
+    format_type = "screenplay"
+    language = "zh-CN"
+    page_count = factory.Faker("random_int", min=1, max=10)
     word_count = factory.Faker("random_int", min=500, max=2000)
     character_count = factory.Faker("random_int", min=2000, max=10000)
     generation_prompt = factory.Faker("text", max_nb_chars=200)
@@ -166,13 +182,15 @@ class StoryCharacterFactory(BaseFactory):
     story = factory.SubFactory(StoryFactory)
     virtual_ip = factory.SubFactory(VirtualIPFactory)
     character_name = factory.Faker("first_name")
-    role = factory.Faker("random_element", elements=["protagonist", "antagonist", "supporting"])
-    description = factory.Faker("text", max_nb_chars=300)
-    personality_traits = factory.LazyFunction(lambda: ["brave", "kind", "intelligent"])
+    role_type = factory.Faker(
+        "random_element", elements=["protagonist", "antagonist", "supporting"]
+    )
+    importance = factory.Faker("random_int", min=1, max=5)
+    personality = factory.Faker("text", max_nb_chars=200)
     background = factory.Faker("text", max_nb_chars=200)
-    relationships = factory.LazyFunction(lambda: {"Character2": "friend"})
+    motivation = factory.Faker("text", max_nb_chars=200)
     character_arc = factory.Faker("text", max_nb_chars=200)
-    dialogue_style = factory.Faker("text", max_nb_chars=100)
+    relationships = factory.LazyFunction(lambda: {"Character2": "ally"})
     created_at = factory.LazyFunction(datetime.utcnow)
 
 
