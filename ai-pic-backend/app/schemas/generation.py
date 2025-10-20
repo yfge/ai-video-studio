@@ -76,7 +76,7 @@ class ScriptModel(BaseModel):
 class StoryboardFrame(BaseModel):
     # Accept any string id; default to a UUID string when absent.
     frame_id: str = Field(default_factory=lambda: str(uuid4()), description="分镜帧唯一标识（字符串）")
-    frame_number: int
+    frame_number: Optional[int] = None
     scene_number: Optional[int] = None
     scene_index: Optional[int] = Field(None, description="在剧本场景列表中的索引（从1开始）")
     shot_type: Optional[str] = Field(None, description="景别：远景/中景/近景/特写 等")
