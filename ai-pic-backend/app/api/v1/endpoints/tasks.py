@@ -130,7 +130,7 @@ def update_task(
         )
     
     # 更新任务信息
-    update_data = task_data.dict(exclude_unset=True)
+    update_data = task_data.model_dump(exclude_unset=True)
     
     # 如果更新参数，需要转换为JSON字符串
     if "parameters" in update_data:
