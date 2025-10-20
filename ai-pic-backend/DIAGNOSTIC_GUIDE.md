@@ -157,6 +157,28 @@ ls -la uploads/
 - 验证阿里云账户权限
 - 确认存储桶访问策略
 
+#### 5. 登录时报错：AttributeError: module 'bcrypt' has no attribute '__about__'
+
+**错误症状:**
+```
+error reading bcrypt version
+AttributeError: module 'bcrypt' has no attribute '__about__'
+```
+
+**原因:**
+- `passlib 1.7.x` 与 `bcrypt 4.x` 的元数据接口不兼容，导致读取版本时异常。
+
+**解决方案:**
+1. 将 `bcrypt` 锁定为 `<4`（例如 `3.2.2`）。本项目的 `requirements.txt` 已固定：
+   ```
+   passlib[bcrypt]==1.7.4
+   bcrypt==3.2.2
+   ```
+2. 重新安装依赖：
+   ```bash
+   pip install -r ai-pic-backend/requirements.txt
+   ```
+
 ## 📊 测试报告
 
 ### 报告类型

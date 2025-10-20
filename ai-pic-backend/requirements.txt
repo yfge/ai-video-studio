@@ -3,6 +3,9 @@ uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+# Pin bcrypt to a version compatible with passlib 1.7.x to avoid
+# AttributeError: module 'bcrypt' has no attribute '__about__'
+bcrypt==3.2.2
 python-dotenv==1.0.0
 sqlalchemy==2.0.23
 aiosqlite==0.19.0
