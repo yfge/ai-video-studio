@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import auth, virtual_ip, virtual_ip_images, stories, episodes, scripts, migrations, prompts, diagnostic, admin, tasks
+from app.api.v1.endpoints import story_structure
 from app.api.v1 import ai_providers
 
 api_router = APIRouter()
@@ -18,6 +19,7 @@ api_router.include_router(virtual_ip_images.router, prefix="/virtual-ips", tags=
 api_router.include_router(stories.router, prefix="/stories", tags=["stories"])
 api_router.include_router(episodes.router, prefix="/episodes", tags=["episodes"])
 api_router.include_router(scripts.router, prefix="/scripts", tags=["scripts"])
+api_router.include_router(story_structure.router, prefix="/story-structure", tags=["story-structure"]) 
 
 # 数据库迁移相关路由
 api_router.include_router(migrations.router, prefix="/migrations", tags=["migrations"])

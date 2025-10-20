@@ -1,0 +1,103 @@
+from __future__ import annotations
+
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.services import story_structure_service as svc
+from app.schemas.story_structure import (
+    StoryTreatmentCreate,
+    StoryTreatmentResponse,
+    SceneResponse,
+    SceneCreate,
+    SceneBeatResponse,
+    ShotResponse,
+    ShotCreate,
+)
+
+
+router = APIRouter()
+
+
+@router.get("/scripts/{script_id}/scenes", response_model=List[SceneResponse])
+async def list_scenes_for_script(
+    script_id: int,
+    db: Session = Depends(get_db),
+):
+    return [SceneResponse.model_validate(s) for s in svc.list_scenes_by_script(db, script_id)]
+
+
+@router.get("/scenes/{scene_id}/beats", response_model=List[SceneBeatResponse])
+async def list_beats_for_scene(
+    scene_id: int,
+    db: Session = Depends(get_db),
+):
+    return [SceneBeatResponse.model_validate(b) for b in svc.list_beats_by_scene(db, scene_id)]
+
+
+@router.get("/scenes/{scene_id}/shots", response_model=List[ShotResponse])
+async def list_shots_for_scene(
+    scene_id: int,
+    db: Session = Depends(get_db),
+):
+    return [ShotResponse.model_validate(sh) for sh in svc.list_shots_by_scene(db, scene_id)]
+
+
+@router.post("/scripts/{script_id}/scenes", response_model=SceneResponse)
+async def create_scene_for_script(
+    script_id: int,
+    body: SceneCreate,
+    db: Session = Depends(get_db),
+):
+    if body.script_id != script_id:
+        raise HTTPException(status_code=400, detail="script_id mismatch")
+    obj = svc.create_scene(db, body)
+    return SceneResponse.model_validate(obj)
+
+
+@router.post("/scenes/{scene_id}/shots", response_model=ShotResponse)
+async def create_shot_for_scene(
+    scene_id: int,
+    body: ShotCreate,
+    db: Session = Depends(get_db),
+):
+    if body.scene_id != scene_id:
+        raise HTTPException(status_code=400, detail="scene_id mismatch")
+    obj = svc.create_shot(db, body)
+    return ShotResponse.model_validate(obj)
+
+
+@router.post("/scripts/{script_id}/seed-from-json")
+async def seed_scenes_from_json(
+    script_id: int,
+    dry_run: bool = Query(False, description="Do not write inserts when true"),
+    db: Session = Depends(get_db),
+):
+    count = svc.seed_scenes_from_script_json(db, script_id, dry_run=dry_run)
+    return {"script_id": script_id, "prepared": count, "inserted": 0 if dry_run else count}
+
+
+@router.get("/stories/{story_id}/treatments", response_model=List[StoryTreatmentResponse])
+async def list_treatments(
+    story_id: int,
+    latest_only: bool = Query(False, description="仅返回最新一条修订"),
+    db: Session = Depends(get_db),
+):
+    items = svc.list_treatments_by_story(db, story_id)
+    if latest_only:
+        return [StoryTreatmentResponse.model_validate(items[0])] if items else []
+    return [StoryTreatmentResponse.model_validate(it) for it in items]
+
+
+@router.post("/stories/{story_id}/treatments", response_model=StoryTreatmentResponse)
+async def create_treatment(
+    story_id: int,
+    body: StoryTreatmentCreate,
+    db: Session = Depends(get_db),
+):
+    if body.story_id != story_id:
+        raise HTTPException(status_code=400, detail="story_id mismatch")
+    obj = svc.create_treatment(db, body)
+    return StoryTreatmentResponse.model_validate(obj)
