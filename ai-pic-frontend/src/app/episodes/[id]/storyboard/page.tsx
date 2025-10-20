@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { episodeAPI, scriptAPI, aiAPI } from '@/utils/api'
+import { episodeAPI, scriptAPI, aiAPI, storyStructureAPI } from '@/utils/api'
 import type { Episode, Script } from '@/utils/api'
 
 type StoryboardFrame = {
@@ -73,12 +73,19 @@ export default function EpisodeStoryboardPage() {
   const [storyboard, setStoryboard] = useState<StoryboardData>({ frames: [] })
   const [loading, setLoading] = useState(true)
   const [storyboardBusy, setStoryboardBusy] = useState(false)
+  const defaultUseNormalized = (process.env.NEXT_PUBLIC_USE_NORMALIZED_BY_DEFAULT || '').toLowerCase() === 'true'
+  const [useNormalized, setUseNormalized] = useState(defaultUseNormalized)
+  const [normalizedScenes, setNormalizedScenes] = useState<Array<{ id: number; scene_number: string; slug_line: string; status: string }>>([])
+  const [normalizedShots, setNormalizedShots] = useState<Array<{ id: number; shot_number: string; shot_type?: string; camera_movement?: string }>>([])
+  const [selectedNormalizedSceneId, setSelectedNormalizedSceneId] = useState<number | null>(null)
+  const [normalizedLoading, setNormalizedLoading] = useState(false)
 
   const [models, setModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([])
   const [form, setForm] = useState({ model: '', temperature: 0.7, frames_per_scene: 7 })
   const [promptPreview, setPromptPreview] = useState('')
   const [selectedScene, setSelectedScene] = useState<number>(1)
   const [showPlan, setShowPlan] = useState(false)
+  const [seedingBusy, setSeedingBusy] = useState(false)
 
   useEffect(() => {
     load()
@@ -105,6 +112,9 @@ export default function EpisodeStoryboardPage() {
   }
 
   const scenes = useMemo(() => activeScript?.scenes || [], [activeScript])
+  const uiScenes = useMemo(() => {
+    return useNormalized ? normalizedScenes : scenes
+  }, [useNormalized, normalizedScenes, scenes])
 
   useEffect(() => {
     if (!activeScript) {
@@ -126,8 +136,42 @@ export default function EpisodeStoryboardPage() {
   }, [activeScript?.id])
 
   useEffect(() => {
-    if (scenes.length > 0) setSelectedScene(1)
-  }, [scenes.length])
+    if (!useNormalized && scenes.length > 0) setSelectedScene(1)
+  }, [useNormalized, scenes.length])
+
+  useEffect(() => {
+    if (useNormalized && normalizedScenes.length > 0) {
+      const first = normalizedScenes[0]
+      const sn = parseInt(first.scene_number, 10)
+      setSelectedScene(Number.isFinite(sn) ? sn : 1)
+      setSelectedNormalizedSceneId(first.id)
+    }
+  }, [useNormalized, normalizedScenes])
+
+  useEffect(() => {
+    const fetchNormalized = async () => {
+      if (!useNormalized || !activeScript?.id) return
+      setNormalizedLoading(true)
+      try {
+        const res = await (storyStructureAPI as any).getNormalizedScenes(activeScript.id)
+        if (res?.success && Array.isArray(res.data)) setNormalizedScenes(res.data as any)
+        else setNormalizedScenes([])
+      } finally {
+        setNormalizedLoading(false)
+      }
+    }
+    fetchNormalized()
+  }, [useNormalized, activeScript?.id])
+
+  useEffect(() => {
+    const fetchShots = async () => {
+      if (!useNormalized || !selectedNormalizedSceneId) { setNormalizedShots([]); return }
+      const res = await (storyStructureAPI as any).getNormalizedSceneShots(selectedNormalizedSceneId)
+      if (res?.success && Array.isArray(res.data)) setNormalizedShots(res.data as any)
+      else setNormalizedShots([])
+    }
+    fetchShots()
+  }, [useNormalized, selectedNormalizedSceneId])
 
   const framesForScene = useMemo(() => {
     const frames = storyboard?.frames ?? []
@@ -298,7 +342,38 @@ export default function EpisodeStoryboardPage() {
               </select>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3 items-center">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={useNormalized} onChange={e => setUseNormalized(e.target.checked)} />
+              使用规范化结构（实验）
+            </label>
+            <button
+              onClick={async () => {
+                if (!activeScript) return
+                if (!confirm('将从当前剧本的 JSON 场景导入到规范化 scenes 表，确认执行？')) return
+                setSeedingBusy(true)
+                try {
+                  const res = await (storyStructureAPI as any).seedScenesFromJson(activeScript.id)
+                  if (res?.success && res.data) {
+                    alert(`导入完成：新增 ${res.data.inserted} 条场景`)
+                    // refresh normalized scenes if toggle on
+                    if (useNormalized) {
+                      const list = await (storyStructureAPI as any).getNormalizedScenes(activeScript.id)
+                      if (list?.success && list.data) setNormalizedScenes(list.data as any)
+                    }
+                  } else {
+                    alert('导入失败')
+                  }
+                } finally {
+                  setSeedingBusy(false)
+                }
+              }}
+              className="px-3 py-2 rounded text-sm border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+              disabled={!activeScript || seedingBusy}
+              title="从现有分镜导入场景（实验）"
+            >
+              {seedingBusy ? '导入中...' : '从现有分镜导入场景（实验）'}
+            </button>
             <button onClick={() => router.push(`/episodes/${episodeId}`)} className="bg-gray-600 text-white px-3 py-2 rounded">返回剧集</button>
           </div>
         </div>
@@ -398,16 +473,29 @@ export default function EpisodeStoryboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* 左侧场景列表 */}
           <div className="md:col-span-1 bg-white rounded-lg shadow p-3">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">场景</h3>
+            <h3 className="text-sm font-medium text-gray-900 mb-3">场景 {useNormalized && normalizedLoading && <span className="text-xs text-gray-500 ml-1">加载中...</span>}</h3>
             <div className="space-y-1 max-h-[60vh] overflow-auto">
-              {scenes.length === 0 ? (
-                <div className="text-gray-500 text-sm">暂无结构化场景</div>
-              ) : scenes.map((sc: any, idx: number) => (
-                <button key={idx} onClick={() => setSelectedScene(idx+1)} className={`w-full text-left px-3 py-2 rounded text-sm ${selectedScene===idx+1?'bg-blue-50 text-blue-700 border border-blue-200':'hover:bg-gray-50 border border-transparent'}`}>
-                  场景 {idx+1}
-                  <div className="text-xs text-gray-600 truncate">{(sc?.description||'').slice(0,40)}</div>
-                </button>
-              ))}
+              {uiScenes.length === 0 ? (
+                <div className="text-gray-500 text-sm">暂无{useNormalized ? '规范化' : '结构化'}场景</div>
+              ) : useNormalized ? (
+                (uiScenes as any[]).map((sc: any) => {
+                  const sn = parseInt(sc.scene_number, 10)
+                  const isActive = selectedScene === (Number.isFinite(sn) ? sn : -1)
+                  return (
+                    <button key={sc.id} onClick={() => { setSelectedScene(Number.isFinite(sn) ? sn : 1); setSelectedNormalizedSceneId(sc.id) }} className={`w-full text-left px-3 py-2 rounded text-sm ${isActive?'bg-blue-50 text-blue-700 border border-blue-200':'hover:bg-gray-50 border border-transparent'}`}>
+                      场景 {Number.isFinite(sn) ? sn : '?'}
+                      <div className="text-xs text-gray-600 truncate">{(sc?.slug_line||'').slice(0,60)}</div>
+                    </button>
+                  )
+                })
+              ) : (
+                (uiScenes as any[]).map((sc: any, idx: number) => (
+                  <button key={idx} onClick={() => setSelectedScene(idx+1)} className={`w-full text-left px-3 py-2 rounded text-sm ${selectedScene===idx+1?'bg-blue-50 text-blue-700 border border-blue-200':'hover:bg-gray-50 border border-transparent'}`}>
+                    场景 {idx+1}
+                    <div className="text-xs text-gray-600 truncate">{(sc?.description||'').slice(0,40)}</div>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -420,6 +508,25 @@ export default function EpisodeStoryboardPage() {
                 <button onClick={handleGenerateVideosForScene} className="text-sm text-blue-600 hover:text-blue-800">为此场景批量生成视频</button>
               </div>
             </div>
+            {useNormalized && selectedNormalizedSceneId && (
+              <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-sm font-medium text-gray-800">规范化镜头（实验）</div>
+                  {normalizedLoading && <span className="text-xs text-gray-500">加载中...</span>}
+                </div>
+                {normalizedShots.length === 0 ? (
+                  <div className="text-xs text-gray-500">暂无镜头</div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {normalizedShots.map((sh: any) => (
+                      <span key={sh.id} className="text-xs border rounded px-2 py-1 bg-white">
+                        #{sh.shot_number} {sh.shot_type ? `· ${sh.shot_type}` : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {storyboardBusy ? (
               <div className="text-gray-500">分镜处理中...</div>
             ) : framesForScene.length === 0 ? (

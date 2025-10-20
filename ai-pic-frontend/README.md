@@ -208,6 +208,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 # 其他配置
 NEXT_PUBLIC_APP_NAME=AI短剧制作平台
+
+# 是否默认启用规范化叙事结构读取（分镜页实验开关）
+NEXT_PUBLIC_USE_NORMALIZED_BY_DEFAULT=false
 ```
 
 ## 贡献
