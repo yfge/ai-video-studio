@@ -1094,6 +1094,53 @@ class ApiClient {
     })
   }
 
+  // 规范化叙事结构（实验性）
+  async getNormalizedScenes(scriptId: number) {
+    return this.request<Array<{ id: number; scene_number: string; slug_line: string; status: string }>>(
+      `/api/v1/story-structure/scripts/${scriptId}/scenes`
+    )
+  }
+
+  async getNormalizedSceneBeats(sceneId: number) {
+    return this.request<Array<{ id: number; order_index: number; beat_type?: string; beat_summary?: string }>>(
+      `/api/v1/story-structure/scenes/${sceneId}/beats`
+    )
+  }
+
+  async getNormalizedSceneShots(sceneId: number) {
+    return this.request<Array<{ id: number; shot_number: string; shot_type?: string; camera_movement?: string }>>(
+      `/api/v1/story-structure/scenes/${sceneId}/shots`
+    )
+  }
+
+  async getStoryTreatments(storyId: number, opts?: { latestOnly?: boolean }) {
+    const latest = opts?.latestOnly ? '?latest_only=true' : ''
+    return this.request<Array<{ id: number; revision_number: number; title: string; status: string }>>(
+      `/api/v1/story-structure/stories/${storyId}/treatments${latest}`
+    )
+  }
+
+  async createStoryTreatment(storyId: number, payload: {
+    revision_number?: number
+    title: string
+    status?: string
+    logline?: string
+  }) {
+    const body = { story_id: storyId, revision_number: payload.revision_number ?? 1, title: payload.title, status: payload.status ?? 'draft', logline: payload.logline }
+    return this.request(`/api/v1/story-structure/stories/${storyId}/treatments`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  }
+
+  async seedScenesFromJson(scriptId: number, dryRun: boolean = false) {
+    const suffix = dryRun ? '?dry_run=true' : ''
+    return this.request<{ script_id: number; prepared: number; inserted: number }>(
+      `/api/v1/story-structure/scripts/${scriptId}/seed-from-json${suffix}`,
+      { method: 'POST' }
+    )
+  }
+
   // 公开request方法供其他API使用
   async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, options);
@@ -1198,6 +1245,15 @@ export const scriptAPI = {
   generateStoryboardVideo: apiClient.generateStoryboardVideo.bind(apiClient),
   generateStoryboardImages: apiClient.generateStoryboardImages.bind(apiClient),
   updateStoryboard: apiClient.updateStoryboard.bind(apiClient),
+}
+
+export const storyStructureAPI = {
+  getNormalizedScenes: apiClient.getNormalizedScenes.bind(apiClient),
+  getNormalizedSceneBeats: apiClient.getNormalizedSceneBeats.bind(apiClient),
+  getNormalizedSceneShots: apiClient.getNormalizedSceneShots.bind(apiClient),
+  getStoryTreatments: apiClient.getStoryTreatments.bind(apiClient),
+  createStoryTreatment: apiClient.createStoryTreatment.bind(apiClient),
+  seedScenesFromJson: apiClient.seedScenesFromJson.bind(apiClient),
 }
 
 export const aiAPI = {
