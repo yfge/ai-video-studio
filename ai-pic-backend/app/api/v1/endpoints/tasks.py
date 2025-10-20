@@ -6,7 +6,6 @@ from app.core.database import get_db
 from app.models.user import User
 from app.models.task import Task, TaskStatus, TaskType
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskList
-import json
 from app.core.middleware import get_current_active_user
 
 router = APIRouter()
@@ -142,8 +141,9 @@ def update_task(
     
     db.commit()
     db.refresh(task)
-    
-    return task
+
+    # Keep response consistent with other endpoints (parameters as dict)
+    return _serialize_task(task)
 
 @router.delete("/{task_id}")
 def delete_task(
