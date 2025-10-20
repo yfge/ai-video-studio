@@ -4,6 +4,13 @@ from .image import Image
 from .task import Task
 from .virtual_ip import VirtualIP, VirtualIPImage
 from .script import Story, Episode, Script, ScriptTemplate, StoryCharacter
+from .story_structure import (
+    StoryTreatment,
+    StoryStepOutline,
+    Scene,
+    SceneBeat,
+    Shot,
+)
 
 __all__ = [
     "Base", 
@@ -17,5 +24,10 @@ __all__ = [
     "Episode", 
     "Script", 
     "ScriptTemplate", 
-    "StoryCharacter"
+    "StoryCharacter",
+    "StoryTreatment",
+    "StoryStepOutline",
+    "Scene",
+    "SceneBeat",
+    "Shot",
 ] 
