@@ -104,12 +104,19 @@ We adopt a strict workflow similar to the reference projects:
 - Prefer focused commits; large changes should be split logically and each accompanied by its own ledger entry.
 - Treat `main` as protected: work in topic branches (`feat/*`, `fix/*`, `chore/*`) when collaborating.
 
+### CRITICAL — Minimal Atomic Commits & Clean Workspace
+
+- Minimal atomic commits only: one logical change per commit, paired with its ledger entry. Do not bundle unrelated edits.
+- Minimize diff scope: touch only the files/lines necessary for the task; avoid opportunistic refactors or drive‑by style changes.
+- Keep the working tree clean: before each commit ensure there are no stray unstaged edits. Do not leave the repo dirty between steps.
+
 ## Delivery Checklist for Agents
 
 Before yielding work back to the user:
 
 1. Ensure relevant tests (`pytest`, `npm run lint`, targeted suites) pass locally.
 2. Verify `pre-commit run --all-files` is clean or document any justified skips.
+2.1 Ensure the working tree is clean (no unstaged changes) at commit time.
 3. Confirm new/updated `agent_chats` entries satisfy format rules and describe intent, changes, validation, and follow-ups.
 4. Summarise remaining risks or TODOs in the agent response.
 5. Never commit secrets or credentials; reference environment variables instead.
