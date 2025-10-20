@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -74,7 +74,8 @@ class ScriptModel(BaseModel):
 
 # 分镜（Storyboard）
 class StoryboardFrame(BaseModel):
-    frame_id: UUID = Field(default_factory=uuid4, description="分镜帧唯一标识")
+    # Accept any string id; default to a UUID string when absent.
+    frame_id: str = Field(default_factory=lambda: str(uuid4()), description="分镜帧唯一标识（字符串）")
     frame_number: int
     scene_number: Optional[int] = None
     scene_index: Optional[int] = Field(None, description="在剧本场景列表中的索引（从1开始）")
