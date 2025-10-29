@@ -304,13 +304,7 @@ export default function Tasks() {
     }
   }
 
-  const handleDelete = async (id: APITask['id']) => {
-    const taskId = typeof id === 'number' ? id : Number(id)
-    if (!Number.isInteger(taskId)) {
-      showAlert({ message: '任务编号无效，无法删除', variant: 'warning' })
-      return
-    }
-    if (!confirm('确定删除该任务吗？')) return
+  const deleteTaskCore = async (taskId: number) => {
     setDeletingTaskId(taskId)
     try {
       const res = await taskAPI.deleteTask(String(taskId))
@@ -327,6 +321,23 @@ export default function Tasks() {
     } finally {
       setDeletingTaskId(null)
     }
+  }
+
+  const handleDelete = (id: APITask['id']) => {
+    const taskId = typeof id === 'number' ? id : Number(id)
+    if (!Number.isInteger(taskId)) {
+      showAlert({ message: '任务编号无效，无法删除', variant: 'warning' })
+      return
+    }
+    showAlert({
+      title: '确认删除任务',
+      message: '确定删除该任务吗？',
+      variant: 'warning',
+      confirmText: '删除',
+      onConfirm: () => {
+        void deleteTaskCore(taskId)
+      },
+    })
   }
 
   const styleOptions = ['油画', '水彩', '赛博朋克', '写实', '二次元', '国风', '未来感'];

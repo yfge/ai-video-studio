@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { virtualIPAPI, virtualIPImageAPI, taskAPI } from '@/utils/api';
 import { VirtualIP, VirtualIPImage, AIImageGenerationRequest, AIModel } from '@/utils/api';
@@ -46,11 +47,7 @@ export default function VirtualIPImagesPage() {
     is_default: false
   });
 
-  useEffect(() => {
-    loadData();
-  }, [virtualIPId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [ipResponse, imagesResponse, categoriesResponse, modelsResponse] = await Promise.all([
@@ -80,12 +77,12 @@ export default function VirtualIPImagesPage() {
       
       // 处理模型数据
       if (modelsResponse.success && modelsResponse.data) {
-        const models = (modelsResponse.data.models || []) as AIModel[];
+        const models = modelsResponse.data.models ?? [];
         setAvailableModels(models);
 
         // 优先选择可灵作为默认，其次后端提供的默认，否则第一个
         const keling = models.find(m => m.provider === 'keling')?.model_id;
-        const backendDefault = (modelsResponse.data as any).default as string | undefined;
+        const backendDefault = modelsResponse.data.default;
         const first = models[0]?.model_id;
         const nextDefault = keling || backendDefault || first || '';
 
@@ -106,7 +103,11 @@ export default function VirtualIPImagesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showAlert, userPickedModel, virtualIPId]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
  const handleGenerateImage = async () => {
     try {
@@ -181,12 +182,9 @@ export default function VirtualIPImagesPage() {
     }
   };
 
-  const handleDeleteImage = async (imageId: number) => {
-    if (!confirm('确定要删除这张图像吗？')) return;
-
+  const deleteImageById = async (imageId: number) => {
     try {
       const response = await virtualIPImageAPI.deleteImage(virtualIPId, imageId);
-      
       if (response.success) {
         setImages(prev => prev.filter(img => img.id !== imageId));
         showAlert({ message: '图像删除成功', variant: 'success' });
@@ -200,6 +198,18 @@ export default function VirtualIPImagesPage() {
         variant: 'error',
       });
     }
+  };
+
+  const handleDeleteImage = (imageId: number) => {
+    showAlert({
+      title: '确认删除图像',
+      message: '确定要删除这张图像吗？',
+      variant: 'warning',
+      confirmText: '删除',
+      onConfirm: () => {
+        void deleteImageById(imageId);
+      },
+    });
   };
 
   const handleSetDefault = async (imageId: number) => {
@@ -238,12 +248,16 @@ export default function VirtualIPImagesPage() {
       const response = await taskAPI.createTask(taskData);
       
       if (response.success) {
-        showAlert({ message: '任务创建成功！可以在任务管理页面查看进度。', variant: 'success' });
         setShowGenerateForm(false);
-        // 可选择跳转到任务页面
-        if (confirm('是否要查看任务详情？')) {
-          router.push('/tasks');
-        }
+        showAlert({
+          title: '任务创建成功',
+          message: '是否前往任务管理页面查看进度？',
+          variant: 'success',
+          confirmText: '前往任务页',
+          onConfirm: () => {
+            router.push('/tasks');
+          },
+        });
       } else {
         throw new Error(response.error || '创建任务失败');
       }
@@ -535,81 +549,91 @@ export default function VirtualIPImagesPage() {
 
         {/* 图像网格 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredImages.map((image) => (
-            <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="relative">
-                <img
-                  src={(() => {
-                    if (image.oss_url) return image.oss_url;
-                    const fp = image.file_path || '';
-                    // 若为相对路径（如 /uploads/xxx.png），拼接后端域名
-                    return fp.startsWith('http') ? fp : `${API_BASE}${fp.startsWith('/') ? '' : '/'}${fp}`;
-                  })()}
-                  alt={`${virtualIP.name} - ${image.category}`}
-                  className="w-full h-48 object-cover"
-                  onError={(e) => {
-                    // 若首次加载失败，尝试另一种拼接方式作为保底
-                    const fp = image.file_path || '';
-                    const fallback = fp ? `${API_BASE}${fp.startsWith('/') ? '' : '/'}${fp}` : '';
-                    if (fallback && e.currentTarget.src !== fallback) {
-                      e.currentTarget.src = fallback;
-                    }
-                  }}
-                />
-                {image.is_default && (
-                  <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
-                    默认
-                  </div>
-                )}
-                {image.metadata?.generation_method && (
-                  <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs">
-                    AI生成
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-900">{image.category}</span>
-                  <span className="text-xs text-gray-500">
-                    {new Date(image.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                {image.tags.length > 0 && (
-                  <div className="mb-3">
-                    <div className="flex flex-wrap gap-1">
-                      {image.tags.slice(0, 3).map((tag, index) => (
-                        <span
-                          key={index}
-                          className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {image.tags.length > 3 && (
-                        <span className="text-gray-500 text-xs">+{image.tags.length - 3}</span>
-                      )}
+          {filteredImages.map((image) => {
+            const primarySrc = image.oss_url
+              ? image.oss_url
+              : (() => {
+                  const fp = image.file_path || ''
+                  return fp.startsWith('http') ? fp : `${API_BASE}${fp.startsWith('/') ? '' : '/'}${fp}`
+                })()
+            const fallbackSrc = (() => {
+              const fp = image.file_path || ''
+              return fp ? `${API_BASE}${fp.startsWith('/') ? '' : '/'}${fp}` : ''
+            })()
+
+            const handleError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+              if (fallbackSrc && event.currentTarget.src !== fallbackSrc) {
+                event.currentTarget.src = fallbackSrc
+              }
+            }
+
+            return (
+              <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="relative">
+                  <Image
+                    src={primarySrc}
+                    alt={`${virtualIP.name} - ${image.category}`}
+                    width={512}
+                    height={384}
+                    className="w-full h-48 object-cover"
+                    unoptimized
+                    onError={handleError}
+                  />
+                  {image.is_default && (
+                    <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
+                      默认
                     </div>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  {!image.is_default && (
-                    <button
-                      onClick={() => handleSetDefault(image.id)}
-                      className="flex-1 bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                    >
-                      设默认
-                    </button>
                   )}
-                  <button
-                    onClick={() => handleDeleteImage(image.id)}
-                    className="flex-1 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                  >
-                    删除
-                  </button>
+                  {image.metadata?.generation_method && (
+                    <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs">
+                      AI生成
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-900">{image.category}</span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(image.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {image.tags.length > 0 && (
+                    <div className="mb-3">
+                      <div className="flex flex-wrap gap-1">
+                        {image.tags.slice(0, 3).map((tag, index) => (
+                          <span
+                            key={index}
+                            className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {image.tags.length > 3 && (
+                          <span className="text-gray-500 text-xs">+{image.tags.length - 3}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    {!image.is_default && (
+                      <button
+                        onClick={() => handleSetDefault(image.id)}
+                        className="flex-1 bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                      >
+                        设默认
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteImage(image.id)}
+                      className="flex-1 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                    >
+                      删除
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {filteredImages.length === 0 && (

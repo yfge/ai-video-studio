@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { virtualIPAPI, VirtualIP } from '@/utils/api'
+import { useAlertModal } from '@/components/AlertModalProvider'
 
 export default function VirtualIPDetail() {
   const params = useParams()
   const router = useRouter()
+  const { showAlert } = useAlertModal()
   const [virtualIP, setVirtualIP] = useState<VirtualIP | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -21,7 +24,7 @@ export default function VirtualIPDetail() {
   const ipId = Number(params.id)
 
   // 获取虚拟IP详情
-  const fetchVirtualIP = async () => {
+  const fetchVirtualIP = useCallback(async () => {
     try {
       setLoading(true)
       const response = await virtualIPAPI.getVirtualIP(ipId)
@@ -44,7 +47,7 @@ export default function VirtualIPDetail() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [ipId, showAlert])
 
   // 更新虚拟IP
   const handleUpdateIP = async (e: React.FormEvent) => {
@@ -65,9 +68,7 @@ export default function VirtualIPDetail() {
   }
 
   // 删除虚拟IP
-  const handleDeleteIP = async () => {
-    if (!confirm('确定要删除这个虚拟IP吗？此操作不可恢复！')) return
-    
+  const deleteCurrentVirtualIP = async () => {
     try {
       const response = await virtualIPAPI.deleteVirtualIP(ipId)
       if (response.success) {
@@ -80,6 +81,18 @@ export default function VirtualIPDetail() {
       console.error('删除虚拟IP出错:', error)
       showAlert({ message: '删除失败，请重试', variant: 'error' })
     }
+  }
+
+  const handleDeleteIP = () => {
+    showAlert({
+      title: '确认删除虚拟IP',
+      message: '确定要删除这个虚拟IP吗？此操作不可恢复！',
+      variant: 'warning',
+      confirmText: '删除',
+      onConfirm: () => {
+        void deleteCurrentVirtualIP()
+      },
+    })
   }
 
   // 标签管理
@@ -95,9 +108,9 @@ export default function VirtualIPDetail() {
 
   useEffect(() => {
     if (ipId) {
-      fetchVirtualIP()
+      void fetchVirtualIP()
     }
-  }, [ipId])
+  }, [fetchVirtualIP, ipId])
 
   if (loading) {
     return (
@@ -166,7 +179,7 @@ export default function VirtualIPDetail() {
             <div className="flex items-start space-x-6">
               <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                 {virtualIP.default_avatar_url ? (
-                  <img src={virtualIP.default_avatar_url} alt={virtualIP.name} className="w-24 h-24 rounded-full object-cover" />
+                  <Image src={virtualIP.default_avatar_url} alt={virtualIP.name} width={96} height={96} className="w-24 h-24 rounded-full object-cover" unoptimized />
                 ) : (
                   <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { virtualIPAPI, VirtualIP } from '@/utils/api'
 import AuthGuard from '@/components/AuthGuard'
@@ -24,7 +25,7 @@ function VirtualIPListContent() {
   })
 
   // 获取虚拟IP列表
-  const fetchVirtualIPs = async () => {
+  const fetchVirtualIPs = useCallback(async () => {
     try {
       setLoading(true)
       const response = await virtualIPAPI.getVirtualIPs({
@@ -42,7 +43,7 @@ function VirtualIPListContent() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchTerm, selectedTags])
 
   // 创建虚拟IP
   const handleCreateIP = async (e: React.FormEvent) => {
@@ -68,13 +69,11 @@ function VirtualIPListContent() {
   }
 
   // 删除虚拟IP
-  const handleDeleteIP = async (id: number) => {
-    if (!confirm('确定要删除这个虚拟IP吗？')) return
-    
+  const deleteVirtualIPById = async (id: number) => {
     try {
       const response = await virtualIPAPI.deleteVirtualIP(id)
       if (response.success) {
-        setVirtualIPs(virtualIPs.filter(ip => ip.id !== id))
+        setVirtualIPs(prev => prev.filter(ip => ip.id !== id))
       } else {
         showAlert({ message: `删除失败: ${response.error || '未知错误'}`, variant: 'error' })
       }
@@ -82,6 +81,18 @@ function VirtualIPListContent() {
       console.error('删除虚拟IP出错:', error)
       showAlert({ message: '删除失败，请重试', variant: 'error' })
     }
+  }
+
+  const handleDeleteIP = (id: number) => {
+    showAlert({
+      title: '确认删除虚拟IP',
+      message: '确定要删除这个虚拟IP吗？',
+      variant: 'warning',
+      confirmText: '删除',
+      onConfirm: () => {
+        void deleteVirtualIPById(id)
+      },
+    })
   }
 
   // 标签管理
@@ -97,8 +108,8 @@ function VirtualIPListContent() {
 
   // 搜索和筛选
   useEffect(() => {
-    fetchVirtualIPs()
-  }, [searchTerm, selectedTags])
+    void fetchVirtualIPs()
+  }, [fetchVirtualIPs])
 
   // 获取所有标签用于筛选
   const allTags = Array.from(new Set(virtualIPs.flatMap(ip => ip.tags)))
@@ -190,7 +201,7 @@ function VirtualIPListContent() {
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
                         {ip.default_avatar_url ? (
-                          <img src={ip.default_avatar_url} alt={ip.name} className="w-12 h-12 rounded-full object-cover" />
+                          <Image src={ip.default_avatar_url} alt={ip.name} width={48} height={48} className="w-12 h-12 rounded-full object-cover" unoptimized />
                         ) : (
                           <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
