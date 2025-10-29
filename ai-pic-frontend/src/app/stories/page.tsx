@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { storyAPI, virtualIPAPI, aiAPI } from '@/utils/api';
-import { Story, VirtualIP, StoryGenerationRequest } from '@/utils/api';
+import type { Story, VirtualIP, StoryGenerationRequest, AIModel } from '@/utils/api';
 import Navigation from '@/components/Navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { useAlertModal } from '@/components/AlertModalProvider';
@@ -16,7 +16,7 @@ function StoriesPageContent() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
-  const [textModels, setTextModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([]);
+  const [textModels, setTextModels] = useState<AIModel[]>([]);
   
   // 筛选状态
   const [selectedGenre, setSelectedGenre] = useState<string>('');
@@ -64,21 +64,7 @@ function StoriesPageContent() {
     { value: 'published', label: '已发布' }
   ];
 
-  useEffect(() => {
-    loadData();
-  }, [selectedGenre, selectedStatus]);
-
-  useEffect(() => {
-    // 拉取可用文本模型，用于下拉选择
-    (async () => {
-      const res = await aiAPI.getAvailableModels({ type: 'text' });
-      if (res.success && res.data) {
-        setTextModels((res.data as any).models || []);
-      }
-    })();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [storiesResponse, virtualIPsResponse, modelsResponse] = await Promise.all([
@@ -99,7 +85,7 @@ function StoriesPageContent() {
       }
       // 可用模型
       if (modelsResponse && modelsResponse.success && modelsResponse.data) {
-        setTextModels((modelsResponse.data as any).models || []);
+        setTextModels(modelsResponse.data.models ?? []);
       }
     } catch (error) {
       console.error('加载数据失败:', error);
@@ -107,7 +93,24 @@ function StoriesPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedGenre, selectedStatus, showAlert]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const res = await aiAPI.getAvailableModels({ type: 'text' });
+      if (active && res.success && res.data?.models) {
+        setTextModels(res.data.models);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleGenerateStory = async () => {
     if (!generateForm.title || generateForm.character_ids.length === 0) {
@@ -123,9 +126,7 @@ function StoriesPageContent() {
       
       if (response.success && response.data) {
         if (!useAsync) {
-          // 同步生成直接返回故事
-          // @ts-ignore
-          setStories(prev => [response.data!, ...prev]);
+          setStories(prev => [response.data, ...prev]);
         } else {
           showAlert({ message: '已创建异步任务，稍后在任务页查看进度', variant: 'info' });
         }
@@ -160,9 +161,7 @@ function StoriesPageContent() {
     }
   };
 
-  const handleDeleteStory = async (storyId: number) => {
-    if (!confirm('确定要删除这个故事吗？')) return;
-
+  const performDeleteStory = async (storyId: number) => {
     try {
       const response = await storyAPI.deleteStory(storyId);
       if (response.success) {
@@ -175,6 +174,18 @@ function StoriesPageContent() {
       console.error('删除故事失败:', error);
       showAlert({ message: '删除故事失败', variant: 'error' });
     }
+  };
+
+  const handleDeleteStory = (storyId: number) => {
+    showAlert({
+      title: '确认删除',
+      message: '确定要删除这个故事吗？',
+      variant: 'warning',
+      confirmText: '删除',
+      onConfirm: () => {
+        void performDeleteStory(storyId);
+      },
+    });
   };
 
   const handleCharacterToggle = (characterId: number) => {
@@ -497,11 +508,11 @@ function StoriesPageContent() {
                     setPromptPreview('加载中...');
                     const res = await storyAPI.previewStoryPrompt(generateForm);
                     if (res.success && res.data) {
-                      setPromptPreview((res.data as any).prompt || '（空内容）');
+                      setPromptPreview(res.data.prompt ?? '（空内容）');
                     } else {
                       setPromptPreview('生成提示词失败');
                     }
-                  } catch (e) {
+                  } catch {
                     setPromptPreview('预览出错');
                   }
                 }}

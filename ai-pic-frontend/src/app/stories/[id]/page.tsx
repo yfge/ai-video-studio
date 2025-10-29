@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { storyAPI, episodeAPI, scriptAPI, aiAPI, virtualIPAPI, taskAPI } from '@/utils/api'
-import type { Story, Episode, Script } from '@/utils/api'
+import { storyAPI, episodeAPI, scriptAPI, aiAPI, virtualIPAPI } from '@/utils/api'
+import type { Story, Episode, Script, AIModel, VirtualIP, EpisodeGenerationRequest } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 
 export default function StoryDetailPage() {
@@ -19,7 +19,7 @@ export default function StoryDetailPage() {
   const [loadingScripts, setLoadingScripts] = useState(false)
   const [showPrompt, setShowPrompt] = useState(false)
   const [genOpen, setGenOpen] = useState(false)
-  const [models, setModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([])
+  const [models, setModels] = useState<AIModel[]>([])
   const [genForm, setGenForm] = useState({
     episode_count: 3,
     episode_duration: 30,
@@ -32,23 +32,26 @@ export default function StoryDetailPage() {
   })
   const [promptPreview, setPromptPreview] = useState('')
   const [useAsync, setUseAsync] = useState(true)
-  const [vips, setVips] = useState<any[]>([])
+  const [vips, setVips] = useState<VirtualIP[]>([])
   const [focusCharacters, setFocusCharacters] = useState<number[]>([])
 
-  useEffect(() => {
-    loadData()
-  }, [storyId])
+  const buildEpisodePayload = useCallback(
+    (): EpisodeGenerationRequest => ({
+      story_id: storyId,
+      episode_count: genForm.episode_count,
+      episode_duration: genForm.episode_duration,
+      plot_complexity: genForm.plot_complexity,
+      pacing: genForm.pacing,
+      additional_requirements: genForm.additional_requirements || undefined,
+      style_preferences: genForm.style_preferences.length ? genForm.style_preferences : undefined,
+      model: genForm.model || undefined,
+      temperature: genForm.temperature,
+      focus_characters: focusCharacters.length ? focusCharacters : undefined,
+    }),
+    [focusCharacters, genForm, storyId]
+  )
 
-  useEffect(() => {
-    (async () => {
-      const res = await aiAPI.getAvailableModels({ type: 'text' })
-      if (res.success && res.data) setModels((res.data as any).models || [])
-      const vr = await virtualIPAPI.getVirtualIPs()
-      if (vr.success && vr.data) setVips(vr.data)
-    })()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       const [storyRes, epsRes] = await Promise.all([
@@ -77,7 +80,24 @@ export default function StoryDetailPage() {
       setLoading(false)
       setLoadingScripts(false)
     }
-  }
+  }, [showAlert, storyId])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      const res = await aiAPI.getAvailableModels({ type: 'text' })
+      if (active && res.success && res.data?.models) setModels(res.data.models)
+      const vr = await virtualIPAPI.getVirtualIPs()
+      if (active && vr.success && vr.data) setVips(vr.data)
+    })()
+    return () => {
+      active = false
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -246,17 +266,9 @@ export default function StoryDetailPage() {
                   type="button"
                   onClick={async () => {
                     setPromptPreview('加载中...')
-                    const res = await episodeAPI.previewEpisodePrompt({
-                      story_id: storyId,
-                      episode_count: genForm.episode_count,
-                      episode_duration: genForm.episode_duration,
-                      plot_complexity: genForm.plot_complexity,
-                      pacing: genForm.pacing,
-                      additional_requirements: genForm.additional_requirements,
-                      style_preferences: genForm.style_preferences,
-                      focus_characters: focusCharacters,
-                    } as any)
-                    if (res.success && res.data) setPromptPreview((res.data as any).prompt)
+                    const payload = buildEpisodePayload()
+                    const res = await episodeAPI.previewEpisodePrompt(payload)
+                    if (res.success && res.data) setPromptPreview(res.data.prompt ?? '（空内容）')
                     else setPromptPreview('生成提示词失败')
                   }}
                   className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
@@ -264,32 +276,21 @@ export default function StoryDetailPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    const payload = {
-                      story_id: storyId,
-                      episode_count: genForm.episode_count,
-                      episode_duration: genForm.episode_duration,
-                      plot_complexity: genForm.plot_complexity,
-                      pacing: genForm.pacing,
-                      additional_requirements: genForm.additional_requirements,
-                      style_preferences: genForm.style_preferences,
-                      model: genForm.model,
-                      temperature: genForm.temperature,
-                      focus_characters: focusCharacters,
-                    } as any
+                    const payload = buildEpisodePayload()
                     if (useAsync) {
-                      const r = await episodeAPI.generateEpisodesAsync(payload)
-                      if (r.success) {
+                      const response = await episodeAPI.generateEpisodesAsync(payload)
+                      if (response.success) {
                         showAlert({ message: '已创建任务，请稍后在任务页查看进度', variant: 'info' })
                       } else {
-                        showAlert({ message: `生成失败：${r.error || '未知错误'}`, variant: 'error' })
+                        showAlert({ message: `生成失败：${response.error || '未知错误'}`, variant: 'error' })
                       }
                     } else {
-                      const r = await episodeAPI.generateEpisodes(payload)
-                      if (r.success) {
+                      const response = await episodeAPI.generateEpisodes(payload)
+                      if (response.success) {
                         await loadData()
                         showAlert({ message: '生成成功', variant: 'success' })
                       } else {
-                        showAlert({ message: `生成失败：${r.error || '未知错误'}`, variant: 'error' })
+                        showAlert({ message: `生成失败：${response.error || '未知错误'}`, variant: 'error' })
                       }
                     }
                   }}

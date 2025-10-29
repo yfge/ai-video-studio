@@ -2,7 +2,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 // 通用响应类型
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
   message?: string
@@ -122,7 +122,7 @@ export interface VirtualIPImage {
   category: string;
   tags: string[];
   is_default: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -133,14 +133,14 @@ export interface VirtualIPImageCreate {
   category: string;
   tags: string[];
   is_default: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface VirtualIPImageUpdate {
   category?: string;
   tags?: string[];
   is_default?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AIImageGenerationRequest {
@@ -153,6 +153,7 @@ export interface AIImageGenerationRequest {
 
 export interface AIModel {
   model_id: string;
+  id?: string;
   name: string;
   provider: string;
   type: string;
@@ -161,7 +162,8 @@ export interface AIModel {
 
 export interface AvailableModelsResponse {
   models: AIModel[];
-  default: string;
+  default?: string;
+  count?: number;
 }
 
 // 虚拟IP相关类型
@@ -259,7 +261,7 @@ export interface StoryCharacter {
   background?: string;
   motivation?: string;
   character_arc?: string;
-  relationships?: Record<string, any>;
+  relationships?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -275,18 +277,18 @@ export interface Story {
   synopsis?: string;
   main_conflict?: string;
   resolution?: string;
-  main_characters?: any[];
-  character_relationships?: Record<string, any>;
+  main_characters?: unknown[];
+  character_relationships?: Record<string, unknown>;
   setting_time?: string;
   setting_location?: string;
   world_building?: string;
   status: string;
   is_public: boolean;
   tags?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   generation_prompt?: string;
   ai_model?: string;
-  generation_params?: Record<string, any>;
+  generation_params?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   story_characters?: StoryCharacter[];
@@ -298,17 +300,17 @@ export interface Episode {
   episode_number: number;
   title: string;
   summary?: string;
-  plot_points?: any[];
-  character_arcs?: Record<string, any>;
-  conflicts?: any[];
+  plot_points?: unknown[];
+  character_arcs?: Record<string, unknown>;
+  conflicts?: unknown[];
   duration_minutes?: number;
   scene_count?: number;
   status: string;
   tags?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   generation_prompt?: string;
   ai_model?: string;
-  generation_params?: Record<string, any>;
+  generation_params?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -318,9 +320,9 @@ export interface Script {
   episode_id: number;
   title: string;
   content?: string;
-  scenes?: any[];
-  dialogues?: any[];
-  stage_directions?: any[];
+  scenes?: unknown[];
+  dialogues?: unknown[];
+  stage_directions?: unknown[];
   format_type: string;
   language: string;
   page_count?: number;
@@ -329,12 +331,67 @@ export interface Script {
   status: string;
   version: string;
   tags?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   generation_prompt?: string;
   ai_model?: string;
-  generation_params?: Record<string, any>;
+  generation_params?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+}
+
+export type StoryboardFrame = {
+  frame_id?: string;
+  frame_number?: number;
+  scene_number?: number | string;
+  scene_index?: number;
+  shot_type?: string;
+  camera_movement?: string;
+  composition?: string;
+  description?: string;
+  duration_seconds?: number;
+  ai_prompt?: string;
+  reference_images?: string[];
+  image_url?: string;
+  video_url?: string;
+  generation_source?: string;
+  generation_method?: string;
+  generation_model?: string;
+  status?: string;
+  generated_at?: string;
+  updated_at?: string;
+} & Record<string, unknown>;
+
+export type StoryboardMeta = {
+  version?: number;
+  updated_at?: string;
+  generation_source?: string;
+  generation_method?: string;
+  generation_model?: string;
+  provider?: string;
+  scene_scope?: number[] | null;
+} & Record<string, unknown>;
+
+export type StoryboardPlanFrame = {
+  shot_type?: string;
+  camera_movement?: string;
+  composition?: string;
+  intent?: string;
+} & Record<string, unknown>;
+
+export type StoryboardPlanScene = {
+  scene_number: number;
+  target_frames: number;
+  frames: StoryboardPlanFrame[];
+};
+
+export type StoryboardPlan = {
+  scenes: StoryboardPlanScene[];
+} & Record<string, unknown>;
+
+export interface StoryboardPayload {
+  frames: StoryboardFrame[];
+  meta?: StoryboardMeta;
+  plan?: StoryboardPlan;
 }
 
 export interface StoryGenerationRequest {
@@ -364,6 +421,8 @@ export interface EpisodeGenerationRequest {
   pacing: string;
   additional_requirements?: string;
   style_preferences?: string[];
+  model?: string;
+  temperature?: number;
 }
 
 export interface ScriptGenerationRequest {
@@ -374,6 +433,8 @@ export interface ScriptGenerationRequest {
   scene_detail_level: string;
   additional_requirements?: string;
   style_preferences?: string[];
+  model?: string;
+  temperature?: number;
 }
 
 // HTTP 请求工具函数
@@ -906,7 +967,7 @@ class ApiClient {
   // 统一可用模型列表
   async getAvailableModels(params?: { type?: 'text' | 'image' | 'video' | string }) {
     const t = params?.type ?? 'text';
-    return this.request<{ models: Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>; count: number }>(`/api/v1/ai/models/available?model_type=${encodeURIComponent(t)}`);
+    return this.request<AvailableModelsResponse>(`/api/v1/ai/models/available?model_type=${encodeURIComponent(t)}`);
   }
 
   // 剧集相关方法
@@ -1044,7 +1105,7 @@ class ApiClient {
 
   // 分镜相关
   async getStoryboard(scriptId: number) {
-    return this.request<{ frames: any[]; meta?: Record<string, any>; plan?: Record<string, any> }>(`/api/v1/scripts/${scriptId}/storyboard`)
+    return this.request<StoryboardPayload>(`/api/v1/scripts/${scriptId}/storyboard`)
   }
   async previewStoryboardPrompt(scriptId: number) {
     return this.request<{ prompt: string }>(`/api/v1/scripts/${scriptId}/storyboard/preview`, { method: 'POST' })
@@ -1061,7 +1122,7 @@ class ApiClient {
     if (data?.scene_numbers && data.scene_numbers.length > 0) params.append('scene_numbers', data.scene_numbers.join(','))
     if (data?.use_plan) params.append('use_plan', 'true')
     const qs = params.toString()
-    return this.request<{ frames: any[]; meta?: Record<string, any>; plan?: Record<string, any> }>(
+    return this.request<StoryboardPayload>(
       `/api/v1/scripts/${scriptId}/storyboard/generate${qs ? `?${qs}` : ''}`,
       { method: 'POST' }
     )
@@ -1087,7 +1148,7 @@ class ApiClient {
       }),
     })
   }
-  async updateStoryboard(scriptId: number, frames: any[]) {
+  async updateStoryboard(scriptId: number, frames: StoryboardFrame[]) {
     return this.request(`/api/v1/scripts/${scriptId}/storyboard/update`, {
       method: 'POST',
       body: JSON.stringify({ frames }),
@@ -1219,6 +1280,8 @@ export const episodeAPI = {
   getEpisodes: apiClient.getEpisodes.bind(apiClient),
   getEpisode: apiClient.getEpisode.bind(apiClient),
   generateEpisodes: apiClient.generateEpisodes.bind(apiClient),
+  generateEpisodesAsync: apiClient.generateEpisodesAsync.bind(apiClient),
+  previewEpisodePrompt: apiClient.previewEpisodePrompt.bind(apiClient),
   updateEpisode: apiClient.updateEpisode.bind(apiClient),
   deleteEpisode: apiClient.deleteEpisode.bind(apiClient),
   getStoryEpisodes: apiClient.getStoryEpisodes.bind(apiClient),

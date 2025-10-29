@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { episodeAPI, scriptAPI, aiAPI } from '@/utils/api';
-import { Episode, Script, ScriptGenerationRequest } from '@/utils/api';
+import type { Episode, Script, ScriptGenerationRequest, AIModel } from '@/utils/api';
 import { useAlertModal } from '@/components/AlertModalProvider';
 
 export default function EpisodeDetailPage() {
@@ -18,7 +18,7 @@ export default function EpisodeDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [useAsync, setUseAsync] = useState(true);
-  const [models, setModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([])
+  const [models, setModels] = useState<AIModel[]>([])
   const [promptPreview, setPromptPreview] = useState('')
 
   // 剧本生成表单状态
@@ -34,20 +34,12 @@ export default function EpisodeDetailPage() {
 
   const [formats, setFormats] = useState<Array<{ value: string; label: string }>>([]);
   const [languages, setLanguages] = useState<Array<{ value: string; label: string }>>([]);
+  const asRecord = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  const getString = (value: unknown): string | undefined =>
+    typeof value === 'string' ? value : undefined;
 
-  useEffect(() => {
-    loadData();
-    loadOptions();
-  }, [episodeId]);
-
-  useEffect(() => {
-    (async () => {
-      const res = await aiAPI.getAvailableModels({ type: 'text' })
-      if (res.success && res.data) setModels((res.data as any).models || [])
-    })()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [episodeResponse, scriptsResponse] = await Promise.all([
@@ -67,9 +59,9 @@ export default function EpisodeDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [episodeId, showAlert]);
 
-  const loadOptions = async () => {
+  const loadOptions = useCallback(async () => {
     try {
       const [formatsResponse, languagesResponse] = await Promise.all([
         scriptAPI.getScriptFormats(),
@@ -85,13 +77,33 @@ export default function EpisodeDetailPage() {
     } catch (error) {
       console.error('加载选项失败:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadData();
+    void loadOptions();
+  }, [loadData, loadOptions]);
+
+  useEffect(() => {
+    setGenerateForm(prev => ({ ...prev, episode_id: episodeId }));
+  }, [episodeId]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const res = await aiAPI.getAvailableModels({ type: 'text' })
+      if (active && res.success && res.data?.models) setModels(res.data.models)
+    })()
+    return () => {
+      active = false
+    }
+  }, []);
 
   const handleGenerateScript = async () => {
     try {
       setGenerating(true);
       if (useAsync) {
-        const response = await scriptAPI.generateScriptAsync(generateForm as any)
+        const response = await scriptAPI.generateScriptAsync(generateForm)
         if (response.success) {
           showAlert({ message: '已创建任务，请稍后在任务页查看进度', variant: 'info' });
         } else {
@@ -100,7 +112,7 @@ export default function EpisodeDetailPage() {
       } else {
         const response = await scriptAPI.generateScript(generateForm);
         if (response.success && response.data) {
-          setScripts(prev => [response.data!, ...prev]);
+          setScripts(prev => [response.data, ...prev]);
           setShowGenerateForm(false);
           showAlert({ message: '剧本生成成功！', variant: 'success' });
         } else {
@@ -115,9 +127,7 @@ export default function EpisodeDetailPage() {
     }
   };
 
-  const handleDeleteScript = async (scriptId: number) => {
-    if (!confirm('确定要删除这个剧本吗？')) return;
-
+  const performDeleteScript = async (scriptId: number) => {
     try {
       const response = await scriptAPI.deleteScript(scriptId);
       if (response.success) {
@@ -132,15 +142,13 @@ export default function EpisodeDetailPage() {
     }
   };
 
-  const handleRegenerateScript = async (scriptId: number) => {
-    if (!confirm('确定要重新生成这个剧本吗？')) return;
-
+  const performRegenerateScript = async (scriptId: number) => {
     try {
       const response = await scriptAPI.regenerateScript(scriptId);
       if (response.success && response.data) {
         setScripts(prev =>
           prev.map(script =>
-            script.id === scriptId ? response.data! : script
+            script.id === scriptId ? response.data : script
         ));
         showAlert({ message: '剧本重新生成成功', variant: 'success' });
       } else {
@@ -150,6 +158,30 @@ export default function EpisodeDetailPage() {
       console.error('重新生成剧本失败:', error);
       showAlert({ message: '重新生成剧本失败', variant: 'error' });
     }
+  };
+
+  const handleDeleteScript = (scriptId: number) => {
+    showAlert({
+      title: '确认删除剧本',
+      message: '确定要删除这个剧本吗？',
+      variant: 'warning',
+      confirmText: '删除',
+      onConfirm: () => {
+        void performDeleteScript(scriptId);
+      },
+    });
+  };
+
+  const handleRegenerateScript = (scriptId: number) => {
+    showAlert({
+      title: '确认重新生成',
+      message: '确定要重新生成这个剧本吗？',
+      variant: 'warning',
+      confirmText: '重新生成',
+      onConfirm: () => {
+        void performRegenerateScript(scriptId);
+      },
+    });
   };
 
   if (loading) {
@@ -228,20 +260,28 @@ export default function EpisodeDetailPage() {
               <h3 className="font-medium text-gray-900 mb-2">主要情节点</h3>
               {episode.plot_points && episode.plot_points.length > 0 ? (
                 <div className="space-y-2">
-                  {episode.plot_points.map((p: any, idx: number) => (
-                    <div key={idx} className="bg-gray-50 p-3 rounded">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium text-gray-900">{p.description || (typeof p === 'string' ? p : `情节点 ${idx+1}`)}</div>
-                        {p.timing && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">{p.timing}</span>}
-                      </div>
-                      {(p.purpose || p.escalation) && (
-                        <div className="mt-1 text-xs text-gray-600">
-                          {p.purpose && <div>目的：{p.purpose}</div>}
-                          {p.escalation && <div>升级：{p.escalation}</div>}
+                  {episode.plot_points.map((point, idx) => {
+                    const record = asRecord(point);
+                    const description =
+                      getString(record?.description) ?? (typeof point === 'string' ? point : `情节点 ${idx + 1}`);
+                    const timing = getString(record?.timing);
+                    const purpose = getString(record?.purpose);
+                    const escalation = getString(record?.escalation);
+                    return (
+                      <div key={idx} className="bg-gray-50 p-3 rounded">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-medium text-gray-900">{description}</div>
+                          {timing && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">{timing}</span>}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {(purpose || escalation) && (
+                          <div className="mt-1 text-xs text-gray-600">
+                            {purpose && <div>目的：{purpose}</div>}
+                            {escalation && <div>升级：{escalation}</div>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-gray-500 text-sm">暂无情节点</p>
@@ -265,19 +305,35 @@ export default function EpisodeDetailPage() {
               <h3 className="font-medium text-gray-900 mb-2">冲突设置</h3>
               {episode.conflicts && episode.conflicts.length > 0 ? (
                 <div className="space-y-2">
-                  {episode.conflicts.map((c: any, idx: number) => (
-                    <div key={idx} className="bg-red-50 p-3 rounded text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-red-900">{c.description || (typeof c === 'string' ? c : `冲突 ${idx+1}`)}</span>
-                        {c.intensity && (
-                          <span className={`text-xs px-2 py-0.5 rounded ${c.intensity==='high'?'bg-red-200 text-red-800':c.intensity==='medium'?'bg-yellow-200 text-yellow-800':'bg-gray-200 text-gray-800'}`}>{c.intensity}</span>
+                  {episode.conflicts.map((conflict, idx) => {
+                    const record = asRecord(conflict);
+                    const description =
+                      getString(record?.description) ?? (typeof conflict === 'string' ? conflict : `冲突 ${idx + 1}`);
+                    const intensity = getString(record?.intensity);
+                    const partiesRaw = record?.parties;
+                    const parties = Array.isArray(partiesRaw)
+                      ? partiesRaw.map(part => getString(part)).filter((part): part is string => Boolean(part))
+                      : [];
+                    const intensityClass =
+                      intensity === 'high'
+                        ? 'bg-red-200 text-red-800'
+                        : intensity === 'medium'
+                          ? 'bg-yellow-200 text-yellow-800'
+                          : 'bg-gray-200 text-gray-800';
+                    return (
+                      <div key={idx} className="bg-red-50 p-3 rounded text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-red-900">{description}</span>
+                          {intensity && (
+                            <span className={`text-xs px-2 py-0.5 rounded ${intensityClass}`}>{intensity}</span>
+                          )}
+                        </div>
+                        {parties.length > 0 && (
+                          <div className="mt-1 text-xs text-gray-700">涉及：{parties.join(' vs ')}</div>
                         )}
                       </div>
-                      {c.parties && Array.isArray(c.parties) && c.parties.length>0 && (
-                        <div className="mt-1 text-xs text-gray-700">涉及：{c.parties.join(' vs ')}</div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-gray-500 text-sm">暂无冲突设置</p>
@@ -374,16 +430,32 @@ export default function EpisodeDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">模型</label>
-                  <select value={(generateForm as any).model || ''} onChange={e => setGenerateForm(prev => ({ ...prev, model: e.target.value }))} className="w-full px-3 py-2 border rounded">
+                  <select
+                    value={generateForm.model ?? ''}
+                    onChange={e => setGenerateForm(prev => ({ ...prev, model: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded"
+                  >
                     <option value="">Auto（推荐）</option>
                     {models.map(m => (
-                      <option key={m.model_id} value={m.model_id}>{m.name || m.id} — {m.provider}</option>
+                      <option key={m.model_id} value={m.model_id}>
+                        {m.name || m.id} — {m.provider}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">温度（{((generateForm as any).temperature ?? 0.7).toFixed(1)}）</label>
-                  <input type="range" min={0} max={1.5} step={0.1} value={(generateForm as any).temperature ?? 0.7} onChange={e => setGenerateForm(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))} className="w-full" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    温度（{(generateForm.temperature ?? 0.7).toFixed(1)}）
+                  </label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1.5}
+                    step={0.1}
+                    value={generateForm.temperature ?? 0.7}
+                    onChange={e => setGenerateForm(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                    className="w-full"
+                  />
                 </div>
                 <div className="flex items-end">
                   <label className="text-sm text-gray-700 flex items-center gap-2"><input type="checkbox" checked={useAsync} onChange={e => setUseAsync(e.target.checked)} /> 异步任务</label>
@@ -392,12 +464,18 @@ export default function EpisodeDetailPage() {
 
               {/* 提示词预览 */}
               <div className="mb-2">
-                <button type="button" onClick={async () => {
-                  setPromptPreview('加载中...')
-                  const res = await (scriptAPI as any).previewScriptPrompt(generateForm as any)
-                  if (res.success && res.data) setPromptPreview((res.data as any).prompt)
-                  else setPromptPreview('生成提示词失败')
-                }} className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">提示词预览</button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setPromptPreview('加载中...')
+                    const res = await scriptAPI.previewScriptPrompt(generateForm)
+                    if (res.success && res.data) setPromptPreview(res.data.prompt ?? '（空内容）')
+                    else setPromptPreview('生成提示词失败')
+                  }}
+                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                >
+                  提示词预览
+                </button>
               </div>
               {promptPreview && (
                 <div className="mt-2 bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">{promptPreview}</div>
@@ -505,4 +583,4 @@ export default function EpisodeDetailPage() {
       </div>
     </div>
   );
-} 
+}

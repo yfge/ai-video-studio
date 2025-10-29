@@ -1,67 +1,20 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { episodeAPI, scriptAPI, aiAPI, storyStructureAPI } from '@/utils/api'
-import type { Episode, Script } from '@/utils/api'
+import type {
+  Episode,
+  Script,
+  AIModel,
+  StoryboardPayload,
+  StoryboardFrame,
+} from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 
-type StoryboardFrame = {
-  frame_id?: string
-  frame_number?: number
-  scene_number?: number
-  scene_index?: number
-  shot_type?: string
-  camera_movement?: string
-  composition?: string
-  description: string
-  duration_seconds?: number
-  ai_prompt?: string
-  reference_images?: string[]
-  image_url?: string
-  video_url?: string
-  generation_source?: string
-  generation_method?: string
-  generation_model?: string
-  status?: string
-  generated_at?: string
-  updated_at?: string
-  [key: string]: any
-}
-
-type StoryboardMeta = {
-  version?: number
-  updated_at?: string
-  generation_source?: string
-  generation_method?: string
-  generation_model?: string
-  provider?: string
-  scene_scope?: number[] | null
-  [key: string]: any
-}
-
-type StoryboardPlanFrame = {
-  shot_type?: string
-  camera_movement?: string
-  composition?: string
-  intent?: string
-}
-
-type StoryboardPlanScene = {
-  scene_number: number
-  target_frames: number
-  frames: StoryboardPlanFrame[]
-}
-
-type StoryboardPlan = {
-  scenes: StoryboardPlanScene[]
-}
-
-type StoryboardData = {
-  frames: StoryboardFrame[]
-  meta?: StoryboardMeta
-  plan?: StoryboardPlan
-}
+type NormalizedScene = { id: number; scene_number: string; slug_line: string; status: string }
+type NormalizedShot = { id: number; shot_number: string; shot_type?: string; camera_movement?: string }
 
 export default function EpisodeStoryboardPage() {
   const params = useParams()
@@ -72,28 +25,24 @@ export default function EpisodeStoryboardPage() {
   const [episode, setEpisode] = useState<Episode | null>(null)
   const [scripts, setScripts] = useState<Script[]>([])
   const [activeScript, setActiveScript] = useState<Script | null>(null)
-  const [storyboard, setStoryboard] = useState<StoryboardData>({ frames: [] })
+  const [storyboard, setStoryboard] = useState<StoryboardPayload>({ frames: [] })
   const [loading, setLoading] = useState(true)
   const [storyboardBusy, setStoryboardBusy] = useState(false)
   const defaultUseNormalized = (process.env.NEXT_PUBLIC_USE_NORMALIZED_BY_DEFAULT || '').toLowerCase() === 'true'
   const [useNormalized, setUseNormalized] = useState(defaultUseNormalized)
-  const [normalizedScenes, setNormalizedScenes] = useState<Array<{ id: number; scene_number: string; slug_line: string; status: string }>>([])
-  const [normalizedShots, setNormalizedShots] = useState<Array<{ id: number; shot_number: string; shot_type?: string; camera_movement?: string }>>([])
+  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>([])
+  const [normalizedShots, setNormalizedShots] = useState<NormalizedShot[]>([])
   const [selectedNormalizedSceneId, setSelectedNormalizedSceneId] = useState<number | null>(null)
   const [normalizedLoading, setNormalizedLoading] = useState(false)
 
-  const [models, setModels] = useState<Array<{ model_id: string; id: string; name: string; provider: string; type: string; capabilities: string[] }>>([])
+  const [models, setModels] = useState<AIModel[]>([])
   const [form, setForm] = useState({ model: '', temperature: 0.7, frames_per_scene: 7 })
   const [promptPreview, setPromptPreview] = useState('')
   const [selectedScene, setSelectedScene] = useState<number>(1)
   const [showPlan, setShowPlan] = useState(false)
   const [seedingBusy, setSeedingBusy] = useState(false)
 
-  useEffect(() => {
-    load()
-  }, [episodeId])
-
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true)
       const [epRes, scRes] = await Promise.all([
@@ -106,17 +55,26 @@ export default function EpisodeStoryboardPage() {
         const first = scRes.data[0] || null
         setActiveScript(first)
       }
-      const m = await aiAPI.getAvailableModels({ type: 'text' })
-      if (m.success && m.data) setModels((m.data as any).models || [])
+      const modelResponse = await aiAPI.getAvailableModels({ type: 'text' })
+      if (modelResponse.success && modelResponse.data?.models) {
+        setModels(modelResponse.data.models)
+      } else {
+        setModels([])
+      }
     } finally {
       setLoading(false)
     }
-  }
+  }, [episodeId])
 
-  const scenes = useMemo(() => activeScript?.scenes || [], [activeScript])
-  const uiScenes = useMemo(() => {
-    return useNormalized ? normalizedScenes : scenes
-  }, [useNormalized, normalizedScenes, scenes])
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const scriptScenes = useMemo<Record<string, unknown>[]>(() => {
+    if (!Array.isArray(activeScript?.scenes)) return []
+    return activeScript.scenes.filter((scene): scene is Record<string, unknown> => typeof scene === 'object' && scene !== null)
+  }, [activeScript])
+  const scriptSceneCount = scriptScenes.length
 
   useEffect(() => {
     if (!activeScript) {
@@ -128,18 +86,18 @@ export default function EpisodeStoryboardPage() {
       setStoryboardBusy(true)
       try {
         const sb = await scriptAPI.getStoryboard(activeScript.id)
-        if (sb.success && sb.data) setStoryboard(sb.data as StoryboardData)
+        if (sb.success && sb.data) setStoryboard(sb.data)
         else setStoryboard({ frames: [] })
       } finally {
         setStoryboardBusy(false)
       }
     }
     fetchStoryboard()
-  }, [activeScript?.id])
+  }, [activeScript])
 
   useEffect(() => {
-    if (!useNormalized && scenes.length > 0) setSelectedScene(1)
-  }, [useNormalized, scenes.length])
+    if (!useNormalized && scriptSceneCount > 0) setSelectedScene(1)
+  }, [useNormalized, scriptSceneCount])
 
   useEffect(() => {
     if (useNormalized && normalizedScenes.length > 0) {
@@ -155,21 +113,21 @@ export default function EpisodeStoryboardPage() {
       if (!useNormalized || !activeScript?.id) return
       setNormalizedLoading(true)
       try {
-        const res = await (storyStructureAPI as any).getNormalizedScenes(activeScript.id)
-        if (res?.success && Array.isArray(res.data)) setNormalizedScenes(res.data as any)
+        const res = await storyStructureAPI.getNormalizedScenes(activeScript.id)
+        if (res.success && Array.isArray(res.data)) setNormalizedScenes(res.data)
         else setNormalizedScenes([])
       } finally {
         setNormalizedLoading(false)
       }
     }
     fetchNormalized()
-  }, [useNormalized, activeScript?.id])
+  }, [useNormalized, activeScript])
 
   useEffect(() => {
     const fetchShots = async () => {
       if (!useNormalized || !selectedNormalizedSceneId) { setNormalizedShots([]); return }
-      const res = await (storyStructureAPI as any).getNormalizedSceneShots(selectedNormalizedSceneId)
-      if (res?.success && Array.isArray(res.data)) setNormalizedShots(res.data as any)
+      const res = await storyStructureAPI.getNormalizedSceneShots(selectedNormalizedSceneId)
+      if (res.success && Array.isArray(res.data)) setNormalizedShots(res.data)
       else setNormalizedShots([])
     }
     fetchShots()
@@ -217,22 +175,22 @@ export default function EpisodeStoryboardPage() {
     if (!activeScript) return
     setStoryboardBusy(true)
     try {
-      const r = await (scriptAPI as any).generateStoryboard(activeScript.id, {
-        model: form.model,
+      const response = await scriptAPI.generateStoryboard(activeScript.id, {
+        model: form.model || undefined,
         temperature: form.temperature,
         frames_per_scene: form.frames_per_scene,
         scene_numbers: [selectedScene],
       })
-      if (r.success) {
-        if (r.data) {
-          setStoryboard(r.data as StoryboardData)
-          if ((r.data as StoryboardData)?.plan?.scenes?.length) setShowPlan(true)
-        } else {
-          const sb = await scriptAPI.getStoryboard(activeScript.id)
-          if (sb.success && sb.data) setStoryboard(sb.data as StoryboardData)
-        }
-      } else {
+      if (!response.success) {
         showAlert({ message: '生成分镜失败', variant: 'error' })
+        return
+      }
+      if (response.data) {
+        setStoryboard(response.data)
+        if (response.data.plan?.scenes?.length) setShowPlan(true)
+      } else {
+        const fallback = await scriptAPI.getStoryboard(activeScript.id)
+        if (fallback.success && fallback.data) setStoryboard(fallback.data)
       }
     } finally {
       setStoryboardBusy(false)
@@ -243,10 +201,10 @@ export default function EpisodeStoryboardPage() {
     if (!activeScript) return
     setStoryboardBusy(true)
     try {
-      const resp = await (scriptAPI as any).updateStoryboard(activeScript.id, storyboard.frames)
+      const resp = await scriptAPI.updateStoryboard(activeScript.id, storyboard.frames ?? [])
       if (resp.success) {
         const sb = await scriptAPI.getStoryboard(activeScript.id)
-        if (sb.success && sb.data) setStoryboard(sb.data as StoryboardData)
+        if (sb.success && sb.data) setStoryboard(sb.data)
         showAlert({ message: '已保存', variant: 'success' })
       } else {
         showAlert({ message: '保存失败', variant: 'error' })
@@ -260,44 +218,77 @@ export default function EpisodeStoryboardPage() {
     if (!activeScript) return
     setStoryboardBusy(true)
     try {
-      const r = await (scriptAPI as any).generateStoryboard(activeScript.id, {
-        model: form.model,
+      const response = await scriptAPI.generateStoryboard(activeScript.id, {
+        model: form.model || undefined,
         temperature: form.temperature,
         frames_per_scene: form.frames_per_scene,
         use_plan: usePlan,
-        // 不传 scene_numbers = 全部场景
       })
-      if (r.success) {
-        if (r.data) {
-          setStoryboard(r.data as StoryboardData)
-          if ((r.data as StoryboardData)?.plan?.scenes?.length) setShowPlan(true)
-        } else {
-          const sb = await scriptAPI.getStoryboard(activeScript.id)
-          if (sb.success && sb.data) setStoryboard(sb.data as StoryboardData)
-        }
-      } else {
+      if (!response.success) {
         showAlert({ message: '生成分镜失败', variant: 'error' })
+        return
+      }
+      if (response.data) {
+        setStoryboard(response.data)
+        if (response.data.plan?.scenes?.length) setShowPlan(true)
+      } else {
+        const sb = await scriptAPI.getStoryboard(activeScript.id)
+        if (sb.success && sb.data) setStoryboard(sb.data)
       }
     } finally {
       setStoryboardBusy(false)
     }
   }
 
+  const frameMatchesScene = (frame: StoryboardFrame, scene: number) => {
+    const raw = frame.scene_number
+    const value = typeof raw === 'string' ? parseInt(raw, 10) : raw
+    return value === scene
+  }
+
+  const collectFrameIndexesForScene = (scene: number) =>
+    (storyboard.frames ?? [])
+      .map((frame, idx) => ({ frame, idx }))
+      .filter(({ frame }) => frameMatchesScene(frame, scene))
+      .map(({ idx }) => idx)
+
   const handleGenerateVideosForScene = async () => {
     if (!activeScript) return
-    const idxs = (storyboard.frames || []).map((_: any, idx: number) => idx).filter((i: number) => (storyboard.frames[i]?.scene_number === selectedScene))
-    const r = await (scriptAPI as any).generateStoryboardVideo(activeScript.id, idxs)
-    if (r.success) showAlert({ message: '已创建视频生成任务', variant: 'success' })
+    const indexes = collectFrameIndexesForScene(selectedScene)
+    const response = await scriptAPI.generateStoryboardVideo(activeScript.id, indexes)
+    if (response.success) showAlert({ message: '已创建视频生成任务', variant: 'success' })
     else showAlert({ message: '视频生成失败', variant: 'error' })
   }
 
   const handleGenerateImagesForScene = async () => {
     if (!activeScript) return
-    const idxs = (storyboard.frames || []).map((_: any, idx: number) => idx).filter((i: number) => (storyboard.frames[i]?.scene_number === selectedScene))
-    const r = await (scriptAPI as any).generateStoryboardImages(activeScript.id, { frames: idxs })
-    if (r.success) showAlert({ message: '已创建图像生成任务', variant: 'success' })
+    const indexes = collectFrameIndexesForScene(selectedScene)
+    const response = await scriptAPI.generateStoryboardImages(activeScript.id, { frames: indexes })
+    if (response.success) showAlert({ message: '已创建图像生成任务', variant: 'success' })
     else showAlert({ message: '图像生成失败', variant: 'error' })
   }
+
+  const seedScenesFromJson = async () => {
+    if (!activeScript) return
+    setSeedingBusy(true)
+    try {
+      const res = await storyStructureAPI.seedScenesFromJson(activeScript.id)
+      if (res.success && res.data) {
+        showAlert({ message: `导入完成：新增 ${res.data.inserted} 条场景`, variant: 'success' })
+        if (useNormalized) {
+          const list = await storyStructureAPI.getNormalizedScenes(activeScript.id)
+          if (list.success && Array.isArray(list.data)) setNormalizedScenes(list.data)
+        }
+      } else {
+        showAlert({ message: '导入失败', variant: 'error' })
+      }
+    } finally {
+      setSeedingBusy(false)
+    }
+  }
+
+  const asString = (value: unknown): string | undefined =>
+    typeof value === 'string' ? value : undefined
 
   if (loading) {
     return (
@@ -350,25 +341,17 @@ export default function EpisodeStoryboardPage() {
               使用规范化结构（实验）
             </label>
             <button
-              onClick={async () => {
+              onClick={() => {
                 if (!activeScript) return
-                if (!confirm('将从当前剧本的 JSON 场景导入到规范化 scenes 表，确认执行？')) return
-                setSeedingBusy(true)
-                try {
-                  const res = await (storyStructureAPI as any).seedScenesFromJson(activeScript.id)
-                  if (res?.success && res.data) {
-                    showAlert({ message: `导入完成：新增 ${res.data.inserted} 条场景`, variant: 'success' })
-                    // refresh normalized scenes if toggle on
-                    if (useNormalized) {
-                      const list = await (storyStructureAPI as any).getNormalizedScenes(activeScript.id)
-                      if (list?.success && list.data) setNormalizedScenes(list.data as any)
-                    }
-                  } else {
-                    showAlert({ message: '导入失败', variant: 'error' })
-                  }
-                } finally {
-                  setSeedingBusy(false)
-                }
+                showAlert({
+                  title: '导入规范化场景',
+                  message: '将从当前剧本的 JSON 场景导入到规范化 scenes 表，确认执行？',
+                  variant: 'warning',
+                  confirmText: '开始导入',
+                  onConfirm: () => {
+                    void seedScenesFromJson()
+                  },
+                })
               }}
               className="px-3 py-2 rounded text-sm border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
               disabled={!activeScript || seedingBusy}
@@ -401,12 +384,18 @@ export default function EpisodeStoryboardPage() {
               <input type="number" min={1} max={10} value={form.frames_per_scene} onChange={e => setForm(prev => ({...prev, frames_per_scene: parseInt(e.target.value)||3}))} className="w-full px-3 py-2 border rounded" />
             </div>
             <div className="flex items-end">
-              <button onClick={async () => {
-                setPromptPreview('加载中...')
-                const r = await (scriptAPI as any).previewStoryboardPrompt(activeScript.id)
-                if (r.success && r.data) setPromptPreview((r.data as any).prompt)
-                else setPromptPreview('预览失败')
-              }} className="text-sm text-purple-600 hover:text-purple-800">提示词预览</button>
+              <button
+                onClick={async () => {
+                  if (!activeScript) return
+                  setPromptPreview('加载中...')
+                  const preview = await scriptAPI.previewStoryboardPrompt(activeScript.id)
+                  if (preview.success && preview.data) setPromptPreview(preview.data.prompt ?? '（空内容）')
+                  else setPromptPreview('预览失败')
+                }}
+                className="text-sm text-purple-600 hover:text-purple-800"
+              >
+                提示词预览
+              </button>
             </div>
             <div className="flex items-end gap-2">
               <button onClick={handleGenerateForScene} className="bg-green-600 text-white px-3 py-2 rounded">生成当前场景</button>
@@ -477,26 +466,47 @@ export default function EpisodeStoryboardPage() {
           <div className="md:col-span-1 bg-white rounded-lg shadow p-3">
             <h3 className="text-sm font-medium text-gray-900 mb-3">场景 {useNormalized && normalizedLoading && <span className="text-xs text-gray-500 ml-1">加载中...</span>}</h3>
             <div className="space-y-1 max-h-[60vh] overflow-auto">
-              {uiScenes.length === 0 ? (
-                <div className="text-gray-500 text-sm">暂无{useNormalized ? '规范化' : '结构化'}场景</div>
-              ) : useNormalized ? (
-                (uiScenes as any[]).map((sc: any) => {
-                  const sn = parseInt(sc.scene_number, 10)
-                  const isActive = selectedScene === (Number.isFinite(sn) ? sn : -1)
+              {useNormalized ? (
+                normalizedScenes.length === 0 ? (
+                  <div className="text-gray-500 text-sm">暂无规范化场景</div>
+                ) : (
+                  normalizedScenes.map(scene => {
+                    const parsed = parseInt(scene.scene_number, 10)
+                    const numericScene = Number.isFinite(parsed) ? parsed : undefined
+                    const isActive = numericScene ? selectedScene === numericScene : false
+                    return (
+                      <button
+                        key={scene.id}
+                        onClick={() => {
+                          const fallbackScene = Number.isFinite(parsed) ? parsed : 1
+                          setSelectedScene(fallbackScene)
+                          setSelectedNormalizedSceneId(scene.id)
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded text-sm ${isActive ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}`}
+                      >
+                        场景 {Number.isFinite(parsed) ? parsed : '?'}
+                        <div className="text-xs text-gray-600 truncate">{(scene.slug_line ?? '').slice(0, 60)}</div>
+                      </button>
+                    )
+                  })
+                )
+              ) : scriptScenes.length === 0 ? (
+                <div className="text-gray-500 text-sm">暂无结构化场景</div>
+              ) : (
+                scriptScenes.map((scene, idx) => {
+                  const description = asString(scene['description']) ?? asString(scene['title']) ?? '未命名场景'
+                  const sceneIndex = idx + 1
                   return (
-                    <button key={sc.id} onClick={() => { setSelectedScene(Number.isFinite(sn) ? sn : 1); setSelectedNormalizedSceneId(sc.id) }} className={`w-full text-left px-3 py-2 rounded text-sm ${isActive?'bg-blue-50 text-blue-700 border border-blue-200':'hover:bg-gray-50 border border-transparent'}`}>
-                      场景 {Number.isFinite(sn) ? sn : '?'}
-                      <div className="text-xs text-gray-600 truncate">{(sc?.slug_line||'').slice(0,60)}</div>
+                    <button
+                      key={sceneIndex}
+                      onClick={() => setSelectedScene(sceneIndex)}
+                      className={`w-full text-left px-3 py-2 rounded text-sm ${selectedScene === sceneIndex ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}`}
+                    >
+                      场景 {sceneIndex}
+                      <div className="text-xs text-gray-600 truncate">{description.slice(0, 40)}</div>
                     </button>
                   )
                 })
-              ) : (
-                (uiScenes as any[]).map((sc: any, idx: number) => (
-                  <button key={idx} onClick={() => setSelectedScene(idx+1)} className={`w-full text-left px-3 py-2 rounded text-sm ${selectedScene===idx+1?'bg-blue-50 text-blue-700 border border-blue-200':'hover:bg-gray-50 border border-transparent'}`}>
-                    场景 {idx+1}
-                    <div className="text-xs text-gray-600 truncate">{(sc?.description||'').slice(0,40)}</div>
-                  </button>
-                ))
               )}
             </div>
           </div>
@@ -520,9 +530,9 @@ export default function EpisodeStoryboardPage() {
                   <div className="text-xs text-gray-500">暂无镜头</div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {normalizedShots.map((sh: any) => (
-                      <span key={sh.id} className="text-xs border rounded px-2 py-1 bg-white">
-                        #{sh.shot_number} {sh.shot_type ? `· ${sh.shot_type}` : ''}
+                    {normalizedShots.map(shot => (
+                      <span key={shot.id} className="text-xs border rounded px-2 py-1 bg-white">
+                        #{shot.shot_number} {shot.shot_type ? `· ${shot.shot_type}` : ''}
                       </span>
                     ))}
                   </div>
@@ -535,8 +545,8 @@ export default function EpisodeStoryboardPage() {
               <div className="text-gray-500">暂无该场景的分镜，点击上方“生成当前场景”</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {framesForScene.map((fr: any, idx: number) => {
-                  const absIndex = (storyboard.frames || []).findIndex((f: any) => f === fr)
+                {framesForScene.map((fr, idx) => {
+                  const absIndex = (storyboard.frames ?? []).findIndex(frame => frame === fr)
                   return (
                     <div key={idx} className="border rounded p-3">
                       <div className="flex items-center justify-between mb-1">
@@ -630,8 +640,7 @@ export default function EpisodeStoryboardPage() {
                         <div className="mt-2">
                           <div className="text-xs text-gray-700 mb-1">图像预览：</div>
                           <a href={fr.image_url} target="_blank" className="block border rounded overflow-hidden">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={fr.image_url} alt="frame image" className="w-full h-32 object-cover" />
+                            <Image src={fr.image_url} alt="frame image" width={512} height={256} className="w-full h-32 object-cover" unoptimized />
                           </a>
                         </div>
                       )}
@@ -639,8 +648,9 @@ export default function EpisodeStoryboardPage() {
                         <div className="flex items-center gap-3">
                           <button
                             onClick={async () => {
-                              const r = await (scriptAPI as any).generateStoryboardImages(activeScript.id, { frames: [absIndex] })
-                              if (r.success) showAlert({ message: '已创建图像生成任务', variant: 'success' })
+                              if (!activeScript) return
+                              const response = await scriptAPI.generateStoryboardImages(activeScript.id, { frames: [absIndex] })
+                              if (response.success) showAlert({ message: '已创建图像生成任务', variant: 'success' })
                               else showAlert({ message: '图像生成失败', variant: 'error' })
                             }}
                             className="text-sm text-green-600 hover:text-green-800"
@@ -649,8 +659,9 @@ export default function EpisodeStoryboardPage() {
                           </button>
                           <button
                             onClick={async () => {
-                              const r = await (scriptAPI as any).generateStoryboardVideo(activeScript.id, [absIndex])
-                              if (r.success) showAlert({ message: '已创建视频生成任务', variant: 'success' })
+                              if (!activeScript) return
+                              const response = await scriptAPI.generateStoryboardVideo(activeScript.id, [absIndex])
+                              if (response.success) showAlert({ message: '已创建视频生成任务', variant: 'success' })
                               else showAlert({ message: '视频生成失败', variant: 'error' })
                             }}
                             className="text-sm text-blue-600 hover:text-blue-800"

@@ -155,7 +155,7 @@ const formatDate = (value?: string) => {
   if (!value) return '—'
   try {
     return new Date(value).toLocaleString()
-  } catch (error) {
+  } catch {
     return value
   }
 }
@@ -417,7 +417,7 @@ export default function ScriptDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [refreshStoryboard, scriptId])
+  }, [refreshStoryboard, scriptId, showAlert])
 
   useEffect(() => {
     loadInitialData()
