@@ -99,6 +99,7 @@ We adopt a strict workflow similar to the reference projects:
 ## Commit & Branch Policy
 
 - Conventional Commit messages (lowercase type, ≤72 chars). Examples: `feat(backend): add retry policy`, `fix(frontend): guard auth redirects`.
+- **Commit immediately after each atomic change; never postpone commits or leave work-in-progress unstaged.**
 - **Atomic commits are mandatory:** once a work item is complete, commit it before starting anything else. Do not batch unrelated tasks into a single commit.
 - Always stage the matching `agent_chats` entry with the code changes.
 - Prefer focused commits; large changes should be split logically and each accompanied by its own ledger entry.
@@ -107,6 +108,7 @@ We adopt a strict workflow similar to the reference projects:
 ### CRITICAL — Minimal Atomic Commits & Clean Workspace
 
 - Minimal atomic commits only: one logical change per commit, paired with its ledger entry. Do not bundle unrelated edits.
+- **Keep the repository clean in real time: commit each atomic unit the moment it is complete; never leave stray work sitting unstaged.**
 - Minimize diff scope: touch only the files/lines necessary for the task; avoid opportunistic refactors or drive‑by style changes.
 - Keep the working tree clean: before each commit ensure there are no stray unstaged edits. Do not leave the repo dirty between steps.
 
