@@ -6,8 +6,10 @@ import { virtualIPAPI, VirtualIP } from '@/utils/api'
 import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
 import SmartInputField from '@/components/SmartInputField'
+import { useAlertModal } from '@/components/AlertModalProvider'
 
 function VirtualIPListContent() {
+  const { showAlert } = useAlertModal()
   const [virtualIPs, setVirtualIPs] = useState<VirtualIP[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -52,11 +54,11 @@ function VirtualIPListContent() {
         setShowCreateForm(false)
         resetForm()
       } else {
-        alert('创建失败: ' + (response.error || '未知错误'))
+        showAlert({ message: `创建失败: ${response.error || '未知错误'}`, variant: 'error' })
       }
     } catch (error) {
       console.error('创建虚拟IP出错:', error)
-      alert('创建失败，请重试')
+      showAlert({ message: '创建失败，请重试', variant: 'error' })
     }
   }
 
@@ -74,11 +76,11 @@ function VirtualIPListContent() {
       if (response.success) {
         setVirtualIPs(virtualIPs.filter(ip => ip.id !== id))
       } else {
-        alert('删除失败: ' + (response.error || '未知错误'))
+        showAlert({ message: `删除失败: ${response.error || '未知错误'}`, variant: 'error' })
       }
     } catch (error) {
       console.error('删除虚拟IP出错:', error)
-      alert('删除失败，请重试')
+      showAlert({ message: '删除失败，请重试', variant: 'error' })
     }
   }
 

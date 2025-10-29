@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { storyAPI, episodeAPI, scriptAPI, aiAPI, virtualIPAPI, taskAPI } from '@/utils/api'
 import type { Story, Episode, Script } from '@/utils/api'
+import { useAlertModal } from '@/components/AlertModalProvider'
 
 export default function StoryDetailPage() {
   const params = useParams()
   const router = useRouter()
   const storyId = Number(params.id)
+  const { showAlert } = useAlertModal()
 
   const [story, setStory] = useState<Story | null>(null)
   const [episodes, setEpisodes] = useState<Episode[]>([])
@@ -70,7 +72,7 @@ export default function StoryDetailPage() {
       }
     } catch (e) {
       console.error('加载故事详情失败', e)
-      alert('加载故事详情失败')
+      showAlert({ message: '加载故事详情失败', variant: 'error' })
     } finally {
       setLoading(false)
       setLoadingScripts(false)
@@ -277,17 +279,17 @@ export default function StoryDetailPage() {
                     if (useAsync) {
                       const r = await episodeAPI.generateEpisodesAsync(payload)
                       if (r.success) {
-                        alert('已创建任务，请稍后在任务页查看进度')
+                        showAlert({ message: '已创建任务，请稍后在任务页查看进度', variant: 'info' })
                       } else {
-                        alert('生成失败：' + (r.error || '未知错误'))
+                        showAlert({ message: `生成失败：${r.error || '未知错误'}`, variant: 'error' })
                       }
                     } else {
                       const r = await episodeAPI.generateEpisodes(payload)
                       if (r.success) {
                         await loadData()
-                        alert('生成成功')
+                        showAlert({ message: '生成成功', variant: 'success' })
                       } else {
-                        alert('生成失败：' + (r.error || '未知错误'))
+                        showAlert({ message: `生成失败：${r.error || '未知错误'}`, variant: 'error' })
                       }
                     }
                   }}

@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { virtualIPAPI, virtualIPImageAPI, taskAPI } from '@/utils/api';
-import { VirtualIP, VirtualIPImage, AIImageGenerationRequest, AIModel, AvailableModelsResponse } from '@/utils/api';
+import { VirtualIP, VirtualIPImage, AIImageGenerationRequest, AIModel } from '@/utils/api';
+import { useAlertModal } from '@/components/AlertModalProvider';
 
 export default function VirtualIPImagesPage() {
   const params = useParams();
   const router = useRouter();
   const virtualIPId = Number(params.id);
+  const { showAlert } = useAlertModal();
 
   const [virtualIP, setVirtualIP] = useState<VirtualIP | null>(null);
   const [images, setImages] = useState<VirtualIPImage[]>([]);
@@ -96,7 +98,7 @@ export default function VirtualIPImagesPage() {
       }
     } catch (error) {
       console.error('加载数据失败:', error);
-      alert('加载数据失败');
+      showAlert({ message: '加载数据失败', variant: 'error' });
       // 设置默认空值
       setImages([]);
       setCategories([]);
@@ -125,13 +127,16 @@ export default function VirtualIPImagesPage() {
           additional_prompts: '',
           is_default: false
         });
-        alert('AI图像生成成功！');
+        showAlert({ message: 'AI图像生成成功！', variant: 'success' });
       } else {
         throw new Error(response.error || 'AI图像生成失败');
       }
     } catch (error) {
       console.error('AI图像生成失败:', error);
-      alert('AI图像生成失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      showAlert({
+        message: `AI图像生成失败: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'error',
+      });
     } finally {
       setGenerating(false);
     }
@@ -139,7 +144,7 @@ export default function VirtualIPImagesPage() {
 
   const handleUploadImage = async () => {
     if (!uploadForm.file) {
-      alert('请选择文件');
+      showAlert({ message: '请选择文件', variant: 'warning' });
       return;
     }
 
@@ -161,13 +166,16 @@ export default function VirtualIPImagesPage() {
           tags: '',
           is_default: false
         });
-        alert('图像上传成功！');
+        showAlert({ message: '图像上传成功！', variant: 'success' });
       } else {
         throw new Error(response.error || '图像上传失败');
       }
     } catch (error) {
       console.error('图像上传失败:', error);
-      alert('图像上传失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      showAlert({
+        message: `图像上传失败: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'error',
+      });
     } finally {
       setUploading(false);
     }
@@ -181,13 +189,16 @@ export default function VirtualIPImagesPage() {
       
       if (response.success) {
         setImages(prev => prev.filter(img => img.id !== imageId));
-        alert('图像删除成功');
+        showAlert({ message: '图像删除成功', variant: 'success' });
       } else {
         throw new Error(response.error || '删除图像失败');
       }
     } catch (error) {
       console.error('删除图像失败:', error);
-      alert('删除图像失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      showAlert({
+        message: `删除图像失败: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'error',
+      });
     }
   };
 
@@ -200,13 +211,16 @@ export default function VirtualIPImagesPage() {
           ...img,
           is_default: img.id === imageId
         })));
-        alert('默认图像设置成功');
+        showAlert({ message: '默认图像设置成功', variant: 'success' });
       } else {
         throw new Error(response.error || '设置默认图像失败');
       }
     } catch (error) {
       console.error('设置默认图像失败:', error);
-      alert('设置默认图像失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      showAlert({
+        message: `设置默认图像失败: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'error',
+      });
     }
   };
 
@@ -224,7 +238,7 @@ export default function VirtualIPImagesPage() {
       const response = await taskAPI.createTask(taskData);
       
       if (response.success) {
-        alert('任务创建成功！可以在任务管理页面查看进度。');
+        showAlert({ message: '任务创建成功！可以在任务管理页面查看进度。', variant: 'success' });
         setShowGenerateForm(false);
         // 可选择跳转到任务页面
         if (confirm('是否要查看任务详情？')) {
@@ -235,7 +249,10 @@ export default function VirtualIPImagesPage() {
       }
     } catch (error) {
       console.error('创建任务失败:', error);
-      alert('创建任务失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      showAlert({
+        message: `创建任务失败: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'error',
+      });
     }
   };
 

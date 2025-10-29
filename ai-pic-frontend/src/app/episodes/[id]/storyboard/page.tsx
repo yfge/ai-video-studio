@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { episodeAPI, scriptAPI, aiAPI, storyStructureAPI } from '@/utils/api'
 import type { Episode, Script } from '@/utils/api'
+import { useAlertModal } from '@/components/AlertModalProvider'
 
 type StoryboardFrame = {
   frame_id?: string
@@ -66,6 +67,7 @@ export default function EpisodeStoryboardPage() {
   const params = useParams()
   const router = useRouter()
   const episodeId = Number(params.id)
+  const { showAlert } = useAlertModal()
 
   const [episode, setEpisode] = useState<Episode | null>(null)
   const [scripts, setScripts] = useState<Script[]>([])
@@ -230,7 +232,7 @@ export default function EpisodeStoryboardPage() {
           if (sb.success && sb.data) setStoryboard(sb.data as StoryboardData)
         }
       } else {
-        alert('生成分镜失败')
+        showAlert({ message: '生成分镜失败', variant: 'error' })
       }
     } finally {
       setStoryboardBusy(false)
@@ -245,9 +247,9 @@ export default function EpisodeStoryboardPage() {
       if (resp.success) {
         const sb = await scriptAPI.getStoryboard(activeScript.id)
         if (sb.success && sb.data) setStoryboard(sb.data as StoryboardData)
-        alert('已保存')
+        showAlert({ message: '已保存', variant: 'success' })
       } else {
-        alert('保存失败')
+        showAlert({ message: '保存失败', variant: 'error' })
       }
     } finally {
       setStoryboardBusy(false)
@@ -274,7 +276,7 @@ export default function EpisodeStoryboardPage() {
           if (sb.success && sb.data) setStoryboard(sb.data as StoryboardData)
         }
       } else {
-        alert('生成分镜失败')
+        showAlert({ message: '生成分镜失败', variant: 'error' })
       }
     } finally {
       setStoryboardBusy(false)
@@ -285,16 +287,16 @@ export default function EpisodeStoryboardPage() {
     if (!activeScript) return
     const idxs = (storyboard.frames || []).map((_: any, idx: number) => idx).filter((i: number) => (storyboard.frames[i]?.scene_number === selectedScene))
     const r = await (scriptAPI as any).generateStoryboardVideo(activeScript.id, idxs)
-    if (r.success) alert('已创建视频生成任务')
-    else alert('视频生成失败')
+    if (r.success) showAlert({ message: '已创建视频生成任务', variant: 'success' })
+    else showAlert({ message: '视频生成失败', variant: 'error' })
   }
 
   const handleGenerateImagesForScene = async () => {
     if (!activeScript) return
     const idxs = (storyboard.frames || []).map((_: any, idx: number) => idx).filter((i: number) => (storyboard.frames[i]?.scene_number === selectedScene))
     const r = await (scriptAPI as any).generateStoryboardImages(activeScript.id, { frames: idxs })
-    if (r.success) alert('已创建图像生成任务')
-    else alert('图像生成失败')
+    if (r.success) showAlert({ message: '已创建图像生成任务', variant: 'success' })
+    else showAlert({ message: '图像生成失败', variant: 'error' })
   }
 
   if (loading) {
@@ -355,14 +357,14 @@ export default function EpisodeStoryboardPage() {
                 try {
                   const res = await (storyStructureAPI as any).seedScenesFromJson(activeScript.id)
                   if (res?.success && res.data) {
-                    alert(`导入完成：新增 ${res.data.inserted} 条场景`)
+                    showAlert({ message: `导入完成：新增 ${res.data.inserted} 条场景`, variant: 'success' })
                     // refresh normalized scenes if toggle on
                     if (useNormalized) {
                       const list = await (storyStructureAPI as any).getNormalizedScenes(activeScript.id)
                       if (list?.success && list.data) setNormalizedScenes(list.data as any)
                     }
                   } else {
-                    alert('导入失败')
+                    showAlert({ message: '导入失败', variant: 'error' })
                   }
                 } finally {
                   setSeedingBusy(false)
@@ -635,16 +637,26 @@ export default function EpisodeStoryboardPage() {
                       )}
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <button onClick={async () => {
-                            const r = await (scriptAPI as any).generateStoryboardImages(activeScript.id, { frames: [absIndex] })
-                            if (r.success) alert('已创建图像生成任务')
-                            else alert('图像生成失败')
-                          }} className="text-sm text-green-600 hover:text-green-800">生成图像</button>
-                          <button onClick={async () => {
-                            const r = await (scriptAPI as any).generateStoryboardVideo(activeScript.id, [absIndex])
-                            if (r.success) alert('已创建视频生成任务')
-                            else alert('视频生成失败')
-                          }} className="text-sm text-blue-600 hover:text-blue-800">生成视频</button>
+                          <button
+                            onClick={async () => {
+                              const r = await (scriptAPI as any).generateStoryboardImages(activeScript.id, { frames: [absIndex] })
+                              if (r.success) showAlert({ message: '已创建图像生成任务', variant: 'success' })
+                              else showAlert({ message: '图像生成失败', variant: 'error' })
+                            }}
+                            className="text-sm text-green-600 hover:text-green-800"
+                          >
+                            生成图像
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const r = await (scriptAPI as any).generateStoryboardVideo(activeScript.id, [absIndex])
+                              if (r.success) showAlert({ message: '已创建视频生成任务', variant: 'success' })
+                              else showAlert({ message: '视频生成失败', variant: 'error' })
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            生成视频
+                          </button>
                         </div>
                         <div className="flex items-center gap-3">
                           {fr.video_url && (

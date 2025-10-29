@@ -6,9 +6,11 @@ import { storyAPI, virtualIPAPI, aiAPI } from '@/utils/api';
 import { Story, VirtualIP, StoryGenerationRequest } from '@/utils/api';
 import Navigation from '@/components/Navigation';
 import AuthGuard from '@/components/AuthGuard';
+import { useAlertModal } from '@/components/AlertModalProvider';
 
 function StoriesPageContent() {
   const router = useRouter();
+  const { showAlert } = useAlertModal();
   const [stories, setStories] = useState<Story[]>([]);
   const [virtualIPs, setVirtualIPs] = useState<VirtualIP[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ function StoriesPageContent() {
       }
     } catch (error) {
       console.error('加载数据失败:', error);
-      alert('加载数据失败');
+      showAlert({ message: '加载数据失败', variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -109,7 +111,7 @@ function StoriesPageContent() {
 
   const handleGenerateStory = async () => {
     if (!generateForm.title || generateForm.character_ids.length === 0) {
-      alert('请填写标题并选择至少一个角色');
+      showAlert({ message: '请填写标题并选择至少一个角色', variant: 'warning' });
       return;
     }
 
@@ -125,7 +127,7 @@ function StoriesPageContent() {
           // @ts-ignore
           setStories(prev => [response.data!, ...prev]);
         } else {
-          alert('已创建异步任务，稍后在任务页查看进度');
+          showAlert({ message: '已创建异步任务，稍后在任务页查看进度', variant: 'info' });
         }
         setShowGenerateForm(false);
         setGenerateForm({
@@ -146,13 +148,13 @@ function StoriesPageContent() {
           temperature: 0.7
         });
         setPromptPreview('');
-        alert('故事生成成功！');
+        showAlert({ message: '故事生成成功！', variant: 'success' });
       } else {
-        alert('故事生成失败：' + (response.error || '未知错误'));
+        showAlert({ message: `故事生成失败：${response.error || '未知错误'}`, variant: 'error' });
       }
     } catch (error) {
       console.error('故事生成失败:', error);
-      alert('故事生成失败');
+      showAlert({ message: '故事生成失败', variant: 'error' });
     } finally {
       setGenerating(false);
     }
@@ -165,13 +167,13 @@ function StoriesPageContent() {
       const response = await storyAPI.deleteStory(storyId);
       if (response.success) {
         setStories(prev => prev.filter(story => story.id !== storyId));
-        alert('故事删除成功');
+        showAlert({ message: '故事删除成功', variant: 'success' });
       } else {
-        alert('删除失败：' + (response.error || '未知错误'));
+        showAlert({ message: `删除失败：${response.error || '未知错误'}`, variant: 'error' });
       }
     } catch (error) {
       console.error('删除故事失败:', error);
-      alert('删除故事失败');
+      showAlert({ message: '删除故事失败', variant: 'error' });
     }
   };
 

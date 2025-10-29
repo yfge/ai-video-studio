@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { scriptAPI, aiAPI } from '@/utils/api'
 import type { Script } from '@/utils/api'
+import { useAlertModal } from '@/components/AlertModalProvider'
 
 type TabId = 'overview' | 'scenes' | 'storyboard'
 
@@ -347,6 +348,7 @@ export default function ScriptDetailPage() {
   const router = useRouter()
   const { id } = useParams()
   const scriptId = Number(id)
+  const { showAlert } = useAlertModal()
 
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [script, setScript] = useState<Script | null>(null)
@@ -395,7 +397,7 @@ export default function ScriptDetailPage() {
         setScript(scriptRes.data)
         await refreshStoryboard(scriptId)
       } else {
-        alert('加载剧本失败')
+        showAlert({ message: '加载剧本失败', variant: 'error' })
       }
 
       if (modelRes.success && modelRes.data) {
@@ -411,7 +413,7 @@ export default function ScriptDetailPage() {
       }
     } catch (error) {
       console.error(error)
-      alert('加载数据失败')
+      showAlert({ message: '加载数据失败', variant: 'error' })
     } finally {
       setLoading(false)
     }
@@ -436,13 +438,13 @@ export default function ScriptDetailPage() {
     try {
       const response = await scriptAPI.exportScript(scriptId, format)
       if (response.success) {
-        alert(`剧本已导出为 ${format.toUpperCase()} 格式`)
+        showAlert({ message: `剧本已导出为 ${format.toUpperCase()} 格式`, variant: 'success' })
       } else {
-        alert('导出失败')
+        showAlert({ message: '导出失败', variant: 'error' })
       }
     } catch (error) {
       console.error(error)
-      alert('导出失败')
+      showAlert({ message: '导出失败', variant: 'error' })
     } finally {
       setShowExportMenu(false)
     }
@@ -491,7 +493,7 @@ export default function ScriptDetailPage() {
         }
         setShowPlan(Boolean(parsed.plan?.scenes?.length))
       } else {
-        alert('生成分镜失败')
+        showAlert({ message: '生成分镜失败', variant: 'error' })
       }
     } finally {
       setStoryboardBusy(false)

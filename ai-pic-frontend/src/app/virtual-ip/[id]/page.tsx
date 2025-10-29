@@ -36,11 +36,11 @@ export default function VirtualIPDetail() {
         })
       } else {
         console.error('获取虚拟IP详情失败:', response.error)
-        alert('获取虚拟IP详情失败')
+        showAlert({ message: '获取虚拟IP详情失败', variant: 'error' })
       }
     } catch (error) {
       console.error('获取虚拟IP详情出错:', error)
-      alert('获取虚拟IP详情失败')
+      showAlert({ message: '获取虚拟IP详情失败', variant: 'error' })
     } finally {
       setLoading(false)
     }
@@ -54,13 +54,13 @@ export default function VirtualIPDetail() {
       if (response.success && response.data) {
         setVirtualIP(response.data)
         setEditing(false)
-        alert('更新成功')
+        showAlert({ message: '更新成功', variant: 'success' })
       } else {
-        alert('更新失败: ' + (response.error || '未知错误'))
+        showAlert({ message: `更新失败: ${response.error || '未知错误'}`, variant: 'error' })
       }
     } catch (error) {
       console.error('更新虚拟IP出错:', error)
-      alert('更新失败，请重试')
+      showAlert({ message: '更新失败，请重试', variant: 'error' })
     }
   }
 
@@ -71,14 +71,14 @@ export default function VirtualIPDetail() {
     try {
       const response = await virtualIPAPI.deleteVirtualIP(ipId)
       if (response.success) {
-        alert('删除成功')
+        showAlert({ message: '删除成功', variant: 'success' })
         router.push('/virtual-ip')
       } else {
-        alert('删除失败: ' + (response.error || '未知错误'))
+        showAlert({ message: `删除失败: ${response.error || '未知错误'}`, variant: 'error' })
       }
     } catch (error) {
       console.error('删除虚拟IP出错:', error)
-      alert('删除失败，请重试')
+      showAlert({ message: '删除失败，请重试', variant: 'error' })
     }
   }
 

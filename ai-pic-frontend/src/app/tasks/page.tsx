@@ -4,6 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { taskAPI, type Task as APITask } from '@/utils/api'
+import { useAlertModal } from '@/components/AlertModalProvider'
 
 interface GalleryImageItem {
   id: string
@@ -213,10 +214,12 @@ export default function Tasks() {
     }
   ]);
 
+  const { showAlert } = useAlertModal()
+
   const handleCreateTask = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!newTask.platform.length) {
-      alert('请至少选择一个模型')
+      showAlert({ message: '请至少选择一个模型', variant: 'warning' })
       return
     }
     setIsCreating(true)
@@ -247,11 +250,11 @@ export default function Tasks() {
       setSelectedStyleImages([])
       setSelectedStyles([])
       setCustomStyleInput('')
-      alert('任务已创建')
+      showAlert({ message: '任务已创建', variant: 'success' })
     } catch (error) {
       const message = error instanceof Error ? error.message : '创建任务失败'
       console.error('创建任务失败:', error)
-      alert(message)
+      showAlert({ message, variant: 'error' })
     } finally {
       setIsCreating(false)
     }
@@ -280,7 +283,7 @@ export default function Tasks() {
   const handleStart = async (id: APITask['id']) => {
     const taskId = typeof id === 'number' ? id : Number(id)
     if (!Number.isInteger(taskId)) {
-      alert('任务编号无效，无法启动任务')
+      showAlert({ message: '任务编号无效，无法启动任务', variant: 'warning' })
       return
     }
     setIsStartingId(taskId)
@@ -288,14 +291,14 @@ export default function Tasks() {
       const res = await taskAPI.startTask(taskId)
       if (res.success) {
         await loadTasks({ silent: true })
-        alert(res.data?.message || '任务已开始执行')
+        showAlert({ message: res.data?.message || '任务已开始执行', variant: 'success' })
       } else {
         throw new Error(res.error || '启动任务失败')
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '启动任务失败'
       console.error('启动任务失败:', error)
-      alert(message)
+      showAlert({ message, variant: 'error' })
     } finally {
       setIsStartingId(null)
     }
@@ -304,7 +307,7 @@ export default function Tasks() {
   const handleDelete = async (id: APITask['id']) => {
     const taskId = typeof id === 'number' ? id : Number(id)
     if (!Number.isInteger(taskId)) {
-      alert('任务编号无效，无法删除')
+      showAlert({ message: '任务编号无效，无法删除', variant: 'warning' })
       return
     }
     if (!confirm('确定删除该任务吗？')) return
@@ -320,7 +323,7 @@ export default function Tasks() {
     } catch (error) {
       const message = error instanceof Error ? error.message : '删除任务失败'
       console.error('删除任务失败:', error)
-      alert(message)
+      showAlert({ message, variant: 'error' })
     } finally {
       setDeletingTaskId(null)
     }

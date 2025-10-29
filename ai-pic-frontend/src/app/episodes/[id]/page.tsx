@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { episodeAPI, scriptAPI, aiAPI } from '@/utils/api';
 import { Episode, Script, ScriptGenerationRequest } from '@/utils/api';
+import { useAlertModal } from '@/components/AlertModalProvider';
 
 export default function EpisodeDetailPage() {
   const params = useParams();
   const router = useRouter();
   const episodeId = Number(params.id);
+  const { showAlert } = useAlertModal();
 
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
@@ -61,7 +63,7 @@ export default function EpisodeDetailPage() {
       }
     } catch (error) {
       console.error('加载数据失败:', error);
-      alert('加载数据失败');
+      showAlert({ message: '加载数据失败', variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -91,23 +93,23 @@ export default function EpisodeDetailPage() {
       if (useAsync) {
         const response = await scriptAPI.generateScriptAsync(generateForm as any)
         if (response.success) {
-          alert('已创建任务，请稍后在任务页查看进度');
+          showAlert({ message: '已创建任务，请稍后在任务页查看进度', variant: 'info' });
         } else {
-          alert('剧本生成失败：' + (response.error || '未知错误'));
+          showAlert({ message: `剧本生成失败：${response.error || '未知错误'}`, variant: 'error' });
         }
       } else {
         const response = await scriptAPI.generateScript(generateForm);
         if (response.success && response.data) {
           setScripts(prev => [response.data!, ...prev]);
           setShowGenerateForm(false);
-          alert('剧本生成成功！');
+          showAlert({ message: '剧本生成成功！', variant: 'success' });
         } else {
-          alert('剧本生成失败：' + (response.error || '未知错误'));
+          showAlert({ message: `剧本生成失败：${response.error || '未知错误'}`, variant: 'error' });
         }
       }
     } catch (error) {
       console.error('剧本生成失败:', error);
-      alert('剧本生成失败');
+      showAlert({ message: '剧本生成失败', variant: 'error' });
     } finally {
       setGenerating(false);
     }
@@ -120,13 +122,13 @@ export default function EpisodeDetailPage() {
       const response = await scriptAPI.deleteScript(scriptId);
       if (response.success) {
         setScripts(prev => prev.filter(script => script.id !== scriptId));
-        alert('剧本删除成功');
+        showAlert({ message: '剧本删除成功', variant: 'success' });
       } else {
-        alert('删除失败：' + (response.error || '未知错误'));
+        showAlert({ message: `删除失败：${response.error || '未知错误'}`, variant: 'error' });
       }
     } catch (error) {
       console.error('删除剧本失败:', error);
-      alert('删除剧本失败');
+      showAlert({ message: '删除剧本失败', variant: 'error' });
     }
   };
 
@@ -136,16 +138,17 @@ export default function EpisodeDetailPage() {
     try {
       const response = await scriptAPI.regenerateScript(scriptId);
       if (response.success && response.data) {
-        setScripts(prev => prev.map(script => 
-          script.id === scriptId ? response.data! : script
+        setScripts(prev =>
+          prev.map(script =>
+            script.id === scriptId ? response.data! : script
         ));
-        alert('剧本重新生成成功');
+        showAlert({ message: '剧本重新生成成功', variant: 'success' });
       } else {
-        alert('重新生成失败：' + (response.error || '未知错误'));
+        showAlert({ message: `重新生成失败：${response.error || '未知错误'}`, variant: 'error' });
       }
     } catch (error) {
       console.error('重新生成剧本失败:', error);
-      alert('重新生成剧本失败');
+      showAlert({ message: '重新生成剧本失败', variant: 'error' });
     }
   };
 
