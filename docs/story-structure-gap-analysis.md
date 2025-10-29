@@ -60,17 +60,22 @@ Industrial workflows typically attach approval/version history at each level so 
 - API consumers expect nested JSON responses today; new endpoints should offer both structured and legacy representations during transition (feature flag or versioned route).
 
 ## Canonical Entity Relationships
+
+```mermaid
+erDiagram
+    stories ||--o{ story_treatments : "revisions"
+    stories ||--o{ episodes : "seasons / anthology"
+    story_treatments ||--o{ story_step_outlines : "beat breakdown"
+    story_step_outlines }o--|| episodes : "optional episode scope"
+    episodes ||--o{ scripts : "drafts"
+    scripts ||--o{ scenes : "screenplay scenes"
+    story_step_outlines ||--o{ scenes : "maps beat → scene"
+    scenes ||--o{ scene_beats : "intra-scene beats"
+    scenes ||--o{ shots : "scene shots"
+    scene_beats ||--o{ shots : "optional beat linkage"
+    shots }o--|| assets : "storyboard frames"
 ```
-stories
-  └─ story_treatments (1→N, ordered revisions)
-        └─ story_step_outlines (1→N per treatment, scoped to story or episode)
-              └─ scenes (1→N, anchored to scripts; optional back-link to step outline)
-                    └─ scene_beats (1→N per scene)
-                          └─ shots (1→N per scene or beat; links to storyboard assets)
-episodes
-  └─ scripts (1→N)
-        └─ scenes (FK script_id, shared with hierarchy above)
-```
+
 - `story_treatments` are the authoritative narrative umbrella for a story; multiple revisions coexist with status markers (draft, approved, archived).  
 - `story_step_outlines` inherit the treatment context and optionally point to `episodes` so episodic and feature formats share the same table.  
 - `scenes` attach to `scripts` for screenplay text while preserving a nullable `story_step_outline_id` to trace back to the plot beat.  
