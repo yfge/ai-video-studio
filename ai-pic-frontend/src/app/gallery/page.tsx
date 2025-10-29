@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import Link from 'next/link'
 
@@ -14,7 +15,7 @@ interface ImageItem {
 }
 
 export default function Gallery() {
-  const [images, setImages] = useState<ImageItem[]>([
+  const [images] = useState<ImageItem[]>([
     {
       id: '1',
       title: '山水风景画',
@@ -176,10 +177,13 @@ export default function Gallery() {
           {filteredImages.map((image) => (
             <div key={image.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
               <div className="relative group">
-                <img
+                <Image
                   src={image.imageUrl}
                   alt={image.title}
+                  width={512}
+                  height={512}
                   className="w-full h-64 object-cover cursor-pointer"
+                  unoptimized
                   onClick={() => setSelectedImage(image)}
                 />
                 
@@ -263,10 +267,13 @@ export default function Gallery() {
                 </button>
               </div>
               
-              <img
+              <Image
                 src={selectedImage.imageUrl}
                 alt={selectedImage.title}
+                width={1024}
+                height={768}
                 className="w-full h-96 object-cover rounded-lg mb-4"
+                unoptimized
               />
               
               <div className="space-y-3">

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { virtualIPAPI, AIGenerationDetails } from '@/utils/api'
 
 interface AIGenerationProcessProps {
@@ -18,6 +18,14 @@ interface AIGenerationProcessProps {
   }) => void
 }
 
+type AIGenerationResult = {
+  description: string
+  background_story: string
+  biography: string
+  style_prompt: string
+  generation_details: AIGenerationDetails
+}
+
 export default function AIGenerationProcess({
   isOpen,
   onClose,
@@ -30,17 +38,11 @@ export default function AIGenerationProcess({
   const [currentStep, setCurrentStep] = useState('')
   const [steps, setSteps] = useState<string[]>([])
   const [generationDetails, setGenerationDetails] = useState<AIGenerationDetails | null>(null)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<AIGenerationResult | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (isOpen && name.trim()) {
-      startGeneration()
-    }
-  }, [isOpen, name])
-
-  const startGeneration = async () => {
+  const startGeneration = useCallback(async () => {
     if (!name.trim()) {
       setError('请先输入虚拟IP名称')
       return
@@ -73,7 +75,13 @@ export default function AIGenerationProcess({
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [basicInfo, name, stylePreference])
+
+  useEffect(() => {
+    if (isOpen && name.trim()) {
+      void startGeneration()
+    }
+  }, [isOpen, name, startGeneration])
 
   const handleComplete = () => {
     if (result) {
@@ -107,7 +115,7 @@ export default function AIGenerationProcess({
             </div>
             <div>
               <h3 className="text-lg font-medium text-gray-900">AI智能生成</h3>
-              <p className="text-sm text-gray-500">正在为"{name}"生成完整内容</p>
+              <p className="text-sm text-gray-500">正在为“{name}”生成完整内容</p>
             </div>
           </div>
           <button
