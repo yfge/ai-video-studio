@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { adminAPI } from '../utils/api'
 import RoleManagementModal from './RoleManagementModal'
 
@@ -83,14 +83,7 @@ export default function UserDetailsModal({
   const [isPerformingAction, setIsPerformingAction] = useState(false)
   const [showRoleModal, setShowRoleModal] = useState(false)
 
-  // Load audit logs when modal opens
-  useEffect(() => {
-    if (isOpen && user) {
-      loadAuditLogs()
-    }
-  }, [isOpen, user])
-
-  const loadAuditLogs = async () => {
+  const loadAuditLogs = useCallback(async () => {
     if (!user) return
     
     setLoading(true)
@@ -104,7 +97,14 @@ export default function UserDetailsModal({
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  // Load audit logs when modal opens
+  useEffect(() => {
+    if (isOpen && user) {
+      void loadAuditLogs()
+    }
+  }, [isOpen, user, loadAuditLogs])
 
   const handleApproveUser = async () => {
     if (!user) return
@@ -233,6 +233,12 @@ export default function UserDetailsModal({
 
   if (!isOpen || !user) return null
 
+  const tabs = [
+    { id: 'details', name: '基本信息' },
+    { id: 'audit', name: '操作记录' },
+    { id: 'security', name: '安全信息' }
+  ] as const
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
@@ -258,14 +264,10 @@ export default function UserDetailsModal({
         {/* Tabs */}
         <div className="border-b">
           <nav className="flex space-x-8 px-6">
-            {[
-              { id: 'details', name: '基本信息' },
-              { id: 'audit', name: '操作记录' },
-              { id: 'security', name: '安全信息' }
-            ].map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'

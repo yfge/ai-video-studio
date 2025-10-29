@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AdminLayout from '../../../components/AdminLayout'
 import UserDetailsModal from '../../../components/UserDetailsModal'
 import UserApprovalModal from '../../../components/UserApprovalModal'
-import { adminAPI, AdminUser, UserListResponse, UserApprovalRequest } from '../../../utils/api'
+import { adminAPI, AdminUser, UserListResponse } from '../../../utils/api'
 import { getUserStatus, getUserStatusColor, getUserRole, getUserRoleColor, formatRelativeTime } from '../../../utils/auth'
 
 interface UserFilters {
@@ -58,9 +58,6 @@ export default function AdminUsersPage() {
   
   // 操作状态
   const [processingUsers, setProcessingUsers] = useState<Set<number>>(new Set())
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
-  const [showApprovalModal, setShowApprovalModal] = useState(false)
-  
   // 用户详情模态框状态
   const [selectedUserForDetails, setSelectedUserForDetails] = useState<AdminUser | null>(null)
   const [showUserDetailsModal, setShowUserDetailsModal] = useState(false)
@@ -70,7 +67,7 @@ export default function AdminUsersPage() {
   const [showUserApprovalModal, setShowUserApprovalModal] = useState(false)
 
   // 加载用户列表
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -88,12 +85,12 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
 
   // 初始加载和筛选变化时重新加载
   useEffect(() => {
-    loadUsers()
-  }, [filters])
+    void loadUsers()
+  }, [loadUsers])
 
   // 处理搜索
   const handleSearch = (searchTerm: string) => {
@@ -105,55 +102,17 @@ export default function AdminUsersPage() {
   }
 
   // 处理筛选
-  const handleFilterChange = (key: keyof UserFilters, value: any) => {
+  const handleFilterChange = (key: 'status_filter' | 'role_filter', value: string) => {
     setFilters(prev => ({
       ...prev,
       page: 1,
-      [key]: value || undefined
+      [key]: value ? value : undefined
     }))
   }
 
   // 处理分页
   const handlePageChange = (page: number) => {
     setFilters(prev => ({ ...prev, page }))
-  }
-
-  // 处理用户审批
-  const handleUserApproval = async (user: AdminUser, action: 'approve' | 'reject', reason?: string) => {
-    try {
-      setProcessingUsers(prev => new Set(prev).add(user.id))
-      
-      const approvalData: UserApprovalRequest = { action, reason }
-      const response = await adminAPI.approveUser(user.id, approvalData)
-      
-      if (response.success) {
-        // 重新加载用户列表
-        await loadUsers()
-        setShowApprovalModal(false)
-        setSelectedUser(null)
-      } else {
-        setError(response.error || '操作失败')
-      }
-    } catch (err) {
-      setError('操作失败，请稍后重试')
-      console.error('用户审批失败:', err)
-    } finally {
-      setProcessingUsers(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(user.id)
-        return newSet
-      })
-    }
-  }
-
-  // 快速审批
-  const quickApprove = async (user: AdminUser) => {
-    await handleUserApproval(user, 'approve', '快速审批')
-  }
-
-  // 快速拒绝
-  const quickReject = async (user: AdminUser) => {
-    await handleUserApproval(user, 'reject', '快速拒绝')
   }
 
   // 手动验证邮箱
