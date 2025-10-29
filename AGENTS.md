@@ -8,6 +8,13 @@ This document is the single source of truth for every coding assistant (Claude C
 - The following files must be kept as symlinks (or exact copies) of `AGENTS.md`: `CLAUDE.md`, `GEMINI.md`.
 - When this file is updated, ensure mirrored files stay in sync within the same commit.
 
+## Atomic Commit Discipline (Critical)
+
+- Stage and commit every atomic change **immediately** after completing validation; do not carry pending edits while starting new tasks.
+- Pair each commit with its corresponding `agent_chats` ledger entry inside the same commit.
+- Keep the working tree clean at all times—no stray modifications or half-staged files between commits.
+- If a change cannot be validated yet, park it on a feature branch instead of leaving it unstaged.
+
 ## Mission & Scope
 
 ai-video-studio is an AI-powered virtual IP production platform composed of:
