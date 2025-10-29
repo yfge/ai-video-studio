@@ -1,18 +1,74 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { taskAPI, type Task as APITask } from '@/utils/api'
+
+interface GalleryImageItem {
+  id: string
+  title: string
+  prompt: string
+  platform: 'gpt' | 'keling' | 'jimeng'
+  imageUrl: string
+  createdAt: string
+  tags: string[]
+}
+
+type TaskImage = File | GalleryImageItem
 
 // 新建任务表单类型扩展
 interface NewTaskForm {
   title: string
   prompt: string
   platform: string[]
-  personImages?: File[] | GalleryImageItem[]
-  sceneImages?: File[] | GalleryImageItem[]
-  styleImages?: File[] | GalleryImageItem[]
+  personImages?: TaskImage[]
+  sceneImages?: TaskImage[]
+  styleImages?: TaskImage[]
   count?: number
+}
+
+const isGalleryImage = (image: TaskImage): image is GalleryImageItem => {
+  return typeof image === 'object' && image !== null && 'imageUrl' in image
+}
+
+const isFileImage = (image: TaskImage): image is File => image instanceof File
+
+const extractUploadedFiles = (images?: TaskImage[]) => (images ?? []).filter(isFileImage)
+
+const getTaskImageAlt = (image: TaskImage) => (isGalleryImage(image) ? image.title : image.name)
+
+function TaskImagePreview({ image, alt, className }: { image: TaskImage; alt: string; className?: string }) {
+  const [src, setSrc] = useState<string>()
+
+  useEffect(() => {
+    if (isGalleryImage(image)) {
+      setSrc(image.imageUrl)
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(image)
+    setSrc(objectUrl)
+
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [image])
+
+  if (!src) {
+    return null
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={64}
+      height={64}
+      className={className}
+      unoptimized
+    />
+  )
 }
 
 // 模型配置
@@ -35,32 +91,43 @@ const modelConfig = {
   ]
 };
 
-interface GalleryImageItem {
-  id: string
-  title: string
-  prompt: string
-  platform: 'gpt' | 'keling' | 'jimeng'
-  imageUrl: string
-  createdAt: string
-  tags: string[]
-}
-
 export default function Tasks() {
   const [tasks, setTasks] = useState<APITask[]>([])
   const [loading, setLoading] = useState(true)
-  const [poll, setPoll] = useState(true)
+  const [poll, setPoll] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [isStartingId, setIsStartingId] = useState<number | null>(null)
+  const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null)
 
-  const loadTasks = async () => {
+  const loadTasks = async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true)
+    }
     try {
       const res = await taskAPI.getTasks()
       if (res.success && res.data) {
-        // @ts-ignore
-        setTasks((res.data as any).tasks || [])
+        const tasksData = res.data.tasks ?? []
+        const normalizedTasks = tasksData.reduce<APITask[]>((acc, task) => {
+          const taskId = typeof task.id === 'number' ? task.id : Number(task.id)
+          if (!Number.isInteger(taskId)) {
+            console.warn('跳过无效任务ID', task.id)
+            return acc
+          }
+          acc.push({ ...task, id: taskId })
+          return acc
+        }, [])
+        setTasks(normalizedTasks)
+        setFetchError(null)
+      } else {
+        setFetchError(res.error || '获取任务列表失败')
       }
     } catch (e) {
-      // noop
+      setFetchError(e instanceof Error ? e.message : '获取任务列表失败')
     } finally {
-      setLoading(false)
+      if (!options?.silent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -70,7 +137,7 @@ export default function Tasks() {
 
   useEffect(() => {
     if (!poll) return
-    const t = setInterval(loadTasks, 5000)
+    const t = setInterval(() => loadTasks({ silent: true }), 5000)
     return () => clearInterval(t)
   }, [poll])
 
@@ -145,28 +212,50 @@ export default function Tasks() {
       tags: ['海洋', '自然', '生物']
     }
   ]);
-  // 已选画廊图片
-  const [selectedGalleryImages, setSelectedGalleryImages] = useState<GalleryImageItem[]>([]);
 
-  const [showCreateForm, setShowCreateForm] = useState(false)
-
-  const handleCreateTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    const now = new Date().toLocaleString('zh-CN');
-    const newTasks = newTask.platform.map((modelId) => {
-      const [platform] = modelId.split('-');
-      return {
-        id: Date.now().toString() + '-' + modelId,
-        title: newTask.title,
-        prompt: newTask.prompt,
-        platform: platform as 'gpt' | 'keling' | 'jimeng',
-        status: 'pending' as const,
-        createdAt: now
-      };
-    });
-    setTasks([...newTasks, ...tasks]);
-    setNewTask({ title: '', prompt: '', platform: [], personImages: [], sceneImages: [], styleImages: [], count: 1 });
-  };
+  const handleCreateTask = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!newTask.platform.length) {
+      alert('请至少选择一个模型')
+      return
+    }
+    setIsCreating(true)
+    try {
+      for (const modelId of newTask.platform) {
+        const [platform] = modelId.split('-')
+        const response = await taskAPI.createTask({
+          title: newTask.title,
+          prompt: newTask.prompt,
+          platform: platform as 'gpt' | 'keling' | 'jimeng',
+        })
+        if (!response.success) {
+          throw new Error(response.error || '创建任务失败')
+        }
+      }
+      await loadTasks({ silent: true })
+      setNewTask({
+        title: '',
+        prompt: '',
+        platform: [],
+        personImages: [],
+        sceneImages: [],
+        styleImages: [],
+        count: 1,
+      })
+      setSelectedPersonImages([])
+      setSelectedSceneImages([])
+      setSelectedStyleImages([])
+      setSelectedStyles([])
+      setCustomStyleInput('')
+      alert('任务已创建')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '创建任务失败'
+      console.error('创建任务失败:', error)
+      alert(message)
+    } finally {
+      setIsCreating(false)
+    }
+  }
 
   const getStatusColor = (status: APITask['status']) => {
     switch (status) {
@@ -188,23 +277,52 @@ export default function Tasks() {
     }
   }
 
-  const handleStart = async (id: number) => {
-    const res = await taskAPI.startTask(id)
-    if (res.success) {
-      await loadTasks()
-      alert('任务已开始执行')
-    } else {
-      alert(res.error || '启动任务失败')
+  const handleStart = async (id: APITask['id']) => {
+    const taskId = typeof id === 'number' ? id : Number(id)
+    if (!Number.isInteger(taskId)) {
+      alert('任务编号无效，无法启动任务')
+      return
+    }
+    setIsStartingId(taskId)
+    try {
+      const res = await taskAPI.startTask(taskId)
+      if (res.success) {
+        await loadTasks({ silent: true })
+        alert(res.data?.message || '任务已开始执行')
+      } else {
+        throw new Error(res.error || '启动任务失败')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '启动任务失败'
+      console.error('启动任务失败:', error)
+      alert(message)
+    } finally {
+      setIsStartingId(null)
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: APITask['id']) => {
+    const taskId = typeof id === 'number' ? id : Number(id)
+    if (!Number.isInteger(taskId)) {
+      alert('任务编号无效，无法删除')
+      return
+    }
     if (!confirm('确定删除该任务吗？')) return
-    const res = await taskAPI.deleteTask(String(id))
-    if (res.success) {
-      setTasks(prev => prev.filter(t => t.id !== id))
-    } else {
-      alert(res.error || '删除任务失败')
+    setDeletingTaskId(taskId)
+    try {
+      const res = await taskAPI.deleteTask(String(taskId))
+      if (res.success) {
+        setTasks(prev => prev.filter(t => t.id !== taskId))
+        await loadTasks({ silent: true })
+      } else {
+        throw new Error(res.error || '删除任务失败')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '删除任务失败'
+      console.error('删除任务失败:', error)
+      alert(message)
+    } finally {
+      setDeletingTaskId(null)
     }
   }
 
@@ -233,7 +351,7 @@ export default function Tasks() {
               <label className="text-sm text-gray-600 flex items-center gap-2">
                 <input type="checkbox" checked={poll} onChange={e => setPoll(e.target.checked)} /> 自动刷新
               </label>
-              <button onClick={loadTasks} className="text-sm text-blue-600 hover:text-blue-800">刷新</button>
+              <button onClick={() => loadTasks()} className="text-sm text-blue-600 hover:text-blue-800">刷新</button>
             </div>
           </div>
         </div>
@@ -384,7 +502,10 @@ export default function Tasks() {
                     onChange={e => {
                       const files = e.target.files;
                       if (!files) return;
-                      setNewTask({ ...newTask, personImages: [ ...(newTask.personImages as File[]), ...Array.from(files) ] });
+                      setNewTask({
+                        ...newTask,
+                        personImages: [...(newTask.personImages ?? []), ...Array.from(files)],
+                      });
                     }}
                     className="hidden"
                     id="person-upload"
@@ -399,17 +520,30 @@ export default function Tasks() {
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {galleryImages.filter(img => img.tags.includes('人物')).map(img => (
-                    <div key={img.id} className={`border rounded p-1 cursor-pointer ${selectedPersonImages.includes(img) ? 'border-blue-500' : 'border-gray-300'}`}
+                    <div
+                      key={img.id}
+                      className={`border rounded p-1 cursor-pointer ${selectedPersonImages.some(i => i.id === img.id) ? 'border-blue-500' : 'border-gray-300'}`}
                       onClick={() => {
-                        setSelectedPersonImages(selectedPersonImages.includes(img)
-                          ? selectedPersonImages.filter(i => i !== img)
-                          : [...selectedPersonImages, img]);
-                        setNewTask({ ...newTask, personImages: selectedPersonImages.includes(img)
-                          ? (newTask.personImages as GalleryImageItem[]).filter(i => i.id !== img.id)
-                          : [ ...(newTask.personImages as GalleryImageItem[]), img ] });
+                        const isSelected = selectedPersonImages.some(i => i.id === img.id)
+                        const nextSelected = isSelected
+                          ? selectedPersonImages.filter(i => i.id !== img.id)
+                          : [...selectedPersonImages, img]
+                        setSelectedPersonImages(nextSelected)
+                        const uploadedFiles = extractUploadedFiles(newTask.personImages)
+                        setNewTask({
+                          ...newTask,
+                          personImages: [...uploadedFiles, ...nextSelected],
+                        })
                       }}
                     >
-                      <img src={img.imageUrl} alt={img.title} className="w-16 h-16 object-cover rounded" />
+                      <Image
+                        src={img.imageUrl}
+                        alt={img.title}
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 object-cover rounded"
+                        unoptimized
+                      />
                     </div>
                   ))}
                 </div>
@@ -420,17 +554,21 @@ export default function Tasks() {
                     <div className="flex flex-wrap gap-2">
                       {newTask.personImages.map((img, index) => (
                         <div key={index} className="relative group">
-                          <img 
-                            src={img instanceof File ? URL.createObjectURL(img) : img.imageUrl} 
-                            alt={img instanceof File ? img.name : img.title} 
+                          <TaskImagePreview
+                            image={img}
+                            alt={getTaskImageAlt(img)}
                             className="w-16 h-16 object-cover rounded border"
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              const newImages = [...(newTask.personImages as any[])];
-                              newImages.splice(index, 1);
-                              setNewTask({ ...newTask, personImages: newImages });
+                              if (!newTask.personImages) return
+                              const nextImages = [...newTask.personImages]
+                              const [removed] = nextImages.splice(index, 1)
+                              setNewTask({ ...newTask, personImages: nextImages })
+                              if (removed && isGalleryImage(removed)) {
+                                setSelectedPersonImages(prev => prev.filter(i => i.id !== removed.id))
+                              }
                             }}
                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -451,7 +589,10 @@ export default function Tasks() {
                     onChange={e => {
                       const files = e.target.files;
                       if (!files) return;
-                      setNewTask({ ...newTask, sceneImages: [ ...(newTask.sceneImages as File[]), ...Array.from(files) ] });
+                      setNewTask({
+                        ...newTask,
+                        sceneImages: [...(newTask.sceneImages ?? []), ...Array.from(files)],
+                      });
                     }}
                     className="hidden"
                     id="scene-upload"
@@ -466,17 +607,30 @@ export default function Tasks() {
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {galleryImages.filter(img => img.tags.some(t => ['风景','场景','城市','建筑','自然','夜景'].includes(t))).map(img => (
-                    <div key={img.id} className={`border rounded p-1 cursor-pointer ${selectedSceneImages.includes(img) ? 'border-blue-500' : 'border-gray-300'}`}
+                    <div
+                      key={img.id}
+                      className={`border rounded p-1 cursor-pointer ${selectedSceneImages.some(i => i.id === img.id) ? 'border-blue-500' : 'border-gray-300'}`}
                       onClick={() => {
-                        setSelectedSceneImages(selectedSceneImages.includes(img)
-                          ? selectedSceneImages.filter(i => i !== img)
-                          : [...selectedSceneImages, img]);
-                        setNewTask({ ...newTask, sceneImages: selectedSceneImages.includes(img)
-                          ? (newTask.sceneImages as GalleryImageItem[]).filter(i => i.id !== img.id)
-                          : [ ...(newTask.sceneImages as GalleryImageItem[]), img ] });
+                        const isSelected = selectedSceneImages.some(i => i.id === img.id)
+                        const nextSelected = isSelected
+                          ? selectedSceneImages.filter(i => i.id !== img.id)
+                          : [...selectedSceneImages, img]
+                        setSelectedSceneImages(nextSelected)
+                        const uploadedFiles = extractUploadedFiles(newTask.sceneImages)
+                        setNewTask({
+                          ...newTask,
+                          sceneImages: [...uploadedFiles, ...nextSelected],
+                        })
                       }}
                     >
-                      <img src={img.imageUrl} alt={img.title} className="w-16 h-16 object-cover rounded" />
+                      <Image
+                        src={img.imageUrl}
+                        alt={img.title}
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 object-cover rounded"
+                        unoptimized
+                      />
                     </div>
                   ))}
                 </div>
@@ -487,17 +641,21 @@ export default function Tasks() {
                     <div className="flex flex-wrap gap-2">
                       {newTask.sceneImages.map((img, index) => (
                         <div key={index} className="relative group">
-                          <img 
-                            src={img instanceof File ? URL.createObjectURL(img) : img.imageUrl} 
-                            alt={img instanceof File ? img.name : img.title} 
+                          <TaskImagePreview
+                            image={img}
+                            alt={getTaskImageAlt(img)}
                             className="w-16 h-16 object-cover rounded border"
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              const newImages = [...(newTask.sceneImages as any[])];
-                              newImages.splice(index, 1);
-                              setNewTask({ ...newTask, sceneImages: newImages });
+                              if (!newTask.sceneImages) return
+                              const nextImages = [...newTask.sceneImages]
+                              const [removed] = nextImages.splice(index, 1)
+                              setNewTask({ ...newTask, sceneImages: nextImages })
+                              if (removed && isGalleryImage(removed)) {
+                                setSelectedSceneImages(prev => prev.filter(i => i.id !== removed.id))
+                              }
                             }}
                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -518,7 +676,10 @@ export default function Tasks() {
                     onChange={e => {
                       const files = e.target.files;
                       if (!files) return;
-                      setNewTask({ ...newTask, styleImages: [ ...(newTask.styleImages as File[]), ...Array.from(files) ] });
+                      setNewTask({
+                        ...newTask,
+                        styleImages: [...(newTask.styleImages ?? []), ...Array.from(files)],
+                      });
                     }}
                     className="hidden"
                     id="style-upload"
@@ -533,17 +694,30 @@ export default function Tasks() {
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {galleryImages.filter(img => img.tags.some(t => ['风格','抽象','艺术','色彩','国风','现代','赛博朋克','写实','二次元','未来感'].includes(t))).map(img => (
-                    <div key={img.id} className={`border rounded p-1 cursor-pointer ${selectedStyleImages.includes(img) ? 'border-blue-500' : 'border-gray-300'}`}
+                    <div
+                      key={img.id}
+                      className={`border rounded p-1 cursor-pointer ${selectedStyleImages.some(i => i.id === img.id) ? 'border-blue-500' : 'border-gray-300'}`}
                       onClick={() => {
-                        setSelectedStyleImages(selectedStyleImages.includes(img)
-                          ? selectedStyleImages.filter(i => i !== img)
-                          : [...selectedStyleImages, img]);
-                        setNewTask({ ...newTask, styleImages: selectedStyleImages.includes(img)
-                          ? (newTask.styleImages as GalleryImageItem[]).filter(i => i.id !== img.id)
-                          : [ ...(newTask.styleImages as GalleryImageItem[]), img ] });
+                        const isSelected = selectedStyleImages.some(i => i.id === img.id)
+                        const nextSelected = isSelected
+                          ? selectedStyleImages.filter(i => i.id !== img.id)
+                          : [...selectedStyleImages, img]
+                        setSelectedStyleImages(nextSelected)
+                        const uploadedFiles = extractUploadedFiles(newTask.styleImages)
+                        setNewTask({
+                          ...newTask,
+                          styleImages: [...uploadedFiles, ...nextSelected],
+                        })
                       }}
                     >
-                      <img src={img.imageUrl} alt={img.title} className="w-16 h-16 object-cover rounded" />
+                      <Image
+                        src={img.imageUrl}
+                        alt={img.title}
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 object-cover rounded"
+                        unoptimized
+                      />
                     </div>
                   ))}
                 </div>
@@ -554,17 +728,21 @@ export default function Tasks() {
                     <div className="flex flex-wrap gap-2">
                       {newTask.styleImages.map((img, index) => (
                         <div key={index} className="relative group">
-                          <img 
-                            src={img instanceof File ? URL.createObjectURL(img) : img.imageUrl} 
-                            alt={img instanceof File ? img.name : img.title} 
+                          <TaskImagePreview
+                            image={img}
+                            alt={getTaskImageAlt(img)}
                             className="w-16 h-16 object-cover rounded border"
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              const newImages = [...(newTask.styleImages as any[])];
-                              newImages.splice(index, 1);
-                              setNewTask({ ...newTask, styleImages: newImages });
+                              if (!newTask.styleImages) return
+                              const nextImages = [...newTask.styleImages]
+                              const [removed] = nextImages.splice(index, 1)
+                              setNewTask({ ...newTask, styleImages: nextImages })
+                              if (removed && isGalleryImage(removed)) {
+                                setSelectedStyleImages(prev => prev.filter(i => i.id !== removed.id))
+                              }
                             }}
                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -578,7 +756,13 @@ export default function Tasks() {
               </div>
               <hr className="my-4" />
               <div className="flex space-x-3 justify-end">
-                <button type="submit" className="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 transition-colors font-medium">创建任务</button>
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreating ? '创建中...' : '创建任务'}
+                </button>
               </div>
             </form>
           </div>
@@ -586,8 +770,17 @@ export default function Tasks() {
           <div className="w-full md:w-1/2 bg-white shadow rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-900">任务列表</h2>
+              {fetchError && (
+                <p className="mt-2 text-sm text-red-600">{fetchError}</p>
+              )}
+              {loading && (
+                <p className="mt-2 text-sm text-gray-500">加载中...</p>
+              )}
             </div>
             <div className="divide-y divide-gray-200">
+              {!loading && !fetchError && tasks.length === 0 && (
+                <div className="p-6 text-sm text-gray-500">暂无任务，先创建一个吧。</div>
+              )}
               {tasks.map((task) => (
                 <div key={task.id} className="p-6">
                   <div className="flex items-center justify-between">
@@ -601,18 +794,12 @@ export default function Tasks() {
                       </div>
                       {task.prompt && <p className="text-gray-600 mb-3">{task.prompt}</p>}
                       <div className="flex items-center space-x-6 text-sm text-gray-500">
-                        <span>创建时间：{new Date(task.created_at).toLocaleString()}</span>
+                        <span>创建时间：{task.created_at ? new Date(task.created_at).toLocaleString() : '未知'}</span>
                         {task.updated_at && <span>更新时间：{new Date(task.updated_at).toLocaleString()}</span>}
+                        {task.description && <span>描述：{task.description}</span>}
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
-                      {task.status === 'completed' && task.imageUrl && (
-                        <img
-                          src={task.imageUrl}
-                          alt={task.title}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                      )}
                       {task.status === 'processing' && (
                         <div className="flex items-center space-x-2">
                           <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -623,9 +810,21 @@ export default function Tasks() {
                         </div>
                       )}
                       {task.status === 'pending' && (
-                        <button onClick={() => handleStart(task.id)} className="text-blue-600 hover:text-blue-800 text-sm">开始</button>
+                        <button
+                          onClick={() => handleStart(task.id)}
+                          disabled={isStartingId === task.id}
+                          className="text-blue-600 hover:text-blue-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isStartingId === task.id ? '启动中...' : '开始'}
+                        </button>
                       )}
-                      <button onClick={() => handleDelete(task.id)} className="text-red-600 hover:text-red-800 text-sm">删除</button>
+                      <button
+                        onClick={() => handleDelete(task.id)}
+                        disabled={deletingTaskId === task.id}
+                        className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingTaskId === task.id ? '删除中...' : '删除'}
+                      </button>
                     </div>
                   </div>
                 </div>
