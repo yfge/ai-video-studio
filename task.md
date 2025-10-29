@@ -12,8 +12,9 @@
   - 阶段性执行顺序：先建 Treatment → Scene → Shot 还是可以分阶段上线
   - 迁移期间老接口是否保持兼容 (可选 query 参数? 版本?)
   - 多剧本共享场景/镜头的复用策略
-- [ ] 需求澄清：梳理 Story → Episode → Script 现状与工业级 Treatment / Step Outline / Scene / Shot 差异，输出对比文档
+- [x] 需求澄清：梳理 Story → Episode → Script 现状与工业级 Treatment / Step Outline / Scene / Shot 差异，输出对比文档（见 `docs/story-structure-gap-analysis.md`，Discovery Session 议程详见 `docs/story-structure-discovery-session.md`）
 - [ ] 后端建模：设计 `story_treatments`、`story_step_outlines`、`scenes`、`scene_beats`、`shots` ER 图与字段说明
+  - 下一步行动：根据 Discovery Session 输出准备 ER 图草稿与字段定义草案，汇总入 `docs/story-structure-gap-analysis.md`
 - [ ] 迁移实现：编写 Alembic 脚本迁移现有 JSON 字段到新表，提供回滚方案
 - [ ] 服务层改造：更新生成/查询 Service 与 Repository，提供分层读取与写入接口
 - [ ] 前端同步：调整剧本详情页数据结构，支持新场景/镜头层级展示与编辑
