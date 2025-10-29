@@ -597,6 +597,104 @@ class AIService:
             "model_used": "mock_model",
             "usage": {}
         }
+
+    async def _generate_mock_script(
+        self,
+        episode: Dict[str, Any],
+        story: Dict[str, Any],
+        format_type: str,
+        language: str,
+        dialogue_style: str,
+        scene_detail_level: str,
+        additional_requirements: Optional[str],
+        style_preferences: Optional[List[str]],
+    ) -> Dict[str, Any]:
+        """生成模拟剧本内容，保证无外部模型时的回退体验"""
+        await asyncio.sleep(1)
+
+        plot_points = episode.get("plot_points") or []
+        if not plot_points:
+            summary = episode.get("summary") or story.get("synopsis") or "角色在本集中推进剧情。"
+            plot_points = [{"description": summary, "timing": "中段"}]
+
+        focus_characters: List[str] = []
+        for char in (story.get("main_characters") or []):
+            name = char.get("name")
+            if name and name not in focus_characters:
+                focus_characters.append(name)
+        focus_characters = focus_characters[:3]
+
+        scenes: List[Dict[str, Any]] = []
+        dialogues: List[Dict[str, Any]] = []
+        stage_directions: List[Dict[str, Any]] = []
+        script_sections: List[str] = [f"# {episode.get('title', '未命名剧集')}"]
+
+        default_locations = ["教室", "校园花园", "图书馆", "操场"]
+        default_times = ["DAY", "EVENING", "NIGHT"]
+
+        for idx, point in enumerate(plot_points, start=1):
+            location = default_locations[(idx - 1) % len(default_locations)]
+            time_of_day = default_times[(idx - 1) % len(default_times)]
+            description = point.get("description") or f"故事在第{idx}个阶段推进。"
+
+            scenes.append({
+                "scene_number": idx,
+                "slug_line": f"INT. {location.upper()} - {time_of_day}",
+                "summary": description,
+                "focus_characters": focus_characters,
+                "story_beat": point.get("timing") or "beat"
+            })
+
+            dialogues.append({
+                "scene_number": idx,
+                "character": focus_characters[0] if focus_characters else "旁白",
+                "line": f"（{dialogue_style}）我们正在面对：{description}"
+            })
+
+            stage_directions.append({
+                "scene_number": idx,
+                "description": f"镜头捕捉角色与场景，突出：{description}",
+                "camera_suggestion": "中景",
+                "lighting": "自然光"
+            })
+
+            section_lines = [
+                f"场景 {idx}: {location} - {time_of_day}",
+                description,
+                "",
+            ]
+            for dialog in [d for d in dialogues if d["scene_number"] == idx]:
+                section_lines.append(f"{dialog['character']}: {dialog['line']}")
+            script_sections.append("\n".join(section_lines))
+
+        if additional_requirements:
+            script_sections.append(f"\n【制作要求】{additional_requirements}")
+
+        script_text = "\n\n".join(script_sections)
+
+        return {
+            "content": {
+                "content": script_text,
+                "scenes": scenes,
+                "dialogues": dialogues,
+                "stage_directions": stage_directions,
+                "metadata": {
+                    "story_title": story.get("title"),
+                    "episode_title": episode.get("title"),
+                    "generator": "mock_script",
+                    "language": language,
+                    "format_type": format_type,
+                    "scene_detail_level": scene_detail_level,
+                    "style_preferences": style_preferences or [],
+                },
+            },
+            "prompt": "模拟剧本生成提示词",
+            "generation_method": "mock_service",
+            "template_used": "mock_script_template",
+            "provider_used": "mock",
+            "model_used": "mock_script_model",
+            "usage": {},
+        }
     
     async def generate_script(
         self,
@@ -616,6 +714,9 @@ class AIService:
         
         # 使用提示词管理器渲染模板
         try:
+            if not self.ai_manager:
+                raise RuntimeError("AI manager is not configured")
+
             variables = {
                 "story": story,
                 "episode": episode,
@@ -674,7 +775,16 @@ class AIService:
         except Exception as e:
             print(f"剧本生成失败: {e}")
         
-        return None
+        return await self._generate_mock_script(
+            episode=episode,
+            story=story,
+            format_type=format_type,
+            language=language,
+            dialogue_style=dialogue_style,
+            scene_detail_level=scene_detail_level,
+            additional_requirements=additional_requirements,
+            style_preferences=style_preferences,
+        )
     
     async def _call_text_generation_service(self, prompt: str, task_type: str) -> Optional[str]:
         """调用文本生成服务"""
