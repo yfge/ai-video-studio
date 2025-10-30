@@ -3,15 +3,15 @@
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { episodeAPI, scriptAPI, aiAPI, storyStructureAPI } from '@/utils/api'
+import { episodeAPI, scriptAPI, storyStructureAPI } from '@/utils/api'
 import type {
   Episode,
   Script,
-  AIModel,
   StoryboardPayload,
   StoryboardFrame,
 } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
+import { ModelSelector } from '@/components/ModelSelector'
 
 type NormalizedScene = { id: number; scene_number: string; slug_line: string; status: string }
 type NormalizedShot = { id: number; shot_number: string; shot_type?: string; camera_movement?: string }
@@ -35,7 +35,6 @@ export default function EpisodeStoryboardPage() {
   const [selectedNormalizedSceneId, setSelectedNormalizedSceneId] = useState<number | null>(null)
   const [normalizedLoading, setNormalizedLoading] = useState(false)
 
-  const [models, setModels] = useState<AIModel[]>([])
   const [form, setForm] = useState({ model: '', temperature: 0.7, frames_per_scene: 7 })
   const [promptPreview, setPromptPreview] = useState('')
   const [selectedScene, setSelectedScene] = useState<number>(1)
@@ -54,12 +53,6 @@ export default function EpisodeStoryboardPage() {
         setScripts(scRes.data)
         const first = scRes.data[0] || null
         setActiveScript(first)
-      }
-      const modelResponse = await aiAPI.getAvailableModels({ type: 'text' })
-      if (modelResponse.success && modelResponse.data?.models) {
-        setModels(modelResponse.data.models)
-      } else {
-        setModels([])
       }
     } finally {
       setLoading(false)
@@ -366,15 +359,14 @@ export default function EpisodeStoryboardPage() {
         {/* 顶部生成配置 */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">模型</label>
-              <select value={form.model} onChange={e => setForm(prev => ({...prev, model: e.target.value}))} className="w-full px-3 py-2 border rounded">
-                <option value="">Auto（推荐）</option>
-                {models.map(m => (
-                  <option key={m.model_id} value={m.model_id}>{m.name || m.id} — {m.provider}</option>
-                ))}
-              </select>
-            </div>
+            <ModelSelector
+              label="模型"
+              value={form.model}
+              onChange={modelId => setForm(prev => ({ ...prev, model: modelId }))}
+              modelType="text"
+              helperText="留空时将使用后端推荐模型"
+              className="md:col-span-1"
+            />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">温度（{form.temperature.toFixed(1)}）</label>
               <input type="range" min={0} max={1.5} step={0.1} value={form.temperature} onChange={e => setForm(prev => ({...prev, temperature: parseFloat(e.target.value)}))} className="w-full" />

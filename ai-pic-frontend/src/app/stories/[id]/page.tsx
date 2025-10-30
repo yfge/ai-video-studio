@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { storyAPI, episodeAPI, scriptAPI, aiAPI, virtualIPAPI } from '@/utils/api'
-import type { Story, Episode, Script, AIModel, VirtualIP, EpisodeGenerationRequest } from '@/utils/api'
+import { storyAPI, episodeAPI, scriptAPI, virtualIPAPI } from '@/utils/api'
+import type { Story, Episode, Script, VirtualIP, EpisodeGenerationRequest } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
+import { ModelSelector } from '@/components/ModelSelector'
 
 export default function StoryDetailPage() {
   const params = useParams()
@@ -19,7 +20,6 @@ export default function StoryDetailPage() {
   const [loadingScripts, setLoadingScripts] = useState(false)
   const [showPrompt, setShowPrompt] = useState(false)
   const [genOpen, setGenOpen] = useState(false)
-  const [models, setModels] = useState<AIModel[]>([])
   const [genForm, setGenForm] = useState({
     episode_count: 3,
     episode_duration: 30,
@@ -89,8 +89,6 @@ export default function StoryDetailPage() {
   useEffect(() => {
     let active = true
     ;(async () => {
-      const res = await aiAPI.getAvailableModels({ type: 'text' })
-      if (active && res.success && res.data?.models) setModels(res.data.models)
       const vr = await virtualIPAPI.getVirtualIPs()
       if (active && vr.success && vr.data) setVips(vr.data)
     })()
@@ -224,15 +222,13 @@ export default function StoryDetailPage() {
                     <option value="fast">快</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">模型</label>
-                  <select value={genForm.model} onChange={e => setGenForm(prev => ({...prev, model: e.target.value}))} className="w-full px-3 py-2 border rounded">
-                    <option value="">Auto（推荐）</option>
-                    {models.map(m => (
-                      <option key={m.model_id} value={m.model_id}>{m.name || m.id} — {m.provider}</option>
-                    ))}
-                  </select>
-                </div>
+                <ModelSelector
+                  label="模型"
+                  value={genForm.model}
+                  onChange={modelId => setGenForm(prev => ({ ...prev, model: modelId }))}
+                  modelType="text"
+                  helperText="留空时将由后端推荐最佳模型"
+                />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">温度（{genForm.temperature.toFixed(1)}）</label>
                   <input type="range" min={0} max={1.5} step={0.1} value={genForm.temperature} onChange={e => setGenForm(prev => ({...prev, temperature: parseFloat(e.target.value)}))} className="w-full" />

@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { episodeAPI, scriptAPI, aiAPI } from '@/utils/api';
-import type { Episode, Script, ScriptGenerationRequest, AIModel } from '@/utils/api';
+import { episodeAPI, scriptAPI } from '@/utils/api';
+import type { Episode, Script, ScriptGenerationRequest } from '@/utils/api';
 import { useAlertModal } from '@/components/AlertModalProvider';
+import { ModelSelector } from '@/components/ModelSelector';
 
 export default function EpisodeDetailPage() {
   const params = useParams();
@@ -18,7 +19,6 @@ export default function EpisodeDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [useAsync, setUseAsync] = useState(true);
-  const [models, setModels] = useState<AIModel[]>([])
   const [promptPreview, setPromptPreview] = useState('')
 
   // 剧本生成表单状态
@@ -87,17 +87,6 @@ export default function EpisodeDetailPage() {
   useEffect(() => {
     setGenerateForm(prev => ({ ...prev, episode_id: episodeId }));
   }, [episodeId]);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const res = await aiAPI.getAvailableModels({ type: 'text' })
-      if (active && res.success && res.data?.models) setModels(res.data.models)
-    })()
-    return () => {
-      active = false
-    }
-  }, []);
 
   const handleGenerateScript = async () => {
     try {
@@ -428,21 +417,14 @@ export default function EpisodeDetailPage() {
 
               {/* 模型与温度 */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">模型</label>
-                  <select
+                <ModelSelector
+                  label="模型"
                     value={generateForm.model ?? ''}
-                    onChange={e => setGenerateForm(prev => ({ ...prev, model: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded"
-                  >
-                    <option value="">Auto（推荐）</option>
-                    {models.map(m => (
-                      <option key={m.model_id} value={m.model_id}>
-                        {m.name || m.id} — {m.provider}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    onChange={modelId => setGenerateForm(prev => ({ ...prev, model: modelId }))}
+                    modelType="text"
+                    helperText="留空将使用后端推荐模型"
+                    className="md:col-span-1"
+                />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     温度（{(generateForm.temperature ?? 0.7).toFixed(1)}）

@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { scriptAPI, aiAPI } from '@/utils/api'
+import { scriptAPI } from '@/utils/api'
 import type { Script } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
+import { ModelSelector } from '@/components/ModelSelector'
 
 type TabId = 'overview' | 'scenes' | 'storyboard'
 
@@ -90,12 +91,6 @@ type RemoteStoryboard = {
   frames?: unknown
   meta?: unknown
   plan?: unknown
-}
-
-type ModelOption = {
-  model_id: string
-  name: string
-  provider: string
 }
 
 const TABS: Array<{ id: TabId; name: string; description: string }> = [
@@ -356,7 +351,6 @@ export default function ScriptDetailPage() {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [storyboard, setStoryboard] = useState<StoryboardData | null>(null)
   const [storyboardBusy, setStoryboardBusy] = useState(false)
-  const [modelOptions, setModelOptions] = useState<ModelOption[]>([])
   const [generationForm, setGenerationForm] = useState({ model: '', temperature: 0.7, framesPerScene: 4 })
   const [promptPreview, setPromptPreview] = useState('')
   const [selectedScenes, setSelectedScenes] = useState<number[]>([])
@@ -388,28 +382,13 @@ export default function ScriptDetailPage() {
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true)
-      const [scriptRes, modelRes] = await Promise.all([
-        scriptAPI.getScript(scriptId),
-        aiAPI.getAvailableModels({ type: 'text' }),
-      ])
+      const scriptRes = await scriptAPI.getScript(scriptId)
 
       if (scriptRes.success && scriptRes.data) {
         setScript(scriptRes.data)
         await refreshStoryboard(scriptId)
       } else {
         showAlert({ message: '加载剧本失败', variant: 'error' })
-      }
-
-      if (modelRes.success && modelRes.data) {
-        type ModelEntry = { model_id: string; id?: string; name?: string; provider: string }
-        const list = ((modelRes.data as { models?: ModelEntry[] } | undefined)?.models) ?? []
-        setModelOptions(
-          list.map(entry => ({
-            model_id: entry.model_id,
-            name: entry.name || entry.id || entry.model_id,
-            provider: entry.provider,
-          }))
-        )
       }
     } catch (error) {
       console.error(error)
@@ -715,19 +694,14 @@ export default function ScriptDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">生成配置</h3>
                   <div className="mt-3 space-y-4 text-sm text-gray-600">
                     <div>
-                      <label className="text-xs font-medium uppercase tracking-wide text-gray-500">模型</label>
-                      <select
+                      <ModelSelector
+                        label="模型"
                         value={generationForm.model}
-                        onChange={e => setGenerationForm(prev => ({ ...prev, model: e.target.value }))}
-                        className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-                      >
-                        <option value="">Auto（推荐）</option>
-                        {modelOptions.map(option => (
-                          <option key={option.model_id} value={option.model_id}>
-                            {option.name} · {option.provider}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={modelId => setGenerationForm(prev => ({ ...prev, model: modelId }))}
+                        modelType="text"
+                        helperText="留空将使用推荐模型"
+                        className="mt-1"
+                      />
                     </div>
                     <div>
                       <label className="text-xs font-medium uppercase tracking-wide text-gray-500">创造性温度</label>

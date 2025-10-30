@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { storyAPI, virtualIPAPI, aiAPI } from '@/utils/api';
-import type { Story, VirtualIP, StoryGenerationRequest, AIModel } from '@/utils/api';
+import { storyAPI, virtualIPAPI } from '@/utils/api';
+import type { Story, VirtualIP, StoryGenerationRequest } from '@/utils/api';
 import Navigation from '@/components/Navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { useAlertModal } from '@/components/AlertModalProvider';
+import { ModelSelector } from '@/components/ModelSelector';
 
 function StoriesPageContent() {
   const router = useRouter();
@@ -16,7 +17,6 @@ function StoriesPageContent() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
-  const [textModels, setTextModels] = useState<AIModel[]>([]);
   
   // 筛选状态
   const [selectedGenre, setSelectedGenre] = useState<string>('');
@@ -67,14 +67,13 @@ function StoriesPageContent() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [storiesResponse, virtualIPsResponse, modelsResponse] = await Promise.all([
+      const [storiesResponse, virtualIPsResponse] = await Promise.all([
         storyAPI.getStories({
           genre: selectedGenre || undefined,
           status: selectedStatus || undefined,
           limit: 50
         }),
-        virtualIPAPI.getVirtualIPs(),
-        aiAPI.getAvailableModels({ type: 'text' })
+        virtualIPAPI.getVirtualIPs()
       ]);
 
       if (storiesResponse.success && storiesResponse.data) {
@@ -82,10 +81,6 @@ function StoriesPageContent() {
       }
       if (virtualIPsResponse.success && virtualIPsResponse.data) {
         setVirtualIPs(virtualIPsResponse.data);
-      }
-      // 可用模型
-      if (modelsResponse && modelsResponse.success && modelsResponse.data) {
-        setTextModels(modelsResponse.data.models ?? []);
       }
     } catch (error) {
       console.error('加载数据失败:', error);
@@ -98,19 +93,6 @@ function StoriesPageContent() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const res = await aiAPI.getAvailableModels({ type: 'text' });
-      if (active && res.success && res.data?.models) {
-        setTextModels(res.data.models);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const handleGenerateStory = async () => {
     if (!generateForm.title || generateForm.character_ids.length === 0) {
@@ -333,22 +315,13 @@ function StoriesPageContent() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">选择模型</label>
-                <select
-                  value={generateForm.model || ''}
-                  onChange={(e) => setGenerateForm(prev => ({ ...prev, model: e.target.value || '' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Auto（推荐）</option>
-                  {textModels.map(m => (
-                    <option key={m.model_id} value={m.model_id}>
-                      {m.name || m.id} — {m.provider}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">为空将由后端自动挑选最佳提供商与模型</p>
-              </div>
+              <ModelSelector
+                label="选择模型"
+                value={generateForm.model || ''}
+                onChange={modelId => setGenerateForm(prev => ({ ...prev, model: modelId }))}
+                modelType="text"
+                helperText="为空将由后端自动挑选最佳提供商与模型"
+              />
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
