@@ -4,8 +4,10 @@ import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { virtualIPAPI, virtualIPImageAPI, taskAPI } from '@/utils/api';
-import { VirtualIP, VirtualIPImage, AIImageGenerationRequest, AIModel } from '@/utils/api';
+import { VirtualIP, VirtualIPImage, AIImageGenerationRequest } from '@/utils/api';
 import { useAlertModal } from '@/components/AlertModalProvider';
+import { useAvailableModels } from '@/hooks/useAvailableModels';
+import { ModelSelector } from '@/components/ModelSelector';
 
 export default function VirtualIPImagesPage() {
   const params = useParams();
@@ -24,11 +26,6 @@ export default function VirtualIPImagesPage() {
   // 统一的后端基础地址（用于拼接本地文件路径）
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
   
-  // 模型相关状态
-  const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
-  const [defaultModel, setDefaultModel] = useState<string>('');
-  const [userPickedModel, setUserPickedModel] = useState<boolean>(false);
-
   // AI生成表单状态
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [generateForm, setGenerateForm] = useState<AIImageGenerationRequest>({
@@ -38,6 +35,16 @@ export default function VirtualIPImagesPage() {
     additional_prompts: '',
     is_default: false
   });
+
+  const fetchModels = useCallback(() => virtualIPImageAPI.getAvailableModels(virtualIPId), [virtualIPId]);
+  const { models: availableModels, defaultModel: recommendedModel } = useAvailableModels({
+    fetcher: fetchModels,
+    modelType: 'image',
+    cacheKey: `virtual-ip-image:${virtualIPId}`,
+  });
+  const selectedModel = availableModels.find(
+    model => model.model_id === (generateForm.model || recommendedModel)
+  );
 
   // 上传表单状态
   const [uploadForm, setUploadForm] = useState({
@@ -50,11 +57,10 @@ export default function VirtualIPImagesPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [ipResponse, imagesResponse, categoriesResponse, modelsResponse] = await Promise.all([
+      const [ipResponse, imagesResponse, categoriesResponse] = await Promise.all([
         virtualIPAPI.getVirtualIP(virtualIPId),
         virtualIPImageAPI.getImages(virtualIPId),
-        virtualIPImageAPI.getCategories(virtualIPId),
-        virtualIPImageAPI.getAvailableModels(virtualIPId)
+        virtualIPImageAPI.getCategories(virtualIPId)
       ]);
       
       if (ipResponse.success && ipResponse.data) {
@@ -75,35 +81,16 @@ export default function VirtualIPImagesPage() {
         setCategories([]);
       }
       
-      // 处理模型数据
-      if (modelsResponse.success && modelsResponse.data) {
-        const models = modelsResponse.data.models ?? [];
-        setAvailableModels(models);
-
-        // 优先选择可灵作为默认，其次后端提供的默认，否则第一个
-        const keling = models.find(m => m.provider === 'keling')?.model_id;
-        const backendDefault = modelsResponse.data.default;
-        const first = models[0]?.model_id;
-        const nextDefault = keling || backendDefault || first || '';
-
-        if (nextDefault) {
-          setDefaultModel(nextDefault);
-          if (!userPickedModel) {
-            setGenerateForm(prev => ({ ...prev, model: nextDefault }));
-          }
-        }
-      }
     } catch (error) {
       console.error('加载数据失败:', error);
       showAlert({ message: '加载数据失败', variant: 'error' });
       // 设置默认空值
       setImages([]);
       setCategories([]);
-      setAvailableModels([]);
     } finally {
       setLoading(false);
     }
-  }, [showAlert, userPickedModel, virtualIPId]);
+  }, [showAlert, virtualIPId]);
 
   useEffect(() => {
     void loadData();
@@ -112,7 +99,7 @@ export default function VirtualIPImagesPage() {
  const handleGenerateImage = async () => {
     try {
       setGenerating(true);
-      const modelToUse = generateForm.model || defaultModel;
+      const modelToUse = generateForm.model || recommendedModel || '';
       const response = await virtualIPImageAPI.generateImage(virtualIPId, {
         ...generateForm,
         model: modelToUse,
@@ -124,7 +111,7 @@ export default function VirtualIPImagesPage() {
         setGenerateForm({
           style: 'realistic',
           category: 'portrait',
-          model: defaultModel,
+          model: recommendedModel || '',
           additional_prompts: '',
           is_default: false
         });
@@ -236,7 +223,9 @@ export default function VirtualIPImagesPage() {
 
   const handleCreateTask = async () => {
     try {
-      const selectedModel = availableModels.find(m => m.model_id === generateForm.model);
+      const selectedModel = availableModels.find(
+        m => m.model_id === (generateForm.model || recommendedModel)
+      );
       
       const taskData = {
         title: `${virtualIP?.name} - ${generateForm.category} 图像生成`,
@@ -353,22 +342,20 @@ export default function VirtualIPImagesPage() {
             <h3 className="text-lg font-semibold mb-4">🤖 AI图像生成</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  AI模型
-                </label>
-                <select
-                  value={generateForm.model || defaultModel}
-                  onChange={(e) => { setUserPickedModel(true); setGenerateForm(prev => ({ ...prev, model: e.target.value })) }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {availableModels.map(model => (
-                    <option key={model.model_id} value={model.model_id}>
-                      {model.name} ({model.provider})
-                    </option>
-                  ))}
-                </select>
+                <ModelSelector
+                  label="AI模型"
+                  value={generateForm.model || recommendedModel || ''}
+                  onChange={modelId => setGenerateForm(prev => ({ ...prev, model: modelId }))}
+                  modelType="image"
+                  fetcher={fetchModels}
+                  cacheKey={`virtual-ip-image:${virtualIPId}`}
+                  allowAuto={false}
+                  autoSelectDefault
+                  helperText="选择用于生成该图像的模型"
+                  className="space-y-1"
+                />
                 <p className="text-xs text-gray-500 mt-1">
-                  {availableModels.find(m => m.model_id === (generateForm.model || defaultModel))?.capabilities?.join(', ')}
+                  {selectedModel?.capabilities?.join(', ') || '模型能力信息加载中'}
                 </p>
               </div>
               <div>
