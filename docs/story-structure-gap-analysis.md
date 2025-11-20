@@ -210,6 +210,10 @@ erDiagram
 6) **Rollback** – wrap backfill in transaction per script/episode; on failure, truncate inserted normalized rows and restore JSON snapshot; DDL rollback via Alembic downgrade if required.
 7) **Validation** – add pytest covering seed-from-json dry run, unique constraint violations, and normalized API roundtrip; include fixture for mixed `slug`/`slugline` inputs.
 
+### CLI usage (prototype script)
+- Dry run with sample data and write extraction report: `python ai-pic-backend/scripts/prototype_story_structure_migration.py --dump-json --report-path -`
+- Live extract for script 42 with insert probe (rolled back) and JSON report saved: `python ai-pic-backend/scripts/prototype_story_structure_migration.py --mode live --script-id 42 --insert-probe --report-path /tmp/story-structure-42.json`
+
 **Indices & Constraints**  
 - Composite unique per hierarchy segment:  
   - (`story_id`, `revision_number`) on `story_treatments`.  

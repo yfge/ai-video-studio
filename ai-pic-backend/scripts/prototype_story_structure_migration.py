@@ -47,6 +47,11 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
 
+DEFAULT_ENVIRONMENT = "INT"
+DEFAULT_LOCATION = "UNKNOWN LOCATION"
+DEFAULT_TIME_OF_DAY = "UNKNOWN"
+
+
 # ---------------------------------------------------------------------------
 # Data classes representing normalized rows
 # ---------------------------------------------------------------------------
@@ -131,6 +136,23 @@ class ShotRow:
     audio_notes: Optional[str]
     status: str
     metadata: Dict[str, Any]
+
+
+@dataclass
+class ProbeResult:
+    attempted: bool
+    tables_missing: List[str]
+    inserted_counts: Dict[str, int]
+    skipped: List[str]
+    rolled_back: bool
+    error: Optional[str]
+
+
+def _with_original_json(metadata: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Attach original JSON payload for audit/backfill diagnostics."""
+    merged = dict(metadata)
+    merged["original_json"] = deepcopy(raw)
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -296,20 +318,29 @@ SAMPLE_SCRIPT: Dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # Extraction helpers
 # ---------------------------------------------------------------------------
-def build_slug_line(payload: Dict[str, Any]) -> str:
-    env = payload.get("environment") or payload.get("env") or "INT"
-    location = payload.get("location") or payload.get("place") or "UNKNOWN LOCATION"
-    time_of_day = payload.get("time") or payload.get("time_of_day") or "UNKNOWN TIME"
+def build_slug_line(payload: Dict[str, Any], warnings: List[str], scene_number: str) -> str:
+    env = (payload.get("environment") or payload.get("env") or DEFAULT_ENVIRONMENT).upper()
+    location = payload.get("location") or payload.get("place") or DEFAULT_LOCATION
+    time_of_day = payload.get("time") or payload.get("time_of_day") or DEFAULT_TIME_OF_DAY
+    if payload.get("environment") is None and payload.get("env") is None:
+        warnings.append(f"Scene {scene_number}: environment missing; defaulted to {DEFAULT_ENVIRONMENT}")
+    if payload.get("location") is None and payload.get("place") is None:
+        warnings.append(f"Scene {scene_number}: location missing; defaulted to {DEFAULT_LOCATION}")
+    if payload.get("time") is None and payload.get("time_of_day") is None:
+        warnings.append(f"Scene {scene_number}: time_of_day missing; defaulted to {DEFAULT_TIME_OF_DAY}")
     return f"{env}. {location} - {time_of_day}"
 
 
 def extract_story_treatment(story: Dict[str, Any]) -> StoryTreatmentRow:
     prototype_id = 1  # single treatment per story for prototype
-    metadata = {
-        "source": "story",
-        "prototype_treatment_id": prototype_id,
-        "extracted_fields": ["premise", "synopsis", "theme"],
-    }
+    metadata = _with_original_json(
+        {
+            "source": "story",
+            "prototype_treatment_id": prototype_id,
+            "extracted_fields": ["premise", "synopsis", "theme"],
+        },
+        story,
+    )
     return StoryTreatmentRow(
         story_id=story["id"],
         revision_number=1,
@@ -340,12 +371,15 @@ def extract_step_outlines(
         proto_outline_id = idx
         scene_ref = beat.get("scene_number") or beat.get("scene") or beat.get("order") or proto_outline_id
         outline_lookup[str(scene_ref)] = proto_outline_id
-        metadata = {
-            "source": "episode.plot_points",
-            "prototype_outline_id": proto_outline_id,
-            "treatment_key": list(treatment_key),
-            "original_scene_reference": scene_ref,
-        }
+        metadata = _with_original_json(
+            {
+                "source": "episode.plot_points",
+                "prototype_outline_id": proto_outline_id,
+                "treatment_key": list(treatment_key),
+                "original_scene_reference": scene_ref,
+            },
+            beat,
+        )
         outlines.append(
             StepOutlineRow(
                 story_id=story["id"],
@@ -369,6 +403,7 @@ def extract_step_outlines(
 def extract_scenes(
     script: Dict[str, Any],
     outline_lookup: Dict[str, int],
+    warnings: List[str],
 ) -> Tuple[List[SceneRow], Dict[str, int]]:
     scene_rows: List[SceneRow] = []
     scene_id_lookup: Dict[str, int] = {}
@@ -377,21 +412,23 @@ def extract_scenes(
         outline_proto = outline_lookup.get(scene_number)
         proto_scene_id = idx
         scene_id_lookup[scene_number] = proto_scene_id
-        metadata = {
-            "source": "script.scenes",
-            "prototype_scene_id": proto_scene_id,
-            "outline_proto_id": outline_proto,
-            "raw": deepcopy(raw_scene),
-        }
+        metadata = _with_original_json(
+            {
+                "source": "script.scenes",
+                "prototype_scene_id": proto_scene_id,
+                "outline_proto_id": outline_proto,
+            },
+            raw_scene,
+        )
         scene_rows.append(
             SceneRow(
                 script_id=script["id"],
                 story_step_outline_id=outline_proto,
                 scene_number=scene_number,
-                slug_line=build_slug_line(raw_scene),
-                environment_type=raw_scene.get("environment"),
-                location=raw_scene.get("location"),
-                time_of_day=raw_scene.get("time"),
+                slug_line=build_slug_line(raw_scene, warnings, scene_number),
+                environment_type=(raw_scene.get("environment") or raw_scene.get("env") or DEFAULT_ENVIRONMENT).upper(),
+                location=raw_scene.get("location") or raw_scene.get("place") or DEFAULT_LOCATION,
+                time_of_day=raw_scene.get("time") or raw_scene.get("time_of_day") or DEFAULT_TIME_OF_DAY,
                 summary=raw_scene.get("summary") or raw_scene.get("description"),
                 page_length_eighths=None,
                 primary_characters=raw_scene.get("characters"),
@@ -444,12 +481,16 @@ def extract_shots(
     script: Dict[str, Any],
     scene_id_lookup: Dict[str, int],
     beat_lookup: Dict[Tuple[str, int], int],
+    warnings: List[str],
 ) -> List[ShotRow]:
     shots: List[ShotRow] = []
     for entry in script.get("storyboard_plan") or []:
         scene_number = str(entry.get("scene_number"))
         scene_proto_id = scene_id_lookup.get(scene_number)
         if not scene_proto_id:
+            warnings.append(
+                f"Shot for scene {scene_number} skipped: scene missing from extraction payload"
+            )
             continue
         beat_order = (
             entry.get("beat_index")
@@ -459,12 +500,14 @@ def extract_shots(
             or 1
         )
         proto_beat_id = beat_lookup.get((scene_number, int(beat_order)))
-        metadata = {
-            "source": "script.storyboard_plan",
-            "prototype_scene_id": scene_proto_id,
-            "prototype_beat_id": proto_beat_id,
-            "raw": deepcopy(entry),
-        }
+        metadata = _with_original_json(
+            {
+                "source": "script.storyboard_plan",
+                "prototype_scene_id": scene_proto_id,
+                "prototype_beat_id": proto_beat_id,
+            },
+            entry,
+        )
         shots.append(
             ShotRow(
                 scene_id=scene_proto_id,
@@ -557,14 +600,17 @@ def load_live_payloads(session: Session, script_id: int) -> Tuple[Dict[str, Any]
     return story_payload, episode_payload, script_payload
 
 
-def assemble_payload(story: Dict[str, Any], episode: Dict[str, Any], script: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+def assemble_payload(
+    story: Dict[str, Any], episode: Dict[str, Any], script: Dict[str, Any]
+) -> Tuple[Dict[str, List[Dict[str, Any]]], List[str]]:
+    warnings: List[str] = []
     treatment = extract_story_treatment(story)
     treatment_key = (treatment.story_id, treatment.revision_number)
 
     step_outlines, outline_lookup = extract_step_outlines(treatment_key, story, episode)
-    scenes, scene_lookup = extract_scenes(script, outline_lookup)
+    scenes, scene_lookup = extract_scenes(script, outline_lookup, warnings)
     scene_beats, beat_lookup = extract_scene_beats(script, scene_lookup)
-    shots = extract_shots(script, scene_lookup, beat_lookup)
+    shots = extract_shots(script, scene_lookup, beat_lookup, warnings)
 
     payload = {
         "story_treatments": [asdict(treatment)],
@@ -573,10 +619,10 @@ def assemble_payload(story: Dict[str, Any], episode: Dict[str, Any], script: Dic
         "scene_beats": [asdict(row) for row in scene_beats],
         "shots": [asdict(row) for row in shots],
     }
-    return payload
+    return payload, warnings
 
 
-def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> None:
+def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> ProbeResult:
     inspector = sa.inspect(engine)
     required_tables = [
         "story_treatments",
@@ -588,7 +634,14 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
     missing = [table for table in required_tables if not inspector.has_table(table)]
     if missing:
         logger.warning("Insert probe skipped: tables missing %s", missing)
-        return
+        return ProbeResult(
+            attempted=False,
+            tables_missing=missing,
+            inserted_counts={key: 0 for key in required_tables},
+            skipped=[],
+            rolled_back=False,
+            error=None,
+        )
 
     metadata = sa.MetaData()
     tables = {
@@ -598,6 +651,8 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
 
     connection = engine.connect()
     transaction = connection.begin()
+    skipped: List[str] = []
+    inserted_counts = {table: 0 for table in required_tables}
     try:
         treatment_id_map: Dict[Tuple[int, int], int] = {}
         for row in payload.get("story_treatments", []):
@@ -608,6 +663,7 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
             result = connection.execute(tables["story_treatments"].insert().values(**insert_data))
             inserted_id = result.inserted_primary_key[0]
             treatment_id_map[(insert_data["story_id"], insert_data["revision_number"])] = inserted_id
+            inserted_counts["story_treatments"] += 1
         logger.info("Inserted %d story_treatments (rolled back later)", len(treatment_id_map))
 
         outline_id_map: Dict[int, int] = {}
@@ -622,7 +678,9 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
                 treatment_key = (insert_data["story_id"], 1)
             treatment_fk = treatment_id_map.get(treatment_key)
             if treatment_fk is None:
-                logger.warning("Skipping step outline; no treatment found for key %s", treatment_key)
+                msg = f"Skipping step outline; no treatment found for key {treatment_key}"
+                logger.warning(msg)
+                skipped.append(msg)
                 continue
             insert_data["story_treatment_id"] = treatment_fk
             result = connection.execute(tables["story_step_outlines"].insert().values(**insert_data))
@@ -630,6 +688,7 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
             proto_id = metadata_blob.get("prototype_outline_id")
             if proto_id is not None:
                 outline_id_map[int(proto_id)] = inserted_id
+            inserted_counts["story_step_outlines"] += 1
         logger.info("Inserted %d story_step_outlines", len(outline_id_map))
 
         scene_id_map: Dict[int, int] = {}
@@ -643,11 +702,14 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
                 insert_data["story_step_outline_id"] = None
             proto_scene_id = metadata_blob.get("prototype_scene_id")
             if proto_scene_id is None:
-                logger.warning("Skipping scene without prototype id metadata")
+                msg = "Skipping scene without prototype id metadata"
+                logger.warning(msg)
+                skipped.append(msg)
                 continue
             result = connection.execute(tables["scenes"].insert().values(**insert_data))
             inserted_id = result.inserted_primary_key[0]
             scene_id_map[int(proto_scene_id)] = inserted_id
+            inserted_counts["scenes"] += 1
         logger.info("Inserted %d scenes", len(scene_id_map))
 
         beat_id_map: Dict[int, int] = {}
@@ -656,11 +718,15 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
             metadata_blob = insert_data.get("metadata") or {}
             scene_proto = metadata_blob.get("prototype_scene_id")
             if scene_proto is None:
-                logger.warning("Skipping beat without scene prototype id")
+                msg = "Skipping beat without scene prototype id"
+                logger.warning(msg)
+                skipped.append(msg)
                 continue
             real_scene_id = scene_id_map.get(int(scene_proto))
             if real_scene_id is None:
-                logger.warning("Skipping beat; scene %s not inserted", scene_proto)
+                msg = f"Skipping beat; scene {scene_proto} not inserted"
+                logger.warning(msg)
+                skipped.append(msg)
                 continue
             insert_data["scene_id"] = real_scene_id
             result = connection.execute(tables["scene_beats"].insert().values(**insert_data))
@@ -668,6 +734,7 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
             proto_beat_id = metadata_blob.get("prototype_beat_id")
             if proto_beat_id is not None:
                 beat_id_map[int(proto_beat_id)] = inserted_id
+            inserted_counts["scene_beats"] += 1
         logger.info("Inserted %d scene_beats", len(beat_id_map))
 
         shot_count = 0
@@ -676,11 +743,15 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
             metadata_blob = insert_data.get("metadata") or {}
             scene_proto = metadata_blob.get("prototype_scene_id")
             if scene_proto is None:
-                logger.warning("Skipping shot without scene prototype id")
+                msg = "Skipping shot without scene prototype id"
+                logger.warning(msg)
+                skipped.append(msg)
                 continue
             real_scene_id = scene_id_map.get(int(scene_proto))
             if real_scene_id is None:
-                logger.warning("Skipping shot; scene %s not inserted", scene_proto)
+                msg = f"Skipping shot; scene {scene_proto} not inserted"
+                logger.warning(msg)
+                skipped.append(msg)
                 continue
             insert_data["scene_id"] = real_scene_id
             beat_proto = metadata_blob.get("prototype_beat_id")
@@ -690,14 +761,30 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> No
                 insert_data["scene_beat_id"] = None
             connection.execute(tables["shots"].insert().values(**insert_data))
             shot_count += 1
+            inserted_counts["shots"] += 1
         logger.info("Inserted %d shots", shot_count)
 
         transaction.rollback()
         logger.info("Insert probe completed; transaction rolled back successfully.")
+        return ProbeResult(
+            attempted=True,
+            tables_missing=[],
+            inserted_counts=inserted_counts,
+            skipped=skipped,
+            rolled_back=True,
+            error=None,
+        )
     except Exception as exc:  # pragma: no cover - diagnostic path
         transaction.rollback()
         logger.error("Insert probe failed: %s", exc)
-        raise
+        return ProbeResult(
+            attempted=True,
+            tables_missing=[],
+            inserted_counts=inserted_counts,
+            skipped=skipped,
+            rolled_back=True,
+            error=str(exc),
+        )
     finally:
         connection.close()
 
@@ -717,7 +804,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dsn", type=str, help="Override DATABASE_URL for live mode connections.")
     parser.add_argument("--dump-json", action="store_true", help="Emit extracted payload as JSON.")
     parser.add_argument("--insert-probe", action="store_true", help="Attempt insert + rollback against live database.")
+    parser.add_argument(
+        "--report-path",
+        type=str,
+        help="Write extraction/probe report JSON to path (use '-' for stdout).",
+    )
     return parser.parse_args()
+
+
+def _payload_counts(payload: Dict[str, List[Dict[str, Any]]]) -> Dict[str, int]:
+    return {key: len(value) for key, value in payload.items()}
+
+
+def emit_report(report: Dict[str, Any], report_path: Optional[str]) -> None:
+    if not report_path:
+        return
+    serialized = json.dumps(report, ensure_ascii=False, indent=2)
+    if report_path == "-":
+        print(serialized)
+        return
+    Path(report_path).write_text(serialized, encoding="utf-8")
+    logger.info("Report written to %s", report_path)
 
 
 def main() -> None:
@@ -730,12 +837,14 @@ def main() -> None:
         SessionLocal = sessionmaker(bind=engine)
         with SessionLocal() as session:
             story, episode, script = load_live_payloads(session, args.script_id)
-        payload = assemble_payload(story, episode, script)
+        payload, warnings = assemble_payload(story, episode, script)
+        probe_result: Optional[ProbeResult] = None
         if args.insert_probe:
-            probe_insert(engine, payload)
+            probe_result = probe_insert(engine, payload)
         engine.dispose()
     else:
-        payload = assemble_payload(SAMPLE_STORY, SAMPLE_EPISODE, SAMPLE_SCRIPT)
+        payload, warnings = assemble_payload(SAMPLE_STORY, SAMPLE_EPISODE, SAMPLE_SCRIPT)
+        probe_result = None
 
     logger.info(
         "Extraction ready: %d treatments, %d outlines, %d scenes, %d beats, %d shots",
@@ -748,6 +857,15 @@ def main() -> None:
 
     if args.dump_json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+    report = {
+        "mode": args.mode,
+        "script_id": args.script_id,
+        "counts": _payload_counts(payload),
+        "warnings": warnings,
+        "probe_result": asdict(probe_result) if probe_result else None,
+    }
+    emit_report(report, args.report_path)
 
 
 if __name__ == "__main__":
