@@ -100,6 +100,7 @@ erDiagram
 | `approved_by` | FK → `users.id` nullable | final approver |
 | `ai_prompt_snapshot` | jsonb | optional generation prompt |
 | `metadata` | jsonb | extensible |
+| `is_deleted` | boolean | soft delete to preserve revision history |
 | `created_at` / `updated_at` | timestamp | default utcnow |
 
 ### `story_step_outlines`
@@ -176,6 +177,22 @@ erDiagram
 | `status` | enum/string | planned, scouted, shot, cut |
 | `metadata` | jsonb | |
 | `created_at` / `updated_at` | timestamp | |
+
+## Enumerations & Defaults (Discovery Draft)
+- **Treatment.status**: `draft` → `in_review` → `approved` → `archived`; latest approved is the canonical treatment. Soft delete (`is_deleted`) hides retired revisions without losing history.
+- **StepOutline.status**: `draft`, `locked`, `shot` (use `locked` when beats are signed off prior to scheduling).
+- **Scene.status**: `draft`, `blocked`, `locked`, `shot`; default `draft`. `environment_type` uses `INT`, `EXT`, `INT/EXT`.
+- **Shot.status**: `planned`, `scouted`, `shot`, `cut`; default `planned`.
+- **Time-of-day** canonical set: `DAY`, `NIGHT`, `DAWN`, `DUSK`, `LATE_NIGHT`, `GOLDEN_HOUR` (fallback `UNKNOWN`).
+- **Shot taxonomy**: `shot_type` accepts `WS`, `MS`, `CU`, `ECU`, `OTS`, `POV`, `2-SHOT`, `MONTAGE`; `camera_movement` accepts `static`, `pan`, `tilt`, `dolly`, `crane`, `handheld`, `steadicam`, `drone`.
+
+## Legacy JSON → Normalized Mapping (Phase 0)
+- `Story.premise` / `synopsis` → `story_treatments.logline` / `theme_summary`; default `revision_number=1`, `status=draft` for historical records.
+- `Episode.plot_points` (ordered list) → `story_step_outlines` (`sequence_number` from index); attach `episode_id` when present, else episode-agnostic beats remain story scoped.
+- `Script.scenes[*]` JSON → `scenes` with `scene_number` from existing ordering, `slug_line` from `{slug || slugline || title}`, `primary_characters` from `characters` array if available, `page_length_eighths` from `page_estimate`.
+- `Script.dialogues` / `stage_directions` fragments → `scene_beats` when the JSON already separates beats; otherwise seed a single beat per scene with `beat_summary`=scene synopsis.
+- `storyboard_plan.frames[*]` → `shots` with `shot_number` from index, `shot_type` from `frame_type`/`camera`, `storyboard_frame_asset_id` from linked image asset if resolvable.
+- Preserve original JSON payloads into `metadata.original_json` on each table to keep rollback/diagnostics simpler.
 
 **Indices & Constraints**  
 - Composite unique per hierarchy segment:  
