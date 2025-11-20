@@ -194,6 +194,22 @@ erDiagram
 - `storyboard_plan.frames[*]` → `shots` with `shot_number` from index, `shot_type` from `frame_type`/`camera`, `storyboard_frame_asset_id` from linked image asset if resolvable.
 - Preserve original JSON payloads into `metadata.original_json` on each table to keep rollback/diagnostics simpler.
 
+## Schema Sign-off Checklist (pre-migration)
+- Freeze enumerations and defaults listed above; confirm `status` transitions required by approval pipeline.
+- Confirm uniqueness/index strategy: story+revision, treatment+sequence, script+scene_number, scene+order_index, scene+shot_number.
+- Decide nullable policy for `episode_id` on step outlines and `story_step_outline_id` on scenes (SET NULL chosen).
+- Validate soft-delete expectation on treatments (`is_deleted`) vs. hard cascade for scenes/beats/shots.
+- Backfill fallbacks for legacy data: default slug prefix on missing `slug_line`, default time_of_day=`UNKNOWN`, environment=`INT` when absent.
+
+## Migration Plan (phased)
+1) **DDL** – Alembic revision `a1b2c3d4e5f6_add_story_structure_tables.py` already adds tables/indexes; rerun in environments after sign-off.
+2) **Backfill tooling** – extend `scripts/prototype_story_structure_migration.py` to support dry-run + transactional insert with `--insert-probe` per script/episode; emit CSV/JSON reports of skipped rows.
+3) **Data snapshot** – before live inserts, dump existing JSON columns (`scripts.scenes`, `scripts.dialogues`, `stories.synopsis`, `episodes.plot_points`) into `extra_metadata.original_json` and S3/OSS backup for rollback.
+4) **Insert order** – create treatments → step outlines → scenes → beats → shots to satisfy FK ordering; guard with upsert-like check on unique constraints to avoid duplicates.
+5) **Compatibility layer** – expose normalized read via `/api/v1/story-structure` routes (flagged by `?view=normalized` if needed) while keeping legacy JSON responses; add feature flag to toggle write path once frontend ready.
+6) **Rollback** – wrap backfill in transaction per script/episode; on failure, truncate inserted normalized rows and restore JSON snapshot; DDL rollback via Alembic downgrade if required.
+7) **Validation** – add pytest covering seed-from-json dry run, unique constraint violations, and normalized API roundtrip; include fixture for mixed `slug`/`slugline` inputs.
+
 **Indices & Constraints**  
 - Composite unique per hierarchy segment:  
   - (`story_id`, `revision_number`) on `story_treatments`.  
