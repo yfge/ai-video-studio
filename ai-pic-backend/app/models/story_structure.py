@@ -15,6 +15,8 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
+BIGINT_PK = BigInteger().with_variant(Integer, "sqlite")
+
 
 class StoryTreatment(Base):
     """Normalized story-wide treatment/revision metadata.
@@ -25,8 +27,10 @@ class StoryTreatment(Base):
 
     __tablename__ = "story_treatments"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    story_id = Column(Integer, ForeignKey("stories.id", ondelete="CASCADE"), nullable=False)
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True)
+    story_id = Column(
+        Integer, ForeignKey("stories.id", ondelete="CASCADE"), nullable=False
+    )
     revision_number = Column(Integer, nullable=False)
     status = Column(String(32), nullable=False, default="draft")
     title = Column(String(255), nullable=False)
@@ -41,7 +45,9 @@ class StoryTreatment(Base):
     extra_metadata = Column("metadata", JSON)
     is_deleted = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # relations
     story = relationship("Story", backref="story_treatments")
@@ -54,10 +60,16 @@ class StoryStepOutline(Base):
 
     __tablename__ = "story_step_outlines"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    story_id = Column(Integer, ForeignKey("stories.id", ondelete="CASCADE"), nullable=False)
-    episode_id = Column(Integer, ForeignKey("episodes.id", ondelete="SET NULL"), nullable=True)
-    story_treatment_id = Column(BigInteger, ForeignKey("story_treatments.id", ondelete="CASCADE"), nullable=False)
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True)
+    story_id = Column(
+        Integer, ForeignKey("stories.id", ondelete="CASCADE"), nullable=False
+    )
+    episode_id = Column(
+        Integer, ForeignKey("episodes.id", ondelete="SET NULL"), nullable=True
+    )
+    story_treatment_id = Column(
+        BIGINT_PK, ForeignKey("story_treatments.id", ondelete="CASCADE"), nullable=False
+    )
     sequence_number = Column(Integer, nullable=False)
     act_label = Column(String(50))
     beat_title = Column(String(255), nullable=False)
@@ -71,7 +83,9 @@ class StoryStepOutline(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # relations
     story = relationship("Story", backref="step_outlines")
@@ -86,9 +100,15 @@ class Scene(Base):
 
     __tablename__ = "scenes"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    script_id = Column(Integer, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False)
-    story_step_outline_id = Column(BigInteger, ForeignKey("story_step_outlines.id", ondelete="SET NULL"), nullable=True)
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True)
+    script_id = Column(
+        Integer, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
+    )
+    story_step_outline_id = Column(
+        BIGINT_PK,
+        ForeignKey("story_step_outlines.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     scene_number = Column(String(20), nullable=False)
     slug_line = Column(String(255), nullable=False)
     environment_type = Column(String(32), comment="INT/EXT/INT-EXT")
@@ -102,7 +122,9 @@ class Scene(Base):
     status = Column(String(32), nullable=False, default="draft")
     extra_metadata = Column("metadata", JSON)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # relations
     script = relationship("Script", backref="normalized_scenes")
@@ -114,8 +136,10 @@ class SceneBeat(Base):
 
     __tablename__ = "scene_beats"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    scene_id = Column(BigInteger, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False)
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True)
+    scene_id = Column(
+        BIGINT_PK, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
+    )
     order_index = Column(Integer, nullable=False)
     beat_type = Column(String(32))
     beat_summary = Column(Text)
@@ -125,7 +149,9 @@ class SceneBeat(Base):
     duration_seconds = Column(Numeric(6, 2))
     extra_metadata = Column("metadata", JSON)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # relations
     scene = relationship("Scene", backref="beats")
@@ -136,9 +162,13 @@ class Shot(Base):
 
     __tablename__ = "shots"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    scene_id = Column(BigInteger, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False)
-    scene_beat_id = Column(BigInteger, ForeignKey("scene_beats.id", ondelete="SET NULL"), nullable=True)
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True)
+    scene_id = Column(
+        BIGINT_PK, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
+    )
+    scene_beat_id = Column(
+        BIGINT_PK, ForeignKey("scene_beats.id", ondelete="SET NULL"), nullable=True
+    )
     shot_number = Column(String(20), nullable=False)
     shot_type = Column(String(50))
     camera_setup = Column(String(255))
@@ -146,13 +176,17 @@ class Shot(Base):
     framing = Column(Text)
     focus_subject = Column(String(255))
     duration_seconds = Column(Numeric(6, 2))
-    storyboard_frame_asset_id = Column(Integer, ForeignKey("images.id", ondelete="SET NULL"), nullable=True)
+    storyboard_frame_asset_id = Column(
+        Integer, ForeignKey("images.id", ondelete="SET NULL"), nullable=True
+    )
     lighting_notes = Column(Text)
     audio_notes = Column(Text)
     status = Column(String(32), nullable=False, default="planned")
     extra_metadata = Column("metadata", JSON)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # relations
     scene = relationship("Scene", backref="shots")

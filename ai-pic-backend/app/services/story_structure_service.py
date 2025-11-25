@@ -24,9 +24,21 @@ from app.schemas.story_structure import (
 def list_treatments_by_story(db: Session, story_id: int) -> List[StoryTreatment]:
     return (
         db.query(StoryTreatment)
-        .filter(StoryTreatment.story_id == story_id, StoryTreatment.is_deleted == False)  # noqa: E712
+        .filter(
+            StoryTreatment.story_id == story_id, StoryTreatment.is_deleted == False
+        )  # noqa: E712
         .order_by(StoryTreatment.revision_number.desc())
         .all()
+    )
+
+
+def get_treatment(db: Session, treatment_id: int) -> Optional[StoryTreatment]:
+    return (
+        db.query(StoryTreatment)
+        .filter(
+            StoryTreatment.id == treatment_id, StoryTreatment.is_deleted == False
+        )  # noqa: E712
+        .first()
     )
 
 
@@ -127,7 +139,9 @@ def _to_scene_number_str(idx: int, item: dict[str, Any]) -> str:
     return str(idx + 1)
 
 
-def seed_scenes_from_script_json(db: Session, script_id: int, *, dry_run: bool = False) -> int:
+def seed_scenes_from_script_json(
+    db: Session, script_id: int, *, dry_run: bool = False
+) -> int:
     """Seed `scenes` rows from `Script.scenes` JSON for given script.
 
     Returns number of prepared/inserted rows.

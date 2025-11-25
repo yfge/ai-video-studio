@@ -37,7 +37,7 @@ class StoryTreatmentResponse(ORMModel):
     target_audience_notes: Optional[str]
     tone_reference: Optional[dict[str, Any]]
     ai_prompt_snapshot: Optional[dict[str, Any]]
-    metadata: Optional[dict[str, Any]]
+    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
 
@@ -71,7 +71,7 @@ class StoryStepOutlineResponse(ORMModel):
     location_hint: Optional[str]
     duration_estimate_minutes: Optional[float]
     status: str
-    metadata: Optional[dict[str, Any]]
+    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
 
@@ -107,7 +107,7 @@ class SceneResponse(ORMModel):
     conflict_notes: Optional[str]
     ai_prompt_snapshot: Optional[dict[str, Any]]
     status: str
-    metadata: Optional[dict[str, Any]]
+    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
 
@@ -134,7 +134,7 @@ class SceneBeatResponse(ORMModel):
     dialogue_excerpt: Optional[str]
     camera_notes: Optional[str]
     duration_seconds: Optional[float]
-    metadata: Optional[dict[str, Any]]
+    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
 
@@ -171,7 +171,6 @@ class ShotResponse(ORMModel):
     lighting_notes: Optional[str]
     audio_notes: Optional[str]
     status: str
-    metadata: Optional[dict[str, Any]]
+    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
-

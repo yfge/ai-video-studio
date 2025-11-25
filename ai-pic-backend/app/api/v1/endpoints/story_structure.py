@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -10,6 +10,8 @@ from app.services import story_structure_service as svc
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
     StoryTreatmentResponse,
+    StoryStepOutlineCreate,
+    StoryStepOutlineResponse,
     SceneResponse,
     SceneCreate,
     SceneBeatResponse,
@@ -26,7 +28,10 @@ async def list_scenes_for_script(
     script_id: int,
     db: Session = Depends(get_db),
 ):
-    return [SceneResponse.model_validate(s) for s in svc.list_scenes_by_script(db, script_id)]
+    return [
+        SceneResponse.model_validate(s)
+        for s in svc.list_scenes_by_script(db, script_id)
+    ]
 
 
 @router.get("/scenes/{scene_id}/beats", response_model=List[SceneBeatResponse])
@@ -34,7 +39,10 @@ async def list_beats_for_scene(
     scene_id: int,
     db: Session = Depends(get_db),
 ):
-    return [SceneBeatResponse.model_validate(b) for b in svc.list_beats_by_scene(db, scene_id)]
+    return [
+        SceneBeatResponse.model_validate(b)
+        for b in svc.list_beats_by_scene(db, scene_id)
+    ]
 
 
 @router.get("/scenes/{scene_id}/shots", response_model=List[ShotResponse])
@@ -42,7 +50,9 @@ async def list_shots_for_scene(
     scene_id: int,
     db: Session = Depends(get_db),
 ):
-    return [ShotResponse.model_validate(sh) for sh in svc.list_shots_by_scene(db, scene_id)]
+    return [
+        ShotResponse.model_validate(sh) for sh in svc.list_shots_by_scene(db, scene_id)
+    ]
 
 
 @router.post("/scripts/{script_id}/scenes", response_model=SceneResponse)
@@ -76,10 +86,16 @@ async def seed_scenes_from_json(
     db: Session = Depends(get_db),
 ):
     count = svc.seed_scenes_from_script_json(db, script_id, dry_run=dry_run)
-    return {"script_id": script_id, "prepared": count, "inserted": 0 if dry_run else count}
+    return {
+        "script_id": script_id,
+        "prepared": count,
+        "inserted": 0 if dry_run else count,
+    }
 
 
-@router.get("/stories/{story_id}/treatments", response_model=List[StoryTreatmentResponse])
+@router.get(
+    "/stories/{story_id}/treatments", response_model=List[StoryTreatmentResponse]
+)
 async def list_treatments(
     story_id: int,
     latest_only: bool = Query(False, description="仅返回最新一条修订"),
@@ -101,3 +117,34 @@ async def create_treatment(
         raise HTTPException(status_code=400, detail="story_id mismatch")
     obj = svc.create_treatment(db, body)
     return StoryTreatmentResponse.model_validate(obj)
+
+
+@router.get(
+    "/treatments/{treatment_id}/step-outlines",
+    response_model=List[StoryStepOutlineResponse],
+)
+async def list_step_outlines_for_treatment(
+    treatment_id: int,
+    db: Session = Depends(get_db),
+):
+    outlines = svc.list_step_outlines(db, treatment_id)
+    return [StoryStepOutlineResponse.model_validate(it) for it in outlines]
+
+
+@router.post(
+    "/treatments/{treatment_id}/step-outlines", response_model=StoryStepOutlineResponse
+)
+async def create_step_outline_for_treatment(
+    treatment_id: int,
+    body: StoryStepOutlineCreate,
+    db: Session = Depends(get_db),
+):
+    if body.story_treatment_id != treatment_id:
+        raise HTTPException(status_code=400, detail="story_treatment_id mismatch")
+    treatment = svc.get_treatment(db, treatment_id)
+    if not treatment:
+        raise HTTPException(status_code=404, detail="treatment not found")
+    if body.story_id != treatment.story_id:
+        raise HTTPException(status_code=400, detail="story_id does not match treatment")
+    obj = svc.create_step_outline(db, body)
+    return StoryStepOutlineResponse.model_validate(obj)

@@ -18,6 +18,7 @@
 - [ ] 迁移实现：编写 Alembic 脚本迁移现有 JSON 字段到新表，提供回滚方案
   - 下一步行动：在真实脚本样本上跑 `prototype_story_structure_migration.py --mode live --insert-probe --report-path <file>` 验证输出，补充 pytest 覆盖与回滚说明
 - [ ] 服务层改造：更新生成/查询 Service 与 Repository，提供分层读取与写入接口
+  - 下一步行动：补齐 step outline 列表/创建接口的分层校验后，串联 scenes/beats/shots 聚合读写与生成入口
 - [ ] 前端同步：调整剧本详情页数据结构，支持新场景/镜头层级展示与编辑
 - [ ] 验证闭环：补充单元/集成测试 + 数据迁移回归用例，更新相关文档
 
