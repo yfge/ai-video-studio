@@ -12,6 +12,8 @@ from app.schemas.story_structure import (
     StoryTreatmentResponse,
     StoryStepOutlineCreate,
     StoryStepOutlineResponse,
+    ScriptStructureResponse,
+    SceneWithChildren,
     SceneResponse,
     SceneCreate,
     SceneBeatResponse,
@@ -53,6 +55,30 @@ async def list_shots_for_scene(
     return [
         ShotResponse.model_validate(sh) for sh in svc.list_shots_by_scene(db, scene_id)
     ]
+
+
+@router.get("/scripts/{script_id}/structure", response_model=ScriptStructureResponse)
+async def get_script_structure(
+    script_id: int,
+    db: Session = Depends(get_db),
+):
+    aggregated = svc.get_script_structure(db, script_id)
+    if aggregated is None:
+        raise HTTPException(status_code=404, detail="script not found")
+
+    scenes_payload = []
+    for item in aggregated:
+        scene_dict = SceneResponse.model_validate(item["scene"]).model_dump()
+        scene_dict["beats"] = [
+            SceneBeatResponse.model_validate(b).model_dump()
+            for b in item.get("beats", [])
+        ]
+        scene_dict["shots"] = [
+            ShotResponse.model_validate(sh).model_dump() for sh in item.get("shots", [])
+        ]
+        scenes_payload.append(SceneWithChildren.model_validate(scene_dict))
+
+    return ScriptStructureResponse(script_id=script_id, scenes=scenes_payload)
 
 
 @router.post("/scripts/{script_id}/scenes", response_model=SceneResponse)

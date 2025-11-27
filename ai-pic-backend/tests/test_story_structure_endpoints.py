@@ -2,8 +2,8 @@ import pytest
 from fastapi.routing import APIRoute
 
 from app.main import create_app
-from app.models.script import Story
-from app.models.story_structure import StoryTreatment
+from app.models.script import Story, Episode, Script
+from app.models.story_structure import StoryTreatment, Scene, SceneBeat, Shot
 
 
 @pytest.mark.unit
@@ -105,3 +105,59 @@ def test_create_step_outline_requires_matching_story(client, db_session):
     )
     assert list_resp.status_code == 200
     assert len(list_resp.json()) == 1
+
+
+def test_get_script_structure_returns_nested_children(client, db_session):
+    story = Story(title="Story", genre="drama")
+    db_session.add(story)
+    db_session.commit()
+    db_session.refresh(story)
+
+    episode = Episode(story_id=story.id, episode_number=1, title="Ep1")
+    db_session.add(episode)
+    db_session.commit()
+    db_session.refresh(episode)
+
+    script = Script(episode_id=episode.id, title="Script 1", content="")
+    db_session.add(script)
+    db_session.commit()
+    db_session.refresh(script)
+
+    scene = Scene(
+        script_id=script.id,
+        scene_number="1",
+        slug_line="INT. LAB - DAY",
+        environment_type="INT",
+        status="draft",
+    )
+    db_session.add(scene)
+    db_session.commit()
+    db_session.refresh(scene)
+
+    beat = SceneBeat(
+        scene_id=scene.id,
+        order_index=1,
+        beat_type="action",
+        beat_summary="Testing",
+    )
+    shot = Shot(
+        scene_id=scene.id,
+        scene_beat_id=None,
+        shot_number="1A",
+        shot_type="WS",
+        status="planned",
+    )
+    db_session.add_all([beat, shot])
+    db_session.commit()
+
+    resp = client.get(f"/api/v1/story-structure/scripts/{script.id}/structure")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["script_id"] == script.id
+    assert len(data["scenes"]) == 1
+    scene_payload = data["scenes"][0]
+    assert scene_payload["scene_number"] == "1"
+    assert len(scene_payload["beats"]) == 1
+    assert scene_payload["beats"][0]["beat_type"] == "action"
+    assert len(scene_payload["shots"]) == 1
+    assert scene_payload["shots"][0]["shot_number"] == "1A"

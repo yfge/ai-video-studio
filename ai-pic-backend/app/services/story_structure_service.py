@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 
 from sqlalchemy.orm import Session
 
@@ -74,6 +74,49 @@ def list_scenes_by_script(db: Session, script_id: int) -> List[Scene]:
         .order_by(Scene.scene_number.asc())
         .all()
     )
+
+
+def get_script_structure(db: Session, script_id: int) -> Optional[List[Dict[str, Any]]]:
+    script = db.query(Script).filter(Script.id == script_id).first()
+    if not script:
+        return None
+
+    scenes = list_scenes_by_script(db, script_id)
+    if not scenes:
+        return []
+
+    scene_ids = [s.id for s in scenes]
+    beats = (
+        db.query(SceneBeat)
+        .filter(SceneBeat.scene_id.in_(scene_ids))
+        .order_by(SceneBeat.scene_id.asc(), SceneBeat.order_index.asc())
+        .all()
+    )
+    shots = (
+        db.query(Shot)
+        .filter(Shot.scene_id.in_(scene_ids))
+        .order_by(Shot.scene_id.asc(), Shot.shot_number.asc())
+        .all()
+    )
+
+    beats_by_scene: Dict[int, List[SceneBeat]] = {sid: [] for sid in scene_ids}
+    for beat in beats:
+        beats_by_scene.setdefault(beat.scene_id, []).append(beat)
+
+    shots_by_scene: Dict[int, List[Shot]] = {sid: [] for sid in scene_ids}
+    for shot in shots:
+        shots_by_scene.setdefault(shot.scene_id, []).append(shot)
+
+    assembled: List[Dict[str, Any]] = []
+    for scene in scenes:
+        assembled.append(
+            {
+                "scene": scene,
+                "beats": beats_by_scene.get(scene.id, []),
+                "shots": shots_by_scene.get(scene.id, []),
+            }
+        )
+    return assembled
 
 
 def create_scene(db: Session, data: SceneCreate) -> Scene:

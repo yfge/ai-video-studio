@@ -112,6 +112,16 @@ class SceneResponse(ORMModel):
     updated_at: datetime
 
 
+class SceneWithChildren(SceneResponse):
+    beats: List[SceneBeatResponse] = Field(default_factory=list)
+    shots: List[ShotResponse] = Field(default_factory=list)
+
+
+class ScriptStructureResponse(BaseModel):
+    script_id: int
+    scenes: List[SceneWithChildren]
+
+
 class SceneBeatCreate(BaseModel):
     scene_id: int
     order_index: int
