@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+from datetime import datetime, timezone
 from copy import deepcopy
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, List, Optional, Tuple
@@ -653,10 +654,14 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
     transaction = connection.begin()
     skipped: List[str] = []
     inserted_counts = {table: 0 for table in required_tables}
+    timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
     try:
         treatment_id_map: Dict[Tuple[int, int], int] = {}
         for row in payload.get("story_treatments", []):
             insert_data = dict(row)
+            insert_data.setdefault("is_deleted", False)
+            insert_data.setdefault("created_at", timestamp)
+            insert_data.setdefault("updated_at", timestamp)
             metadata_blob = insert_data.get("metadata") or {}
             metadata_blob.setdefault("probe", True)
             insert_data["metadata"] = metadata_blob
@@ -683,6 +688,8 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
                 skipped.append(msg)
                 continue
             insert_data["story_treatment_id"] = treatment_fk
+            insert_data.setdefault("created_at", timestamp)
+            insert_data.setdefault("updated_at", timestamp)
             result = connection.execute(tables["story_step_outlines"].insert().values(**insert_data))
             inserted_id = result.inserted_primary_key[0]
             proto_id = metadata_blob.get("prototype_outline_id")
@@ -706,6 +713,8 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
                 logger.warning(msg)
                 skipped.append(msg)
                 continue
+            insert_data.setdefault("created_at", timestamp)
+            insert_data.setdefault("updated_at", timestamp)
             result = connection.execute(tables["scenes"].insert().values(**insert_data))
             inserted_id = result.inserted_primary_key[0]
             scene_id_map[int(proto_scene_id)] = inserted_id
@@ -729,6 +738,8 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
                 skipped.append(msg)
                 continue
             insert_data["scene_id"] = real_scene_id
+            insert_data.setdefault("created_at", timestamp)
+            insert_data.setdefault("updated_at", timestamp)
             result = connection.execute(tables["scene_beats"].insert().values(**insert_data))
             inserted_id = result.inserted_primary_key[0]
             proto_beat_id = metadata_blob.get("prototype_beat_id")
@@ -759,6 +770,8 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
                 insert_data["scene_beat_id"] = beat_id_map.get(int(beat_proto))
             else:
                 insert_data["scene_beat_id"] = None
+            insert_data.setdefault("created_at", timestamp)
+            insert_data.setdefault("updated_at", timestamp)
             connection.execute(tables["shots"].insert().values(**insert_data))
             shot_count += 1
             inserted_counts["shots"] += 1

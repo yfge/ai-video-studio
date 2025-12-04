@@ -85,8 +85,7 @@ def test_probe_insert_reports_missing_tables():
 
     engine.dispose()
 
-
-def _bootstrap_schema(engine: sa.Engine) -> None:
+def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -> None:
     metadata = sa.MetaData()
 
     stories = sa.Table(
@@ -132,9 +131,24 @@ def _bootstrap_schema(engine: sa.Engine) -> None:
         sa.Column("approved_by", sa.Integer, sa.ForeignKey("users.id")),
         sa.Column("ai_prompt_snapshot", sa.JSON),
         sa.Column("metadata", sa.JSON),
-        sa.Column("is_deleted", sa.Boolean, nullable=False, server_default=sa.text("false")),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "is_deleted",
+            sa.Boolean,
+            nullable=False,
+            server_default=sa.text("false") if include_server_defaults else None,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
     )
 
     sa.Table(
@@ -156,8 +170,18 @@ def _bootstrap_schema(engine: sa.Engine) -> None:
         sa.Column("metadata", sa.JSON),
         sa.Column("created_by", sa.Integer, sa.ForeignKey("users.id")),
         sa.Column("updated_by", sa.Integer, sa.ForeignKey("users.id")),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
     )
 
     sa.Table(
@@ -178,8 +202,18 @@ def _bootstrap_schema(engine: sa.Engine) -> None:
         sa.Column("ai_prompt_snapshot", sa.JSON),
         sa.Column("status", sa.String(32), nullable=False, server_default="draft"),
         sa.Column("metadata", sa.JSON),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
     )
 
     sa.Table(
@@ -195,8 +229,18 @@ def _bootstrap_schema(engine: sa.Engine) -> None:
         sa.Column("camera_notes", sa.Text),
         sa.Column("duration_seconds", sa.Numeric(6, 2)),
         sa.Column("metadata", sa.JSON),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
     )
 
     sa.Table(
@@ -217,8 +261,18 @@ def _bootstrap_schema(engine: sa.Engine) -> None:
         sa.Column("audio_notes", sa.Text),
         sa.Column("status", sa.String(32), nullable=False, server_default="planned"),
         sa.Column("metadata", sa.JSON),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime,
+            server_default=sa.func.now() if include_server_defaults else None,
+            nullable=False,
+        ),
     )
 
     metadata.create_all(engine)
@@ -243,6 +297,27 @@ def test_probe_insert_succeeds_and_rolls_back():
     assert result.skipped == []
     assert result.rolled_back is True
     assert result.error is None
+
+    with engine.begin() as conn:
+        rows = conn.execute(sa.text("SELECT COUNT(*) FROM story_treatments")).scalar_one()
+        assert rows == 0
+
+    engine.dispose()
+
+
+def test_probe_insert_populates_missing_defaults():
+    engine = create_engine("sqlite:///:memory:")
+    _bootstrap_schema(engine, include_server_defaults=False)
+
+    payload, _ = assemble_payload(deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT))
+    result = probe_insert(engine, payload)
+
+    assert result.attempted is True
+    assert result.error is None
+    assert result.tables_missing == []
+    assert result.skipped == []
+    assert result.inserted_counts["story_treatments"] == 1
+    assert result.rolled_back is True
 
     with engine.begin() as conn:
         rows = conn.execute(sa.text("SELECT COUNT(*) FROM story_treatments")).scalar_one()
