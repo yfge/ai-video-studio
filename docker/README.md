@@ -9,7 +9,7 @@ Local dev stack mirroring the ai-shifu workflow: build images from the repo, the
 
 Services & ports:
 - Nginx entrypoint: `http://localhost:8080` (routes `/api` → backend, `/` → frontend)
-- MySQL 8: container `ai-video-mysql` (no host port exposed; use `docker exec` or add a temporary port mapping if needed)
+- MySQL 8: container `ai-video-mysql` (no host port exposed; use `docker exec -it ai-video-mysql mysql -uroot -pai-video` if needed)
 - Redis 7: internal only (service `ai-video-redis`)
 
 The stack binds your local code into the containers for live reload:

@@ -8,8 +8,6 @@ services:
       MYSQL_ROOT_PASSWORD: ai-video
       MYSQL_DATABASE: ai_video_studio
     command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
-    ports:
-      - "13306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
 
@@ -61,7 +59,7 @@ services:
       - ai-video-frontend
       - ai-video-backend
     ports:
-      - "8080:8080"
+      - "8089:8080"
     volumes:
       - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
 
