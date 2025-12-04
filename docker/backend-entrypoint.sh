@@ -31,8 +31,8 @@ while True:
         time.sleep(2)
 PY
 
-echo "[backend-entrypoint] Applying migrations (no-backup, auto-confirm)..."
-if ! yes | python manage.py migration upgrade --no-backup; then
+echo "[backend-entrypoint] Applying migrations via alembic upgrade head..."
+if ! alembic upgrade head; then
   echo "[backend-entrypoint] Migration failed" >&2
   exit 1
 fi
