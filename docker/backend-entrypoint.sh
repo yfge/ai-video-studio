@@ -31,8 +31,11 @@ while True:
         time.sleep(2)
 PY
 
-echo "[backend-entrypoint] Applying migrations..."
-python manage.py migration upgrade
+echo "[backend-entrypoint] Applying migrations (no-backup, auto-confirm)..."
+if ! yes | python manage.py migration upgrade --no-backup; then
+  echo "[backend-entrypoint] Migration failed" >&2
+  exit 1
+fi
 
 echo "[backend-entrypoint] Starting uvicorn..."
 exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
