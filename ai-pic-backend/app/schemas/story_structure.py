@@ -139,16 +139,6 @@ class SceneBeatResponse(ORMModel):
     updated_at: datetime
 
 
-class SceneWithChildren(SceneResponse):
-    beats: List[SceneBeatResponse] = Field(default_factory=list)
-    shots: List[ShotResponse] = Field(default_factory=list)
-
-
-class ScriptStructureResponse(BaseModel):
-    script_id: int
-    scenes: List[SceneWithChildren]
-
-
 class ShotCreate(BaseModel):
     scene_id: int
     shot_number: str
@@ -184,3 +174,13 @@ class ShotResponse(ORMModel):
     metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
+
+
+class SceneWithChildren(SceneResponse):
+    beats: List[SceneBeatResponse] = Field(default_factory=list)
+    shots: List[ShotResponse] = Field(default_factory=list)
+
+
+class ScriptStructureResponse(BaseModel):
+    script_id: int
+    scenes: List[SceneWithChildren]
