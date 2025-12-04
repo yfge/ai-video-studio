@@ -1,0 +1,63 @@
+version: "3.9"
+services:
+  ai-video-mysql:
+    image: mysql:8.0
+    container_name: ai-video-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ai-video
+      MYSQL_DATABASE: ai_video_studio
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "13306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  ai-video-redis:
+    image: redis:7-alpine
+    container_name: ai-video-redis
+    restart: always
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+
+  ai-video-backend:
+    container_name: ai-video-backend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend.dev
+    env_file:
+      - .env
+    working_dir: /app/ai-pic-backend
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ../ai-pic-backend:/app/ai-pic-backend
+      - ../ai-pic-backend/uploads:/app/ai-pic-backend/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ai-video-mysql
+      - ai-video-redis
+
+  ai-video-frontend:
+    container_name: ai-video-frontend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend.dev
+    env_file:
+      - .env
+    working_dir: /app/ai-pic-frontend
+    command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+    volumes:
+      - ../ai-pic-frontend:/app/ai-pic-frontend
+      - /app/ai-pic-frontend/node_modules
+      - /app/ai-pic-frontend/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ai-video-backend
+
+volumes:
+  mysql_data:
+  redis_data:
