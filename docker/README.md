@@ -21,4 +21,5 @@ MySQL/Redis data persist via Docker named volumes `mysql_data` and `redis_data`.
 ## Notes
 - Backend uses `DATABASE_URL`/`REDIS_URL` from `.env`; defaults target the compose services.
 - Frontend reads `NEXT_PUBLIC_API_URL` (defaults to `http://host.docker.internal:8080` to hit Nginx from both browser and SSR); if that host is unavailable on your OS, set it to `http://localhost:8080`.
+- Backend entrypoint waits for MySQL then runs `python manage.py migration upgrade` automatically before starting uvicorn.
 - Image builds install backend requirements and frontend npm deps once; the mounted code updates without rebuilding.
