@@ -17,8 +17,6 @@ services:
     image: redis:7-alpine
     container_name: ai-video-redis
     restart: always
-    ports:
-      - "16379:6379"
     volumes:
       - redis_data:/data
 
@@ -53,10 +51,19 @@ services:
       - ../ai-pic-frontend:/app/ai-pic-frontend
       - /app/ai-pic-frontend/node_modules
       - /app/ai-pic-frontend/.next
-    ports:
-      - "3000:3000"
     depends_on:
       - ai-video-backend
+
+  ai-video-nginx:
+    container_name: ai-video-nginx
+    image: nginx:latest
+    depends_on:
+      - ai-video-frontend
+      - ai-video-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   mysql_data:
