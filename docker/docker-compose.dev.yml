@@ -9,14 +9,14 @@ services:
       MYSQL_DATABASE: ai_video_studio
     command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./mysql_data:/var/lib/mysql
 
   ai-video-redis:
     image: redis:7-alpine
     container_name: ai-video-redis
     restart: always
     volumes:
-      - redis_data:/data
+      - ./redis_data:/data
 
   ai-video-backend:
     container_name: ai-video-backend
