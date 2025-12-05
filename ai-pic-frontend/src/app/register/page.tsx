@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import api from '@/utils/api'
 
 export default function Register() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -12,6 +15,7 @@ export default function Register() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<{[key: string]: string}>({})
+  const [serverError, setServerError] = useState<string | null>(null)
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {}
@@ -46,16 +50,25 @@ export default function Register() {
     }
     
     setIsLoading(true)
+    setServerError(null)
     
-    // TODO: 实现注册逻辑
-    console.log('注册信息:', formData)
-    
-    // 模拟API调用
-    setTimeout(() => {
+    try {
+      const res = await api.register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.username,
+      })
+      if (res.success) {
+        router.push('/login?registered=1')
+      } else {
+        setServerError(res.message || '注册失败，请稍后重试')
+      }
+    } catch (err: any) {
+      setServerError(err?.message || '注册失败，请稍后重试')
+    } finally {
       setIsLoading(false)
-      // 注册成功后跳转到登录页面
-      window.location.href = '/login'
-    }, 1000)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,6 +102,11 @@ export default function Register() {
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {serverError && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+              {serverError}
+            </div>
+          )}
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">

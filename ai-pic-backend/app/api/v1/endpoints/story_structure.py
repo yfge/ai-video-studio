@@ -104,7 +104,12 @@ async def create_scene_for_script(
 ):
     if body.script_id != script_id:
         raise HTTPException(status_code=400, detail="script_id mismatch")
-    obj = svc.create_scene(db, body)
+    try:
+        obj = svc.create_scene(db, body)
+    except ValueError as exc:
+        if str(exc) == "script_not_found":
+            raise HTTPException(status_code=404, detail="script not found")
+        raise
     return SceneResponse.model_validate(obj)
 
 
@@ -136,7 +141,17 @@ async def create_shot_for_scene(
 ):
     if body.scene_id != scene_id:
         raise HTTPException(status_code=400, detail="scene_id mismatch")
-    obj = svc.create_shot(db, body)
+    try:
+        obj = svc.create_shot(db, body)
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "scene_not_found":
+            raise HTTPException(status_code=404, detail="scene not found")
+        if msg == "duplicate_shot_number":
+            raise HTTPException(status_code=400, detail="shot_number already exists for scene")
+        if msg == "beat_scene_mismatch":
+            raise HTTPException(status_code=400, detail="beat does not belong to scene")
+        raise
     return ShotResponse.model_validate(obj)
 
 
@@ -146,7 +161,15 @@ async def update_shot(
     body: ShotUpdate,
     db: Session = Depends(get_db),
 ):
-    obj = svc.update_shot(db, shot_id, body.model_dump(exclude_none=True))
+    try:
+        obj = svc.update_shot(db, shot_id, body.model_dump(exclude_none=True))
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "duplicate_shot_number":
+            raise HTTPException(status_code=400, detail="shot_number already exists for scene")
+        if msg == "beat_scene_mismatch":
+            raise HTTPException(status_code=400, detail="beat does not belong to scene")
+        raise
     if not obj:
         raise HTTPException(status_code=404, detail="shot not found")
     return ShotResponse.model_validate(obj)
@@ -166,7 +189,12 @@ async def update_scene_beat(
     body: SceneBeatUpdate,
     db: Session = Depends(get_db),
 ):
-    obj = svc.update_scene_beat(db, beat_id, body.model_dump(exclude_none=True))
+    try:
+        obj = svc.update_scene_beat(db, beat_id, body.model_dump(exclude_none=True))
+    except ValueError as exc:
+        if str(exc) == "duplicate_order_index":
+            raise HTTPException(status_code=400, detail="order_index already exists for scene")
+        raise
     if not obj:
         raise HTTPException(status_code=404, detail="beat not found")
     return SceneBeatResponse.model_validate(obj)

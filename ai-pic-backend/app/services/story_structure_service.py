@@ -120,6 +120,10 @@ def get_script_structure(db: Session, script_id: int) -> Optional[List[Dict[str,
 
 
 def create_scene(db: Session, data: SceneCreate) -> Scene:
+    # ensure script exists
+    script = db.query(Script).filter(Script.id == data.script_id).first()
+    if not script:
+        raise ValueError("script_not_found")
     obj = Scene(**data.model_dump())
     db.add(obj)
     db.commit()
@@ -137,6 +141,17 @@ def list_beats_by_scene(db: Session, scene_id: int) -> List[SceneBeat]:
 
 
 def create_scene_beat(db: Session, data: SceneBeatCreate) -> SceneBeat:
+    scene = db.query(Scene).filter(Scene.id == data.scene_id).first()
+    if not scene:
+        raise ValueError("scene_not_found")
+    # enforce unique order_index within scene
+    existing = (
+        db.query(SceneBeat)
+        .filter(SceneBeat.scene_id == data.scene_id, SceneBeat.order_index == data.order_index)
+        .first()
+    )
+    if existing:
+        raise ValueError("duplicate_order_index")
     obj = SceneBeat(**data.model_dump())
     db.add(obj)
     db.commit()
@@ -154,6 +169,21 @@ def list_shots_by_scene(db: Session, scene_id: int) -> List[Shot]:
 
 
 def create_shot(db: Session, data: ShotCreate) -> Shot:
+    scene = db.query(Scene).filter(Scene.id == data.scene_id).first()
+    if not scene:
+        raise ValueError("scene_not_found")
+    # enforce shot_number uniqueness per scene
+    exists = (
+        db.query(Shot)
+        .filter(Shot.scene_id == data.scene_id, Shot.shot_number == data.shot_number)
+        .first()
+    )
+    if exists:
+        raise ValueError("duplicate_shot_number")
+    if data.scene_beat_id:
+        beat = db.query(SceneBeat).filter(SceneBeat.id == data.scene_beat_id).first()
+        if not beat or beat.scene_id != data.scene_id:
+            raise ValueError("beat_scene_mismatch")
     obj = Shot(**data.model_dump())
     db.add(obj)
     db.commit()
@@ -259,6 +289,16 @@ def update_scene_beat(db: Session, beat_id: int, payload: Dict[str, Any]) -> Opt
     obj = db.query(SceneBeat).filter(SceneBeat.id == beat_id).first()
     if not obj:
         return None
+    # handle order_index conflict
+    new_order = payload.get("order_index")
+    if new_order is not None and new_order != obj.order_index:
+        conflict = (
+            db.query(SceneBeat)
+            .filter(SceneBeat.scene_id == obj.scene_id, SceneBeat.order_index == new_order)
+            .first()
+        )
+        if conflict:
+            raise ValueError("duplicate_order_index")
     for field, value in payload.items():
         if value is not None and hasattr(obj, field):
             setattr(obj, field, value)
@@ -281,6 +321,19 @@ def update_shot(db: Session, shot_id: int, payload: Dict[str, Any]) -> Optional[
     obj = db.query(Shot).filter(Shot.id == shot_id).first()
     if not obj:
         return None
+    new_number = payload.get("shot_number")
+    if new_number and new_number != obj.shot_number:
+        conflict = (
+            db.query(Shot)
+            .filter(Shot.scene_id == obj.scene_id, Shot.shot_number == new_number)
+            .first()
+        )
+        if conflict:
+            raise ValueError("duplicate_shot_number")
+    if "scene_beat_id" in payload and payload["scene_beat_id"]:
+        beat = db.query(SceneBeat).filter(SceneBeat.id == payload["scene_beat_id"]).first()
+        if not beat or beat.scene_id != obj.scene_id:
+            raise ValueError("beat_scene_mismatch")
     for field, value in payload.items():
         if value is not None and hasattr(obj, field):
             setattr(obj, field, value)
