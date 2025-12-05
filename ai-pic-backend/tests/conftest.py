@@ -208,6 +208,7 @@ def test_db():
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     
     # 创建所有表
+    from app import models  # ensure models are registered
     Base.metadata.create_all(bind=engine)
     
     yield TestingSessionLocal

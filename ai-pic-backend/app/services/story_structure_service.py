@@ -231,6 +231,73 @@ def create_scene_with_children(
     return {"scene": scene, "beats": created_beats, "shots": created_shots}
 
 
+def update_scene(db: Session, scene_id: int, payload: Dict[str, Any]) -> Optional[Scene]:
+    obj = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not obj:
+        return None
+    for field, value in payload.items():
+        if value is not None and hasattr(obj, field):
+            setattr(obj, field, value)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def delete_scene(db: Session, scene_id: int) -> bool:
+    obj = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not obj:
+        return False
+    # Explicitly delete children to avoid ORM nulling FKs in SQLite
+    db.query(Shot).filter(Shot.scene_id == scene_id).delete(synchronize_session=False)
+    db.query(SceneBeat).filter(SceneBeat.scene_id == scene_id).delete(synchronize_session=False)
+    db.delete(obj)
+    db.commit()
+    return True
+
+
+def update_scene_beat(db: Session, beat_id: int, payload: Dict[str, Any]) -> Optional[SceneBeat]:
+    obj = db.query(SceneBeat).filter(SceneBeat.id == beat_id).first()
+    if not obj:
+        return None
+    for field, value in payload.items():
+        if value is not None and hasattr(obj, field):
+            setattr(obj, field, value)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def delete_scene_beat(db: Session, beat_id: int) -> bool:
+    obj = db.query(SceneBeat).filter(SceneBeat.id == beat_id).first()
+    if not obj:
+        return False
+    # shots referencing this beat will set FK to NULL (ondelete=SET NULL)
+    db.delete(obj)
+    db.commit()
+    return True
+
+
+def update_shot(db: Session, shot_id: int, payload: Dict[str, Any]) -> Optional[Shot]:
+    obj = db.query(Shot).filter(Shot.id == shot_id).first()
+    if not obj:
+        return None
+    for field, value in payload.items():
+        if value is not None and hasattr(obj, field):
+            setattr(obj, field, value)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def delete_shot(db: Session, shot_id: int) -> bool:
+    obj = db.query(Shot).filter(Shot.id == shot_id).first()
+    if not obj:
+        return False
+    db.delete(obj)
+    db.commit()
+    return True
+
+
 def _to_slug_line(item: dict[str, Any]) -> str:
     time = (item.get("time") or "").upper()
     location = item.get("location") or "UNKNOWN"

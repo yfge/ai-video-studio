@@ -30,6 +30,9 @@ class TestDatabase:
             poolclass=StaticPool if use_memory else None,
             echo=False  # 设置为True可以看到SQL语句
         )
+
+        # 确保所有模型被加载以注册到 Base.metadata
+        from app import models  # noqa: F401
         
         # 创建会话工厂
         self.SessionLocal = sessionmaker(

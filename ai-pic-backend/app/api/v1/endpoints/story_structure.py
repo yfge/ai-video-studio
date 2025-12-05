@@ -16,9 +16,13 @@ from app.schemas.story_structure import (
     SceneWithChildren,
     SceneResponse,
     SceneCreate,
+    SceneUpdate,
+    SceneBeatCreate,
     SceneBeatResponse,
+    SceneBeatUpdate,
     ShotResponse,
     ShotCreate,
+    ShotUpdate,
 )
 
 
@@ -45,6 +49,17 @@ async def list_beats_for_scene(
         SceneBeatResponse.model_validate(b)
         for b in svc.list_beats_by_scene(db, scene_id)
     ]
+
+@router.post("/scenes/{scene_id}/beats", response_model=SceneBeatResponse)
+async def create_beat_for_scene(
+    scene_id: int,
+    body: SceneBeatCreate,
+    db: Session = Depends(get_db),
+):
+    if body.scene_id != scene_id:
+        raise HTTPException(status_code=400, detail="scene_id mismatch")
+    obj = svc.create_scene_beat(db, body)
+    return SceneBeatResponse.model_validate(obj)
 
 
 @router.get("/scenes/{scene_id}/shots", response_model=List[ShotResponse])
@@ -93,6 +108,26 @@ async def create_scene_for_script(
     return SceneResponse.model_validate(obj)
 
 
+@router.put("/scenes/{scene_id}", response_model=SceneResponse)
+async def update_scene(
+    scene_id: int,
+    body: SceneUpdate,
+    db: Session = Depends(get_db),
+):
+    obj = svc.update_scene(db, scene_id, body.model_dump(exclude_none=True))
+    if not obj:
+        raise HTTPException(status_code=404, detail="scene not found")
+    return SceneResponse.model_validate(obj)
+
+
+@router.delete("/scenes/{scene_id}", status_code=204)
+async def delete_scene(scene_id: int, db: Session = Depends(get_db)):
+    ok = svc.delete_scene(db, scene_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="scene not found")
+    return None
+
+
 @router.post("/scenes/{scene_id}/shots", response_model=ShotResponse)
 async def create_shot_for_scene(
     scene_id: int,
@@ -103,6 +138,46 @@ async def create_shot_for_scene(
         raise HTTPException(status_code=400, detail="scene_id mismatch")
     obj = svc.create_shot(db, body)
     return ShotResponse.model_validate(obj)
+
+
+@router.put("/shots/{shot_id}", response_model=ShotResponse)
+async def update_shot(
+    shot_id: int,
+    body: ShotUpdate,
+    db: Session = Depends(get_db),
+):
+    obj = svc.update_shot(db, shot_id, body.model_dump(exclude_none=True))
+    if not obj:
+        raise HTTPException(status_code=404, detail="shot not found")
+    return ShotResponse.model_validate(obj)
+
+
+@router.delete("/shots/{shot_id}", status_code=204)
+async def delete_shot(shot_id: int, db: Session = Depends(get_db)):
+    ok = svc.delete_shot(db, shot_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="shot not found")
+    return None
+
+
+@router.put("/scene-beats/{beat_id}", response_model=SceneBeatResponse)
+async def update_scene_beat(
+    beat_id: int,
+    body: SceneBeatUpdate,
+    db: Session = Depends(get_db),
+):
+    obj = svc.update_scene_beat(db, beat_id, body.model_dump(exclude_none=True))
+    if not obj:
+        raise HTTPException(status_code=404, detail="beat not found")
+    return SceneBeatResponse.model_validate(obj)
+
+
+@router.delete("/scene-beats/{beat_id}", status_code=204)
+async def delete_scene_beat(beat_id: int, db: Session = Depends(get_db)):
+    ok = svc.delete_scene_beat(db, beat_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="beat not found")
+    return None
 
 
 @router.post("/scripts/{script_id}/seed-from-json")

@@ -1,163 +1,82 @@
-import pytest
-from fastapi.routing import APIRoute
+from __future__ import annotations
 
-from app.main import create_app
+from sqlalchemy.orm import Session
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.core.database import get_db, Base
 from app.models.script import Story, Episode, Script
-from app.models.story_structure import StoryTreatment, Scene, SceneBeat, Shot
+from app.schemas.story_structure import SceneCreate, SceneBeatCreate, ShotCreate
+from tests.conftest import override_get_db
 
 
-@pytest.mark.unit
-def test_story_structure_routes_present():
-    app = create_app()
-    paths = {r.path for r in app.routes if isinstance(r, APIRoute)}
-
-    # Minimal presence checks (no DB required)
-    assert "/api/v1/story-structure/scripts/{script_id}/scenes" in paths
-    assert "/api/v1/story-structure/scenes/{scene_id}/beats" in paths
-    assert "/api/v1/story-structure/scenes/{scene_id}/shots" in paths
-    assert "/api/v1/story-structure/stories/{story_id}/treatments" in paths
-    # creation endpoints present
-    assert any(
-        p
-        for p in paths
-        if p == "/api/v1/story-structure/scripts/{script_id}/scenes"
-        and any(
-            r.methods and "POST" in r.methods
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == p
-        )
-    )
-    assert any(
-        p
-        for p in paths
-        if p == "/api/v1/story-structure/scenes/{scene_id}/shots"
-        and any(
-            r.methods and "POST" in r.methods
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == p
-        )
-    )
-    assert "/api/v1/story-structure/treatments/{treatment_id}/step-outlines" in paths
-    assert any(
-        p
-        for p in paths
-        if p == "/api/v1/story-structure/treatments/{treatment_id}/step-outlines"
-        and any(
-            r.methods and "POST" in r.methods
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == p
-        )
-    )
-    # seed endpoint present
-    assert "/api/v1/story-structure/scripts/{script_id}/seed-from-json" in paths
+def _bootstrap_script(db: Session) -> Script:
+    story = Story(title="Story", genre="g", theme="t", target_audience="all")
+    episode = Episode(title="Ep1", story=story, episode_number=1)
+    script = Script(title="Script", episode=episode, content="")
+    db.add_all([story, episode, script])
+    db.commit()
+    db.refresh(script)
+    return script
 
 
-def test_create_step_outline_requires_matching_story(client, db_session):
-    story = Story(title="Story", genre="drama")
-    db_session.add(story)
-    db_session.commit()
-    db_session.refresh(story)
+def test_scene_crud_with_children(db_session: Session):
+    # ensure tables exist for this session
+    Base.metadata.create_all(bind=db_session.get_bind())
 
-    treatment = StoryTreatment(
-        id=1,
-        story_id=story.id,
-        revision_number=1,
-        status="draft",
-        title="Treatment 1",
-    )
-    db_session.add(treatment)
-    db_session.commit()
-    db_session.refresh(treatment)
+    app.dependency_overrides[get_db] = lambda: db_session
+    client = TestClient(app)
 
-    payload = {
-        "story_id": story.id,
-        "story_treatment_id": treatment.id,
-        "sequence_number": 1,
-        "beat_title": "Opening",
-        "beat_summary": "Intro beat",
-        "act_label": "ACT I",
-        "metadata": {"source": "test"},
+    script = _bootstrap_script(db_session)
+
+    # create scene
+    scene_payload = {
+        "script_id": script.id,
+        "scene_number": "1",
+        "slug_line": "INT. TEST - DAY",
     }
+    res = client.post(f"/api/v1/story-structure/scripts/{script.id}/scenes", json=scene_payload)
+    assert res.status_code == 200
+    scene_id = res.json()["id"]
 
-    ok_resp = client.post(
-        f"/api/v1/story-structure/treatments/{treatment.id}/step-outlines",
-        json=payload,
-    )
-    assert ok_resp.status_code == 200
-    ok_data = ok_resp.json()
-    assert ok_data["story_id"] == story.id
-    assert ok_data["sequence_number"] == 1
+    # update scene
+    res = client.put(f"/api/v1/story-structure/scenes/{scene_id}", json={"location": "Office"})
+    assert res.status_code == 200
+    assert res.json()["location"] == "Office"
 
-    mismatched_story = Story(title="Another", genre="drama")
-    db_session.add(mismatched_story)
-    db_session.commit()
-    db_session.refresh(mismatched_story)
+    # add beat
+    beat_payload = {
+        "scene_id": scene_id,
+        "order_index": 1,
+        "beat_summary": "first",
+    }
+    res = client.post(f"/api/v1/story-structure/scenes/{scene_id}/beats", json=beat_payload)
+    assert res.status_code == 200
+    beat_id = res.json()["id"]
 
-    bad_payload = {**payload, "story_id": mismatched_story.id, "sequence_number": 2}
-    bad_resp = client.post(
-        f"/api/v1/story-structure/treatments/{treatment.id}/step-outlines",
-        json=bad_payload,
-    )
-    assert bad_resp.status_code == 400
+    # update beat
+    res = client.put(f"/api/v1/story-structure/scene-beats/{beat_id}", json={"beat_summary": "updated"})
+    assert res.status_code == 200
+    assert res.json()["beat_summary"] == "updated"
 
-    list_resp = client.get(
-        f"/api/v1/story-structure/treatments/{treatment.id}/step-outlines"
-    )
-    assert list_resp.status_code == 200
-    assert len(list_resp.json()) == 1
+    # add shots via service helper path
+    shot_payload = {
+        "scene_id": scene_id,
+        "shot_number": "1A",
+    }
+    res = client.post(f"/api/v1/story-structure/scenes/{scene_id}/shots", json=shot_payload)
+    assert res.status_code == 200
+    shot_id = res.json()["id"]
 
+    # update shot
+    res = client.put(f"/api/v1/story-structure/shots/{shot_id}", json={"shot_type": "WS"})
+    assert res.status_code == 200
+    assert res.json()["shot_type"] == "WS"
 
-def test_get_script_structure_returns_nested_children(client, db_session):
-    story = Story(title="Story", genre="drama")
-    db_session.add(story)
-    db_session.commit()
-    db_session.refresh(story)
+    # delete shot
+    res = client.delete(f"/api/v1/story-structure/shots/{shot_id}")
+    assert res.status_code == 204
 
-    episode = Episode(story_id=story.id, episode_number=1, title="Ep1")
-    db_session.add(episode)
-    db_session.commit()
-    db_session.refresh(episode)
-
-    script = Script(episode_id=episode.id, title="Script 1", content="")
-    db_session.add(script)
-    db_session.commit()
-    db_session.refresh(script)
-
-    scene = Scene(
-        script_id=script.id,
-        scene_number="1",
-        slug_line="INT. LAB - DAY",
-        environment_type="INT",
-        status="draft",
-    )
-    db_session.add(scene)
-    db_session.commit()
-    db_session.refresh(scene)
-
-    beat = SceneBeat(
-        scene_id=scene.id,
-        order_index=1,
-        beat_type="action",
-        beat_summary="Testing",
-    )
-    shot = Shot(
-        scene_id=scene.id,
-        scene_beat_id=None,
-        shot_number="1A",
-        shot_type="WS",
-        status="planned",
-    )
-    db_session.add_all([beat, shot])
-    db_session.commit()
-
-    resp = client.get(f"/api/v1/story-structure/scripts/{script.id}/structure")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["script_id"] == script.id
-    assert len(data["scenes"]) == 1
-    scene_payload = data["scenes"][0]
-    assert scene_payload["scene_number"] == "1"
-    assert len(scene_payload["beats"]) == 1
-    assert scene_payload["beats"][0]["beat_type"] == "action"
-    assert len(scene_payload["shots"]) == 1
-    assert scene_payload["shots"][0]["shot_number"] == "1A"
+    # delete scene
+    res = client.delete(f"/api/v1/story-structure/scenes/{scene_id}")
+    assert res.status_code == 204

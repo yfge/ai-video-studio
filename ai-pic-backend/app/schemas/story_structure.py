@@ -112,6 +112,22 @@ class SceneResponse(ORMModel):
     updated_at: datetime
 
 
+class SceneUpdate(BaseModel):
+    slug_line: Optional[str] = None
+    scene_number: Optional[str] = None
+    story_step_outline_id: Optional[int] = None
+    environment_type: Optional[str] = None
+    location: Optional[str] = None
+    time_of_day: Optional[str] = None
+    summary: Optional[str] = None
+    page_length_eighths: Optional[int] = None
+    primary_characters: Optional[dict[str, Any]] = None
+    conflict_notes: Optional[str] = None
+    ai_prompt_snapshot: Optional[dict[str, Any]] = None
+    status: Optional[str] = None
+    metadata: Optional[dict[str, Any]] = None
+
+
 class SceneBeatCreate(BaseModel):
     scene_id: int
     order_index: int
@@ -137,6 +153,17 @@ class SceneBeatResponse(ORMModel):
     metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
+
+
+class SceneBeatUpdate(BaseModel):
+    beat_type: Optional[str] = None
+    beat_summary: Optional[str] = None
+    characters_involved: Optional[dict[str, Any]] = None
+    dialogue_excerpt: Optional[str] = None
+    camera_notes: Optional[str] = None
+    duration_seconds: Optional[float] = Field(None, ge=0)
+    order_index: Optional[int] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class ShotCreate(BaseModel):
@@ -174,6 +201,22 @@ class ShotResponse(ORMModel):
     metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
     created_at: datetime
     updated_at: datetime
+
+
+class ShotUpdate(BaseModel):
+    shot_number: Optional[str] = None
+    scene_beat_id: Optional[int] = None
+    shot_type: Optional[str] = None
+    camera_setup: Optional[str] = None
+    camera_movement: Optional[str] = None
+    framing: Optional[str] = None
+    focus_subject: Optional[str] = None
+    duration_seconds: Optional[float] = Field(None, ge=0)
+    storyboard_frame_asset_id: Optional[int] = None
+    lighting_notes: Optional[str] = None
+    audio_notes: Optional[str] = None
+    status: Optional[str] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class SceneWithChildren(SceneResponse):
