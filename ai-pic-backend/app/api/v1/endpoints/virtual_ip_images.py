@@ -180,6 +180,15 @@ async def get_available_models(
     
     # 检查火山引擎配置（双密钥）
     if settings.VOLCENGINE_API_KEY and settings.VOLCENGINE_SECRET_KEY:
+        # Seedream 4.5 图片生成模型（参考官方文档）
+        models.append({
+            "model_id": "seedream-4.5",
+            "name": "Seedream 4.5",
+            "provider": "volcengine",
+            "type": "text_to_image",
+            "capabilities": ["图片生成", "高质量", "多风格"]
+        })
+        # 兼容旧视觉模型配置
         models.append({
             "model_id": "volcengine-visual",
             "name": "火山引擎视觉生成",
@@ -188,7 +197,7 @@ async def get_available_models(
             "capabilities": ["企业级", "高并发", "多模态"]
         })
         if not default_model:
-            default_model = "volcengine-visual"
+            default_model = "seedream-4.5"
     
     # 如果没有找到任何配置的服务，返回空列表和错误信息
     if not models:

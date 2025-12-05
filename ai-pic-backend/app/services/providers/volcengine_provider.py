@@ -58,10 +58,10 @@ class VolcengineProvider(BaseProvider):
             ModelInfo(
                 model_id="seedream-4.5",
                 name="Seedream 4.5",
-                description="方舟大模型服务平台的通用对话/创作模型",
-                model_type=AIModelType.TEXT_GENERATION,
-                max_tokens=32768,
-                capabilities=["text_generation", "conversation", "reasoning"]
+                description="方舟大模型服务平台的图片生成模型",
+                model_type=AIModelType.TEXT_TO_IMAGE,
+                supported_formats=["png", "jpg"],
+                capabilities=["text_to_image", "high_resolution"]
             ),
             # 图像生成模型
             ModelInfo(
