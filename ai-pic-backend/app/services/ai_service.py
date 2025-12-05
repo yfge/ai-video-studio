@@ -260,8 +260,8 @@ class AIService:
                     max_requests_per_minute=60
                 )
             
-            # 火山引擎
-            if settings.VOLCENGINE_API_KEY and settings.VOLCENGINE_SECRET_KEY:
+            # 火山引擎（Ark Seedream / 文本 & 图片）
+            if settings.VOLCENGINE_API_KEY:
                 providers["volcengine"] = ProviderConfig(
                     name="volcengine",
                     api_key=settings.VOLCENGINE_API_KEY,

@@ -178,8 +178,8 @@ async def get_available_models(
         if not default_model:
             default_model = "deepseek-painter"
     
-    # 检查火山引擎配置（双密钥）
-    if settings.VOLCENGINE_API_KEY and settings.VOLCENGINE_SECRET_KEY:
+    # 检查火山引擎配置（只需 API Key 即可使用 Ark Seedream 4.5 图片生成）
+    if settings.VOLCENGINE_API_KEY:
         # Seedream 4.5 图片生成模型（参考官方文档）
         models.append({
             "model_id": "seedream-4.5",
