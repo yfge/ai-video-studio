@@ -146,6 +146,10 @@ cython_debug/
 *.sqlite
 *.sqlite3
 
+# Docker 开发环境数据卷
+docker/mysql_data/
+docker/redis_data/
+
 # 上传文件目录
 uploads/
 media/
