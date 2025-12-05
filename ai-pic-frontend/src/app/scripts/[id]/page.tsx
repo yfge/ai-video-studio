@@ -6,7 +6,7 @@ import { authAPI, scriptAPI } from '@/utils/api'
 import type { Script, User } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { ModelSelector } from '@/components/ModelSelector'
-import { SceneStructurePanel } from '@/components/SceneStructurePanel'
+import { SceneStructurePanel, type SceneNode } from '@/components/SceneStructurePanel'
 import { isAdmin } from '@/utils/auth'
 
 type TabId = 'overview' | 'scenes' | 'storyboard'
@@ -350,6 +350,7 @@ export default function ScriptDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [script, setScript] = useState<Script | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [structuredScenes, setStructuredScenes] = useState<SceneNode[]>([])
   const [loading, setLoading] = useState(true)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [storyboard, setStoryboard] = useState<StoryboardData | null>(null)
@@ -359,6 +360,7 @@ export default function ScriptDetailPage() {
   const [selectedScenes, setSelectedScenes] = useState<number[]>([])
   const [showPlan, setShowPlan] = useState(false)
   const [focusedScene, setFocusedScene] = useState<number | null>(null)
+  const [readOnlyNotified, setReadOnlyNotified] = useState(false)
 
   const refreshStoryboard = useCallback(
     async (targetId: number) => {
@@ -423,7 +425,17 @@ export default function ScriptDetailPage() {
     }
   }, [])
 
-  const scenes = useMemo(() => normalizeScenes(script?.scenes), [script?.scenes])
+  const rawScenes = useMemo(() => normalizeScenes(script?.scenes), [script?.scenes])
+  const structuredSceneViews = useMemo<ScriptScene[]>(() => {
+    if (!structuredScenes.length) return []
+    return structuredScenes.map((scene, idx) => ({
+      scene_number: toSceneNumber(scene.scene_number) ?? idx + 1,
+      location: scene.location,
+      time: scene.time_of_day,
+      description: scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
+    }))
+  }, [structuredScenes])
+  const scenes = structuredSceneViews.length > 0 ? structuredSceneViews : rawScenes
   const dialogues = useMemo(() => normalizeDialogues(script?.dialogues), [script?.dialogues])
   const directions = useMemo(() => normalizeDirections(script?.stage_directions), [script?.stage_directions])
   const frameGroups = useMemo(() => groupFramesByScene(storyboard?.frames || []), [storyboard?.frames])
@@ -434,6 +446,12 @@ export default function ScriptDetailPage() {
     return rawScenes.filter(scene => scene && typeof scene === 'object') as StoryboardPlanScene[]
   }, [storyboard?.plan?.scenes])
   const canEditStructure = useMemo(() => isAdmin(currentUser), [currentUser])
+  useEffect(() => {
+    if (activeTab === 'scenes' && !canEditStructure && !readOnlyNotified) {
+      showAlert({ message: '当前场景结构为只读，需管理员权限才能编辑', variant: 'warning' })
+      setReadOnlyNotified(true)
+    }
+  }, [activeTab, canEditStructure, readOnlyNotified, showAlert])
 
   const handleExport = async (format: string) => {
     try {
@@ -663,7 +681,11 @@ export default function ScriptDetailPage() {
         {activeTab === 'scenes' && (
           <Section title="场景详情" description="查看逐场景的对白、舞台指示与关键信息">
             <div className="space-y-6 p-6">
-              <SceneStructurePanel scriptId={scriptId} canEdit={canEditStructure} />
+              <SceneStructurePanel
+                scriptId={scriptId}
+                canEdit={canEditStructure}
+                onStructureLoaded={setStructuredScenes}
+              />
               <div className="grid gap-4 border-t border-gray-100 pt-4 lg:grid-cols-[260px,1fr]">
                 <div className="space-y-2">
                   {scenes.length === 0 && <p className="text-sm text-gray-500">暂无结构化场景信息。</p>}

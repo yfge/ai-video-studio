@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react'
 import { apiClient } from '@/utils/api'
+import { useAlertModal } from './AlertModalProvider'
 
-type SceneNode = {
+export type SceneNode = {
   id: number
   scene_number: string
   slug_line?: string
@@ -27,7 +28,16 @@ type ShotNode = {
   scene_beat_id?: number
 }
 
-export function SceneStructurePanel({ scriptId, canEdit }: { scriptId: number; canEdit: boolean }) {
+export function SceneStructurePanel({
+  scriptId,
+  canEdit,
+  onStructureLoaded,
+}: {
+  scriptId: number
+  canEdit: boolean
+  onStructureLoaded?: (scenes: SceneNode[]) => void
+}) {
+  const { showAlert } = useAlertModal()
   const [scenes, setScenes] = useState<SceneNode[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +50,7 @@ export function SceneStructurePanel({ scriptId, canEdit }: { scriptId: number; c
       if (!resScenes.success || !resScenes.data) {
         const msg = resScenes.message || resScenes.error || '加载场景失败'
         setError(msg)
+        showAlert({ message: msg, variant: 'error' })
         return
       }
       const fetched = await Promise.all(
@@ -54,9 +65,11 @@ export function SceneStructurePanel({ scriptId, canEdit }: { scriptId: number; c
         })
       )
       setScenes(fetched)
+      onStructureLoaded?.(fetched)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : '加载结构失败'
       setError(message)
+      showAlert({ message, variant: 'error' })
     } finally {
       setLoading(false)
     }
@@ -68,86 +81,173 @@ export function SceneStructurePanel({ scriptId, canEdit }: { scriptId: number; c
   }, [scriptId])
 
   const handleAddScene = async () => {
+    if (!canEdit) {
+      showAlert({ message: '当前为只读模式，需管理员权限', variant: 'warning' })
+      return
+    }
     const sceneNo = (scenes.length + 1).toString()
-    const res = await apiClient.createScene(scriptId, {
-      script_id: scriptId,
-      scene_number: sceneNo,
-      slug_line: `SCENE ${sceneNo}`,
-      status: 'draft',
-    })
-    if (res.success) {
-      await loadStructure()
-    } else {
-      setError(res.message || '创建场景失败')
+    try {
+      const res = await apiClient.createScene(scriptId, {
+        script_id: scriptId,
+        scene_number: sceneNo,
+        slug_line: `SCENE ${sceneNo}`,
+        status: 'draft',
+      })
+      if (res.success) {
+        showAlert({ message: `已创建场景 ${sceneNo}`, variant: 'success' })
+        await loadStructure()
+      } else {
+        const message = res.message || '创建场景失败'
+        setError(message)
+        showAlert({ message, variant: 'error' })
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '创建场景失败'
+      setError(message)
+      showAlert({ message, variant: 'error' })
     }
   }
 
   const handleAddBeat = async (sceneId: number, currentBeats: BeatNode[]) => {
+    if (!canEdit) {
+      showAlert({ message: '当前为只读模式，需管理员权限', variant: 'warning' })
+      return
+    }
     const order = (currentBeats.length || 0) + 1
-    const res = await apiClient.createSceneBeat(sceneId, {
-      scene_id: sceneId,
-      order_index: order,
-      beat_summary: `节拍 ${order}`,
-    })
-    if (res.success) {
-      await loadStructure()
-    } else {
-      setError(res.message || '创建节拍失败')
+    try {
+      const res = await apiClient.createSceneBeat(sceneId, {
+        scene_id: sceneId,
+        order_index: order,
+        beat_summary: `节拍 ${order}`,
+      })
+      if (res.success) {
+        showAlert({ message: `已新增节拍 #${order}`, variant: 'success' })
+        await loadStructure()
+      } else {
+        const message = res.message || '创建节拍失败'
+        setError(message)
+        showAlert({ message, variant: 'error' })
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '创建节拍失败'
+      setError(message)
+      showAlert({ message, variant: 'error' })
     }
   }
 
   const handleAddShot = async (sceneId: number, beats: BeatNode[], shots: ShotNode[]) => {
+    if (!canEdit) {
+      showAlert({ message: '当前为只读模式，需管理员权限', variant: 'warning' })
+      return
+    }
     const shotNo = `${shots.length + 1}`
-    const res = await apiClient.createSceneShot(sceneId, {
-      scene_id: sceneId,
-      shot_number: shotNo,
-      scene_beat_id: beats[0]?.id,
-      shot_type: 'WS',
-    })
-    if (res.success) {
-      await loadStructure()
-    } else {
-      setError(res.message || '创建镜头失败')
+    try {
+      const res = await apiClient.createSceneShot(sceneId, {
+        scene_id: sceneId,
+        shot_number: shotNo,
+        scene_beat_id: beats[0]?.id,
+        shot_type: 'WS',
+      })
+      if (res.success) {
+        showAlert({ message: `已新增镜头 ${shotNo}`, variant: 'success' })
+        await loadStructure()
+      } else {
+        const message = res.message || '创建镜头失败'
+        setError(message)
+        showAlert({ message, variant: 'error' })
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '创建镜头失败'
+      setError(message)
+      showAlert({ message, variant: 'error' })
     }
   }
 
   const moveBeat = async (sceneId: number, beat: BeatNode, direction: -1 | 1) => {
+    if (!canEdit) {
+      showAlert({ message: '当前为只读模式，需管理员权限', variant: 'warning' })
+      return
+    }
     const beats = scenes.find(s => s.id === sceneId)?.beats || []
     const idx = beats.findIndex(b => b.id === beat.id)
     const targetIdx = idx + direction
     if (targetIdx < 0 || targetIdx >= beats.length) return
     const targetBeat = beats[targetIdx]
-    await apiClient.updateSceneBeat(beat.id, { order_index: targetBeat.order_index })
-    await apiClient.updateSceneBeat(targetBeat.id, { order_index: beat.order_index })
-    await loadStructure()
+    try {
+      await apiClient.updateSceneBeat(beat.id, { order_index: targetBeat.order_index })
+      await apiClient.updateSceneBeat(targetBeat.id, { order_index: beat.order_index })
+      await loadStructure()
+      showAlert({ message: '节拍顺序已调整', variant: 'success' })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '节拍顺序调整失败'
+      setError(message)
+      showAlert({ message, variant: 'error' })
+    }
   }
 
   const moveShot = async (sceneId: number, shot: ShotNode, direction: -1 | 1) => {
+    if (!canEdit) {
+      showAlert({ message: '当前为只读模式，需管理员权限', variant: 'warning' })
+      return
+    }
     const shots = scenes.find(s => s.id === sceneId)?.shots || []
     const idx = shots.findIndex(sh => sh.id === shot.id)
     const targetIdx = idx + direction
     if (targetIdx < 0 || targetIdx >= shots.length) return
     const targetShot = shots[targetIdx]
-    await apiClient.updateSceneShot(shot.id, { shot_number: targetShot.shot_number })
-    await apiClient.updateSceneShot(targetShot.id, { shot_number: shot.shot_number })
-    await loadStructure()
+    try {
+      await apiClient.updateSceneShot(shot.id, { shot_number: targetShot.shot_number })
+      await apiClient.updateSceneShot(targetShot.id, { shot_number: shot.shot_number })
+      await loadStructure()
+      showAlert({ message: '镜头顺序已调整', variant: 'success' })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '镜头顺序调整失败'
+      setError(message)
+      showAlert({ message, variant: 'error' })
+    }
   }
 
   const deleteBeat = async (beatId: number) => {
-    const res = await apiClient.deleteSceneBeat(beatId)
-    if (res.success) {
-      await loadStructure()
-    } else {
-      setError(res.message || '删除节拍失败')
+    if (!canEdit) {
+      showAlert({ message: '当前为只读模式，需管理员权限', variant: 'warning' })
+      return
+    }
+    try {
+      const res = await apiClient.deleteSceneBeat(beatId)
+      if (res.success) {
+        await loadStructure()
+        showAlert({ message: '节拍已删除', variant: 'success' })
+      } else {
+        const message = res.message || '删除节拍失败'
+        setError(message)
+        showAlert({ message, variant: 'error' })
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '删除节拍失败'
+      setError(message)
+      showAlert({ message, variant: 'error' })
     }
   }
 
   const deleteShot = async (shotId: number) => {
-    const res = await apiClient.deleteSceneShot(shotId)
-    if (res.success) {
-      await loadStructure()
-    } else {
-      setError(res.message || '删除镜头失败')
+    if (!canEdit) {
+      showAlert({ message: '当前为只读模式，需管理员权限', variant: 'warning' })
+      return
+    }
+    try {
+      const res = await apiClient.deleteSceneShot(shotId)
+      if (res.success) {
+        await loadStructure()
+        showAlert({ message: '镜头已删除', variant: 'success' })
+      } else {
+        const message = res.message || '删除镜头失败'
+        setError(message)
+        showAlert({ message, variant: 'error' })
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '删除镜头失败'
+      setError(message)
+      showAlert({ message, variant: 'error' })
     }
   }
 
