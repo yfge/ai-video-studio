@@ -269,13 +269,26 @@ async def generate_virtual_ip_image(
     except Exception:
         pass
 
+    # 将虚拟 IP 页面上填写的多种文案聚合进描述，保证提示词包含角色设定
+    description_parts = []
+    if virtual_ip.description:
+        description_parts.append(f"角色简介：{virtual_ip.description}")
+    if getattr(virtual_ip, "background_story", None):
+        description_parts.append(f"背景故事：{virtual_ip.background_story}")
+    if getattr(virtual_ip, "biography", None):
+        description_parts.append(f"人物小传：{virtual_ip.biography}")
+    if getattr(virtual_ip, "style_prompt", None):
+        description_parts.append(f"风格设定：{virtual_ip.style_prompt}")
+    aggregated_description = "；".join(description_parts) or (virtual_ip.description or "")
+
     result = await ai_service.generate_virtual_ip_image(
         ip_name=virtual_ip.name,
-        description=virtual_ip.description or "",
+        description=aggregated_description,
         style=style,
         category=category,
         model=selected_model,
-        additional_prompts=additional_prompt_list
+        additional_prompts=additional_prompt_list,
+        background_story=getattr(virtual_ip, "background_story", None),
     )
     
     if not result:
