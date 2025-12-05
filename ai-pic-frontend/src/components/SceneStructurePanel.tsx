@@ -38,7 +38,8 @@ export function SceneStructurePanel({ scriptId, canEdit }: { scriptId: number; c
     try {
       const resScenes = await apiClient.getNormalizedScenes(scriptId)
       if (!resScenes.success || !resScenes.data) {
-        setError(resScenes.message || '加载场景失败')
+        const msg = resScenes.message || resScenes.error || '加载场景失败'
+        setError(msg)
         return
       }
       const fetched = await Promise.all(
@@ -152,20 +153,30 @@ export function SceneStructurePanel({ scriptId, canEdit }: { scriptId: number; c
 
   return (
     <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">结构化场景 / 镜头</h3>
           <p className="text-xs text-gray-500">同步 `story_step_outlines` / `scenes` / `beats` / `shots`</p>
         </div>
-        {canEdit && (
+        <div className="flex items-center gap-2">
+          {!canEdit && <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">只读 · 需管理员权限</span>}
           <button
-            onClick={handleAddScene}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+            onClick={loadStructure}
+            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-gray-300"
             disabled={loading}
           >
-            新增场景
+            刷新
           </button>
-        )}
+          {canEdit && (
+            <button
+              onClick={handleAddScene}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+              disabled={loading}
+            >
+              新增场景
+            </button>
+          )}
+        </div>
       </div>
       {error && <div className="rounded bg-red-50 p-2 text-xs text-red-700">{error}</div>}
       {loading && <div className="text-sm text-gray-500">加载结构中...</div>}
