@@ -58,7 +58,15 @@ async def create_beat_for_scene(
 ):
     if body.scene_id != scene_id:
         raise HTTPException(status_code=400, detail="scene_id mismatch")
-    obj = svc.create_scene_beat(db, body)
+    try:
+        obj = svc.create_scene_beat(db, body)
+    except ValueError as exc:
+        if str(exc) == "duplicate_order_index":
+            raise HTTPException(
+                status_code=400,
+                detail="order_index already exists for scene",
+            )
+        raise
     return SceneBeatResponse.model_validate(obj)
 
 

@@ -21,7 +21,8 @@ class OpenAIProvider(BaseProvider):
         return [
             AIModelType.TEXT_GENERATION,
             AIModelType.TEXT_TO_IMAGE,
-            AIModelType.IMAGE_UNDERSTANDING
+            AIModelType.IMAGE_UNDERSTANDING,
+            AIModelType.IMAGE_TO_IMAGE,
         ]
     
     @property
@@ -68,7 +69,7 @@ class OpenAIProvider(BaseProvider):
                 description="经典的图像生成模型，快速生成",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpeg"],
-                capabilities=["text_to_image", "variations", "inpainting"]
+                capabilities=["text_to_image", "variations", "inpainting", "image_to_image"]
             )
         ]
     

@@ -36,6 +36,14 @@ class ImageGenerationRequest(BaseModel):
     style: str = Field("realistic", description="图像风格")
 
 
+class ImageToImageRequest(BaseModel):
+    """图生图请求"""
+    image_url: str = Field(..., description="原始图像URL")
+    prompt: Optional[str] = Field(None, description="可选的引导提示词")
+    model: Optional[str] = Field(None, description="指定模型（如不指定则由服务自动选择）")
+    prefer_provider: Optional[str] = Field(None, description="首选提供商")
+
+
 class VideoGenerationRequest(BaseModel):
     """视频生成请求"""
     prompt: Optional[str] = Field(None, description="视频描述")
@@ -131,6 +139,38 @@ async def generate_image(
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"图像生成失败: {str(e)}")
+
+
+@router.post("/generate/image-to-image")
+async def generate_image_to_image(
+    request: ImageToImageRequest,
+    current_user: User = Depends(get_current_active_user)
+):
+    """图生图生成接口（统一路由到支持 IMAGE_TO_IMAGE 的提供商）"""
+    try:
+        response = await ai_service.ai_manager.image_to_image(
+            image_url=request.image_url,
+            prompt=request.prompt,
+            model=request.model,
+            prefer_provider=request.prefer_provider,
+        )
+
+        if response.success:
+            return {
+                "success": True,
+                "data": {
+                    "images": response.data.get("images", []),
+                    "provider": response.provider,
+                    "model": response.model,
+                    "usage": response.usage,
+                    "metadata": response.metadata,
+                },
+            }
+        raise HTTPException(status_code=400, detail=response.error)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"图生图生成失败: {str(e)}")
 
 
 @router.post("/generate/video")

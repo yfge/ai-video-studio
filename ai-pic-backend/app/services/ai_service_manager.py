@@ -384,6 +384,98 @@ class AIServiceManager:
             task_type=AITaskType.PORTRAIT_GENERATION,
             model_type=AIModelType.TEXT_TO_IMAGE
         )
+
+    async def image_to_image(
+        self,
+        image_url: str,
+        prompt: str | None = None,
+        model: str | None = None,
+        prefer_provider: str | None = None,
+        **kwargs,
+    ) -> AIResponse:
+        """统一图生图接口"""
+        available_providers = self.get_available_providers(
+            model_type=AIModelType.IMAGE_TO_IMAGE
+        )
+
+        if not available_providers:
+            return AIResponse(
+                success=False,
+                error="没有可用的图生图提供商",
+                provider="ai_service_manager",
+                model=model or "unknown",
+                task_type=AITaskType.SCENE_GENERATION,
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+            )
+
+        self._log_request(
+            task="image_to_image",
+            provider=prefer_provider,
+            model=model,
+            params={"image_url": image_url},
+        )
+        self._log_prompt(prompt)
+
+        for _ in range(self.config.max_retries):
+            provider_name = self._select_provider(available_providers, prefer_provider)
+            if not provider_name:
+                break
+
+            provider = self.providers[provider_name]
+            self._update_request_count(provider_name)
+
+            # 选择合适的默认模型（image_to_image 类型），必要时退回到 text_to_image 模型
+            effective_model = model
+            if not effective_model:
+                img2img_models = [
+                    m for m in provider.available_models if m.model_type == AIModelType.IMAGE_TO_IMAGE
+                ]
+                if img2img_models:
+                    effective_model = img2img_models[0].model_id
+                else:
+                    t2i_models = [
+                        m for m in provider.available_models if m.model_type == AIModelType.TEXT_TO_IMAGE
+                    ]
+                    effective_model = t2i_models[0].model_id if t2i_models else "default"
+
+            try:
+                # 部分提供商可能未重写 image_to_image，此时调用 BaseProvider 的默认实现返回未实现错误
+                response = await provider.image_to_image(
+                    image_url=image_url,
+                    prompt=prompt,
+                    model=effective_model,
+                    **kwargs,
+                )
+                self._log_response(
+                    task="image_to_image",
+                    provider=provider_name,
+                    model=effective_model,
+                    response=response,
+                )
+                if response.success or not self.config.enable_fallback:
+                    return response
+            except Exception as e:
+                if not self.config.enable_fallback:
+                    return AIResponse(
+                        success=False,
+                        error=f"图生图失败: {str(e)}",
+                        provider=provider_name,
+                        model=effective_model,
+                        task_type=AITaskType.SCENE_GENERATION,
+                        model_type=AIModelType.IMAGE_TO_IMAGE,
+                    )
+
+            if provider_name in available_providers:
+                available_providers.remove(provider_name)
+
+        return AIResponse(
+            success=False,
+            error="所有图生图提供商都失败了",
+            provider="ai_service_manager",
+            model=model or "unknown",
+            task_type=AITaskType.SCENE_GENERATION,
+            model_type=AIModelType.IMAGE_TO_IMAGE,
+        )
     
     async def generate_video(
         self,
