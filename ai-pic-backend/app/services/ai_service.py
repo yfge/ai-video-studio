@@ -266,7 +266,6 @@ class AIService:
                     name="volcengine",
                     api_key=settings.VOLCENGINE_API_KEY,
                     api_secret=settings.VOLCENGINE_SECRET_KEY,
-                    base_url="https://open.volcengineapi.com",
                     timeout=120.0
                 )
                 provider_weights["volcengine"] = ProviderWeight(
