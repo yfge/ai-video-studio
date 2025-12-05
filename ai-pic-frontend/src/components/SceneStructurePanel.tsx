@@ -32,12 +32,26 @@ export function SceneStructurePanel({
   scriptId,
   canEdit,
   onStructureLoaded,
+  apiOverride,
 }: {
   scriptId: number
   canEdit: boolean
   onStructureLoaded?: (scenes: SceneNode[]) => void
+  apiOverride?: {
+    getNormalizedScenes: (scriptId: number) => Promise<{ success: boolean; data?: SceneNode[]; message?: string; error?: string }>
+    getNormalizedSceneBeats: (sceneId: number) => Promise<{ success: boolean; data?: BeatNode[]; message?: string; error?: string }>
+    getNormalizedSceneShots: (sceneId: number) => Promise<{ success: boolean; data?: ShotNode[]; message?: string; error?: string }>
+    createScene: (scriptId: number, payload: { script_id: number; scene_number: string; slug_line: string; status?: string }) => Promise<{ success: boolean; message?: string }>
+    createSceneBeat: (sceneId: number, payload: { scene_id: number; order_index: number; beat_summary?: string }) => Promise<{ success: boolean; message?: string }>
+    createSceneShot: (sceneId: number, payload: { scene_id: number; shot_number: string; scene_beat_id?: number; shot_type?: string }) => Promise<{ success: boolean; message?: string }>
+    updateSceneBeat: (beatId: number, payload: Partial<{ order_index: number }>) => Promise<{ success: boolean; message?: string }>
+    updateSceneShot: (shotId: number, payload: Partial<{ shot_number: string }>) => Promise<{ success: boolean; message?: string }>
+    deleteSceneBeat: (beatId: number) => Promise<{ success: boolean; message?: string }>
+    deleteSceneShot: (shotId: number) => Promise<{ success: boolean; message?: string }>
+  }
 }) {
   const { showAlert } = useAlertModal()
+  const client = apiOverride ?? apiClient
   const [scenes, setScenes] = useState<SceneNode[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +60,7 @@ export function SceneStructurePanel({
     setLoading(true)
     setError(null)
     try {
-      const resScenes = await apiClient.getNormalizedScenes(scriptId)
+      const resScenes = await client.getNormalizedScenes(scriptId)
       if (!resScenes.success || !resScenes.data) {
         const msg = resScenes.message || resScenes.error || '加载场景失败'
         setError(msg)
@@ -55,8 +69,8 @@ export function SceneStructurePanel({
       }
       const fetched = await Promise.all(
         resScenes.data.map(async scene => {
-          const beatsRes = await apiClient.getNormalizedSceneBeats(scene.id)
-          const shotsRes = await apiClient.getNormalizedSceneShots(scene.id)
+          const beatsRes = await client.getNormalizedSceneBeats(scene.id)
+          const shotsRes = await client.getNormalizedSceneShots(scene.id)
           return {
             ...scene,
             beats: beatsRes.data || [],
@@ -87,7 +101,7 @@ export function SceneStructurePanel({
     }
     const sceneNo = (scenes.length + 1).toString()
     try {
-      const res = await apiClient.createScene(scriptId, {
+      const res = await client.createScene(scriptId, {
         script_id: scriptId,
         scene_number: sceneNo,
         slug_line: `SCENE ${sceneNo}`,
@@ -115,7 +129,7 @@ export function SceneStructurePanel({
     }
     const order = (currentBeats.length || 0) + 1
     try {
-      const res = await apiClient.createSceneBeat(sceneId, {
+      const res = await client.createSceneBeat(sceneId, {
         scene_id: sceneId,
         order_index: order,
         beat_summary: `节拍 ${order}`,
@@ -142,7 +156,7 @@ export function SceneStructurePanel({
     }
     const shotNo = `${shots.length + 1}`
     try {
-      const res = await apiClient.createSceneShot(sceneId, {
+      const res = await client.createSceneShot(sceneId, {
         scene_id: sceneId,
         shot_number: shotNo,
         scene_beat_id: beats[0]?.id,
@@ -174,8 +188,8 @@ export function SceneStructurePanel({
     if (targetIdx < 0 || targetIdx >= beats.length) return
     const targetBeat = beats[targetIdx]
     try {
-      await apiClient.updateSceneBeat(beat.id, { order_index: targetBeat.order_index })
-      await apiClient.updateSceneBeat(targetBeat.id, { order_index: beat.order_index })
+      await client.updateSceneBeat(beat.id, { order_index: targetBeat.order_index })
+      await client.updateSceneBeat(targetBeat.id, { order_index: beat.order_index })
       await loadStructure()
       showAlert({ message: '节拍顺序已调整', variant: 'success' })
     } catch (err: unknown) {
@@ -196,8 +210,8 @@ export function SceneStructurePanel({
     if (targetIdx < 0 || targetIdx >= shots.length) return
     const targetShot = shots[targetIdx]
     try {
-      await apiClient.updateSceneShot(shot.id, { shot_number: targetShot.shot_number })
-      await apiClient.updateSceneShot(targetShot.id, { shot_number: shot.shot_number })
+      await client.updateSceneShot(shot.id, { shot_number: targetShot.shot_number })
+      await client.updateSceneShot(targetShot.id, { shot_number: shot.shot_number })
       await loadStructure()
       showAlert({ message: '镜头顺序已调整', variant: 'success' })
     } catch (err: unknown) {
@@ -213,7 +227,7 @@ export function SceneStructurePanel({
       return
     }
     try {
-      const res = await apiClient.deleteSceneBeat(beatId)
+      const res = await client.deleteSceneBeat(beatId)
       if (res.success) {
         await loadStructure()
         showAlert({ message: '节拍已删除', variant: 'success' })
@@ -235,7 +249,7 @@ export function SceneStructurePanel({
       return
     }
     try {
-      const res = await apiClient.deleteSceneShot(shotId)
+      const res = await client.deleteSceneShot(shotId)
       if (res.success) {
         await loadStructure()
         showAlert({ message: '镜头已删除', variant: 'success' })

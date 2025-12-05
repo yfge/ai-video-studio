@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import React, { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
 type AlertVariant = 'success' | 'error' | 'info' | 'warning'
 

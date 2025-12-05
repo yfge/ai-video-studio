@@ -191,6 +191,36 @@ def test_migration_sqlite_compatibility():
     # 执行CRUD操作验证
 ```
 
+### 结构化场景/镜头回归
+- 校验场景/节拍/镜头的顺序/唯一性与归属关系：
+  ```bash
+  pytest tests/test_story_structure_endpoints.py -q
+  ```
+- 覆盖场景、节拍顺序冲突、镜头号重复、beat 场景不匹配等 400 场景。
+
+### 迁移验证与回滚
+- 在本地 MySQL/SQLite 运行迁移回填：
+  ```bash
+  alembic upgrade c4a1cbf0d7c2
+  python prototype_story_structure_migration.py --mode live --insert-probe --report-path /tmp/story-migration-report.json
+  ```
+- 回滚验证：
+  ```bash
+  alembic downgrade -1
+  ```
+- 运行快速迁移回归：
+  ```bash
+  python run_tests.py migration
+  ```
+
+### 前端结构化 CRUD 验证
+- 前端权限/只读提示与结构化场景加载单测：
+  ```bash
+  cd ai-pic-frontend
+  npm test
+  ```
+  覆盖只读模式的防写保护、结构加载回调。
+
 ## 最佳实践
 
 ### 1. 测试隔离
