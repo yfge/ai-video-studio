@@ -15,10 +15,10 @@
 - [x] 需求澄清：梳理 Story → Episode → Script 现状与工业级 Treatment / Step Outline / Scene / Shot 差异，输出对比文档（见 `docs/story-structure-gap-analysis.md`，Discovery Session 议程详见 `docs/story-structure-discovery-session.md`）
 - [x] 后端建模：设计 `story_treatments`、`story_step_outlines`、`scenes`、`scene_beats`、`shots` ER 图与字段说明
   - 下一步行动：评审/签收 `docs/story-structure-gap-analysis.md` 中的 ER/字段草案与枚举列表，冻结迁移脚本所需字段
-- [ ] 迁移实现：编写 Alembic 脚本迁移现有 JSON 字段到新表，提供回滚方案
-  - 下一步行动：在真实脚本样本上跑 `prototype_story_structure_migration.py --mode live --insert-probe --report-path <file>` 验证输出，补充 pytest 覆盖与回滚说明
+- [x] 迁移实现：编写 Alembic 脚本迁移现有 JSON 字段到新表，提供回滚方案
+  - 下一步行动：在真实脚本样本上跑 `alembic upgrade c4a1cbf0d7c2`（含回填），并用 `prototype_story_structure_migration.py --mode live --insert-probe --report-path <file>` 验证输出；补充端到端回滚验证文档
 - [ ] 服务层改造：更新生成/查询 Service 与 Repository，提供分层读取与写入接口
-  - 下一步行动：在已有 step outline 校验与聚合读取的基础上，补充 scenes/beats/shots 聚合写入与生成入口
+  - 下一步行动：落地 scenes/beats/shots 聚合写入与生成入口；补充查询聚合（带 StoryTreatment / StepOutline 关联）
 - [ ] 前端同步：调整剧本详情页数据结构，支持新场景/镜头层级展示与编辑
 - [ ] 验证闭环：补充单元/集成测试 + 数据迁移回归用例，更新相关文档
 

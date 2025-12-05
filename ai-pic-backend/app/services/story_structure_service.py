@@ -161,6 +161,76 @@ def create_shot(db: Session, data: ShotCreate) -> Shot:
     return obj
 
 
+def create_scene_with_children(
+    db: Session,
+    scene_data: SceneCreate,
+    beats: Optional[List[SceneBeatCreate]] = None,
+    shots: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Create scene plus optional beats/shots in one transaction."""
+    scene = Scene(**scene_data.model_dump())
+    db.add(scene)
+    db.flush()
+
+    beat_map: Dict[int, int] = {}
+    created_beats: List[SceneBeat] = []
+    for beat in beats or []:
+        beat_obj = SceneBeat(
+            scene_id=scene.id,
+            order_index=beat.order_index,
+            beat_type=beat.beat_type,
+            beat_summary=beat.beat_summary,
+            characters_involved=beat.characters_involved,
+            dialogue_excerpt=beat.dialogue_excerpt,
+            camera_notes=beat.camera_notes,
+            duration_seconds=beat.duration_seconds,
+            extra_metadata=beat.metadata,
+        )
+        db.add(beat_obj)
+        db.flush()
+        beat_map[beat.order_index] = beat_obj.id
+        created_beats.append(beat_obj)
+
+    created_shots: List[Shot] = []
+    for raw in shots or []:
+        # Accept either ShotCreate or dict; support mapping by beat order when id missing.
+        if isinstance(raw, ShotCreate):
+            shot_data = raw.model_dump()
+        else:
+            shot_data = dict(raw)
+        target_scene_beat_id = shot_data.get("scene_beat_id")
+        beat_order = shot_data.get("scene_beat_order_index")
+        if not target_scene_beat_id and beat_order is not None:
+            target_scene_beat_id = beat_map.get(int(beat_order))
+
+        shot_obj = Shot(
+            scene_id=scene.id,
+            scene_beat_id=target_scene_beat_id,
+            shot_number=shot_data["shot_number"],
+            shot_type=shot_data.get("shot_type"),
+            camera_setup=shot_data.get("camera_setup"),
+            camera_movement=shot_data.get("camera_movement"),
+            framing=shot_data.get("framing"),
+            focus_subject=shot_data.get("focus_subject"),
+            duration_seconds=shot_data.get("duration_seconds"),
+            storyboard_frame_asset_id=shot_data.get("storyboard_frame_asset_id"),
+            lighting_notes=shot_data.get("lighting_notes"),
+            audio_notes=shot_data.get("audio_notes"),
+            status=shot_data.get("status", "planned"),
+            extra_metadata=shot_data.get("metadata"),
+        )
+        db.add(shot_obj)
+        db.flush()
+        created_shots.append(shot_obj)
+
+    db.commit()
+    db.refresh(scene)
+    for obj in created_beats + created_shots:
+        db.refresh(obj)
+
+    return {"scene": scene, "beats": created_beats, "shots": created_shots}
+
+
 def _to_slug_line(item: dict[str, Any]) -> str:
     time = (item.get("time") or "").upper()
     location = item.get("location") or "UNKNOWN"
