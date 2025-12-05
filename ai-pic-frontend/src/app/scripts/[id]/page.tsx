@@ -79,6 +79,9 @@ type StoryboardFrame = {
   generation_source?: string
   generation_method?: string
   generation_model?: string
+  beat_id?: number
+  shot_id?: number
+  shot_number?: string
   generated_at?: string
   updated_at?: string
 }
@@ -290,11 +293,14 @@ const SceneDetails = ({
   )
 }
 
-const FrameCard = ({ frame }: { frame: StoryboardFrame }) => (
+export const FrameCard = ({ frame }: { frame: StoryboardFrame }) => (
   <article className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-700">
     <header className="flex items-center justify-between">
       <div className="font-semibold text-gray-800">分镜 {frame.frame_number}</div>
       <div className="flex items-center gap-2 text-xs text-gray-500">
+        {frame.shot_number && <SceneTag label={`镜头号 ${frame.shot_number}`} />}
+        {frame.shot_id && <SceneTag label={`镜头ID ${frame.shot_id}`} />}
+        {frame.beat_id && <SceneTag label={`节拍 #${frame.beat_id}`} />}
         {frame.shot_type && <SceneTag label={frame.shot_type} />}
         {frame.generation_method && <SceneTag label={frame.generation_method} />}
       </div>
