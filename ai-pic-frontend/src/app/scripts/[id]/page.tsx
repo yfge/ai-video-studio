@@ -435,6 +435,16 @@ export default function ScriptDetailPage() {
       description: scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
     }))
   }, [structuredScenes])
+  const structuredSceneLookup = useMemo(() => {
+    const map = new Map<number, SceneNode>()
+    structuredScenes.forEach(scene => {
+      const num = toSceneNumber(scene.scene_number)
+      if (num !== undefined) {
+        map.set(num, scene)
+      }
+    })
+    return map
+  }, [structuredScenes])
   const scenes = structuredSceneViews.length > 0 ? structuredSceneViews : rawScenes
   const dialogues = useMemo(() => normalizeDialogues(script?.dialogues), [script?.dialogues])
   const directions = useMemo(() => normalizeDirections(script?.stage_directions), [script?.stage_directions])
@@ -720,6 +730,12 @@ export default function ScriptDetailPage() {
         {activeTab === 'storyboard' && (
           <Section title="分镜工作台" description="生成、查看与规划分镜镜头">
             <div className="space-y-6 p-6">
+              {structuredScenes.length > 0 && (
+                <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
+                  已载入结构化场景 {structuredScenes.length} 个，已用于分镜分组描述。镜头/节拍编辑需在「场景详情」中完成。
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <InfoCard label="帧总数" value={storyboard?.frames.length || 0} hint="当前分镜帧数量" />
                 <InfoCard label="版本" value={storyboardMeta?.version ?? '—'} hint="最新分镜版本号" />
@@ -887,6 +903,7 @@ export default function ScriptDetailPage() {
 
               {frameGroups.map(group => {
                 const sceneData = scenes.find(scene => toSceneNumber(scene.scene_number) === group.scene)
+                const structuredMeta = structuredSceneLookup.get(group.scene)
                 return (
                   <div key={`frame-group-${group.scene}`} className="rounded-xl border border-gray-100 bg-white shadow-sm">
                     <div className="flex flex-col gap-2 border-b border-gray-100 p-4 md:flex-row md:items-center md:justify-between">
@@ -894,10 +911,18 @@ export default function ScriptDetailPage() {
                         <div className="text-sm font-semibold text-gray-800">
                           {group.scene ? `场景 ${group.scene}` : '未分配场景'}
                         </div>
-                        <p className="mt-1 text-xs text-gray-500">{sceneData ? formatText(sceneData.description, '暂无描述', 140) : '—'}</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {structuredMeta?.slug_line
+                            ? structuredMeta.slug_line
+                            : sceneData
+                            ? formatText(sceneData.description, '暂无描述', 140)
+                            : '—'}
+                        </p>
                       </div>
                       <div className="flex gap-3 text-xs text-gray-500">
                         <span>帧数：{group.frames.length}</span>
+                        {structuredMeta?.beats?.length ? <span>节拍：{structuredMeta.beats.length}</span> : null}
+                        {structuredMeta?.shots?.length ? <span>镜头：{structuredMeta.shots.length}</span> : null}
                         {sceneData?.location && <span>地点：{sceneData.location}</span>}
                         {sceneData?.time && <span>时间：{sceneData.time}</span>}
                       </div>
