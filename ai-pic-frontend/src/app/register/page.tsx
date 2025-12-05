@@ -16,6 +16,7 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<{[key: string]: string}>({})
   const [serverError, setServerError] = useState<string | null>(null)
+  const [serverSuccess, setServerSuccess] = useState<string | null>(null)
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {}
@@ -60,6 +61,7 @@ export default function Register() {
         full_name: formData.username,
       })
       if (res.success) {
+        setServerSuccess('注册成功，即将跳转登录页')
         router.push('/login?registered=1')
       } else {
         setServerError(res.message || '注册失败，请稍后重试')
@@ -105,6 +107,11 @@ export default function Register() {
           {serverError && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
               {serverError}
+            </div>
+          )}
+          {serverSuccess && (
+            <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">
+              {serverSuccess}
             </div>
           )}
           <div className="space-y-4">

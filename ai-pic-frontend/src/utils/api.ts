@@ -1161,17 +1161,70 @@ class ApiClient {
       `/api/v1/story-structure/scripts/${scriptId}/scenes`
     )
   }
+  async updateScene(sceneId: number, payload: Partial<{
+    slug_line: string
+    scene_number: string
+    story_step_outline_id: number
+    environment_type: string
+    location: string
+    time_of_day: string
+    summary: string
+    page_length_eighths: number
+    primary_characters: Record<string, any>
+    conflict_notes: string
+    ai_prompt_snapshot: Record<string, any>
+    status: string
+    metadata: Record<string, any>
+  }>) {
+    return this.request(`/api/v1/story-structure/scenes/${sceneId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  }
+  async deleteScene(sceneId: number) {
+    return this.request(`/api/v1/story-structure/scenes/${sceneId}`, { method: 'DELETE' })
+  }
 
   async getNormalizedSceneBeats(sceneId: number) {
     return this.request<Array<{ id: number; order_index: number; beat_type?: string; beat_summary?: string }>>(
       `/api/v1/story-structure/scenes/${sceneId}/beats`
     )
   }
+  async createSceneBeat(sceneId: number, payload: { scene_id: number; order_index: number; beat_type?: string; beat_summary?: string; characters_involved?: any; dialogue_excerpt?: string; camera_notes?: string; duration_seconds?: number; metadata?: any }) {
+    return this.request(`/api/v1/story-structure/scenes/${sceneId}/beats`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+  async updateSceneBeat(beatId: number, payload: Partial<{ order_index: number; beat_type: string; beat_summary: string; characters_involved: any; dialogue_excerpt: string; camera_notes: string; duration_seconds: number; metadata: any }>) {
+    return this.request(`/api/v1/story-structure/scene-beats/${beatId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  }
+  async deleteSceneBeat(beatId: number) {
+    return this.request(`/api/v1/story-structure/scene-beats/${beatId}`, { method: 'DELETE' })
+  }
 
   async getNormalizedSceneShots(sceneId: number) {
     return this.request<Array<{ id: number; shot_number: string; shot_type?: string; camera_movement?: string }>>(
       `/api/v1/story-structure/scenes/${sceneId}/shots`
     )
+  }
+  async createSceneShot(sceneId: number, payload: { scene_id: number; shot_number: string; scene_beat_id?: number; shot_type?: string; camera_setup?: string; camera_movement?: string; framing?: string; focus_subject?: string; duration_seconds?: number; storyboard_frame_asset_id?: number; lighting_notes?: string; audio_notes?: string; status?: string; metadata?: any }) {
+    return this.request(`/api/v1/story-structure/scenes/${sceneId}/shots`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+  async updateSceneShot(shotId: number, payload: Partial<{ shot_number: string; scene_beat_id?: number; shot_type?: string; camera_setup?: string; camera_movement?: string; framing?: string; focus_subject?: string; duration_seconds?: number; storyboard_frame_asset_id?: number; lighting_notes?: string; audio_notes?: string; status?: string; metadata?: any }>) {
+    return this.request(`/api/v1/story-structure/shots/${shotId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  }
+  async deleteSceneShot(shotId: number) {
+    return this.request(`/api/v1/story-structure/shots/${shotId}`, { method: 'DELETE' })
   }
 
   async getStoryTreatments(storyId: number, opts?: { latestOnly?: boolean }) {
