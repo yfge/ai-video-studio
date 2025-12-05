@@ -18,7 +18,12 @@ router = APIRouter()
 
 @router.post("/register", response_model=UserResponse)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    """用户注册 - 默认创建未激活用户，需管理员审批"""
+    """用户注册。
+
+    - 首个用户（无任何用户存在时）自动晋升为激活的超级管理员，便于自助审批/运营。
+    - 之后的用户维持原有流程：未激活、未审批、未验证邮箱。
+    """
+    is_first_user = db.query(User).count() == 0
     # 检查用户名是否已存在
     if db.query(User).filter(User.username == user_data.username).first():
         raise HTTPException(
@@ -43,22 +48,23 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         full_name=user_data.full_name,
         language=user_data.language,
         timezone=user_data.timezone,
-        # 默认值：未激活、未审批、邮箱未验证
-        is_active=False,
-        is_approved=False,
-        email_verified=False,
-        is_admin=False,
-        is_superuser=False
+        # 首个用户自助晋升管理员，其余维持审批流程
+        is_active=is_first_user,
+        is_approved=is_first_user,
+        email_verified=is_first_user,
+        is_admin=is_first_user,
+        is_superuser=is_first_user
     )
     
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     
-    # 生成邮箱验证令牌
-    service = UserManagementService(db)
-    activation_token = service.generate_activation_token(db_user.id)
-    
+    if not is_first_user:
+        # 后续用户仍需邮箱验证/审批
+        service = UserManagementService(db)
+        service.generate_activation_token(db_user.id)
+
     return db_user
 
 @router.post("/login", response_model=Token)

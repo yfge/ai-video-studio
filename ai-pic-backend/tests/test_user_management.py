@@ -21,8 +21,12 @@ client = TestClient(app)
 class TestUserRegistration:
     """用户注册测试"""
     
-    def test_register_creates_inactive_user(self, db: Session):
+    def test_register_creates_inactive_user(self, db_session: Session):
         """测试注册创建未激活用户"""
+        # 首用户创建管理员，先清理
+        db_session.query(User).delete()
+        db_session.commit()
+
         user_data = {
             "username": "testuser",
             "email": "test@example.com",
@@ -35,6 +39,33 @@ class TestUserRegistration:
         
         data = response.json()
         assert data["username"] == "testuser"
+        # 首个用户自动晋升为管理员并激活
+        assert data["is_active"] is True
+        assert data["is_approved"] is True
+        assert data["email_verified"] is True
+        assert data["is_admin"] is True
+        assert data["is_superuser"] is True
+
+    def test_register_subsequent_user_is_pending(self, db_session: Session):
+        """测试第二个用户保持待审批状态"""
+        db_session.query(User).delete()
+        db_session.commit()
+
+        # 首个用户 -> 管理员
+        client.post("/api/v1/auth/register", json={
+            "username": "adminuser",
+            "email": "admin@example.com",
+            "password": "pass123",
+        })
+
+        # 第二个用户
+        response = client.post("/api/v1/auth/register", json={
+            "username": "user2",
+            "email": "user2@example.com",
+            "password": "pass123",
+        })
+        assert response.status_code == 200
+        data = response.json()
         assert data["is_active"] is False
         assert data["is_approved"] is False
         assert data["email_verified"] is False
