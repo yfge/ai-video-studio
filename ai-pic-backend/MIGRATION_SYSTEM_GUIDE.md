@@ -84,6 +84,14 @@ python manage.py migration status
 python manage.py migration validate
 ```
 
+### 回滚演练与记录
+- 建议每次版本发布前进行一次“升级→验证→回滚”演练，并保存报告/日志：
+  1. 备份：`python manage.py migration backup`
+  2. 升级：`python manage.py migration upgrade`（或 `alembic upgrade <rev>`）
+  3. 验证：`python manage.py migration validate`，并执行 `pytest tests/test_migrations.py -q`
+  4. 回滚：`python manage.py migration downgrade -r <prev_rev>` 验证可逆性
+  5. 记录：将命令输出和 `prototype_story_structure_migration.py --mode live --insert-probe --report-path <file>` 生成的报告存档（例如 `backups/migration_drills/<date>.json`），并在 agent_chats 备注本次演练结果
+
 ## 命令行接口
 
 ### Django风格管理命令
