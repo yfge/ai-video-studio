@@ -227,6 +227,12 @@ def db_session(test_db):
 
 
 @pytest.fixture
+def db(db_session):
+    """兼容旧用例的 db 别名"""
+    yield db_session
+
+
+@pytest.fixture
 def client(db_session):
     """测试客户端fixture"""
     # 确保存在默认活跃管理员用户，便于通过权限校验

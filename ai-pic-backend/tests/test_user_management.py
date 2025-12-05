@@ -5,23 +5,22 @@
 import pytest
 import json
 from datetime import datetime, timedelta
-from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from fastapi.testclient import TestClient
 from app.main import app
 from app.core.database import get_db
 from app.models.user import User, UserAuditLog
-from app.schemas.user import UserCreate
-from app.services.user_management_service import UserManagementService
 from app.core.security import get_password_hash, create_access_token
-from tests.conftest import override_get_db, get_test_db
+from tests.conftest import override_get_db
 
-
+# 全局测试客户端，使用测试数据库覆盖
+app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 class TestUserRegistration:
     """用户注册测试"""
     
-    def test_register_creates_inactive_user(self, db_session: Session):
+    def test_register_creates_inactive_user(self, db_session: Session, client):
         """测试注册创建未激活用户"""
         # 首用户创建管理员，先清理
         db_session.query(User).delete()
@@ -46,7 +45,7 @@ class TestUserRegistration:
         assert data["is_admin"] is True
         assert data["is_superuser"] is True
 
-    def test_register_subsequent_user_is_pending(self, db_session: Session):
+    def test_register_subsequent_user_is_pending(self, db_session: Session, client):
         """测试第二个用户保持待审批状态"""
         db_session.query(User).delete()
         db_session.commit()
@@ -72,8 +71,10 @@ class TestUserRegistration:
         assert data["is_admin"] is False
         assert data["is_superuser"] is False
     
-    def test_register_duplicate_username(self, db: Session):
+    def test_register_duplicate_username(self, db_session: Session, client):
         """测试重复用户名注册"""
+        db_session.query(User).delete()
+        db_session.commit()
         # 创建第一个用户
         user1_data = {
             "username": "duplicate",
@@ -93,8 +94,10 @@ class TestUserRegistration:
         assert response.status_code == 400
         assert "用户名已存在" in response.json()["detail"]
     
-    def test_register_duplicate_email(self, db: Session):
+    def test_register_duplicate_email(self, db_session: Session, client):
         """测试重复邮箱注册"""
+        db_session.query(User).delete()
+        db_session.commit()
         user1_data = {
             "username": "user1",
             "email": "duplicate@example.com",
@@ -651,6 +654,3 @@ class TestMiddleware:
         assert response.status_code == 403
         assert "管理员权限" in response.json()["detail"]
 
-
-# 运行测试时使用测试数据库
-app.dependency_overrides[get_db] = override_get_db

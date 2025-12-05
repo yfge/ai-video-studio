@@ -25,7 +25,7 @@ class TestDatabase:
             self.database_url,
             connect_args={
                 "check_same_thread": False,
-                "isolation_level": "AUTOCOMMIT"
+                "isolation_level": "DEFERRED"
             } if "sqlite" in self.database_url else {},
             poolclass=StaticPool if use_memory else None,
             echo=False  # 设置为True可以看到SQL语句
