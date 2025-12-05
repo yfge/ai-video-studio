@@ -151,6 +151,13 @@ export interface AIImageGenerationRequest {
   is_default: boolean;
 }
 
+export interface ImageToImageRequestPayload {
+  image_url: string;
+  prompt?: string;
+  model?: string;
+  prefer_provider?: string;
+}
+
 export interface AIModel {
   model_id: string;
   id?: string;
@@ -1442,8 +1449,8 @@ export const aiAPI = {
   getAvailableModels: apiClient.getAvailableModels.bind(apiClient),
 }
 
-// 虚拟IP图像管理API（使用统一的API客户端）
-export const virtualIPImageAPI = {
+  // 虚拟IP图像管理API（使用统一的API客户端）
+  export const virtualIPImageAPI = {
   // 获取虚拟IP图像列表
   getImages: (virtualIPId: number, category?: string) => 
     apiClient.getVirtualIPImages(virtualIPId, { category }),
@@ -1479,6 +1486,22 @@ export const virtualIPImageAPI = {
         model: request.model,
         additional_prompts: request.additional_prompts,
         is_default: request.is_default,
+      }),
+    });
+  },
+
+  // 图生图（基于已有图像变体）
+  generateVariantFromImage: async (
+    imageUrl: string,
+    payload: ImageToImageRequestPayload
+  ): Promise<ApiResponse<{ images: string[] }>> => {
+    return apiClient.makeRequest('/api/v1/ai/generate/image-to-image', {
+      method: 'POST',
+      body: JSON.stringify({
+        image_url: imageUrl,
+        prompt: payload.prompt,
+        model: payload.model,
+        prefer_provider: payload.prefer_provider,
       }),
     });
   },

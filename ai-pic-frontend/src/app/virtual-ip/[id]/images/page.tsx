@@ -263,6 +263,56 @@ export default function VirtualIPImagesPage() {
     ? images.filter(img => img.category === selectedCategory)
     : images;
 
+  const [variantTarget, setVariantTarget] = useState<VirtualIPImage | null>(null);
+  const [variantPrompt, setVariantPrompt] = useState('');
+  const [variantGenerating, setVariantGenerating] = useState(false);
+
+  const effectiveModelId = generateForm.model || recommendedModel || '';
+
+  const handleOpenVariant = (image: VirtualIPImage) => {
+    setVariantTarget(image);
+    setVariantPrompt('');
+  };
+
+  const handleGenerateVariant = async () => {
+    if (!variantTarget) return;
+    const baseUrl = variantTarget.oss_url || (variantTarget.file_path ? `${API_BASE}${variantTarget.file_path.startsWith('/') ? '' : '/'}${variantTarget.file_path}` : '');
+    if (!baseUrl) {
+      showAlert({ message: '无法获取原始图像URL，暂不支持图生图', variant: 'warning' });
+      return;
+    }
+    try {
+      setVariantGenerating(true);
+      const res = await virtualIPImageAPI.generateVariantFromImage(baseUrl, {
+        image_url: baseUrl,
+        prompt: variantPrompt || `为当前角色生成不同视角/姿态的图像，如背面照或全身照`,
+        model: effectiveModelId || undefined,
+      });
+      if (!res.success || !res.data || !Array.isArray(res.data.images) || res.data.images.length === 0) {
+        throw new Error(res.error || '图生图接口返回为空');
+      }
+      const url = res.data.images[0];
+      showAlert({
+        title: '图生图生成成功',
+        message: '已基于原图生成变体图像（背面/全身等），请在新标签中查看并按需保存/回传至资产库。',
+        variant: 'success',
+        onConfirm: () => {
+          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        },
+      });
+      setVariantTarget(null);
+      setVariantPrompt('');
+    } catch (error) {
+      console.error('图生图生成失败:', error);
+      showAlert({
+        message: `图生图生成失败: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'error',
+      });
+    } finally {
+      setVariantGenerating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -584,7 +634,7 @@ export default function VirtualIPImagesPage() {
                       {new Date(image.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  {image.tags.length > 0 && (
+                 {image.tags.length > 0 && (
                     <div className="mb-3">
                       <div className="flex flex-wrap gap-1">
                         {image.tags.slice(0, 3).map((tag, index) => (
@@ -611,6 +661,12 @@ export default function VirtualIPImagesPage() {
                       </button>
                     )}
                     <button
+                      onClick={() => handleOpenVariant(image)}
+                      className="flex-1 bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
+                    >
+                      图生图
+                    </button>
+                    <button
                       onClick={() => handleDeleteImage(image.id)}
                       className="flex-1 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
                     >
@@ -622,6 +678,48 @@ export default function VirtualIPImagesPage() {
             )
           })}
         </div>
+
+        {variantTarget && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+            <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">基于当前图像生成变体</h3>
+              <p className="text-xs text-gray-500 mb-3">
+                适合生成背面照、全身照、不同姿态等变体。默认会沿用上方选择的模型配置。
+              </p>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  变体提示词（可选）
+                </label>
+                <input
+                  type="text"
+                  value={variantPrompt}
+                  onChange={e => setVariantPrompt(e.target.value)}
+                  placeholder="例如：背面照，全身像，站立姿势，舞台灯光"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={() => {
+                    setVariantTarget(null);
+                    setVariantPrompt('');
+                  }}
+                  disabled={variantGenerating}
+                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleGenerateVariant}
+                  disabled={variantGenerating}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {variantGenerating ? '生成中...' : '生成变体'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {filteredImages.length === 0 && (
           <div className="text-center py-12">
