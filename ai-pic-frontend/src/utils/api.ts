@@ -1161,6 +1161,12 @@ class ApiClient {
       `/api/v1/story-structure/scripts/${scriptId}/scenes`
     )
   }
+  async createScene(scriptId: number, payload: { script_id: number; scene_number: string; slug_line: string; status?: string }) {
+    return this.request(`/api/v1/story-structure/scripts/${scriptId}/scenes`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
   async updateScene(sceneId: number, payload: Partial<{
     slug_line: string
     scene_number: string
@@ -1170,11 +1176,11 @@ class ApiClient {
     time_of_day: string
     summary: string
     page_length_eighths: number
-    primary_characters: Record<string, any>
+    primary_characters: Record<string, unknown>
     conflict_notes: string
-    ai_prompt_snapshot: Record<string, any>
+    ai_prompt_snapshot: Record<string, unknown>
     status: string
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
   }>) {
     return this.request(`/api/v1/story-structure/scenes/${sceneId}`, {
       method: 'PUT',
@@ -1190,13 +1196,38 @@ class ApiClient {
       `/api/v1/story-structure/scenes/${sceneId}/beats`
     )
   }
-  async createSceneBeat(sceneId: number, payload: { scene_id: number; order_index: number; beat_type?: string; beat_summary?: string; characters_involved?: any; dialogue_excerpt?: string; camera_notes?: string; duration_seconds?: number; metadata?: any }) {
+  async createSceneBeat(
+    sceneId: number,
+    payload: {
+      scene_id: number
+      order_index: number
+      beat_type?: string
+      beat_summary?: string
+      characters_involved?: Record<string, unknown>
+      dialogue_excerpt?: string
+      camera_notes?: string
+      duration_seconds?: number
+      metadata?: Record<string, unknown>
+    }
+  ) {
     return this.request(`/api/v1/story-structure/scenes/${sceneId}/beats`, {
       method: 'POST',
       body: JSON.stringify(payload),
     })
   }
-  async updateSceneBeat(beatId: number, payload: Partial<{ order_index: number; beat_type: string; beat_summary: string; characters_involved: any; dialogue_excerpt: string; camera_notes: string; duration_seconds: number; metadata: any }>) {
+  async updateSceneBeat(
+    beatId: number,
+    payload: Partial<{
+      order_index: number
+      beat_type: string
+      beat_summary: string
+      characters_involved: Record<string, unknown>
+      dialogue_excerpt: string
+      camera_notes: string
+      duration_seconds: number
+      metadata: Record<string, unknown>
+    }>
+  ) {
     return this.request(`/api/v1/story-structure/scene-beats/${beatId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
@@ -1211,13 +1242,48 @@ class ApiClient {
       `/api/v1/story-structure/scenes/${sceneId}/shots`
     )
   }
-  async createSceneShot(sceneId: number, payload: { scene_id: number; shot_number: string; scene_beat_id?: number; shot_type?: string; camera_setup?: string; camera_movement?: string; framing?: string; focus_subject?: string; duration_seconds?: number; storyboard_frame_asset_id?: number; lighting_notes?: string; audio_notes?: string; status?: string; metadata?: any }) {
+  async createSceneShot(
+    sceneId: number,
+    payload: {
+      scene_id: number
+      shot_number: string
+      scene_beat_id?: number
+      shot_type?: string
+      camera_setup?: string
+      camera_movement?: string
+      framing?: string
+      focus_subject?: string
+      duration_seconds?: number
+      storyboard_frame_asset_id?: number
+      lighting_notes?: string
+      audio_notes?: string
+      status?: string
+      metadata?: Record<string, unknown>
+    }
+  ) {
     return this.request(`/api/v1/story-structure/scenes/${sceneId}/shots`, {
       method: 'POST',
       body: JSON.stringify(payload),
     })
   }
-  async updateSceneShot(shotId: number, payload: Partial<{ shot_number: string; scene_beat_id?: number; shot_type?: string; camera_setup?: string; camera_movement?: string; framing?: string; focus_subject?: string; duration_seconds?: number; storyboard_frame_asset_id?: number; lighting_notes?: string; audio_notes?: string; status?: string; metadata?: any }>) {
+  async updateSceneShot(
+    shotId: number,
+    payload: Partial<{
+      shot_number: string
+      scene_beat_id?: number
+      shot_type?: string
+      camera_setup?: string
+      camera_movement?: string
+      framing?: string
+      focus_subject?: string
+      duration_seconds?: number
+      storyboard_frame_asset_id?: number
+      lighting_notes?: string
+      audio_notes?: string
+      status?: string
+      metadata?: Record<string, unknown>
+    }>
+  ) {
     return this.request(`/api/v1/story-structure/shots/${shotId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),

@@ -66,8 +66,9 @@ export default function Register() {
       } else {
         setServerError(res.message || '注册失败，请稍后重试')
       }
-    } catch (err: any) {
-      setServerError(err?.message || '注册失败，请稍后重试')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '注册失败，请稍后重试'
+      setServerError(message)
     } finally {
       setIsLoading(false)
     }

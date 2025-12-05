@@ -2,10 +2,12 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { scriptAPI } from '@/utils/api'
-import type { Script } from '@/utils/api'
+import { authAPI, scriptAPI } from '@/utils/api'
+import type { Script, User } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { ModelSelector } from '@/components/ModelSelector'
+import { SceneStructurePanel } from '@/components/SceneStructurePanel'
+import { isAdmin } from '@/utils/auth'
 
 type TabId = 'overview' | 'scenes' | 'storyboard'
 
@@ -347,6 +349,7 @@ export default function ScriptDetailPage() {
 
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [script, setScript] = useState<Script | null>(null)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [storyboard, setStoryboard] = useState<StoryboardData | null>(null)
@@ -402,6 +405,24 @@ export default function ScriptDetailPage() {
     loadInitialData()
   }, [loadInitialData])
 
+  useEffect(() => {
+    let mounted = true
+    const loadUser = async () => {
+      try {
+        const res = await authAPI.getCurrentUser()
+        if (mounted && res.success && res.data) {
+          setCurrentUser(res.data)
+        }
+      } catch (error) {
+        console.error('加载用户信息失败', error)
+      }
+    }
+    loadUser()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
   const scenes = useMemo(() => normalizeScenes(script?.scenes), [script?.scenes])
   const dialogues = useMemo(() => normalizeDialogues(script?.dialogues), [script?.dialogues])
   const directions = useMemo(() => normalizeDirections(script?.stage_directions), [script?.stage_directions])
@@ -412,6 +433,7 @@ export default function ScriptDetailPage() {
     if (!Array.isArray(rawScenes)) return []
     return rawScenes.filter(scene => scene && typeof scene === 'object') as StoryboardPlanScene[]
   }, [storyboard?.plan?.scenes])
+  const canEditStructure = useMemo(() => isAdmin(currentUser), [currentUser])
 
   const handleExport = async (format: string) => {
     try {
@@ -640,31 +662,34 @@ export default function ScriptDetailPage() {
 
         {activeTab === 'scenes' && (
           <Section title="场景详情" description="查看逐场景的对白、舞台指示与关键信息">
-            <div className="grid gap-4 border-t border-gray-100 p-6 lg:grid-cols-[260px,1fr]">
-              <div className="space-y-2">
-                {scenes.length === 0 && <p className="text-sm text-gray-500">暂无结构化场景信息。</p>}
-                {scenes.map((scene, idx) => {
-                  const sceneNumber = toSceneNumber(scene.scene_number) ?? idx + 1
-                  const isActive = focusedScene === sceneNumber
-                  return (
-                    <button
-                      key={`scene-nav-${sceneNumber}`}
-                      onClick={() => {
-                        setFocusedScene(sceneNumber)
-                        setActiveTab('scenes')
-                      }}
-                      className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
-                        isActive ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-blue-200'
-                      }`}
-                    >
-                      <div className="font-medium">场景 {sceneNumber}</div>
-                      <div className="text-xs text-gray-500">{formatText(scene.description, '暂无描述', 60)}</div>
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="rounded-lg border border-gray-100 bg-white p-4">
-                <SceneDetails scene={activeScene || scenes[0] || null} dialogues={dialogues} directions={directions} />
+            <div className="space-y-6 p-6">
+              <SceneStructurePanel scriptId={scriptId} canEdit={canEditStructure} />
+              <div className="grid gap-4 border-t border-gray-100 pt-4 lg:grid-cols-[260px,1fr]">
+                <div className="space-y-2">
+                  {scenes.length === 0 && <p className="text-sm text-gray-500">暂无结构化场景信息。</p>}
+                  {scenes.map((scene, idx) => {
+                    const sceneNumber = toSceneNumber(scene.scene_number) ?? idx + 1
+                    const isActive = focusedScene === sceneNumber
+                    return (
+                      <button
+                        key={`scene-nav-${sceneNumber}`}
+                        onClick={() => {
+                          setFocusedScene(sceneNumber)
+                          setActiveTab('scenes')
+                        }}
+                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
+                          isActive ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-blue-200'
+                        }`}
+                      >
+                        <div className="font-medium">场景 {sceneNumber}</div>
+                        <div className="text-xs text-gray-500">{formatText(scene.description, '暂无描述', 60)}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-white p-4">
+                  <SceneDetails scene={activeScene || scenes[0] || null} dialogues={dialogues} directions={directions} />
+                </div>
               </div>
             </div>
           </Section>
