@@ -65,15 +65,26 @@ class ModelInfo(BaseModel):
     pricing: Dict[str, Any] = {}
     capabilities: List[str] = []
 
+    model_config = {
+        "protected_namespaces": (),
+    }
+
 class ProviderConfig(BaseModel):
     """服务提供商配置"""
     name: str
-    api_key: str
+    api_key: Optional[str] = None
+    api_secret: Optional[str] = None
     base_url: Optional[str] = None
     timeout: int = 60
     max_retries: int = 3
     rate_limit: Dict[str, int] = {}
     enabled: bool = True
+    default_model: Optional[str] = None
+
+    model_config = {
+        "protected_namespaces": (),
+        "extra": "ignore",
+    }
 
 class BaseProvider(ABC):
     """AI服务提供商基类"""
