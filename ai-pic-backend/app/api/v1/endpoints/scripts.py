@@ -1774,6 +1774,10 @@ async def regenerate_script(
     
     # 使用原有的生成参数
     original_params = script.generation_params or {}
+    prefer_provider = None
+    model_id = original_params.get("model")
+    if isinstance(model_id, str) and ":" in model_id:
+        prefer_provider, model_id = model_id.split(":", 1)
     
     # 调用AI服务重新生成剧本
     result = await ai_service.generate_script(
@@ -1784,7 +1788,10 @@ async def regenerate_script(
         dialogue_style=original_params.get("dialogue_style", "natural"),
         scene_detail_level=original_params.get("scene_detail_level", "medium"),
         additional_requirements=f"重新生成第{episode.episode_number}集的剧本内容",
-        style_preferences=original_params.get("style_preferences")
+        style_preferences=original_params.get("style_preferences"),
+        model=model_id,
+        prefer_provider=prefer_provider,
+        temperature=original_params.get("temperature", 0.7),
     )
     
     if not result:
