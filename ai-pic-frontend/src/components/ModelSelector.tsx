@@ -58,7 +58,9 @@ export function ModelSelector({
     }
   }, [autoSelectDefault, defaultModel, onChange, value])
 
-  const visibleModels = filterModels ? models.filter(filterModels) : models
+  const filtered = filterModels ? models.filter(filterModels) : models
+  // 若过滤后为空，回退到原始列表，避免 UI 出现空下拉
+  const visibleModels = filtered.length > 0 ? filtered : models
 
   return (
     <div className={className}>
