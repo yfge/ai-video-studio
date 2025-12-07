@@ -349,7 +349,8 @@ async def generate_environment_images(
         except Exception:
             payload = {}
 
-    final_prompt = payload.get("prompt", prompt) or _compose_environment_prompt(env)
+    extra_prompt = payload.get("prompt", prompt)
+    final_prompt = _compose_environment_prompt(env, extra_prompt)
     selected_model = (payload.get("model") or model or "").strip() or None
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
@@ -420,7 +421,8 @@ async def generate_environment_image_variants(
         image_url = f"http://localhost:8000{path}"
 
     prefer_provider = _infer_provider_from_model(payload.get("model") or model)
-    prompt_value = payload.get("prompt", prompt) or _compose_environment_prompt(env, "Generate stylistically consistent variants based on this environment reference")
+    extra_prompt = payload.get("prompt", prompt)
+    prompt_value = _compose_environment_prompt(env, extra_prompt or "Generate stylistically consistent variants based on this environment reference")
     model_value = (payload.get("model") or model or "").strip() or None
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
