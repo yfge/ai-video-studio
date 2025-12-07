@@ -352,6 +352,19 @@ def _normalize_script_content(
             direction["scene_number"] = scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
         stage_directions.append(direction)
 
+    # 若未提供场景但对白/舞台指示包含 scene_number，则补充占位场景
+    if not scenes:
+        scene_numbers = {item.get("scene_number") for item in dialogues if isinstance(item, dict) and item.get("scene_number")}
+        scene_numbers |= {item.get("scene_number") for item in stage_directions if isinstance(item, dict) and item.get("scene_number")}
+        scene_numbers = {sn for sn in scene_numbers if sn is not None}
+        for idx, sn in enumerate(sorted(scene_numbers)):
+            scenes.append({
+                "scene_number": _safe_int(sn) or idx + 1,
+                "slug_line": f"Scene {sn}",
+                "summary": "",
+                "description": "",
+            })
+
     normalized["scenes"] = scenes
     normalized["dialogues"] = dialogues
     normalized["stage_directions"] = stage_directions
@@ -642,6 +655,12 @@ async def generate_script(
         language=request.language,
     )
 
+    ai_content = _normalize_script_content(
+        ai_content,
+        format_type=request.format_type,
+        language=request.language,
+    )
+
     # 提取剧本内容
     script_content = ai_content.get("content", "")
     scenes = ai_content.get("scenes", [])
@@ -670,7 +689,7 @@ async def generate_script(
         word_count=word_count,
         character_count=character_count,
         generation_prompt=result.get("prompt"),
-        ai_model=result["generation_method"],
+        ai_model=result.get("generation_method"),
         generation_params={
             "dialogue_style": request.dialogue_style,
             "scene_detail_level": request.scene_detail_level,
@@ -794,6 +813,12 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                     "stage_directions": extracted.get("stage_directions", []),
                     "metadata": extracted.get("metadata", {}),
                 }
+
+        ai_content = _normalize_script_content(
+            ai_content,
+            format_type=request_dict.get("format_type", "screenplay"),
+            language=request_dict.get("language", "zh-CN"),
+        )
 
         ai_content = _normalize_script_content(
             ai_content,
