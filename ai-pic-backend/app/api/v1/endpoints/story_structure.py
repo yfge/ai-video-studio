@@ -23,6 +23,9 @@ from app.schemas.story_structure import (
     ShotResponse,
     ShotCreate,
     ShotUpdate,
+    EnvironmentCreate,
+    EnvironmentResponse,
+    EnvironmentUpdate,
 )
 
 
@@ -117,6 +120,8 @@ async def create_scene_for_script(
     except ValueError as exc:
         if str(exc) == "script_not_found":
             raise HTTPException(status_code=404, detail="script not found")
+        if str(exc) == "environment_not_found":
+            raise HTTPException(status_code=404, detail="environment not found")
         raise
     return SceneResponse.model_validate(obj)
 
@@ -127,7 +132,12 @@ async def update_scene(
     body: SceneUpdate,
     db: Session = Depends(get_db),
 ):
-    obj = svc.update_scene(db, scene_id, body.model_dump(exclude_none=True))
+    try:
+        obj = svc.update_scene(db, scene_id, body.model_dump(exclude_none=True))
+    except ValueError as exc:
+        if str(exc) == "environment_not_found":
+            raise HTTPException(status_code=404, detail="environment not found")
+        raise
     if not obj:
         raise HTTPException(status_code=404, detail="scene not found")
     return SceneResponse.model_validate(obj)
@@ -188,6 +198,48 @@ async def delete_shot(shot_id: int, db: Session = Depends(get_db)):
     ok = svc.delete_shot(db, shot_id)
     if not ok:
         raise HTTPException(status_code=404, detail="shot not found")
+    return None
+
+
+# Environment management
+
+@router.get("/environments", response_model=List[EnvironmentResponse])
+async def list_environments(db: Session = Depends(get_db)):
+    items = svc.list_environments(db)
+    return [EnvironmentResponse.model_validate(it) for it in items]
+
+
+@router.get("/environments/{env_id}", response_model=EnvironmentResponse)
+async def get_environment(env_id: int, db: Session = Depends(get_db)):
+    env = svc.get_environment(db, env_id)
+    if not env:
+        raise HTTPException(status_code=404, detail="environment not found")
+    return EnvironmentResponse.model_validate(env)
+
+
+@router.post("/environments", response_model=EnvironmentResponse)
+async def create_environment(body: EnvironmentCreate, db: Session = Depends(get_db)):
+    env = svc.create_environment(db, body.model_dump(exclude_none=True))
+    return EnvironmentResponse.model_validate(env)
+
+
+@router.put("/environments/{env_id}", response_model=EnvironmentResponse)
+async def update_environment(
+    env_id: int,
+    body: EnvironmentUpdate,
+    db: Session = Depends(get_db),
+):
+    env = svc.update_environment(db, env_id, body.model_dump(exclude_none=True))
+    if not env:
+        raise HTTPException(status_code=404, detail="environment not found")
+    return EnvironmentResponse.model_validate(env)
+
+
+@router.delete("/environments/{env_id}", status_code=204)
+async def delete_environment(env_id: int, db: Session = Depends(get_db)):
+    ok = svc.delete_environment(db, env_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="environment not found")
     return None
 
 

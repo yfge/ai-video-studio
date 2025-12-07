@@ -124,6 +124,10 @@ def create_scene(db: Session, data: SceneCreate) -> Scene:
     script = db.query(Script).filter(Script.id == data.script_id).first()
     if not script:
         raise ValueError("script_not_found")
+    if data.environment_id:
+        env = db.query(Environment).filter(Environment.id == data.environment_id).first()
+        if not env:
+            raise ValueError("environment_not_found")
     obj = Scene(**data.model_dump())
     db.add(obj)
     db.commit()
@@ -198,6 +202,10 @@ def create_scene_with_children(
     shots: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Create scene plus optional beats/shots in one transaction."""
+    if scene_data.environment_id:
+        env = db.query(Environment).filter(Environment.id == scene_data.environment_id).first()
+        if not env:
+            raise ValueError("environment_not_found")
     scene = Scene(**scene_data.model_dump())
     db.add(scene)
     db.flush()
@@ -265,6 +273,10 @@ def update_scene(db: Session, scene_id: int, payload: Dict[str, Any]) -> Optiona
     obj = db.query(Scene).filter(Scene.id == scene_id).first()
     if not obj:
         return None
+    if "environment_id" in payload and payload["environment_id"]:
+        env = db.query(Environment).filter(Environment.id == payload["environment_id"]).first()
+        if not env:
+            raise ValueError("environment_not_found")
     for field, value in payload.items():
         if value is not None and hasattr(obj, field):
             setattr(obj, field, value)
@@ -347,6 +359,44 @@ def delete_shot(db: Session, shot_id: int) -> bool:
     if not obj:
         return False
     db.delete(obj)
+    db.commit()
+    return True
+
+
+# Environment CRUD
+
+def list_environments(db: Session) -> List[Environment]:
+    return db.query(Environment).order_by(Environment.id.asc()).all()
+
+
+def get_environment(db: Session, env_id: int) -> Optional[Environment]:
+    return db.query(Environment).filter(Environment.id == env_id).first()
+
+
+def create_environment(db: Session, payload: Dict[str, Any]) -> Environment:
+    env = Environment(**payload)
+    db.add(env)
+    db.commit()
+    db.refresh(env)
+    return env
+
+
+def update_environment(db: Session, env_id: int, payload: Dict[str, Any]) -> Optional[Environment]:
+    env = get_environment(db, env_id)
+    if not env:
+        return None
+    for k, v in payload.items():
+        setattr(env, k, v)
+    db.commit()
+    db.refresh(env)
+    return env
+
+
+def delete_environment(db: Session, env_id: int) -> bool:
+    env = get_environment(db, env_id)
+    if not env:
+        return False
+    db.delete(env)
     db.commit()
     return True
 

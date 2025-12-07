@@ -179,6 +179,7 @@ class Shot(Base):
     camera_movement = Column(String(50))
     framing = Column(Text)
     focus_subject = Column(String(255))
+    character_ids = Column(JSON, comment="参与角色（虚拟IP）ID列表")
     duration_seconds = Column(Numeric(6, 2))
     storyboard_frame_asset_id = Column(
         Integer, ForeignKey("images.id", ondelete="SET NULL"), nullable=True

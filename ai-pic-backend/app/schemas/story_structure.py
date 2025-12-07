@@ -178,6 +178,7 @@ class ShotCreate(BaseModel):
     camera_movement: Optional[str] = None
     framing: Optional[str] = None
     focus_subject: Optional[str] = None
+    character_ids: Optional[list[int]] = None
     duration_seconds: Optional[float] = Field(None, ge=0)
     storyboard_frame_asset_id: Optional[int] = None
     lighting_notes: Optional[str] = None
@@ -196,6 +197,7 @@ class ShotResponse(ORMModel):
     camera_movement: Optional[str]
     framing: Optional[str]
     focus_subject: Optional[str]
+    character_ids: Optional[list[int]]
     duration_seconds: Optional[float]
     storyboard_frame_asset_id: Optional[int]
     lighting_notes: Optional[str]
@@ -214,6 +216,7 @@ class ShotUpdate(BaseModel):
     camera_movement: Optional[str] = None
     framing: Optional[str] = None
     focus_subject: Optional[str] = None
+    character_ids: Optional[list[int]] = None
     duration_seconds: Optional[float] = Field(None, ge=0)
     storyboard_frame_asset_id: Optional[int] = None
     lighting_notes: Optional[str] = None
