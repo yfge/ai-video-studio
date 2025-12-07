@@ -669,7 +669,7 @@ async def generate_script(
         page_count=page_count,
         word_count=word_count,
         character_count=character_count,
-        generation_prompt=result["prompt"],
+        generation_prompt=result.get("prompt"),
         ai_model=result["generation_method"],
         generation_params={
             "dialogue_style": request.dialogue_style,
@@ -1827,8 +1827,8 @@ async def regenerate_script(
     script.scenes = ai_content.get("scenes", [])
     script.dialogues = ai_content.get("dialogues", [])
     script.stage_directions = ai_content.get("stage_directions", [])
-    script.generation_prompt = result["prompt"]
-    script.ai_model = result["generation_method"]
+    script.generation_prompt = result.get("prompt")
+    script.ai_model = result.get("generation_method")
     
     # 重新计算统计信息
     script.word_count = len(script_content.split()) if script_content else 0
