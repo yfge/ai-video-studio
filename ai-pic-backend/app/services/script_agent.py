@@ -171,4 +171,20 @@ class ScriptLangGraphAgent:
         graph.set_entry_point("scene_plan")
 
         app = graph.compile()
-        return await app.ainvoke({})
+        result = await app.ainvoke({})
+
+        # Guard: if LangGraph failed to produce structured scenes + dialogues, treat as failure
+        content = result.get("content") if isinstance(result, dict) else None
+        if not content or not isinstance(content, dict):
+            self.logger.warning("LangGraph script agent returned empty content")
+            return None
+
+        scenes = content.get("scenes") or []
+        dialogues = content.get("dialogues") or []
+        if not scenes or not dialogues:
+            self.logger.warning(
+                "LangGraph script agent missing scenes/dialogues, aborting to allow fallback",
+            )
+            return None
+
+        return result
