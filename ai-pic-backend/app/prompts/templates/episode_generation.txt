@@ -63,6 +63,7 @@
 3. **复杂度适配**: 按照"{{ plot_complexity }}"复杂度设计情节
 4. **角色发展**: 每个角色都有清晰的成长轨迹
 5. **冲突升级**: 冲突逐步升级，在适当时机达到高潮
+6. **场景拆分**: 返回每集的 scenes 数组，至少包含 scene_number/slug_line/location/time_of_day/summary
 
 ## 输出格式
 请以JSON格式返回，包含episodes数组，每集包含：
@@ -77,6 +78,7 @@
 8. **emotional_tone**: 情感基调
 9. **key_moments**: 关键时刻描述
 10. **cliffhanger**: 悬念设置（如果适用）
+11. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary
 
 ## 情节发展建议
 - 第1集：角色介绍和背景设定，建立世界观
@@ -111,7 +113,16 @@
             "scene_count": 5,
             "emotional_tone": "...",
             "key_moments": ["..."],
-            "cliffhanger": "..."
+            "cliffhanger": "...",
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "slug_line": "INT. 办公室 - 日",
+                    "location": "公司总部办公室",
+                    "time_of_day": "day",
+                    "summary": "场景概要，交代人物/冲突铺垫"
+                }
+            ]
         }
     ]
 }

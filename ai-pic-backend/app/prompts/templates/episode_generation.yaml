@@ -71,6 +71,7 @@ expected_fields:
     - character_arcs
     - conflicts
     - scene_count
+    - scenes
     - emotional_tone
     - key_moments
     - cliffhanger
