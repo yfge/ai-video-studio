@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -309,6 +309,7 @@ async def delete_environment_image(env_id: int, image_url: str, db: Session = De
 @router.post("/environments/{env_id}/images/generate")
 async def generate_environment_images(
     env_id: int,
+    request: Request,
     prompt: Optional[str] = Query(None, description="生成提示词，不填则用环境描述/名称"),
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
@@ -321,14 +322,30 @@ async def generate_environment_images(
     if not ai_service.ai_manager:
         raise HTTPException(status_code=503, detail="AI管理器未初始化，无法生成环境图")
 
-    final_prompt = prompt or env.description or f"Environment: {env.name}"
-    prefer_provider = _infer_provider_from_model(model)
+    payload: Dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+
+    final_prompt = payload.get("prompt", prompt) or env.description or f"Environment: {env.name}"
+    selected_model = (payload.get("model") or model or "").strip() or None
+    count_value = payload.get("count", count)
+    size_value = payload.get("size", size)
+    try:
+        count_int = int(count_value) if count_value is not None else 1
+    except (TypeError, ValueError):
+        count_int = 1
+    count_int = max(1, min(count_int, 4))
+
+    prefer_provider = _infer_provider_from_model(selected_model)
     try:
         response = await ai_service.ai_manager.generate_image(
             prompt=final_prompt,
-            model=model,
-            n=count,
-            size=size if prefer_provider == "volcengine" else None,
+            model=selected_model,
+            n=count_int,
+            size=size_value if prefer_provider == "volcengine" else None,
             prefer_provider=prefer_provider,
         )
     except Exception as exc:  # pragma: no cover - runtime guard
@@ -350,6 +367,7 @@ async def generate_environment_images(
 @router.post("/environments/{env_id}/images/variants")
 async def generate_environment_image_variants(
     env_id: int,
+    request: Request,
     base_image: Optional[str] = Query(None, description="基准图 URL 或相对路径"),
     prompt: Optional[str] = Query(None, description="变体提示词"),
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
@@ -363,7 +381,14 @@ async def generate_environment_image_variants(
     if not ai_service.ai_manager:
         raise HTTPException(status_code=503, detail="AI管理器未初始化，无法生成变体")
 
-    base = base_image or (env.reference_images[0] if env.reference_images else None)
+    payload: Dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+
+    base = payload.get("base_image", base_image) or (env.reference_images[0] if env.reference_images else None)
     if not base:
         raise HTTPException(status_code=400, detail="缺少基准图像")
     if isinstance(base, str) and base.startswith("http"):
@@ -374,15 +399,25 @@ async def generate_environment_image_variants(
             path = "/" + path
         image_url = f"http://localhost:8000{path}"
 
-    prefer_provider = _infer_provider_from_model(model)
+    prefer_provider = _infer_provider_from_model(payload.get("model") or model)
+    prompt_value = payload.get("prompt", prompt) or "基于当前环境图生成风格一致的变体"
+    model_value = (payload.get("model") or model or "").strip() or None
+    count_value = payload.get("count", count)
+    size_value = payload.get("size", size)
+    try:
+        count_int = int(count_value) if count_value is not None else 1
+    except (TypeError, ValueError):
+        count_int = 1
+    count_int = max(1, min(count_int, 4))
+
     try:
         response = await ai_service.ai_manager.image_to_image(
             image_url=image_url,
-            prompt=prompt or "基于当前环境图生成风格一致的变体",
-            model=model,
+            prompt=prompt_value,
+            model=model_value,
             prefer_provider=prefer_provider,
-            count=count,
-            size=size,
+            count=count_int,
+            size=size_value,
         )
     except Exception as exc:  # pragma: no cover - runtime guard
         raise HTTPException(status_code=500, detail=f"环境图生图调用失败: {exc}") from exc
