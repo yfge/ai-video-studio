@@ -44,6 +44,7 @@ export default function Navigation({ title = 'AI短剧制作工作流平台' }: 
   const navItems = [
     { href: '/', label: '首页', icon: '🏠' },
     { href: '/virtual-ip', label: '虚拟IP', icon: '🎭' },
+    { href: '/environments', label: '环境资产', icon: '🌆' },
     { href: '/stories', label: '故事创作', icon: '📚' },
     { href: '/tasks', label: '任务管理', icon: '✅' },
   ]

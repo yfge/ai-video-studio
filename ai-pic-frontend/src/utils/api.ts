@@ -1499,6 +1499,10 @@ export const storyStructureAPI = {
   getStoryTreatments: apiClient.getStoryTreatments.bind(apiClient),
   createStoryTreatment: apiClient.createStoryTreatment.bind(apiClient),
   seedScenesFromJson: apiClient.seedScenesFromJson.bind(apiClient),
+  listEnvironments: apiClient.listEnvironments.bind(apiClient),
+  createEnvironment: apiClient.createEnvironment.bind(apiClient),
+  updateEnvironment: apiClient.updateEnvironment.bind(apiClient),
+  deleteEnvironment: apiClient.deleteEnvironment.bind(apiClient),
 }
 
 export const aiAPI = {
