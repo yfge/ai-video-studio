@@ -360,8 +360,7 @@ async def regenerate_episode(
         episodes_data = ai_content.get("episodes", [])
         if episodes_data:
             episode_data = episodes_data[0]
-            scenes = episode_data.get("scenes") or []
-            scene_count = episode_data.get("scene_count") or (len(scenes) if isinstance(scenes, list) else None)
+            scenes, scene_count = _ensure_scenes(episode_data)
 
             # 更新剧集内容
             episode.summary = episode_data.get("summary")
@@ -458,8 +457,7 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             exists = db.query(Episode).filter(Episode.story_id == story.id, Episode.episode_number == episode_number).first()
             if exists:
                 continue
-            scenes = ep_data.get("scenes") or []
-            scene_count = ep_data.get("scene_count") or (len(scenes) if isinstance(scenes, list) else None)
+            scenes, scene_count = _ensure_scenes(ep_data)
             known_keys = {"episode_number", "title", "summary", "plot_points", "character_arcs", "conflicts", "scene_count"}
             extra_meta = {k: v for k, v in ep_data.items() if k not in known_keys}
             if scenes and "scenes" not in extra_meta:
@@ -521,3 +519,40 @@ async def generate_episodes_async(
 
     background_tasks.add_task(_process_episode_generation_task, t.id, request.dict(), current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
+def _ensure_scenes(ep_data: dict) -> tuple[list[dict], int | None]:
+    """确保剧集数据包含 scenes，若缺失则基于 plot_points 生成占位."""
+    scenes = ep_data.get("scenes") or []
+    if not isinstance(scenes, list):
+        scenes = []
+    if not scenes:
+        plot_points = ep_data.get("plot_points") or []
+        if isinstance(plot_points, list) and plot_points:
+            for idx, pp in enumerate(plot_points, start=1):
+                desc = None
+                timing = None
+                if isinstance(pp, dict):
+                    desc = pp.get("description")
+                    timing = pp.get("timing")
+                scenes.append(
+                    {
+                        "scene_number": idx,
+                        "slug_line": f"SCENE {idx} - {timing or 'beat'}",
+                        "summary": desc or "本场景推进剧情。",
+                        "time_of_day": "unspecified",
+                        "location": "unspecified",
+                    }
+                )
+        else:
+            scenes.append(
+                {
+                    "scene_number": 1,
+                    "slug_line": "SCENE 1 - beat",
+                    "summary": ep_data.get("summary") or "本集开篇场景。",
+                    "time_of_day": "unspecified",
+                    "location": "unspecified",
+                }
+            )
+    scene_count = ep_data.get("scene_count")
+    if not scene_count and scenes:
+        scene_count = len(scenes)
+    return scenes, scene_count
