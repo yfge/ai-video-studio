@@ -33,7 +33,8 @@ export default function VirtualIPImagesPage() {
     category: 'portrait',
     model: '',
     additional_prompts: '',
-    is_default: false
+    is_default: false,
+    count: 1,
   });
 
   const fetchModels = useCallback(() => virtualIPImageAPI.getAvailableModels(virtualIPId), [virtualIPId]);
@@ -45,6 +46,27 @@ export default function VirtualIPImagesPage() {
   const selectedModel = availableModels.find(
     model => model.model_id === (generateForm.model || recommendedModel)
   );
+
+  // 根据模型决定可用分辨率选项（仅对官方已知模型开放）
+  const resolutionOptions =
+    selectedModel?.provider === 'openai'
+      ? selectedModel.model_id === 'dall-e-3'
+        ? [
+            { value: '1024x1024', label: '1024 × 1024' },
+            { value: '1024x1792', label: '1024 × 1792（竖版）' },
+            { value: '1792x1024', label: '1792 × 1024（横版）' },
+          ]
+        : selectedModel.model_id === 'dall-e-2'
+        ? [
+            { value: '256x256', label: '256 × 256' },
+            { value: '512x512', label: '512 × 512' },
+            { value: '1024x1024', label: '1024 × 1024' },
+          ]
+        : []
+      : selectedModel?.provider === 'volcengine' &&
+        selectedModel.model_id === 'seedream-4.5'
+      ? [{ value: '2K', label: '2K（Seedream 推荐）' }]
+      : [];
 
   // 上传表单状态
   const [uploadForm, setUploadForm] = useState({
@@ -113,7 +135,9 @@ export default function VirtualIPImagesPage() {
           category: 'portrait',
           model: recommendedModel || '',
           additional_prompts: '',
-          is_default: false
+          is_default: false,
+          count: 1,
+          size: undefined,
         });
         showAlert({ message: 'AI图像生成成功！', variant: 'success' });
       } else {
@@ -265,43 +289,61 @@ export default function VirtualIPImagesPage() {
 
   const [variantTarget, setVariantTarget] = useState<VirtualIPImage | null>(null);
   const [variantPrompt, setVariantPrompt] = useState('');
+  const [variantModelId, setVariantModelId] = useState('');
+  const [variantCount, setVariantCount] = useState(1);
   const [variantGenerating, setVariantGenerating] = useState(false);
-
-  const effectiveModelId = generateForm.model || recommendedModel || '';
 
   const handleOpenVariant = (image: VirtualIPImage) => {
     setVariantTarget(image);
-    setVariantPrompt('');
+    const defaultVariantPrompt =
+      '为当前角色生成不同视角/姿态的图像，如背面照或全身照';
+    setVariantPrompt(defaultVariantPrompt);
+    setVariantCount(1);
+    const currentModelId =
+      (image.ai_model as string | undefined) ||
+      generateForm.model ||
+      recommendedModel ||
+      '';
+    setVariantModelId(currentModelId);
   };
 
   const handleGenerateVariant = async () => {
     if (!variantTarget) return;
-    const baseUrl = variantTarget.oss_url || (variantTarget.file_path ? `${API_BASE}${variantTarget.file_path.startsWith('/') ? '' : '/'}${variantTarget.file_path}` : '');
-    if (!baseUrl) {
-      showAlert({ message: '无法获取原始图像URL，暂不支持图生图', variant: 'warning' });
-      return;
-    }
+    const fallbackModelId =
+      (variantTarget.ai_model as string | undefined) ||
+      generateForm.model ||
+      recommendedModel ||
+      '';
+    const modelToUse = variantModelId || fallbackModelId || undefined;
     try {
       setVariantGenerating(true);
-      const res = await virtualIPImageAPI.generateVariantFromImage(baseUrl, {
-        image_url: baseUrl,
-        prompt: variantPrompt || `为当前角色生成不同视角/姿态的图像，如背面照或全身照`,
-        model: effectiveModelId || undefined,
-      });
-      if (!res.success || !res.data || !Array.isArray(res.data.images) || res.data.images.length === 0) {
-        throw new Error(res.error || '图生图接口返回为空');
+      const res = await virtualIPImageAPI.generateVariantAndSave(
+        virtualIPId,
+        variantTarget.id,
+        {
+          prompt:
+            variantPrompt ||
+            '为当前角色生成不同视角/姿态的图像，如背面照或全身照',
+          model: modelToUse,
+          count: variantCount,
+          size: generateForm.size,
+        }
+      );
+      if (!res.success || !res.data) {
+        throw new Error(res.error || '图生图生成失败');
       }
-      const url = res.data.images[0];
+      const createdImages = Array.isArray(res.data) ? res.data : [res.data];
+      setImages(prev => [...createdImages, ...prev]);
       showAlert({
         title: '图生图生成成功',
-        message: '已基于原图生成变体图像（背面/全身等），请在新标签中查看并按需保存/回传至资产库。',
+        message:
+          '已基于原图生成变体图像，并保存到当前虚拟 IP 资产列表中。',
         variant: 'success',
-        onConfirm: () => {
-          if (url) window.open(url, '_blank', 'noopener,noreferrer');
-        },
       });
       setVariantTarget(null);
       setVariantPrompt('');
+      setVariantModelId('');
+      setVariantCount(1);
     } catch (error) {
       console.error('图生图生成失败:', error);
       showAlert({
@@ -437,6 +479,63 @@ export default function VirtualIPImagesPage() {
                   <option value="action">动作</option>
                   <option value="emotion">表情</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  生成数量
+                </label>
+                <select
+                  value={generateForm.count ?? 1}
+                  onChange={e =>
+                    setGenerateForm(prev => ({
+                      ...prev,
+                      count: Number(e.target.value) || 1,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={1}>1 张</option>
+                  <option value={2}>2 张</option>
+                  <option value={3}>3 张</option>
+                  <option value={4}>4 张</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  部分模型会为每次调用返回多张候选图像。
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  分辨率（部分模型可选）
+                </label>
+                <select
+                  value={generateForm.size ?? ''}
+                  onChange={e =>
+                    setGenerateForm(prev => ({
+                      ...prev,
+                      size: e.target.value || undefined,
+                    }))
+                  }
+                  disabled={!resolutionOptions.length}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  {resolutionOptions.length === 0 ? (
+                    <option value="">当前模型使用默认分辨率</option>
+                  ) : (
+                    <>
+                      <option value="">自动（模型默认）</option>
+                      {resolutionOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
+                {resolutionOptions.length > 0 && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    选项来源于对应模型的官方文档（OpenAI / 火山方舟）。
+                  </p>
+                )}
               </div>
               <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -684,8 +783,42 @@ export default function VirtualIPImagesPage() {
             <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">基于当前图像生成变体</h3>
               <p className="text-xs text-gray-500 mb-3">
-                适合生成背面照、全身照、不同姿态等变体。默认会沿用上方选择的模型配置。
+                适合生成背面照、全身照、不同姿态等变体。默认会优先使用该图对应模型（如 Seedream 4.5），也可以在下方切换其他模型。
               </p>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  使用模型
+                </label>
+                <select
+                  value={variantModelId}
+                  onChange={e => setVariantModelId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="">
+                    自动（该图模型 / 当前推荐）
+                  </option>
+                  {availableModels.map(model => (
+                    <option key={model.model_id} value={model.model_id}>
+                      {(model.name || model.id || model.model_id) ?? model.model_id} —{' '}
+                      {model.provider}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  生成数量
+                </label>
+                <select
+                  value={variantCount}
+                  onChange={e => setVariantCount(Number(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value={1}>1 张</option>
+                  <option value={2}>2 张</option>
+                  <option value={3}>3 张</option>
+                </select>
+              </div>
               <div className="mb-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   变体提示词（可选）

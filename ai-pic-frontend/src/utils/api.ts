@@ -120,8 +120,13 @@ export interface VirtualIPImage {
   file_path: string;
   oss_url?: string;
   category: string;
+  subcategory?: string | null;
   tags: string[];
+  prompt?: string;
+  ai_model?: string;
+  generation_params?: Record<string, unknown>;
   is_default: boolean;
+  is_public?: boolean;
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -149,6 +154,8 @@ export interface AIImageGenerationRequest {
   model: string;
   additional_prompts: string;
   is_default: boolean;
+  count?: number;
+  size?: string;
 }
 
 export interface ImageToImageRequestPayload {
@@ -156,6 +163,8 @@ export interface ImageToImageRequestPayload {
   prompt?: string;
   model?: string;
   prefer_provider?: string;
+  count?: number;
+  size?: string;
 }
 
 export interface AIModel {
@@ -1486,11 +1495,13 @@ export const aiAPI = {
         model: request.model,
         additional_prompts: request.additional_prompts,
         is_default: request.is_default,
+        count: request.count ?? 1,
+        size: request.size,
       }),
     });
   },
 
-  // 图生图（基于已有图像变体）
+  // 图生图（通用接口：仅返回 URL，不入库）
   generateVariantFromImage: async (
     imageUrl: string,
     payload: ImageToImageRequestPayload
@@ -1502,6 +1513,24 @@ export const aiAPI = {
         prompt: payload.prompt,
         model: payload.model,
         prefer_provider: payload.prefer_provider,
+        count: payload.count ?? 1,
+      }),
+    });
+  },
+
+  // 图生图（基于虚拟 IP 资产并保存变体记录）
+  generateVariantAndSave: async (
+    virtualIPId: number,
+    imageId: number,
+    payload: Pick<ImageToImageRequestPayload, 'prompt' | 'model' | 'count' | 'size'>
+  ): Promise<ApiResponse<VirtualIPImage | VirtualIPImage[]>> => {
+    return apiClient.makeRequest(`/api/v1/virtual-ips/${virtualIPId}/images/${imageId}/variants`, {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt: payload.prompt,
+        model: payload.model,
+        count: payload.count ?? 1,
+        size: payload.size,
       }),
     });
   },

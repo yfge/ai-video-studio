@@ -34,6 +34,7 @@ class ImageGenerationRequest(BaseModel):
     width: int = Field(1024, description="图像宽度")
     height: int = Field(1024, description="图像高度")
     style: str = Field("realistic", description="图像风格")
+    count: int = Field(1, description="生成图像数量")
 
 
 class ImageToImageRequest(BaseModel):
@@ -42,6 +43,7 @@ class ImageToImageRequest(BaseModel):
     prompt: Optional[str] = Field(None, description="可选的引导提示词")
     model: Optional[str] = Field(None, description="指定模型（如不指定则由服务自动选择）")
     prefer_provider: Optional[str] = Field(None, description="首选提供商")
+    count: int = Field(1, description="生成图像数量")
 
 
 class VideoGenerationRequest(BaseModel):
@@ -120,7 +122,8 @@ async def generate_image(
             prefer_provider=request.prefer_provider,
             width=request.width,
             height=request.height,
-            style=request.style
+            style=request.style,
+            n=request.count,
         )
         
         if response.success:
@@ -153,6 +156,7 @@ async def generate_image_to_image(
             prompt=request.prompt,
             model=request.model,
             prefer_provider=request.prefer_provider,
+            count=request.count,
         )
 
         if response.success:
@@ -324,47 +328,32 @@ async def get_provider_models(
 @router.get("/models/available")
 async def get_available_models(
     model_type: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user)
+    source: str = "static",
+    current_user: User = Depends(get_current_active_user),
 ):
     """聚合返回所有提供商的可用模型列表
 
     Query:
-    - model_type: 过滤模型类型，例如 'text' 或 'text_generation'、'image' 或 'text_to_image'
+    - model_type: 过滤模型类型，例如 'text' / 'image' / 'video'
+    - source: 'static' | 'remote' | 'auto'（默认 auto: 优先官方接口，失败回退静态）
     """
     try:
-        status = ai_service.get_ai_providers_status()
-
-        # 规范化类型别名
-        aliases = {
-            'text': 'text_generation',
-            'image': 'text_to_image',
-            'video': 'text_to_video',
-            'tts': 'text_to_speech',
-        }
-        target_type = None
-        if model_type:
-            target_type = aliases.get(model_type, model_type)
-
-        models: List[Dict[str, Any]] = []
-        for provider, info in status.items():
-            for m in info.get('available_models', []):
-                m_type = m.get('type')
-                if target_type and m_type != target_type:
-                    continue
-                models.append({
-                    'model_id': f"{provider}:{m.get('id')}",
-                    'id': m.get('id'),
-                    'name': m.get('name'),
-                    'provider': provider,
-                    'type': m_type,
-                    'capabilities': m.get('capabilities', []),
-                })
-
-        # 简单排序：按provider、name
-        models.sort(key=lambda x: (x['provider'], x['name'] or ''))
-
-        return { 'success': True, 'data': { 'models': models, 'count': len(models) } }
-    except Exception as e:
+        # 通过统一的 AIService/AIServiceManager 列出模型
+        models = await ai_service.list_models(model_type_alias=model_type, source=source)
+        # 添加前端期望的 model_id 字段（provider:model）
+        enriched = [
+            {
+                "model_id": f"{m['provider']}:{m['id']}",
+                "id": m["id"],
+                "name": m.get("name"),
+                "provider": m["provider"],
+                "type": m.get("type"),
+                "capabilities": m.get("capabilities", []),
+            }
+            for m in models
+        ]
+        return {"success": True, "data": {"models": enriched, "count": len(enriched)}}
+    except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"获取聚合模型列表失败: {str(e)}")
 
 

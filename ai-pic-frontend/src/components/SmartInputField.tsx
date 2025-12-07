@@ -39,9 +39,21 @@ export default function SmartInputField({
 
     setIsGenerating(true)
     try {
+      const basicParts: string[] = []
+      if (contextData.basicInfo) {
+        basicParts.push(contextData.basicInfo)
+      }
+      if (contextData.description) {
+        basicParts.push(`角色描述：${contextData.description}`)
+      }
+      if (value) {
+        basicParts.push(`${label}：${value}`)
+      }
+      const basicInfo = basicParts.join('\n').trim() || undefined
+
       const response = await virtualIPAPI.generateAIContent({
         name: contextData.name,
-        basic_info: contextData.basicInfo || contextData.description,
+        basic_info: basicInfo,
         style_preference: '现代风格',
         image_category: 'portrait'
       })

@@ -199,6 +199,21 @@ class BaseProvider(ABC):
             if model.model_id == model_id:
                 return model
         return None
+
+    async def fetch_remote_models(
+        self,
+        model_type: Optional[AIModelType] = None,
+    ) -> List[ModelInfo]:
+        """
+        默认的远端模型拉取实现。
+
+        大多数提供商没有单独的「列出模型」API，默认直接返回静态 available_models，
+        调用方可以根据 model_type 进行过滤。
+        """
+        models = self.available_models
+        if model_type:
+            models = [m for m in models if m.model_type == model_type]
+        return models
     
     def supports_model_type(self, model_type: AIModelType) -> bool:
         """检查是否支持指定的模型类型"""

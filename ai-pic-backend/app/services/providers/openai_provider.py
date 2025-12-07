@@ -72,6 +72,34 @@ class OpenAIProvider(BaseProvider):
                 capabilities=["text_to_image", "variations", "inpainting", "image_to_image"]
             )
         ]
+
+    async def fetch_remote_models(
+        self,
+        model_type: Optional[AIModelType] = None,
+    ) -> List[ModelInfo]:
+        """
+        使用 OpenAI 官方 /v1/models 列表作为信息源，结合当前维护的白名单。
+
+        - 先调用 /v1/models 拿到所有模型 id
+        - 再与 available_models 中维护的子集交集，保证只暴露经过我们验证过的模型
+        """
+        try:
+            client = await self.get_client()
+            resp = await client.get(f"{self.base_url}/models")
+            resp.raise_for_status()
+            data = resp.json()
+            server_ids = {m.get("id") for m in data.get("data", []) if isinstance(m, dict) and m.get("id")}
+
+            static_models = self.available_models
+            if model_type:
+                static_models = [m for m in static_models if m.model_type == model_type]
+
+            # 只返回既在官方列表里、又在我们白名单里的模型
+            filtered = [m for m in static_models if m.model_id in server_ids]
+            return filtered or static_models
+        except Exception:
+            # 出错时退回到静态列表
+            return await super().fetch_remote_models(model_type=model_type)
     
     async def _initialize_client(self):
         """初始化HTTP客户端"""

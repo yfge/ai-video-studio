@@ -14,10 +14,17 @@ from app.schemas.generation import (
     StoryboardPlanModel, StoryboardPlanScene
 )
 from app.services.storyboard_reasoner import StoryboardReActReasoner, LANGGRAPH_AVAILABLE
+
 # 尝试导入AI服务管理器，如果失败则使用None
 try:
-    from .ai_service_manager import AIServiceManager, AIServiceConfig, ProviderWeight, ProviderPriority
-    from .providers.base import ProviderConfig
+    from .ai_service_manager import (
+        AIServiceManager,
+        AIServiceConfig,
+        ProviderWeight,
+        ProviderPriority,
+    )
+    from .providers.base import ProviderConfig, AIModelType
+
     AI_MANAGER_AVAILABLE = True
 except ImportError as e:
     logger = get_logger()
@@ -274,6 +281,23 @@ class AIService:
                     priority=ProviderPriority.MEDIUM,
                     enabled=True,
                     max_requests_per_minute=50
+                )
+
+            # Google Gemini / Vertex AI 文本模型
+            if settings.GOOGLE_API_KEY:
+                providers["google"] = ProviderConfig(
+                    name="google",
+                    api_key=settings.GOOGLE_API_KEY,
+                    base_url="https://aiplatform.googleapis.com",
+                    timeout=120.0,
+                    default_model=settings.GOOGLE_DEFAULT_MODEL,
+                )
+                provider_weights["google"] = ProviderWeight(
+                    provider_name="google",
+                    weight=0.8,
+                    priority=ProviderPriority.MEDIUM,
+                    enabled=True,
+                    max_requests_per_minute=60,
                 )
             
             # 如果没有配置任何provider，返回None
@@ -1139,7 +1163,9 @@ class AIService:
         category: str = "portrait",
         model: str = "dalle-3",
         additional_prompts: List[str] = None,
-        background_story: str = None
+        background_story: str = None,
+        count: int = 1,
+        size: str | None = None,
     ) -> Optional[Dict[str, Any]]:
         """为虚拟IP生成图像"""
         
@@ -1181,18 +1207,32 @@ class AIService:
                 provider_used = "keling"
                 generation_method = "keling_image"
             elif normalized_model.startswith("dall-e") or normalized_model.startswith("dalle"):
-                # 使用OpenAI DALL-E生成图像
-                image_url = await self._generate_with_openai_dalle(final_prompt, style, category)
+                # 使用 OpenAI DALL-E 直连 API，并支持按官方 size 选项控制分辨率
+                image_url = await self._generate_with_openai_dalle(
+                    final_prompt,
+                    style,
+                    category,
+                    size=size or "1024x1024",
+                )
                 provider_used = "openai"
                 generation_method = "openai_dalle"
             elif self.ai_manager:
-                # 使用AI管理器的其他服务
+                # 使用AI管理器的其他服务（根据模型名偏向特定提供商）
+                prefer_provider = None
+                if normalized_model.startswith("seedream") or normalized_model.startswith("volcengine"):
+                    prefer_provider = "volcengine"
+                elif normalized_model.startswith("deepseek"):
+                    prefer_provider = "deepseek"
                 response = await self.ai_manager.generate_image(
                     prompt=final_prompt,
                     width=1024,
                     height=1024,
                     style=style,
-                    model=model
+                    model=model,
+                    n=count or 1,
+                    prefer_provider=prefer_provider,
+                    # 对火山 Ark Seedream，size 由 VolcengineProvider 映射为 Ark 的 size 字段（例如 \"2K\"）
+                    size=size if prefer_provider == "volcengine" else None,
                 )
                 if response.success:
                     images = response.data.get("images", [])
@@ -1203,7 +1243,7 @@ class AIService:
                     self.logger.error(f"AI管理器图像生成失败: {response.error}")
                     image_url = None
             else:
-                # 默认使用OpenAI DALL-E
+                # 默认使用OpenAI DALL-E（保持向后兼容）
                 image_url = await self._generate_with_openai_dalle(final_prompt, style, category)
                 provider_used = "openai"
                 generation_method = "openai_dalle"
@@ -1464,6 +1504,38 @@ class AIService:
     def get_ai_providers_status(self) -> Dict[str, Any]:
         """获取AI提供商状态"""
         return self.ai_manager.get_provider_status()
+
+    async def list_models(
+        self,
+        model_type_alias: Optional[str] = None,
+        source: str = "auto",
+    ) -> List[Dict[str, Any]]:
+        """
+        统一列出模型，支持按类型和来源过滤。
+
+        model_type_alias:
+          - 'text' / 'text_generation'
+          - 'image' / 'text_to_image'
+          - 'video' / 'text_to_video'
+          - 'tts' / 'text_to_speech'
+        source:
+          - 'static' | 'remote' | 'auto'
+        """
+        if not self.ai_manager:
+            return []
+
+        aliases = {
+            "text": AIModelType.TEXT_GENERATION,
+            "text_generation": AIModelType.TEXT_GENERATION,
+            "image": AIModelType.TEXT_TO_IMAGE,
+            "text_to_image": AIModelType.TEXT_TO_IMAGE,
+            "video": AIModelType.TEXT_TO_VIDEO,
+            "text_to_video": AIModelType.TEXT_TO_VIDEO,
+            "tts": AIModelType.TEXT_TO_SPEECH,
+            "text_to_speech": AIModelType.TEXT_TO_SPEECH,
+        }
+        mt = aliases.get(model_type_alias, None)
+        return await self.ai_manager.list_models(model_type=mt, source=source)
     
     def update_provider_config(
         self,
@@ -1526,7 +1598,13 @@ class AIService:
             self.logger.error(f"可灵AI图像生成异常: {e}")
             return None
     
-    async def _generate_with_openai_dalle(self, prompt: str, style: str, category: str) -> Optional[str]:
+    async def _generate_with_openai_dalle(
+        self,
+        prompt: str,
+        style: str,
+        category: str,
+        size: str | None = None,
+    ) -> Optional[str]:
         """使用OpenAI DALL-E生成图像"""
         if not self.openai_api_key:
             return None
@@ -1543,7 +1621,7 @@ class AIService:
                         "model": "dall-e-3",
                         "prompt": prompt[:1000],  # DALL-E 3提示词限制在1000字符内
                         "n": 1,
-                        "size": "1024x1024",
+                        "size": size or "1024x1024",
                         "quality": "hd",
                         "style": "vivid" if style != "realistic" else "natural",
                         "response_format": "b64_json"  # 使用base64格式避免URL过期问题

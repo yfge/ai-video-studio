@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     VOLCENGINE_API_KEY: Optional[str] = None
     VOLCENGINE_SECRET_KEY: Optional[str] = None
     VOLCENGINE_REGION: Optional[str] = None
+
+    # Google Gemini / Vertex AI 配置（文本模型）
+    GOOGLE_API_KEY: Optional[str] = None
+    GOOGLE_DEFAULT_MODEL: Optional[str] = "gemini-3-pro-preview"
     
     # 阿里云OSS配置
     ALIYUN_ACCESS_KEY_ID: Optional[str] = None

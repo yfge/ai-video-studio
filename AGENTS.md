@@ -127,7 +127,8 @@ Before yielding work back to the user:
 2. Verify `pre-commit run --all-files` is clean or document any justified skips.
 2.1 Ensure the working tree is clean (no unstaged changes) at commit time.
 3. Confirm new/updated `agent_chats` entries satisfy format rules and describe intent, changes, validation, and follow-ups.
-4. Summarise remaining risks or TODOs in the agent response.
-5. Never commit secrets or credentials; reference environment variables instead.
+4. For任何涉及前后端联动、登录、AI 调用/图像生成等功能改动，**必须在真实浏览器（推荐 Chrome）中完成至少一次端到端路径验证**，可以通过 DevTools 自动化/远程调试完成；在 `agent_chats` 的 `## Validation` 段中明确记录所走用例（例如使用 Seedream 4.5 在虚拟 IP 图像页生成图片的步骤和结果）。
+5. Summarise remaining risks or TODOs in the agent response。
+6. Never commit secrets or credentials; reference environment variables instead.
 
 Following these conventions keeps the repo aligned with the rigor demonstrated in `talkReplay`, `orion`, `ai-shifu`, and `talkreplay.com`. Deviations require explicit user approval and should be documented in the ledger and commit messages.

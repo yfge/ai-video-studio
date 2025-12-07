@@ -223,6 +223,8 @@ async def generate_virtual_ip_image(
     model_id: Optional[str] = Form(None),
     additional_prompts: Optional[str] = Form(None),
     is_default: Optional[str] = Form(None),
+    count: Optional[int] = Form(None),
+    size: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """使用AI生成虚拟IP图像"""
@@ -241,6 +243,8 @@ async def generate_virtual_ip_image(
     style = payload.get("style", style) or "realistic"
     category = payload.get("category", category) or "portrait"
     raw_model = payload.get("model", model)
+    count_value = payload.get("count", count)
+    size_value = payload.get("size", size)
     additional_prompts_value = payload.get("additional_prompts", additional_prompts) or ""
     is_default_value = payload.get("is_default", is_default)
     selected_model = (payload.get("model_id") or model_id or raw_model or "dalle-3").strip()
@@ -254,6 +258,11 @@ async def generate_virtual_ip_image(
         is_default_bool = is_default_value
     elif isinstance(is_default_value, str):
         is_default_bool = is_default_value.lower() in {"true", "1", "yes", "on"}
+
+    try:
+        count_int = int(count_value) if count_value is not None else 1
+    except (TypeError, ValueError):
+        count_int = 1
 
     # 记录收到的参数，便于排查模型选择问题
     try:
@@ -289,6 +298,8 @@ async def generate_virtual_ip_image(
         model=selected_model,
         additional_prompts=additional_prompt_list,
         background_story=getattr(virtual_ip, "background_story", None),
+        count=count_int,
+        size=size_value,
     )
     
     if not result:
@@ -518,3 +529,154 @@ async def set_default_image(
     db.commit()
     
     return {"message": "默认图像设置成功"}
+
+
+@router.post("/{virtual_ip_id}/images/{image_id}/variants", response_model=List[VirtualIPImageResponse])
+async def generate_virtual_ip_image_variant(
+    virtual_ip_id: int,
+    image_id: int,
+    request: Request,
+    prompt: Optional[str] = Form(None),
+    model: Optional[str] = Form(None),
+    model_id: Optional[str] = Form(None),
+    count: Optional[int] = Form(1),
+    size: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """基于已有虚拟IP图像生成变体并保存"""
+    virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
+    if not virtual_ip:
+        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+
+    base_image = (
+        db.query(VirtualIPImage)
+        .filter(
+            VirtualIPImage.id == image_id,
+            VirtualIPImage.virtual_ip_id == virtual_ip_id,
+        )
+        .first()
+    )
+    if not base_image:
+        raise HTTPException(status_code=404, detail="基础图像不存在")
+
+    payload: Dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+
+    prompt_value = payload.get("prompt", prompt) or "为当前角色生成不同视角/姿态的图像，如背面照或全身照"
+    raw_model = payload.get("model", model)
+    count_value = payload.get("count", count)
+    size_value = payload.get("size", size)
+    selected_model = (payload.get("model_id") or model_id or raw_model or base_image.ai_model or "").strip()
+
+    try:
+        count_int = int(count_value) if count_value is not None else 1
+    except (TypeError, ValueError):
+        count_int = 1
+
+    # 选择原图 URL：优先使用 OSS，其次使用本地服务地址
+    if base_image.oss_url:
+        image_url = base_image.oss_url
+    else:
+        file_path = base_image.file_path or ""
+        if file_path and not file_path.startswith("/"):
+            file_path = "/" + file_path
+        # backend 容器内部通过 localhost 访问自身上传文件
+        image_url = f"http://localhost:8000{file_path}"
+
+    normalized_model = (selected_model or "").lower()
+    prefer_provider: Optional[str] = None
+    if normalized_model.startswith("seedream") or normalized_model.startswith("volcengine"):
+        prefer_provider = "volcengine"
+    elif normalized_model.startswith("deepseek"):
+        prefer_provider = "deepseek"
+    elif normalized_model.startswith("keling") or normalized_model.startswith("kling"):
+        prefer_provider = "keling"
+    elif normalized_model.startswith("jimeng"):
+        prefer_provider = "jimeng"
+    elif normalized_model.startswith("dall-e") or normalized_model.startswith("dalle"):
+        prefer_provider = "openai"
+
+    if not ai_service.ai_manager:
+        raise HTTPException(status_code=503, detail="AI管理器未初始化，无法执行图生图")
+
+    try:
+        response = await ai_service.ai_manager.image_to_image(
+            image_url=image_url,
+            prompt=prompt_value,
+            model=selected_model or None,
+            prefer_provider=prefer_provider,
+            count=count_int,
+            size=size_value,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"图生图调用失败: {exc}") from exc
+
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error or "图生图生成失败")
+
+    images = response.data.get("images", []) if isinstance(response.data, dict) else []
+    if not images:
+        raise HTTPException(status_code=500, detail="图生图接口未返回任何图像")
+
+    created_images: list[VirtualIPImage] = []
+
+    for idx, variant_url in enumerate(images):
+        # 下载变体图像到本地 uploads 目录
+        local_file_path = await ai_service._download_image(
+            variant_url,
+            virtual_ip.name,
+            base_image.category or "portrait",
+        )
+        if not local_file_path or not os.path.exists(local_file_path):
+            raise HTTPException(status_code=500, detail="图生图文件下载失败")
+
+        file_size = os.path.getsize(local_file_path)
+        filename = os.path.basename(local_file_path)
+        relative_path = f"/uploads/{filename}"
+
+        tags = [
+            base_image.category or "portrait",
+            "ai_generated",
+            "variant",
+        ]
+
+        image_data = VirtualIPImageCreate(
+            virtual_ip_id=virtual_ip_id,
+            file_path=relative_path,
+            oss_url=None,
+            filename=filename,
+            original_filename=(
+                f"{virtual_ip.name}_{base_image.category or 'variant'}_img2img_{idx + 1}.png"
+            ),
+            file_size=file_size,
+            mime_type="image/png",
+            category=base_image.category or "portrait",
+            tags=tags,
+            prompt=prompt_value,
+            ai_model=selected_model or response.model,
+            generation_params=response.usage or {},
+            is_default=False,
+            metadata={
+                "generation_method": "image_to_image",
+                "provider": response.provider,
+                "model": response.model,
+                "base_image_id": base_image.id,
+                "base_image_url": image_url,
+                "variant_url": variant_url,
+            },
+        )
+
+        db_image = VirtualIPImage(**image_data.dict())
+        db.add(db_image)
+        created_images.append(db_image)
+
+    db.commit()
+    for img in created_images:
+        db.refresh(img)
+
+    return [VirtualIPImageResponse.from_orm(img) for img in created_images]

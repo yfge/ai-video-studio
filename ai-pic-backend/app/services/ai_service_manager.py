@@ -17,6 +17,7 @@ from .providers.jimeng_provider import JimengProvider
 from .providers.minimax_provider import MinimaxProvider
 from .providers.deepseek_provider import DeepSeekProvider
 from .providers.volcengine_provider import VolcengineProvider
+from .providers.google_provider import GoogleProvider
 from app.core.logging import get_logger
 
 
@@ -62,7 +63,8 @@ class AIServiceManager:
             "jimeng": JimengProvider,
             "minimax": MinimaxProvider,
             "deepseek": DeepSeekProvider,
-            "volcengine": VolcengineProvider
+            "volcengine": VolcengineProvider,
+            "google": GoogleProvider,
         }
         self._initialize_providers()
         self.logger = get_logger()
@@ -217,6 +219,65 @@ class AIServiceManager:
         weight = self.config.provider_weights.get(provider_name)
         if weight:
             weight.current_requests += 1
+
+    async def list_models(
+        self,
+        model_type: Optional[AIModelType] = None,
+        source: str = "auto",
+    ) -> List[Dict[str, Any]]:
+        """
+        聚合所有提供商的模型列表。
+
+        - source='static'：仅使用各 Provider.available_models
+        - source='remote'：尽量调用官方模型列表 API（fetch_remote_models），失败时回退静态
+        - source='auto'：按 remote 优先，静态兜底
+        """
+        models: List[Dict[str, Any]] = []
+        for provider_name, provider in self.providers.items():
+            # 仅枚举已启用的 provider
+            weight = self.config.provider_weights.get(provider_name)
+            if weight and not weight.enabled:
+                continue
+
+            try:
+                if source == "static":
+                    infos = provider.available_models
+                    if model_type:
+                        infos = [m for m in infos if m.model_type == model_type]
+                elif source == "remote":
+                    infos = await provider.fetch_remote_models(model_type=model_type)
+                else:  # auto
+                    try:
+                        infos = await provider.fetch_remote_models(model_type=model_type)
+                        if not infos:
+                            infos = provider.available_models
+                            if model_type:
+                                infos = [m for m in infos if m.model_type == model_type]
+                    except Exception:
+                        infos = provider.available_models
+                        if model_type:
+                            infos = [m for m in infos if m.model_type == model_type]
+            except Exception:
+                # 某个 provider 拉取失败，不影响其他 provider
+                continue
+
+            for mi in infos:
+                # model_type 进一步过滤（以防 Provider 忽略了参数）
+                if model_type and mi.model_type != model_type:
+                    continue
+                models.append(
+                    {
+                        "provider": provider_name,
+                        "id": mi.model_id,
+                        "name": mi.name,
+                        "type": mi.model_type.value,
+                        "capabilities": mi.capabilities,
+                    }
+                )
+
+        # 简单排序：provider, name
+        models.sort(key=lambda x: (x["provider"], x.get("name") or x["id"]))
+        return models
     
     async def generate_text(
         self,
@@ -391,6 +452,7 @@ class AIServiceManager:
         prompt: str | None = None,
         model: str | None = None,
         prefer_provider: str | None = None,
+        count: int | None = None,
         **kwargs,
     ) -> AIResponse:
         """统一图生图接口"""
@@ -444,6 +506,7 @@ class AIServiceManager:
                     image_url=image_url,
                     prompt=prompt,
                     model=effective_model,
+                    n=count or 1,
                     **kwargs,
                 )
                 self._log_response(
@@ -467,6 +530,53 @@ class AIServiceManager:
 
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
+        # 所有专用图生图通路失败时，尝试降级为同一模型的文生图（不使用参考图，只保留提示词）
+        if self.config.enable_fallback:
+            try:
+                inferred_provider: str | None = None
+                if model:
+                    lower = model.lower()
+                    if lower.startswith("seedream") or lower.startswith("volcengine"):
+                        inferred_provider = "volcengine"
+                    elif lower.startswith("deepseek"):
+                        inferred_provider = "deepseek"
+                    elif lower.startswith("keling") or lower.startswith("kling"):
+                        inferred_provider = "keling"
+                    elif lower.startswith("jimeng"):
+                        inferred_provider = "jimeng"
+                    elif lower.startswith("dall-e") or lower.startswith("dalle"):
+                        inferred_provider = "openai"
+
+                fallback_prompt = prompt or "为当前角色生成不同视角/姿态的图像，例如背面照或全身照"
+                self.logger.warning(
+                    "image_to_image fallback: using text-to-image without reference | model=%s provider_hint=%s image_url=%s",
+                    model,
+                    inferred_provider or prefer_provider,
+                    self._truncate(image_url, 256),
+                )
+
+                text_resp = await self.generate_image(
+                    prompt=fallback_prompt,
+                    model=model,
+                    prefer_provider=inferred_provider or prefer_provider,
+                    prompt_override=fallback_prompt,
+                    n=count or 1,
+                )
+                if text_resp and text_resp.success:
+                    meta = dict(text_resp.metadata or {})
+                    meta.update(
+                        {
+                            "fallback_mode": "text_to_image_without_reference",
+                            "fallback_from": "image_to_image",
+                            "original_image_url": image_url,
+                        }
+                    )
+                    text_resp.metadata = meta
+                    text_resp.model_type = AIModelType.IMAGE_TO_IMAGE
+                    text_resp.task_type = AITaskType.SCENE_GENERATION
+                    return text_resp
+            except Exception as e:
+                self.logger.error("image_to_image fallback failed: %s", e)
 
         return AIResponse(
             success=False,
