@@ -282,6 +282,26 @@ async def _download_and_attach(env, image_urls: List[str]) -> List[str]:
     return saved
 
 
+def _compose_environment_prompt(env, extra: Optional[str] = None) -> str:
+    """Compose a richer prompt for environment generation using name/description/tags/category."""
+    parts: List[str] = []
+    if env.name:
+        parts.append(f"Environment: {env.name}")
+    if env.category:
+        parts.append(f"Category: {env.category}")
+    if env.tags:
+        tags_str = ", ".join([t for t in env.tags if t])
+        if tags_str:
+            parts.append(f"Tags: {tags_str}")
+    if env.description:
+        parts.append(f"Description: {env.description}")
+    if extra:
+        parts.append(extra)
+    if not parts:
+        return "Environment scene with clear spatial layout and lighting cues"
+    return " | ".join(parts)
+
+
 @router.get("/environments/{env_id}/images")
 async def list_environment_images(env_id: int, db: Session = Depends(get_db)):
     env = svc.get_environment(db, env_id)
@@ -329,7 +349,7 @@ async def generate_environment_images(
         except Exception:
             payload = {}
 
-    final_prompt = payload.get("prompt", prompt) or env.description or f"Environment: {env.name}"
+    final_prompt = payload.get("prompt", prompt) or _compose_environment_prompt(env)
     selected_model = (payload.get("model") or model or "").strip() or None
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
@@ -400,7 +420,7 @@ async def generate_environment_image_variants(
         image_url = f"http://localhost:8000{path}"
 
     prefer_provider = _infer_provider_from_model(payload.get("model") or model)
-    prompt_value = payload.get("prompt", prompt) or "基于当前环境图生成风格一致的变体"
+    prompt_value = payload.get("prompt", prompt) or _compose_environment_prompt(env, "Generate stylistically consistent variants based on this environment reference")
     model_value = (payload.get("model") or model or "").strip() or None
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
