@@ -14,6 +14,7 @@ from app.schemas.generation import (
     StoryboardPlanModel, StoryboardPlanScene
 )
 from app.services.storyboard_reasoner import StoryboardReActReasoner, LANGGRAPH_AVAILABLE
+from app.services.episode_agent import EpisodeLangGraphAgent
 
 # 尝试导入AI服务管理器，如果失败则使用None
 try:
@@ -188,6 +189,7 @@ class AIService:
         # 初始化多提供商AI服务管理器
         self.ai_manager = self._initialize_ai_manager()
         self.storyboard_reasoner = StoryboardReActReasoner(self) if LANGGRAPH_AVAILABLE else None
+        self.episode_agent = EpisodeLangGraphAgent(self) if LANGGRAPH_AVAILABLE else None
     
     def _initialize_ai_manager(self) -> Optional[AIServiceManager]:
         """初始化AI服务管理器"""
@@ -437,64 +439,45 @@ class AIService:
         temperature: float = 0.7
     ) -> Optional[Dict[str, Any]]:
         """基于故事概要生成剧集"""
-        
+        # 优先尝试 LangGraph agent
+        if self.episode_agent:
+            try:
+                lg_result = await self.episode_agent.generate(
+                    story=story,
+                    episode_count=episode_count,
+                    episode_duration=episode_duration,
+                    focus_characters=focus_characters,
+                    plot_complexity=plot_complexity,
+                    pacing=pacing,
+                    additional_requirements=additional_requirements,
+                    style_preferences=style_preferences,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    temperature=temperature,
+                )
+                if lg_result:
+                    return lg_result
+            except Exception as e:
+                self.logger.warning(f"LangGraph episode agent failed: {e}")
+
         # 首先尝试使用AI服务管理器
         if self.ai_manager:
             try:
-                variables = {
-                    "story": story,
-                    "episode_count": episode_count,
-                    "episode_duration": episode_duration,
-                    "focus_characters": focus_characters or [],
-                    "plot_complexity": plot_complexity,
-                    "pacing": pacing,
-                    "additional_requirements": additional_requirements,
-                    "style_preferences": style_preferences or []
-                }
-                
-                prompt = prompt_manager.render_prompt(
-                    PromptTemplate.EPISODE_GENERATION.value,
-                    variables
-                )
-                
-                plan_schema = EpisodePlanModel.model_json_schema()
-                response = await self.ai_manager.generate_text(
-                    prompt=prompt,
-                    max_tokens=4000,
-                    temperature=temperature,
+                direct_result = await self._call_ai_manager_episode(
+                    story=story,
+                    episode_count=episode_count,
+                    episode_duration=episode_duration,
+                    focus_characters=focus_characters,
+                    plot_complexity=plot_complexity,
+                    pacing=pacing,
+                    additional_requirements=additional_requirements,
+                    style_preferences=style_preferences,
                     model=model,
                     prefer_provider=prefer_provider,
-                    json_schema={"name": "episode_plan", "schema": plan_schema},
-                    system_prompt="你是一个专业的编剧和故事创作者，擅长创作各种类型的短剧剧本。请根据用户的要求生成高质量的剧集规划。"
+                    temperature=temperature,
                 )
-                
-                if response.success:
-                    content_text = response.data if isinstance(response.data, str) else str(response.data)
-                    try:
-                        data = json.loads(content_text)
-                        EpisodePlanModel.model_validate(data)
-                    except Exception:
-                        retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
-                        retry = await self.ai_manager.generate_text(
-                            prompt=retry_prompt,
-                            max_tokens=4000,
-                            temperature=temperature,
-                            model=model,
-                            prefer_provider=prefer_provider,
-                            json_schema={"name": "episode_plan", "schema": plan_schema},
-                            system_prompt="你是一个专业的编剧和故事创作者，返回内容必须是严格的JSON，符合提供的Schema。"
-                        )
-                        if retry.success:
-                            content_text = retry.data
-                    return {
-                        "content": content_text,
-                        "prompt": prompt,
-                        "generation_method": f"ai_{response.provider}",
-                        "template_used": PromptTemplate.EPISODE_GENERATION.value,
-                        "provider_used": response.provider,
-                        "model_used": response.model,
-                        "usage": response.usage
-                    }
+                if direct_result:
+                    return direct_result
             except Exception as e:
                 print(f"AI服务管理器剧集生成失败: {e}")
         
@@ -522,6 +505,84 @@ class AIService:
         
         # 最终回退到模拟服务
         return await self._generate_mock_episodes(story, episode_count, episode_duration)
+
+    async def _call_ai_manager_episode(
+        self,
+        *,
+        story: Dict[str, Any],
+        episode_count: int,
+        episode_duration: Optional[int],
+        focus_characters: Optional[List[Dict[str, Any]]],
+        plot_complexity: str,
+        pacing: str,
+        additional_requirements: Optional[str],
+        style_preferences: Optional[List[str]],
+        model: Optional[str],
+        prefer_provider: Optional[str],
+        temperature: float,
+    ) -> Optional[Dict[str, Any]]:
+        """直接通过 AI 管理器生成剧集（带 JSON schema 校验）。"""
+        if not self.ai_manager:
+            return None
+
+        variables = {
+            "story": story,
+            "episode_count": episode_count,
+            "episode_duration": episode_duration,
+            "focus_characters": focus_characters or [],
+            "plot_complexity": plot_complexity,
+            "pacing": pacing,
+            "additional_requirements": additional_requirements,
+            "style_preferences": style_preferences or [],
+        }
+
+        prompt = prompt_manager.render_prompt(
+            PromptTemplate.EPISODE_GENERATION.value,
+            variables,
+        )
+
+        plan_schema = EpisodePlanModel.model_json_schema()
+        response = await self.ai_manager.generate_text(
+            prompt=prompt,
+            max_tokens=4000,
+            temperature=temperature,
+            model=model,
+            prefer_provider=prefer_provider,
+            json_schema={"name": "episode_plan", "schema": plan_schema},
+            system_prompt="你是一个专业的编剧和故事创作者，擅长创作各种类型的短剧剧本。请根据用户的要求生成高质量的剧集规划。",
+        )
+
+        if not response.success:
+            return None
+
+        content_text = response.data if isinstance(response.data, str) else str(response.data)
+        try:
+            data = json.loads(content_text)
+            EpisodePlanModel.model_validate(data)
+        except Exception:
+            retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
+            retry = await self.ai_manager.generate_text(
+                prompt=retry_prompt,
+                max_tokens=4000,
+                temperature=temperature,
+                model=model,
+                prefer_provider=prefer_provider,
+                json_schema={"name": "episode_plan", "schema": plan_schema},
+                system_prompt="你是一个专业的编剧和故事创作者，返回内容必须是严格的JSON，符合提供的Schema。",
+            )
+            if not retry.success:
+                return None
+            content_text = retry.data if isinstance(retry.data, str) else str(retry.data)
+
+        return {
+            "content": content_text,
+            "prompt": prompt,
+            "generation_method": f"ai_{response.provider}",
+            "template_used": PromptTemplate.EPISODE_GENERATION.value,
+            "provider_used": response.provider,
+            "model_used": response.model,
+            "usage": response.usage,
+        }
     
     def _build_episode_generation_prompt(
         self, story, episode_count, episode_duration, 
