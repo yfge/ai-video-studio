@@ -15,6 +15,7 @@ from app.schemas.generation import (
 )
 from app.services.storyboard_reasoner import StoryboardReActReasoner, LANGGRAPH_AVAILABLE
 from app.services.episode_agent import EpisodeLangGraphAgent
+from app.services.script_agent import ScriptLangGraphAgent
 
 # 尝试导入AI服务管理器，如果失败则使用None
 try:
@@ -190,6 +191,7 @@ class AIService:
         self.ai_manager = self._initialize_ai_manager()
         self.storyboard_reasoner = StoryboardReActReasoner(self) if LANGGRAPH_AVAILABLE else None
         self.episode_agent = EpisodeLangGraphAgent(self) if LANGGRAPH_AVAILABLE else None
+        self.script_agent = ScriptLangGraphAgent(self) if LANGGRAPH_AVAILABLE else None
     
     def _initialize_ai_manager(self) -> Optional[AIServiceManager]:
         """初始化AI服务管理器"""
@@ -821,70 +823,45 @@ class AIService:
         temperature: float = 0.7
     ) -> Optional[Dict[str, Any]]:
         """基于剧集信息生成详细剧本"""
-        
-        # 使用提示词管理器渲染模板
-        try:
-            if not self.ai_manager:
-                raise RuntimeError("AI manager is not configured")
+        # 1) LangGraph agent
+        if self.script_agent:
+            try:
+                lg = await self.script_agent.generate(
+                    episode=episode,
+                    story=story,
+                    format_type=format_type,
+                    language=language,
+                    dialogue_style=dialogue_style,
+                    scene_detail_level=scene_detail_level,
+                    additional_requirements=additional_requirements,
+                    style_preferences=style_preferences,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    temperature=temperature,
+                )
+                if lg and lg.get("content"):
+                    return lg
+            except Exception as e:
+                self.logger.warning(f"LangGraph script agent failed: {e}")
 
-            variables = {
-                "story": story,
-                "episode": episode,
-                "format_type": format_type,
-                "language": language,
-                "dialogue_style": dialogue_style,
-                "scene_detail_level": scene_detail_level,
-                "additional_requirements": additional_requirements,
-                "style_preferences": style_preferences or []
-            }
-            
-            prompt = prompt_manager.render_prompt(
-                PromptTemplate.SCRIPT_GENERATION.value,
-                variables
-            )
-            
-            script_schema = ScriptModel.model_json_schema()
-            response = await self.ai_manager.generate_text(
-                prompt=prompt,
-                max_tokens=4000,
-                temperature=temperature,
-                model=model,
-                prefer_provider=prefer_provider,
-                json_schema={"name": "script", "schema": script_schema},
-                system_prompt="你是一个专业的编剧和故事创作者，擅长创作各种类型的短剧剧本。请根据用户的要求生成高质量的剧本内容。"
-            )
-            
-            if response.success:
-                content_text = response.data if isinstance(response.data, str) else str(response.data)
-                try:
-                    data = json.loads(content_text)
-                    ScriptModel.model_validate(data)
-                except Exception:
-                    # 重试一次
-                    retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
-                    retry = await self.ai_manager.generate_text(
-                        prompt=retry_prompt,
-                        max_tokens=4000,
-                        temperature=temperature,
-                        model=model,
-                        prefer_provider=prefer_provider,
-                        json_schema={"name": "script", "schema": script_schema},
-                        system_prompt="你是一个专业的编剧和故事创作者，返回内容必须是严格的JSON，符合提供的Schema。"
-                    )
-                    if retry.success:
-                        content_text = retry.data
-                return {
-                    "content": content_text,
-                    "prompt": prompt,
-                    "generation_method": f"ai_{response.provider}",
-                    "template_used": PromptTemplate.SCRIPT_GENERATION.value,
-                    "provider_used": response.provider,
-                    "model_used": response.model,
-                    "usage": response.usage
-                }
-        except Exception as e:
-            print(f"剧本生成失败: {e}")
-        
+        # 2) AI 管理器直接生成
+        direct = await self._call_ai_manager_script(
+            episode=episode,
+            story=story,
+            format_type=format_type,
+            language=language,
+            dialogue_style=dialogue_style,
+            scene_detail_level=scene_detail_level,
+            additional_requirements=additional_requirements,
+            style_preferences=style_preferences,
+            model=model,
+            prefer_provider=prefer_provider,
+            temperature=temperature,
+        )
+        if direct:
+            return direct
+
+        # 3) Mock 回退
         return await self._generate_mock_script(
             episode=episode,
             story=story,

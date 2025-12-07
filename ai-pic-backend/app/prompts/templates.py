@@ -34,6 +34,8 @@ class PromptTemplate(Enum):
     SCRIPT_GENERATION = "script_generation"
     SCENE_WRITING = "scene_writing"
     DIALOGUE_WRITING = "dialogue_writing"
+    SCRIPT_SCENES = "script_scenes"
+    SCRIPT_DIALOGUES = "script_dialogues"
     
     # 图像相关
     IMAGE_GENERATION = "image_generation"
@@ -101,6 +103,8 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.SCRIPT_GENERATION: PromptCategory.SCRIPT,
     PromptTemplate.SCENE_WRITING: PromptCategory.SCRIPT,
     PromptTemplate.DIALOGUE_WRITING: PromptCategory.SCRIPT,
+    PromptTemplate.SCRIPT_SCENES: PromptCategory.SCRIPT,
+    PromptTemplate.SCRIPT_DIALOGUES: PromptCategory.SCRIPT,
     
     PromptTemplate.IMAGE_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.PORTRAIT_GENERATION: PromptCategory.IMAGE,

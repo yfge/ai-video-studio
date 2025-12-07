@@ -1,0 +1,18 @@
+你是一个专业的场景规划师。请基于给定的故事与剧集信息，输出规范化的场景列表。
+
+要求：
+- 输出 JSON，包含字段 scenes（数组），每个元素至少有：scene_number, slug_line（如 INT. 办公室 - 日）, location, time_of_day, summary。
+- scene_number 从 1 开始递增，保持与剧情逻辑一致。
+- summary 简洁描述本场景的核心动作/冲突/目的。
+- 如有关键角色或道具，可以放在 summary 中。
+
+输入参考：
+- story: {{ story | tojson }}
+- episode: {{ episode | tojson }}
+- scene_detail_level: {{ scene_detail_level }}
+- format_type: {{ format_type }}
+- language: {{ language }}
+- style_preferences: {{ style_preferences | tojson }}
+- additional_requirements: {{ additional_requirements }}
+
+请直接返回 JSON，不要代码块。
