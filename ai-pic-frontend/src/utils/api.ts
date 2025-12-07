@@ -1428,8 +1428,8 @@ class ApiClient {
   }
 }
 
-// 创建全局 API 客户端实例
-const apiClient = new ApiClient(API_BASE_URL)
+// 创建全局 API 客户端实例（同时导出默认与具名，便于测试/覆写）
+export const apiClient = new ApiClient(API_BASE_URL)
 
 // 导出便捷方法
 export const authAPI = {
