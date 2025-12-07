@@ -58,9 +58,7 @@ def _collect_scene_dialogues(script: Dict[str, Any], scene_number: Optional[int]
     for item in script.get("dialogues") or []:
         if isinstance(item, dict):
             sn = _to_int_safe(item.get("scene_number"))
-            if scene_number is not None and sn != scene_number:
-                continue
-            content = item.get("content") or item.get("text")
+            content = item.get("content") or item.get("text") or item.get("line")
         else:
             sn = None
             content = str(item)
@@ -79,7 +77,7 @@ def _collect_stage_notes(script: Dict[str, Any], scene_number: Optional[int], li
     for item in script.get("stage_directions") or []:
         if isinstance(item, dict):
             sn = _to_int_safe(item.get("scene_number"))
-            content = item.get("content") or item.get("direction")
+            content = item.get("content") or item.get("direction") or item.get("description")
         else:
             sn = None
             content = str(item)
@@ -770,6 +768,7 @@ class AIService:
                 "scene_number": idx,
                 "slug_line": slug_line,
                 "summary": description,
+                "description": description,
                 "focus_characters": focus_characters,
                 "story_beat": story_beat,
                 "location": location,
@@ -779,12 +778,12 @@ class AIService:
             dialogues.append({
                 "scene_number": idx,
                 "character": focus_characters[0] if focus_characters else "旁白",
-                "line": f"（{dialogue_style}）我们正在面对：{description}"
+                "content": f"（{dialogue_style}）我们正在面对：{description}"
             })
 
             stage_directions.append({
                 "scene_number": idx,
-                "description": f"镜头捕捉角色与场景，突出：{description}",
+                "content": f"镜头捕捉角色与场景，突出：{description}",
                 "camera_suggestion": "中景",
                 "lighting": "自然光"
             })
@@ -795,7 +794,8 @@ class AIService:
                 "",
             ]
             for dialog in [d for d in dialogues if d["scene_number"] == idx]:
-                section_lines.append(f"{dialog['character']}: {dialog['line']}")
+                line_text = dialog.get("content") or dialog.get("line") or ""
+                section_lines.append(f"{dialog.get('character', '旁白')}: {line_text}")
             script_sections.append("\n".join(section_lines))
 
         if additional_requirements:
@@ -1026,20 +1026,20 @@ class AIService:
             lines.append("## 场景")
             for sc in scenes:
                 slug = sc.get("slug_line") or f"Scene {sc.get('scene_number')}"
-                summary = sc.get("summary") or ""
+                summary = sc.get("summary") or sc.get("description") or ""
                 lines.append(f"- {slug}: {summary}")
         if dialogues:
             lines.append("\n## 对白")
             for dlg in dialogues[:200]:
                 scene_no = dlg.get("scene_number") or "-"
                 char = dlg.get("character") or "旁白"
-                content = dlg.get("content") or ""
+                content = dlg.get("content") or dlg.get("line") or dlg.get("text") or ""
                 lines.append(f"[场景 {scene_no}] {char}: {content}")
         if stage_directions:
             lines.append("\n## 舞台指示")
             for sd in stage_directions[:200]:
                 scene_no = sd.get("scene_number") or "-"
-                content = sd.get("content") or ""
+                content = sd.get("content") or sd.get("direction") or sd.get("description") or ""
                 timing = sd.get("timing") or ""
                 lines.append(f"[场景 {scene_no}][{timing}] {content}")
         return "\n".join(lines)

@@ -266,6 +266,113 @@ def _unwrap_json_block(content: Optional[str]) -> str:
     return text.strip()
 
 
+def _normalize_script_content(
+    ai_content: Dict[str, Any],
+    *,
+    format_type: str,
+    language: str,
+) -> Dict[str, Any]:
+    """确保场景/对白/舞台指示结构化并符合前端期望字段。"""
+    normalized = dict(ai_content or {})
+
+    def _safe_int(value: Any) -> Optional[int]:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    raw_scenes = normalized.get("scenes") or []
+    scenes: List[Dict[str, Any]] = []
+    for idx, scene in enumerate(raw_scenes, start=1):
+        base = dict(scene) if isinstance(scene, dict) else {"description": str(scene) if scene is not None else ""}
+        scene_no = _safe_int(base.get("scene_number")) or idx
+        desc = (
+            base.get("description")
+            or base.get("summary")
+            or base.get("slug_line")
+            or base.get("story_beat")
+            or base.get("title")
+        )
+        base["scene_number"] = scene_no
+        if desc:
+            base.setdefault("description", desc)
+            base.setdefault("summary", desc)
+        if not base.get("slug_line"):
+            location = base.get("location") or base.get("place")
+            time_of_day = base.get("time_of_day") or base.get("time")
+            if location and time_of_day:
+                base["slug_line"] = f"{location} - {time_of_day}"
+            elif desc:
+                base["slug_line"] = desc[:80]
+        scenes.append(base)
+
+    raw_dialogues = normalized.get("dialogues") or []
+    dialogues: List[Dict[str, Any]] = []
+    for idx, item in enumerate(raw_dialogues, start=1):
+        if isinstance(item, str):
+            dialogues.append(
+                {
+                    "scene_number": scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx,
+                    "content": item,
+                }
+            )
+            continue
+        if not isinstance(item, dict):
+            continue
+        dialog = dict(item)
+        content = dialog.get("content") or dialog.get("line") or dialog.get("text") or dialog.get("dialogue")
+        if not content:
+            continue
+        dialog["content"] = content
+        sn = _safe_int(dialog.get("scene_number"))
+        if sn is None:
+            dialog["scene_number"] = scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+        dialogues.append(dialog)
+
+    raw_stage = normalized.get("stage_directions") or []
+    stage_directions: List[Dict[str, Any]] = []
+    for idx, item in enumerate(raw_stage, start=1):
+        if isinstance(item, str):
+            stage_directions.append(
+                {
+                    "scene_number": scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx,
+                    "content": item,
+                }
+            )
+            continue
+        if not isinstance(item, dict):
+            continue
+        direction = dict(item)
+        content = direction.get("content") or direction.get("direction") or direction.get("description")
+        if not content:
+            continue
+        direction["content"] = content
+        sn = _safe_int(direction.get("scene_number"))
+        if sn is None:
+            direction["scene_number"] = scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+        stage_directions.append(direction)
+
+    normalized["scenes"] = scenes
+    normalized["dialogues"] = dialogues
+    normalized["stage_directions"] = stage_directions
+
+    content_value = normalized.get("content")
+    if isinstance(content_value, dict):
+        content_text = content_value.get("content") or ""
+    else:
+        content_text = content_value or ""
+    if not content_text:
+        content_text = ai_service._build_script_text(
+            scenes,
+            dialogues,
+            stage_directions,
+            format_type=format_type,
+            language=language,
+        )
+    normalized["content"] = content_text
+    return normalized
+
+
 def _merge_frames(
     existing_frames: List[Dict[str, Any]],
     new_frames: List[Dict[str, Any]],
@@ -529,6 +636,12 @@ async def generate_script(
                 "metadata": extracted.get("metadata", {}),
             }
     
+    ai_content = _normalize_script_content(
+        ai_content,
+        format_type=request.format_type,
+        language=request.language,
+    )
+
     # 提取剧本内容
     script_content = ai_content.get("content", "")
     scenes = ai_content.get("scenes", [])
@@ -681,6 +794,12 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                     "stage_directions": extracted.get("stage_directions", []),
                     "metadata": extracted.get("metadata", {}),
                 }
+
+        ai_content = _normalize_script_content(
+            ai_content,
+            format_type=request_dict.get("format_type", "screenplay"),
+            language=request_dict.get("language", "zh-CN"),
+        )
 
         script_content = ai_content.get("content", "")
         scenes = ai_content.get("scenes", [])
@@ -1689,6 +1808,12 @@ async def regenerate_script(
                 "metadata": extracted.get("metadata", {}),
             }
     
+    ai_content = _normalize_script_content(
+        ai_content,
+        format_type=script.format_type,
+        language=script.language,
+    )
+
     # 更新剧本内容
     script_content = ai_content.get("content", "")
     script.content = script_content
