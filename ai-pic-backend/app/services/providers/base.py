@@ -41,6 +41,10 @@ class AIRequest(BaseModel):
     parameters: Dict[str, Any] = {}
     metadata: Dict[str, Any] = {}
 
+    model_config = {
+        "protected_namespaces": (),
+    }
+
 class AIResponse(BaseModel):
     """AI响应基类"""
     success: bool
@@ -53,6 +57,10 @@ class AIResponse(BaseModel):
     usage: Dict[str, Any] = {}
     metadata: Dict[str, Any] = {}
     timestamp: datetime = datetime.now()
+
+    model_config = {
+        "protected_namespaces": (),
+    }
 
 class ModelInfo(BaseModel):
     """模型信息"""
