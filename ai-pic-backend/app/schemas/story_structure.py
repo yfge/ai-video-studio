@@ -81,6 +81,7 @@ class SceneCreate(BaseModel):
     scene_number: str
     slug_line: str
     story_step_outline_id: Optional[int] = None
+    environment_id: Optional[int] = None
     environment_type: Optional[str] = None
     location: Optional[str] = None
     time_of_day: Optional[str] = None
@@ -98,6 +99,7 @@ class SceneResponse(ORMModel):
     script_id: int
     scene_number: str
     slug_line: str
+    environment_id: Optional[int]
     environment_type: Optional[str]
     location: Optional[str]
     time_of_day: Optional[str]
@@ -116,6 +118,7 @@ class SceneUpdate(BaseModel):
     slug_line: Optional[str] = None
     scene_number: Optional[str] = None
     story_step_outline_id: Optional[int] = None
+    environment_id: Optional[int] = None
     environment_type: Optional[str] = None
     location: Optional[str] = None
     time_of_day: Optional[str] = None
@@ -217,6 +220,36 @@ class ShotUpdate(BaseModel):
     audio_notes: Optional[str] = None
     status: Optional[str] = None
     metadata: Optional[dict[str, Any]] = None
+
+
+class EnvironmentCreate(BaseModel):
+    name: str
+    category: Optional[str] = None  # indoor/outdoor/custom
+    tags: Optional[list[str]] = None
+    description: Optional[str] = None
+    reference_images: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None
+
+
+class EnvironmentUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[list[str]] = None
+    description: Optional[str] = None
+    reference_images: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None
+
+
+class EnvironmentResponse(ORMModel):
+    id: int
+    name: str
+    category: Optional[str]
+    tags: Optional[list[str]]
+    description: Optional[str]
+    reference_images: Optional[list[str]]
+    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
+    created_at: datetime
+    updated_at: datetime
 
 
 class SceneWithChildren(SceneResponse):

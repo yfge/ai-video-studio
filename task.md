@@ -24,6 +24,31 @@
 - [x] 验证闭环：补充单元/集成测试 + 数据迁移回归用例，更新相关文档
   - 下一步行动：补充端到端/权限链路（含分镜帧与 beat/shot 关联）的测试，持续跟进迁移回滚演练记录
 
+## Feature: 虚拟 IP 图像生成与模型接入
+:information_source: 背景：虚拟 IP 资产需要可靠的文生图 / 图生图流程，并对接多家模型服务（OpenAI、可灵、即梦、火山 Seedream 等）。
+- [x] Seedream 4.5 文生图接入：按火山引擎 Ark 官方文档接入 `doubao-seedream-4-5-251128` 模型，通过 `/api/v1/virtual-ips/{id}/images/generate` 完成端到端验证（含 Docker 开发环境）。
+  - 官方示例使用 `POST /api/v3/images/generations` 且 `size: \"2K\"`，并要求像素总数 ≥ 3,686,400。
+- [x] 虚拟 IP 文案注入提示词：在虚拟 IP 图像生成接口中聚合 `description` / `background_story` / `biography` / `style_prompt`，确保生成提示词携带完整角色设定。
+- [ ] 图生图能力完善：梳理 Seedream / 其他提供商的单图生图、多图生图参数，对齐 `/api/v1/ai/generate/image-to-image`，并补充「背面照、全身照」等变体用例。
+  - [x] 在虚拟 IP 图像页接入基于已有图像的图生图变体接口（`/api/v1/virtual-ips/{id}/images/{image_id}/variants`），支持模型选择与生成数量，并将变体保存为新的虚拟 IP 图像资产。
+  - [ ] 按提供商梳理多图生图参数与约束（含 Seedream 4.5 / DALL·E / SDXL 等），完善错误提示与 UI 文案。
+- [ ] 分辨率与规格建模（对齐官方文档）：按已接入模型梳理并固化允许的分辨率 / size 组合，在统一模型注册表中声明，并驱动前后端联动：
+  - OpenAI 图像 API：根据官方文档，将 DALL·E 3 的 `size` 限定为 `1024x1024` / `1024x1792` / `1792x1024`，DALL·E 2 的 `size` 限定为 `256x256` / `512x512` / `1024x1024`，并在调用时做严格校验。
+  - Seedream 4.5（Ark）：根据官方示例和参数约束，将 `size` 选项归一化为 `2K` 等 Ark 支持的值，并在后端做像素下限校验，避免再次触发 `image size must be at least 3686400 pixels` 类错误。
+  - 其他提供商（Stable Diffusion XL、可灵、即梦、DeepSeek）：按各自官方 API 文档整理推荐/允许的 `width`/`height` 或 `size` 参数（例如 SDXL 推荐 1024×1024），在后端集中维护白名单，并在前端按模型动态展示。
+  - 后端：`generate_image` / `image_to_image` 接口接受规范化的 `size` / `width` / `height` / `aspect_ratio` 参数，按模型映射到具体服务端字段（Ark 用 `size`，OpenAI 用 `size` 字符串，SDXL 用 `width`/`height` 等），并在日志中记录实际下发规格；**当前已在虚拟 IP 图生图变体接口中透传 `size` 到统一的 `image_to_image` 调用，为后续按模型白名单收敛留好扩展点。**
+  - 前端：在虚拟 IP 图像页的文生图 / 图生图表单中，根据当前选择的模型动态展示分辨率选项（禁止用户选到该模型不支持的尺寸），并在提示文案中明确当前模型的像素/长宽比限制；**目前图生图弹窗先复用文生图已选的 `size`（如 Seedream 2K / DALL·E 3 官方尺寸），后续再按模型粒度补充独立下拉。**
+  - 验证：为不同模型 + 不同分辨率补充最小的端到端用例（含 DALL·E 3 三种长宽比、DALL·E 2 三种尺寸、Seedream 2K），在 `TESTING_GUIDE` 中记录分辨率兼容矩阵和调试方法。
+- [ ] 验证与文档：补充虚拟 IP 图像生成与模型选择的端到端测试（含 Seedream 模型），在 README / TESTING_GUIDE 中记录 Ark 凭证与调试说明。
+
+## Feature: 场景/环境资产与分镜联动
+:information_source: 背景：需要把环境/场景资产（办公室/学校/商场等）与角色 IP 绑定到分镜帧，支撑“分镜→图像→视频”闭环。
+- [ ] 数据建模：新增环境/场景资产表（如 `environments`），字段含名称/类型（室内/室外）/标签/参考图/元数据；在 `scenes`（规范化表）中增加 `environment_id` 关联。
+- [ ] 角色与环境绑定：在分镜帧/分镜规划中显式记录 `character_ids`（虚拟 IP）与 `environment_id`，并在分镜编辑视图可选择/覆盖。
+- [ ] 生成链路：基于 “文本提示 + 角色参考图 + 环境参考图” 生成分镜图像；再用分镜图像 + 提示词生成短视频（逐场景/逐帧）。
+- [ ] 前端 UI：新增“环境资产管理”页（类似虚拟 IP 管理），支持上传/生成环境参考图；在 `/stories/[id]` 的分镜/剧集界面增加环境选择器，按标签筛选。
+- [ ] 校验与测试：补充端到端用例，验证在选择环境 + 角色后，分镜帧能稳定生成对应图像；记录在 `TESTING_GUIDE.md`，并为环境表/关联新增迁移回归用例。
+
 ## Feature: 剧本版本与审校流水线
 :information_source: 背景：工业剧本版本色彩流程 (Draft/Blue/Pink...) 与现有 `scripts` 单版本结构
 :triangular_flag_on_post: 决策点：

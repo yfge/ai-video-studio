@@ -109,6 +109,9 @@ class Scene(Base):
         ForeignKey("story_step_outlines.id", ondelete="SET NULL"),
         nullable=True,
     )
+    environment_id = Column(
+        BIGINT_PK, ForeignKey("environments.id", ondelete="SET NULL"), nullable=True
+    )
     scene_number = Column(String(20), nullable=False)
     slug_line = Column(String(255), nullable=False)
     environment_type = Column(String(32), comment="INT/EXT/INT-EXT")
@@ -129,6 +132,7 @@ class Scene(Base):
     # relations
     script = relationship("Script", backref="normalized_scenes")
     step_outline = relationship("StoryStepOutline", backref="scenes")
+    environment = relationship("Environment", backref="scenes")
 
 
 class SceneBeat(Base):
@@ -192,3 +196,21 @@ class Shot(Base):
     scene = relationship("Scene", backref="shots")
     beat = relationship("SceneBeat", backref="shots")
     storyboard_image = relationship("Image", backref="referenced_by_shots")
+
+
+class Environment(Base):
+    """Environment / location asset that can be reused across scenes and storyboards."""
+
+    __tablename__ = "environments"
+
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    category = Column(String(50), comment="indoor/outdoor/other")
+    tags = Column(JSON)
+    description = Column(Text)
+    reference_images = Column(JSON, comment="list of reference image URLs/paths")
+    extra_metadata = Column("metadata", JSON)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
