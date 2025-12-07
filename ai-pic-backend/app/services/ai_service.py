@@ -562,6 +562,7 @@ class AIService:
 - character_arcs: 角色发展安排
 - conflicts: 本集的冲突设置
 - scene_count: 预估场景数量
+- scenes: 场景列表（数组），每个至少包含 scene_number, slug_line（如 INT. 办公室 - 日）, location, time_of_day, summary
 
 示例格式：
 {
@@ -573,7 +574,16 @@ class AIService:
             "plot_points": [{"description": "角色出场", "timing": "开场"}],
             "character_arcs": {"protagonist": "初始状态展示"},
             "conflicts": [{"description": "内心困扰", "intensity": "low"}],
-            "scene_count": 5
+            "scene_count": 5,
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "slug_line": "INT. 办公室 - 日",
+                    "location": "公司总部办公室",
+                    "time_of_day": "day",
+                    "summary": "场景概要，交代人物/冲突铺垫"
+                }
+            ]
         }
     ]
 }
@@ -604,7 +614,23 @@ class AIService:
                 "conflicts": [
                     {"description": f"第{episode_num}集的主要冲突", "intensity": "medium"}
                 ],
-                "scene_count": 4 + (episode_num % 3)  # 4-6个场景
+                "scene_count": 4 + (episode_num % 3),  # 4-6个场景
+                "scenes": [
+                    {
+                        "scene_number": 1,
+                        "slug_line": f"INT. 主要场景 {episode_num} - DAY",
+                        "location": "主要地点",
+                        "time_of_day": "day",
+                        "summary": "开场铺垫，呈现本集冲突或目标"
+                    },
+                    {
+                        "scene_number": 2,
+                        "slug_line": f"EXT. 发展场景 {episode_num} - DUSK",
+                        "location": "次要地点",
+                        "time_of_day": "dusk",
+                        "summary": "推进矛盾或关系，加深角色动机"
+                    },
+                ]
             })
         
         content = json.dumps({
