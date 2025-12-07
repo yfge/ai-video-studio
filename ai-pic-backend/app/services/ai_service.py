@@ -840,6 +840,15 @@ class AIService:
                     temperature=temperature,
                 )
                 if lg and lg.get("content"):
+                    # 组装 content 文本
+                    assembled = self._build_script_text(
+                        lg["content"].get("scenes") or [],
+                        lg["content"].get("dialogues") or [],
+                        lg["content"].get("stage_directions") or [],
+                        format_type=format_type,
+                        language=language,
+                    )
+                    lg["content"]["content"] = assembled
                     return lg
             except Exception as e:
                 self.logger.warning(f"LangGraph script agent failed: {e}")
@@ -859,6 +868,21 @@ class AIService:
             temperature=temperature,
         )
         if direct:
+            # 尝试解析填充 content 以便前端展示
+            try:
+                parsed = json.loads(direct["content"]) if isinstance(direct.get("content"), str) else direct.get("content")
+                if isinstance(parsed, dict):
+                    assembled = self._build_script_text(
+                        parsed.get("scenes") or [],
+                        parsed.get("dialogues") or [],
+                        parsed.get("stage_directions") or [],
+                        format_type=format_type,
+                        language=language,
+                    )
+                    parsed["content"] = assembled
+                    direct["content"] = parsed
+            except Exception:
+                pass
             return direct
 
         # 3) Mock 回退
@@ -872,6 +896,38 @@ class AIService:
             additional_requirements=additional_requirements,
             style_preferences=style_preferences,
         )
+
+    def _build_script_text(
+        self,
+        scenes: List[Dict[str, Any]],
+        dialogues: List[Dict[str, Any]],
+        stage_directions: List[Dict[str, Any]],
+        format_type: str,
+        language: str,
+    ) -> str:
+        """简单拼装剧本文本，便于前端展示；真实文本可后续细化。"""
+        lines: List[str] = [f"# {format_type} ({language})"]
+        if scenes:
+            lines.append("## 场景")
+            for sc in scenes:
+                slug = sc.get("slug_line") or f"Scene {sc.get('scene_number')}"
+                summary = sc.get("summary") or ""
+                lines.append(f"- {slug}: {summary}")
+        if dialogues:
+            lines.append("\n## 对白")
+            for dlg in dialogues[:200]:
+                scene_no = dlg.get("scene_number") or "-"
+                char = dlg.get("character") or "旁白"
+                content = dlg.get("content") or ""
+                lines.append(f"[场景 {scene_no}] {char}: {content}")
+        if stage_directions:
+            lines.append("\n## 舞台指示")
+            for sd in stage_directions[:200]:
+                scene_no = sd.get("scene_number") or "-"
+                content = sd.get("content") or ""
+                timing = sd.get("timing") or ""
+                lines.append(f"[场景 {scene_no}][{timing}] {content}")
+        return "\n".join(lines)
     
     async def _call_text_generation_service(self, prompt: str, task_type: str) -> Optional[str]:
         """调用文本生成服务"""
