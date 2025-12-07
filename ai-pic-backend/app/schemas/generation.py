@@ -122,6 +122,7 @@ class EpisodePlanItem(BaseModel):
     character_arcs: Optional[Dict[str, Any]] = None
     conflicts: Optional[List[ConflictItem]] = None
     scene_count: Optional[int] = None
+    scenes: Optional[List[Dict[str, Any]]] = None
 
 
 class EpisodePlanModel(BaseModel):
