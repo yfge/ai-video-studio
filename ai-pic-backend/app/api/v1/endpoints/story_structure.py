@@ -295,6 +295,12 @@ def _compose_environment_prompt(env, extra: Optional[str] = None) -> str:
             parts.append(f"Tags: {tags_str}")
     if env.description:
         parts.append(f"Description: {env.description}")
+    # Default structured guidance to ensure prompt has整体->细节、室内/室外的层次
+    category_hint = "室内布局、光线、材质细节" if (env.category or "").lower() == "indoor" else "室外空间、天气、周边环境"
+    parts.append(
+        f"Overall-to-detail: 开场远景交代空间 -> 中景展示主要区域 -> 近景刻画关键道具/纹理；"
+        f"Environment focus: {category_hint}；保持真实光影和透视，色彩和风格统一。"
+    )
     if extra:
         parts.append(extra)
     if not parts:
