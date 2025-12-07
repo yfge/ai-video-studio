@@ -38,6 +38,15 @@ export default function EpisodeDetailPage() {
     value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
   const getString = (value: unknown): string | undefined =>
     typeof value === 'string' ? value : undefined;
+  const extractScenes = (ep: Episode | null): Record<string, unknown>[] => {
+    if (!ep) return []
+    const meta = (ep as unknown as Record<string, unknown>)?.extra_metadata ?? ep.metadata ?? {}
+    const scenes = (meta as Record<string, unknown>)?.scenes
+    if (Array.isArray(scenes)) {
+      return scenes.filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+    }
+    return []
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -203,6 +212,11 @@ export default function EpisodeDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {episode && (
+          <div className="mb-3 text-xs text-gray-500">
+            scene_count: {episode.scene_count ?? extractScenes(episode).length || '—'}
+          </div>
+        )}
         {/* 头部 */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -211,7 +225,7 @@ export default function EpisodeDetailPage() {
                 第{episode.episode_number}集: {episode.title}
               </h1>
               <p className="mt-2 text-gray-600">
-                {episode.duration_minutes}分钟 • {episode.scene_count}个场景
+                {episode.duration_minutes}分钟 • {episode.scene_count ?? extractScenes(episode).length || '未知'}个场景
               </p>
             </div>
           <div className="flex gap-2">
@@ -328,6 +342,37 @@ export default function EpisodeDetailPage() {
                 <p className="text-gray-500 text-sm">暂无冲突设置</p>
               )}
             </div>
+          </div>
+          {/* 场景列表（来自 AI 生成数据） */}
+          <div className="mt-6">
+            <h3 className="font-medium text-gray-900 mb-2">场景列表</h3>
+            {extractScenes(episode).length === 0 ? (
+              <p className="text-gray-500 text-sm">暂无场景数据（如需，重新生成剧集或导入分镜后刷新）。</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {extractScenes(episode).map((scene: Record<string, unknown>, idx: number) => {
+                  const title = (scene.title as string) || (scene.slug_line as string) || `场景 ${idx + 1}`
+                  const desc = (scene.summary as string) || (scene.description as string) || (scene.beat_summary as string)
+                  const loc = (scene.location as string) || (scene.environment as string) || (scene.setting as string)
+                  const tod = (scene.time_of_day as string) || (scene.time as string) || (scene.period as string)
+                  return (
+                    <div key={idx} className="border rounded p-3 bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium text-gray-900">场景 {scene?.scene_number ?? idx + 1}</div>
+                        {scene?.status && <span className="text-xs text-gray-600">{scene.status}</span>}
+                      </div>
+                      <div className="text-sm text-gray-800 mt-1">{title}</div>
+                      {desc && <div className="text-xs text-gray-600 mt-1 line-clamp-3">{desc}</div>}
+                      {(loc || tod) && (
+                        <div className="text-xs text-gray-500 mt-2">
+                          {loc ? `地点：${loc}` : ''} {tod ? ` · 时间：${tod}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
