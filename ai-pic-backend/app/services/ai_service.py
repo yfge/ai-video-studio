@@ -1503,6 +1503,8 @@ class AIService:
     
     def get_ai_providers_status(self) -> Dict[str, Any]:
         """获取AI提供商状态"""
+        if not self.ai_manager:
+            return {}
         return self.ai_manager.get_provider_status()
 
     async def list_models(

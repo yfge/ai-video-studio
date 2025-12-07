@@ -338,8 +338,24 @@ async def get_available_models(
     - source: 'static' | 'remote' | 'auto'（默认 auto: 优先官方接口，失败回退静态）
     """
     try:
+        status = ai_service.get_ai_providers_status()
+        enabled_providers = [
+            name for name, meta in status.items()
+            if meta.get("enabled", True)
+        ]
+        if not enabled_providers:
+            raise HTTPException(
+                status_code=503,
+                detail="暂无可用的AI提供商，请检查 OPENAI_API_KEY / VOLCENGINE_API_KEY 等配置是否已注入容器",
+            )
+
         # 通过统一的 AIService/AIServiceManager 列出模型
         models = await ai_service.list_models(model_type_alias=model_type, source=source)
+        if not models:
+            raise HTTPException(
+                status_code=503,
+                detail=f"当前无可用模型（model_type={model_type or 'all'}）。请确认对应提供商密钥已配置，且服务初始化无错误。",
+            )
         # 添加前端期望的 model_id 字段（provider:model）
         enriched = [
             {
