@@ -360,15 +360,20 @@ async def regenerate_episode(
         episodes_data = ai_content.get("episodes", [])
         if episodes_data:
             episode_data = episodes_data[0]
-            
+            scenes = episode_data.get("scenes") or []
+            scene_count = episode_data.get("scene_count") or (len(scenes) if isinstance(scenes, list) else None)
+
             # 更新剧集内容
             episode.summary = episode_data.get("summary")
             episode.plot_points = episode_data.get("plot_points")
             episode.character_arcs = episode_data.get("character_arcs")
             episode.conflicts = episode_data.get("conflicts")
-            episode.scene_count = episode_data.get("scene_count")
+            episode.scene_count = scene_count
             known_keys = {"episode_number", "title", "summary", "plot_points", "character_arcs", "conflicts", "scene_count"}
-            episode.extra_metadata = {k: v for k, v in episode_data.items() if k not in known_keys} or None
+            extra_meta = {k: v for k, v in episode_data.items() if k not in known_keys} or {}
+            if scenes and "scenes" not in extra_meta:
+                extra_meta["scenes"] = scenes
+            episode.extra_metadata = extra_meta or None
             episode.generation_prompt = result["prompt"]
             episode.ai_model = result["generation_method"]
             
@@ -453,8 +458,12 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             exists = db.query(Episode).filter(Episode.story_id == story.id, Episode.episode_number == episode_number).first()
             if exists:
                 continue
+            scenes = ep_data.get("scenes") or []
+            scene_count = ep_data.get("scene_count") or (len(scenes) if isinstance(scenes, list) else None)
             known_keys = {"episode_number", "title", "summary", "plot_points", "character_arcs", "conflicts", "scene_count"}
             extra_meta = {k: v for k, v in ep_data.items() if k not in known_keys}
+            if scenes and "scenes" not in extra_meta:
+                extra_meta["scenes"] = scenes
             ep = Episode(
                 story_id=story.id,
                 episode_number=episode_number,
@@ -464,7 +473,7 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
                 character_arcs=ep_data.get("character_arcs"),
                 conflicts=ep_data.get("conflicts"),
                 duration_minutes=request_dict.get("episode_duration"),
-                scene_count=ep_data.get("scene_count"),
+                scene_count=scene_count,
                 generation_prompt=result.get("prompt"),
                 ai_model=result.get("generation_method"),
                 generation_params={k: request_dict.get(k) for k in ["focus_characters","plot_complexity","pacing","additional_requirements","style_preferences","model","temperature"]},
