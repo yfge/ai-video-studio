@@ -3,6 +3,7 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from collections import defaultdict
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -11,6 +12,8 @@ from app.core.database import get_db
 from app.models.user import User
 from app.core.middleware import get_current_active_user
 from app.models.script import Story, Episode, Script
+from app.models.story_structure import Scene, Shot, Environment
+from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.schemas.script import (
     ScriptCreate, ScriptUpdate, ScriptResponse, 
     ScriptGenerationRequest
@@ -53,6 +56,16 @@ def _ensure_iso_datetime(value: Any, fallback: str) -> str:
         return datetime.fromisoformat(str(value)).isoformat()
     except Exception:
         return fallback
+
+
+def _abs_url(url: str) -> str:
+    if not url:
+        return ""
+    if url.startswith("http"):
+        return url
+    if not url.startswith("/"):
+        url = "/" + url
+    return f"http://localhost:8000{url}"
 
 
 def _serialize_frame(frame: Dict[str, Any]) -> Dict[str, Any]:
@@ -1473,6 +1486,60 @@ def _process_storyboard_image_task(task_id: int, script_id: int, frame_indexes: 
         frames = sb["frames"]
         target_indexes = frame_indexes or list(range(len(frames)))
 
+        # 准备环境 / 角色参考图
+        scenes = db.query(Scene).filter(Scene.script_id == script_id).all()
+        scene_by_number: Dict[int, Scene] = {}
+        env_ids: set[int] = set()
+        scene_ids: list[int] = []
+        for sc in scenes:
+            try:
+                sn = int(sc.scene_number)
+                scene_by_number[sn] = sc
+            except Exception:
+                continue
+            scene_ids.append(sc.id)
+            if sc.environment_id:
+                env_ids.add(sc.environment_id)
+
+        env_map: Dict[int, Environment] = {}
+        env_images_by_scene: Dict[int, List[str]] = {}
+        if env_ids:
+            envs = db.query(Environment).filter(Environment.id.in_(env_ids)).all()
+            env_map = {env.id: env for env in envs}
+            for sc in scenes:
+                if sc.environment_id and sc.environment_id in env_map:
+                    refs = env_map[sc.environment_id].reference_images or []
+                    env_images_by_scene[int(sc.scene_number)] = [_abs_url(u) for u in refs if u]
+
+        scene_char_ids: Dict[int, set[int]] = defaultdict(set)
+        if scene_ids:
+            shots = db.query(Shot).filter(Shot.scene_id.in_(scene_ids)).all()
+            for shot in shots:
+                for cid in shot.character_ids or []:
+                    try:
+                        scene_char_ids[shot.scene_id].add(int(cid))
+                    except Exception:
+                        continue
+
+        all_char_ids = {cid for ids in scene_char_ids.values() for cid in ids}
+        vip_map: Dict[int, VirtualIP] = {}
+        char_image_map: Dict[int, str] = {}
+        if all_char_ids:
+            vips = db.query(VirtualIP).filter(VirtualIP.id.in_(all_char_ids)).all()
+            vip_map = {v.id: v for v in vips}
+            images = (
+                db.query(VirtualIPImage)
+                .filter(VirtualIPImage.virtual_ip_id.in_(all_char_ids))
+                .order_by(VirtualIPImage.is_default.desc(), VirtualIPImage.created_at.desc())
+                .all()
+            )
+            for img in images:
+                if img.virtual_ip_id in char_image_map:
+                    continue
+                url = img.oss_url or img.file_path
+                if url:
+                    char_image_map[img.virtual_ip_id] = _abs_url(url)
+
         import anyio
 
         async def _gen_image(prompt: str) -> dict | None:
@@ -1502,6 +1569,29 @@ def _process_storyboard_image_task(task_id: int, script_id: int, frame_indexes: 
             prompt = fr.get("ai_prompt") or fr.get("description") or ""
             if not prompt:
                 continue
+
+            scene_no = _to_int(fr.get("scene_number"))
+            env_refs = env_images_by_scene.get(scene_no or -1, [])
+            char_refs: List[str] = []
+            ref_images: List[str] = []
+            if scene_no and scene_no in scene_by_number:
+                sc_obj = scene_by_number.get(scene_no)
+                if sc_obj and sc_obj.id in scene_char_ids:
+                    for cid in scene_char_ids[sc_obj.id]:
+                        name = vip_map.get(cid).name if cid in vip_map else f"角色{cid}"
+                        img_url = char_image_map.get(cid)
+                        if img_url:
+                            char_refs.append(f"{name}: {img_url}")
+                            ref_images.append(img_url)
+            ref_images.extend(env_refs)
+            if env_refs:
+                char_refs.append(f"环境参考图: {' '.join(env_refs[:3])}")
+
+            if char_refs:
+                prompt = prompt + "\n参考图像：" + " | ".join(char_refs)
+            if ref_images:
+                fr["reference_images"] = list(dict.fromkeys(ref_images))
+
             result = anyio.run(_gen_image, prompt)
             if result and result.get("url"):
                 fr["image_url"] = result["url"]
