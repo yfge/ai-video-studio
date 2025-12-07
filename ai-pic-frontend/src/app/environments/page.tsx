@@ -1,16 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
 import { storyStructureAPI, type EnvironmentCreate, type Environment } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
+import { ModelSelector } from '@/components/ModelSelector'
 
 function EnvironmentsPageContent() {
   const { showAlert } = useAlertModal()
   const [list, setList] = useState<Environment[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [generating, setGenerating] = useState<Record<number, boolean>>({})
+  const [selectedModels, setSelectedModels] = useState<Record<number, string>>({})
   const [newEnv, setNewEnv] = useState<EnvironmentCreate>({
     name: '',
     category: 'indoor',
@@ -39,6 +42,17 @@ function EnvironmentsPageContent() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000', [])
+
+  const imageSrc = useCallback(
+    (url: string) => {
+      if (!url) return ''
+      if (url.startsWith('http')) return url
+      return `${apiBase}${url.startsWith('/') ? url : `/${url}`}`
+    },
+    [apiBase]
+  )
 
   const handleCreate = async () => {
     if (!newEnv.name.trim()) {
@@ -92,6 +106,55 @@ function EnvironmentsPageContent() {
         }
       },
     })
+  }
+
+  const handleGenerateImage = async (env: Environment, options: { prompt?: string; model?: string; size?: string }) => {
+    setGenerating(prev => ({ ...prev, [env.id]: true }))
+    try {
+      const payload = {
+        prompt: options.prompt || env.description || env.name,
+        model: options.model,
+        size: options.size,
+        count: 1,
+      }
+      const res = await storyStructureAPI.generateEnvironmentImages(env.id, payload)
+      if (res.success) {
+        showAlert({ message: '环境图生成成功', variant: 'success' })
+        await load()
+      } else {
+        showAlert({ message: res.error || '生成失败', variant: 'error' })
+      }
+    } catch (error) {
+      console.error(error)
+      showAlert({ message: '生成失败', variant: 'error' })
+    } finally {
+      setGenerating(prev => ({ ...prev, [env.id]: false }))
+    }
+  }
+
+  const handleGenerateVariant = async (env: Environment, base: string, options: { prompt?: string; model?: string; size?: string }) => {
+    setGenerating(prev => ({ ...prev, [env.id]: true }))
+    try {
+      const payload = {
+        base_image: base,
+        prompt: options.prompt || '基于此环境图生成风格一致的变体',
+        model: options.model,
+        size: options.size,
+        count: 1,
+      }
+      const res = await storyStructureAPI.generateEnvironmentImageVariants(env.id, payload)
+      if (res.success) {
+        showAlert({ message: '变体生成成功', variant: 'success' })
+        await load()
+      } else {
+        showAlert({ message: res.error || '变体生成失败', variant: 'error' })
+      }
+    } catch (error) {
+      console.error(error)
+      showAlert({ message: '变体生成失败', variant: 'error' })
+    } finally {
+      setGenerating(prev => ({ ...prev, [env.id]: false }))
+    }
   }
 
   return (
@@ -179,7 +242,7 @@ function EnvironmentsPageContent() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {list.map(env => (
-                <div key={env.id} className="border rounded p-4 hover:shadow-sm">
+                <div key={env.id} className="border rounded p-4 hover:shadow-sm space-y-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold text-gray-900">{env.name}</div>
                     <button
@@ -187,11 +250,11 @@ function EnvironmentsPageContent() {
                       className="text-red-600 hover:text-red-800 text-xs"
                     >删除</button>
                   </div>
-                  <div className="text-xs text-gray-500 mb-2">类别：{env.category || '未指定'}</div>
-                  {env.tags && env.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {env.tags.map(tag => (
-                        <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">{tag}</span>
+                    <div className="text-xs text-gray-500 mb-2">类别：{env.category || '未指定'}</div>
+                    {env.tags && env.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {env.tags.map(tag => (
+                          <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">{tag}</span>
                       ))}
                     </div>
                   )}
@@ -199,6 +262,55 @@ function EnvironmentsPageContent() {
                     <p className="text-sm text-gray-700 line-clamp-3 mb-2">{env.description}</p>
                   )}
                   <div className="text-xs text-gray-500">参考图：{env.reference_images?.length || 0} 张</div>
+                  {env.reference_images && env.reference_images.length > 0 && (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {env.reference_images.map(url => (
+                        <div key={url} className="relative group rounded overflow-hidden border">
+                          <img src={imageSrc(url)} alt={env.name} className="h-24 w-full object-cover" />
+                          <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-black/40 text-white text-xs group-hover:flex">
+                            <button
+                              className="rounded bg-white/80 px-2 py-1 text-gray-800 hover:bg-white"
+                              onClick={() => handleGenerateVariant(env, url, { prompt: env.description })}
+                            >
+                              变体
+                            </button>
+                            <button
+                              className="rounded bg-red-500 px-2 py-1 text-white hover:bg-red-600"
+                              onClick={() => storyStructureAPI.deleteEnvironmentImage(env.id, url).then(res => {
+                                if (res.success) {
+                                  showAlert({ message: '已删除参考图', variant: 'success' })
+                                  void load()
+                                } else {
+                                  showAlert({ message: res.error || '删除失败', variant: 'error' })
+                                }
+                              })}
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                    <div className="rounded border border-dashed border-gray-200 p-3 text-xs text-gray-600 space-y-2">
+                      <div className="font-semibold text-gray-700">AI 生成参考图</div>
+                      <ModelSelector
+                        value={selectedModels[env.id] || ''}
+                        onChange={modelId => setSelectedModels(prev => ({ ...prev, [env.id]: modelId }))}
+                        modelType="image"
+                        helperText="默认使用环境描述作为提示词"
+                        allowAuto={true}
+                        autoLabel="自动选择"
+                        className="text-sm"
+                      />
+                      <button
+                      onClick={() => handleGenerateImage(env, { prompt: env.description || env.name, model: selectedModels[env.id] })}
+                      disabled={generating[env.id]}
+                      className="w-full rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {generating[env.id] ? '生成中...' : '一键生成参考图'}
+                    </button>
+                  </div>
                   <div className="text-xs text-gray-400 mt-1">
                     创建于 {new Date(env.created_at).toLocaleDateString()}
                   </div>

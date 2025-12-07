@@ -432,6 +432,11 @@ export interface EnvironmentCreate {
   metadata?: Record<string, unknown>;
 }
 
+export interface EnvironmentImagesResponse {
+  images: { url: string }[];
+  count: number;
+}
+
 // 规范化结构类型
 export interface NormalizedScene {
   id: number;
@@ -1049,6 +1054,31 @@ class ApiClient {
     });
   }
 
+  async listEnvironmentImages(envId: number): Promise<ApiResponse<EnvironmentImagesResponse>> {
+    return this.request(`/api/v1/story-structure/environments/${envId}/images`);
+  }
+
+  async generateEnvironmentImages(envId: number, payload: { prompt?: string; model?: string; count?: number; size?: string }): Promise<ApiResponse<{ images: string[]; count: number }>> {
+    return this.request(`/api/v1/story-structure/environments/${envId}/images/generate`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async generateEnvironmentImageVariants(envId: number, payload: { base_image?: string; prompt?: string; model?: string; count?: number; size?: string }): Promise<ApiResponse<{ images: string[]; count: number }>> {
+    return this.request(`/api/v1/story-structure/environments/${envId}/images/variants`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteEnvironmentImage(envId: number, imageUrl: string): Promise<ApiResponse> {
+    const params = new URLSearchParams({ image_url: imageUrl });
+    return this.request(`/api/v1/story-structure/environments/${envId}/images?${params.toString()}`, {
+      method: 'DELETE',
+    });
+  }
+
   // 统一可用模型列表
   async getAvailableModels(params?: { type?: 'text' | 'image' | 'video' | string }) {
     const t = params?.type ?? 'text';
@@ -1541,6 +1571,10 @@ export const storyStructureAPI = {
   createEnvironment: apiClient.createEnvironment.bind(apiClient),
   updateEnvironment: apiClient.updateEnvironment.bind(apiClient),
   deleteEnvironment: apiClient.deleteEnvironment.bind(apiClient),
+  listEnvironmentImages: apiClient.listEnvironmentImages.bind(apiClient),
+  generateEnvironmentImages: apiClient.generateEnvironmentImages.bind(apiClient),
+  generateEnvironmentImageVariants: apiClient.generateEnvironmentImageVariants.bind(apiClient),
+  deleteEnvironmentImage: apiClient.deleteEnvironmentImage.bind(apiClient),
 }
 
 export const aiAPI = {

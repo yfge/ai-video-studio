@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import List
+import os
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.services import story_structure_service as svc
+from app.services.ai_service import ai_service
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
     StoryTreatmentResponse,
@@ -241,6 +243,161 @@ async def delete_environment(env_id: int, db: Session = Depends(get_db)):
     if not ok:
         raise HTTPException(status_code=404, detail="environment not found")
     return None
+
+
+# Environment images (reference-only, used as generation anchors)
+
+def _infer_provider_from_model(model: Optional[str]) -> Optional[str]:
+    if not model:
+        return None
+    normalized = model.lower()
+    if normalized.startswith(("seedream", "volcengine")):
+        return "volcengine"
+    if normalized.startswith("deepseek"):
+        return "deepseek"
+    if normalized.startswith(("keling", "kling")):
+        return "keling"
+    if normalized.startswith("jimeng"):
+        return "jimeng"
+    if normalized.startswith(("dall-e", "dalle")):
+        return "openai"
+    return None
+
+
+async def _download_and_attach(env, image_urls: List[str]) -> List[str]:
+    saved: List[str] = []
+    for image_url in image_urls:
+        try:
+            local_file = await ai_service._download_image(image_url, env.name, "environment")
+        except Exception:
+            local_file = None
+        if not local_file:
+            continue
+        filename = os.path.basename(local_file)
+        relative_path = f"/uploads/{filename}"
+        saved.append(relative_path)
+    refs = env.reference_images or []
+    refs.extend(saved)
+    env.reference_images = refs
+    return saved
+
+
+@router.get("/environments/{env_id}/images")
+async def list_environment_images(env_id: int, db: Session = Depends(get_db)):
+    env = svc.get_environment(db, env_id)
+    if not env:
+        raise HTTPException(status_code=404, detail="environment not found")
+    images = env.reference_images or []
+    normalized: List[Dict[str, Any]] = []
+    for url in images:
+        if isinstance(url, str):
+            normalized.append({"url": url})
+    return {"success": True, "data": {"images": normalized, "count": len(normalized)}}
+
+
+@router.delete("/environments/{env_id}/images")
+async def delete_environment_image(env_id: int, image_url: str, db: Session = Depends(get_db)):
+    env = svc.get_environment(db, env_id)
+    if not env:
+        raise HTTPException(status_code=404, detail="environment not found")
+    refs = env.reference_images or []
+    env.reference_images = [u for u in refs if u != image_url]
+    db.commit()
+    return {"success": True, "data": {"images": env.reference_images, "count": len(env.reference_images or [])}}
+
+
+@router.post("/environments/{env_id}/images/generate")
+async def generate_environment_images(
+    env_id: int,
+    prompt: Optional[str] = Query(None, description="生成提示词，不填则用环境描述/名称"),
+    model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
+    count: int = Query(1, ge=1, le=4, description="生成数量"),
+    size: Optional[str] = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
+    db: Session = Depends(get_db),
+):
+    env = svc.get_environment(db, env_id)
+    if not env:
+        raise HTTPException(status_code=404, detail="environment not found")
+    if not ai_service.ai_manager:
+        raise HTTPException(status_code=503, detail="AI管理器未初始化，无法生成环境图")
+
+    final_prompt = prompt or env.description or f"Environment: {env.name}"
+    prefer_provider = _infer_provider_from_model(model)
+    try:
+        response = await ai_service.ai_manager.generate_image(
+            prompt=final_prompt,
+            model=model,
+            n=count,
+            size=size if prefer_provider == "volcengine" else None,
+            prefer_provider=prefer_provider,
+        )
+    except Exception as exc:  # pragma: no cover - runtime guard
+        raise HTTPException(status_code=500, detail=f"环境文生图调用失败: {exc}") from exc
+
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error or "环境文生图生成失败")
+
+    images = response.data.get("images", []) if isinstance(response.data, dict) else []
+    if not images:
+        raise HTTPException(status_code=500, detail="环境文生图接口未返回任何图像")
+
+    saved = await _download_and_attach(env, images)
+    db.commit()
+    db.refresh(env)
+    return {"success": True, "data": {"images": saved, "count": len(saved)}}
+
+
+@router.post("/environments/{env_id}/images/variants")
+async def generate_environment_image_variants(
+    env_id: int,
+    base_image: Optional[str] = Query(None, description="基准图 URL 或相对路径"),
+    prompt: Optional[str] = Query(None, description="变体提示词"),
+    model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
+    count: int = Query(1, ge=1, le=4, description="生成数量"),
+    size: Optional[str] = Query(None, description="分辨率/尺寸"),
+    db: Session = Depends(get_db),
+):
+    env = svc.get_environment(db, env_id)
+    if not env:
+        raise HTTPException(status_code=404, detail="environment not found")
+    if not ai_service.ai_manager:
+        raise HTTPException(status_code=503, detail="AI管理器未初始化，无法生成变体")
+
+    base = base_image or (env.reference_images[0] if env.reference_images else None)
+    if not base:
+        raise HTTPException(status_code=400, detail="缺少基准图像")
+    if isinstance(base, str) and base.startswith("http"):
+        image_url = base
+    else:
+        path = base if isinstance(base, str) else ""
+        if path and not path.startswith("/"):
+            path = "/" + path
+        image_url = f"http://localhost:8000{path}"
+
+    prefer_provider = _infer_provider_from_model(model)
+    try:
+        response = await ai_service.ai_manager.image_to_image(
+            image_url=image_url,
+            prompt=prompt or "基于当前环境图生成风格一致的变体",
+            model=model,
+            prefer_provider=prefer_provider,
+            count=count,
+            size=size,
+        )
+    except Exception as exc:  # pragma: no cover - runtime guard
+        raise HTTPException(status_code=500, detail=f"环境图生图调用失败: {exc}") from exc
+
+    if not response.success:
+        raise HTTPException(status_code=500, detail=response.error or "环境图生图生成失败")
+
+    images = response.data.get("images", []) if isinstance(response.data, dict) else []
+    if not images:
+        raise HTTPException(status_code=500, detail="环境图生图接口未返回任何图像")
+
+    saved = await _download_and_attach(env, images)
+    db.commit()
+    db.refresh(env)
+    return {"success": True, "data": {"images": saved, "count": len(saved)}}
 
 
 @router.put("/scene-beats/{beat_id}", response_model=SceneBeatResponse)
