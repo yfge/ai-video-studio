@@ -47,6 +47,12 @@ export default function EpisodeDetailPage() {
     }
     return []
   }
+  const getSceneCount = (ep: Episode | null): number | undefined => {
+    if (!ep) return undefined
+    const scenes = extractScenes(ep)
+    const fallback = scenes.length > 0 ? scenes.length : undefined
+    return ep.scene_count ?? fallback
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -214,7 +220,7 @@ export default function EpisodeDetailPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {episode && (
           <div className="mb-3 text-xs text-gray-500">
-            scene_count: {episode.scene_count ?? extractScenes(episode).length || '—'}
+            scene_count: {(getSceneCount(episode)) || '—'}
           </div>
         )}
         {/* 头部 */}
@@ -225,7 +231,7 @@ export default function EpisodeDetailPage() {
                 第{episode.episode_number}集: {episode.title}
               </h1>
               <p className="mt-2 text-gray-600">
-                {episode.duration_minutes}分钟 • {(episode.scene_count ?? extractScenes(episode).length) || '未知'}个场景
+                {episode.duration_minutes}分钟 • {(getSceneCount(episode)) || '未知'}个场景
               </p>
             </div>
           <div className="flex gap-2">
