@@ -140,6 +140,8 @@ class StoryboardPlanScene(BaseModel):
     scene_number: int
     target_frames: int = Field(..., ge=1, le=20)
     frames: List[StoryboardPlanFrameOutline]
+    environment_id: Optional[int] = None
+    character_ids: Optional[List[int]] = None
 
 
 class StoryboardPlanModel(BaseModel):

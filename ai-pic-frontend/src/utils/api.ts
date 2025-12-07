@@ -410,6 +410,28 @@ export interface StoryboardPayload {
   plan?: StoryboardPlan;
 }
 
+// 环境资产
+export interface Environment {
+  id: number;
+  name: string;
+  category?: string | null;
+  tags?: string[] | null;
+  description?: string | null;
+  reference_images?: string[] | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnvironmentCreate {
+  name: string;
+  category?: string;
+  tags?: string[];
+  description?: string;
+  reference_images?: string[];
+  metadata?: Record<string, unknown>;
+}
+
 export interface StoryGenerationRequest {
   title: string;
   genre: string;
@@ -978,6 +1000,31 @@ class ApiClient {
 
   async getStoryGenres() {
     return this.request<Array<{ value: string; label: string }>>('/api/v1/stories/genres');
+  }
+
+  // 环境资产管理
+  async listEnvironments(): Promise<ApiResponse<Environment[]>> {
+    return this.request('/api/v1/story-structure/environments');
+  }
+
+  async createEnvironment(payload: EnvironmentCreate): Promise<ApiResponse<Environment>> {
+    return this.request('/api/v1/story-structure/environments', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateEnvironment(id: number, payload: Partial<EnvironmentCreate>): Promise<ApiResponse<Environment>> {
+    return this.request(`/api/v1/story-structure/environments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteEnvironment(id: number): Promise<ApiResponse> {
+    return this.request(`/api/v1/story-structure/environments/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   // 统一可用模型列表
