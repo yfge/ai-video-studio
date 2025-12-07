@@ -3,18 +3,19 @@
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { episodeAPI, scriptAPI, storyStructureAPI } from '@/utils/api'
+import { episodeAPI, scriptAPI, storyStructureAPI, virtualIPAPI } from '@/utils/api'
 import type {
   Episode,
   Script,
   StoryboardPayload,
   StoryboardFrame,
+  Environment,
+  VirtualIP,
+  NormalizedScene,
+  NormalizedShot,
 } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { ModelSelector } from '@/components/ModelSelector'
-
-type NormalizedScene = { id: number; scene_number: string; slug_line: string; status: string }
-type NormalizedShot = { id: number; shot_number: string; shot_type?: string; camera_movement?: string }
 
 export default function EpisodeStoryboardPage() {
   const params = useParams()
@@ -34,6 +35,13 @@ export default function EpisodeStoryboardPage() {
   const [normalizedShots, setNormalizedShots] = useState<NormalizedShot[]>([])
   const [selectedNormalizedSceneId, setSelectedNormalizedSceneId] = useState<number | null>(null)
   const [normalizedLoading, setNormalizedLoading] = useState(false)
+  const [environments, setEnvironments] = useState<Environment[]>([])
+  const [envLoading, setEnvLoading] = useState(false)
+  const [selectedEnvId, setSelectedEnvId] = useState<number | null>(null)
+  const [characters, setCharacters] = useState<VirtualIP[]>([])
+  const [shotAssignments, setShotAssignments] = useState<Record<number, number[]>>({})
+  const [shotSaving, setShotSaving] = useState<number | null>(null)
+  const [sceneEnvSaving, setSceneEnvSaving] = useState(false)
 
   const [form, setForm] = useState({ model: '', temperature: 0.7, frames_per_scene: 7 })
   const [promptPreview, setPromptPreview] = useState('')
@@ -101,6 +109,20 @@ export default function EpisodeStoryboardPage() {
     }
   }, [useNormalized, normalizedScenes])
 
+  const selectedNormalizedScene = useMemo(
+    () => normalizedScenes.find(s => s.id === selectedNormalizedSceneId) ?? null,
+    [normalizedScenes, selectedNormalizedSceneId]
+  )
+
+  useEffect(() => {
+    setSelectedEnvId(selectedNormalizedScene?.environment_id ?? null)
+  }, [selectedNormalizedScene?.id, selectedNormalizedScene?.environment_id])
+
+  const selectedEnv = useMemo(
+    () => environments.find(env => env.id === selectedEnvId) ?? null,
+    [environments, selectedEnvId]
+  )
+
   useEffect(() => {
     const fetchNormalized = async () => {
       if (!useNormalized || !activeScript?.id) return
@@ -125,6 +147,44 @@ export default function EpisodeStoryboardPage() {
     }
     fetchShots()
   }, [useNormalized, selectedNormalizedSceneId])
+
+  useEffect(() => {
+    const map: Record<number, number[]> = {}
+    normalizedShots.forEach(shot => {
+      map[shot.id] = (shot.character_ids || []).map((id) => Number(id))
+    })
+    setShotAssignments(map)
+  }, [normalizedShots])
+
+  useEffect(() => {
+    let mounted = true
+    setEnvLoading(true)
+    storyStructureAPI.listEnvironments().then(res => {
+      if (!mounted) return
+      if (res.success && Array.isArray(res.data)) {
+        setEnvironments(res.data)
+      } else {
+        setEnvironments([])
+        if (res.error) {
+          showAlert({ message: `加载环境资产失败：${res.error}`, variant: 'error' })
+        }
+      }
+    }).finally(() => {
+      if (mounted) setEnvLoading(false)
+    })
+    return () => { mounted = false }
+  }, [showAlert])
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      const res = await virtualIPAPI.getVirtualIPs()
+      if (!mounted) return
+      if (res.success && res.data) setCharacters(res.data)
+      else setCharacters([])
+    })()
+    return () => { mounted = false }
+  }, [])
 
   const framesForScene = useMemo(() => {
     const frames = storyboard?.frames ?? []
@@ -277,6 +337,38 @@ export default function EpisodeStoryboardPage() {
       }
     } finally {
       setSeedingBusy(false)
+    }
+  }
+
+  const handleSaveSceneEnvironment = async () => {
+    if (!selectedNormalizedSceneId) return
+    setSceneEnvSaving(true)
+    try {
+      const res = await storyStructureAPI.updateScene(selectedNormalizedSceneId, { environment_id: selectedEnvId ?? null })
+      if (res.success) {
+        setNormalizedScenes(prev => prev.map(sc => sc.id === selectedNormalizedSceneId ? { ...sc, environment_id: selectedEnvId ?? null } : sc))
+        showAlert({ message: '场景环境已更新', variant: 'success' })
+      } else {
+        showAlert({ message: `更新失败：${res.error || '未知错误'}`, variant: 'error' })
+      }
+    } finally {
+      setSceneEnvSaving(false)
+    }
+  }
+
+  const handleSaveShotCharacters = async (shotId: number) => {
+    const characterIds = shotAssignments[shotId] || []
+    setShotSaving(shotId)
+    try {
+      const res = await storyStructureAPI.updateSceneShot(shotId, { character_ids: characterIds })
+      if (res.success) {
+        setNormalizedShots(prev => prev.map(sh => sh.id === shotId ? { ...sh, character_ids: characterIds } : sh))
+        showAlert({ message: '镜头角色已更新', variant: 'success' })
+      } else {
+        showAlert({ message: `更新失败：${res.error || '未知错误'}`, variant: 'error' })
+      }
+    } finally {
+      setShotSaving(null)
     }
   }
 
@@ -513,23 +605,115 @@ export default function EpisodeStoryboardPage() {
               </div>
             </div>
             {useNormalized && selectedNormalizedSceneId && (
-              <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-sm font-medium text-gray-800">规范化镜头（实验）</div>
-                  {normalizedLoading && <span className="text-xs text-gray-500">加载中...</span>}
-                </div>
-                {normalizedShots.length === 0 ? (
-                  <div className="text-xs text-gray-500">暂无镜头</div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {normalizedShots.map(shot => (
-                      <span key={shot.id} className="text-xs border rounded px-2 py-1 bg-white">
-                        #{shot.shot_number} {shot.shot_type ? `· ${shot.shot_type}` : ''}
-                      </span>
-                    ))}
+              <>
+                <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-gray-800">场景属性（实验）</div>
+                    {envLoading && <span className="text-xs text-gray-500">环境加载中...</span>}
                   </div>
-                )}
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+                    <div>
+                      <label className="block text-xs text-gray-700 mb-1">绑定环境</label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedEnvId ?? ''}
+                          onChange={e => setSelectedEnvId(e.target.value ? Number(e.target.value) : null)}
+                          className="px-2 py-1 border rounded text-sm min-w-[200px]"
+                        >
+                          <option value="">未绑定</option>
+                          {environments.map(env => (
+                            <option key={env.id} value={env.id}>
+                              {env.name} {env.category ? `(${env.category})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={handleSaveSceneEnvironment}
+                          disabled={sceneEnvSaving}
+                          className="text-xs bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                        >
+                          {sceneEnvSaving ? '保存中...' : '保存'}
+                        </button>
+                      </div>
+                      {selectedEnv && (
+                        <div className="text-[11px] text-gray-500 mt-1">
+                          标签：{selectedEnv.tags?.join(', ') || '无'} · 参考图 {selectedEnv.reference_images?.length || 0} 张
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      <div className="font-medium text-gray-800">场景行：{selectedNormalizedScene?.slug_line || '—'}</div>
+                      <div className="mt-1 text-gray-500">编号：{selectedNormalizedScene?.scene_number ?? '—'} | 状态：{selectedNormalizedScene?.status ?? '—'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-sm font-medium text-gray-800">规范化镜头（实验）</div>
+                    {normalizedLoading && <span className="text-xs text-gray-500">加载中...</span>}
+                  </div>
+                  {normalizedShots.length === 0 ? (
+                    <div className="text-xs text-gray-500">暂无镜头</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {normalizedShots.map(shot => {
+                        const assigned = shotAssignments[shot.id] || []
+                        return (
+                          <div key={shot.id} className="bg-white border border-gray-100 rounded p-2">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-medium text-gray-800">#{shot.shot_number}</div>
+                              {shot.shot_type && <span className="text-[11px] px-2 py-0.5 bg-gray-100 text-gray-700 rounded">{shot.shot_type}</span>}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">运镜：{shot.camera_movement || '—'}</div>
+                            <div className="mt-2">
+                              <label className="text-xs text-gray-700 mb-1 block">涉及角色</label>
+                              <select
+                                multiple
+                                disabled={characters.length === 0}
+                                value={assigned.map(String)}
+                                onChange={e => {
+                                  const values = Array.from(e.target.selectedOptions).map(opt => Number(opt.value))
+                                  setShotAssignments(prev => ({ ...prev, [shot.id]: values }))
+                                }}
+                                className="w-full border rounded text-xs px-2 py-1 h-24"
+                              >
+                                {characters.length === 0 ? (
+                                  <option value="">暂无虚拟IP可选</option>
+                                ) : (
+                                  characters.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                  ))
+                                )}
+                              </select>
+                              {assigned.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mt-1 text-[11px] text-gray-700">
+                                  {assigned.map(id => (
+                                    <span key={id} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded">
+                                      {characters.find(c => c.id === id)?.name || `角色${id}`}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-gray-500 mt-1">未选择角色</div>
+                              )}
+                            </div>
+                            <div className="mt-2 flex justify-end">
+                              <button
+                                onClick={() => void handleSaveShotCharacters(shot.id)}
+                                disabled={shotSaving === shot.id}
+                                className="text-xs bg-green-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                              >
+                                {shotSaving === shot.id ? '保存中...' : '保存配置'}
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
             {storyboardBusy ? (
               <div className="text-gray-500">分镜处理中...</div>

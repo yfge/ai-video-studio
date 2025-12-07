@@ -432,6 +432,28 @@ export interface EnvironmentCreate {
   metadata?: Record<string, unknown>;
 }
 
+// 规范化结构类型
+export interface NormalizedScene {
+  id: number;
+  scene_number: string;
+  slug_line: string;
+  status: string;
+  environment_id?: number | null;
+  environment_type?: string | null;
+  location?: string | null;
+  time_of_day?: string | null;
+  summary?: string | null;
+}
+
+export interface NormalizedShot {
+  id: number;
+  shot_number: string;
+  shot_type?: string;
+  camera_movement?: string;
+  scene_beat_id?: number | null;
+  character_ids?: number[] | null;
+}
+
 export interface StoryGenerationRequest {
   title: string;
   genre: string;
@@ -1220,11 +1242,24 @@ class ApiClient {
 
   // 规范化叙事结构（实验性）
   async getNormalizedScenes(scriptId: number) {
-    return this.request<Array<{ id: number; scene_number: string; slug_line: string; status: string }>>(
+    return this.request<Array<NormalizedScene>>(
       `/api/v1/story-structure/scripts/${scriptId}/scenes`
     )
   }
-  async createScene(scriptId: number, payload: { script_id: number; scene_number: string; slug_line: string; status?: string }) {
+  async createScene(
+    scriptId: number,
+    payload: {
+      script_id: number;
+      scene_number: string;
+      slug_line: string;
+      status?: string;
+      environment_id?: number;
+      environment_type?: string;
+      location?: string;
+      time_of_day?: string;
+      summary?: string;
+    }
+  ) {
     return this.request(`/api/v1/story-structure/scripts/${scriptId}/scenes`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -1234,6 +1269,7 @@ class ApiClient {
     slug_line: string
     scene_number: string
     story_step_outline_id: number
+    environment_id: number
     environment_type: string
     location: string
     time_of_day: string
@@ -1301,7 +1337,7 @@ class ApiClient {
   }
 
   async getNormalizedSceneShots(sceneId: number) {
-    return this.request<Array<{ id: number; shot_number: string; shot_type?: string; camera_movement?: string }>>(
+    return this.request<Array<NormalizedShot>>(
       `/api/v1/story-structure/scenes/${sceneId}/shots`
     )
   }
@@ -1316,6 +1352,7 @@ class ApiClient {
       camera_movement?: string
       framing?: string
       focus_subject?: string
+      character_ids?: number[]
       duration_seconds?: number
       storyboard_frame_asset_id?: number
       lighting_notes?: string
@@ -1339,6 +1376,7 @@ class ApiClient {
       camera_movement?: string
       framing?: string
       focus_subject?: string
+      character_ids?: number[]
       duration_seconds?: number
       storyboard_frame_asset_id?: number
       lighting_notes?: string
