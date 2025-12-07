@@ -10,6 +10,7 @@ from app.models.story_structure import (
     Scene,
     SceneBeat,
     Shot,
+    Environment,
 )
 from app.models.script import Script
 from app.schemas.story_structure import (
