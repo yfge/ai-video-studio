@@ -702,6 +702,11 @@ export default function ScriptDetailPage() {
                 canEdit={canEditStructure}
                 onStructureLoaded={setStructuredScenes}
               />
+              {scenes.length > 1 && (
+                <p className="text-xs text-gray-500">
+                  当前剧本共 {scenes.length} 个场景，点击左侧「场景 X」卡片可切换查看不同场景的对白与舞台指示。
+                </p>
+              )}
               <div className="grid gap-4 border-t border-gray-100 pt-4 lg:grid-cols-[260px,1fr]">
                 <div className="space-y-2">
                   {scenes.length === 0 && <p className="text-sm text-gray-500">暂无结构化场景信息。</p>}
