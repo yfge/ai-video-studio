@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services import story_structure_service as svc
 from app.services.ai_service import ai_service
+from app.models.story_structure import Environment
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
     StoryTreatmentResponse,
@@ -264,7 +265,7 @@ def _infer_provider_from_model(model: Optional[str]) -> Optional[str]:
     return None
 
 
-async def _download_and_attach(env, image_urls: List[str]) -> List[str]:
+async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[str]:
     saved: List[str] = []
     for image_url in image_urls:
         try:
@@ -279,6 +280,10 @@ async def _download_and_attach(env, image_urls: List[str]) -> List[str]:
     refs = env.reference_images or []
     refs.extend(saved)
     env.reference_images = refs
+    # 强制持久化 JSON 列，避免未跟踪的列表修改丢失
+    db.query(Environment).filter(Environment.id == env.id).update(
+        {"reference_images": env.reference_images}
+    )
     return saved
 
 
@@ -385,7 +390,7 @@ async def generate_environment_images(
     if not images:
         raise HTTPException(status_code=500, detail="环境文生图接口未返回任何图像")
 
-    saved = await _download_and_attach(env, images)
+    saved = await _download_and_attach(db, env, images)
     db.commit()
     db.refresh(env)
     return {"success": True, "data": {"images": saved, "count": len(saved)}}
@@ -457,7 +462,7 @@ async def generate_environment_image_variants(
     if not images:
         raise HTTPException(status_code=500, detail="环境图生图接口未返回任何图像")
 
-    saved = await _download_and_attach(env, images)
+    saved = await _download_and_attach(db, env, images)
     db.commit()
     db.refresh(env)
     return {"success": True, "data": {"images": saved, "count": len(saved)}}
