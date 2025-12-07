@@ -225,7 +225,7 @@ export default function EpisodeDetailPage() {
                 第{episode.episode_number}集: {episode.title}
               </h1>
               <p className="mt-2 text-gray-600">
-                {episode.duration_minutes}分钟 • {episode.scene_count ?? extractScenes(episode).length || '未知'}个场景
+                {episode.duration_minutes}分钟 • {(episode.scene_count ?? extractScenes(episode).length) || '未知'}个场景
               </p>
             </div>
           <div className="flex gap-2">
