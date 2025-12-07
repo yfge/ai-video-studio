@@ -724,8 +724,10 @@ class AIService:
         """生成模拟剧本内容，保证无外部模型时的回退体验"""
         await asyncio.sleep(1)
 
+        # 优先使用已生成的场景，保持与剧集一致；否则退回 plot_points
+        base_scenes = episode.get("scenes") or []
         plot_points = episode.get("plot_points") or []
-        if not plot_points:
+        if not base_scenes and not plot_points:
             summary = episode.get("summary") or story.get("synopsis") or "角色在本集中推进剧情。"
             plot_points = [{"description": summary, "timing": "中段"}]
 
@@ -744,17 +746,34 @@ class AIService:
         default_locations = ["教室", "校园花园", "图书馆", "操场"]
         default_times = ["DAY", "EVENING", "NIGHT"]
 
-        for idx, point in enumerate(plot_points, start=1):
-            location = default_locations[(idx - 1) % len(default_locations)]
-            time_of_day = default_times[(idx - 1) % len(default_times)]
-            description = point.get("description") or f"故事在第{idx}个阶段推进。"
+        # 若有真实场景，按场景生成；否则使用情节点生成
+        if base_scenes:
+            iterable = list(base_scenes)
+        else:
+            iterable = plot_points
+
+        for idx, item in enumerate(iterable, start=1):
+            if base_scenes:
+                location = item.get("location") or item.get("place") or default_locations[(idx - 1) % len(default_locations)]
+                time_of_day = item.get("time_of_day") or item.get("time") or default_times[(idx - 1) % len(default_times)]
+                slug_line = item.get("slug_line") or f"INT. {location} - {time_of_day}"
+                description = item.get("summary") or item.get("description") or f"场景 {idx}"
+                story_beat = item.get("story_beat") or item.get("timing") or "beat"
+            else:
+                location = default_locations[(idx - 1) % len(default_locations)]
+                time_of_day = default_times[(idx - 1) % len(default_times)]
+                slug_line = f"INT. {location.upper()} - {time_of_day}"
+                description = item.get("description") or f"故事在第{idx}个阶段推进。"
+                story_beat = item.get("timing") or "beat"
 
             scenes.append({
                 "scene_number": idx,
-                "slug_line": f"INT. {location.upper()} - {time_of_day}",
+                "slug_line": slug_line,
                 "summary": description,
                 "focus_characters": focus_characters,
-                "story_beat": point.get("timing") or "beat"
+                "story_beat": story_beat,
+                "location": location,
+                "time_of_day": time_of_day,
             })
 
             dialogues.append({
