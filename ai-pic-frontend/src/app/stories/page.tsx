@@ -320,7 +320,9 @@ function StoriesPageContent() {
                 value={generateForm.model || ''}
                 onChange={modelId => setGenerateForm(prev => ({ ...prev, model: modelId }))}
                 modelType="text"
-                helperText="为空将由后端自动挑选最佳提供商与模型"
+                helperText="为空将由后端自动挑选最佳提供商与模型（故事生成推荐使用支持 JSON Schema 的模型）"
+                // 目前仅开放 OpenAI 文本模型用于故事概要生成，保证结构化输出稳定
+                filterModels={model => model.provider === 'openai'}
               />
 
               <div>

@@ -17,6 +17,7 @@ interface ModelSelectorProps {
   autoSelectDefault?: boolean
   onModelsLoaded?: (models: AIModel[], defaultModel: string) => void
   className?: string
+  filterModels?: (model: AIModel) => boolean
 }
 
 export function ModelSelector({
@@ -33,6 +34,7 @@ export function ModelSelector({
   autoSelectDefault = false,
   onModelsLoaded,
   className,
+  filterModels,
 }: ModelSelectorProps) {
   const { models, defaultModel, loading, error, refresh } = useAvailableModels({
     modelType,
@@ -56,6 +58,8 @@ export function ModelSelector({
     }
   }, [autoSelectDefault, defaultModel, onChange, value])
 
+  const visibleModels = filterModels ? models.filter(filterModels) : models
+
   return (
     <div className={className}>
       {label ? (
@@ -70,7 +74,7 @@ export function ModelSelector({
         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         {allowAuto ? <option value="">{autoLabel}</option> : null}
-        {models.map(model => (
+        {visibleModels.map(model => (
           <option key={model.model_id} value={model.model_id}>
             {(model.name || model.id || model.model_id) ?? model.model_id} —{' '}
             {model.provider}
