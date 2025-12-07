@@ -59,6 +59,22 @@ class GoogleProvider(BaseProvider):
         """
         return await super().fetch_remote_models(model_type=model_type)
 
+    async def generate_image(
+        self,
+        prompt: str,
+        model: str = None,
+        **kwargs: Any,
+    ) -> AIResponse:
+        """GoogleProvider 当前未实现图像生成，返回未实现错误。"""
+        return AIResponse(
+            success=False,
+            error="GoogleProvider does not support text-to-image",
+            provider=self.name,
+            model=model or (self.default_model if hasattr(self, "default_model") else "unknown"),
+            task_type=AITaskType.PORTRAIT_GENERATION,
+            model_type=AIModelType.TEXT_TO_IMAGE,
+        )
+
     async def _initialize_client(self):
         """初始化 HTTP 客户端"""
         if not self.config.api_key:
