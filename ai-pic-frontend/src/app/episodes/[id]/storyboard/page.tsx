@@ -64,6 +64,14 @@ export default function EpisodeStoryboardPage() {
   >([]);
   const [imageModalSelected, setImageModalSelected] = useState<string[]>([]);
   const [imageModalLoading, setImageModalLoading] = useState(false);
+  const [edgeModalOpen, setEdgeModalOpen] = useState(false);
+  const [edgeModalLoading, setEdgeModalLoading] = useState(false);
+  const [edgeModalEnvImages, setEdgeModalEnvImages] = useState<string[]>([]);
+  const [edgeModalCharImages, setEdgeModalCharImages] = useState<
+    Array<{ id: number; name: string; images: string[] }>
+  >([]);
+  const [edgeModalSelected, setEdgeModalSelected] = useState<string[]>([]);
+  const [edgeTargets, setEdgeTargets] = useState({ first: true, last: true });
 
   const [form, setForm] = useState({
     model: "",
@@ -422,32 +430,15 @@ export default function EpisodeStoryboardPage() {
     else showAlert({ message: "图像生成失败", variant: "error" });
   };
 
-  const handleGenerateSceneEdgeImages = async () => {
-    if (!activeScript) return;
-    if (!assertNormalizedReady(true)) return;
-    const indexes = collectFrameIndexesForScene(selectedScene);
-    if (indexes.length === 0) {
-      showAlert({
-        message: "当前场景没有分镜帧，无法生成首尾帧图像",
-        variant: "warning",
-      });
-      return;
-    }
+  const fetchReferenceImagesForScene = useCallback(async () => {
     if (!selectedNormalizedSceneId) {
-      showAlert({
-        message:
-          "请先在规范化结构中为场景绑定环境与镜头角色后再生成首尾帧图像。",
-        variant: "warning",
-      });
-      return;
+      return { envImages: [] as string[], charGroups: [] as Array<{ id: number; name: string; images: string[] }> };
     }
 
-    const targets =
-      indexes.length === 1
-        ? [indexes[0]]
-        : [indexes[0], indexes[indexes.length - 1]];
-
-    const envRefs = (selectedEnv?.reference_images || []).filter(Boolean);
+    const envImages: string[] = [];
+    if (selectedEnv?.reference_images && selectedEnv.reference_images.length > 0) {
+      envImages.push(...selectedEnv.reference_images.filter(Boolean));
+    }
 
     const sceneCharacterIds = new Set<number>();
     normalizedShots.forEach((shot) => {
@@ -457,48 +448,117 @@ export default function EpisodeStoryboardPage() {
       });
     });
 
-    const charImages: string[] = [];
+    const characterImageGroups: Array<{
+      id: number;
+      name: string;
+      images: string[];
+    }> = [];
     for (const id of sceneCharacterIds) {
-      try {
-        const res = await virtualIPAPI.getVirtualIPImages(id);
-        if (!res.success || !Array.isArray(res.data)) continue;
-        const imgs = res.data;
-        const preferred = imgs.find((img) => img.is_default) ?? imgs[0];
-        const url = (preferred?.oss_url || preferred?.file_path) as
-          | string
-          | undefined;
-        if (url) charImages.push(url);
-      } catch {
-        // 忽略单个角色图片拉取失败，继续尝试其他角色
+      const character = characters.find((c) => c.id === id);
+      if (!character) continue;
+      const res = await virtualIPAPI.getVirtualIPImages(id);
+      if (!res.success || !Array.isArray(res.data)) continue;
+      const urls: string[] = [];
+      for (const img of res.data) {
+        const url = (img.oss_url || img.file_path) as string | undefined;
+        if (url) urls.push(url);
+      }
+      if (urls.length > 0) {
+        characterImageGroups.push({ id, name: character.name, images: urls });
       }
     }
 
-    const referenceImages = [...envRefs, ...charImages];
-    if (referenceImages.length === 0) {
+    return { envImages, charGroups: characterImageGroups };
+  }, [characters, normalizedShots, selectedEnv?.reference_images, selectedNormalizedSceneId, shotAssignments]);
+
+  const handleOpenEdgeModal = async () => {
+    if (!assertNormalizedReady(true)) return;
+    const indexes = collectFrameIndexesForScene(selectedScene);
+    if (indexes.length === 0) {
       showAlert({
-        message:
-          "当前场景缺少环境参考图或角色图像，请先在“环境资产”和“规范化镜头”中补齐后再生成首尾帧图像。",
+        message: "当前场景没有分镜帧，无法生成首尾帧图像",
         variant: "warning",
       });
       return;
     }
 
+    setEdgeModalOpen(true);
+    setEdgeModalLoading(true);
+    setEdgeTargets({ first: true, last: indexes.length > 1 });
+    setEdgeModalSelected([]);
+
     try {
-      const response = await scriptAPI.generateStoryboardImages(
-        activeScript.id,
-        {
-          frames: targets,
-          reference_images: referenceImages,
-        },
-      );
+      const { envImages, charGroups } = await fetchReferenceImagesForScene();
+      setEdgeModalEnvImages(envImages);
+      setEdgeModalCharImages(charGroups);
+      const defaults: string[] = [];
+      defaults.push(...envImages);
+      charGroups.forEach((group) => {
+        if (group.images[0]) defaults.push(group.images[0]);
+      });
+      setEdgeModalSelected(defaults);
+    } catch (error) {
+      console.error(error);
+      showAlert({ message: "加载参考图失败，请稍后重试", variant: "error" });
+    } finally {
+      setEdgeModalLoading(false);
+    }
+  };
+
+  const refreshStoryboard = useCallback(async () => {
+    if (!activeScript) return;
+    const sb = await scriptAPI.getStoryboard(activeScript.id);
+    if (sb.success && sb.data) setStoryboard(sb.data);
+  }, [activeScript]);
+
+  const handleConfirmEdgeGeneration = async () => {
+    if (!activeScript) return;
+    const indexes = collectFrameIndexesForScene(selectedScene);
+    if (indexes.length === 0) {
+      showAlert({
+        message: "当前场景没有分镜帧，无法生成首尾帧图像",
+        variant: "warning",
+      });
+      return;
+    }
+    const targets: number[] = [];
+    if (edgeTargets.first) targets.push(indexes[0]);
+    if (edgeTargets.last && indexes.length > 1) targets.push(indexes[indexes.length - 1]);
+    if (targets.length === 0) {
+      showAlert({
+        message: "请至少选择首帧或尾帧生成",
+        variant: "warning",
+      });
+      return;
+    }
+    if (edgeModalSelected.length === 0) {
+      showAlert({
+        message: "请选择至少一张参考图后再生成",
+        variant: "warning",
+      });
+      return;
+    }
+    setEdgeModalLoading(true);
+    try {
+      const response = await scriptAPI.generateStoryboardImages(activeScript.id, {
+        frames: targets,
+        reference_images: edgeModalSelected,
+      });
       if (response.success) {
         showAlert({ message: "已创建首尾帧图像生成任务", variant: "success" });
+        setEdgeModalOpen(false);
+        // 尝试延时刷新以展示生成结果
+        setTimeout(() => {
+          void refreshStoryboard();
+        }, 2000);
       } else {
         showAlert({ message: "首尾帧图像生成失败", variant: "error" });
       }
     } catch (error) {
       console.error(error);
       showAlert({ message: "首尾帧图像生成失败", variant: "error" });
+    } finally {
+      setEdgeModalLoading(false);
     }
   };
 
@@ -574,48 +634,13 @@ export default function EpisodeStoryboardPage() {
     setImageModalSelected([]);
 
     try {
-      const envImages: string[] = [];
-      if (
-        selectedEnv?.reference_images &&
-        selectedEnv.reference_images.length > 0
-      ) {
-        envImages.push(...selectedEnv.reference_images.filter(Boolean));
-      }
-
-      const sceneCharacterIds = new Set<number>();
-      normalizedShots.forEach((shot) => {
-        const assigned = shotAssignments[shot.id] || [];
-        assigned.forEach((id) => {
-          if (Number.isFinite(id)) sceneCharacterIds.add(id);
-        });
-      });
-
-      const characterImageGroups: Array<{
-        id: number;
-        name: string;
-        images: string[];
-      }> = [];
-      for (const id of sceneCharacterIds) {
-        const character = characters.find((c) => c.id === id);
-        if (!character) continue;
-        const res = await virtualIPAPI.getVirtualIPImages(id);
-        if (!res.success || !Array.isArray(res.data)) continue;
-        const urls: string[] = [];
-        for (const img of res.data) {
-          const url = (img.oss_url || img.file_path) as string | undefined;
-          if (url) urls.push(url);
-        }
-        if (urls.length > 0) {
-          characterImageGroups.push({ id, name: character.name, images: urls });
-        }
-      }
-
+      const { envImages, charGroups } = await fetchReferenceImagesForScene();
       setImageModalEnvImages(envImages);
-      setImageModalCharImages(characterImageGroups);
+      setImageModalCharImages(charGroups);
 
       const defaultSelected: string[] = [];
       defaultSelected.push(...envImages);
-      characterImageGroups.forEach((group) => {
+      charGroups.forEach((group) => {
         if (group.images[0]) defaultSelected.push(group.images[0]);
       });
       setImageModalSelected(defaultSelected);
@@ -629,6 +654,12 @@ export default function EpisodeStoryboardPage() {
 
   const toggleModalImage = (url: string) => {
     setImageModalSelected((prev) =>
+      prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url],
+    );
+  };
+
+  const toggleEdgeModalImage = (url: string) => {
+    setEdgeModalSelected((prev) =>
       prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url],
     );
   };
@@ -896,8 +927,8 @@ export default function EpisodeStoryboardPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {/* 左侧场景列表 */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* 左侧场景列表 */}
           <div className="md:col-span-1 bg-white rounded-lg shadow p-3">
             <h3 className="text-sm font-medium text-gray-900 mb-3">
               场景{" "}
@@ -946,13 +977,13 @@ export default function EpisodeStoryboardPage() {
 
           {/* 右侧分镜帧列表 */}
           <div className="md:col-span-4 bg-white rounded-lg shadow p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
               <h3 className="text-base font-medium text-gray-900">
                 分镜帧 - 场景 {selectedScene}
               </h3>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <button
-                  onClick={handleGenerateSceneEdgeImages}
+                  onClick={handleOpenEdgeModal}
                   className="text-sm text-emerald-600 hover:text-emerald-800"
                 >
                   生成首尾帧图像
@@ -1358,6 +1389,155 @@ export default function EpisodeStoryboardPage() {
           </div>
         </div>
       </div>
+      {edgeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-auto p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold text-gray-900">
+                生成首/尾帧图像
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEdgeModalOpen(false)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                关闭
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mb-3">
+              选择环境与多角色参考图，可同时生成首帧/尾帧，也可以只生成其中一个。
+            </p>
+            <div className="flex items-center gap-3 mb-3 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={edgeTargets.first}
+                  onChange={(e) =>
+                    setEdgeTargets((prev) => ({ ...prev, first: e.target.checked }))
+                  }
+                />
+                <span>生成首帧</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={edgeTargets.last}
+                  onChange={(e) =>
+                    setEdgeTargets((prev) => ({ ...prev, last: e.target.checked }))
+                  }
+                />
+                <span>生成尾帧</span>
+              </label>
+            </div>
+            {edgeModalLoading ? (
+              <div className="py-8 text-center text-gray-500">
+                参考图加载中...
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {edgeModalEnvImages.length > 0 && (
+                  <div>
+                    <div className="text-xs font-medium text-gray-700 mb-2">
+                      环境参考图
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {edgeModalEnvImages.map((url) => {
+                        const selected = edgeModalSelected.includes(url);
+                        return (
+                          <button
+                            key={url}
+                            type="button"
+                            onClick={() => toggleEdgeModalImage(url)}
+                            className={`relative border rounded overflow-hidden ${
+                              selected ? "ring-2 ring-blue-500" : ""
+                            }`}
+                          >
+                            <img
+                              src={imageSrc(url)}
+                              alt="环境参考图"
+                              className="h-24 w-full object-cover"
+                            />
+                            {selected && (
+                              <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white text-xs">
+                                已选
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {edgeModalCharImages.length > 0 && (
+                  <div>
+                    <div className="text-xs font-medium text-gray-700 mb-2">
+                      角色参考图
+                    </div>
+                    <div className="space-y-3">
+                      {edgeModalCharImages.map((group) => (
+                        <div key={group.id}>
+                          <div className="text-[11px] text-gray-600 mb-1">
+                            {group.name}
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {group.images.map((url) => {
+                              const selected = edgeModalSelected.includes(url);
+                              return (
+                                <button
+                                  key={url}
+                                  type="button"
+                                  onClick={() => toggleEdgeModalImage(url)}
+                                  className={`relative border rounded overflow-hidden ${
+                                    selected ? "ring-2 ring-blue-500" : ""
+                                  }`}
+                                >
+                                  <img
+                                    src={imageSrc(url)}
+                                    alt={group.name}
+                                    className="h-24 w-full object-cover"
+                                  />
+                                  {selected && (
+                                    <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white text-xs">
+                                      已选
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {edgeModalEnvImages.length === 0 &&
+                  edgeModalCharImages.length === 0 && (
+                    <div className="text-xs text-gray-500">
+                      当前场景缺少环境参考图或角色图像，请先绑定后再生成首/尾帧。
+                    </div>
+                  )}
+              </div>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEdgeModalOpen(false)}
+                className="px-3 py-1 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmEdgeGeneration()}
+                className="px-3 py-1 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                disabled={edgeModalLoading}
+              >
+                生成首/尾帧
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {imageModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-auto p-4">
