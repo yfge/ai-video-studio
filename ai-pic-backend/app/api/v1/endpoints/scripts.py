@@ -18,7 +18,9 @@ from app.schemas.script import (
     ScriptCreate, ScriptUpdate, ScriptResponse, 
     ScriptGenerationRequest
 )
+from app.schemas.story_structure import SceneCreate, ShotCreate
 from app.services.ai_service import ai_service
+from app.services import story_structure_service as story_structure_svc
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryboardModel, StoryboardPlanModel, StoryboardPlanScene
@@ -399,6 +401,111 @@ def _normalize_script_content(
     return normalized
 
 
+def _build_scene_payload_from_script_data(
+    scene_raw: Any,
+    idx: int,
+    script_id: int,
+) -> Optional[SceneCreate]:
+    """将剧本中的场景数据转换为 SceneCreate."""
+    if isinstance(scene_raw, dict):
+        base = dict(scene_raw)
+    elif isinstance(scene_raw, str):
+        base = {"summary": scene_raw, "description": scene_raw}
+    else:
+        return None
+
+    scene_no = _to_int(base.get("scene_number")) or idx
+    summary = base.get("summary") or base.get("description")
+    location = base.get("location") or base.get("place")
+    time_of_day = base.get("time_of_day") or base.get("time")
+
+    slug_line = base.get("slug_line")
+    if not slug_line:
+        if location and time_of_day:
+            slug_line = f"{location} - {time_of_day}"
+        elif summary:
+            slug_line = str(summary)[:80]
+        else:
+            slug_line = f"Scene {scene_no}"
+
+    return SceneCreate(
+        script_id=script_id,
+        scene_number=str(scene_no),
+        slug_line=str(slug_line),
+        location=location,
+        time_of_day=time_of_day,
+        summary=summary,
+        status="draft",
+    )
+
+
+def _sync_script_scenes_to_story_structure(
+    db: Session,
+    script: Script,
+    *,
+    allow_overwrite: bool = False,
+) -> Dict[str, int]:
+    """
+    将 Script.scenes 写入规范化 story_structure，若已有场景且未允许覆盖则跳过。
+    返回创建统计，内部吞掉异常以避免打断主流程。
+    """
+    logger = get_logger()
+    if not script or not script.id:
+        return {"created": 0, "shots_created": 0, "skipped": 0}
+
+    existing = story_structure_svc.list_scenes_by_script(db, script.id)
+    if existing and not allow_overwrite:
+        return {"created": 0, "shots_created": 0, "skipped": len(existing)}
+
+    if allow_overwrite and existing:
+        for sc in existing:
+            try:
+                story_structure_svc.delete_scene(db, sc.id)
+            except Exception as exc:  # pragma: no cover - protective
+                logger.warning("删除旧规范化场景失败: %s", exc)
+
+    scenes_src = script.scenes or []
+    if not scenes_src and isinstance(script.extra_metadata, dict):
+        scenes_src = script.extra_metadata.get("scenes") or []
+
+    created_scenes: List[Scene] = []
+    seen_numbers: set[str] = set()
+    for idx, raw in enumerate(scenes_src, start=1):
+        payload = _build_scene_payload_from_script_data(raw, idx, script.id)
+        if not payload:
+            continue
+        scene_key = payload.scene_number
+        if scene_key in seen_numbers:
+            continue
+        seen_numbers.add(scene_key)
+        try:
+            created = story_structure_svc.create_scene(db, payload)
+            created_scenes.append(created)
+        except Exception as exc:  # pragma: no cover - protective
+            logger.warning("写入规范化场景失败 scene=%s: %s", scene_key, exc)
+
+    shots_created = 0
+    for sc in created_scenes:
+        try:
+            story_structure_svc.create_shot(
+                db,
+                ShotCreate(
+                    scene_id=sc.id,
+                    shot_number="1",
+                    status="planned",
+                ),
+            )
+            shots_created += 1
+        except Exception as exc:  # pragma: no cover - protective
+            logger.warning("为场景创建占位镜头失败 scene_id=%s: %s", sc.id, exc)
+
+    return {
+        "created": len(created_scenes),
+        "shots_created": shots_created,
+        "skipped": len(existing) if existing and not allow_overwrite else 0,
+    }
+
+
 def _merge_frames(
     existing_frames: List[Dict[str, Any]],
     new_frames: List[Dict[str, Any]],
@@ -587,6 +694,12 @@ async def create_script(
     db.add(db_script)
     db.commit()
     db.refresh(db_script)
+
+    try:
+        _sync_script_scenes_to_story_structure(db, db_script)
+    except Exception:
+        logger = get_logger()
+        logger.warning("同步规范化场景失败（create）", exc_info=True)
     
     return ScriptResponse.from_orm(db_script)
 
@@ -718,6 +831,12 @@ async def generate_script(
     db.add(db_script)
     db.commit()
     db.refresh(db_script)
+
+    try:
+        _sync_script_scenes_to_story_structure(db, db_script)
+    except Exception:
+        logger = get_logger()
+        logger.warning("同步规范化场景失败（generate）", exc_info=True)
     
     return ScriptResponse.from_orm(db_script)
 
@@ -871,6 +990,12 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         db.commit()
         db.refresh(sc)
 
+        try:
+            _sync_script_scenes_to_story_structure(db, sc)
+        except Exception:
+            logger = get_logger()
+            logger.warning("同步规范化场景失败（generate-async）", exc_info=True)
+
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
             task.status = TaskStatus.COMPLETED
@@ -923,7 +1048,14 @@ async def get_storyboard(
     storyboard = (script.extra_metadata or {}).get("storyboard") if script.extra_metadata else None
     try:
         frames = (storyboard or {}).get("frames") or []
-        logger.info(f"Storyboard GET | script_id={script_id} frames={len(frames)}")
+        first_url = None
+        if isinstance(frames, list) and frames:
+            first = frames[0] or {}
+            if isinstance(first, dict):
+                first_url = first.get("image_url")
+        logger.info(
+            f"Storyboard GET | script_id={script_id} frames={len(frames)} first_image={bool(first_url)}"
+        )
     except Exception:
         pass
     data = dict(storyboard or {"frames": []})
@@ -1466,7 +1598,17 @@ async def update_storyboard(
     return {"success": True}
 
 
-def _process_storyboard_image_task(task_id: int, script_id: int, frame_indexes: list[int] | None, *, model: str | None = None, width: int = 1024, height: int = 1024, style: str = "realistic"):
+def _process_storyboard_image_task(
+    task_id: int,
+    script_id: int,
+    frame_indexes: list[int] | None,
+    *,
+    model: str | None = None,
+    width: int = 1024,
+    height: int = 1024,
+    style: str = "realistic",
+    reference_images: Optional[List[str]] = None,
+):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
     db = SessionLocal()
@@ -1483,7 +1625,12 @@ def _process_storyboard_image_task(task_id: int, script_id: int, frame_indexes: 
         if not sb or not sb.get("frames"):
             raise RuntimeError("未找到分镜数据")
 
-        frames = sb["frames"]
+        # 拷贝一份帧列表，避免直接在 SQLAlchemy 追踪的 JSON 结构上就地修改
+        import copy as _copy  # 局部导入避免循环依赖
+        frames_src = list((sb or {}).get("frames") or [])
+        frames: List[Dict[str, Any]] = [
+            _copy.deepcopy(fr) if isinstance(fr, dict) else fr for fr in frames_src
+        ]
         target_indexes = frame_indexes or list(range(len(frames)))
 
         # 准备环境 / 角色参考图
@@ -1542,23 +1689,56 @@ def _process_storyboard_image_task(task_id: int, script_id: int, frame_indexes: 
 
         import anyio
 
-        async def _gen_image(prompt: str) -> dict | None:
+        async def _gen_image(prompt: str, ref_imgs: List[str]) -> dict | None:
             try:
                 prefer_provider = None
                 model_id = model
                 if model_id and ":" in model_id:
                     prefer_provider, model_id = model_id.split(":", 1)
-                resp = await ai_service.ai_manager.generate_image(
-                    prompt=prompt,
-                    model=model_id,
-                    prefer_provider=prefer_provider,
-                    width=width,
-                    height=height,
-                    style=style,
-                )
+
+                refs = [_abs_url(u) for u in ref_imgs if u]
+
+                if refs:
+                    base_image = refs[0]
+                    extra = refs[1:]
+                    resp = await ai_service.ai_manager.image_to_image(
+                        image_url=base_image,
+                        prompt=prompt,
+                        model=model_id,
+                        prefer_provider=prefer_provider,
+                        count=1,
+                        extra_images=extra,
+                        width=width,
+                        height=height,
+                        style=style,
+                    )
+                else:
+                    resp = await ai_service.ai_manager.generate_image(
+                        prompt=prompt,
+                        model=model_id,
+                        prefer_provider=prefer_provider,
+                        width=width,
+                        height=height,
+                        style=style,
+                    )
                 if resp.success:
                     data = resp.data if isinstance(resp.data, dict) else {}
-                    return {"url": data.get("image_url") or data.get("url"), "provider": resp.provider, "model": resp.model}
+                    url = data.get("image_url") or data.get("url")
+                    # 兼容火山 Seedream 等返回 {"images": [...]} 的格式
+                    if not url:
+                        images = data.get("images")
+                        if isinstance(images, list) and images:
+                            first = images[0]
+                            if isinstance(first, str):
+                                url = first
+                            elif isinstance(first, dict):
+                                url = first.get("url")
+                    if url:
+                        return {
+                            "url": url,
+                            "provider": resp.provider,
+                            "model": resp.model,
+                        }
             except Exception as e:
                 print(f"图像生成失败: {e}")
             return None
@@ -1584,23 +1764,50 @@ def _process_storyboard_image_task(task_id: int, script_id: int, frame_indexes: 
                             char_refs.append(f"{name}: {img_url}")
                             ref_images.append(img_url)
             ref_images.extend(env_refs)
+            if reference_images:
+                ref_images.extend(reference_images)
             if env_refs:
                 char_refs.append(f"环境参考图: {' '.join(env_refs[:3])}")
+            if reference_images:
+                char_refs.append(f"用户参考图: {' '.join(reference_images[:3])}")
 
             if char_refs:
                 prompt = prompt + "\n参考图像：" + " | ".join(char_refs)
             if ref_images:
-                fr["reference_images"] = list(dict.fromkeys(ref_images))
+                fr["reference_images"] = list(dict.fromkeys([_abs_url(u) for u in ref_images]))
 
-            result = anyio.run(_gen_image, prompt)
+            result = anyio.run(_gen_image, prompt, ref_images)
+            if result:
+                print(f"Storyboard image result idx={idx} url={result.get('url')} provider={result.get('provider')}")
             if result and result.get("url"):
+                before_url = fr.get("image_url")
                 fr["image_url"] = result["url"]
+                print(f"Storyboard frame set idx={idx} old_url={before_url} new_url={fr.get('image_url')}")
 
-        # 保存
-        extra = script.extra_metadata or {}
-        extra["storyboard"] = sb
-        script.extra_metadata = extra
+        # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
+        extra_raw = script.extra_metadata or {}
+        extra = dict(extra_raw)
+        storyboard_payload = dict(sb or {})
+        storyboard_payload["frames"] = frames
+        extra["storyboard"] = storyboard_payload
+        # 直接使用 UPDATE 避免 JSON 变更检测问题
+        db.query(Script).filter(Script.id == script_id).update(
+            {Script.extra_metadata: extra},
+            synchronize_session=False,
+        )
         db.commit()
+        # 调试：确认数据库中已写入 image_url
+        try:
+            script_after = db.query(Script).filter(Script.id == script_id).first()
+            sb_after = (script_after.extra_metadata or {}).get("storyboard") if script_after and script_after.extra_metadata else None
+            frames_after = (sb_after or {}).get("frames") or []
+            if frames_after:
+                print(
+                    "Storyboard DB first_frame image_url after commit:",
+                    frames_after[0].get("image_url"),
+                )
+        except Exception:
+            pass
 
         if task:
             task.status = TaskStatus.COMPLETED
@@ -1621,6 +1828,10 @@ class StoryboardImageRequest(BaseModel):
     width: int = Field(default=1024, ge=64, le=2048)
     height: int = Field(default=1024, ge=64, le=2048)
     style: str = Field(default="realistic")
+    reference_images: Optional[List[str]] = Field(
+        default=None,
+        description="优先使用的参考图（环境/角色），传入则走图生图；会与场景环境/角色自动锚点合并",
+    )
 
 
 @router.post("/{script_id}/storyboard/generate-images")
@@ -1636,15 +1847,19 @@ async def generate_storyboard_images(
         description="根据分镜生成图像",
         task_type="image_generation",
         prompt=f"Storyboard image generation for script {script_id}",
-        parameters=json.dumps({
-            "script_id": script_id,
-            "frames": body.frames or [],
-            "model": body.model,
-            "width": body.width,
-            "height": body.height,
-            "style": body.style,
-        }, ensure_ascii=False),
-        user_id=current_user.id
+        parameters=json.dumps(
+            {
+                "script_id": script_id,
+                "frames": body.frames or [],
+                "model": body.model,
+                "width": body.width,
+                "height": body.height,
+                "style": body.style,
+                "reference_images": body.reference_images or [],
+            },
+            ensure_ascii=False,
+        ),
+        user_id=current_user.id,
     )
     db.add(t)
     db.commit()
@@ -1659,6 +1874,7 @@ async def generate_storyboard_images(
         width=body.width,
         height=body.height,
         style=body.style,
+        reference_images=body.reference_images,
     )
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
@@ -1810,6 +2026,12 @@ async def update_script(
     
     db.commit()
     db.refresh(script)
+
+    try:
+        _sync_script_scenes_to_story_structure(db, script)
+    except Exception:
+        logger = get_logger()
+        logger.warning("同步规范化场景失败（update）", exc_info=True)
     
     return ScriptResponse.from_orm(script)
 
@@ -1952,6 +2174,12 @@ async def regenerate_script(
     
     db.commit()
     db.refresh(script)
+
+    try:
+        _sync_script_scenes_to_story_structure(db, script)
+    except Exception:
+        logger = get_logger()
+        logger.warning("同步规范化场景失败（regenerate）", exc_info=True)
     
     return ScriptResponse.from_orm(script)
 
