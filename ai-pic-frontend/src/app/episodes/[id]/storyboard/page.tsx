@@ -1494,11 +1494,16 @@ export default function EpisodeStoryboardPage() {
                               selected ? "ring-2 ring-blue-500" : ""
                             }`}
                           >
-                            <img
-                              src={imageSrc(url)}
-                              alt="环境参考图"
-                              className="h-24 w-full object-cover"
-                            />
+                            <div className="relative h-24 w-full">
+                              <Image
+                                src={imageSrc(url)}
+                                alt="环境参考图"
+                                fill
+                                sizes="100%"
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
                             {selected && (
                               <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white text-xs">
                                 已选
@@ -1533,11 +1538,16 @@ export default function EpisodeStoryboardPage() {
                                     selected ? "ring-2 ring-blue-500" : ""
                                   }`}
                                 >
-                                  <img
-                                    src={imageSrc(url)}
-                                    alt={group.name}
-                                    className="h-24 w-full object-cover"
-                                  />
+                                  <div className="relative h-24 w-full">
+                                    <Image
+                                      src={imageSrc(url)}
+                                      alt={group.name}
+                                      fill
+                                      sizes="100%"
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                  </div>
                                   {selected && (
                                     <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white text-xs">
                                       已选
@@ -1623,11 +1633,16 @@ export default function EpisodeStoryboardPage() {
                               selected ? "ring-2 ring-blue-500" : ""
                             }`}
                           >
-                            <img
-                              src={imageSrc(url)}
-                              alt="环境参考图"
-                              className="h-24 w-full object-cover"
-                            />
+                            <div className="relative h-24 w-full">
+                              <Image
+                                src={imageSrc(url)}
+                                alt="环境参考图"
+                                fill
+                                sizes="100%"
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
                             {selected && (
                               <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white text-xs">
                                 已选
@@ -1662,11 +1677,16 @@ export default function EpisodeStoryboardPage() {
                                     selected ? "ring-2 ring-blue-500" : ""
                                   }`}
                                 >
-                                  <img
-                                    src={imageSrc(url)}
-                                    alt={group.name}
-                                    className="h-24 w-full object-cover"
-                                  />
+                                  <div className="relative h-24 w-full">
+                                    <Image
+                                      src={imageSrc(url)}
+                                      alt={group.name}
+                                      fill
+                                      sizes="100%"
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                  </div>
                                   {selected && (
                                     <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white text-xs">
                                       已选

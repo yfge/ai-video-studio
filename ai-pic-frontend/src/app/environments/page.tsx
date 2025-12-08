@@ -1,5 +1,6 @@
-'use client'
+"use client"
 
+import Image from "next/image"
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
@@ -265,8 +266,15 @@ function EnvironmentsPageContent() {
                   {env.reference_images && env.reference_images.length > 0 && (
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       {env.reference_images.map(url => (
-                        <div key={url} className="relative group rounded overflow-hidden border">
-                          <img src={imageSrc(url)} alt={env.name} className="h-24 w-full object-cover" />
+                        <div key={url} className="relative group rounded overflow-hidden border h-24">
+                          <Image
+                            src={imageSrc(url)}
+                            alt={env.name}
+                            fill
+                            sizes="100%"
+                            className="object-cover"
+                            unoptimized
+                          />
                           <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-black/40 text-white text-xs group-hover:flex">
                             <button
                               className="rounded bg-white/80 px-2 py-1 text-gray-800 hover:bg-white"

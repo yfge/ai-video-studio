@@ -91,10 +91,11 @@ async def test_openai_dalle_direct():
                     
                     # 验证base64数据
                     import base64
+                    png_header = b"\x89PNG"
                     try:
                         decoded = base64.b64decode(base64_data)
                         print(f"   解码后图像大小: {len(decoded)} bytes")
-                        print(f"   图像格式检查: {'PNG' if decoded.startswith(b'\\x89PNG') else '未知'}")
+                        print(f"   图像格式检查: {'PNG' if decoded.startswith(png_header) else '未知'}")
                         return True
                     except Exception as decode_error:
                         print(f"   ❌ base64解码失败: {decode_error}")
