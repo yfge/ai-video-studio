@@ -334,27 +334,37 @@ class VolcengineProvider(BaseProvider):
         try:
             client = await self.get_client()
 
-            # 1) 下载参考图并转成 data:image/...;base64,... 形式
-            img_resp = await client.get(image_url)
-            img_resp.raise_for_status()
+            # 1) 下载一张或多张参考图并转成 data:image/...;base64,... 形式
+            extra_images: list[str] = kwargs.pop("extra_images", []) or []
+            base64_images: list[str] = kwargs.pop("base64_images", []) or []
+            if base64_images:
+                image_payloads = base64_images[:14]
+            else:
+                urls: list[str] = [image_url] + [u for u in extra_images if u]
+                # Seedream 最多 14 张参考图
+                urls = urls[:14]
 
-            import base64
+                import base64
 
-            content_type = img_resp.headers.get("Content-Type", "image/png")
-            subtype = "png"
-            if "/" in content_type:
-                subtype = content_type.split("/")[-1] or "png"
-            b64_data = base64.b64encode(img_resp.content).decode("ascii")
-            image_payload = f"data:image/{subtype.lower()};base64,{b64_data}"
+                image_payloads: list[str] = []
+                for url in urls:
+                    img_resp = await client.get(url)
+                    img_resp.raise_for_status()
+                    content_type = img_resp.headers.get("Content-Type", "image/png")
+                    subtype = "png"
+                    if "/" in content_type:
+                        subtype = content_type.split("/")[-1] or "png"
+                    b64_data = base64.b64encode(img_resp.content).decode("ascii")
+                    image_payloads.append(f"data:image/{subtype.lower()};base64,{b64_data}")
 
-            # 2) 组装 Ark 请求体
+            # 2) 组装 Ark 请求体（单图=字符串，多图=数组）
             effective_size = size or "2K"
             max_images = max(1, int(n) if n and n > 0 else 1)
 
             request_data: Dict[str, Any] = {
                 "model": ark_model,
                 "prompt": prompt or "",
-                "image": image_payload,
+                "image": image_payloads[0] if len(image_payloads) == 1 else image_payloads,
                 "size": effective_size,
                 "response_format": "url",
                 "watermark": kwargs.pop("watermark", False),

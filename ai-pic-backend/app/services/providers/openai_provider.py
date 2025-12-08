@@ -334,17 +334,29 @@ class OpenAIProvider(BaseProvider):
                 model=model,
                 task_type=AITaskType.SCENE_GENERATION,
                 model_type=AIModelType.IMAGE_TO_IMAGE
-            )
+        )
         
         try:
             client = await self.get_client()
             
-            # 下载原图像
-            image_response = await client.get(image_url)
-            image_response.raise_for_status()
+            # 支持 data:image;base64 或 URL
+            image_bytes = None
+            content_type = "image/png"
+            base64_images: list[str] = kwargs.pop("base64_images", []) or []
+            if base64_images and base64_images[0].startswith("data:image"):
+                import base64
+
+                header, b64_data = base64_images[0].split(",", 1)
+                content_type = header.split(";")[0].split(":")[1] if ":" in header else "image/png"
+                image_bytes = base64.b64decode(b64_data)
+            else:
+                image_response = await client.get(image_url)
+                image_response.raise_for_status()
+                content_type = image_response.headers.get("Content-Type", "image/png")
+                image_bytes = image_response.content
             
             files = {
-                "image": ("image.png", image_response.content, "image/png")
+                "image": ("image.png", image_bytes, content_type or "image/png")
             }
             
             data = {

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   episodeAPI,
@@ -72,6 +72,9 @@ export default function EpisodeStoryboardPage() {
   >([]);
   const [edgeModalSelected, setEdgeModalSelected] = useState<string[]>([]);
   const [edgeTargets, setEdgeTargets] = useState({ first: true, last: true });
+  const [imagePolling, setImagePolling] = useState(false);
+  const [imagePollingLabel, setImagePollingLabel] = useState("");
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [form, setForm] = useState({
     model: "",
@@ -425,9 +428,10 @@ export default function EpisodeStoryboardPage() {
     const response = await scriptAPI.generateStoryboardImages(activeScript.id, {
       frames: indexes,
     });
-    if (response.success)
+    if (response.success) {
       showAlert({ message: "已创建图像生成任务", variant: "success" });
-    else showAlert({ message: "图像生成失败", variant: "error" });
+      startImagePolling("场景批量图像");
+    } else showAlert({ message: "图像生成失败", variant: "error" });
   };
 
   const fetchReferenceImagesForScene = useCallback(async () => {
@@ -505,11 +509,51 @@ export default function EpisodeStoryboardPage() {
     }
   };
 
-  const refreshStoryboard = useCallback(async () => {
-    if (!activeScript) return;
-    const sb = await scriptAPI.getStoryboard(activeScript.id);
-    if (sb.success && sb.data) setStoryboard(sb.data);
-  }, [activeScript]);
+  const startImagePolling = useCallback(
+    (label: string) => {
+      if (!activeScript) return;
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      setImagePolling(true);
+      setImagePollingLabel(label);
+      let attempts = 0;
+      pollTimerRef.current = setInterval(async () => {
+        attempts += 1;
+        const sb = await scriptAPI.getStoryboard(activeScript.id);
+        if (sb.success && sb.data) {
+          setStoryboard(sb.data);
+          const hasImage = (sb.data.frames || []).some(
+            (fr) => fr && fr.image_url,
+          );
+          if (hasImage || attempts >= 10) {
+            if (pollTimerRef.current) {
+              clearInterval(pollTimerRef.current);
+              pollTimerRef.current = null;
+            }
+            setImagePolling(false);
+            setImagePollingLabel("");
+          }
+        }
+        if (attempts >= 10 && pollTimerRef.current) {
+          clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+          setImagePolling(false);
+          setImagePollingLabel("");
+        }
+      }, 2000);
+    },
+    [activeScript],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleConfirmEdgeGeneration = async () => {
     if (!activeScript) return;
@@ -547,10 +591,7 @@ export default function EpisodeStoryboardPage() {
       if (response.success) {
         showAlert({ message: "已创建首尾帧图像生成任务", variant: "success" });
         setEdgeModalOpen(false);
-        // 尝试延时刷新以展示生成结果
-        setTimeout(() => {
-          void refreshStoryboard();
-        }, 2000);
+        startImagePolling("首尾帧图像");
       } else {
         showAlert({ message: "首尾帧图像生成失败", variant: "error" });
       }
@@ -684,6 +725,7 @@ export default function EpisodeStoryboardPage() {
       if (response.success) {
         showAlert({ message: "已创建图像生成任务", variant: "success" });
         setImageModalOpen(false);
+        startImagePolling("分镜图像");
       } else {
         showAlert({ message: "图像生成失败", variant: "error" });
       }
@@ -1665,6 +1707,12 @@ export default function EpisodeStoryboardPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {imagePolling && (
+        <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded bg-white px-3 py-2 shadow border border-gray-200 text-xs text-gray-700">
+          <span className="inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+          <span>正在刷新{imagePollingLabel}…</span>
         </div>
       )}
     </div>

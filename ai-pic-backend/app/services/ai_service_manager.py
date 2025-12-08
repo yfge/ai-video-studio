@@ -478,6 +478,29 @@ class AIServiceManager:
         )
         self._log_prompt(prompt)
 
+        # 预读取参考图，转换为 data:image/...;base64,...，避免外部模型无法访问内网 URL
+        base64_images: list[str] = []
+        try:
+            urls = [u for u in [image_url] + list(kwargs.get("extra_images") or []) if u]
+            if urls:
+                import base64
+                import httpx
+
+                async with httpx.AsyncClient(timeout=self.config.default_timeout) as client:
+                    for url in urls[:14]:
+                        resp = await client.get(url)
+                        resp.raise_for_status()
+                        ctype = resp.headers.get("Content-Type", "image/png")
+                        subtype = "png"
+                        if "/" in ctype:
+                            subtype = ctype.split("/")[-1] or "png"
+                        b64 = base64.b64encode(resp.content).decode("ascii")
+                        base64_images.append(f"data:image/{subtype.lower()};base64,{b64}")
+                # 将处理好的 base64 传递给 provider，避免重复下载
+                kwargs["base64_images"] = base64_images
+        except Exception as e:
+            self.logger.warning("image_to_image base64 preload failed: %s", e)
+
         for _ in range(self.config.max_retries):
             provider_name = self._select_provider(available_providers, prefer_provider)
             if not provider_name:
