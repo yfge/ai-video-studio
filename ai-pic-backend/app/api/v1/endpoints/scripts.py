@@ -506,6 +506,67 @@ def _sync_script_scenes_to_story_structure(
     }
 
 
+def _populate_dialogues_and_stage_if_missing(
+    scenes: List[Dict[str, Any]],
+    dialogues: List[Dict[str, Any]],
+    stage_directions: List[Dict[str, Any]],
+    *,
+    story: Story | None = None,
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """为缺失的对白/舞台指示生成占位，避免空内容阻断前端流程。"""
+    if dialogues:
+        return dialogues, stage_directions
+
+    speakers: List[str] = []
+    if story and isinstance(story.main_characters, list):
+        for raw in story.main_characters:
+            if not isinstance(raw, dict):
+                continue
+            name = raw.get("name") or raw.get("character_name")
+            if name:
+                speakers.append(str(name))
+            if len(speakers) >= 3:
+                break
+    if not speakers:
+        speakers = ["旁白", "路人"]
+
+    generated_dialogues: List[Dict[str, Any]] = []
+    generated_stage: List[Dict[str, Any]] = []
+    for idx, sc in enumerate(scenes, start=1):
+        if not isinstance(sc, dict):
+            continue
+        scene_no = _to_int(sc.get("scene_number")) or idx
+        summary = sc.get("summary") or sc.get("description") or sc.get("slug_line") or f"场景 {scene_no}"
+        speaker_a = speakers[0]
+        speaker_b = speakers[1] if len(speakers) > 1 else speaker_a
+        generated_dialogues.append(
+            {
+                "scene_number": scene_no,
+                "character": speaker_a,
+                "content": f"{summary}——我需要再确认细节。",
+            }
+        )
+        generated_dialogues.append(
+            {
+                "scene_number": scene_no,
+                "character": speaker_b,
+                "content": "明白，这里可以突出冲突或情绪。",
+            }
+        )
+        if not stage_directions:
+            generated_stage.append(
+                {
+                    "scene_number": scene_no,
+                    "timing": "mid",
+                    "content": summary,
+                    "type": "action",
+                }
+            )
+
+    final_stage = stage_directions or generated_stage
+    return generated_dialogues, final_stage
+
+
 def _merge_frames(
     existing_frames: List[Dict[str, Any]],
     new_frames: List[Dict[str, Any]],
@@ -790,8 +851,11 @@ async def generate_script(
     # 提取剧本内容
     script_content = ai_content.get("content", "")
     scenes = ai_content.get("scenes", [])
-    dialogues = ai_content.get("dialogues", [])
-    stage_directions = ai_content.get("stage_directions", [])
+    dialogues_raw = ai_content.get("dialogues", [])
+    stage_directions_raw = ai_content.get("stage_directions", [])
+    dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
+        scenes, dialogues_raw, stage_directions_raw, story=story
+    )
     
     # 计算统计信息
     word_count = len(script_content.split()) if script_content else 0
@@ -960,8 +1024,11 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
 
         script_content = ai_content.get("content", "")
         scenes = ai_content.get("scenes", [])
-        dialogues = ai_content.get("dialogues", [])
-        stage_directions = ai_content.get("stage_directions", [])
+        dialogues_raw = ai_content.get("dialogues", [])
+        stage_directions_raw = ai_content.get("stage_directions", [])
+        dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
+            scenes, dialogues_raw, stage_directions_raw, story=story
+        )
         extra_meta = {k: v for k, v in ai_content.items() if k not in {"content","scenes","dialogues","stage_directions","metadata"}}
 
         word_count = len(script_content.split()) if script_content else 0
@@ -2160,10 +2227,16 @@ async def regenerate_script(
 
     # 更新剧本内容
     script_content = ai_content.get("content", "")
+    scenes = ai_content.get("scenes", [])
+    dialogues_raw = ai_content.get("dialogues", [])
+    stage_directions_raw = ai_content.get("stage_directions", [])
+    dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
+        scenes, dialogues_raw, stage_directions_raw, story=story
+    )
     script.content = script_content
-    script.scenes = ai_content.get("scenes", [])
-    script.dialogues = ai_content.get("dialogues", [])
-    script.stage_directions = ai_content.get("stage_directions", [])
+    script.scenes = scenes
+    script.dialogues = dialogues
+    script.stage_directions = stage_directions
     script.generation_prompt = result.get("prompt")
     script.ai_model = result.get("generation_method")
     
