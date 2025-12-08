@@ -123,6 +123,8 @@ We adopt a strict workflow similar to the reference projects:
 
 Before yielding work back to the user:
 
+**CRITICAL — Chrome self-test:** After completing each functional change, run a quick end-to-end verification in a real Chrome browser (DevTools/remote acceptable) and record the scenario in `agent_chats` before marking the task done.
+
 1. Ensure relevant tests (`pytest`, `npm run lint`, targeted suites) pass locally.
 2. Verify `pre-commit run --all-files` is clean or document any justified skips.
 2.1 Ensure the working tree is clean (no unstaged changes) at commit time.
