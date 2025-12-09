@@ -240,7 +240,11 @@ class GoogleProvider(BaseProvider):
 
         # 2) Generative Language API (generativelanguage.googleapis.com)
         try:
-            google_base = self.base_url or "https://generativelanguage.googleapis.com"
+            google_base = (
+                self.base_url
+                if self.base_url and "generativelanguage.googleapis.com" in self.base_url
+                else "https://generativelanguage.googleapis.com"
+            )
             resp = await client.get(
                 f"{google_base.rstrip('/')}/v1beta/models",
                 params={"key": self.config.api_key},
