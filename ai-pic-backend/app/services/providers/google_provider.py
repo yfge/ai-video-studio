@@ -198,6 +198,59 @@ class GoogleProvider(BaseProvider):
             )
         return models
 
+    async def _fetch_gemini_openai_models(
+        self,
+        model_type: Optional[AIModelType],
+    ) -> List[ModelInfo]:
+        """
+        使用 Google 提供的 OpenAI 兼容端点（v1beta/openai/models），参考官方封装:
+        from openai import OpenAI; OpenAI(api_key, base_url=\"https://generativelanguage.googleapis.com/v1beta/openai/\").
+        """
+        base = "https://generativelanguage.googleapis.com/v1beta/openai"
+        headers = {
+            "Authorization": f"Bearer {self.config.api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=self.config.timeout, headers=headers) as client:
+                resp = await client.get(f"{base.rstrip('/')}/models")
+                body_preview = resp.text[:500]
+                if resp.status_code >= 400:
+                    logger.warning(
+                        "GoogleProvider OpenAI-style list models failed status=%s url=%s body=%s",
+                        resp.status_code,
+                        f"{base.rstrip('/')}/models",
+                        body_preview,
+                    )
+                resp.raise_for_status()
+                payload = resp.json()
+        except Exception:
+            return []
+
+        items = payload.get("data") or payload.get("models") or []
+        models: List[ModelInfo] = []
+        for item in items if isinstance(items, list) else []:
+            if not isinstance(item, dict):
+                continue
+            mid = item.get("id") or item.get("model") or item.get("name")
+            if not mid:
+                continue
+            mtype = self._infer_model_type({"supportedGenerationMethods": ["generateContent"]})
+            if model_type and mtype != model_type:
+                continue
+            if mtype not in self.supported_model_types:
+                continue
+            models.append(
+                ModelInfo(
+                    model_id=mid,
+                    name=item.get("displayName") or item.get("title") or item.get("name") or mid,
+                    description=item.get("description") or f"Google model {mid}",
+                    model_type=mtype,
+                    capabilities=self._infer_capabilities({"supportedGenerationMethods": ["generateContent"]}),
+                )
+            )
+        return models
+
     async def fetch_remote_models(
         self,
         model_type: Optional[AIModelType] = None,
@@ -221,6 +274,14 @@ class GoogleProvider(BaseProvider):
                 pass
             if models:
                 return self._dedupe(models)
+
+        # 0.5) 官方提供的 OpenAI 兼容端点（v1beta/openai/models）
+        try:
+            models.extend(await self._fetch_gemini_openai_models(model_type))
+            if models:
+                return self._dedupe(models)
+        except Exception:
+            pass
 
         # 1) Vertex AI (aiplatform)
         try:
