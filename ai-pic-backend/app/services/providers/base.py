@@ -83,7 +83,7 @@ class ProviderConfig(BaseModel):
     api_key: Optional[str] = None
     api_secret: Optional[str] = None
     base_url: Optional[str] = None
-    timeout: int = 60
+    timeout: int = 180
     max_retries: int = 3
     rate_limit: Dict[str, int] = {}
     enabled: bool = True
