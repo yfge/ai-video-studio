@@ -33,6 +33,21 @@ def _reload_openai_params(model_id: str, temperature: float) -> Dict[str, Any]:
     return {
         "temperature": temperature,
     }
+
+
+def _supports_structured_outputs(model_id: str) -> bool:
+    """判断模型是否支持 response_format.json_schema 严格模式"""
+    lid = (model_id or "").lower()
+    prefixes = [
+        "gpt-4.1",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4o-audio",
+        "gpt-4o-realtime",
+        "o3",
+        "o1",
+    ]
+    return any(lid.startswith(p) for p in prefixes)
 class OpenAIProvider(BaseProvider):
     """OpenAI服务提供商"""
     
@@ -194,20 +209,24 @@ class OpenAIProvider(BaseProvider):
             payload = {
                 "model": model,
                 "messages": messages,
-                "max_tokens": max_tokens,
+                # "max_tokens": max_tokens,
                 **kwargs
             }
             payload.update(_reload_openai_params(model, temperature))
 
             # 优先使用 OpenAI 的 response_format json_schema（如可用）
             if json_schema:
-                 payload["response_format"] = {
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": json_schema.get("name", "response"),
-                        "schema": json_schema.get("schema", json_schema)
+                if _supports_structured_outputs(model):
+                    payload["response_format"] = {
+                        "type": "json_schema",
+                        "strict": True,
+                        "json_schema": {
+                            "name": json_schema.get("name", "response"),
+                            "schema": json_schema.get("schema", json_schema),
+                        },
                     }
-                }
+                else:
+                    payload["response_format"] = {"type": "json_object"}
             else:
                 # 尝试要求JSON对象（在不提供schema的情况下）
                 # 注意：部分模型支持 {"type":"json_object"}
