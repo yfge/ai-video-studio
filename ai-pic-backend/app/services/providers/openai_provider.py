@@ -7,7 +7,32 @@ OpenAI服务提供商
 import httpx
 from typing import List, Optional
 from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
+from app.core.logging import get_logger
+from typing import Dict, Any
 
+logger = get_logger(__name__)
+
+
+
+def _reload_openai_params(model_id: str, temperature: float) -> Dict[str, Any]:
+    if model_id.startswith("gpt-5.1"):
+        return {
+            "reasoning_effort": "none",
+            "temperature": 1,
+        }
+    if model_id.startswith("gpt-5-pro"):
+        return {
+            "reasoning_effort": "none",
+        }
+
+    if model_id.startswith("gpt-5"):
+        return {
+            "reasoning_effort": "minimal",
+            "temperature": 1,
+        }
+    return {
+        "temperature": temperature,
+    }
 class OpenAIProvider(BaseProvider):
     """OpenAI服务提供商"""
     
@@ -170,13 +195,13 @@ class OpenAIProvider(BaseProvider):
                 "model": model,
                 "messages": messages,
                 "max_tokens": max_tokens,
-                "temperature": temperature,
                 **kwargs
             }
+            payload.update(_reload_openai_params(model, temperature))
 
             # 优先使用 OpenAI 的 response_format json_schema（如可用）
             if json_schema:
-                payload["response_format"] = {
+                 payload["response_format"] = {
                     "type": "json_schema",
                     "json_schema": {
                         "name": json_schema.get("name", "response"),
@@ -213,7 +238,26 @@ class OpenAIProvider(BaseProvider):
                 }
             )
             
+        except httpx.HTTPStatusError as e:
+            detail = None
+            try:
+                detail = e.response.text
+            except Exception:
+                detail = None
+            msg = self.format_error(e)
+            if detail:
+                msg = f"{msg}; body={detail}"
+            logger.error("OpenAI generate_text HTTP %s: %s", e.response.status_code, detail, exc_info=True)
+            return AIResponse(
+                success=False,
+                error=msg,
+                provider=self.name,
+                model=model,
+                task_type=AITaskType.STORY_GENERATION,
+                model_type=AIModelType.TEXT_GENERATION
+            )
         except Exception as e:
+            logger.error(f"OpenAI generate_text error: {e}", exc_info=True)
             return AIResponse(
                 success=False,
                 error=self.format_error(e),
@@ -279,6 +323,24 @@ class OpenAIProvider(BaseProvider):
                 }
             )
             
+        except httpx.HTTPStatusError as e:
+            detail = None
+            try:
+                detail = e.response.text
+            except Exception:
+                detail = None
+            msg = self.format_error(e)
+            if detail:
+                msg = f"{msg}; body={detail}"
+            logger.error("OpenAI generate_image HTTP %s: %s", e.response.status_code, detail, exc_info=True)
+            return AIResponse(
+                success=False,
+                error=msg,
+                provider=self.name,
+                model=model,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE
+            )
         except Exception as e:
             return AIResponse(
                 success=False,
