@@ -166,6 +166,9 @@ class GoogleProvider(BaseProvider):
         try:
             async with httpx.AsyncClient(timeout=self.config.timeout, headers=headers) as client:
                 resp = await client.get(url)
+                body_preview = resp.text[:500]
+                if resp.status_code >= 400:
+                    logger.warning("GoogleProvider proxy list models failed status=%s body=%s", resp.status_code, body_preview)
                 resp.raise_for_status()
                 payload = resp.json()
         except Exception:
@@ -225,6 +228,9 @@ class GoogleProvider(BaseProvider):
                 f"{self.base_url}/v1/models",
                 params={"key": self.config.api_key},
             )
+            body_preview = resp.text[:500]
+            if resp.status_code >= 400:
+                logger.warning("GoogleProvider Vertex list models failed status=%s body=%s", resp.status_code, body_preview)
             resp.raise_for_status()
             payload = resp.json()
             server_models = payload.get("models") or payload.get("data") or []
@@ -239,6 +245,9 @@ class GoogleProvider(BaseProvider):
                 f"{google_base.rstrip('/')}/v1beta/models",
                 params={"key": self.config.api_key},
             )
+            body_preview = resp.text[:500]
+            if resp.status_code >= 400:
+                logger.warning("GoogleProvider GLM list models failed status=%s body=%s", resp.status_code, body_preview)
             resp.raise_for_status()
             payload = resp.json()
             server_models = payload.get("models") or []
