@@ -105,112 +105,36 @@ async def get_available_models(
     if not virtual_ip:
         raise HTTPException(status_code=404, detail="虚拟IP不存在")
     
-    models = []
-    default_model = None
-    
-    # 检查OpenAI配置
-    if ai_service.openai_api_key:
-        models.extend([
-            {
-                "model_id": "dall-e-3",
-                "name": "DALL-E 3",
-                "provider": "openai",
-                "type": "text_to_image",
-                "capabilities": ["高质量", "1024x1024", "详细描述理解"]
-            },
-            {
-                "model_id": "dall-e-2", 
-                "name": "DALL-E 2",
-                "provider": "openai",
-                "type": "text_to_image",
-                "capabilities": ["快速生成", "多样风格", "512x512或1024x1024"]
-            }
-        ])
-        if not default_model:
-            default_model = "dall-e-3"
-    
-    # 检查Stability AI配置
-    if ai_service.stability_api_key:
-        models.append({
-            "model_id": "stable-diffusion-xl",
-            "name": "Stable Diffusion XL",
-            "provider": "stability",
-            "type": "text_to_image",
-            "capabilities": ["开源", "可定制", "1024x1024", "风格多样"]
-        })
-        if not default_model:
-            default_model = "stable-diffusion-xl"
-    
-    # 检查可灵AI配置（需要双密钥）
-    from app.core.config import settings
-    if settings.KELING_API_KEY and settings.KELING_SECRET_KEY:
-        models.append({
-            "model_id": "keling-kolors",
-            "name": "可灵 Kolors",
-            "provider": "keling",
-            "type": "text_to_image", 
-            "capabilities": ["中文理解", "快速生成", "1024x1024", "多种风格"]
-        })
-        if not default_model:
-            default_model = "keling-kolors"
-    
-    # 检查即梦AI配置（需要双密钥）
-    if settings.JIMENG_API_KEY and settings.JIMENG_SECRET_KEY:
-        models.append({
-            "model_id": "jimeng-jm-1",
-            "name": "即梦 JM-1",
-            "provider": "jimeng",
-            "type": "text_to_image",
-            "capabilities": ["中文优化", "艺术风格", "人物肖像", "场景生成"]
-        })
-        if not default_model:
-            default_model = "jimeng-jm-1"
-    
-    # 检查DeepSeek配置（单密钥）
-    if settings.DEEPSEEK_API_KEY:
-        models.append({
-            "model_id": "deepseek-painter",
-            "name": "DeepSeek Painter",
-            "provider": "deepseek", 
-            "type": "text_to_image",
-            "capabilities": ["深度学习", "高质量", "理性生成"]
-        })
-        if not default_model:
-            default_model = "deepseek-painter"
-    
-    # 检查火山引擎配置（只需 API Key 即可使用 Ark Seedream 4.5 图片生成）
-    if settings.VOLCENGINE_API_KEY:
-        # Seedream 4.5 图片生成模型（参考官方文档）
-        models.append({
-            "model_id": "seedream-4.5",
-            "name": "Seedream 4.5",
-            "provider": "volcengine",
-            "type": "text_to_image",
-            "capabilities": ["图片生成", "高质量", "多风格"]
-        })
-        # 兼容旧视觉模型配置
-        models.append({
-            "model_id": "volcengine-visual",
-            "name": "火山引擎视觉生成",
-            "provider": "volcengine",
-            "type": "text_to_image",
-            "capabilities": ["企业级", "高并发", "多模态"]
-        })
-        if not default_model:
-            default_model = "seedream-4.5"
-    
-    # 如果没有找到任何配置的服务，返回空列表和错误信息
+    models: List[Dict[str, Any]] = await ai_service.list_models(
+        model_type_alias="image",
+        source="auto",
+    )
     if not models:
         raise HTTPException(
-            status_code=503, 
-            detail="没有配置可用的AI图像生成服务。请检查OPENAI_API_KEY、STABILITY_API_KEY等环境变量配置。"
+            status_code=503,
+            detail="没有配置可用的AI图像生成服务，请检查各 Provider API Key。",
         )
-    
+
+    enriched = [
+        {
+            "model_id": f"{m['provider']}:{m['id']}",
+            "id": m["id"],
+            "name": m.get("name"),
+            "provider": m["provider"],
+            "type": m.get("type"),
+            "capabilities": m.get("capabilities", []),
+        }
+        for m in models
+    ]
+
+    providers = {m["provider"] for m in models if m.get("provider")}
+    default_model = enriched[0]["model_id"] if enriched else None
     return {
-        "models": models,
+        "models": enriched,
         "default": default_model,
-        "configured_providers": len(models),
-        "message": f"找到{len(models)}个可用模型"
+        "configured_providers": len(providers),
+        "count": len(enriched),
+        "message": f"找到{len(enriched)}个可用模型",
     }
 
 @router.post("/{virtual_ip_id}/images/generate", response_model=VirtualIPImageResponse)

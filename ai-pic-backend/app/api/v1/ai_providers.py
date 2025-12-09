@@ -328,7 +328,7 @@ async def get_provider_models(
 @router.get("/models/available")
 async def get_available_models(
     model_type: Optional[str] = None,
-    source: str = "static",
+    source: str = "auto",
     current_user: User = Depends(get_current_active_user),
 ):
     """聚合返回所有提供商的可用模型列表
@@ -338,6 +338,9 @@ async def get_available_models(
     - source: 'static' | 'remote' | 'auto'（默认 auto: 优先官方接口，失败回退静态）
     """
     try:
+        if source not in {"static", "remote", "auto"}:
+            source = "auto"
+
         status = ai_service.get_ai_providers_status()
         enabled_providers = [
             name for name, meta in status.items()

@@ -227,7 +227,7 @@ class BaseProvider(ABC):
         默认的远端模型拉取实现：优先调用 provider base_url 下的 /models 接口，
         再与本地 whitelist 交集，最终失败则回退静态列表。
         """
-        # 预备静态列表作为兜底
+        # 预备缓存作为兜底
         fallback_models = self.available_models
         if model_type:
             fallback_models = [m for m in fallback_models if m.model_type == model_type]
