@@ -123,7 +123,7 @@ We adopt a strict workflow similar to the reference projects:
 
 Before yielding work back to the user:
 
-**CRITICAL — Chrome self-test:** After completing each functional change, run a quick end-to-end verification in a real Chrome browser (DevTools/remote acceptable) and record the scenario in `agent_chats` before marking the task done.
+**CRITICAL — Chrome self-test (MCP):** After completing each functional change, run a quick end-to-end verification using Chrome via MCP/DevTools; record the scenario in `agent_chats` before marking the task done. Use test account `geyunfei` / `Gyf@845261` to log in. Do not defer runs due to model cost—assume budget is OK.
 
 1. Ensure relevant tests (`pytest`, `npm run lint`, targeted suites) pass locally.
 2. Verify `pre-commit run --all-files` is clean or document any justified skips.
