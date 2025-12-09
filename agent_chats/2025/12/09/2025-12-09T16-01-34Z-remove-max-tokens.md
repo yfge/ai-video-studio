@@ -39,4 +39,4 @@ summary: "Removed hardcoded max_tokens caps across AI manager/providers and rela
 - Monitor story async tasks to verify no max_tokens param is sent to providers.
 
 ## Linked Commits
-- (pending)
+- 6372bc9
