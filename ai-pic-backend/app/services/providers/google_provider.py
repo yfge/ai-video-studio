@@ -224,13 +224,23 @@ class GoogleProvider(BaseProvider):
 
         # 1) Vertex AI (aiplatform)
         try:
+            vertex_base = (
+                self.base_url
+                if self.base_url and "aiplatform.googleapis.com" in self.base_url
+                else "https://aiplatform.googleapis.com"
+            )
             resp = await client.get(
-                f"{self.base_url}/v1/models",
+                f"{vertex_base.rstrip('/')}/v1beta1/models",
                 params={"key": self.config.api_key},
             )
             body_preview = resp.text[:500]
             if resp.status_code >= 400:
-                logger.warning("GoogleProvider Vertex list models failed status=%s body=%s", resp.status_code, body_preview)
+                logger.warning(
+                    "GoogleProvider Vertex list models failed status=%s url=%s body=%s",
+                    resp.status_code,
+                    f"{vertex_base.rstrip('/')}/v1beta1/models",
+                    body_preview,
+                )
             resp.raise_for_status()
             payload = resp.json()
             server_models = payload.get("models") or payload.get("data") or []
@@ -251,7 +261,12 @@ class GoogleProvider(BaseProvider):
             )
             body_preview = resp.text[:500]
             if resp.status_code >= 400:
-                logger.warning("GoogleProvider GLM list models failed status=%s body=%s", resp.status_code, body_preview)
+                logger.warning(
+                    "GoogleProvider GLM list models failed status=%s url=%s body=%s",
+                    resp.status_code,
+                    f"{google_base.rstrip('/')}/v1beta/models",
+                    body_preview,
+                )
             resp.raise_for_status()
             payload = resp.json()
             server_models = payload.get("models") or []
