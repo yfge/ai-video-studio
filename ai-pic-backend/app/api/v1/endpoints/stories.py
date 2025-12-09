@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.models.user import User
 from app.core.middleware import get_current_active_user
 from app.models.script import Story, StoryCharacter
@@ -18,10 +18,24 @@ from app.utils.story_parser import normalize_story_json_keys, extract_outline_fr
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 import json
-from app.core.database import SessionLocal
 from app.models.task import Task, TaskType, TaskStatus
 
 router = APIRouter()
+
+_EXTRA_METADATA_EXCLUDE = {
+    "premise",
+    "synopsis",
+    "main_conflict",
+    "resolution",
+    "main_characters",
+    "character_relationships",
+}
+
+
+def _build_extra_metadata(ai_content):
+    if not isinstance(ai_content, dict):
+        return {}
+    return {k: v for k, v in ai_content.items() if k not in _EXTRA_METADATA_EXCLUDE}
 
 
 @router.post("/", response_model=StoryResponse)
@@ -154,21 +168,7 @@ async def generate_story(
             "temperature": request.temperature or 0.7,
         },
         "tags": request.tags,
-        "extra_metadata": {
-            k: v
-            for k, v in (
-                ai_content.items() if isinstance(ai_content, dict) else {}
-            ).items()
-            if k
-            not in {
-                "premise",
-                "synopsis",
-                "main_conflict",
-                "resolution",
-                "main_characters",
-                "character_relationships",
-            }
-        },
+        "extra_metadata": _build_extra_metadata(ai_content),
         "status": "draft",
     }
 
@@ -323,21 +323,7 @@ def _process_story_generation_task(task_id: int, request_dict: dict, user_id: in
                 }
             },
             "tags": request_dict.get("tags"),
-            "extra_metadata": {
-                k: v
-                for k, v in (
-                    ai_content.items() if isinstance(ai_content, dict) else {}
-                ).items()
-                if k
-                not in {
-                    "premise",
-                    "synopsis",
-                    "main_conflict",
-                    "resolution",
-                    "main_characters",
-                    "character_relationships",
-                }
-            },
+            "extra_metadata": _build_extra_metadata(ai_content),
             "status": "draft",
         }
 

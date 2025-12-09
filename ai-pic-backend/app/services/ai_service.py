@@ -23,6 +23,7 @@ from app.services.storyboard_reasoner import (
 )
 from app.services.episode_agent import EpisodeLangGraphAgent
 from app.services.script_agent import ScriptLangGraphAgent
+from app.services.story_agent import StoryLangGraphAgent
 
 # 尝试导入AI服务管理器，如果失败则使用None
 try:
@@ -210,6 +211,7 @@ class AIService:
             EpisodeLangGraphAgent(self) if LANGGRAPH_AVAILABLE else None
         )
         self.script_agent = ScriptLangGraphAgent(self) if LANGGRAPH_AVAILABLE else None
+        self.story_agent = StoryLangGraphAgent(self) if LANGGRAPH_AVAILABLE else None
 
     def _initialize_ai_manager(self) -> Optional[AIServiceManager]:
         """初始化AI服务管理器"""
@@ -392,11 +394,32 @@ class AIService:
                 "content_restrictions": content_restrictions or [],
             }
 
+            story_schema = StoryOutlineModel.model_json_schema()
+
+            if self.story_agent:
+                lg = await self.story_agent.generate(
+                    title=title,
+                    genre=genre,
+                    characters=characters,
+                    theme=theme,
+                    target_audience=target_audience,
+                    duration_minutes=duration_minutes,
+                    setting_time=setting_time,
+                    setting_location=setting_location,
+                    world_building=world_building,
+                    additional_requirements=additional_requirements,
+                    style_preferences=style_preferences,
+                    content_restrictions=content_restrictions,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    temperature=temperature,
+                )
+                if lg:
+                    return lg
+
             prompt = prompt_manager.render_prompt(
                 PromptTemplate.STORY_OUTLINE.value, variables
             )
-
-            story_schema = StoryOutlineModel.model_json_schema()
 
             # 优先使用新的AI服务管理器；如果失败则尝试兜底。
             if self.ai_manager:
