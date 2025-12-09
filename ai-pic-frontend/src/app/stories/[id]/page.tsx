@@ -146,6 +146,34 @@ export default function StoryDetailPage() {
     )
   }
 
+  type CharacterEntry = {
+    name?: string
+    character_name?: string
+    role?: string
+    description?: string
+    traits?: string[]
+    arc?: string
+  }
+
+  const mainCharacters = Array.isArray(story.main_characters)
+    ? (story.main_characters as CharacterEntry[])
+    : []
+  const characterRelationships =
+    story.character_relationships && typeof story.character_relationships === 'object'
+      ? story.character_relationships
+      : null
+  const extra =
+    story.extra_metadata && typeof story.extra_metadata === 'object'
+      ? (story.extra_metadata as Record<string, unknown>)
+      : {}
+  const plotStructure =
+    extra && typeof extra.plot_structure === 'object'
+      ? (extra.plot_structure as Record<string, string>)
+      : null
+  const sellingPoints = Array.isArray(extra?.selling_points) ? (extra.selling_points as string[]) : []
+  const coreValues = typeof extra?.core_values === 'string' ? extra.core_values : ''
+  const visualStyle = typeof extra?.visual_style === 'string' ? extra.visual_style : ''
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -178,10 +206,10 @@ export default function StoryDetailPage() {
             <div>
               <p className="text-gray-700 whitespace-pre-wrap">{story.synopsis || story.premise || '暂无概要'}</p>
               {story.main_conflict && (
-                <p className="text-gray-700 mt-3"><span className="font-medium">主要冲突：</span>{story.main_conflict}</p>
+                <p className="text-gray-700 mt-3 whitespace-pre-wrap"><span className="font-medium">主要冲突：</span>{story.main_conflict}</p>
               )}
               {story.resolution && (
-                <p className="text-gray-700 mt-2"><span className="font-medium">结局趋势：</span>{story.resolution}</p>
+                <p className="text-gray-700 mt-2 whitespace-pre-wrap"><span className="font-medium">结局趋势：</span>{story.resolution}</p>
               )}
             </div>
             <div>
@@ -210,6 +238,81 @@ export default function StoryDetailPage() {
             </div>
           )}
         </div>
+
+        {(mainCharacters.length > 0 || characterRelationships) && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">角色与关系</h2>
+            {mainCharacters.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-gray-800 mb-2">主要角色</h3>
+                <div className="space-y-2">
+                  {mainCharacters.map((ch, idx) => (
+                    <div key={idx} className="border border-gray-100 rounded p-3 bg-gray-50">
+                      <div className="font-medium text-gray-900">{ch.name || ch.character_name || `角色 ${idx + 1}`}</div>
+                      {ch.role && <div className="text-sm text-gray-700">角色：{ch.role}</div>}
+                      {ch.description && <div className="text-sm text-gray-700 whitespace-pre-wrap">描述：{ch.description}</div>}
+                      {ch.traits && Array.isArray(ch.traits) && (
+                        <div className="text-sm text-gray-700 mt-1">特质：{ch.traits.join('，')}</div>
+                      )}
+                      {ch.arc && <div className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">成长弧光：{ch.arc}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {characterRelationships && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">角色关系</h3>
+                <div className="space-y-2">
+                  {Object.entries(characterRelationships as Record<string, unknown>).map(([key, value]) => (
+                    <div key={key} className="text-sm text-gray-700 whitespace-pre-wrap">
+                      <span className="font-medium text-gray-900">{key}：</span>
+                      {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(plotStructure || coreValues || visualStyle || sellingPoints.length > 0) && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">附加信息</h2>
+            {plotStructure && (
+              <div className="mb-3">
+                <h3 className="text-lg font-medium text-gray-800">情节结构</h3>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap mt-1 space-y-1">
+                  {plotStructure.act1 && <div><span className="font-medium">Act 1：</span>{plotStructure.act1}</div>}
+                  {plotStructure.act2 && <div><span className="font-medium">Act 2：</span>{plotStructure.act2}</div>}
+                  {plotStructure.act3 && <div><span className="font-medium">Act 3：</span>{plotStructure.act3}</div>}
+                </div>
+              </div>
+            )}
+            {coreValues && (
+              <div className="mb-3">
+                <h3 className="text-lg font-medium text-gray-800">核心价值</h3>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{coreValues}</div>
+              </div>
+            )}
+            {visualStyle && (
+              <div className="mb-3">
+                <h3 className="text-lg font-medium text-gray-800">视觉风格</h3>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{visualStyle}</div>
+              </div>
+            )}
+            {sellingPoints.length > 0 && (
+              <div className="mb-3">
+                <h3 className="text-lg font-medium text-gray-800">营销卖点</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                  {sellingPoints.map((point, idx) => (
+                    <li key={idx}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 生成剧集 */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">

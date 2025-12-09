@@ -320,6 +320,7 @@ export interface Story {
   is_public: boolean;
   tags?: string[];
   metadata?: Record<string, unknown>;
+  extra_metadata?: Record<string, unknown>;
   generation_prompt?: string;
   ai_model?: string;
   generation_params?: Record<string, unknown>;
