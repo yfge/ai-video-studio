@@ -49,6 +49,20 @@ def _supports_structured_outputs(model_id: str) -> bool:
         "o1",
     ]
     return any(lid.startswith(p) for p in prefixes)
+
+
+def _supports_json_object(model_id: str) -> bool:
+    """较老模型支持 response_format.json_object 的检测。"""
+    lid = (model_id or "").lower()
+    prefixes = [
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4-turbo",
+        "gpt-4-0125",
+        "gpt-3.5-turbo-1106",
+        "gpt-3.5-turbo-0125",
+    ]
+    return any(lid.startswith(p) for p in prefixes)
 class OpenAIProvider(BaseProvider):
     """OpenAI服务提供商"""
     
@@ -271,13 +285,18 @@ class OpenAIProvider(BaseProvider):
                             "schema": json_schema.get("schema", json_schema),
                         },
                     }
-                else:
+                elif _supports_json_object(model):
                     payload["response_format"] = {"type": "json_object"}
+                else:
+                    # 模型不支持 response_format，直接移除以避免 400
+                    payload.pop("response_format", None)
             else:
                 # 尝试要求JSON对象（在不提供schema的情况下）
-                # 注意：部分模型支持 {"type":"json_object"}
-                if kwargs.get("force_json_object"):
+                # 仅在模型明确支持时设置，避免 400
+                if kwargs.get("force_json_object") and _supports_json_object(model):
                     payload["response_format"] = {"type": "json_object"}
+                else:
+                    payload.pop("response_format", None)
 
             # 流式优先，失败回落到普通请求
             if stream:
