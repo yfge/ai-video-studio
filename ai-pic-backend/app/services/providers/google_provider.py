@@ -80,11 +80,39 @@ class GoogleProvider(BaseProvider):
             caps.append("text_generation")
         return caps
 
+    def _from_payload(
+        self,
+        server_models: List[Dict[str, Any]],
+        model_type: Optional[AIModelType],
+    ) -> List[ModelInfo]:
+        models: List[ModelInfo] = []
+        for item in server_models:
+            if not isinstance(item, dict):
+                continue
+            mid = self._normalize_model_id(item.get("name") or item.get("id"))
+            if not mid:
+                continue
+            mtype = self._infer_model_type(item)
+            if mtype not in self.supported_model_types:
+                continue
+            if model_type and mtype != model_type:
+                continue
+            models.append(
+                ModelInfo(
+                    model_id=mid,
+                    name=item.get("displayName") or item.get("title") or mid,
+                    description=item.get("description") or f"Google model {mid}",
+                    model_type=mtype,
+                    capabilities=self._infer_capabilities(item),
+                )
+            )
+        return models
+
     async def fetch_remote_models(
         self,
         model_type: Optional[AIModelType] = None,
     ) -> List[ModelInfo]:
-        """调用 Vertex AI models 列表，失败时回退静态列表。"""
+        """调用 Vertex AI 或 Generative Language models 列表，失败时回退静态列表。"""
         fallback = self._fallback_models(model_type)
         if not self.config.api_key:
             return fallback
@@ -94,6 +122,7 @@ class GoogleProvider(BaseProvider):
             return fallback
 
         try:
+            # 优先 Vertex AI aiplatform
             resp = await client.get(
                 f"{self.base_url}/v1/models",
                 params={"key": self.config.api_key},
@@ -101,27 +130,27 @@ class GoogleProvider(BaseProvider):
             resp.raise_for_status()
             payload = resp.json()
             server_models = payload.get("models") or payload.get("data") or []
-            models: List[ModelInfo] = []
-            for item in server_models:
-                if not isinstance(item, dict):
-                    continue
-                mid = self._normalize_model_id(item.get("name") or item.get("id"))
-                if not mid:
-                    continue
-                mtype = self._infer_model_type(item)
-                if mtype not in self.supported_model_types:
-                    continue
-                if model_type and mtype != model_type:
-                    continue
-                models.append(
-                    ModelInfo(
-                        model_id=mid,
-                        name=item.get("displayName") or item.get("title") or mid,
-                        description=item.get("description") or f"Google Vertex model {mid}",
-                        model_type=mtype,
-                        capabilities=self._infer_capabilities(item),
-                    )
+            models: List[ModelInfo] = self._from_payload(server_models, model_type)
+            if models:
+                return models
+        except Exception:
+            models = []
+
+        # 兼容 Generative Language API（generativelanguage.googleapis.com）
+        try:
+            headers = {
+                "Content-Type": "application/json",
+                "x-goog-api-key": self.config.api_key,
+                "x-goog-api-client": "ai-video-studio-gemini",
+            }
+            async with httpx.AsyncClient(timeout=self.config.timeout, headers=headers) as gen_client:
+                resp = await gen_client.get(
+                    "https://generativelanguage.googleapis.com/v1beta/models"
                 )
+                resp.raise_for_status()
+                payload = resp.json()
+                server_models = payload.get("models") or []
+                models = self._from_payload(server_models, model_type)
             return models or fallback
         except Exception:
             return fallback
