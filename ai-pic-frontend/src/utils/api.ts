@@ -323,6 +323,7 @@ export interface Episode {
   scene_count?: number;
   status: string;
   tags?: string[];
+  extra_metadata?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   generation_prompt?: string;
   ai_model?: string;
@@ -347,6 +348,7 @@ export interface Script {
   status: string;
   version: string;
   tags?: string[];
+  extra_metadata?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   generation_prompt?: string;
   ai_model?: string;

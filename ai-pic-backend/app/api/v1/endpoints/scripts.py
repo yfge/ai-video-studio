@@ -225,6 +225,8 @@ def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
 
 
 def _build_episode_data(episode: Episode) -> Dict[str, Any]:
+    scenes = _extract_episode_scenes(episode)
+    scene_count = episode.scene_count or (len(scenes) if scenes else None)
     return {
         "episode_number": episode.episode_number,
         "title": episode.title,
@@ -233,8 +235,48 @@ def _build_episode_data(episode: Episode) -> Dict[str, Any]:
         "character_arcs": episode.character_arcs,
         "conflicts": episode.conflicts,
         "duration_minutes": episode.duration_minutes,
-        "scene_count": episode.scene_count,
+        "scene_count": scene_count,
+        "scenes": scenes,
     }
+
+
+def _extract_episode_scenes(episode: Episode) -> List[Dict[str, Any]]:
+    """从剧集元数据中提取场景列表，保证基础字段齐全。"""
+    if not episode:
+        return []
+
+    meta = episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {}
+    scenes_src = meta.get("scenes") if isinstance(meta, dict) else []
+    if not isinstance(scenes_src, list):
+        return []
+
+    cleaned: List[Dict[str, Any]] = []
+    for idx, raw in enumerate(scenes_src, start=1):
+        if not isinstance(raw, dict):
+            continue
+        base = dict(raw)
+        scene_no = _to_int(base.get("scene_number")) or idx
+        base["scene_number"] = scene_no
+        summary = base.get("summary") or base.get("description") or base.get("beat_summary")
+        location = base.get("location") or base.get("place") or base.get("setting")
+        time_of_day = base.get("time_of_day") or base.get("time")
+        if summary:
+            base.setdefault("summary", summary)
+            base.setdefault("description", summary)
+        if location:
+            base.setdefault("location", location)
+        if time_of_day:
+            base.setdefault("time_of_day", time_of_day)
+        if not base.get("slug_line"):
+            if location and time_of_day:
+                base["slug_line"] = f"{location} - {time_of_day}"
+            elif summary:
+                base["slug_line"] = str(summary)[:80]
+            else:
+                base["slug_line"] = f"Scene {scene_no}"
+        cleaned.append(base)
+
+    return cleaned
 
 
 def _build_story_data(
@@ -286,9 +328,11 @@ def _normalize_script_content(
     *,
     format_type: str,
     language: str,
+    default_scenes: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """确保场景/对白/舞台指示结构化并符合前端期望字段。"""
     normalized = dict(ai_content or {})
+    fallback_scenes = default_scenes or []
 
     def _safe_int(value: Any) -> Optional[int]:
         try:
@@ -296,7 +340,9 @@ def _normalize_script_content(
         except (TypeError, ValueError):
             return None
 
-    raw_scenes = normalized.get("scenes") or []
+    raw_scenes = normalized.get("scenes")
+    if not isinstance(raw_scenes, list) or len(raw_scenes) == 0:
+        raw_scenes = fallback_scenes
     scenes: List[Dict[str, Any]] = []
     for idx, scene in enumerate(raw_scenes, start=1):
         base = dict(scene) if isinstance(scene, dict) else {"description": str(scene) if scene is not None else ""}
@@ -320,6 +366,12 @@ def _normalize_script_content(
             elif desc:
                 base["slug_line"] = desc[:80]
         scenes.append(base)
+
+    metadata = normalized.get("metadata") or {}
+    if scenes and not metadata.get("total_scenes"):
+        metadata["total_scenes"] = len(scenes)
+    normalized["metadata"] = metadata
+    normalized["scenes"] = scenes
 
     raw_dialogues = normalized.get("dialogues") or []
     dialogues: List[Dict[str, Any]] = []
@@ -840,12 +892,7 @@ async def generate_script(
         ai_content,
         format_type=request.format_type,
         language=request.language,
-    )
-
-    ai_content = _normalize_script_content(
-        ai_content,
-        format_type=request.format_type,
-        language=request.language,
+        default_scenes=episode_data.get("scenes"),
     )
 
     # 提取剧本内容
@@ -1014,12 +1061,7 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             ai_content,
             format_type=request_dict.get("format_type", "screenplay"),
             language=request_dict.get("language", "zh-CN"),
-        )
-
-        ai_content = _normalize_script_content(
-            ai_content,
-            format_type=request_dict.get("format_type", "screenplay"),
-            language=request_dict.get("language", "zh-CN"),
+            default_scenes=episode_data.get("scenes"),
         )
 
         script_content = ai_content.get("content", "")
@@ -2149,32 +2191,16 @@ async def regenerate_script(
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
     
-    # 构建剧集数据
-    episode_data = {
-        "episode_number": episode.episode_number,
-        "title": episode.title,
-        "summary": episode.summary,
-        "plot_points": episode.plot_points,
-        "character_arcs": episode.character_arcs,
-        "conflicts": episode.conflicts,
-        "duration_minutes": episode.duration_minutes,
-        "scene_count": episode.scene_count
-    }
-    
-    # 构建故事数据
-    story_data = {
-        "title": story.title,
-        "genre": story.genre,
-        "theme": story.theme,
-        "synopsis": story.synopsis,
-        "main_conflict": story.main_conflict,
-        "resolution": story.resolution,
-        "main_characters": story.main_characters,
-        "character_relationships": story.character_relationships,
-        "world_building": story.world_building,
-        "setting_time": story.setting_time,
-        "setting_location": story.setting_location
-    }
+    previous_episode_summaries = _collect_previous_episode_summaries(db, story.id, episode.episode_number)
+    character_profiles = _build_character_profiles(story)
+
+    # 构建剧集/故事数据，保持与生成流程一致
+    episode_data = _build_episode_data(episode)
+    story_data = _build_story_data(
+        story,
+        previous_episode_summaries=previous_episode_summaries,
+        character_profiles=character_profiles,
+    )
     
     # 使用原有的生成参数
     original_params = script.generation_params or {}
@@ -2223,6 +2249,7 @@ async def regenerate_script(
         ai_content,
         format_type=script.format_type,
         language=script.language,
+        default_scenes=episode_data.get("scenes"),
     )
 
     # 更新剧本内容

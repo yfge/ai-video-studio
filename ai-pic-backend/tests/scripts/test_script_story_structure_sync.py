@@ -1,10 +1,19 @@
 from app.models.story_structure import Scene, Shot
+from app.models.script import Script
 from tests.factories import EpisodeFactory, setup_factories
 
 
 def test_generate_script_syncs_normalized_scenes(client, db_session, mock_ai_service, monkeypatch):
     setup_factories(db_session)
-    episode = EpisodeFactory()
+    episode = EpisodeFactory(
+        scene_count=2,
+        extra_metadata={
+            "scenes": [
+                {"scene_number": 1, "summary": "同步规范化场景测试", "location": "校园", "time_of_day": "白天"},
+                {"scene_number": 2, "summary": "第二个场景"},
+            ]
+        },
+    )
 
     # 强制使用本地 mock，避免真实 LLM 调用
     from app.services import ai_service as ai_module
@@ -12,10 +21,8 @@ def test_generate_script_syncs_normalized_scenes(client, db_session, mock_ai_ser
     async def fake_generate_script(**_: object):
         return {
             "content": {
-                "scenes": [
-                    {"scene_number": 1, "summary": "同步规范化场景测试"},
-                    {"scene_number": 2, "summary": "第二个场景"},
-                ],
+                "content": "mock script",
+                "scenes": [],
                 "dialogues": [],
                 "stage_directions": [],
             },
@@ -37,6 +44,12 @@ def test_generate_script_syncs_normalized_scenes(client, db_session, mock_ai_ser
     resp = client.post("/api/v1/scripts/generate", json=payload)
     assert resp.status_code == 200
     script_id = resp.json()["id"]
+
+    script_obj = db_session.query(Script).filter(Script.id == script_id).first()
+    assert script_obj is not None
+    assert len(script_obj.scenes or []) == 2
+    assert script_obj.scenes[0].get("slug_line")
+    assert script_obj.scenes[0].get("summary") == "同步规范化场景测试"
 
     scenes = (
         db_session.query(Scene)
@@ -60,4 +73,4 @@ def test_generate_script_syncs_normalized_scenes(client, db_session, mock_ai_ser
         .order_by(Scene.scene_number.asc())
         .all()
     )
-    assert len(scenes_after) == 1
+    assert len(scenes_after) == len(scenes)

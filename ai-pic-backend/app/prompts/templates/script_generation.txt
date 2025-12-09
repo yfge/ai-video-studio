@@ -25,6 +25,16 @@
 场景数量：{{ episode.scene_count }}个
 {% endif -%}
 
+{% if episode.scenes -%}
+## 预设场景（来自剧集规划）
+请围绕以下场景编号展开剧本，保持顺序与编号一致；如需调整请在描述中说明。
+{% for sc in episode.scenes %}
+- 场景 {{ sc.scene_number }}：{{ sc.slug_line or sc.title or sc.summary or '待定场景' }}
+  {% if sc.summary %}概要：{{ sc.summary }}{% endif %}
+  {% if sc.location or sc.time_of_day %}设定：{{ sc.location or '地点待定' }} / {{ sc.time_of_day or '时间待定' }}{% endif %}
+{% endfor %}
+{% endif -%}
+
 ## 前情提要
 {% if story.previous_episode_summaries -%}
 {% for prev in story.previous_episode_summaries %}

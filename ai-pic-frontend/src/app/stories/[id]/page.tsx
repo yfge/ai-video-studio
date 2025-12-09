@@ -7,6 +7,28 @@ import type { Story, Episode, Script, VirtualIP, EpisodeGenerationRequest } from
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { ModelSelector } from '@/components/ModelSelector'
 
+type EpisodeScene = Record<string, unknown>
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : null
+
+const extractEpisodeScenes = (episode: Episode | null): EpisodeScene[] => {
+  if (!episode) return []
+  const meta = asRecord(episode.extra_metadata) ?? asRecord(episode.metadata) ?? {}
+  const scenes = (meta as Record<string, unknown>).scenes
+  if (Array.isArray(scenes)) {
+    return scenes.filter((scene): scene is EpisodeScene => Boolean(scene) && typeof scene === 'object')
+  }
+  return []
+}
+
+const getEpisodeSceneCount = (episode: Episode | null): number | undefined => {
+  if (!episode) return undefined
+  const scenes = extractEpisodeScenes(episode)
+  const fallback = scenes.length > 0 ? scenes.length : undefined
+  return episode.scene_count ?? fallback
+}
+
 export default function StoryDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -313,6 +335,8 @@ export default function StoryDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {episodes.map((ep) => {
                 const scripts = scriptsByEpisode[ep.id] || []
+                const scenes = extractEpisodeScenes(ep)
+                const sceneCount = getEpisodeSceneCount(ep)
                 return (
                   <div key={ep.id} className="border rounded-lg p-4 hover:bg-gray-50">
                     <div className="flex items-center justify-between">
@@ -325,9 +349,30 @@ export default function StoryDetailPage() {
                     <div className="text-sm text-gray-600 mt-2 line-clamp-3">{ep.summary || '暂无概要'}</div>
                     <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
                       <span>时长：{ep.duration_minutes || '--'} 分钟</span>
-                      <span>场景：{ep.scene_count || '--'}</span>
+                      <span>场景：{sceneCount || '--'}</span>
                       <span>剧本：{loadingScripts ? '加载中...' : scripts.length}</span>
                     </div>
+                    {scenes.length > 0 && (
+                      <div className="mt-3 space-y-1 text-xs text-gray-600">
+                        <div className="text-gray-500">场景预览</div>
+                        {scenes.slice(0, 3).map((scene, idx) => {
+                          const rawNo = scene.scene_number
+                          const sceneNumber = typeof rawNo === 'number' ? rawNo : parseInt(String(rawNo ?? idx + 1), 10)
+                          const sceneLabel = Number.isFinite(sceneNumber) ? sceneNumber : idx + 1
+                          const titleRaw = scene.slug_line ?? scene.summary ?? scene.description
+                          const title = typeof titleRaw === 'string' ? titleRaw : `场景 ${sceneLabel}`
+                          return (
+                            <div key={`scene-${sceneLabel}`} className="flex items-center justify-between gap-2">
+                              <span className="font-medium text-gray-800">场景 {sceneLabel}</span>
+                              <span className="text-[11px] text-gray-500 truncate">{String(title)}</span>
+                            </div>
+                          )
+                        })}
+                        {scenes.length > 3 && (
+                          <div className="text-[11px] text-gray-400">还有 {scenes.length - 3} 个场景…</div>
+                        )}
+                      </div>
+                    )}
                     {scripts.length > 0 && (
                         <div className="mt-3 text-sm">
                           <div className="text-gray-700 mb-1 flex items-center justify-between">
