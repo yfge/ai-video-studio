@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { type AIModel, type ApiResponse, type AvailableModelsResponse } from '@/utils/api'
 import { useAvailableModels } from '@/hooks/useAvailableModels'
@@ -42,6 +42,7 @@ export function ModelSelector({
     cacheKey,
     enabled: !disabled,
   })
+  const [provider, setProvider] = useState<string>('all')
 
   useEffect(() => {
     if (onModelsLoaded) {
@@ -61,6 +62,31 @@ export function ModelSelector({
   const filtered = filterModels ? models.filter(filterModels) : models
   // 若过滤后为空，回退到原始列表，避免 UI 出现空下拉
   const visibleModels = filtered.length > 0 ? filtered : models
+  const providers = useMemo(() => {
+    const ps = new Set<string>()
+    visibleModels.forEach(model => {
+      if (model.provider) ps.add(model.provider)
+    })
+    return Array.from(ps).sort()
+  }, [visibleModels])
+
+  useEffect(() => {
+    // 当 models 或默认值变化时，推断当前 provider
+    if (providers.length === 0) return
+    const valueProvider = value ? value.split(':')[0] : ''
+    const defaultProvider = defaultModel ? defaultModel.split(':')[0] : ''
+    const target =
+      valueProvider && providers.includes(valueProvider)
+        ? valueProvider
+        : defaultProvider && providers.includes(defaultProvider)
+          ? defaultProvider
+          : providers[0]
+    setProvider(prev => (providers.includes(prev) ? prev : target))
+  }, [providers, value, defaultModel])
+
+  const modelsByProvider = provider === 'all'
+    ? visibleModels
+    : visibleModels.filter(model => model.provider === provider)
 
   return (
     <div className={className}>
@@ -69,20 +95,41 @@ export function ModelSelector({
           {label}
         </label>
       ) : null}
-      <select
-        value={value ?? ''}
-        onChange={event => onChange(event.target.value)}
-        disabled={disabled || loading}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        {allowAuto ? <option value="">{autoLabel}</option> : null}
-        {visibleModels.map(model => (
-          <option key={model.model_id} value={model.model_id}>
-            {(model.name || model.id || model.model_id) ?? model.model_id} —{' '}
-            {model.provider}
-          </option>
-        ))}
-      </select>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <select
+          value={provider}
+          onChange={event => {
+            const next = event.target.value
+            setProvider(next)
+            // 如果当前模型不属于新 provider，清空选择以防展示溢出
+            if (next !== 'all' && value && !value.startsWith(`${next}:`)) {
+              onChange('')
+            }
+          }}
+          disabled={disabled || loading || providers.length === 0}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">全部提供商</option>
+          {providers.map(p => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <select
+          value={value ?? ''}
+          onChange={event => onChange(event.target.value)}
+          disabled={disabled || loading || modelsByProvider.length === 0}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {allowAuto ? <option value="">{autoLabel}</option> : null}
+          {modelsByProvider.map(model => (
+            <option key={model.model_id} value={model.model_id}>
+              {(model.name || model.id || model.model_id) ?? model.model_id} — {model.provider}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="mt-1 text-xs text-gray-500 space-y-1">
         {helperText ? <p>{helperText}</p> : null}
         {loading ? <p>模型加载中...</p> : null}
