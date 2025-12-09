@@ -323,7 +323,6 @@ function StoriesPageContent() {
                 modelType={AIModelType.Text}
                 multiple={false}
                 helperText="为空将由后端自动挑选最佳提供商与模型（故事生成推荐使用支持 JSON Schema 的模型）"
-                filterModels={model => model.provider === 'openai'}
               />
 
               <div>
