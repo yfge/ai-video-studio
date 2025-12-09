@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from app.core.logging import get_logger
 from app.schemas.generation import ScriptModel
 from app.prompts.templates import PromptTemplate
 from app.prompts.manager import prompt_manager
+from app.utils.story_parser import extract_json_block
 
 try:
     from langgraph.graph import StateGraph, END
@@ -69,20 +69,33 @@ class ScriptLangGraphAgent:
                 temperature=min(0.6, temperature),
                 model=model,
                 prefer_provider=prefer_provider,
-                json_schema={"name": "script_scenes", "schema": {"type": "object", "properties": {"scenes": {"type": "array"}}}},
+                json_schema={
+                    "name": "script_scenes",
+                    "schema": {
+                        "type": "object",
+                        "properties": {"scenes": {"type": "array"}},
+                    },
+                },
                 system_prompt="你是专业的剧本场景规划师，请严格按 JSON 返回。",
             )
             if not resp.success:
-                return {"error": "scene_plan_failed", "reasoning": ["scene_plan_failed"]}
+                return {
+                    "error": "scene_plan_failed",
+                    "reasoning": ["scene_plan_failed"],
+                }
             content = resp.data if isinstance(resp.data, str) else str(resp.data)
-            try:
-                parsed = json.loads(content)
-            except Exception:
+            parsed = extract_json_block(content)
+            if not parsed:
                 return {"error": "scene_plan_invalid_json", "raw": content}
             scenes = parsed.get("scenes") if isinstance(parsed, dict) else None
             if not scenes:
                 return {"error": "scene_plan_empty", "raw": parsed}
-            return {"scenes": scenes, "reasoning": ["scene_plan_ok"], "provider": resp.provider, "model_used": resp.model}
+            return {
+                "scenes": scenes,
+                "reasoning": ["scene_plan_ok"],
+                "provider": resp.provider,
+                "model_used": resp.model,
+            }
 
         async def write_dialogues(state: Dict[str, Any]) -> Dict[str, Any]:
             scenes = state.get("scenes") or []
@@ -115,14 +128,18 @@ class ScriptLangGraphAgent:
                 system_prompt="你是专业的剧本对白与舞台指示写手，请严格按 JSON 返回。",
             )
             if not resp.success:
-                return {"error": "dialogue_failed", "reasoning": state.get("reasoning", []) + ["dialogue_failed"]}
+                return {
+                    "error": "dialogue_failed",
+                    "reasoning": state.get("reasoning", []) + ["dialogue_failed"],
+                }
             content = resp.data if isinstance(resp.data, str) else str(resp.data)
-            try:
-                parsed = json.loads(content)
-            except Exception:
+            parsed = extract_json_block(content)
+            if not parsed:
                 return {"error": "dialogue_invalid_json", "raw": content}
             dialogues = parsed.get("dialogues") if isinstance(parsed, dict) else None
-            stage_dir = parsed.get("stage_directions") if isinstance(parsed, dict) else None
+            stage_dir = (
+                parsed.get("stage_directions") if isinstance(parsed, dict) else None
+            )
             if not dialogues:
                 return {"error": "dialogue_empty", "raw": parsed}
             reasoning = state.get("reasoning", []) + ["dialogue_ok"]
@@ -153,7 +170,12 @@ class ScriptLangGraphAgent:
             try:
                 ScriptModel.model_validate(payload)
             except Exception as exc:
-                return {"error": "assemble_invalid", "reasoning": state.get("reasoning", []) + ["assemble_invalid"], "payload": payload, "exc": str(exc)}
+                return {
+                    "error": "assemble_invalid",
+                    "reasoning": state.get("reasoning", []) + ["assemble_invalid"],
+                    "payload": payload,
+                    "exc": str(exc),
+                }
             return {
                 "content": payload,
                 "generation_method": "langgraph_script",

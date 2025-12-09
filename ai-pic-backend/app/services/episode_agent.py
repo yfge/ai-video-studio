@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from app.core.logging import get_logger
 from app.schemas.generation import EpisodePlanModel
+from app.utils.story_parser import extract_json_block
 
 try:
     from langgraph.graph import StateGraph, END
@@ -65,21 +65,37 @@ class EpisodeLangGraphAgent:
         def finalize_node(state: Dict[str, Any]) -> Dict[str, Any]:
             res = state.get("result") or {}
             content = res.get("content")
+            normalized = res.get("normalized") if isinstance(res, dict) else None
+
             if isinstance(content, str):
-                try:
-                    parsed = json.loads(content)
-                    res["content"] = parsed
-                except Exception:
-                    pass
-            episodes = (res.get("content") or {}).get("episodes") if isinstance(res.get("content"), dict) else None
+                parsed = extract_json_block(content)
+                if parsed:
+                    normalized = parsed
+                    res["normalized"] = parsed
+            elif isinstance(content, dict):
+                normalized = content
+                res["normalized"] = content
+
+            episodes = (
+                normalized.get("episodes") if isinstance(normalized, dict) else None
+            )
             if not episodes:
-                return {"error": "episodes_empty", "reasoning": state.get("reasoning", []) + ["episodes_empty"]}
+                return {
+                    "error": "episodes_empty",
+                    "reasoning": state.get("reasoning", []) + ["episodes_empty"],
+                }
             try:
                 EpisodePlanModel.model_validate({"episodes": episodes})
             except Exception as exc:  # pragma: no cover - schema guard
                 self.logger.warning(f"LangGraph episode validation failed: {exc}")
-                return {"error": "episodes_invalid", "reasoning": state.get("reasoning", []) + ["episodes_invalid"], "content": res.get("content")}
-            res["generation_method"] = res.get("generation_method") or "langgraph_episode"
+                return {
+                    "error": "episodes_invalid",
+                    "reasoning": state.get("reasoning", []) + ["episodes_invalid"],
+                    "content": res.get("content"),
+                }
+            res["generation_method"] = (
+                res.get("generation_method") or "langgraph_episode"
+            )
             res["reasoning"] = state.get("reasoning", []) + ["done"]
             return res
 

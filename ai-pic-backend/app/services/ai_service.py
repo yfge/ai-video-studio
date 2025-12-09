@@ -657,6 +657,17 @@ class AIService:
         )
 
         plan_schema = EpisodePlanModel.model_json_schema()
+
+        def _parse_episode_json(payload: str | None) -> Optional[Dict[str, Any]]:
+            data = extract_json_block(payload)
+            if not data:
+                return None
+            try:
+                EpisodePlanModel.model_validate(data)
+                return data
+            except Exception:
+                return None
+
         response = await self.ai_manager.generate_text(
             prompt=prompt,
             temperature=temperature,
@@ -672,10 +683,8 @@ class AIService:
         content_text = (
             response.data if isinstance(response.data, str) else str(response.data)
         )
-        try:
-            data = json.loads(content_text)
-            EpisodePlanModel.model_validate(data)
-        except Exception:
+        normalized = _parse_episode_json(content_text)
+        if not normalized:
             retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
             retry = await self.ai_manager.generate_text(
                 prompt=retry_prompt,
@@ -690,15 +699,24 @@ class AIService:
             content_text = (
                 retry.data if isinstance(retry.data, str) else str(retry.data)
             )
+            normalized = _parse_episode_json(content_text)
+            provider_used = retry.provider
+            model_used = retry.model
+            usage = retry.usage
+        else:
+            provider_used = response.provider
+            model_used = response.model
+            usage = response.usage
 
         return {
             "content": content_text,
+            "normalized": normalized,
             "prompt": prompt,
-            "generation_method": f"ai_{response.provider}",
+            "generation_method": f"ai_{provider_used}",
             "template_used": PromptTemplate.EPISODE_GENERATION.value,
-            "provider_used": response.provider,
-            "model_used": response.model,
-            "usage": response.usage,
+            "provider_used": provider_used,
+            "model_used": model_used,
+            "usage": usage,
         }
 
     def _build_episode_generation_prompt(
@@ -1032,24 +1050,27 @@ class AIService:
         )
         if direct:
             # 尝试解析填充 content 以便前端展示
-            try:
-                parsed = (
-                    json.loads(direct["content"])
-                    if isinstance(direct.get("content"), str)
-                    else direct.get("content")
+            parsed = direct.get("normalized") if isinstance(direct, dict) else None
+            if not parsed:
+                raw_content = (
+                    direct.get("content") if isinstance(direct, dict) else None
                 )
-                if isinstance(parsed, dict):
-                    assembled = self._build_script_text(
-                        parsed.get("scenes") or [],
-                        parsed.get("dialogues") or [],
-                        parsed.get("stage_directions") or [],
-                        format_type=format_type,
-                        language=language,
-                    )
-                    parsed["content"] = assembled
-                    direct["content"] = parsed
-            except Exception:
-                pass
+                if isinstance(raw_content, dict):
+                    parsed = raw_content
+                elif isinstance(raw_content, str):
+                    parsed = extract_json_block(raw_content)
+
+            if isinstance(parsed, dict):
+                assembled = self._build_script_text(
+                    parsed.get("scenes") or [],
+                    parsed.get("dialogues") or [],
+                    parsed.get("stage_directions") or [],
+                    format_type=format_type,
+                    language=language,
+                )
+                parsed["content"] = assembled
+                direct["content"] = parsed
+                direct["normalized"] = parsed
             return direct
 
         # 3) Mock 回退
@@ -1117,9 +1138,8 @@ class AIService:
             return None
 
         raw = response.data if isinstance(response.data, str) else str(response.data)
-        try:
-            parsed = json.loads(raw)
-        except Exception:
+        parsed = extract_json_block(raw)
+        if not parsed:
             return None
 
         script_scenes = (
@@ -1165,6 +1185,7 @@ class AIService:
 
         return {
             "content": payload,
+            "normalized": payload,
             "prompt": prompt,
             "generation_method": f"ai_manager_{response.provider}",
             "template_used": "script_dialogues",
@@ -1288,10 +1309,13 @@ class AIService:
                         if isinstance(response.data, str)
                         else str(response.data)
                     )
-                    try:
-                        data = json.loads(content_text)
-                        StoryboardModel.model_validate(data)
-                    except Exception:
+                    normalized = extract_json_block(content_text)
+                    if normalized:
+                        try:
+                            StoryboardModel.model_validate(normalized)
+                        except Exception:
+                            normalized = None
+                    if not normalized:
                         retry = await self.ai_manager.generate_text(
                             prompt=prompt + "\n\n只返回JSON，不要任何多余文本。",
                             temperature=temperature,
@@ -1301,9 +1325,20 @@ class AIService:
                             system_prompt="返回内容必须是严格的JSON，符合给定的Schema。",
                         )
                         if retry.success:
-                            content_text = retry.data
+                            content_text = (
+                                retry.data
+                                if isinstance(retry.data, str)
+                                else str(retry.data)
+                            )
+                            normalized = extract_json_block(content_text)
+                            if normalized:
+                                try:
+                                    StoryboardModel.model_validate(normalized)
+                                except Exception:
+                                    normalized = None
                     return {
                         "content": content_text,
+                        "normalized": normalized,
                         "prompt": prompt,
                         "generation_method": f"ai_{response.provider}",
                         "template_used": "storyboard_generation",
@@ -1360,8 +1395,10 @@ class AIService:
                     if isinstance(response.data, str)
                     else str(response.data)
                 )
+                data = extract_json_block(content_text)
+                if not data:
+                    return None
                 try:
-                    data = json.loads(content_text)
                     StoryboardPlanModel.model_validate(data)
                 except Exception:
                     return None
@@ -1423,16 +1460,18 @@ class AIService:
                     if isinstance(response.data, str)
                     else str(response.data)
                 )
+                data = extract_json_block(content_text)
+                if not data:
+                    return None
                 try:
-                    data = json.loads(content_text)
                     StoryboardModel.model_validate(data)
-                    frames = data.get("frames") or []
-                    # 统一 scene_number
-                    for fr in frames:
-                        fr["scene_number"] = scene_plan.scene_number
-                    return frames
                 except Exception:
                     return None
+                frames = data.get("frames") or []
+                # 统一 scene_number
+                for fr in frames:
+                    fr["scene_number"] = scene_plan.scene_number
+                return frames
         except Exception as e:
             print(f"基于规划生成分镜失败: {e}")
         return None
