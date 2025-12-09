@@ -32,4 +32,4 @@ summary: "Add LangGraph story agent, fix async story extra_metadata crash, and v
 - Monitor task table to ensure `result_file_path` now points to `story:<id>` for async jobs.
 
 ## Linked Commits
-- (pending)
+- 6cad1d0
