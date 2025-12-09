@@ -98,7 +98,10 @@ export interface Task {
 export interface CreateTaskRequest {
   title: string;
   prompt: string;
-  platform: "gpt" | "keling" | "jimeng";
+  platform: string;
+  model_id?: string;
+  model_name?: string;
+  count?: number;
 }
 
 // 图片相关类型
@@ -839,7 +842,12 @@ class ApiClient {
       description: `${taskData.platform} image generation task`,
       task_type: "image_generation",
       prompt: taskData.prompt,
-      parameters: { platform: taskData.platform },
+      parameters: {
+        platform: taskData.platform,
+        model_id: taskData.model_id,
+        model_name: taskData.model_name,
+        count: taskData.count,
+      },
     };
     return this.request("/api/v1/tasks", {
       method: "POST",

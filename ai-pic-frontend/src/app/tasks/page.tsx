@@ -1,10 +1,11 @@
-'use client'
+"use client"
 
-import { useState, useEffect, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { taskAPI, type Task as APITask } from '@/utils/api'
+import { taskAPI, type Task as APITask, type AIModel } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
+import { MultiModelSelector } from '@/components/MultiModelSelector'
 
 interface GalleryImageItem {
   id: string
@@ -72,26 +73,6 @@ function TaskImagePreview({ image, alt, className }: { image: TaskImage; alt: st
   )
 }
 
-// 模型配置
-const modelConfig = {
-  gpt: [
-    { id: 'gpt-4', name: 'GPT-4', description: '最新版本，效果最佳' },
-    { id: 'gpt-3.5', name: 'GPT-3.5', description: '快速生成，成本较低' },
-    { id: 'dall-e-3', name: 'DALL-E 3', description: '专业图像生成' },
-    { id: 'dall-e-2', name: 'DALL-E 2', description: '经典图像生成' }
-  ],
-  keling: [
-    { id: 'keling-v1', name: '可灵 V1', description: '基础版本' },
-    { id: 'keling-v2', name: '可灵 V2', description: '增强版本' },
-    { id: 'keling-pro', name: '可灵 Pro', description: '专业版本' }
-  ],
-  jimeng: [
-    { id: 'jimeng-basic', name: '即梦基础版', description: '入门级模型' },
-    { id: 'jimeng-advanced', name: '即梦高级版', description: '高质量生成' },
-    { id: 'jimeng-ultra', name: '即梦超清版', description: '超高分辨率' }
-  ]
-};
-
 export default function Tasks() {
   const [tasks, setTasks] = useState<APITask[]>([])
   const [loading, setLoading] = useState(true)
@@ -100,6 +81,7 @@ export default function Tasks() {
   const [isCreating, setIsCreating] = useState(false)
   const [isStartingId, setIsStartingId] = useState<number | null>(null)
   const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null)
+  const [modelCatalog, setModelCatalog] = useState<AIModel[]>([])
 
   const loadTasks = async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -225,11 +207,17 @@ export default function Tasks() {
     setIsCreating(true)
     try {
       for (const modelId of newTask.platform) {
-        const [platform] = modelId.split('-')
+        const model = modelCatalog.find(m => m.model_id === modelId)
+        const [platform, modelName] = modelId.includes(':')
+          ? modelId.split(':', 2)
+          : (modelId.split('-', 2) as [string, string])
         const response = await taskAPI.createTask({
           title: newTask.title,
           prompt: newTask.prompt,
-          platform: platform as 'gpt' | 'keling' | 'jimeng',
+          platform,
+          model_id: modelId,
+          model_name: model?.name || modelName || modelId,
+          count: newTask.count,
         })
         if (!response.success) {
           throw new Error(response.error || '创建任务失败')
@@ -386,63 +374,16 @@ export default function Tasks() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">提示词</label>
                 <textarea value={newTask.prompt} onChange={(e) => setNewTask({...newTask, prompt: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" rows={4} placeholder="请详细描述你想要生成的图片内容" required />
                 {/* 平台多选 */}
-                <label className="block text-sm font-medium text-gray-700 mb-1">AI模型（可多选）</label>
-                <div className="space-y-3">
-                  {Object.entries(modelConfig).map(([platform, models]) => (
-                    <div key={platform} className="border border-gray-200 rounded-lg p-3">
-                      <h4 className="font-medium text-gray-900 mb-2 text-sm">
-                        {platform === 'gpt' ? 'GPT' : platform === 'keling' ? '可灵' : '即梦'}
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {models.map(model => (
-                          <button
-                            key={model.id}
-                            type="button"
-                            onClick={() => {
-                              if (newTask.platform.includes(model.id)) {
-                                setNewTask({ ...newTask, platform: newTask.platform.filter(p => p !== model.id) });
-                              } else {
-                                setNewTask({ ...newTask, platform: [...newTask.platform, model.id] });
-                              }
-                            }}
-                            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                              newTask.platform.includes(model.id)
-                                ? 'bg-blue-500 text-white border-blue-500'
-                                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
-                            }`}
-                            title={model.description}
-                          >
-                            {model.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {/* 已选模型标签 */}
-                {newTask.platform.length > 0 && (
-                  <div className="mt-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">已选模型</label>
-                    <div className="flex flex-wrap gap-2">
-                      {newTask.platform.map(modelId => {
-                        const [platform] = modelId.split('-');
-                        const model = modelConfig[platform as keyof typeof modelConfig]?.find(m => m.id === modelId);
-                        return (
-                          <span key={modelId} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs flex items-center">
-                            {model?.name || modelId}
-                            <button
-                              type="button"
-                              className="ml-1 text-blue-500 hover:text-blue-700"
-                              onClick={() => setNewTask({ ...newTask, platform: newTask.platform.filter(p => p !== modelId) })}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <MultiModelSelector
+                  label="AI模型（可多选）"
+                  helperText="模型列表来自后端 /api/v1/ai/models/available"
+                  modelType="image"
+                  cacheKey="tasks:image"
+                  value={newTask.platform}
+                  onChange={models => setNewTask({ ...newTask, platform: models })}
+                  disabled={isCreating}
+                  onModelsLoaded={models => setModelCatalog(models)}
+                />
                 {/* 生成数量 */}
                 <label className="block text-sm font-medium text-gray-700 mb-1">生成数量</label>
                 <input
