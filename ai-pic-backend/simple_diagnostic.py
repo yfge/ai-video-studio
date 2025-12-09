@@ -131,7 +131,6 @@ class SimpleDiagnostic:
                     json={
                         "model": "gpt-3.5-turbo",
                         "messages": [{"role": "user", "content": "Hello"}],
-                        "max_tokens": 5
                     },
                     timeout=10.0
                 )

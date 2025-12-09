@@ -146,7 +146,6 @@ class VirtualIPAIService:
                 {"role": "system", "content": "你是一个专业的角色设计师，擅长创造有趣的虚拟角色。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=200,
             temperature=0.7
         )
         
@@ -179,7 +178,6 @@ class VirtualIPAIService:
                 {"role": "system", "content": "你是一个优秀的故事创作者，专门为虚拟角色编写背景故事。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=600,
             temperature=0.8
         )
         
@@ -219,7 +217,6 @@ class VirtualIPAIService:
                 {"role": "system", "content": "你是一个专业的角色档案编写专家，擅长创建详细的人物小传。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=800,
             temperature=0.6
         )
         
@@ -297,7 +294,6 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
                     {"role": "system", "content": "你是AI绘画提示词专家，擅长将角色描述转换为优质的绘画提示词。"},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=300,
                 temperature=0.7
             )
             
@@ -354,7 +350,6 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
                 {"role": "system", "content": "你是一个专业的角色设计师，擅长创造有趣的虚拟角色。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=200,
             temperature=0.7
         )
         
@@ -363,7 +358,6 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
             "prompt": prompt,
             "model": "gpt-3.5-turbo",
             "temperature": 0.7,
-            "max_tokens": 200,
             "tokens_used": response.usage.total_tokens if response.usage else 0
         }
 
@@ -394,7 +388,6 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
                 {"role": "system", "content": "你是一个优秀的故事创作者，专门为虚拟角色编写背景故事。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=600,
             temperature=0.8
         )
         
@@ -403,7 +396,6 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
             "prompt": prompt,
             "model": "gpt-3.5-turbo",
             "temperature": 0.8,
-            "max_tokens": 600,
             "tokens_used": response.usage.total_tokens if response.usage else 0
         }
 
@@ -441,7 +433,6 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
                 {"role": "system", "content": "你是一个专业的角色档案编写专家，擅长创建详细的人物小传。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=800,
             temperature=0.6
         )
         
@@ -450,7 +441,6 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
             "prompt": prompt,
             "model": "gpt-3.5-turbo",
             "temperature": 0.6,
-            "max_tokens": 800,
             "tokens_used": response.usage.total_tokens if response.usage else 0
         }
 

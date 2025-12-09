@@ -248,7 +248,7 @@ class OpenAIProvider(BaseProvider):
         self, 
         prompt: str, 
         model: str = "gpt-4o",
-        max_tokens: int = 4000,
+        max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         system_prompt: str = None,
         json_schema: dict | None = None,
@@ -266,7 +266,6 @@ class OpenAIProvider(BaseProvider):
             payload = {
                 "model": model,
                 "messages": messages,
-                # "max_tokens": max_tokens,
                 **kwargs
             }
 
@@ -465,7 +464,7 @@ class OpenAIProvider(BaseProvider):
         image_url: str, 
         question: str = "请描述这张图片",
         model: str = "gpt-4o",
-        max_tokens: int = 1000,
+        max_tokens: Optional[int] = None,
         **kwargs
     ) -> AIResponse:
         """使用GPT-4V理解图像"""
@@ -490,8 +489,8 @@ class OpenAIProvider(BaseProvider):
                 json={
                     "model": model,
                     "messages": messages,
-                    "max_tokens": max_tokens,
-                    **kwargs
+                    **({} if max_tokens is None else {"max_tokens": max_tokens}),
+                    **kwargs,
                 }
             )
             response.raise_for_status()

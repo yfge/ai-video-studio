@@ -168,7 +168,7 @@ class DeepSeekProvider(BaseProvider):
         self, 
         prompt: str, 
         model: str = "deepseek-chat",
-        max_tokens: int = 2048,
+        max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         top_p: float = 0.95,
         frequency_penalty: float = 0.0,
@@ -188,13 +188,14 @@ class DeepSeekProvider(BaseProvider):
             request_data = {
                 "model": model,
                 "messages": messages,
-                "max_tokens": max_tokens,
                 "temperature": temperature,
                 "top_p": top_p,
                 "frequency_penalty": frequency_penalty,
                 "presence_penalty": presence_penalty,
-                **kwargs
+                **kwargs,
             }
+            if max_tokens is not None:
+                request_data["max_tokens"] = max_tokens
 
             stream = bool(request_data.pop("stream", True))
 

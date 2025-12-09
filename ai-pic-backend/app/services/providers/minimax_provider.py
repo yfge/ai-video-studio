@@ -91,7 +91,7 @@ class MinimaxProvider(BaseProvider):
         self, 
         prompt: str, 
         model: str = "abab6.5-chat",
-        max_tokens: int = 2048,
+        max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         top_p: float = 0.95,
         system_prompt: str = None,
@@ -112,11 +112,12 @@ class MinimaxProvider(BaseProvider):
             request_data = {
                 "model": model,
                 "messages": messages,
-                "max_tokens": max_tokens,
                 "temperature": temperature,
                 "top_p": top_p,
-                **kwargs
+                **kwargs,
             }
+            if max_tokens is not None:
+                request_data["max_tokens"] = max_tokens
             
             response = await client.post(
                 f"{self.base_url}/text/chatcompletion_v2",

@@ -233,7 +233,7 @@ def test_json_columns():
                 VALUES ('Test Story', 'Romance', 'Test premise', 'Test synopsis', 
                         '[{"name": "Character1", "role": "protagonist"}]', 
                         '{"Character1": {"Character2": "friend"}}',
-                        '{"temperature": 0.7, "max_tokens": 1000}')
+                        '{"temperature": 0.7}')
             """))
             conn.commit()
             

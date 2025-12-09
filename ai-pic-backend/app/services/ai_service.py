@@ -426,7 +426,6 @@ class AIService:
                 try:
                     response = await self.ai_manager.generate_text(
                         prompt=prompt,
-                        max_tokens=4000,
                         temperature=temperature,
                         model=model,
                         json_schema={"name": "story_outline", "schema": story_schema},
@@ -451,7 +450,6 @@ class AIService:
                             )
                             retry = await self.ai_manager.generate_text(
                                 prompt=retry_prompt,
-                                max_tokens=4000,
                                 temperature=temperature,
                                 model=model,
                                 json_schema={
@@ -663,7 +661,6 @@ class AIService:
         plan_schema = EpisodePlanModel.model_json_schema()
         response = await self.ai_manager.generate_text(
             prompt=prompt,
-            max_tokens=4000,
             temperature=temperature,
             model=model,
             prefer_provider=prefer_provider,
@@ -686,7 +683,6 @@ class AIService:
             )
             retry = await self.ai_manager.generate_text(
                 prompt=retry_prompt,
-                max_tokens=4000,
                 temperature=temperature,
                 model=model,
                 prefer_provider=prefer_provider,
@@ -1286,7 +1282,6 @@ class AIService:
                 schema = StoryboardModel.model_json_schema()
                 response = await self.ai_manager.generate_text(
                     prompt=prompt,
-                    max_tokens=4000,
                     temperature=temperature,
                     model=model,
                     prefer_provider=prefer_provider,
@@ -1305,7 +1300,6 @@ class AIService:
                     except Exception:
                         retry = await self.ai_manager.generate_text(
                             prompt=prompt + "\n\n只返回JSON，不要任何多余文本。",
-                            max_tokens=4000,
                             temperature=temperature,
                             model=model,
                             prefer_provider=prefer_provider,
@@ -1360,7 +1354,6 @@ class AIService:
             schema = StoryboardPlanModel.model_json_schema()
             response = await self.ai_manager.generate_text(
                 prompt=prompt,
-                max_tokens=3000,
                 temperature=temperature,
                 model=model,
                 prefer_provider=prefer_provider,
@@ -1424,7 +1417,6 @@ class AIService:
             schema = StoryboardModel.model_json_schema()
             response = await self.ai_manager.generate_text(
                 prompt=prompt,
-                max_tokens=2500,
                 temperature=temperature,
                 model=model,
                 prefer_provider=prefer_provider,
@@ -1476,7 +1468,6 @@ class AIService:
                             {"role": "user", "content": prompt},
                         ],
                         "temperature": 0.7,
-                        "max_tokens": 4000,
                     },
                     timeout=120.0,
                 )
@@ -1497,7 +1488,7 @@ class AIService:
         payload = {
             "prompt": prompt,
             "task_type": task_type,
-            "parameters": {"max_tokens": 4000, "temperature": 0.7, "format": "json"},
+            "parameters": {"temperature": 0.7, "format": "json"},
         }
 
         headers = {

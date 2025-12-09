@@ -291,7 +291,7 @@ class AIServiceManager:
         model: str = None,
         prefer_provider: str = None,
         system_prompt: str = None,
-        max_tokens: int = 2048,
+        max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         json_schema: dict | None = None,
         stream: bool = True,
@@ -313,9 +313,16 @@ class AIServiceManager:
             )
         
         # 记录请求
-        self._log_request(task="generate_text", provider=prefer_provider, model=model, params={
-            "max_tokens": max_tokens, "temperature": temperature, "json_schema": True if json_schema else False, "stream": stream
-        })
+        params = {
+            "temperature": temperature,
+            "json_schema": True if json_schema else False,
+            "stream": stream,
+        }
+        if max_tokens is not None:
+            params["max_tokens"] = max_tokens
+        self._log_request(
+            task="generate_text", provider=prefer_provider, model=model, params=params
+        )
         self._log_prompt(prompt)
 
         # 选择提供商并尝试生成
@@ -337,16 +344,18 @@ class AIServiceManager:
                 model = text_models[0].model_id if text_models else "default"
             
             try:
-                response = await provider.generate_text(
-                    prompt=prompt,
-                    model=model,
-                    system_prompt=system_prompt,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    json_schema=json_schema,
-                    stream=stream,
-                    **kwargs
-                )
+                provider_kwargs = {
+                    "prompt": prompt,
+                    "model": model,
+                    "system_prompt": system_prompt,
+                    "temperature": temperature,
+                    "json_schema": json_schema,
+                    "stream": stream,
+                    **kwargs,
+                }
+                if max_tokens is not None:
+                    provider_kwargs["max_tokens"] = max_tokens
+                response = await provider.generate_text(**provider_kwargs)
                 # 记录响应
                 self._log_response(task="generate_text", provider=provider_name, model=model, response=response)
                 if response.success or not self.config.enable_fallback:

@@ -72,7 +72,6 @@ class StoryLangGraphAgent:
             )
             resp = await self.service.ai_manager.generate_text(
                 prompt=prompt,
-                max_tokens=4000,
                 temperature=temperature,
                 model=model,
                 prefer_provider=prefer_provider,

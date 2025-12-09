@@ -22,7 +22,7 @@ class TextGenerationRequest(BaseModel):
     model: Optional[str] = Field(None, description="指定模型")
     prefer_provider: Optional[str] = Field(None, description="首选提供商")
     system_prompt: Optional[str] = Field(None, description="系统提示词")
-    max_tokens: int = Field(2048, description="最大token数")
+    max_tokens: Optional[int] = Field(None, description="最大token数（为空则不限制，由模型决定）")
     temperature: float = Field(0.7, description="创造性参数")
 
 
@@ -82,14 +82,16 @@ async def generate_text(
 ):
     """生成文本"""
     try:
-        response = await ai_service.ai_manager.generate_text(
-            prompt=request.prompt,
-            model=request.model,
-            prefer_provider=request.prefer_provider,
-            system_prompt=request.system_prompt,
-            max_tokens=request.max_tokens,
-            temperature=request.temperature
-        )
+        kwargs = {
+            "prompt": request.prompt,
+            "model": request.model,
+            "prefer_provider": request.prefer_provider,
+            "system_prompt": request.system_prompt,
+            "temperature": request.temperature,
+        }
+        if request.max_tokens is not None:
+            kwargs["max_tokens"] = request.max_tokens
+        response = await ai_service.ai_manager.generate_text(**kwargs)
         
         if response.success:
             return {
@@ -387,7 +389,6 @@ async def test_provider(
         response = await ai_service.ai_manager.generate_text(
             prompt="请说'Hello World'",
             prefer_provider=provider_name,
-            max_tokens=50
         )
         
         if response.success:

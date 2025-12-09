@@ -192,10 +192,7 @@ class TestStoryModel:
         character_relationships = {
             "Character1": {"Character2": "enemy"}
         }
-        generation_params = {
-            "temperature": 0.7,
-            "max_tokens": 1000
-        }
+        generation_params = {"temperature": 0.7}
         
         story = StoryFactory(
             main_characters=main_characters,
@@ -314,7 +311,7 @@ class TestScriptModel:
         
         scene_headings = ["INT. ROOM - DAY", "EXT. STREET - NIGHT"]
         character_list = ["Character1", "Character2", "Character3"]
-        generation_params = {"temperature": 0.8, "max_tokens": 2000}
+        generation_params = {"temperature": 0.8}
         
         script = ScriptFactory(
             scene_headings=scene_headings,

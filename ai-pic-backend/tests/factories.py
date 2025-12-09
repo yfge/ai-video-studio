@@ -98,7 +98,7 @@ class StoryFactory(BaseFactory):
     world_building = factory.Faker("text", max_nb_chars=300)
     generation_prompt = factory.Faker("text", max_nb_chars=200)
     ai_model = "gpt-4"
-    generation_params = factory.LazyFunction(lambda: {"temperature": 0.7, "max_tokens": 1000})
+    generation_params = factory.LazyFunction(lambda: {"temperature": 0.7})
     status = "draft"
     is_public = False
     tags = factory.LazyFunction(lambda: ["test", "story"])

@@ -206,14 +206,14 @@ class GoogleProvider(BaseProvider):
         使用 Google 提供的 OpenAI 兼容端点（v1beta/openai/models），参考官方封装:
         from openai import OpenAI; OpenAI(api_key, base_url=\"https://generativelanguage.googleapis.com/v1beta/openai/\").
         """
-        base = "https://generativelanguage.googleapis.com/v1beta/openai"
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-        }
+        base = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.config.api_key}"
+        # headers = {
+        #     "Authorization": f"Bearer {self.config.api_key}",
+        #     "Content-Type": "application/json",
+        # }
         try:
-            async with httpx.AsyncClient(timeout=self.config.timeout, headers=headers) as client:
-                resp = await client.get(f"{base.rstrip('/')}/models")
+            async with httpx.AsyncClient(timeout=self.config.timeout) as client:
+                resp = await client.get(base)
                 body_preview = resp.text[:500]
                 if resp.status_code >= 400:
                     logger.warning(
@@ -413,7 +413,7 @@ class GoogleProvider(BaseProvider):
         self,
         prompt: str,
         model: str | None = None,
-        max_tokens: int = 2048,
+        max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         system_prompt: str | None = None,
         json_schema: Dict[str, Any] | None = None,
@@ -467,10 +467,9 @@ class GoogleProvider(BaseProvider):
                 },
             )
 
-        generation_config: Dict[str, Any] = {
-            "temperature": temperature,
-            "maxOutputTokens": max_tokens,
-        }
+        generation_config: Dict[str, Any] = {"temperature": temperature}
+        if max_tokens is not None:
+            generation_config["maxOutputTokens"] = max_tokens
 
         if json_schema:
             # 暂不强行映射 json_schema，交由上层按文本解析
