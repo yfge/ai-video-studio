@@ -9,10 +9,10 @@
 - [ ] 验证：用 episode 8 复现“生成分镜→生成图像/视频→保存”路径，截图/日志记录当前失败点。
 
 ## 里程碑 1：数据与上下文对齐
-- [ ] 功能/需求：确定生成/更新分镜的上下文字段清单（场景摘要、beat/shot 描述、角色、环境、提示词模板版本），并对外暴露。
-- [ ] 后端：`ai_service.generate_storyboard` / plan / update 路径统一携带 normalized scene/shot id、environment_id、character_ids，并将 `scene_scope`、`shot_scope`、context_text 反写 meta；确保 partial regenerate merge 策略。
-- [ ] 前端：storyboard 页面请求参数与展示层对齐新字段（场景/镜头 id、上下文提示词预览、scope 提示），阻断未选择规范化场景/镜头的生成操作。
-- [ ] 验证：补充/更新 storyboard prompt 单测覆盖上下文注入；本地调用 `/scripts/{id}/storyboard/preview` 确认字段生效。
+- [ ] 功能/需求：确定生成/更新分镜的上下文字段清单（场景摘要、beat/shot 描述、角色、环境、提示词模板版本），并对外暴露；**剧本生成时即抽象出场景列表写入 `story_structure.scenes`，必要时生成 beats/shots 占位，保证新剧本可直接用于分镜。**
+- [ ] 后端：`ai_service.generate_storyboard` / plan / update 路径统一携带 normalized scene/shot id、environment_id、character_ids，并将 `scene_scope`、`shot_scope`、context_text 反写 meta；剧本生成落地时同步 scenes→story_structure.scenes（含 beats/shots 占位）；确保 partial regenerate merge 策略。
+- [ ] 前端：storyboard 页面请求参数与展示层对齐新字段（场景/镜头 id、上下文提示词预览、scope 提示），阻断未选择规范化场景/镜头的生成操作；确认加载的场景列表来自 story_structure 而非文本解析。
+- [ ] 验证：补充/更新 storyboard prompt 单测覆盖上下文注入；本地调用 `/scripts/{id}/storyboard/preview` 确认字段生效；生成新剧本后直接打开分镜页，确认场景列表、beats/shots 占位已自动可用。
 
 ## 里程碑 2：参考图锚点与生成闭环
 - [ ] 功能/需求：规定“角色图片 + 环境图片 + 分镜提示词”作为生成锚点，首尾帧/单帧/整场景皆可调用。
