@@ -30,6 +30,7 @@ The codebase must remain production-grade, auditable, and reproducible. Every me
 - **Frontend layout**: `src/app/`, `src/components/`, `src/lib/`, `src/utils/`. Keep UI state colocated with features; limit global state.
 - **Testing**: Maintain comprehensive pytest coverage (`ai-pic-backend`) and Next.js lint rules. Backend changes must pass `pytest`; frontend changes must pass `npm run lint`.
 - **Docs**: Update README / guides when behaviour changes. Architecture decisions belong under `docs/` (create if missing) and should be cross-linked from agent chats.
+- **Tasks.md is canonical**: Maintain the live task board in `tasks.md` (use `[ ]` for未完成、`[x]`为已完成). Merge/append所有任务到该文件，禁止再用旧的 `task.md`。
 
 ## Agent Collaboration Ledger (`agent_chats/`)
 
