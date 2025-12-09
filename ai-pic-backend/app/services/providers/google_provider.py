@@ -6,9 +6,11 @@ Google AI / Gemini 文本生成提供商
 - 默认模型: gemini-3-pro-preview
 """
 
+import json
 from typing import Any, Dict, List, Optional
 
 import httpx
+from app.core.logging import get_logger
 
 from .base import (
     AIModelType,
@@ -18,6 +20,8 @@ from .base import (
     ModelInfo,
     ProviderConfig,
 )
+
+logger = get_logger(__name__)
 
 
 class GoogleProvider(BaseProvider):
@@ -185,6 +189,46 @@ class GoogleProvider(BaseProvider):
         }
         self._client = httpx.AsyncClient(timeout=self.config.timeout, headers=headers)
 
+    async def _stream_generate_content(
+        self,
+        client: httpx.AsyncClient,
+        endpoint: str,
+        body: Dict[str, Any],
+    ):
+        """使用 Gemini 流式接口并拼接文本。"""
+        text_parts: List[str] = []
+        usage: Dict[str, Any] = {}
+
+        async with client.stream("POST", endpoint, json=body) as resp:
+            if resp.status_code >= 400:
+                detail = await resp.aread()
+                raise httpx.HTTPStatusError(
+                    message=f"Google stream status {resp.status_code} body={detail.decode(errors='ignore')}",
+                    request=resp.request,
+                    response=resp,
+                )
+
+            async for line in resp.aiter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                payload = line[5:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    event = json.loads(payload)
+                except Exception:
+                    continue
+                for candidate in event.get("candidates", []):
+                    content = candidate.get("content") or {}
+                    for part in content.get("parts", []):
+                        t = part.get("text")
+                        if isinstance(t, str):
+                            text_parts.append(t)
+                if event.get("usageMetadata"):
+                    usage = event["usageMetadata"]
+
+        return "".join(text_parts).strip(), usage
+
     async def generate_text(
         self,
         prompt: str,
@@ -218,11 +262,14 @@ class GoogleProvider(BaseProvider):
             )
 
         model_id = model or self.default_model
-        method = "generateContent"
+        stream = bool(kwargs.pop("stream", True))
+        method = "streamGenerateContent" if stream else "generateContent"
         endpoint = (
             f"{self.base_url}/v1/publishers/google/models/{model_id}:{method}"
             f"?key={self.config.api_key}"
         )
+        if stream:
+            endpoint = f"{endpoint}&alt=sse"
 
         # 组装 request.json，简化版参考 docs/api/google-text-api.md
         contents: List[Dict[str, Any]] = [
@@ -256,7 +303,29 @@ class GoogleProvider(BaseProvider):
         }
 
         try:
-            resp = await client.post(endpoint, json=body)
+            if stream:
+                try:
+                    full_text, usage_meta = await self._stream_generate_content(client, endpoint, body)
+                    if full_text:
+                        return AIResponse(
+                            success=True,
+                            data=full_text,
+                            provider=self.name,
+                            model=model_id,
+                            task_type=AITaskType.STORY_GENERATION,
+                            model_type=AIModelType.TEXT_GENERATION,
+                            usage={
+                                "prompt_tokens": usage_meta.get("promptTokenCount") if usage_meta else None,
+                                "completion_tokens": usage_meta.get("candidatesTokenCount") if usage_meta else None,
+                                "total_tokens": usage_meta.get("totalTokenCount") if usage_meta else None,
+                            },
+                            metadata={"raw": usage_meta, "stream": True},
+                        )
+                    logger.warning("Google stream returned empty content; falling back to non-stream.")
+                except Exception as stream_err:  # noqa: BLE001
+                    logger.warning("Google stream failed, falling back to non-stream: %s", stream_err, exc_info=True)
+
+            resp = await client.post(endpoint.replace("&alt=sse", "") if stream else endpoint, json=body)
             resp.raise_for_status()
             data = resp.json()
 

@@ -5,8 +5,12 @@ DeepSeek服务提供商
 """
 
 import httpx
+import json
 from typing import List, Optional
+from app.core.logging import get_logger
 from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
+
+logger = get_logger(__name__)
 
 class DeepSeekProvider(BaseProvider):
     """DeepSeek服务提供商"""
@@ -118,7 +122,48 @@ class DeepSeekProvider(BaseProvider):
                 "Content-Type": "application/json"
             }
         )
-    
+
+    async def _stream_chat_completion(self, payload: dict, model: str):
+        """使用流式接口拼接 DeepSeek 响应。"""
+        client = await self.get_client()
+        if client is None:
+            raise RuntimeError("DeepSeek client not initialized")
+
+        url = f"{self.base_url}/chat/completions"
+        content_parts: List[str] = []
+        usage: dict = {}
+        finish_reason: Optional[str] = None
+
+        async with client.stream("POST", url, json=payload) as resp:
+            if resp.status_code >= 400:
+                detail = await resp.aread()
+                raise httpx.HTTPStatusError(
+                    message=f"DeepSeek stream status {resp.status_code} body={detail.decode(errors='ignore')}",
+                    request=resp.request,
+                    response=resp,
+                )
+
+            async for line in resp.aiter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                data_str = line[5:].strip()
+                if data_str == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data_str)
+                except Exception:
+                    continue
+                if event.get("usage"):
+                    usage = event["usage"]
+                for choice in event.get("choices", []):
+                    delta = choice.get("delta") or {}
+                    piece = delta.get("content")
+                    if piece:
+                        content_parts.append(piece)
+                    finish_reason = choice.get("finish_reason") or finish_reason
+
+        return "".join(content_parts).strip(), usage, finish_reason
+
     async def generate_text(
         self, 
         prompt: str, 
@@ -148,9 +193,34 @@ class DeepSeekProvider(BaseProvider):
                 "top_p": top_p,
                 "frequency_penalty": frequency_penalty,
                 "presence_penalty": presence_penalty,
-                "stream": False,
                 **kwargs
             }
+
+            stream = bool(request_data.pop("stream", True))
+
+            if stream:
+                try:
+                    streamed_content, usage, finish_reason = await self._stream_chat_completion(
+                        {**request_data, "stream": True},
+                        model,
+                    )
+                    if streamed_content:
+                        return AIResponse(
+                            success=True,
+                            data=streamed_content,
+                            provider=self.name,
+                            model=model,
+                            task_type=AITaskType.STORY_GENERATION,
+                            model_type=AIModelType.TEXT_GENERATION,
+                            usage=usage,
+                            metadata={
+                                "finish_reason": finish_reason,
+                                "stream": True,
+                            }
+                        )
+                    logger.warning("DeepSeek stream returned empty content; falling back to non-stream.")
+                except Exception as stream_err:  # noqa: BLE001
+                    logger.warning("DeepSeek stream failed, falling back to non-stream: %s", stream_err, exc_info=True)
             
             response = await client.post(
                 f"{self.base_url}/chat/completions",

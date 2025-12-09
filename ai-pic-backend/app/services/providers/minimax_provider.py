@@ -100,6 +100,9 @@ class MinimaxProvider(BaseProvider):
         """使用MiniMax生成文本"""
         try:
             client = await self.get_client()
+
+            # MiniMax 暂不支持流式，这里忽略外部传入的 stream 标记
+            kwargs.pop("stream", None)
             
             messages = []
             if system_prompt:

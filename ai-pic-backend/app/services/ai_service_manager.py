@@ -294,6 +294,7 @@ class AIServiceManager:
         max_tokens: int = 2048,
         temperature: float = 0.7,
         json_schema: dict | None = None,
+        stream: bool = True,
         **kwargs
     ) -> AIResponse:
         """统一文本生成接口"""
@@ -313,7 +314,7 @@ class AIServiceManager:
         
         # 记录请求
         self._log_request(task="generate_text", provider=prefer_provider, model=model, params={
-            "max_tokens": max_tokens, "temperature": temperature, "json_schema": True if json_schema else False
+            "max_tokens": max_tokens, "temperature": temperature, "json_schema": True if json_schema else False, "stream": stream
         })
         self._log_prompt(prompt)
 
@@ -343,6 +344,7 @@ class AIServiceManager:
                     max_tokens=max_tokens,
                     temperature=temperature,
                     json_schema=json_schema,
+                    stream=stream,
                     **kwargs
                 )
                 # 记录响应

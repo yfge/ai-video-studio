@@ -5,6 +5,7 @@ OpenAI服务提供商
 """
 
 import httpx
+import json
 from typing import List, Optional
 from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
 from app.core.logging import get_logger
@@ -186,6 +187,48 @@ class OpenAIProvider(BaseProvider):
                 "Content-Type": "application/json"
             }
         )
+
+    async def _stream_chat_completion(self, payload: Dict[str, Any], model: str):
+        """使用OpenAI流式接口，逐步拼接内容。"""
+        client = await self.get_client()
+        if client is None:
+            raise RuntimeError("OpenAI client not initialized")
+
+        url = f"{self.base_url}/chat/completions"
+        content_parts: list[str] = []
+        usage: Dict[str, Any] = {}
+        finish_reason: Optional[str] = None
+
+        async with client.stream("POST", url, json=payload) as resp:
+            if resp.status_code >= 400:
+                detail = await resp.aread()
+                raise httpx.HTTPStatusError(
+                    message=f"OpenAI stream status {resp.status_code} body={detail.decode(errors='ignore')}",
+                    request=resp.request,
+                    response=resp,
+                )
+
+            async for line in resp.aiter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                data_str = line[5:].strip()
+                if data_str == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data_str)
+                except Exception:
+                    continue
+                if event.get("usage"):
+                    usage = event["usage"]
+                for choice in event.get("choices", []):
+                    delta = choice.get("delta") or {}
+                    piece = delta.get("content")
+                    if piece:
+                        content_parts.append(piece)
+                    finish_reason = choice.get("finish_reason") or finish_reason
+
+        full_content = "".join(content_parts).strip()
+        return full_content, usage, finish_reason
     
     async def generate_text(
         self, 
@@ -212,6 +255,9 @@ class OpenAIProvider(BaseProvider):
                 # "max_tokens": max_tokens,
                 **kwargs
             }
+
+            # 允许外部控制是否使用流式；默认开启
+            stream = bool(payload.pop("stream", True))
             payload.update(_reload_openai_params(model, temperature))
 
             # 优先使用 OpenAI 的 response_format json_schema（如可用）
@@ -232,6 +278,31 @@ class OpenAIProvider(BaseProvider):
                 # 注意：部分模型支持 {"type":"json_object"}
                 if kwargs.get("force_json_object"):
                     payload["response_format"] = {"type": "json_object"}
+
+            # 流式优先，失败回落到普通请求
+            if stream:
+                try:
+                    streamed_content, usage, finish_reason = await self._stream_chat_completion(
+                        {**payload, "stream": True},
+                        model,
+                    )
+                    if streamed_content:
+                        return AIResponse(
+                            success=True,
+                            data=streamed_content,
+                            provider=self.name,
+                            model=model,
+                            task_type=AITaskType.STORY_GENERATION,
+                            model_type=AIModelType.TEXT_GENERATION,
+                            usage=usage,
+                            metadata={
+                                "finish_reason": finish_reason,
+                                "stream": True,
+                            },
+                        )
+                    logger.warning("OpenAI stream returned empty content; falling back to non-stream.")
+                except Exception as stream_err:  # noqa: BLE001
+                    logger.warning("OpenAI stream failed, falling back to non-stream: %s", stream_err, exc_info=True)
 
             response = await client.post(
                 f"{self.base_url}/chat/completions",
