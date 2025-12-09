@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { useAvailableModels } from '@/hooks/useAvailableModels'
 import type { AIModel, ApiResponse, AvailableModelsResponse } from '@/utils/api'
@@ -63,6 +63,7 @@ export function MultiModelSelector({
     enabled: !disabled,
     fetcher,
   })
+  const [provider, setProvider] = useState<string>('all')
 
   const filteredModels = useMemo(() => {
     if (!filterModels) return models
@@ -90,6 +91,14 @@ export function MultiModelSelector({
     return groupedModels
   }, [filteredModels, modelType])
 
+  const providers = useMemo(() => {
+    const ps = new Set<string>()
+    filteredModels.forEach(model => {
+      if (model.provider) ps.add(model.provider)
+    })
+    return Array.from(ps).sort()
+  }, [filteredModels])
+
   useEffect(() => {
     onModelsLoaded?.(filteredModels, defaultModel)
   }, [filteredModels, onModelsLoaded, defaultModel])
@@ -99,6 +108,24 @@ export function MultiModelSelector({
       onChange([defaultModel])
     }
   }, [multiple, autoSelectDefault, defaultModel, onChange, value])
+
+  useEffect(() => {
+    if (providers.length === 0) return
+    const currentProvider = value[0]?.split(':')[0] || ''
+    const defaultProvider = defaultModel ? defaultModel.split(':')[0] : ''
+    const target =
+      currentProvider && providers.includes(currentProvider)
+        ? currentProvider
+        : defaultProvider && providers.includes(defaultProvider)
+          ? defaultProvider
+          : providers[0]
+    setProvider(prev => (providers.includes(prev) ? prev : target))
+  }, [providers, value, defaultModel])
+
+  const modelsByProvider =
+    provider === 'all'
+      ? filteredModels
+      : filteredModels.filter(model => model.provider === provider)
 
   const toggle = (modelId: string) => {
     if (multiple) {
@@ -132,53 +159,94 @@ export function MultiModelSelector({
       {!loading && !error && Object.keys(grouped).length === 0 ? (
         <p className="text-sm text-gray-500">暂无可用模型，请检查提供商配置或刷新。</p>
       ) : null}
-      <div className="space-y-3">
-        {!multiple && allowAuto ? (
-          <div className="border border-gray-200 rounded-lg p-3">
-            <button
-              type="button"
-              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                value.length === 0
-                  ? 'bg-blue-500 text-white border-blue-500'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
-              }`}
-              onClick={() => toggle('')}
-              disabled={disabled}
+
+      {/* 单选模式：改为提供商 + 模型两级下拉，避免长列表溢出 */}
+      {!multiple ? (
+        <div className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <select
+              value={provider}
+              onChange={event => {
+                const next = event.target.value
+                setProvider(next)
+                if (next !== 'all' && value[0] && !value[0].startsWith(`${next}:`)) {
+                  onChange([])
+                }
+              }}
+              disabled={disabled || loading || providers.length === 0}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {autoLabel}
-            </button>
+              <option value="all">全部提供商</option>
+              {providers.map(p => (
+                <option key={p} value={p}>
+                  {providerLabel(p)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={value[0] ?? ''}
+              onChange={event => onChange(event.target.value ? [event.target.value] : [])}
+              disabled={disabled || loading || modelsByProvider.length === 0}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {allowAuto ? <option value="">{autoLabel}</option> : null}
+              {modelsByProvider.map(model => (
+                <option key={model.model_id} value={model.model_id}>
+                  {(model.name || model.id || model.model_id) ?? model.model_id} — {providerLabel(model.provider || '')}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : null}
-        {Object.entries(grouped)
-          .sort(([a], [b]) => providerLabel(a).localeCompare(providerLabel(b)))
-          .map(([provider, items]) => (
-            <div key={provider} className="border border-gray-200 rounded-lg p-3">
-              <h4 className="font-medium text-gray-900 mb-2 text-sm">{providerLabel(provider)}</h4>
-              <div className="flex flex-wrap gap-2">
-                {items.map(model => {
-                  const labelText = model.name || model.id || model.model_id
-                  const selected = value.includes(model.model_id)
-                  return (
-                    <button
-                      key={model.model_id}
-                      type="button"
-                      onClick={() => toggle(model.model_id)}
-                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                        selected
-                          ? 'bg-blue-500 text-white border-blue-500'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
-                      }`}
-                      title={providerLabel(model.provider)}
-                      disabled={disabled}
-                    >
-                      {labelText}
-                    </button>
-                  )
-                })}
-              </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {!multiple && allowAuto ? (
+            <div className="border border-gray-200 rounded-lg p-3">
+              <button
+                type="button"
+                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                  value.length === 0
+                    ? 'bg-blue-500 text-white border-blue-500'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
+                }`}
+                onClick={() => toggle('')}
+                disabled={disabled}
+              >
+                {autoLabel}
+              </button>
             </div>
-          ))}
-      </div>
+          ) : null}
+          {Object.entries(grouped)
+            .sort(([a], [b]) => providerLabel(a).localeCompare(providerLabel(b)))
+            .map(([providerKey, items]) => (
+              <div key={providerKey} className="border border-gray-200 rounded-lg p-3">
+                <h4 className="font-medium text-gray-900 mb-2 text-sm">{providerLabel(providerKey)}</h4>
+                <div className="flex flex-wrap gap-2">
+                  {items.map(model => {
+                    const labelText = model.name || model.id || model.model_id
+                    const selected = value.includes(model.model_id)
+                    return (
+                      <button
+                        key={model.model_id}
+                        type="button"
+                        onClick={() => toggle(model.model_id)}
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                          selected
+                            ? 'bg-blue-500 text-white border-blue-500'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
+                        }`}
+                        title={providerLabel(model.provider)}
+                        disabled={disabled}
+                      >
+                        {labelText}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
 
       {value.length > 0 ? (
         <div className="mt-3">
