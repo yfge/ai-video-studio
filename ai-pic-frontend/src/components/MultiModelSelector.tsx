@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 
 import { useAvailableModels } from '@/hooks/useAvailableModels'
-import type { AIModel } from '@/utils/api'
+import type { AIModel, ApiResponse, AvailableModelsResponse } from '@/utils/api'
 
 interface MultiModelSelectorProps {
   value: string[]
@@ -12,8 +12,13 @@ interface MultiModelSelectorProps {
   helperText?: string
   disabled?: boolean
   filterModels?: (model: AIModel) => boolean
-  onModelsLoaded?: (models: AIModel[]) => void
+  onModelsLoaded?: (models: AIModel[], defaultModel: string) => void
   className?: string
+  allowAuto?: boolean
+  autoLabel?: string
+  autoSelectDefault?: boolean
+  multiple?: boolean
+  fetcher?: () => Promise<ApiResponse<AvailableModelsResponse>>
 }
 
 const providerLabel = (provider: string) => {
@@ -40,9 +45,15 @@ export function MultiModelSelector({
   filterModels,
   onModelsLoaded,
   className,
+  allowAuto = true,
+  autoLabel = '自动（推荐）',
+  autoSelectDefault = false,
+  multiple = true,
+  fetcher,
 }: MultiModelSelectorProps) {
   const {
     models,
+    defaultModel,
     loading,
     error,
     refresh,
@@ -50,6 +61,7 @@ export function MultiModelSelector({
     modelType,
     cacheKey,
     enabled: !disabled,
+    fetcher,
   })
 
   const filteredModels = useMemo(() => {
@@ -79,14 +91,28 @@ export function MultiModelSelector({
   }, [filteredModels, modelType])
 
   useEffect(() => {
-    onModelsLoaded?.(filteredModels)
-  }, [filteredModels, onModelsLoaded])
+    onModelsLoaded?.(filteredModels, defaultModel)
+  }, [filteredModels, onModelsLoaded, defaultModel])
+
+  useEffect(() => {
+    if (!multiple && autoSelectDefault && !value.length && defaultModel) {
+      onChange([defaultModel])
+    }
+  }, [multiple, autoSelectDefault, defaultModel, onChange, value])
 
   const toggle = (modelId: string) => {
-    if (value.includes(modelId)) {
-      onChange(value.filter(m => m !== modelId))
+    if (multiple) {
+      if (value.includes(modelId)) {
+        onChange(value.filter(m => m !== modelId))
+      } else {
+        onChange([...value, modelId])
+      }
     } else {
-      onChange([...value, modelId])
+      if (!modelId && allowAuto) {
+        onChange([])
+        return
+      }
+      onChange(modelId ? [modelId] : [])
     }
   }
 
@@ -107,6 +133,22 @@ export function MultiModelSelector({
         <p className="text-sm text-gray-500">暂无可用模型，请检查提供商配置或刷新。</p>
       ) : null}
       <div className="space-y-3">
+        {!multiple && allowAuto ? (
+          <div className="border border-gray-200 rounded-lg p-3">
+            <button
+              type="button"
+              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                value.length === 0
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
+              }`}
+              onClick={() => toggle('')}
+              disabled={disabled}
+            >
+              {autoLabel}
+            </button>
+          </div>
+        ) : null}
         {Object.entries(grouped)
           .sort(([a], [b]) => providerLabel(a).localeCompare(providerLabel(b)))
           .map(([provider, items]) => (

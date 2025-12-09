@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { authAPI, scriptAPI } from '@/utils/api'
 import type { Script, User } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
-import { ModelSelector } from '@/components/ModelSelector'
+import { MultiModelSelector } from '@/components/MultiModelSelector'
 import { SceneStructurePanel, type SceneNode } from '@/components/SceneStructurePanel'
 import { isAdmin } from '@/utils/auth'
 
@@ -768,11 +768,12 @@ export default function ScriptDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">生成配置</h3>
                   <div className="mt-3 space-y-4 text-sm text-gray-600">
                     <div>
-                      <ModelSelector
+                      <MultiModelSelector
                         label="模型"
-                        value={generationForm.model}
-                        onChange={modelId => setGenerationForm(prev => ({ ...prev, model: modelId }))}
+                        value={generationForm.model ? [generationForm.model] : []}
+                        onChange={ids => setGenerationForm(prev => ({ ...prev, model: ids[0] || '' }))}
                         modelType="text"
+                        multiple={false}
                         helperText="留空将使用推荐模型"
                         className="mt-1"
                       />

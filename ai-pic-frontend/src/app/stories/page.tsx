@@ -7,7 +7,7 @@ import type { Story, VirtualIP, StoryGenerationRequest } from '@/utils/api';
 import Navigation from '@/components/Navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { useAlertModal } from '@/components/AlertModalProvider';
-import { ModelSelector } from '@/components/ModelSelector';
+import { MultiModelSelector } from '@/components/MultiModelSelector';
 
 function StoriesPageContent() {
   const router = useRouter();
@@ -315,13 +315,13 @@ function StoriesPageContent() {
                 />
               </div>
 
-              <ModelSelector
+              <MultiModelSelector
                 label="选择模型"
-                value={generateForm.model || ''}
-                onChange={modelId => setGenerateForm(prev => ({ ...prev, model: modelId }))}
+                value={generateForm.model ? [generateForm.model] : []}
+                onChange={ids => setGenerateForm(prev => ({ ...prev, model: ids[0] || '' }))}
                 modelType="text"
+                multiple={false}
                 helperText="为空将由后端自动挑选最佳提供商与模型（故事生成推荐使用支持 JSON Schema 的模型）"
-                // 目前仅开放 OpenAI 文本模型用于故事概要生成，保证结构化输出稳定
                 filterModels={model => model.provider === 'openai'}
               />
 

@@ -6,7 +6,7 @@ import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
 import { storyStructureAPI, type EnvironmentCreate, type Environment } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
-import { ModelSelector } from '@/components/ModelSelector'
+import { MultiModelSelector } from '@/components/MultiModelSelector'
 
 function EnvironmentsPageContent() {
   const { showAlert } = useAlertModal()
@@ -302,13 +302,14 @@ function EnvironmentsPageContent() {
                   )}
                     <div className="rounded border border-dashed border-gray-200 p-3 text-xs text-gray-600 space-y-2">
                       <div className="font-semibold text-gray-700">AI 生成参考图</div>
-                      <ModelSelector
-                        value={selectedModels[env.id] || ''}
-                        onChange={modelId => setSelectedModels(prev => ({ ...prev, [env.id]: modelId }))}
+                      <MultiModelSelector
+                        value={selectedModels[env.id] ? [selectedModels[env.id]] : []}
+                        onChange={ids => setSelectedModels(prev => ({ ...prev, [env.id]: ids[0] || '' }))}
                         modelType="image"
                         helperText="默认使用环境描述作为提示词"
                         allowAuto={true}
                         autoLabel="自动选择"
+                        multiple={false}
                         className="text-sm"
                       />
                       <button

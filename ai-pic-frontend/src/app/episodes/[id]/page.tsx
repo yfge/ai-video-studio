@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { episodeAPI, scriptAPI } from "@/utils/api";
 import type { Episode, Script, ScriptGenerationRequest } from "@/utils/api";
 import { useAlertModal } from "@/components/AlertModalProvider";
-import { ModelSelector } from "@/components/ModelSelector";
+import { MultiModelSelector } from "@/components/MultiModelSelector";
 
 export default function EpisodeDetailPage() {
   const params = useParams();
@@ -577,13 +577,14 @@ export default function EpisodeDetailPage() {
 
             {/* 模型与温度 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-              <ModelSelector
+              <MultiModelSelector
                 label="模型"
-                value={generateForm.model ?? ""}
-                onChange={(modelId) =>
-                  setGenerateForm((prev) => ({ ...prev, model: modelId }))
+                value={generateForm.model ? [generateForm.model] : []}
+                onChange={(ids) =>
+                  setGenerateForm((prev) => ({ ...prev, model: ids[0] || "" }))
                 }
                 modelType="text"
+                multiple={false}
                 helperText="留空将使用后端推荐模型"
                 className="md:col-span-1"
               />

@@ -20,7 +20,7 @@ import type {
   NormalizedShot,
 } from "@/utils/api";
 import { useAlertModal } from "@/components/AlertModalProvider";
-import { ModelSelector } from "@/components/ModelSelector";
+import { MultiModelSelector } from "@/components/MultiModelSelector";
 
 export default function EpisodeStoryboardPage() {
   const params = useParams();
@@ -807,13 +807,14 @@ export default function EpisodeStoryboardPage() {
         {/* 顶部生成配置 */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <ModelSelector
+            <MultiModelSelector
               label="模型"
-              value={form.model}
-              onChange={(modelId) =>
-                setForm((prev) => ({ ...prev, model: modelId }))
+              value={form.model ? [form.model] : []}
+              onChange={(ids) =>
+                setForm((prev) => ({ ...prev, model: ids[0] || "" }))
               }
               modelType="text"
+              multiple={false}
               helperText="留空时将使用后端推荐模型"
               className="md:col-span-1"
             />

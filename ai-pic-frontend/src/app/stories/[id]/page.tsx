@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { storyAPI, episodeAPI, scriptAPI, virtualIPAPI } from '@/utils/api'
 import type { Story, Episode, Script, VirtualIP, EpisodeGenerationRequest } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
-import { ModelSelector } from '@/components/ModelSelector'
+import { MultiModelSelector } from '@/components/MultiModelSelector'
 
 type EpisodeScene = Record<string, unknown>
 
@@ -244,11 +244,12 @@ export default function StoryDetailPage() {
                     <option value="fast">快</option>
                   </select>
                 </div>
-                <ModelSelector
+                <MultiModelSelector
                   label="模型"
-                  value={genForm.model}
-                  onChange={modelId => setGenForm(prev => ({ ...prev, model: modelId }))}
+                  value={genForm.model ? [genForm.model] : []}
+                  onChange={ids => setGenForm(prev => ({ ...prev, model: ids[0] || '' }))}
                   modelType="text"
+                  multiple={false}
                   helperText="留空时将由后端推荐最佳模型"
                 />
                 <div>

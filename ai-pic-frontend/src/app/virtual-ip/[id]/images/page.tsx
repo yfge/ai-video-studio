@@ -7,7 +7,7 @@ import { virtualIPAPI, virtualIPImageAPI, taskAPI } from '@/utils/api';
 import { VirtualIP, VirtualIPImage, AIImageGenerationRequest } from '@/utils/api';
 import { useAlertModal } from '@/components/AlertModalProvider';
 import { useAvailableModels } from '@/hooks/useAvailableModels';
-import { ModelSelector } from '@/components/ModelSelector';
+import { MultiModelSelector } from '@/components/MultiModelSelector';
 
 export default function VirtualIPImagesPage() {
   const params = useParams();
@@ -434,17 +434,23 @@ export default function VirtualIPImagesPage() {
             <h3 className="text-lg font-semibold mb-4">🤖 AI图像生成</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <ModelSelector
+                <MultiModelSelector
                   label="AI模型"
-                  value={generateForm.model || recommendedModel || ''}
-                  onChange={modelId => setGenerateForm(prev => ({ ...prev, model: modelId }))}
+                  value={generateForm.model ? [generateForm.model] : []}
+                  onChange={ids => setGenerateForm(prev => ({ ...prev, model: ids[0] || '' }))}
                   modelType="image"
                   fetcher={fetchModels}
                   cacheKey={`virtual-ip-image:${virtualIPId}`}
                   allowAuto={false}
+                  multiple={false}
                   autoSelectDefault
                   helperText="选择用于生成该图像的模型"
                   className="space-y-1"
+                  onModelsLoaded={(_, defaultModel) => {
+                    if (!generateForm.model && defaultModel) {
+                      setGenerateForm(prev => ({ ...prev, model: defaultModel }))
+                    }
+                  }}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   {selectedModel?.capabilities?.join(', ') || '模型能力信息加载中'}
