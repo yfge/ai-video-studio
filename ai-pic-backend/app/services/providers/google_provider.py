@@ -41,6 +41,7 @@ class GoogleProvider(BaseProvider):
 
     @property
     def available_models(self) -> List[ModelInfo]:
+        # 提供一组静态兜底模型，确保在远端列表不可用时前端仍可选择多个 Google 文生文模型
         return [
             ModelInfo(
                 model_id=self.default_model,
@@ -49,7 +50,31 @@ class GoogleProvider(BaseProvider):
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=65535,
                 capabilities=["text_generation", "analysis", "reasoning"],
-            )
+            ),
+            ModelInfo(
+                model_id="gemini-1.5-pro-latest",
+                name="Gemini 1.5 Pro (stable)",
+                description="Gemini 1.5 Pro 通用推理模型（稳定版兜底）",
+                model_type=AIModelType.TEXT_GENERATION,
+                max_tokens=1048576,
+                capabilities=["text_generation", "analysis", "reasoning"],
+            ),
+            ModelInfo(
+                model_id="gemini-1.5-flash-latest",
+                name="Gemini 1.5 Flash (fast)",
+                description="Gemini 1.5 Flash 高速通用模型（稳定版兜底）",
+                model_type=AIModelType.TEXT_GENERATION,
+                max_tokens=2097152,
+                capabilities=["text_generation", "analysis"],
+            ),
+            ModelInfo(
+                model_id="gemini-1.0-pro",
+                name="Gemini 1.0 Pro",
+                description="Gemini 1.0 Pro 文本模型（兼容旧配置）",
+                model_type=AIModelType.TEXT_GENERATION,
+                max_tokens=30720,
+                capabilities=["text_generation", "analysis"],
+            ),
         ]
 
     def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
@@ -112,11 +137,22 @@ class GoogleProvider(BaseProvider):
             )
         return models
 
+    def _dedupe(self, models: List[ModelInfo]) -> List[ModelInfo]:
+        """Remove duplicate model_ids while preserving order."""
+        seen = set()
+        unique: List[ModelInfo] = []
+        for m in models:
+            if m.model_id in seen:
+                continue
+            seen.add(m.model_id)
+            unique.append(m)
+        return unique
+
     async def fetch_remote_models(
         self,
         model_type: Optional[AIModelType] = None,
     ) -> List[ModelInfo]:
-        """调用 Vertex AI 或 Generative Language models 列表，失败时回退静态列表。"""
+        """调用 Vertex AI 与 Generative Language models 列表，失败时回退静态列表。"""
         fallback = self._fallback_models(model_type)
         if not self.config.api_key:
             return fallback
@@ -125,8 +161,10 @@ class GoogleProvider(BaseProvider):
         if client is None:
             return fallback
 
+        models: List[ModelInfo] = []
+
+        # 1) Vertex AI (aiplatform)
         try:
-            # 优先 Vertex AI aiplatform
             resp = await client.get(
                 f"{self.base_url}/v1/models",
                 params={"key": self.config.api_key},
@@ -134,13 +172,11 @@ class GoogleProvider(BaseProvider):
             resp.raise_for_status()
             payload = resp.json()
             server_models = payload.get("models") or payload.get("data") or []
-            models: List[ModelInfo] = self._from_payload(server_models, model_type)
-            if models:
-                return models
+            models.extend(self._from_payload(server_models, model_type))
         except Exception:
-            models = []
+            pass
 
-        # 兼容 Generative Language API（generativelanguage.googleapis.com）
+        # 2) Generative Language API (generativelanguage.googleapis.com)
         try:
             headers = {
                 "Content-Type": "application/json",
@@ -149,15 +185,17 @@ class GoogleProvider(BaseProvider):
             }
             async with httpx.AsyncClient(timeout=self.config.timeout, headers=headers) as gen_client:
                 resp = await gen_client.get(
-                    "https://generativelanguage.googleapis.com/v1beta/models"
+                    "https://generativelanguage.googleapis.com/v1beta/models",
+                    params={"key": self.config.api_key},
                 )
                 resp.raise_for_status()
                 payload = resp.json()
                 server_models = payload.get("models") or []
-                models = self._from_payload(server_models, model_type)
-            return models or fallback
+                models.extend(self._from_payload(server_models, model_type))
         except Exception:
-            return fallback
+            pass
+
+        return self._dedupe(models) or fallback
 
     async def generate_image(
         self,
