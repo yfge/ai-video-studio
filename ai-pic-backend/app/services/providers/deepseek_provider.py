@@ -5,8 +5,7 @@ DeepSeek服务提供商
 """
 
 import httpx
-import json
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
 
 class DeepSeekProvider(BaseProvider):
@@ -48,6 +47,67 @@ class DeepSeekProvider(BaseProvider):
                 capabilities=["math", "reasoning", "problem_solving"]
             )
         ]
+    
+    def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
+        models = self.available_models
+        if model_type:
+            models = [m for m in models if m.model_type == model_type]
+        return models
+
+    def _infer_model_type(self, model_id: str) -> AIModelType:
+        lid = model_id.lower()
+        if "vision" in lid or "vl" in lid:
+            return AIModelType.IMAGE_UNDERSTANDING
+        return AIModelType.TEXT_GENERATION
+
+    def _infer_capabilities(self, model_id: str) -> List[str]:
+        lid = model_id.lower()
+        caps = ["text_generation"]
+        if "coder" in lid:
+            caps.append("code_generation")
+        if "math" in lid:
+            caps.append("math_reasoning")
+        return caps
+
+    async def fetch_remote_models(
+        self,
+        model_type: Optional[AIModelType] = None,
+    ) -> List[ModelInfo]:
+        """调用 DeepSeek 官方 /models，尽量返回远端列表，失败时使用静态兜底。"""
+        fallback = self._fallback_models(model_type)
+        client = await self.get_client()
+        if client is None:
+            return fallback
+
+        try:
+            resp = await client.get(f"{self.base_url}/models")
+            resp.raise_for_status()
+            payload = resp.json()
+            items = payload.get("data") or payload.get("models") or payload
+            models: List[ModelInfo] = []
+            for item in items if isinstance(items, list) else []:
+                if not isinstance(item, dict):
+                    continue
+                mid = item.get("id") or item.get("model") or item.get("model_id")
+                if not mid:
+                    continue
+                mtype = self._infer_model_type(mid)
+                if mtype not in self.supported_model_types:
+                    continue
+                if model_type and mtype != model_type:
+                    continue
+                models.append(
+                    ModelInfo(
+                        model_id=mid,
+                        name=item.get("name") or mid,
+                        description=item.get("description") or f"DeepSeek model {mid}",
+                        model_type=mtype,
+                        capabilities=self._infer_capabilities(mid),
+                    )
+                )
+            return models or fallback
+        except Exception:
+            return fallback
     
     async def _initialize_client(self):
         """初始化HTTP客户端"""

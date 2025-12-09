@@ -48,12 +48,44 @@ class GoogleProvider(BaseProvider):
             )
         ]
 
+    def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
+        models = self.available_models
+        if model_type:
+            models = [m for m in models if m.model_type == model_type]
+        return models
+
+    def _normalize_model_id(self, raw: Optional[str]) -> Optional[str]:
+        if not raw:
+            return None
+        return raw.split("/")[-1]
+
+    def _supported_methods(self, item: Dict[str, Any]) -> List[str]:
+        methods = item.get("supportedGenerationMethods") or item.get("supported_generation_methods") or []
+        return [m.lower() for m in methods if isinstance(m, str)]
+
+    def _infer_model_type(self, item: Dict[str, Any]) -> AIModelType:
+        methods = self._supported_methods(item)
+        if "generateimage" in methods:
+            return AIModelType.TEXT_TO_IMAGE
+        return AIModelType.TEXT_GENERATION
+
+    def _infer_capabilities(self, item: Dict[str, Any]) -> List[str]:
+        methods = self._supported_methods(item)
+        caps: List[str] = []
+        if any(m in methods for m in ["generatecontent", "generatetext"]):
+            caps.append("text_generation")
+        if "generateimage" in methods:
+            caps.append("text_to_image")
+        if not caps:
+            caps.append("text_generation")
+        return caps
+
     async def fetch_remote_models(
         self,
         model_type: Optional[AIModelType] = None,
     ) -> List[ModelInfo]:
         """调用 Vertex AI models 列表，失败时回退静态列表。"""
-        fallback = await super().fetch_remote_models(model_type=model_type)
+        fallback = self._fallback_models(model_type)
         if not self.config.api_key:
             return fallback
 
@@ -69,21 +101,28 @@ class GoogleProvider(BaseProvider):
             resp.raise_for_status()
             payload = resp.json()
             server_models = payload.get("models") or payload.get("data") or []
-            server_ids = {
-                item.get("name") or item.get("id")
-                for item in server_models
-                if isinstance(item, dict) and (item.get("name") or item.get("id"))
-            }
-            if not server_ids:
-                return fallback
-
-            filtered = [
-                m
-                for m in self.available_models
-                if (m.model_id in server_ids or f"models/{m.model_id}" in server_ids)
-                and (not model_type or m.model_type == model_type)
-            ]
-            return filtered or fallback
+            models: List[ModelInfo] = []
+            for item in server_models:
+                if not isinstance(item, dict):
+                    continue
+                mid = self._normalize_model_id(item.get("name") or item.get("id"))
+                if not mid:
+                    continue
+                mtype = self._infer_model_type(item)
+                if mtype not in self.supported_model_types:
+                    continue
+                if model_type and mtype != model_type:
+                    continue
+                models.append(
+                    ModelInfo(
+                        model_id=mid,
+                        name=item.get("displayName") or item.get("title") or mid,
+                        description=item.get("description") or f"Google Vertex model {mid}",
+                        model_type=mtype,
+                        capabilities=self._infer_capabilities(item),
+                    )
+                )
+            return models or fallback
         except Exception:
             return fallback
 

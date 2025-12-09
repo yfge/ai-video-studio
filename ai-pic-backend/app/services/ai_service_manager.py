@@ -220,6 +220,21 @@ class AIServiceManager:
         if weight:
             weight.current_requests += 1
 
+    async def _get_models_for_type(
+        self,
+        provider: BaseProvider,
+        model_type: Optional[AIModelType],
+    ):
+        """统一的模型拉取入口，优先使用远端列表，失败时回退静态配置。"""
+        models = []
+        try:
+            models = await provider.fetch_remote_models(model_type=model_type)
+        except Exception:
+            models = []
+        if not models:
+            models = [m for m in provider.available_models if not model_type or m.model_type == model_type]
+        return models
+
     async def list_models(
         self,
         model_type: Optional[AIModelType] = None,
@@ -247,16 +262,7 @@ class AIServiceManager:
                 elif source == "remote":
                     infos = await provider.fetch_remote_models(model_type=model_type)
                 else:  # auto
-                    try:
-                        infos = await provider.fetch_remote_models(model_type=model_type)
-                        if not infos:
-                            infos = provider.available_models
-                            if model_type:
-                                infos = [m for m in infos if m.model_type == model_type]
-                    except Exception:
-                        infos = provider.available_models
-                        if model_type:
-                            infos = [m for m in infos if m.model_type == model_type]
+                    infos = await self._get_models_for_type(provider, model_type)
             except Exception:
                 # 某个 provider 拉取失败，不影响其他 provider
                 continue
@@ -322,8 +328,11 @@ class AIServiceManager:
             
             # 如果未指定模型，使用提供商的默认模型
             if not model:
-                available_models = provider.available_models
-                text_models = [m for m in available_models if m.model_type == AIModelType.TEXT_GENERATION]
+                available_models = await self._get_models_for_type(
+                    provider,
+                    AIModelType.TEXT_GENERATION,
+                )
+                text_models = available_models
                 model = text_models[0].model_id if text_models else "default"
             
             try:
@@ -406,8 +415,11 @@ class AIServiceManager:
             
             # 选择合适的默认模型
             if not model:
-                available_models = provider.available_models
-                image_models = [m for m in available_models if m.model_type == AIModelType.TEXT_TO_IMAGE]
+                available_models = await self._get_models_for_type(
+                    provider,
+                    AIModelType.TEXT_TO_IMAGE,
+                )
+                image_models = available_models
                 model = image_models[0].model_id if image_models else "default"
             
             try:
@@ -512,15 +524,17 @@ class AIServiceManager:
             # 选择合适的默认模型（image_to_image 类型），必要时退回到 text_to_image 模型
             effective_model = model
             if not effective_model:
-                img2img_models = [
-                    m for m in provider.available_models if m.model_type == AIModelType.IMAGE_TO_IMAGE
-                ]
+                img2img_models = await self._get_models_for_type(
+                    provider,
+                    AIModelType.IMAGE_TO_IMAGE,
+                )
                 if img2img_models:
                     effective_model = img2img_models[0].model_id
                 else:
-                    t2i_models = [
-                        m for m in provider.available_models if m.model_type == AIModelType.TEXT_TO_IMAGE
-                    ]
+                    t2i_models = await self._get_models_for_type(
+                        provider,
+                        AIModelType.TEXT_TO_IMAGE,
+                    )
                     effective_model = t2i_models[0].model_id if t2i_models else "default"
 
             try:

@@ -5,7 +5,6 @@
 """
 
 import httpx
-import json
 import asyncio
 from typing import List, Optional, Dict, Any
 from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
@@ -101,6 +100,71 @@ class VolcengineProvider(BaseProvider):
             )
         ]
 
+    def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
+        models = self.available_models
+        if model_type:
+            models = [m for m in models if m.model_type == model_type]
+        return models
+
+    def _infer_model_type(self, model_id: str, item: Dict[str, Any]) -> AIModelType:
+        """根据模型 id 和能力字段推断模型类型，尽量覆盖文本/图像/视频/语音。"""
+        tokens: List[str] = []
+        for key in ["task_type", "type", "category"]:
+            val = item.get(key)
+            if isinstance(val, str):
+                tokens.append(val.lower())
+        abilities = item.get("abilities") or item.get("ability") or []
+        if isinstance(abilities, str):
+            tokens.append(abilities.lower())
+        elif isinstance(abilities, list):
+            tokens.extend([str(a).lower() for a in abilities])
+        lid = model_id.lower()
+        tokens.append(lid)
+
+        if any(tag in tokens for tag in ["image", "visual", "seedream", "picture", "painting"]):
+            return AIModelType.TEXT_TO_IMAGE
+        if any(tag in tokens for tag in ["video", "vid", "movie"]):
+            return AIModelType.TEXT_TO_VIDEO
+        if any(tag in tokens for tag in ["tts", "speech", "voice", "audio"]):
+            return AIModelType.TEXT_TO_SPEECH
+        if any(tag in tokens for tag in ["stt", "asr"]):
+            return AIModelType.SPEECH_TO_TEXT
+        return AIModelType.TEXT_GENERATION
+
+    def _infer_capabilities(
+        self,
+        model_type: AIModelType,
+        item: Dict[str, Any],
+    ) -> List[str]:
+        abilities = item.get("abilities") or item.get("ability") or []
+        ability_tokens: List[str] = []
+        if isinstance(abilities, str):
+            ability_tokens = [abilities.lower()]
+        elif isinstance(abilities, list):
+            ability_tokens = [str(a).lower() for a in abilities]
+
+        caps: List[str] = []
+        if model_type == AIModelType.TEXT_TO_IMAGE:
+            caps.append("text_to_image")
+        elif model_type == AIModelType.TEXT_TO_VIDEO:
+            caps.append("text_to_video")
+        elif model_type == AIModelType.TEXT_TO_SPEECH:
+            caps.append("text_to_speech")
+        elif model_type == AIModelType.SPEECH_TO_TEXT:
+            caps.append("speech_to_text")
+        else:
+            caps.append("text_generation")
+
+        for token in ability_tokens:
+            if "code" in token:
+                caps.append("code_generation")
+            if "chat" in token:
+                caps.append("conversation")
+            if "embed" in token:
+                caps.append("embedding")
+        # 去重保持顺序
+        return list(dict.fromkeys(caps))
+
     async def fetch_remote_models(
         self,
         model_type: Optional[AIModelType] = None,
@@ -108,7 +172,7 @@ class VolcengineProvider(BaseProvider):
         """
         调用火山引擎 Ark /models 列表，结合本地白名单过滤，失败则回退静态列表。
         """
-        fallback = await super().fetch_remote_models(model_type=model_type)
+        fallback = self._fallback_models(model_type)
         client = await self.get_client()
         if client is None:
             return fallback
@@ -118,45 +182,28 @@ class VolcengineProvider(BaseProvider):
             resp.raise_for_status()
             payload = resp.json()
             items = payload.get("data") or payload.get("models") or payload
-            server_ids = set()
+            models: List[ModelInfo] = []
             for item in items if isinstance(items, list) else []:
                 if not isinstance(item, dict):
                     continue
                 mid = item.get("id") or item.get("model") or item.get("model_id")
-                if mid:
-                    server_ids.add(mid)
-            if not server_ids:
-                return fallback
-
-            def _match_model_type(mid: str) -> Optional[AIModelType]:
-                lid = mid.lower()
-                if "seedream" in lid or "visual" in lid or "image" in lid:
-                    return AIModelType.TEXT_TO_IMAGE
-                if "video" in lid:
-                    return AIModelType.TEXT_TO_VIDEO
-                if "tts" in lid or "speech" in lid:
-                    return AIModelType.TEXT_TO_SPEECH
-                return AIModelType.TEXT_GENERATION
-
-            filtered = []
-            for m in self.available_models:
-                if m.model_id in server_ids and (not model_type or m.model_type == model_type):
-                    filtered.append(m)
-            # 若白名单为空但服务器有返回，按简单规则构造 ModelInfo
-            if not filtered:
-                for mid in server_ids:
-                    mt = _match_model_type(mid)
-                    if model_type and mt != model_type:
-                        continue
-                    filtered.append(
-                        ModelInfo(
-                            model_id=mid,
-                            name=mid,
-                            description=f"Volcengine model {mid}",
-                            model_type=mt,
-                        )
+                if not mid:
+                    continue
+                mtype = self._infer_model_type(mid, item)
+                if mtype not in self.supported_model_types:
+                    continue
+                if model_type and mtype != model_type:
+                    continue
+                models.append(
+                    ModelInfo(
+                        model_id=mid,
+                        name=item.get("name") or item.get("model_name") or mid,
+                        description=item.get("description") or item.get("desc") or f"Volcengine model {mid}",
+                        model_type=mtype,
+                        capabilities=self._infer_capabilities(mtype, item),
                     )
-            return filtered or fallback
+                )
+            return models or fallback
         except Exception:
             return fallback
     

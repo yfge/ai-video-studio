@@ -5,8 +5,7 @@ OpenAI服务提供商
 """
 
 import httpx
-import json
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
 
 class OpenAIProvider(BaseProvider):
@@ -73,6 +72,28 @@ class OpenAIProvider(BaseProvider):
             )
         ]
 
+    def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
+        models = self.available_models
+        if model_type:
+            models = [m for m in models if m.model_type == model_type]
+        return models
+
+    def _infer_model_type(self, model_id: str) -> AIModelType:
+        """粗略推断模型类型，优先识别 DALL-E 图像模型，其余视为文本模型。"""
+        lid = model_id.lower()
+        if "dall-e" in lid or "image" in lid:
+            return AIModelType.TEXT_TO_IMAGE
+        return AIModelType.TEXT_GENERATION
+
+    def _infer_capabilities(self, model_id: str) -> List[str]:
+        lid = model_id.lower()
+        if "dall-e" in lid or "image" in lid:
+            return ["text_to_image"]
+        caps = ["text_generation"]
+        if "gpt" in lid or "o" in lid:
+            caps.append("analysis")
+        return caps
+
     async def fetch_remote_models(
         self,
         model_type: Optional[AIModelType] = None,
@@ -81,25 +102,40 @@ class OpenAIProvider(BaseProvider):
         使用 OpenAI 官方 /v1/models 列表作为信息源，结合当前维护的白名单。
 
         - 先调用 /v1/models 拿到所有模型 id
-        - 再与 available_models 中维护的子集交集，保证只暴露经过我们验证过的模型
+        - 直接根据模型 id 粗略推断类型，尽量返回官方最新列表
         """
+        fallback = self._fallback_models(model_type)
         try:
             client = await self.get_client()
+            if client is None:
+                return fallback
             resp = await client.get(f"{self.base_url}/models")
             resp.raise_for_status()
             data = resp.json()
-            server_ids = {m.get("id") for m in data.get("data", []) if isinstance(m, dict) and m.get("id")}
-
-            static_models = self.available_models
-            if model_type:
-                static_models = [m for m in static_models if m.model_type == model_type]
-
-            # 只返回既在官方列表里、又在我们白名单里的模型
-            filtered = [m for m in static_models if m.model_id in server_ids]
-            return filtered or static_models
+            server_models = data.get("data", []) if isinstance(data, dict) else []
+            models: List[ModelInfo] = []
+            for item in server_models:
+                if not isinstance(item, dict):
+                    continue
+                mid = item.get("id")
+                if not mid:
+                    continue
+                mtype = self._infer_model_type(mid)
+                if model_type and mtype != model_type:
+                    continue
+                models.append(
+                    ModelInfo(
+                        model_id=mid,
+                        name=item.get("name") or mid,
+                        description=item.get("description") or f"OpenAI model {mid}",
+                        model_type=mtype,
+                        capabilities=self._infer_capabilities(mid),
+                    )
+                )
+            return models or fallback
         except Exception:
             # 出错时退回到静态列表
-            return await super().fetch_remote_models(model_type=model_type)
+            return fallback
     
     async def _initialize_client(self):
         """初始化HTTP客户端"""
