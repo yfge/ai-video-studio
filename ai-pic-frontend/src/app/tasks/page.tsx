@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { taskAPI, type Task as APITask, type AIModel } from '@/utils/api'
+import { taskAPI, type Task as APITask, type AIModel, AIModelType } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { MultiModelSelector } from '@/components/MultiModelSelector'
 
@@ -369,15 +369,15 @@ export default function Tasks() {
               <div className="space-y-4">
                 {/* 标题 */}
                 <label className="block text-sm font-medium text-gray-700 mb-1">任务标题</label>
-                <input type="text" value={newTask.title} onChange={(e) => setNewTask({...newTask, title: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="请输入任务标题" required />
+                <input type="text" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="请输入任务标题" required />
                 {/* 提示词 */}
                 <label className="block text-sm font-medium text-gray-700 mb-1">提示词</label>
-                <textarea value={newTask.prompt} onChange={(e) => setNewTask({...newTask, prompt: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" rows={4} placeholder="请详细描述你想要生成的图片内容" required />
+                <textarea value={newTask.prompt} onChange={(e) => setNewTask({ ...newTask, prompt: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" rows={4} placeholder="请详细描述你想要生成的图片内容" required />
                 {/* 平台多选 */}
                 <MultiModelSelector
                   label="AI模型（可多选）"
                   helperText="模型列表来自后端 /api/v1/ai/models/available"
-                  modelType="image"
+                  modelType={AIModelType.Image}
                   cacheKey="tasks:image"
                   value={newTask.platform}
                   onChange={models => setNewTask({ ...newTask, platform: models })}
@@ -450,10 +450,10 @@ export default function Tasks() {
                 {/* 参考图片-人物 */}
                 <label className="block text-sm font-medium text-gray-700 mb-1">人物参考图片（可多选）</label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    multiple 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
                     onChange={e => {
                       const files = e.target.files;
                       if (!files) return;
@@ -537,10 +537,10 @@ export default function Tasks() {
                 {/* 参考图片-场景 */}
                 <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">场景参考图片（可多选）</label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    multiple 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
                     onChange={e => {
                       const files = e.target.files;
                       if (!files) return;
@@ -561,7 +561,7 @@ export default function Tasks() {
                   </label>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {galleryImages.filter(img => img.tags.some(t => ['风景','场景','城市','建筑','自然','夜景'].includes(t))).map(img => (
+                  {galleryImages.filter(img => img.tags.some(t => ['风景', '场景', '城市', '建筑', '自然', '夜景'].includes(t))).map(img => (
                     <div
                       key={img.id}
                       className={`border rounded p-1 cursor-pointer ${selectedSceneImages.some(i => i.id === img.id) ? 'border-blue-500' : 'border-gray-300'}`}
@@ -624,10 +624,10 @@ export default function Tasks() {
                 {/* 参考图片-风格 */}
                 <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">风格参考图片（可多选）</label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    multiple 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
                     onChange={e => {
                       const files = e.target.files;
                       if (!files) return;
@@ -648,7 +648,7 @@ export default function Tasks() {
                   </label>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {galleryImages.filter(img => img.tags.some(t => ['风格','抽象','艺术','色彩','国风','现代','赛博朋克','写实','二次元','未来感'].includes(t))).map(img => (
+                  {galleryImages.filter(img => img.tags.some(t => ['风格', '抽象', '艺术', '色彩', '国风', '现代', '赛博朋克', '写实', '二次元', '未来感'].includes(t))).map(img => (
                     <div
                       key={img.id}
                       className={`border rounded p-1 cursor-pointer ${selectedStyleImages.some(i => i.id === img.id) ? 'border-blue-500' : 'border-gray-300'}`}

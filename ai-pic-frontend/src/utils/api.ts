@@ -179,6 +179,21 @@ export interface AIModel {
   capabilities: string[];
 }
 
+// AI模型类型常量 (对应后端 AIModelType)
+export const AIModelType = {
+  Text: 'text_generation',
+  Image: 'text_to_image',
+  Video: 'text_to_video',
+  Audio: 'text_to_speech',
+  SpeechToText: 'speech_to_text',
+  ImageToImage: 'image_to_image',
+  ImageToVideo: 'image_to_video',
+  ImageUnderstanding: 'image_understanding',
+  VideoUnderstanding: 'video_understanding',
+} as const;
+
+export type AIModelType = typeof AIModelType[keyof typeof AIModelType];
+
 export interface AvailableModelsResponse {
   models: AIModel[];
   default?: string;
@@ -575,8 +590,8 @@ class ApiClient {
       if (!response.ok) {
         throw new Error(
           data.detail ||
-            data.message ||
-            `HTTP error! status: ${response.status}`,
+          data.message ||
+          `HTTP error! status: ${response.status}`,
         );
       }
 

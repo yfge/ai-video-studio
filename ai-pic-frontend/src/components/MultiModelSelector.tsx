@@ -1,23 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { useAvailableModels } from '@/hooks/useAvailableModels'
-import type { AIModel, ApiResponse, AvailableModelsResponse } from '@/utils/api'
+import { type AIModel, type ApiResponse, type AvailableModelsResponse, AIModelType } from '@/utils/api'
+
+// 简化的模型类型映射，兼容旧代码
+const LEGACY_TYPE_MAP: Record<string, string> = {
+  'text': AIModelType.Text,
+  'image': AIModelType.Image,
+  'video': AIModelType.Video,
+  'audio': AIModelType.Audio,
+}
 
 interface MultiModelSelectorProps {
   value: string[]
-  onChange: (modelIds: string[]) => void
-  modelType?: string
+  onChange: (value: string[]) => void
+  modelType?: string // 现在推荐传入 AIModelType 枚举值，但也兼容 'text'/'image' 等简写
   cacheKey?: string
   label?: string
   helperText?: string
   disabled?: boolean
   filterModels?: (model: AIModel) => boolean
   onModelsLoaded?: (models: AIModel[], defaultModel: string) => void
-  className?: string
   allowAuto?: boolean
   autoLabel?: string
   autoSelectDefault?: boolean
   multiple?: boolean
+  className?: string
   fetcher?: () => Promise<ApiResponse<AvailableModelsResponse>>
 }
 
@@ -37,20 +45,23 @@ const providerLabel = (provider: string) => {
 export function MultiModelSelector({
   value,
   onChange,
-  modelType = 'text',
+  modelType = AIModelType.Text,
   cacheKey,
   label,
   helperText,
   disabled = false,
   filterModels,
   onModelsLoaded,
-  className,
   allowAuto = true,
   autoLabel = '自动（推荐）',
   autoSelectDefault = false,
   multiple = true,
+  className,
   fetcher,
 }: MultiModelSelectorProps) {
+  // 解析实际的 filter type
+  const actualModelType = LEGACY_TYPE_MAP[modelType] || modelType
+
   const {
     models,
     defaultModel,
@@ -58,38 +69,49 @@ export function MultiModelSelector({
     error,
     refresh,
   } = useAvailableModels({
-    modelType,
+    modelType: actualModelType, // 传给 hook 的也应该是转换后的标准类型
     cacheKey,
     enabled: !disabled,
     fetcher,
   })
   const [provider, setProvider] = useState<string>('all')
 
+  // 1. 过滤模型：先按 Type 再按自定义 filter
   const filteredModels = useMemo(() => {
-    if (!filterModels) return models
-    return models.filter(filterModels)
-  }, [filterModels, models])
+    let result = models
+    // 严格类型过滤
+    if (actualModelType) {
+      result = result.filter(m => m.type === actualModelType)
+    }
+    // 自定义过滤
+    if (filterModels) {
+      result = result.filter(filterModels)
+    }
+    return result
+  }, [models, actualModelType, filterModels])
 
+  // 2. 分组逻辑
   const grouped = useMemo<Record<string, AIModel[]>>(() => {
     const groupedModels: Record<string, AIModel[]> = {}
     filteredModels.forEach(model => {
-      // 按模型类型做一次安全过滤
-      if (model.type && modelType && !model.type.includes(modelType)) {
-        return
-      }
       const provider = model.provider || 'unknown'
       if (!groupedModels[provider]) groupedModels[provider] = []
       groupedModels[provider].push(model)
     })
-    Object.keys(groupedModels).forEach(provider => {
-      groupedModels[provider].sort((a, b) => {
-        const aName = a.name || a.id || a.model_id
-        const bName = b.name || b.id || b.model_id
-        return aName.localeCompare(bName)
-      })
+
+    // 排序：OpenAI 优先，其他字母序
+    const ordered: Record<string, AIModel[]> = {}
+    const providers = Object.keys(groupedModels).sort((a, b) => {
+      if (a === 'openai') return -1
+      if (b === 'openai') return 1
+      return a.localeCompare(b)
     })
-    return groupedModels
-  }, [filteredModels, modelType])
+
+    providers.forEach(p => {
+      ordered[p] = groupedModels[p]
+    })
+    return ordered
+  }, [filteredModels])
 
   const providers = useMemo(() => {
     const ps = new Set<string>()
@@ -99,15 +121,19 @@ export function MultiModelSelector({
     return Array.from(ps).sort()
   }, [filteredModels])
 
+  // 3. 初始加载回调 & 默认选中逻辑
   useEffect(() => {
-    onModelsLoaded?.(filteredModels, defaultModel)
-  }, [filteredModels, onModelsLoaded, defaultModel])
+    if (!loading && models.length > 0) {
+      onModelsLoaded?.(models, defaultModel)
 
-  useEffect(() => {
-    if (!multiple && autoSelectDefault && !value.length && defaultModel) {
-      onChange([defaultModel])
+      // 如果未选中且不仅允许自动（或者允许自动但要求默认选中），则选中默认值
+      // 注意：如果 allowAuto 为 true 且 value 为空，通常表示"自动"，不需要 set defaultModel
+      // 但如果 autoSelectDefault 为 true，则强制选中默认值
+      if (value.length === 0 && defaultModel && autoSelectDefault) {
+        onChange([defaultModel])
+      }
     }
-  }, [multiple, autoSelectDefault, defaultModel, onChange, value])
+  }, [loading, models, defaultModel, autoSelectDefault]) // 去掉 onChange/value 避免死循环，仅在加载完成时触发
 
   useEffect(() => {
     if (providers.length === 0) return
@@ -204,11 +230,10 @@ export function MultiModelSelector({
             <div className="border border-gray-200 rounded-lg p-3">
               <button
                 type="button"
-                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                  value.length === 0
-                    ? 'bg-blue-500 text-white border-blue-500'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
-                }`}
+                className={`px-3 py-1 text-xs rounded-full border transition-colors ${value.length === 0
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
+                  }`}
                 onClick={() => toggle('')}
                 disabled={disabled}
               >
@@ -230,11 +255,10 @@ export function MultiModelSelector({
                         key={model.model_id}
                         type="button"
                         onClick={() => toggle(model.model_id)}
-                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                          selected
-                            ? 'bg-blue-500 text-white border-blue-500'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
-                        }`}
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${selected
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
+                          }`}
                         title={providerLabel(model.provider)}
                         disabled={disabled}
                       >

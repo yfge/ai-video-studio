@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { storyAPI, virtualIPAPI } from '@/utils/api';
 import type { Story, VirtualIP, StoryGenerationRequest } from '@/utils/api';
+import { AIModelType } from '@/utils/api';
 import Navigation from '@/components/Navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { useAlertModal } from '@/components/AlertModalProvider';
@@ -17,11 +18,11 @@ function StoriesPageContent() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
-  
+
   // 筛选状态
   const [selectedGenre, setSelectedGenre] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
-  
+
   // 生成表单状态
   const [generateForm, setGenerateForm] = useState<StoryGenerationRequest>({
     title: '',
@@ -105,7 +106,7 @@ function StoriesPageContent() {
       const response = useAsync
         ? await storyAPI.generateStoryAsync(generateForm)
         : await storyAPI.generateStory(generateForm);
-      
+
       if (response.success && response.data) {
         if (!useAsync) {
           setStories(prev => [response.data, ...prev]);
@@ -225,7 +226,7 @@ function StoriesPageContent() {
               </option>
             ))}
           </select>
-          
+
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
@@ -243,8 +244,8 @@ function StoriesPageContent() {
         {showGenerateForm && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4">🤖 AI故事生成</h3>
-            
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   故事标题 *
@@ -257,7 +258,7 @@ function StoriesPageContent() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   故事类型
@@ -274,7 +275,7 @@ function StoriesPageContent() {
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   故事主题
@@ -287,7 +288,7 @@ function StoriesPageContent() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   目标受众
@@ -300,7 +301,7 @@ function StoriesPageContent() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   预计总时长（分钟）
@@ -319,7 +320,7 @@ function StoriesPageContent() {
                 label="选择模型"
                 value={generateForm.model ? [generateForm.model] : []}
                 onChange={ids => setGenerateForm(prev => ({ ...prev, model: ids[0] || '' }))}
-                modelType="text"
+                modelType={AIModelType.Text}
                 multiple={false}
                 helperText="为空将由后端自动挑选最佳提供商与模型（故事生成推荐使用支持 JSON Schema 的模型）"
                 filterModels={model => model.provider === 'openai'}
@@ -345,12 +346,12 @@ function StoriesPageContent() {
             {/* 角色选择 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                选择角色 * (至少选择一个) 
+                选择角色 * (至少选择一个)
                 <span className="text-blue-600 ml-2">
                   已选择: {generateForm.character_ids.length} 个
                 </span>
               </label>
-              
+
               {virtualIPs.length === 0 ? (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <div className="text-gray-400 text-4xl mb-2">👥</div>
@@ -369,13 +370,12 @@ function StoriesPageContent() {
                 <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
                     {virtualIPs.map(ip => (
-                      <label 
-                        key={ip.id} 
-                        className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                          generateForm.character_ids.includes(ip.id)
-                            ? 'border-blue-500 bg-blue-50 shadow-md'
-                            : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
-                        }`}
+                      <label
+                        key={ip.id}
+                        className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${generateForm.character_ids.includes(ip.id)
+                          ? 'border-blue-500 bg-blue-50 shadow-md'
+                          : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
+                          }`}
                       >
                         <input
                           type="checkbox"
@@ -399,7 +399,7 @@ function StoriesPageContent() {
                       </label>
                     ))}
                   </div>
-                  
+
                   {generateForm.character_ids.length > 0 && (
                     <div className="mt-3 p-2 bg-blue-100 rounded-lg">
                       <p className="text-sm text-blue-800">
@@ -427,7 +427,7 @@ function StoriesPageContent() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   地点设定
@@ -539,16 +539,15 @@ function StoriesPageContent() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-gray-900 truncate">{story.title}</h3>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    story.status === 'published' ? 'bg-green-100 text-green-800' :
+                  <span className={`px-2 py-1 text-xs rounded-full ${story.status === 'published' ? 'bg-green-100 text-green-800' :
                     story.status === 'approved' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
+                      'bg-gray-100 text-gray-800'
+                    }`}>
                     {story.status === 'published' ? '已发布' :
-                     story.status === 'approved' ? '已批准' : '草稿'}
+                      story.status === 'approved' ? '已批准' : '草稿'}
                   </span>
                 </div>
-                
+
                 <div className="mb-3">
                   <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
                     {genres.find(g => g.value === story.genre)?.label || story.genre}
@@ -559,16 +558,16 @@ function StoriesPageContent() {
                     </span>
                   )}
                 </div>
-                
+
                 <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                   {story.synopsis || story.premise || '暂无概要'}
                 </p>
-                
+
                 <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                   <span>时长: {story.duration_minutes || '--'}分钟</span>
                   <span>{new Date(story.created_at).toLocaleDateString()}</span>
                 </div>
-                
+
                 <div className="flex gap-2">
                   <button
                     onClick={() => router.push(`/stories/${story.id}`)}

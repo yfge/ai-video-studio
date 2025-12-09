@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { aiAPI, type ApiResponse, type AvailableModelsResponse } from '@/utils/api'
+import { aiAPI, type ApiResponse, type AvailableModelsResponse, AIModelType } from '@/utils/api'
 
 interface UseAvailableModelsOptions {
   modelType?: string
@@ -19,7 +19,7 @@ interface UseAvailableModelsState {
 const modelCache = new Map<string, AvailableModelsResponse>()
 
 const buildCacheKey = (baseKey: string, modelType?: string) => {
-  return modelType ? `${baseKey}:${modelType}` : baseKey
+  return modelType ? `${baseKey}:${modelType} ` : baseKey
 }
 
 export function useAvailableModels(options: UseAvailableModelsOptions = {}) {
