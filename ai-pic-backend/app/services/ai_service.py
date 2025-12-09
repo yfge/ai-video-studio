@@ -1575,6 +1575,14 @@ class AIService:
     ) -> Optional[Dict[str, Any]]:
         """为虚拟IP生成图像"""
 
+        raw_model = model or "dalle-3"
+        provider_hint: str | None = None
+        pure_model = raw_model
+        if ":" in raw_model:
+            parts = raw_model.split(":", 1)
+            if len(parts) == 2 and parts[0] and parts[1]:
+                provider_hint, pure_model = parts[0], parts[1]
+
         # 使用提示词管理器生成专业提示词
         try:
             variables = {
@@ -1598,14 +1606,20 @@ class AIService:
                 final_prompt += f", {', '.join(additional_prompts)}"
 
             self.logger.info(f"生成图像提示词: {final_prompt[:200]}...")
-            self.logger.info(f"使用模型: {model}, 风格: {style}, 类别: {category}")
+            self.logger.info(
+                "使用模型: %s (provider_hint=%s), 风格: %s, 类别: %s",
+                pure_model,
+                provider_hint,
+                style,
+                category,
+            )
 
             # 根据模型选择不同的AI服务
             provider_used = "openai"
             generation_method = "openai_dalle"
             image_url = None
 
-            normalized_model = (model or "").lower()
+            normalized_model = pure_model.lower()
             if (
                 normalized_model.startswith("keling-")
                 or normalized_model.startswith("kling-")
@@ -1613,7 +1627,7 @@ class AIService:
             ):
                 # 使用可灵AI生成图像
                 image_url = await self._generate_with_keling_image(
-                    final_prompt, style, category, model
+                    final_prompt, style, category, pure_model
                 )
                 provider_used = "keling"
                 generation_method = "keling_image"
@@ -1631,19 +1645,21 @@ class AIService:
                 generation_method = "openai_dalle"
             elif self.ai_manager:
                 # 使用AI管理器的其他服务（根据模型名偏向特定提供商）
-                prefer_provider = None
+                prefer_provider = provider_hint
                 if normalized_model.startswith(
                     "seedream"
                 ) or normalized_model.startswith("volcengine"):
                     prefer_provider = "volcengine"
                 elif normalized_model.startswith("deepseek"):
                     prefer_provider = "deepseek"
+                elif normalized_model.startswith("google"):
+                    prefer_provider = "google"
                 response = await self.ai_manager.generate_image(
                     prompt=final_prompt,
                     width=1024,
                     height=1024,
                     style=style,
-                    model=model,
+                    model=pure_model,
                     n=count or 1,
                     prefer_provider=prefer_provider,
                     # 对火山 Ark Seedream，size 由 VolcengineProvider 映射为 Ark 的 size 字段（例如 \"2K\"）
