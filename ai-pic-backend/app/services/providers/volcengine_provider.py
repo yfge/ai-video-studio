@@ -100,6 +100,65 @@ class VolcengineProvider(BaseProvider):
                 capabilities=["text_to_speech", "emotion_control", "voice_cloning"]
             )
         ]
+
+    async def fetch_remote_models(
+        self,
+        model_type: Optional[AIModelType] = None,
+    ) -> List[ModelInfo]:
+        """
+        调用火山引擎 Ark /models 列表，结合本地白名单过滤，失败则回退静态列表。
+        """
+        fallback = await super().fetch_remote_models(model_type=model_type)
+        client = await self.get_client()
+        if client is None:
+            return fallback
+
+        try:
+            resp = await client.get(f"{self.base_url}/models")
+            resp.raise_for_status()
+            payload = resp.json()
+            items = payload.get("data") or payload.get("models") or payload
+            server_ids = set()
+            for item in items if isinstance(items, list) else []:
+                if not isinstance(item, dict):
+                    continue
+                mid = item.get("id") or item.get("model") or item.get("model_id")
+                if mid:
+                    server_ids.add(mid)
+            if not server_ids:
+                return fallback
+
+            def _match_model_type(mid: str) -> Optional[AIModelType]:
+                lid = mid.lower()
+                if "seedream" in lid or "visual" in lid or "image" in lid:
+                    return AIModelType.TEXT_TO_IMAGE
+                if "video" in lid:
+                    return AIModelType.TEXT_TO_VIDEO
+                if "tts" in lid or "speech" in lid:
+                    return AIModelType.TEXT_TO_SPEECH
+                return AIModelType.TEXT_GENERATION
+
+            filtered = []
+            for m in self.available_models:
+                if m.model_id in server_ids and (not model_type or m.model_type == model_type):
+                    filtered.append(m)
+            # 若白名单为空但服务器有返回，按简单规则构造 ModelInfo
+            if not filtered:
+                for mid in server_ids:
+                    mt = _match_model_type(mid)
+                    if model_type and mt != model_type:
+                        continue
+                    filtered.append(
+                        ModelInfo(
+                            model_id=mid,
+                            name=mid,
+                            description=f"Volcengine model {mid}",
+                            model_type=mt,
+                        )
+                    )
+            return filtered or fallback
+        except Exception:
+            return fallback
     
     async def _initialize_client(self):
         """初始化HTTP客户端"""

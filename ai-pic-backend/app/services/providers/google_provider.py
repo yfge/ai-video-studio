@@ -52,12 +52,40 @@ class GoogleProvider(BaseProvider):
         self,
         model_type: Optional[AIModelType] = None,
     ) -> List[ModelInfo]:
-        """
-        Google Vertex AI 上的模型列表API依赖项目配置，当前仅使用 docs/api/google-text-api.md 中的推荐模型。
+        """调用 Vertex AI models 列表，失败时回退静态列表。"""
+        fallback = await super().fetch_remote_models(model_type=model_type)
+        if not self.config.api_key:
+            return fallback
 
-        因此 remote 与 static 一致，调用方仍然可以通过统一接口访问。
-        """
-        return await super().fetch_remote_models(model_type=model_type)
+        client = await self.get_client()
+        if client is None:
+            return fallback
+
+        try:
+            resp = await client.get(
+                f"{self.base_url}/v1/models",
+                params={"key": self.config.api_key},
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            server_models = payload.get("models") or payload.get("data") or []
+            server_ids = {
+                item.get("name") or item.get("id")
+                for item in server_models
+                if isinstance(item, dict) and (item.get("name") or item.get("id"))
+            }
+            if not server_ids:
+                return fallback
+
+            filtered = [
+                m
+                for m in self.available_models
+                if (m.model_id in server_ids or f"models/{m.model_id}" in server_ids)
+                and (not model_type or m.model_type == model_type)
+            ]
+            return filtered or fallback
+        except Exception:
+            return fallback
 
     async def generate_image(
         self,
@@ -85,6 +113,7 @@ class GoogleProvider(BaseProvider):
         headers = {
             "Content-Type": "application/json",
             "x-goog-api-client": "ai-video-studio-gemini",
+            "x-goog-api-key": self.config.api_key,
         }
         self._client = httpx.AsyncClient(timeout=self.config.timeout, headers=headers)
 
