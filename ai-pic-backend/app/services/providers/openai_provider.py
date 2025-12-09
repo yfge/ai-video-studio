@@ -278,10 +278,11 @@ class OpenAIProvider(BaseProvider):
                 if _supports_structured_outputs(model):
                     payload["response_format"] = {
                         "type": "json_schema",
-                        "strict": True,
                         "json_schema": {
                             "name": json_schema.get("name", "response"),
                             "schema": json_schema.get("schema", json_schema),
+                            # 严格模式放在 json_schema 内，避免 OpenAI API 报 Unknown parameter: response_format.strict
+                            "strict": True,
                         },
                     }
                 elif _supports_json_object(model):

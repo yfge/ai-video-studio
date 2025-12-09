@@ -301,6 +301,9 @@ class AIServiceManager:
         available_providers = self.get_available_providers(
             model_type=AIModelType.TEXT_GENERATION
         )
+
+        original_model = model
+        last_model_used = original_model
         
         if not available_providers:
             return AIResponse(
@@ -333,20 +336,30 @@ class AIServiceManager:
                 
             provider = self.providers[provider_name]
             self._update_request_count(provider_name)
-            
-            # 如果未指定模型，使用提供商的默认模型
-            if not model:
-                available_models = await self._get_models_for_type(
-                    provider,
-                    AIModelType.TEXT_GENERATION,
-                )
-                text_models = available_models
-                model = text_models[0].model_id if text_models else "default"
+
+            # 如果未指定模型，为当前 provider 选择默认模型（不污染其他 provider）
+            provider_model = original_model
+            if not provider_model:
+                static_models = [
+                    m
+                    for m in getattr(provider, "available_models", [])  # static list is more reliable
+                    if m.model_type == AIModelType.TEXT_GENERATION
+                ]
+                if static_models:
+                    provider_model = static_models[0].model_id
+                else:
+                    available_models = await self._get_models_for_type(
+                        provider,
+                        AIModelType.TEXT_GENERATION,
+                    )
+                    text_models = available_models
+                    provider_model = text_models[0].model_id if text_models else getattr(provider, "default_model", "default")
+            last_model_used = provider_model
             
             try:
                 provider_kwargs = {
                     "prompt": prompt,
-                    "model": model,
+                    "model": provider_model,
                     "system_prompt": system_prompt,
                     "temperature": temperature,
                     "json_schema": json_schema,
@@ -357,7 +370,7 @@ class AIServiceManager:
                     provider_kwargs["max_tokens"] = max_tokens
                 response = await provider.generate_text(**provider_kwargs)
                 # 记录响应
-                self._log_response(task="generate_text", provider=provider_name, model=model, response=response)
+                self._log_response(task="generate_text", provider=provider_name, model=provider_model, response=response)
                 if response.success or not self.config.enable_fallback:
                     return response
                     
@@ -380,7 +393,7 @@ class AIServiceManager:
             success=False,
             error="所有文本生成提供商都失败了",
             provider="ai_service_manager",
-            model=model,
+            model=last_model_used or "unknown",
             task_type=AITaskType.STORY_GENERATION,
             model_type=AIModelType.TEXT_GENERATION
         )
@@ -399,6 +412,9 @@ class AIServiceManager:
         available_providers = self.get_available_providers(
             model_type=AIModelType.TEXT_TO_IMAGE
         )
+
+        original_model = model
+        last_model_used = original_model
         
         if not available_providers:
             return AIResponse(
@@ -424,25 +440,35 @@ class AIServiceManager:
             provider = self.providers[provider_name]
             self._update_request_count(provider_name)
             
-            # 选择合适的默认模型
-            if not model:
-                available_models = await self._get_models_for_type(
-                    provider,
-                    AIModelType.TEXT_TO_IMAGE,
-                )
-                image_models = available_models
-                model = image_models[0].model_id if image_models else "default"
+            # 为当前 provider 选择合适的默认模型，不影响下一轮选择
+            provider_model = original_model
+            if not provider_model:
+                static_models = [
+                    m
+                    for m in getattr(provider, "available_models", [])
+                    if m.model_type == AIModelType.TEXT_TO_IMAGE
+                ]
+                if static_models:
+                    provider_model = static_models[0].model_id
+                else:
+                    available_models = await self._get_models_for_type(
+                        provider,
+                        AIModelType.TEXT_TO_IMAGE,
+                    )
+                    image_models = available_models
+                    provider_model = image_models[0].model_id if image_models else getattr(provider, "default_model", "default")
+            last_model_used = provider_model
             
             try:
                 response = await provider.generate_image(
                     prompt=prompt,
-                    model=model,
+                    model=provider_model,
                     width=width,
                     height=height,
                     style=style,
                     **kwargs
                 )
-                self._log_response(task="generate_image", provider=provider_name, model=model, response=response)
+                self._log_response(task="generate_image", provider=provider_name, model=provider_model, response=response)
                 if response.success or not self.config.enable_fallback:
                     return response
                     
@@ -464,7 +490,7 @@ class AIServiceManager:
             success=False,
             error="所有图像生成提供商都失败了",
             provider="ai_service_manager",
-            model=model,
+            model=last_model_used or "unknown",
             task_type=AITaskType.PORTRAIT_GENERATION,
             model_type=AIModelType.TEXT_TO_IMAGE
         )
