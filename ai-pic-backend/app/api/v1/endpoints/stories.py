@@ -14,7 +14,11 @@ from app.schemas.script import (
     StoryCharacterResponse,
 )
 from app.services.ai_service import ai_service
-from app.utils.story_parser import normalize_story_json_keys, extract_outline_from_text
+from app.utils.story_parser import (
+    normalize_story_json_keys,
+    extract_outline_from_text,
+    extract_json_block,
+)
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 import json
@@ -127,19 +131,17 @@ async def generate_story(
     if not result:
         raise HTTPException(status_code=500, detail="AI故事生成失败")
 
-    # 解析AI生成的内容
-    # 优先使用AI层已校验的normalized结构
+    # 解析AI生成的内容（优先JSON，兜底文本抽取）
     normalized = result.get("normalized") if isinstance(result, dict) else None
-    try:
-        if normalized:
-            raw = normalized
-        else:
-            raw = json.loads(result["content"])
+    raw = normalized or extract_json_block(
+        result.get("content") if isinstance(result, dict) else None
+    )
+    if raw:
         ai_content = normalize_story_json_keys(raw)
-    except Exception:
-        # 如果不是JSON格式，尽力解析关键信息
-        extracted = extract_outline_from_text(result["content"])
-        ai_content = extracted
+    else:
+        ai_content = extract_outline_from_text(
+            result.get("content") if isinstance(result, dict) else ""
+        )
 
     # 创建故事记录
     story_data = {
@@ -283,13 +285,12 @@ def _process_story_generation_task(task_id: int, request_dict: dict, user_id: in
 
         # 解析内容并创建故事
         normalized = result.get("normalized") if isinstance(result, dict) else None
-        try:
-            if normalized:
-                raw = normalized
-            else:
-                raw = json.loads(result["content"])
+        raw = normalized or extract_json_block(
+            result.get("content") if isinstance(result, dict) else None
+        )
+        if raw:
             ai_content = normalize_story_json_keys(raw)
-        except Exception:
+        else:
             ai_content = extract_outline_from_text(result.get("content") or "")
 
         story_data = {

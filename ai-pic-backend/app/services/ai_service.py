@@ -24,6 +24,7 @@ from app.services.storyboard_reasoner import (
 from app.services.episode_agent import EpisodeLangGraphAgent
 from app.services.script_agent import ScriptLangGraphAgent
 from app.services.story_agent import StoryLangGraphAgent
+from app.utils.story_parser import extract_json_block
 
 # 尝试导入AI服务管理器，如果失败则使用None
 try:
@@ -163,9 +164,7 @@ def _build_storyboard_context(script: Dict[str, Any]) -> str:
             details.append(f"时间:{_trim_text(time, 40)}")
         if characters:
             if isinstance(characters, list):
-                details.append(
-                    f"角色:{_trim_text(', '.join(map(str, characters)), 80)}"
-                )
+                details.append(f"角色:{_trim_text(', '.join(map(str, characters)), 80)}")
             else:
                 details.append(f"角色:{_trim_text(str(characters), 80)}")
         if notes:
@@ -370,10 +369,10 @@ class AIService:
         try:
 
             def _parse_story_json(payload: str | None) -> Optional[Dict[str, Any]]:
-                if not payload:
-                    return None
                 try:
-                    data = json.loads(payload)
+                    data = extract_json_block(payload)
+                    if not data:
+                        return None
                     StoryOutlineModel.model_validate(data)
                     return data
                 except Exception:
@@ -445,8 +444,7 @@ class AIService:
                         if not normalized:
                             # 简单重试一次，提示严格JSON
                             retry_prompt = (
-                                prompt
-                                + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
+                                prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
                             )
                             retry = await self.ai_manager.generate_text(
                                 prompt=retry_prompt,
@@ -678,9 +676,7 @@ class AIService:
             data = json.loads(content_text)
             EpisodePlanModel.model_validate(data)
         except Exception:
-            retry_prompt = (
-                prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
-            )
+            retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
             retry = await self.ai_manager.generate_text(
                 prompt=retry_prompt,
                 temperature=temperature,
@@ -735,7 +731,9 @@ class AIService:
         if focus_characters:
             prompt += "\n## 重点角色\n"
             for char in focus_characters:
-                prompt += f"- {char.get('name', '未知')}: {char.get('description', '暂无描述')}\n"
+                prompt += (
+                    f"- {char.get('name', '未知')}: {char.get('description', '暂无描述')}\n"
+                )
 
         if additional_requirements:
             prompt += f"\n## 特殊要求\n{additional_requirements}\n"
@@ -856,11 +854,7 @@ class AIService:
         base_scenes = episode.get("scenes") or []
         plot_points = episode.get("plot_points") or []
         if not base_scenes and not plot_points:
-            summary = (
-                episode.get("summary")
-                or story.get("synopsis")
-                or "角色在本集中推进剧情。"
-            )
+            summary = episode.get("summary") or story.get("synopsis") or "角色在本集中推进剧情。"
             plot_points = [{"description": summary, "timing": "中段"}]
 
         focus_characters: List[str] = []
@@ -2107,9 +2101,7 @@ class AIService:
                 # 处理base64数据
                 if "b64_json" in result["data"][0]:
                     base64_data = result["data"][0]["b64_json"]
-                    self.logger.info(
-                        f"获取到OpenAI base64图像数据，长度: {len(base64_data)}"
-                    )
+                    self.logger.info(f"获取到OpenAI base64图像数据，长度: {len(base64_data)}")
                     return f"data:image/png;base64,{base64_data}"
                 else:
                     # 兼容URL格式

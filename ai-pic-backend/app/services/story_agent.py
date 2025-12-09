@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryOutlineModel
+from app.utils.story_parser import extract_json_block
 
 try:
     from langgraph.graph import StateGraph, END
@@ -98,7 +98,7 @@ class StoryLangGraphAgent:
         def validate(state: Dict[str, Any]) -> Dict[str, Any]:
             content_text = state.get("content") or ""
             try:
-                parsed = json.loads(content_text)
+                parsed = extract_json_block(content_text)
             except Exception:
                 parsed = None
 
@@ -143,7 +143,10 @@ class StoryLangGraphAgent:
         if result.get("error") or not result.get("normalized"):
             self.logger.warning(
                 "LangGraph story agent failed, falling back to default",
-                extra={"error": result.get("error"), "reasoning": result.get("reasoning")},
+                extra={
+                    "error": result.get("error"),
+                    "reasoning": result.get("reasoning"),
+                },
             )
             return None
 
