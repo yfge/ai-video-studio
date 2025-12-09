@@ -224,15 +224,39 @@ class BaseProvider(ABC):
         model_type: Optional[AIModelType] = None,
     ) -> List[ModelInfo]:
         """
-        默认的远端模型拉取实现。
-
-        大多数提供商没有单独的「列出模型」API，默认直接返回静态 available_models，
-        调用方可以根据 model_type 进行过滤。
+        默认的远端模型拉取实现：优先调用 provider base_url 下的 /models 接口，
+        再与本地 whitelist 交集，最终失败则回退静态列表。
         """
-        models = self.available_models
+        # 预备静态列表作为兜底
+        fallback_models = self.available_models
         if model_type:
-            models = [m for m in models if m.model_type == model_type]
-        return models
+            fallback_models = [m for m in fallback_models if m.model_type == model_type]
+
+        try:
+            client = await self.get_client()
+            base_url = getattr(self, "base_url", None)
+            if client is None or not base_url:
+                return fallback_models
+
+            resp = await client.get(f"{base_url}/models")
+            resp.raise_for_status()
+            payload = resp.json()
+            server_ids = {
+                item.get("id")
+                for item in payload.get("data", payload if isinstance(payload, dict) else [])
+                if isinstance(item, dict) and item.get("id")
+            }
+            if not server_ids:
+                return fallback_models
+
+            # 仅返回在远端存在且在本地白名单中的模型
+            filtered = [
+                m for m in self.available_models
+                if m.model_id in server_ids and (not model_type or m.model_type == model_type)
+            ]
+            return filtered or fallback_models
+        except Exception:
+            return fallback_models
     
     def supports_model_type(self, model_type: AIModelType) -> bool:
         """检查是否支持指定的模型类型"""
