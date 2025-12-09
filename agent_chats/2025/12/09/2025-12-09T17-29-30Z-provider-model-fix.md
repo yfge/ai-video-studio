@@ -24,6 +24,7 @@ summary: "Fix provider model selection carryover and correct OpenAI JSON schema 
 ## Validation
 - `cd ai-pic-backend && pytest tests/unit/test_story_parser.py`
 - Manual API: `POST /api/v1/episodes/generate` (story 7, model deepseek:deepseek-chat, 1 episode) returned a populated episode and stored record `episodes.id=10`.
+- Chrome MCP: 登录 geyunfei/Gyf@845261，打开故事 7 页面，剧集概览显示第 1 集及场景预览。
 
 ## Next Steps
 - Monitor async episode tasks after deploy; if tasks still hang, consider disabling non-working providers (google/volcengine) or shortening provider timeouts.
