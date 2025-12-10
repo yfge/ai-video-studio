@@ -1834,12 +1834,18 @@ class AIService:
         oss_result = None
         oss_url = None
         if oss_service:
-            oss_result = await self._upload_local_image_to_oss(
-                local_file_path,
-                prefix=prefix,
-                metadata=metadata or {},
-            )
-            oss_url = oss_result.get("file_url")
+            try:
+                oss_result = await self._upload_local_image_to_oss(
+                    local_file_path,
+                    prefix=prefix,
+                    metadata=metadata or {},
+                )
+                oss_url = oss_result.get("file_url")
+            except Exception as exc:
+                # 当允许回退时，记录告警但继续使用本地路径；否则抛出异常
+                if require_upload:
+                    raise
+                self.logger.warning("OSS 上传失败，使用本地路径: %s", exc)
         elif require_upload:
             raise RuntimeError("OSS 未配置，无法上传图像")
 
