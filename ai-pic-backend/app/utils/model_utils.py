@@ -44,3 +44,19 @@ def parse_model_and_provider(model: Optional[str]) -> Tuple[Optional[str], Optio
         provider_hint = provider_hint or inferred
 
     return clean_model, provider_hint
+
+
+def normalize_openai_image_style(style: Optional[str]) -> str:
+    """
+    Normalize style for OpenAI image endpoints: supported only 'vivid' or 'natural'.
+    Defaults to 'natural' when unspecified or invalid.
+    """
+    if not style:
+        return "natural"
+    s = style.lower()
+    if s in {"vivid", "natural"}:
+        return s
+    # map common synonyms
+    if s in {"realistic", "realism", "photo", "photorealistic"}:
+        return "natural"
+    return "natural"

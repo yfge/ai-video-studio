@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services import story_structure_service as svc
 from app.services.ai_service import ai_service
-from app.utils.model_utils import parse_model_and_provider
+from app.utils.model_utils import parse_model_and_provider, normalize_openai_image_style
 from app.models.story_structure import Environment
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
@@ -373,6 +373,9 @@ async def generate_environment_images(
     selected_model_raw = (payload.get("model") or model or "").strip() or None
     selected_model, prefer_provider_from_model = parse_model_and_provider(selected_model_raw)
     prefer_provider = prefer_provider or prefer_provider_from_model
+    style_hint = payload.get("style") or "realistic"
+    if (prefer_provider or "").lower() == "openai":
+        style_hint = normalize_openai_image_style(style_hint)
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
     try:
@@ -389,6 +392,7 @@ async def generate_environment_images(
             n=count_int,
             size=size_value if prefer_provider == "volcengine" else None,
             prefer_provider=prefer_provider,
+            style=style_hint,
         )
     except Exception as exc:  # pragma: no cover - runtime guard
         raise HTTPException(status_code=500, detail=f"环境文生图调用失败: {exc}") from exc
@@ -444,6 +448,9 @@ async def generate_environment_image_variants(
     model_raw = (payload.get("model") or model or "").strip() or None
     model_value, provider_from_model = parse_model_and_provider(model_raw)
     prefer_provider = provider_from_model or _infer_provider_from_model(model_value or "")
+    style_hint = payload.get("style") or "realistic"
+    if (prefer_provider or "").lower() == "openai":
+        style_hint = normalize_openai_image_style(style_hint)
     extra_prompt = payload.get("prompt", prompt)
     prompt_value = _compose_environment_prompt(env, extra_prompt or "Generate stylistically consistent variants based on this environment reference")
     count_value = payload.get("count", count)
@@ -462,6 +469,7 @@ async def generate_environment_image_variants(
             prefer_provider=prefer_provider,
             count=count_int,
             size=size_value,
+            style=style_hint,
         )
     except Exception as exc:  # pragma: no cover - runtime guard
         raise HTTPException(status_code=500, detail=f"环境图生图调用失败: {exc}") from exc
