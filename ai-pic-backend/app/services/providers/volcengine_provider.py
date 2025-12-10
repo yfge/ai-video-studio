@@ -382,97 +382,106 @@ class VolcengineProvider(BaseProvider):
         **kwargs
     ) -> AIResponse:
         """使用火山引擎生成图像（对齐方舟 Seedream 图片生成 API）"""
-        try:
-            client = await self.get_client()
+        last_error: Exception | None = None
+        for attempt in range(2):
+            try:
+                client = await self.get_client()
 
-            # Ark 图片生成 API 使用统一的 /images 入口，模型 ID 需要映射到真正的 Ark 模型名
-            normalized = (model or "").lower()
-            ark_model = model
+                # Ark 图片生成 API 使用统一的 /images 入口，模型 ID 需要映射到真正的 Ark 模型名
+                normalized = (model or "").lower()
+                ark_model = model
 
-            # Seedream 4.5 文生图模型（参考官方文档中的示例 model）
-            if normalized.startswith("seedream") or "seedream-4.5" in normalized:
-                ark_model = "doubao-seedream-4-5-251128"
+                # Seedream 4.5 文生图模型（参考官方文档中的示例 model）
+                if normalized.startswith("seedream") or "seedream-4.5" in normalized:
+                    ark_model = "doubao-seedream-4-5-251128"
 
-            # 规格参数：Ark 使用 size 字符串而非宽高整数，官方示例为 \"2K\"
-            # 为避免尺寸校验错误，这里默认使用 2K，如需其它规格可通过 kwargs.size 覆盖
-            size = kwargs.pop("size", None) or "2K"
+                # 规格参数：Ark 使用 size 字符串而非宽高整数，官方示例为 \"2K\"
+                # 为避免尺寸校验错误，这里默认使用 2K，如需其它规格可通过 kwargs.size 覆盖
+                size = kwargs.pop("size", None) or "2K"
 
-            request_data = {
-                "model": ark_model,
-                "prompt": prompt,
-                "size": size,
-                # 返回 URL，方便后续下载到本地 / 上传 OSS
-                "response_format": "url",
-                # 默认关闭水印，行为可以在调用层通过 kwargs 覆盖
-                "watermark": kwargs.pop("watermark", False),
-            }
+                request_data = {
+                    "model": ark_model,
+                    "prompt": prompt,
+                    "size": size,
+                    # 返回 URL，方便后续下载到本地 / 上传 OSS
+                    "response_format": "url",
+                    # 默认关闭水印，行为可以在调用层通过 kwargs 覆盖
+                    "watermark": kwargs.pop("watermark", False),
+                }
 
-            if seed != -1:
-                request_data["seed"] = seed
+                if seed != -1:
+                    request_data["seed"] = seed
 
-            # 允许透传少量高级参数（如果未来文档有补充，例如 negative_prompt / n 等）
-            for key in ("negative_prompt", "n"):
-                if key in kwargs:
-                    request_data[key] = kwargs[key]
+                # 允许透传少量高级参数（如果未来文档有补充，例如 negative_prompt / n 等）
+                for key in ("negative_prompt", "n"):
+                    if key in kwargs:
+                        request_data[key] = kwargs[key]
 
-            response = await client.post(
-                f"{self.base_url}/images/generations",
-                json=request_data
-            )
-            response.raise_for_status()
-            
-            data = response.json()
+                response = await client.post(
+                    f"{self.base_url}/images/generations",
+                    json=request_data
+                )
+                response.raise_for_status()
+                
+                data = response.json()
 
-            # Ark 错误响应通常包含 error 节点，优先检查并直接返回
-            if data.get("error"):
+                # Ark 错误响应通常包含 error 节点，优先检查并直接返回
+                if data.get("error"):
+                    return AIResponse(
+                        success=False,
+                        error=f"火山引擎图像生成错误: {data['error'].get('message', 'Unknown error')}",
+                        provider=self.name,
+                        model=model,
+                        task_type=AITaskType.PORTRAIT_GENERATION,
+                        model_type=AIModelType.TEXT_TO_IMAGE
+                    )
+
+                # 同步返回：data 数组中包含 url / size 等字段
+                if "data" in data:
+                    images = data.get("data") or []
+                    image_urls = [img.get("url") for img in images if isinstance(img, dict) and img.get("url")]
+                    if image_urls:
+                        return AIResponse(
+                            success=True,
+                            data={"images": image_urls},
+                            provider=self.name,
+                            model=model,
+                            task_type=AITaskType.PORTRAIT_GENERATION,
+                            model_type=AIModelType.TEXT_TO_IMAGE,
+                            usage=data.get("usage", {}),
+                            metadata={
+                                "size": size,
+                                "style": style,
+                                "raw_model": ark_model,
+                                "count": len(image_urls),
+                            },
+                        )
+
                 return AIResponse(
                     success=False,
-                    error=f"火山引擎图像生成错误: {data['error'].get('message', 'Unknown error')}",
+                    error="图像生成响应格式错误",
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.PORTRAIT_GENERATION,
                     model_type=AIModelType.TEXT_TO_IMAGE
                 )
+                
+            except Exception as e:
+                last_error = e
+                if "handler is closed" in str(e).lower() and attempt == 0:
+                    # 连接已被底层关闭，重建客户端重试一次
+                    await self._initialize_client()
+                    continue
+                break
 
-            # 同步返回：data 数组中包含 url / size 等字段
-            if "data" in data:
-                images = data.get("data") or []
-                image_urls = [img.get("url") for img in images if isinstance(img, dict) and img.get("url")]
-                if image_urls:
-                    return AIResponse(
-                        success=True,
-                        data={"images": image_urls},
-                        provider=self.name,
-                        model=model,
-                        task_type=AITaskType.PORTRAIT_GENERATION,
-                        model_type=AIModelType.TEXT_TO_IMAGE,
-                        usage=data.get("usage", {}),
-                        metadata={
-                            "size": size,
-                            "style": style,
-                            "raw_model": ark_model,
-                            "count": len(image_urls),
-                        },
-                    )
-
-            return AIResponse(
-                success=False,
-                error="图像生成响应格式错误",
-                provider=self.name,
-                model=model,
-                task_type=AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.TEXT_TO_IMAGE
-            )
-            
-        except Exception as e:
-            return AIResponse(
-                success=False,
-                error=self.format_error(e),
-                provider=self.name,
-                model=model,
-                task_type=AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.TEXT_TO_IMAGE
-            )
+        return AIResponse(
+            success=False,
+            error=self.format_error(last_error) if last_error else "图像生成失败",
+            provider=self.name,
+            model=model,
+            task_type=AITaskType.PORTRAIT_GENERATION,
+            model_type=AIModelType.TEXT_TO_IMAGE
+        )
 
     async def image_to_image(
         self,
@@ -508,116 +517,124 @@ class VolcengineProvider(BaseProvider):
         if normalized.startswith("seedream") or "seedream-4.5" in normalized:
             ark_model = "doubao-seedream-4-5-251128"
 
-        try:
-            client = await self.get_client()
+        last_error: Exception | None = None
+        for attempt in range(2):
+            try:
+                client = await self.get_client()
 
-            # 1) 下载一张或多张参考图并转成 data:image/...;base64,... 形式
-            extra_images: list[str] = kwargs.pop("extra_images", []) or []
-            base64_images: list[str] = kwargs.pop("base64_images", []) or []
-            if base64_images:
-                image_payloads = base64_images[:14]
-            else:
-                urls: list[str] = [image_url] + [u for u in extra_images if u]
-                # Seedream 最多 14 张参考图
-                urls = urls[:14]
+                # 1) 下载一张或多张参考图并转成 data:image/...;base64,... 形式
+                extra_images: list[str] = kwargs.pop("extra_images", []) or []
+                base64_images: list[str] = kwargs.pop("base64_images", []) or []
+                if base64_images:
+                    image_payloads = base64_images[:14]
+                else:
+                    urls: list[str] = [image_url] + [u for u in extra_images if u]
+                    # Seedream 最多 14 张参考图
+                    urls = urls[:14]
 
-                import base64
+                    import base64
 
-                image_payloads: list[str] = []
-                for url in urls:
-                    img_resp = await client.get(url)
-                    img_resp.raise_for_status()
-                    content_type = img_resp.headers.get("Content-Type", "image/png")
-                    subtype = "png"
-                    if "/" in content_type:
-                        subtype = content_type.split("/")[-1] or "png"
-                    b64_data = base64.b64encode(img_resp.content).decode("ascii")
-                    image_payloads.append(f"data:image/{subtype.lower()};base64,{b64_data}")
+                    image_payloads: list[str] = []
+                    for url in urls:
+                        img_resp = await client.get(url)
+                        img_resp.raise_for_status()
+                        content_type = img_resp.headers.get("Content-Type", "image/png")
+                        subtype = "png"
+                        if "/" in content_type:
+                            subtype = content_type.split("/")[-1] or "png"
+                        b64_data = base64.b64encode(img_resp.content).decode("ascii")
+                        image_payloads.append(f"data:image/{subtype.lower()};base64,{b64_data}")
 
-            # 2) 组装 Ark 请求体（单图=字符串，多图=数组）
-            effective_size = size or "2K"
-            max_images = max(1, int(n) if n and n > 0 else 1)
+                # 2) 组装 Ark 请求体（单图=字符串，多图=数组）
+                effective_size = size or "2K"
+                max_images = max(1, int(n) if n and n > 0 else 1)
 
-            request_data: Dict[str, Any] = {
-                "model": ark_model,
-                "prompt": prompt or "",
-                "image": image_payloads[0] if len(image_payloads) == 1 else image_payloads,
-                "size": effective_size,
-                "response_format": "url",
-                "watermark": kwargs.pop("watermark", False),
-            }
-
-            # 多图时开启组图能力；单图保持 sequential_image_generation=disabled
-            if max_images > 1:
-                request_data["sequential_image_generation"] = "auto"
-                request_data["sequential_image_generation_options"] = {
-                    "max_images": max_images
+                request_data: Dict[str, Any] = {
+                    "model": ark_model,
+                    "prompt": prompt or "",
+                    "image": image_payloads[0] if len(image_payloads) == 1 else image_payloads,
+                    "size": effective_size,
+                    "response_format": "url",
+                    "watermark": kwargs.pop("watermark", False),
                 }
-            else:
-                request_data["sequential_image_generation"] = "disabled"
 
-            response = await client.post(
-                f"{self.base_url}/images/generations",
-                json=request_data,
-            )
-            response.raise_for_status()
+                # 多图时开启组图能力；单图保持 sequential_image_generation=disabled
+                if max_images > 1:
+                    request_data["sequential_image_generation"] = "auto"
+                    request_data["sequential_image_generation_options"] = {
+                        "max_images": max_images
+                    }
+                else:
+                    request_data["sequential_image_generation"] = "disabled"
 
-            data = response.json()
+                response = await client.post(
+                    f"{self.base_url}/images/generations",
+                    json=request_data,
+                )
+                response.raise_for_status()
 
-            if data.get("error"):
+                data = response.json()
+
+                if data.get("error"):
+                    return AIResponse(
+                        success=False,
+                        error=f"火山引擎图生图错误: {data['error'].get('message', 'Unknown error')}",
+                        provider=self.name,
+                        model=model or ark_model,
+                        task_type=AITaskType.SCENE_GENERATION,
+                        model_type=AIModelType.IMAGE_TO_IMAGE,
+                    )
+
+                if "data" in data:
+                    images = data.get("data") or []
+                    image_urls = [
+                        img.get("url")
+                        for img in images
+                        if isinstance(img, dict) and img.get("url")
+                    ]
+                    if image_urls:
+                        return AIResponse(
+                            success=True,
+                            data={"images": image_urls},
+                            provider=self.name,
+                            model=model or ark_model,
+                            task_type=AITaskType.SCENE_GENERATION,
+                            model_type=AIModelType.IMAGE_TO_IMAGE,
+                            usage=data.get("usage", {}),
+                            metadata={
+                                "size": effective_size,
+                                "raw_model": ark_model,
+                                "count": len(image_urls),
+                                "sequential_image_generation": request_data.get(
+                                    "sequential_image_generation"
+                                ),
+                            },
+                        )
+
                 return AIResponse(
                     success=False,
-                    error=f"火山引擎图生图错误: {data['error'].get('message', 'Unknown error')}",
+                    error="图生图响应格式错误",
                     provider=self.name,
                     model=model or ark_model,
                     task_type=AITaskType.SCENE_GENERATION,
                     model_type=AIModelType.IMAGE_TO_IMAGE,
                 )
 
-            if "data" in data:
-                images = data.get("data") or []
-                image_urls = [
-                    img.get("url")
-                    for img in images
-                    if isinstance(img, dict) and img.get("url")
-                ]
-                if image_urls:
-                    return AIResponse(
-                        success=True,
-                        data={"images": image_urls},
-                        provider=self.name,
-                        model=model or ark_model,
-                        task_type=AITaskType.SCENE_GENERATION,
-                        model_type=AIModelType.IMAGE_TO_IMAGE,
-                        usage=data.get("usage", {}),
-                        metadata={
-                            "size": effective_size,
-                            "raw_model": ark_model,
-                            "count": len(image_urls),
-                            "sequential_image_generation": request_data.get(
-                                "sequential_image_generation"
-                            ),
-                        },
-                    )
+            except Exception as e:
+                last_error = e
+                if "handler is closed" in str(e).lower() and attempt == 0:
+                    await self._initialize_client()
+                    continue
+                break
 
-            return AIResponse(
-                success=False,
-                error="图生图响应格式错误",
-                provider=self.name,
-                model=model or ark_model,
-                task_type=AITaskType.SCENE_GENERATION,
-                model_type=AIModelType.IMAGE_TO_IMAGE,
-            )
-
-        except Exception as e:
-            return AIResponse(
-                success=False,
-                error=self.format_error(e),
-                provider=self.name,
-                model=model or ark_model,
-                task_type=AITaskType.SCENE_GENERATION,
-                model_type=AIModelType.IMAGE_TO_IMAGE,
-            )
+        return AIResponse(
+            success=False,
+            error=self.format_error(last_error) if last_error else "图生图失败",
+            provider=self.name,
+            model=model or ark_model,
+            task_type=AITaskType.SCENE_GENERATION,
+            model_type=AIModelType.IMAGE_TO_IMAGE,
+        )
     
     async def generate_video(
         self, 

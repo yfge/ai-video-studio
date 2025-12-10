@@ -120,10 +120,12 @@ class BaseProvider(ABC):
         pass
     
     async def get_client(self):
-        """获取API客户端"""
-        if self._client is None:
+        """获取API客户端，若已关闭则重新初始化。"""
+        client = self._client
+        if client is None or getattr(client, "is_closed", False):
             await self._initialize_client()
-        return self._client
+            client = self._client
+        return client
     
     @abstractmethod
     async def generate_text(
