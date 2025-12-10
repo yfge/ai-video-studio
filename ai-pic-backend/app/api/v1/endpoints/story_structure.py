@@ -276,14 +276,24 @@ async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[
     saved: List[str] = []
     for image_url in image_urls:
         try:
-            local_file = await ai_service._download_image(image_url, env.name, "environment")
+            stored = await ai_service._persist_generated_image(
+                image_data=image_url,
+                ip_name=env.name or f"environment-{env.id}",
+                category="environment",
+                prefix="ai-generated/environments",
+                metadata={
+                    "environment_id": env.id,
+                    "environment_name": env.name or "",
+                },
+                # 环境参考图像在有 OSS 时上传，否则落盘本地
+                require_upload=False,
+            )
         except Exception:
-            local_file = None
-        if not local_file:
             continue
-        filename = os.path.basename(local_file)
-        relative_path = f"/uploads/{filename}"
-        saved.append(relative_path)
+        final_url = stored.get("oss_url") or stored.get("relative_path")
+        if not final_url:
+            continue
+        saved.append(final_url)
     refs = env.reference_images or []
     refs.extend(saved)
     env.reference_images = refs
