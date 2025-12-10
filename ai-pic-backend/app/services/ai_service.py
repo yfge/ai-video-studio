@@ -1706,6 +1706,7 @@ class AIService:
                             "provider": provider_used,
                             "model": model,
                         },
+                        require_upload=bool(oss_service),
                     )
                 except Exception as exc:
                     self.logger.error(f"图像保存/上传失败: {exc}")
@@ -1820,6 +1821,7 @@ class AIService:
         category: str,
         prefix: str,
         metadata: Optional[Dict[str, Any]] = None,
+        require_upload: bool = False,
     ) -> Dict[str, Any]:
         """下载/保存生成图像，并在配置 OSS 时上传，返回路径与元数据。"""
         local_file_path = await self._download_image(image_data, ip_name, category)
@@ -1839,6 +1841,8 @@ class AIService:
                 metadata=metadata or {},
             )
             oss_url = oss_result.get("file_url")
+        elif require_upload:
+            raise RuntimeError("OSS 未配置，无法上传图像")
 
         return {
             "local_file_path": local_file_path,
