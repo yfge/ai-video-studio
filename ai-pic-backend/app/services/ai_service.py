@@ -25,6 +25,7 @@ from app.services.episode_agent import EpisodeLangGraphAgent
 from app.services.script_agent import ScriptLangGraphAgent
 from app.services.story_agent import StoryLangGraphAgent
 from app.utils.json_utils import extract_json_block
+from app.utils.model_utils import parse_model_and_provider
 
 # 尝试导入AI服务管理器，如果失败则使用None
 try:
@@ -1586,12 +1587,8 @@ class AIService:
         """为虚拟IP生成图像"""
 
         raw_model = model or "dalle-3"
-        provider_hint: str | None = None
-        pure_model = raw_model
-        if ":" in raw_model:
-            parts = raw_model.split(":", 1)
-            if len(parts) == 2 and parts[0] and parts[1]:
-                provider_hint, pure_model = parts[0], parts[1]
+        pure_model, provider_hint = parse_model_and_provider(raw_model)
+        pure_model = pure_model or "dall-e-3"
 
         # 使用提示词管理器生成专业提示词
         try:

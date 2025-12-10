@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services import story_structure_service as svc
 from app.services.ai_service import ai_service
+from app.utils.model_utils import parse_model_and_provider
 from app.models.story_structure import Environment
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
@@ -368,7 +369,9 @@ async def generate_environment_images(
 
     extra_prompt = payload.get("prompt", prompt)
     final_prompt = _compose_environment_prompt(env, extra_prompt)
-    selected_model = (payload.get("model") or model or "").strip() or None
+    selected_model_raw = (payload.get("model") or model or "").strip() or None
+    selected_model, prefer_provider_from_model = parse_model_and_provider(selected_model_raw)
+    prefer_provider = prefer_provider or prefer_provider_from_model
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
     try:
@@ -377,7 +380,7 @@ async def generate_environment_images(
         count_int = 1
     count_int = max(1, min(count_int, 4))
 
-    prefer_provider = _infer_provider_from_model(selected_model)
+    prefer_provider = prefer_provider or _infer_provider_from_model(selected_model or "")
     try:
         response = await ai_service.ai_manager.generate_image(
             prompt=final_prompt,
@@ -437,10 +440,11 @@ async def generate_environment_image_variants(
             path = "/" + path
         image_url = f"http://localhost:8000{path}"
 
-    prefer_provider = _infer_provider_from_model(payload.get("model") or model)
+    model_raw = (payload.get("model") or model or "").strip() or None
+    model_value, provider_from_model = parse_model_and_provider(model_raw)
+    prefer_provider = provider_from_model or _infer_provider_from_model(model_value or "")
     extra_prompt = payload.get("prompt", prompt)
     prompt_value = _compose_environment_prompt(env, extra_prompt or "Generate stylistically consistent variants based on this environment reference")
-    model_value = _strip_provider_prefix((payload.get("model") or model or "").strip() or None)
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
     try:
