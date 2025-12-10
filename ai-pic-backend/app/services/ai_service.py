@@ -1591,6 +1591,9 @@ class AIService:
             if len(parts) == 2 and parts[0] and parts[1]:
                 provider_hint, pure_model = parts[0], parts[1]
 
+        if not oss_service:
+            raise RuntimeError("OSS 服务未配置，无法生成并保存图像")
+
         # 使用提示词管理器生成专业提示词
         try:
             variables = {
@@ -1693,7 +1696,6 @@ class AIService:
                 generation_method = "openai_dalle"
 
             if image_url:
-                # 下载图像到本地
                 local_file_path = await self._download_image(
                     image_url, ip_name, category
                 )
@@ -1701,49 +1703,26 @@ class AIService:
                     self.logger.error("图像下载失败")
                     return None
 
-                # 上传到OSS（如果配置了）
-                oss_result = None
-                final_image_url = local_file_path
-
-                if oss_service:
-                    try:
-                        self.logger.info("准备上传图像到OSS")
-                        # 读取本地文件内容
-                        with open(local_file_path, "rb") as f:
-                            file_content = f.read()
-
-                        filename = os.path.basename(local_file_path)
-                        self.logger.info(
-                            f"开始上传文件到OSS: {filename}, 大小: {len(file_content)} bytes"
-                        )
-
-                        # 暂时不设置metadata，避免签名问题
-                        oss_result = await oss_service.upload_file_content(
-                            file_content=file_content,
-                            filename=filename,
-                            file_type="image",
-                            prefix="ai-generated/virtual-ip",
-                            # metadata={
-                            #     "ip_name": ip_name,
-                            #     "style": style,
-                            #     "category": category,
-                            #     "provider": "openai",
-                            #     "model": model,
-                            #     "generation_time": datetime.now().isoformat()
-                            # }
-                        )
-                        if oss_result and oss_result.get("success"):
-                            final_image_url = oss_result.get("file_url")
-                            self.logger.info(f"图像已成功上传到OSS: {final_image_url}")
-                        else:
-                            self.logger.error(f"OSS上传返回失败结果: {oss_result}")
-                    except Exception as e:
-                        self.logger.error(f"OSS上传失败: {e}")
-                else:
-                    self.logger.warning("OSS服务未配置，跳过上传")
+                try:
+                    oss_result = await self._upload_local_image_to_oss(
+                        local_file_path,
+                        prefix="ai-generated/virtual-ip",
+                        metadata={
+                            "ip_name": ip_name,
+                            "style": style,
+                            "category": category,
+                            "provider": provider_used,
+                            "model": model,
+                        },
+                    )
+                    final_image_url = oss_result.get("file_url")
+                except Exception as exc:
+                    self.logger.error(f"OSS上传失败: {exc}")
+                    return None
 
                 return {
                     "image_url": final_image_url,
+                    "oss_url": final_image_url,
                     "local_file_path": local_file_path,
                     "original_image_url": image_url,
                     "oss_upload": oss_result,
@@ -1809,6 +1788,35 @@ class AIService:
         except Exception as e:
             self.logger.error(f"图像处理失败: {e}")
             return None
+
+    async def _upload_local_image_to_oss(
+        self,
+        local_file_path: str,
+        *,
+        prefix: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """将本地已下载的图片上传至 OSS，失败则抛出异常。"""
+        if not oss_service:
+            raise RuntimeError("OSS 服务未配置，无法上传图像")
+
+        try:
+            with open(local_file_path, "rb") as f:
+                file_content = f.read()
+        except Exception as exc:  # pragma: no cover - IO guard
+            raise RuntimeError(f"读取本地图像失败: {exc}") from exc
+
+        filename = os.path.basename(local_file_path)
+        oss_result = await oss_service.upload_file_content(
+            file_content=file_content,
+            filename=filename,
+            file_type="image",
+            prefix=prefix,
+            metadata=metadata,
+        )
+        if not oss_result or not oss_result.get("success"):
+            raise RuntimeError(f"OSS 上传失败: {oss_result}")
+        return oss_result
 
     async def generate_video(
         self,
