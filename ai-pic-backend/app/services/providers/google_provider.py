@@ -30,7 +30,7 @@ class GoogleProvider(BaseProvider):
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
         # aiplatform.googleapis.com
-        self.base_url = config.base_url or "https://aiplatform.googleapis.com"
+        self.base_url = config.base_url or "https://generativelanguage.googleapis.com"
         # publishers/google/models/{model_id}:{method}
         self.default_model = config.default_model or "gemini-3-pro-preview"
         # text 模型只需要 API key
@@ -41,7 +41,7 @@ class GoogleProvider(BaseProvider):
 
     @property
     def available_models(self) -> List[ModelInfo]:
-        # 提供一组静态兜底模型，确保在远端列表不可用时前端仍可选择多个 Google 文生文模型
+        # 提供一组静态兜底模型，确保远端列表不可用时仍可选择 Google 文生文模型
         return [
             ModelInfo(
                 model_id=self.default_model,
@@ -148,114 +148,11 @@ class GoogleProvider(BaseProvider):
             unique.append(m)
         return unique
 
-    async def _fetch_openai_style_models(
-        self,
-        model_type: Optional[AIModelType],
-    ) -> List[ModelInfo]:
-        """
-        参考用户提供的实现：当 base_url 指向自定义代理时，使用 OpenAI 兼容的 /v1/models 拉取。
-        """
-        if not self.base_url:
-            return []
-
-        url = f"{self.base_url.rstrip('/')}/v1/models"
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-        }
-        try:
-            async with httpx.AsyncClient(timeout=self.config.timeout, headers=headers) as client:
-                resp = await client.get(url)
-                body_preview = resp.text[:500]
-                if resp.status_code >= 400:
-                    logger.warning("GoogleProvider proxy list models failed status=%s body=%s", resp.status_code, body_preview)
-                resp.raise_for_status()
-                payload = resp.json()
-        except Exception:
-            return []
-
-        items = payload.get("data") or payload.get("models") or []
-        models: List[ModelInfo] = []
-        for item in items if isinstance(items, list) else []:
-            if not isinstance(item, dict):
-                continue
-            mid = item.get("id") or item.get("model") or item.get("name")
-            if not mid:
-                continue
-            mtype = self._infer_model_type({"supportedGenerationMethods": ["generateContent"]})
-            if model_type and mtype != model_type:
-                continue
-            if mtype not in self.supported_model_types:
-                continue
-            models.append(
-                ModelInfo(
-                    model_id=mid,
-                    name=item.get("displayName") or item.get("title") or item.get("name") or mid,
-                    description=item.get("description") or f"Google model {mid}",
-                    model_type=mtype,
-                    capabilities=self._infer_capabilities({"supportedGenerationMethods": ["generateContent"]}),
-                )
-            )
-        return models
-
-    async def _fetch_gemini_openai_models(
-        self,
-        model_type: Optional[AIModelType],
-    ) -> List[ModelInfo]:
-        """
-        使用 Google 提供的 OpenAI 兼容端点（v1beta/openai/models），参考官方封装:
-        from openai import OpenAI; OpenAI(api_key, base_url=\"https://generativelanguage.googleapis.com/v1beta/openai/\").
-        """
-        base = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.config.api_key}"
-        # headers = {
-        #     "Authorization": f"Bearer {self.config.api_key}",
-        #     "Content-Type": "application/json",
-        # }
-        try:
-            async with httpx.AsyncClient(timeout=self.config.timeout) as client:
-                resp = await client.get(base)
-                body_preview = resp.text[:500]
-                if resp.status_code >= 400:
-                    logger.warning(
-                        "GoogleProvider OpenAI-style list models failed status=%s url=%s body=%s",
-                        resp.status_code,
-                        f"{base.rstrip('/')}/models",
-                        body_preview,
-                    )
-                resp.raise_for_status()
-                payload = resp.json()
-        except Exception:
-            return []
-
-        items = payload.get("data") or payload.get("models") or []
-        models: List[ModelInfo] = []
-        for item in items if isinstance(items, list) else []:
-            if not isinstance(item, dict):
-                continue
-            mid = item.get("id") or item.get("model") or item.get("name")
-            if not mid:
-                continue
-            mtype = self._infer_model_type({"supportedGenerationMethods": ["generateContent"]})
-            if model_type and mtype != model_type:
-                continue
-            if mtype not in self.supported_model_types:
-                continue
-            models.append(
-                ModelInfo(
-                    model_id=mid,
-                    name=item.get("displayName") or item.get("title") or item.get("name") or mid,
-                    description=item.get("description") or f"Google model {mid}",
-                    model_type=mtype,
-                    capabilities=self._infer_capabilities({"supportedGenerationMethods": ["generateContent"]}),
-                )
-            )
-        return models
-
     async def fetch_remote_models(
         self,
         model_type: Optional[AIModelType] = None,
     ) -> List[ModelInfo]:
-        """调用 Vertex AI / Generative Language / 自定义代理模型列表，失败时回退静态列表。"""
+        """仅调用官方 Generative Language models 列表，失败时回退静态列表。"""
         fallback = self._fallback_models(model_type)
         if not self.config.api_key:
             return fallback
@@ -264,58 +161,12 @@ class GoogleProvider(BaseProvider):
         if client is None:
             return fallback
 
-        models: List[ModelInfo] = []
-
-        # 0) 自定义代理：OpenAI 兼容 /v1/models（参考用户提供的实现）
-        if self.base_url and "generativelanguage.googleapis.com" not in self.base_url and "aiplatform.googleapis.com" not in self.base_url:
-            try:
-                models.extend(await self._fetch_openai_style_models(model_type))
-            except Exception:
-                pass
-            if models:
-                return self._dedupe(models)
-
-        # 0.5) 官方提供的 OpenAI 兼容端点（v1beta/openai/models）
+        google_base = (
+            self.base_url
+            if self.base_url and "generativelanguage.googleapis.com" in self.base_url
+            else "https://generativelanguage.googleapis.com"
+        )
         try:
-            models.extend(await self._fetch_gemini_openai_models(model_type))
-            if models:
-                return self._dedupe(models)
-        except Exception:
-            pass
-
-        # 1) Vertex AI (aiplatform)
-        try:
-            vertex_base = (
-                self.base_url
-                if self.base_url and "aiplatform.googleapis.com" in self.base_url
-                else "https://aiplatform.googleapis.com"
-            )
-            resp = await client.get(
-                f"{vertex_base.rstrip('/')}/v1beta1/models",
-                params={"key": self.config.api_key},
-            )
-            body_preview = resp.text[:500]
-            if resp.status_code >= 400:
-                logger.warning(
-                    "GoogleProvider Vertex list models failed status=%s url=%s body=%s",
-                    resp.status_code,
-                    f"{vertex_base.rstrip('/')}/v1beta1/models",
-                    body_preview,
-                )
-            resp.raise_for_status()
-            payload = resp.json()
-            server_models = payload.get("models") or payload.get("data") or []
-            models.extend(self._from_payload(server_models, model_type))
-        except Exception:
-            pass
-
-        # 2) Generative Language API (generativelanguage.googleapis.com)
-        try:
-            google_base = (
-                self.base_url
-                if self.base_url and "generativelanguage.googleapis.com" in self.base_url
-                else "https://generativelanguage.googleapis.com"
-            )
             resp = await client.get(
                 f"{google_base.rstrip('/')}/v1beta/models",
                 params={"key": self.config.api_key},
@@ -331,11 +182,11 @@ class GoogleProvider(BaseProvider):
             resp.raise_for_status()
             payload = resp.json()
             server_models = payload.get("models") or []
-            models.extend(self._from_payload(server_models, model_type))
-        except Exception:
-            pass
-
-        return self._dedupe(models) or fallback
+            models = self._from_payload(server_models, model_type)
+            return self._dedupe(models) or fallback
+        except Exception as exc:
+            logger.warning("GoogleProvider list models exception: %s", exc)
+            return fallback
 
     async def generate_image(
         self,
@@ -360,13 +211,11 @@ class GoogleProvider(BaseProvider):
             self._client = None  # type: ignore[assignment]
             return
 
-        headers = {"Content-Type": "application/json"}
-        # 自定义代理走 Bearer，其余走 Google API Key
-        if self.base_url and "generativelanguage.googleapis.com" not in self.base_url and "aiplatform.googleapis.com" not in self.base_url:
-            headers["Authorization"] = f"Bearer {self.config.api_key}"
-        else:
-            headers["x-goog-api-key"] = self.config.api_key
-            headers["x-goog-api-client"] = "ai-video-studio-gemini"
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.config.api_key,
+            "x-goog-api-client": "ai-video-studio-gemini",
+        }
         self._client = httpx.AsyncClient(timeout=self.config.timeout, headers=headers)
 
     async def _stream_generate_content(
