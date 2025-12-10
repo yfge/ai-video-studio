@@ -71,6 +71,15 @@ export default function VirtualIPImagesPage() {
     model => model.model_id === (generateForm.model || recommendedModel)
   );
 
+  // 确保在模型列表加载完成后，表单中总有一个有效的模型 id
+  useEffect(() => {
+    if (generateForm.model) return;
+    const firstModelId =
+      recommendedModel || (availableModels.length > 0 ? availableModels[0].model_id : '');
+    if (!firstModelId) return;
+    setGenerateForm(prev => (prev.model ? prev : { ...prev, model: firstModelId }));
+  }, [availableModels, recommendedModel, generateForm.model]);
+
   // 根据模型决定可用分辨率选项（仅对官方已知模型开放）
   const resolutionOptions =
     selectedModel?.provider === 'openai'
@@ -145,7 +154,19 @@ export default function VirtualIPImagesPage() {
  const handleGenerateImage = async () => {
     try {
       setGenerating(true);
-      const modelToUse = generateForm.model || recommendedModel || '';
+      const modelToUse =
+        generateForm.model ||
+        recommendedModel ||
+        (availableModels.length > 0 ? availableModels[0].model_id : '');
+
+      if (!modelToUse) {
+        showAlert({
+          message: '模型列表尚未加载，请稍后再试',
+          variant: 'warning',
+        });
+        return;
+      }
+
       const response = await virtualIPImageAPI.generateImage(virtualIPId, {
         ...generateForm,
         model: modelToUse,

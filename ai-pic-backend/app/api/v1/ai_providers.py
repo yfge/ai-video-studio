@@ -374,6 +374,9 @@ async def get_available_models(
             for m in models
         ]
         return {"success": True, "data": {"models": enriched, "count": len(enriched)}}
+    except HTTPException:
+        # 直接透传业务异常，避免被统一 500 包裹
+        raise
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"获取聚合模型列表失败: {str(e)}")
 

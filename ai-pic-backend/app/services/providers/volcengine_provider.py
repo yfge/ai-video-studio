@@ -65,7 +65,7 @@ class VolcengineProvider(BaseProvider):
                 description="方舟大模型服务平台的图片生成模型",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpg"],
-                capabilities=["text_to_image", "high_resolution"]
+                capabilities=["text_to_image", "image_to_image", "high_resolution"]
             ),
             # 图像生成模型
             ModelInfo(
