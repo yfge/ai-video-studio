@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
+  aiAPI,
   AIModelType,
   taskAPI,
   virtualIPAPI,
@@ -56,12 +57,16 @@ export default function VirtualIPImagesPage() {
     count: 1,
   });
 
-  const fetchModels = useCallback(() => virtualIPImageAPI.getAvailableModels(virtualIPId), [virtualIPId]);
-  const { models: availableModels, defaultModel: recommendedModel } = useAvailableModels({
-    fetcher: fetchModels,
-    modelType: 'image',
-    cacheKey: `virtual-ip-image:${virtualIPId}`,
-  });
+  const fetchModels = useCallback(
+    () => aiAPI.getAvailableModels({ type: AIModelType.Image }),
+    [],
+  );
+  const { models: availableModels, defaultModel: recommendedModel } =
+    useAvailableModels({
+      fetcher: fetchModels,
+      modelType: AIModelType.Image,
+      cacheKey: `virtual-ip-image:${virtualIPId}`,
+    });
   const selectedModel = availableModels.find(
     model => model.model_id === (generateForm.model || recommendedModel)
   );

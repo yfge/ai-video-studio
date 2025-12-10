@@ -1848,15 +1848,6 @@ export const virtualIPImageAPI = {
       is_default: isDefault,
     }),
 
-  // 获取可用模型
-  getAvailableModels: async (
-    virtualIPId: number,
-  ): Promise<ApiResponse<AvailableModelsResponse>> => {
-    return apiClient.makeRequest(
-      `/api/v1/virtual-ips/${virtualIPId}/models/available`,
-    );
-  },
-
   // AI生成图像（统一JSON）
   generateImage: async (
     virtualIPId: number,

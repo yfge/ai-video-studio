@@ -94,49 +94,6 @@ async def create_virtual_ip_image(
     
     return VirtualIPImageResponse.from_orm(db_image)
 
-@router.get("/{virtual_ip_id}/models/available")
-async def get_available_models(
-    virtual_ip_id: int,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
-):
-    """获取可用的AI模型列表 - 动态从配置的API获取"""
-    # 检查虚拟IP是否存在
-    virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
-    if not virtual_ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
-    
-    models: List[Dict[str, Any]] = await ai_service.list_models(
-        model_type_alias="image",
-        source="auto",
-    )
-    if not models:
-        raise HTTPException(
-            status_code=503,
-            detail="没有配置可用的AI图像生成服务，请检查各 Provider API Key。",
-        )
-
-    enriched = [
-        {
-            "model_id": f"{m['provider']}:{m['id']}",
-            "id": m["id"],
-            "name": m.get("name"),
-            "provider": m["provider"],
-            "type": m.get("type"),
-            "capabilities": m.get("capabilities", []),
-        }
-        for m in models
-    ]
-
-    providers = {m["provider"] for m in models if m.get("provider")}
-    default_model = enriched[0]["model_id"] if enriched else None
-    return {
-        "models": enriched,
-        "default": default_model,
-        "configured_providers": len(providers),
-        "count": len(enriched),
-        "message": f"找到{len(enriched)}个可用模型",
-    }
-
 @router.post("/{virtual_ip_id}/images/generate", response_model=VirtualIPImageResponse)
 async def generate_virtual_ip_image(
     virtual_ip_id: int,
