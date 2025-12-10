@@ -1,12 +1,20 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { virtualIPAPI, virtualIPImageAPI, taskAPI } from '@/utils/api';
-import { VirtualIP, VirtualIPImage, AIImageGenerationRequest } from '@/utils/api';
+import {
+  AIModelType,
+  taskAPI,
+  virtualIPAPI,
+  virtualIPImageAPI,
+  type AIImageGenerationRequest,
+  type VirtualIP,
+  type VirtualIPImage,
+} from '@/utils/api';
 import { useAlertModal } from '@/components/AlertModalProvider';
 import { useAvailableModels } from '@/hooks/useAvailableModels';
+import { ImageToImageModal } from '@/components/ImageToImageModal';
 import { MultiModelSelector } from '@/components/MultiModelSelector';
 
 export default function VirtualIPImagesPage() {
@@ -25,6 +33,17 @@ export default function VirtualIPImagesPage() {
 
   // 统一的后端基础地址（用于拼接本地文件路径）
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
+  const resolveImageUrl = useCallback(
+    (image: VirtualIPImage) => {
+      if (image.oss_url) return image.oss_url;
+      const fp = image.file_path || '';
+      if (!fp) return '';
+      if (fp.startsWith('http')) return fp;
+      return `${API_BASE}${fp.startsWith('/') ? '' : '/'}${fp}`;
+    },
+    [API_BASE],
+  );
   
   // AI生成表单状态
   const [showGenerateForm, setShowGenerateForm] = useState(false);
@@ -289,45 +308,48 @@ export default function VirtualIPImagesPage() {
 
   const [variantTarget, setVariantTarget] = useState<VirtualIPImage | null>(null);
   const [variantPrompt, setVariantPrompt] = useState('');
-  const [variantModelId, setVariantModelId] = useState('');
-  const [variantCount, setVariantCount] = useState(1);
-  const [variantGenerating, setVariantGenerating] = useState(false);
+  const [variantModalOpen, setVariantModalOpen] = useState(false);
+  const [variantSubmitting, setVariantSubmitting] = useState(false);
 
   const handleOpenVariant = (image: VirtualIPImage) => {
     setVariantTarget(image);
-    const defaultVariantPrompt =
-      '为当前角色生成不同视角/姿态的图像，如背面照或全身照';
-    setVariantPrompt(defaultVariantPrompt);
-    setVariantCount(1);
-    const currentModelId =
-      (image.ai_model as string | undefined) ||
-      generateForm.model ||
-      recommendedModel ||
-      '';
-    setVariantModelId(currentModelId);
+    setVariantPrompt('为当前角色生成不同视角/姿态的图像，如背面照或全身照');
+    setVariantModalOpen(true);
   };
 
-  const handleGenerateVariant = async () => {
+  const variantReferenceSections = useMemo(() => {
+    if (!variantTarget) return [];
+    const url = resolveImageUrl(variantTarget);
+    return url ? [{ title: '参考图', images: [url] }] : [];
+  }, [resolveImageUrl, variantTarget]);
+
+  const handleSubmitVariant = async (payload: {
+    prompt: string;
+    model?: string;
+    count: number;
+    size?: string;
+    style?: string;
+    referenceImages: string[];
+  }) => {
     if (!variantTarget) return;
-    const fallbackModelId =
+    const modelFallback =
+      payload.model ||
       (variantTarget.ai_model as string | undefined) ||
       generateForm.model ||
       recommendedModel ||
       '';
-    const modelToUse = variantModelId || fallbackModelId || undefined;
+
     try {
-      setVariantGenerating(true);
+      setVariantSubmitting(true);
       const res = await virtualIPImageAPI.generateVariantAndSave(
         virtualIPId,
         variantTarget.id,
         {
-          prompt:
-            variantPrompt ||
-            '为当前角色生成不同视角/姿态的图像，如背面照或全身照',
-          model: modelToUse,
-          count: variantCount,
-          size: generateForm.size,
-        }
+          prompt: payload.prompt || variantPrompt,
+          model: modelFallback || undefined,
+          count: payload.count,
+          size: payload.size || generateForm.size,
+        },
       );
       if (!res.success || !res.data) {
         throw new Error(res.error || '图生图生成失败');
@@ -335,15 +357,13 @@ export default function VirtualIPImagesPage() {
       const createdImages = Array.isArray(res.data) ? res.data : [res.data];
       setImages(prev => [...createdImages, ...prev]);
       showAlert({
-        title: '图生图生成成功',
-        message:
-          '已基于原图生成变体图像，并保存到当前虚拟 IP 资产列表中。',
+        title: '已提交图生图任务',
+        message: '生成完成的变体会自动添加到当前列表。',
         variant: 'success',
       });
       setVariantTarget(null);
       setVariantPrompt('');
-      setVariantModelId('');
-      setVariantCount(1);
+      setVariantModalOpen(false);
     } catch (error) {
       console.error('图生图生成失败:', error);
       showAlert({
@@ -351,7 +371,7 @@ export default function VirtualIPImagesPage() {
         variant: 'error',
       });
     } finally {
-      setVariantGenerating(false);
+      setVariantSubmitting(false);
     }
   };
 
@@ -784,81 +804,32 @@ export default function VirtualIPImagesPage() {
           })}
         </div>
 
-        {variantTarget && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-            <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">基于当前图像生成变体</h3>
-              <p className="text-xs text-gray-500 mb-3">
-                适合生成背面照、全身照、不同姿态等变体。默认会优先使用该图对应模型（如 Seedream 4.5），也可以在下方切换其他模型。
-              </p>
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  使用模型
-                </label>
-                <select
-                  value={variantModelId}
-                  onChange={e => setVariantModelId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  <option value="">
-                    自动（该图模型 / 当前推荐）
-                  </option>
-                  {availableModels.map(model => (
-                    <option key={model.model_id} value={model.model_id}>
-                      {(model.name || model.id || model.model_id) ?? model.model_id} —{' '}
-                      {model.provider}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  生成数量
-                </label>
-                <select
-                  value={variantCount}
-                  onChange={e => setVariantCount(Number(e.target.value) || 1)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  <option value={1}>1 张</option>
-                  <option value={2}>2 张</option>
-                  <option value={3}>3 张</option>
-                </select>
-              </div>
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  变体提示词（可选）
-                </label>
-                <input
-                  type="text"
-                  value={variantPrompt}
-                  onChange={e => setVariantPrompt(e.target.value)}
-                  placeholder="例如：背面照，全身像，站立姿势，舞台灯光"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  onClick={() => {
-                    setVariantTarget(null);
-                    setVariantPrompt('');
-                  }}
-                  disabled={variantGenerating}
-                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleGenerateVariant}
-                  disabled={variantGenerating}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {variantGenerating ? '生成中...' : '生成变体'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ImageToImageModal
+          open={variantModalOpen && !!variantTarget}
+          onClose={() => {
+            setVariantModalOpen(false);
+            setVariantTarget(null);
+          }}
+          title="图生图变体"
+          description="参考图与提示词都会提交给图生图任务，可调整模型、分辨率与生成张数。"
+          referenceSections={variantReferenceSections}
+          defaultSelected={variantReferenceSections.flatMap(section => section.images)}
+          lockSelection
+          defaultPrompt={variantPrompt}
+          defaultModel={
+            (variantTarget?.ai_model as string | undefined) ||
+            generateForm.model ||
+            recommendedModel ||
+            ''
+          }
+          defaultCount={1}
+          defaultSize={generateForm.size || ''}
+          modelType={AIModelType.ImageToImage}
+          modelFetcher={() => virtualIPImageAPI.getAvailableModels(virtualIPId)}
+          modelCacheKey={`virtual-ip-img2img:${virtualIPId}`}
+          submitting={variantSubmitting}
+          onSubmit={handleSubmitVariant}
+        />
 
         {filteredImages.length === 0 && (
           <div className="text-center py-12">

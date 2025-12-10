@@ -1462,6 +1462,7 @@ class ApiClient {
       height?: number;
       style?: string;
       reference_images?: string[];
+      count?: number;
     },
   ) {
     return this.request(
@@ -1475,6 +1476,7 @@ class ApiClient {
           height: payload?.height ?? 1024,
           style: payload?.style ?? "realistic",
           reference_images: payload?.reference_images,
+          count: payload?.count ?? 1,
         }),
       },
     );

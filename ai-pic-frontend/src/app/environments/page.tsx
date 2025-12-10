@@ -4,8 +4,9 @@ import Image from "next/image"
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
-import { storyStructureAPI, type EnvironmentCreate, type Environment } from '@/utils/api'
+import { storyStructureAPI, AIModelType, type EnvironmentCreate, type Environment } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
+import { ImageToImageModal } from '@/components/ImageToImageModal'
 import { MultiModelSelector } from '@/components/MultiModelSelector'
 
 function EnvironmentsPageContent() {
@@ -15,6 +16,10 @@ function EnvironmentsPageContent() {
   const [creating, setCreating] = useState(false)
   const [generating, setGenerating] = useState<Record<number, boolean>>({})
   const [selectedModels, setSelectedModels] = useState<Record<number, string>>({})
+  const [variantTarget, setVariantTarget] = useState<{ env: Environment; url: string; displayUrl: string; modelHint?: string } | null>(null)
+  const [variantModalOpen, setVariantModalOpen] = useState(false)
+  const [variantPrompt, setVariantPrompt] = useState('')
+  const [variantSubmitting, setVariantSubmitting] = useState(false)
   const [newEnv, setNewEnv] = useState<EnvironmentCreate>({
     name: '',
     category: 'indoor',
@@ -133,20 +138,33 @@ function EnvironmentsPageContent() {
     }
   }
 
-  const handleGenerateVariant = async (env: Environment, base: string, options: { prompt?: string; model?: string; size?: string }) => {
-    setGenerating(prev => ({ ...prev, [env.id]: true }))
+  const openVariantModal = (env: Environment, url: string) => {
+    setVariantTarget({
+      env,
+      url,
+      displayUrl: imageSrc(url),
+      modelHint: selectedModels[env.id],
+    })
+    setVariantPrompt(env.description || env.name || '基于此环境图生成风格一致的变体')
+    setVariantModalOpen(true)
+  }
+
+  const handleGenerateVariant = async (payload: { prompt: string; model?: string; count: number; size?: string }) => {
+    if (!variantTarget) return
+    setVariantSubmitting(true)
     try {
-      const payload = {
-        base_image: base,
-        prompt: options.prompt || '基于此环境图生成风格一致的变体',
-        model: options.model,
-        size: options.size,
-        count: 1,
-      }
-      const res = await storyStructureAPI.generateEnvironmentImageVariants(env.id, payload)
+      const res = await storyStructureAPI.generateEnvironmentImageVariants(variantTarget.env.id, {
+        base_image: variantTarget.url,
+        prompt: payload.prompt || variantPrompt,
+        model: payload.model || variantTarget.modelHint,
+        size: payload.size,
+        count: payload.count,
+      })
       if (res.success) {
-        showAlert({ message: '变体生成成功', variant: 'success' })
+        showAlert({ message: '变体生成任务已提交', variant: 'success' })
         await load()
+        setVariantModalOpen(false)
+        setVariantTarget(null)
       } else {
         showAlert({ message: res.error || '变体生成失败', variant: 'error' })
       }
@@ -154,7 +172,7 @@ function EnvironmentsPageContent() {
       console.error(error)
       showAlert({ message: '变体生成失败', variant: 'error' })
     } finally {
-      setGenerating(prev => ({ ...prev, [env.id]: false }))
+      setVariantSubmitting(false)
     }
   }
 
@@ -277,8 +295,8 @@ function EnvironmentsPageContent() {
                           />
                           <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-black/40 text-white text-xs group-hover:flex">
                             <button
-                              className="rounded bg-white/80 px-2 py-1 text-gray-800 hover:bg-white"
-                              onClick={() => handleGenerateVariant(env, url, { prompt: env.description })}
+                            className="rounded bg-white/80 px-2 py-1 text-gray-800 hover:bg-white"
+                              onClick={() => openVariantModal(env, url)}
                             >
                               变体
                             </button>
@@ -328,6 +346,30 @@ function EnvironmentsPageContent() {
             </div>
           )}
         </div>
+
+        <ImageToImageModal
+          open={variantModalOpen && !!variantTarget}
+          onClose={() => {
+            setVariantModalOpen(false)
+            setVariantTarget(null)
+          }}
+          title="环境图生图"
+          description="参考图与提示词已展示，可调整模型、分辨率与生成张数后提交任务。"
+          referenceSections={
+            variantTarget?.displayUrl
+              ? [{ title: '参考图', images: [variantTarget.displayUrl] }]
+              : []
+          }
+          defaultSelected={variantTarget?.displayUrl ? [variantTarget.displayUrl] : []}
+          lockSelection
+          defaultPrompt={variantPrompt}
+          defaultModel={variantTarget?.modelHint || ''}
+          defaultCount={1}
+          modelType={AIModelType.ImageToImage}
+          modelCacheKey="environment-img2img"
+          submitting={variantSubmitting}
+          onSubmit={handleGenerateVariant}
+        />
       </main>
     </div>
   )
