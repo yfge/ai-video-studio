@@ -2031,6 +2031,8 @@ class AIService:
             "text_generation": AIModelType.TEXT_GENERATION,
             "image": AIModelType.TEXT_TO_IMAGE,
             "text_to_image": AIModelType.TEXT_TO_IMAGE,
+            "image_to_image": AIModelType.IMAGE_TO_IMAGE,
+            "img2img": AIModelType.IMAGE_TO_IMAGE,
             "video": AIModelType.TEXT_TO_VIDEO,
             "text_to_video": AIModelType.TEXT_TO_VIDEO,
             "tts": AIModelType.TEXT_TO_SPEECH,

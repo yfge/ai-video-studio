@@ -58,7 +58,7 @@ export default function VirtualIPImagesPage() {
   });
 
   const fetchModels = useCallback(
-    () => aiAPI.getAvailableModels({ type: AIModelType.Image }),
+    () => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage }),
     [],
   );
   const { models: availableModels, defaultModel: recommendedModel } =
@@ -830,7 +830,7 @@ export default function VirtualIPImagesPage() {
           defaultCount={1}
           defaultSize={generateForm.size || ''}
           modelType={AIModelType.ImageToImage}
-          modelFetcher={() => virtualIPImageAPI.getAvailableModels(virtualIPId)}
+          modelFetcher={() => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })}
           modelCacheKey={`virtual-ip-img2img:${virtualIPId}`}
           submitting={variantSubmitting}
           onSubmit={handleSubmitVariant}
