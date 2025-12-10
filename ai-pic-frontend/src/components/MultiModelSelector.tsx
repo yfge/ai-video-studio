@@ -42,6 +42,21 @@ const providerLabel = (provider: string) => {
   return map[provider] ?? provider
 }
 
+const matchesModelType = (model: AIModel, targetType: string) => {
+  if (!targetType) return true
+  const t = targetType.toLowerCase()
+  const mtype = (model.type || '').toLowerCase()
+  if (mtype === t) return true
+  // 兼容 image <-> image_to_image
+  if (t === AIModelType.Image.toLowerCase() || t === 'image') {
+    return ['image_to_image', 'text_to_image'].includes(mtype)
+  }
+  if (t === AIModelType.ImageToImage.toLowerCase() || t === 'image_to_image') {
+    return ['image', 'text_to_image'].includes(mtype) || mtype === AIModelType.Image.toLowerCase()
+  }
+  return false
+}
+
 export function MultiModelSelector({
   value,
   onChange,
@@ -81,7 +96,7 @@ export function MultiModelSelector({
     let result = models
     // 严格类型过滤
     if (actualModelType) {
-      result = result.filter(m => m.type === actualModelType)
+      result = result.filter(m => matchesModelType(m, actualModelType))
     }
     // 自定义过滤
     if (filterModels) {
