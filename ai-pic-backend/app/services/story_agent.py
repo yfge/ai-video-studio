@@ -104,13 +104,62 @@ class StoryLangGraphAgent:
                 state_update["error"] = "draft_failed"
             return state_update
 
-        async def repair(state: Dict[str, Any]) -> Dict[str, Any]:
+        def validate(state: Dict[str, Any]) -> Dict[str, Any]:
+            """Initial parse + schema validation; hand off to repair if invalid."""
             content_text = state.get("content") or ""
             reasoning = list(state.get("reasoning", []))
-            provider_used = state.get("provider")
+            parsed = (
+                extract_json_block(content_text)
+                if isinstance(content_text, str)
+                else (content_text if isinstance(content_text, dict) else None)
+            )
+            if not parsed:
+                reasoning.append("parse_failed")
+                return {
+                    "needs_repair": True,
+                    "raw": content_text,
+                    "reasoning": reasoning,
+                }
+            try:
+                StoryOutlineModel.model_validate(parsed)
+                reasoning.append("validated")
+                return {
+                    "content": content_text,
+                    "normalized": parsed,
+                    "generation_method": "langgraph_story",
+                    "template_used": PromptTemplate.STORY_OUTLINE.value,
+                    "provider_used": state.get("provider"),
+                    "model_used": state.get("model_used"),
+                    "usage": state.get("usage"),
+                    "prompt": state.get("prompt"),
+                    "reasoning": reasoning,
+                }
+            except Exception as exc:  # pragma: no cover - schema guard
+                missing_fields = _extract_missing_fields(exc)
+                reasoning.append("schema_invalid")
+                return {
+                    "needs_repair": True,
+                    "raw": content_text,
+                    "missing_fields": missing_fields,
+                    "reasoning": reasoning,
+                    "prompt": state.get("prompt"),
+                    "provider": state.get("provider"),
+                    "model_used": state.get("model_used"),
+                    "usage": state.get("usage"),
+                }
+
+        async def repair(state: Dict[str, Any]) -> Dict[str, Any]:
+            """Repair loop with up to 3 attempts; uses prompt_manager repair template."""
+            if state.get("normalized") and not state.get("needs_repair"):
+                state.setdefault("reasoning", []).append("repair_skip_validated")
+                return state
+
+            latest_text = state.get("raw") or state.get("content") or ""
+            reasoning = list(state.get("reasoning", []))
+            provider_used = state.get("provider_used") or state.get("provider")
             model_used = state.get("model_used")
             usage = state.get("usage")
-            latest_text = content_text
+            missing_fields = state.get("missing_fields") or []
 
             for attempt in range(3):
                 parsed = (
@@ -185,8 +234,10 @@ class StoryLangGraphAgent:
             }
 
         graph.add_node("draft", draft)
+        graph.add_node("validate", validate)
         graph.add_node("repair", repair)
-        graph.add_edge("draft", "repair")
+        graph.add_edge("draft", "validate")
+        graph.add_edge("validate", "repair")
         graph.add_edge("repair", END)
         graph.set_entry_point("draft")
 
