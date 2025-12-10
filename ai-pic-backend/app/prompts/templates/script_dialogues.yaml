@@ -1,0 +1,56 @@
+name: script_dialogues
+description: "剧本对白与舞台指示生成提示词模板"
+category: script
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-10"
+updated_at: "2025-12-10"
+
+variables:
+  language:
+    type: string
+    required: false
+    description: "对白语言"
+    default: "zh-CN"
+    enum: ["zh-CN", "en-US", "ja-JP", "ko-KR"]
+
+  dialogue_style:
+    type: string
+    required: false
+    description: "对白风格"
+    default: "natural"
+    enum: ["natural", "formal", "casual", "dramatic", "comedic"]
+
+  format_type:
+    type: string
+    required: false
+    description: "剧本格式"
+    default: "screenplay"
+    enum: ["screenplay", "teleplay", "stage", "audio", "animation"]
+
+  story:
+    type: dict
+    required: false
+    description: "故事概要信息"
+
+  episode:
+    type: dict
+    required: false
+    description: "剧集信息"
+
+  scenes:
+    type: list
+    required: true
+    description: "场景列表，含 scene_number/slug_line 等"
+    min_length: 1
+
+usage_examples:
+  - language: "zh-CN"
+    dialogue_style: "natural"
+    format_type: "screenplay"
+    story: {title: "创业路", genre: "剧情"}
+    episode: {episode_number: 1, title: "初遇"}
+    scenes:
+      - scene_number: 1
+        slug_line: "INT. 咖啡馆 - 日"
+        summary: "两位主角初次见面"

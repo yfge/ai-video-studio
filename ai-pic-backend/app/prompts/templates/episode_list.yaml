@@ -1,0 +1,60 @@
+name: episode_list
+description: "剧集大纲分集规划提示词模板"
+category: episode
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-10"
+updated_at: "2025-12-10"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事基础信息（标题、类型、概要、冲突等）"
+
+  episode_count:
+    type: number
+    required: true
+    description: "需要生成的总集数"
+    min: 1
+
+  episode_duration:
+    type: number
+    required: false
+    description: "单集时长（分钟）"
+    default: 30
+
+  plot_complexity:
+    type: string
+    required: false
+    description: "剧情复杂度"
+    default: "medium"
+    enum: ["simple", "medium", "complex"]
+
+  pacing:
+    type: string
+    required: false
+    description: "节奏控制"
+    default: "balanced"
+    enum: ["slow", "balanced", "fast"]
+
+  focus_characters:
+    type: list
+    required: false
+    description: "重点角色列表"
+
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外创作或结构要求"
+
+usage_examples:
+  - story:
+      title: "都市恋曲"
+      genre: "爱情"
+      synopsis: "两人在快节奏城市中相遇相知"
+      main_conflict: "事业与爱情的抉择"
+    episode_count: 12
+    episode_duration: 20
+    plot_complexity: "medium"
+    pacing: "balanced"

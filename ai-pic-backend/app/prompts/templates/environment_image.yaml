@@ -1,0 +1,36 @@
+name: environment_image
+description: "环境图生成提示词模板"
+category: image
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-10"
+updated_at: "2025-12-10"
+
+variables:
+  environment_name:
+    type: string
+    required: true
+    description: "环境名称或场景主题"
+    min_length: 1
+
+  category:
+    type: string
+    required: false
+    description: "环境类别（如室内/室外/自然/城市）"
+    default: "indoor"
+
+  prompt:
+    type: string
+    required: true
+    description: "核心正向提示词"
+
+  additional_prompts:
+    type: string
+    required: false
+    description: "附加修饰词或风格要求"
+
+usage_examples:
+  - environment_name: "未来科技办公室"
+    category: "indoor"
+    prompt: "冷色调科幻办公室，玻璃隔断与悬浮屏幕"
+    additional_prompts: "体积光, 高动态范围, 电影级灯光"
