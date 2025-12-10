@@ -1591,9 +1591,6 @@ class AIService:
             if len(parts) == 2 and parts[0] and parts[1]:
                 provider_hint, pure_model = parts[0], parts[1]
 
-        if not oss_service:
-            raise RuntimeError("OSS 服务未配置，无法生成并保存图像")
-
         # 使用提示词管理器生成专业提示词
         try:
             variables = {
@@ -1696,16 +1693,11 @@ class AIService:
                 generation_method = "openai_dalle"
 
             if image_url:
-                local_file_path = await self._download_image(
-                    image_url, ip_name, category
-                )
-                if not local_file_path:
-                    self.logger.error("图像下载失败")
-                    return None
-
                 try:
-                    oss_result = await self._upload_local_image_to_oss(
-                        local_file_path,
+                    stored = await self._persist_generated_image(
+                        image_url,
+                        ip_name=ip_name,
+                        category=category,
                         prefix="ai-generated/virtual-ip",
                         metadata={
                             "ip_name": ip_name,
@@ -1715,17 +1707,19 @@ class AIService:
                             "model": model,
                         },
                     )
-                    final_image_url = oss_result.get("file_url")
                 except Exception as exc:
-                    self.logger.error(f"OSS上传失败: {exc}")
+                    self.logger.error(f"图像保存/上传失败: {exc}")
                     return None
+
+                final_image_url = stored.get("oss_url") or stored.get("relative_path")
 
                 return {
                     "image_url": final_image_url,
-                    "oss_url": final_image_url,
-                    "local_file_path": local_file_path,
+                    "oss_url": stored.get("oss_url"),
+                    "local_file_path": stored.get("local_file_path"),
+                    "relative_path": stored.get("relative_path"),
                     "original_image_url": image_url,
-                    "oss_upload": oss_result,
+                    "oss_upload": stored.get("oss_upload"),
                     "prompt": final_prompt,
                     "style": style,
                     "category": category,
@@ -1817,6 +1811,43 @@ class AIService:
         if not oss_result or not oss_result.get("success"):
             raise RuntimeError(f"OSS 上传失败: {oss_result}")
         return oss_result
+
+    async def _persist_generated_image(
+        self,
+        image_data: str,
+        *,
+        ip_name: str,
+        category: str,
+        prefix: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """下载/保存生成图像，并在配置 OSS 时上传，返回路径与元数据。"""
+        local_file_path = await self._download_image(image_data, ip_name, category)
+        if not local_file_path:
+            raise RuntimeError("图像下载失败")
+
+        file_size = os.path.getsize(local_file_path)
+        filename = os.path.basename(local_file_path)
+        relative_path = f"/uploads/{filename}"
+
+        oss_result = None
+        oss_url = None
+        if oss_service:
+            oss_result = await self._upload_local_image_to_oss(
+                local_file_path,
+                prefix=prefix,
+                metadata=metadata or {},
+            )
+            oss_url = oss_result.get("file_url")
+
+        return {
+            "local_file_path": local_file_path,
+            "relative_path": relative_path,
+            "file_size": file_size,
+            "filename": filename,
+            "oss_url": oss_url,
+            "oss_upload": oss_result,
+        }
 
     async def generate_video(
         self,

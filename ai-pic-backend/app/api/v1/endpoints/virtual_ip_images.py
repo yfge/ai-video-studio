@@ -110,8 +110,7 @@ async def generate_virtual_ip_image(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """使用AI生成虚拟IP图像"""
-    if not oss_service:
-        raise HTTPException(status_code=503, detail="OSS未配置，无法保存生成的图像")
+    # 尽量使用 OSS，若未配置则退回本地相对路径
     # 检查虚拟IP是否存在
     virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
     if not virtual_ip:
@@ -215,13 +214,11 @@ async def generate_virtual_ip_image(
     
     # 获取OSS URL
     oss_url = result.get("oss_url") or result.get("oss_upload", {}).get("file_url")
-    if not oss_url:
-        raise HTTPException(status_code=500, detail="OSS上传未返回有效URL")
-    
+
     image_data = VirtualIPImageCreate(
         virtual_ip_id=virtual_ip_id,
         file_path=relative_path,  # 使用短的相对路径
-        oss_url=oss_url,  # OSS存储URL
+        oss_url=oss_url,  # OSS存储URL（未配置时为空）
         filename=filename,
         original_filename=f"{virtual_ip.name}_{category}_generated.png",
         file_size=file_size,
@@ -431,8 +428,7 @@ async def generate_virtual_ip_image_variant(
     db: Session = Depends(get_db),
 ):
     """基于已有虚拟IP图像生成变体并保存"""
-    if not oss_service:
-        raise HTTPException(status_code=503, detail="OSS未配置，无法保存生成的图像")
+    # 优先使用 OSS，未配置则退回本地存储
     virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
     if not virtual_ip:
         raise HTTPException(status_code=404, detail="虚拟IP不存在")
@@ -526,24 +522,24 @@ async def generate_virtual_ip_image_variant(
         file_size = os.path.getsize(local_file_path)
         filename = os.path.basename(local_file_path)
         relative_path = f"/uploads/{filename}"
-        try:
-            oss_result = await ai_service._upload_local_image_to_oss(
-                local_file_path,
-                prefix="ai-generated/virtual-ip",
-                metadata={
-                    "virtual_ip_id": virtual_ip_id,
-                    "base_image_id": base_image.id,
-                    "prompt": prompt_value,
-                    "provider": response.provider,
-                    "model": selected_model or response.model,
-                },
-            )
-            oss_url = oss_result.get("file_url")
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"OSS上传失败: {exc}") from exc
-
-        if not oss_url:
-            raise HTTPException(status_code=500, detail="OSS上传未返回有效URL")
+        oss_url = None
+        oss_result = None
+        if oss_service:
+            try:
+                oss_result = await ai_service._upload_local_image_to_oss(
+                    local_file_path,
+                    prefix="ai-generated/virtual-ip",
+                    metadata={
+                        "virtual_ip_id": virtual_ip_id,
+                        "base_image_id": base_image.id,
+                        "prompt": prompt_value,
+                        "provider": response.provider,
+                        "model": selected_model or response.model,
+                    },
+                )
+                oss_url = oss_result.get("file_url")
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"OSS上传失败: {exc}") from exc
 
         tags = [
             base_image.category or "portrait",
