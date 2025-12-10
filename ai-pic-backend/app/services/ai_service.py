@@ -203,6 +203,8 @@ class AIService:
 
         # 初始化多提供商AI服务管理器
         self.ai_manager = self._initialize_ai_manager()
+        self.model_cache: dict[str, List[Dict[str, Any]]] = {}
+        self._warm_model_cache()
         self.storyboard_reasoner = (
             StoryboardReActReasoner(self) if LANGGRAPH_AVAILABLE else None
         )
@@ -2046,7 +2048,22 @@ class AIService:
             "text_to_speech": AIModelType.TEXT_TO_SPEECH,
         }
         mt = aliases.get(model_type_alias, None)
-        return await self.ai_manager.list_models(model_type=mt, source=source)
+
+        cache_key = "all" if mt is None else mt.value
+        if source == "auto" and cache_key in self.model_cache:
+            cached = self.model_cache.get(cache_key) or []
+            if cached:
+                return cached
+
+        models = await self.ai_manager.list_models(model_type=mt, source=source)
+
+        if source == "auto":
+            try:
+                self.model_cache[cache_key] = models or []
+            except Exception:
+                pass
+
+        return models
 
     def update_provider_config(
         self,
@@ -2073,6 +2090,46 @@ class AIService:
             priority=priority_enum,
             max_requests_per_minute=max_requests_per_minute,
         )
+
+    async def _reload_model_cache(self) -> None:
+        """拉取并缓存常用模型列表，按模型类型分组。"""
+        if not self.ai_manager:
+            return
+
+        type_keys = [
+            ("all", None),
+            ("text_generation", AIModelType.TEXT_GENERATION),
+            ("text_to_image", AIModelType.TEXT_TO_IMAGE),
+            ("image_to_image", AIModelType.IMAGE_TO_IMAGE),
+            ("text_to_video", AIModelType.TEXT_TO_VIDEO),
+            ("text_to_speech", AIModelType.TEXT_TO_SPEECH),
+        ]
+        cache: dict[str, List[Dict[str, Any]]] = {}
+        for key, mt in type_keys:
+            try:
+                models = await self.ai_manager.list_models(model_type=mt, source="auto")
+                cache[key] = models or []
+            except Exception as exc:  # pragma: no cover - cache warm guard
+                self.logger.warning("模型缓存加载失败 key=%s err=%s", key, exc)
+                cache[key] = []
+        self.model_cache = cache
+
+    def _warm_model_cache(self) -> None:
+        """同步调用以初始化模型缓存；如失败仅记录日志，不中断启动。"""
+        if not self.ai_manager:
+            return
+        try:
+            asyncio.run(self._reload_model_cache())
+        except RuntimeError:
+            # 事件循环已存在（例如测试场景）；改用新线程防止阻塞
+            import threading
+
+            def _run():
+                asyncio.run(self._reload_model_cache())
+
+            threading.Thread(target=_run, daemon=True).start()
+        except Exception as exc:  # pragma: no cover - startup guard
+            self.logger.warning("模型缓存预热失败: %s", exc)
 
     async def _generate_with_keling_image(
         self, prompt: str, style: str, category: str, model: str = "kling-image"
