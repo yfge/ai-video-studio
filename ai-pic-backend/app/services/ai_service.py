@@ -311,7 +311,8 @@ class AIService:
                 providers["google"] = ProviderConfig(
                     name="google",
                     api_key=settings.GOOGLE_API_KEY,
-                    base_url="https://aiplatform.googleapis.com",
+                    # 使用 Generative Language API (不是 Vertex AI)
+                    base_url="https://generativelanguage.googleapis.com",
                     timeout=120.0,
                     default_model=settings.GOOGLE_DEFAULT_MODEL,
                 )
@@ -1648,7 +1649,10 @@ class AIService:
             )
 
             # 使用简单的提示词，避免复杂的AI管理器调用
-            final_prompt = f"A professional {style} {category} portrait of {ip_name}, {description}"
+            if category == "portrait":
+                final_prompt = f"A professional {style} portrait of {ip_name}, {description}"
+            else:
+                final_prompt = f"A professional {style} {category} of {ip_name}, {description}"
             if additional_prompts:
                 final_prompt += f", {', '.join(additional_prompts)}"
 

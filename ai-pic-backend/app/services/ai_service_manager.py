@@ -97,7 +97,10 @@ class AIServiceManager:
     def _log_response(self, *, task: str, provider: Optional[str], model: Optional[str], response: AIResponse):
         try:
             status = "success" if (response and response.success) else "failure"
-            body_preview = self._truncate(response.data if response else None, 2000)
+            if response and not response.success and response.error:
+                body_preview = f"ERROR: {self._truncate(response.error, 2000)}"
+            else:
+                body_preview = self._truncate(response.data if response else None, 2000)
             usage = getattr(response, 'usage', None)
             p = response.provider if response and response.provider else provider
             m = response.model if response and response.model else model
@@ -226,13 +229,14 @@ class AIServiceManager:
         model_type: Optional[AIModelType],
     ):
         """统一的模型拉取入口，优先使用远端列表，失败时回退静态配置。"""
+        fallback_models = provider.available_models or []
         models = []
         try:
             models = await provider.fetch_remote_models(model_type=model_type)
         except Exception:
             models = []
         if not models:
-            models = [m for m in provider.available_models if not model_type or m.model_type == model_type]
+            models = fallback_models
         return models
 
     async def list_models(
@@ -257,8 +261,6 @@ class AIServiceManager:
             try:
                 if source == "static":
                     infos = provider.available_models
-                    if model_type:
-                        infos = [m for m in infos if m.model_type == model_type]
                 elif source == "remote":
                     infos = await provider.fetch_remote_models(model_type=model_type)
                 else:  # auto
@@ -267,10 +269,19 @@ class AIServiceManager:
                 # 某个 provider 拉取失败，不影响其他 provider
                 continue
 
+            if not infos:
+                continue
+
             for mi in infos:
                 # model_type 进一步过滤（以防 Provider 忽略了参数）
-                if model_type and mi.model_type != model_type:
-                    continue
+                if model_type:
+                    caps = [str(c).lower() for c in mi.capabilities or []]
+                    supports_capability = (
+                        model_type == AIModelType.IMAGE_TO_IMAGE
+                        and ("image_to_image" in caps)
+                    )
+                    if not supports_capability and mi.model_type != model_type:
+                        continue
                 models.append(
                     {
                         "provider": provider_name,
@@ -413,6 +424,12 @@ class AIServiceManager:
             model_type=AIModelType.TEXT_TO_IMAGE
         )
 
+        # 如果调用方显式指定了首选 provider，则仅使用该 provider，避免跨厂商误用模型 id
+        if prefer_provider:
+            available_providers = [
+                p for p in available_providers if p == prefer_provider
+            ]
+
         original_model = model
         last_model_used = original_model
         
@@ -508,6 +525,12 @@ class AIServiceManager:
         available_providers = self.get_available_providers(
             model_type=AIModelType.IMAGE_TO_IMAGE
         )
+
+        # 显式指定首选 provider 时，只在该 provider 上尝试，避免带着特定模型 id 在不同厂商间兜底
+        if prefer_provider:
+            available_providers = [
+                p for p in available_providers if p == prefer_provider
+            ]
 
         if not available_providers:
             return AIResponse(

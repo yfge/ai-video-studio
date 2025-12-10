@@ -1,12 +1,13 @@
 """
-Google AI / Gemini 文本生成提供商
+Google AI / Gemini 文本与图像生成提供商
 
-当前只接入文本生成能力，接口示例参考 docs/api/google-text-api.md：
-- Endpoint: https://aiplatform.googleapis.com/v1/publishers/google/models/{model_id}:{method}
-- 默认模型: gemini-3-pro-preview
+文档参考：
+- 文本生成：docs/api/google-text-api.md
+- 图像生成（文/图生图）：https://ai.google.dev/gemini-api/docs/image-generation
 """
 
 import json
+import base64
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -37,7 +38,11 @@ class GoogleProvider(BaseProvider):
 
     @property
     def supported_model_types(self) -> List[AIModelType]:
-        return [AIModelType.TEXT_GENERATION]
+        return [
+            AIModelType.TEXT_GENERATION,
+            AIModelType.TEXT_TO_IMAGE,
+            AIModelType.IMAGE_TO_IMAGE,
+        ]
 
     @property
     def available_models(self) -> List[ModelInfo]:
@@ -75,12 +80,46 @@ class GoogleProvider(BaseProvider):
                 max_tokens=30720,
                 capabilities=["text_generation", "analysis"],
             ),
+            ModelInfo(
+                model_id="gemini-2.0-flash-exp",
+                name="Gemini 2.0 Flash (image exp)",
+                description="Gemini Flash 试验性图片生成模型，支持文生图与图生图能力",
+                model_type=AIModelType.TEXT_TO_IMAGE,
+                supported_formats=["png", "jpeg"],
+                capabilities=["text_to_image", "image_to_image"],
+            ),
+            ModelInfo(
+                model_id="gemini-2.5-flash-image",
+                name="Gemini 2.5 Flash Image",
+                description="Gemini 2.5 Flash 快速图片生成模型，支持文/图生图",
+                model_type=AIModelType.TEXT_TO_IMAGE,
+                supported_formats=["png", "jpeg"],
+                capabilities=["text_to_image", "image_to_image"],
+            ),
+            ModelInfo(
+                model_id="gemini-3-pro-image-preview",
+                name="Gemini 3 Pro Image Preview",
+                description="Gemini 3 Pro 专业级图片生成模型（预览版），支持文/图生图",
+                model_type=AIModelType.TEXT_TO_IMAGE,
+                supported_formats=["png", "jpeg"],
+                capabilities=["text_to_image", "image_to_image"],
+            ),
         ]
+
+    def _supports_type(self, model: ModelInfo, model_type: Optional[AIModelType]) -> bool:
+        if not model_type:
+            return True
+        if model.model_type == model_type:
+            return True
+        caps = [c.lower() for c in (model.capabilities or [])]
+        if model_type == AIModelType.IMAGE_TO_IMAGE and "image_to_image" in caps:
+            return True
+        return False
 
     def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
         models = self.available_models
         if model_type:
-            models = [m for m in models if m.model_type == model_type]
+            models = [m for m in models if self._supports_type(m, model_type)]
         return models
 
     def _normalize_model_id(self, raw: Optional[str]) -> Optional[str]:
@@ -105,6 +144,7 @@ class GoogleProvider(BaseProvider):
             caps.append("text_generation")
         if "generateimage" in methods:
             caps.append("text_to_image")
+            caps.append("image_to_image")
         if not caps:
             caps.append("text_generation")
         return caps
@@ -124,7 +164,11 @@ class GoogleProvider(BaseProvider):
             mtype = self._infer_model_type(item)
             if mtype not in self.supported_model_types:
                 continue
-            if model_type and mtype != model_type:
+            caps = self._infer_capabilities(item)
+            if model_type and not (
+                mtype == model_type
+                or (model_type == AIModelType.IMAGE_TO_IMAGE and "image_to_image" in caps)
+            ):
                 continue
             models.append(
                 ModelInfo(
@@ -132,7 +176,7 @@ class GoogleProvider(BaseProvider):
                     name=item.get("displayName") or item.get("title") or mid,
                     description=item.get("description") or f"Google model {mid}",
                     model_type=mtype,
-                    capabilities=self._infer_capabilities(item),
+                    capabilities=caps,
                 )
             )
         return models
@@ -188,21 +232,196 @@ class GoogleProvider(BaseProvider):
             logger.warning("GoogleProvider list models exception: %s", exc)
             return fallback
 
+    def _parse_images(self, payload: Dict[str, Any]) -> List[str]:
+        """从 generateContent 响应中提取 inlineData 图片，统一输出 data:image/...;base64,..."""
+        images: List[str] = []
+        for cand in payload.get("candidates") or []:
+            if not isinstance(cand, dict):
+                continue
+            content = cand.get("content") or {}
+            parts = content.get("parts") or []
+            for part in parts:
+                if not isinstance(part, dict):
+                    continue
+                inline = part.get("inlineData") or part.get("inline_data")
+                if not isinstance(inline, dict):
+                    continue
+                data = inline.get("data")
+                if not data:
+                    continue
+                mime = inline.get("mimeType") or inline.get("mime_type") or "image/png"
+                prefix = f"data:{mime};base64,"
+                if data.startswith(prefix):
+                    images.append(data)
+                else:
+                    images.append(prefix + data)
+        return images
+
+    async def _fetch_inline_image(self, image_url: str) -> Dict[str, str]:
+        """下载参考图并转换为 inlineData 结构，供 generateImage 使用。"""
+        async with httpx.AsyncClient(timeout=self.config.timeout) as client:
+            resp = await client.get(image_url)
+            resp.raise_for_status()
+            mime = resp.headers.get("Content-Type", "image/png")
+            b64 = base64.b64encode(resp.content).decode("ascii")
+            return {"mimeType": mime, "data": b64}
+
     async def generate_image(
         self,
         prompt: str,
         model: str = None,
         **kwargs: Any,
     ) -> AIResponse:
-        """GoogleProvider 当前未实现图像生成，返回未实现错误。"""
-        return AIResponse(
-            success=False,
-            error="GoogleProvider does not support text-to-image",
-            provider=self.name,
-            model=model or (self.default_model if hasattr(self, "default_model") else "unknown"),
-            task_type=AITaskType.PORTRAIT_GENERATION,
-            model_type=AIModelType.TEXT_TO_IMAGE,
-        )
+        """调用 Gemini 图像生成 API（文生图）。"""
+        client = await self.get_client()
+        if client is None:
+            return AIResponse(
+                success=False,
+                error="GoogleProvider 未配置 API Key",
+                provider=self.name,
+                model=model or self.default_model,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+            )
+
+        # 默认优先使用正式的图片模型，其次回退到实验模型
+        model_id = model or "gemini-2.5-flash-image"
+        endpoint = f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
+        body = {
+            "model": model_id,
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        }
+        # 根据文档，将图片配置放在 generationConfig.imageConfig 下
+        # 必须包含 responseModalities 来启用图像生成
+        aspect_ratio = kwargs.get("aspect_ratio")
+        image_size = kwargs.get("image_size") or kwargs.get("size")
+        image_config: Dict[str, Any] = {}
+        if aspect_ratio:
+            image_config["aspectRatio"] = aspect_ratio
+        if image_size:
+            image_config["imageSize"] = image_size
+
+        generation_config: Dict[str, Any] = {
+            # 使用 ["TEXT", "IMAGE"] 以兼容所有 Gemini 图像生成模型
+            "responseModalities": ["TEXT", "IMAGE"]
+        }
+        if image_config:
+            generation_config["imageConfig"] = image_config
+        body["generationConfig"] = generation_config
+
+        try:
+            resp = await client.post(endpoint, json=body)
+            resp.raise_for_status()
+            payload = resp.json()
+            images = self._parse_images(payload)
+            if not images:
+                return AIResponse(
+                    success=False,
+                    error="GoogleProvider 图像生成响应为空",
+                    provider=self.name,
+                    model=model_id,
+                    task_type=AITaskType.PORTRAIT_GENERATION,
+                    model_type=AIModelType.TEXT_TO_IMAGE,
+                )
+            return AIResponse(
+                success=True,
+                data={"images": images},
+                provider=self.name,
+                model=model_id,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+                metadata={"aspect_ratio": aspect_ratio},
+            )
+        except Exception as exc:
+            return AIResponse(
+                success=False,
+                error=self.format_error(exc),
+                provider=self.name,
+                model=model_id,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+            )
+
+    async def image_to_image(
+        self,
+        image_url: str,
+        prompt: str = None,
+        model: str = None,
+        **kwargs: Any,
+    ) -> AIResponse:
+        """调用 Gemini 图像生成 API（图生图，使用参考图 inlineData）。"""
+        client = await self.get_client()
+        if client is None:
+            return AIResponse(
+                success=False,
+                error="GoogleProvider 未配置 API Key",
+                provider=self.name,
+                model=model or "gemini-2.5-flash-image",
+                task_type=AITaskType.SCENE_GENERATION,
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+            )
+
+        model_id = model or "gemini-2.5-flash-image"
+        endpoint = f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
+
+        try:
+            inline_image = await self._fetch_inline_image(image_url)
+            parts: List[Dict[str, Any]] = []
+            if prompt:
+                parts.append({"text": prompt})
+            parts.append({"inlineData": inline_image})
+
+            body: Dict[str, Any] = {
+                "model": model_id,
+                "contents": [{"role": "user", "parts": parts}],
+            }
+            aspect_ratio = kwargs.get("aspect_ratio")
+            image_size = kwargs.get("image_size") or kwargs.get("size")
+            image_config: Dict[str, Any] = {}
+            if aspect_ratio:
+                image_config["aspectRatio"] = aspect_ratio
+            if image_size:
+                image_config["imageSize"] = image_size
+
+            generation_config: Dict[str, Any] = {
+                # 使用 ["TEXT", "IMAGE"] 以兼容所有 Gemini 图像生成模型
+                "responseModalities": ["TEXT", "IMAGE"]
+            }
+            if image_config:
+                generation_config["imageConfig"] = image_config
+            body["generationConfig"] = generation_config
+
+            resp = await client.post(endpoint, json=body)
+            resp.raise_for_status()
+            payload = resp.json()
+            images = self._parse_images(payload)
+            if not images:
+                return AIResponse(
+                    success=False,
+                    error="GoogleProvider 图生图响应为空",
+                    provider=self.name,
+                    model=model_id,
+                    task_type=AITaskType.SCENE_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_IMAGE,
+                )
+            return AIResponse(
+                success=True,
+                data={"images": images},
+                provider=self.name,
+                model=model_id,
+                task_type=AITaskType.SCENE_GENERATION,
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+                metadata={"reference_image": image_url},
+            )
+        except Exception as exc:
+            return AIResponse(
+                success=False,
+                error=self.format_error(exc),
+                provider=self.name,
+                model=model_id,
+                task_type=AITaskType.SCENE_GENERATION,
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+            )
 
     async def _initialize_client(self):
         """初始化 HTTP 客户端"""
