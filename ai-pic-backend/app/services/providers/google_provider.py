@@ -232,6 +232,15 @@ class GoogleProvider(BaseProvider):
             logger.warning("GoogleProvider list models exception: %s", exc)
             return fallback
 
+    def _clean_model_id(self, model: Optional[str]) -> Optional[str]:
+        """清理模型 ID，去掉可能的 provider 前缀（如 'google:'）"""
+        if not model:
+            return None
+        # 去掉 provider 前缀（例如 "google:gemini-3-pro-image-preview" -> "gemini-3-pro-image-preview"）
+        if ":" in model:
+            return model.split(":", 1)[1]
+        return model
+
     def _parse_images(self, payload: Dict[str, Any]) -> List[str]:
         """从 generateContent 响应中提取 inlineData 图片，统一输出 data:image/...;base64,..."""
         images: List[str] = []
@@ -285,7 +294,8 @@ class GoogleProvider(BaseProvider):
             )
 
         # 默认优先使用正式的图片模型，其次回退到实验模型
-        model_id = model or "gemini-2.5-flash-image"
+        # 清理模型 ID，去掉可能的 provider 前缀
+        model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
         endpoint = f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
         body = {
             "model": model_id,
@@ -361,7 +371,8 @@ class GoogleProvider(BaseProvider):
                 model_type=AIModelType.IMAGE_TO_IMAGE,
             )
 
-        model_id = model or "gemini-2.5-flash-image"
+        # 清理模型 ID，去掉可能的 provider 前缀
+        model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
         endpoint = f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
 
         try:

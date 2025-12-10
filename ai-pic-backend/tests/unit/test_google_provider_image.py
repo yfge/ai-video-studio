@@ -67,6 +67,41 @@ async def test_generate_image_success(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_generate_image_strips_provider_prefix(monkeypatch):
+    """测试模型名称中的 provider 前缀被正确清理"""
+    provider = GoogleProvider(ProviderConfig(name="google", api_key="test-key"))
+    dummy_client = _DummyClient(
+        {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "inlineData": {
+                                    "mimeType": "image/png",
+                                    "data": "TESTDATA",
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    )
+    async def _fake_client():
+        return dummy_client
+    monkeypatch.setattr(provider, "get_client", _fake_client)
+
+    # 使用带有 provider 前缀的模型名称
+    resp = await provider.generate_image(prompt="test image", model="google:gemini-3-pro-image-preview")
+
+    assert resp.success is True
+    # 验证 URL 中的模型名称不包含 provider 前缀
+    assert "google:gemini-3-pro-image-preview" not in dummy_client.last_request["url"]
+    assert "gemini-3-pro-image-preview" in dummy_client.last_request["url"]
+
+
+@pytest.mark.asyncio
 async def test_image_to_image_uses_reference(monkeypatch):
     provider = GoogleProvider(ProviderConfig(name="google", api_key="test-key"))
     dummy_client = _DummyClient(
