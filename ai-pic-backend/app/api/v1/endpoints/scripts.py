@@ -20,6 +20,7 @@ from app.schemas.script import (
 )
 from app.schemas.story_structure import SceneCreate, ShotCreate
 from app.services.ai_service import ai_service
+from app.services.storage.oss_service import oss_service
 from app.services import story_structure_service as story_structure_svc
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
@@ -1829,6 +1830,34 @@ def _process_storyboard_image_task(
                 print(f"图像生成失败: {e}")
             return None
 
+        async def _persist_frame_image(url: str, idx: int, provider: str, model: str) -> dict | None:
+            """将分镜图像下载到本地并上传 OSS，返回最终可用 URL。"""
+            try:
+                stored = await ai_service._persist_generated_image(
+                    image_data=url,
+                    ip_name=f"script-{script_id}",
+                    category="storyboard",
+                    prefix="ai-generated/storyboard",
+                    metadata={
+                        "script_id": script_id,
+                        "frame_index": idx,
+                        "provider": provider,
+                        "model": model,
+                    },
+                    require_upload=bool(oss_service),
+                )
+            except Exception as e:
+                print(f"分镜图像持久化失败 idx={idx}: {e}")
+                return None
+
+            final_url = stored.get("oss_url") or stored.get("relative_path")
+            if not final_url:
+                return None
+            return {
+                "final_url": final_url,
+                "stored": stored,
+            }
+
         # 逐帧生成图像URL
         for idx in target_indexes:
             fr = frames[idx]
@@ -1864,11 +1893,28 @@ def _process_storyboard_image_task(
 
             result = anyio.run(_gen_image, prompt, ref_images)
             if result:
-                print(f"Storyboard image result idx={idx} url={result.get('url')} provider={result.get('provider')}")
+                print(
+                    f"Storyboard image result idx={idx} url={result.get('url')} "
+                    f"provider={result.get('provider')}"
+                )
             if result and result.get("url"):
-                before_url = fr.get("image_url")
-                fr["image_url"] = result["url"]
-                print(f"Storyboard frame set idx={idx} old_url={before_url} new_url={fr.get('image_url')}")
+                persist = anyio.run(
+                    _persist_frame_image,
+                    result["url"],
+                    idx,
+                    result.get("provider"),
+                    result.get("model"),
+                )
+                if persist and persist.get("final_url"):
+                    before_url = fr.get("image_url")
+                    fr["image_url_original"] = result["url"]
+                    fr["image_url"] = persist["final_url"]
+                    print(
+                        "Storyboard frame set idx=%s old_url=%s new_url=%s",
+                        idx,
+                        before_url,
+                        fr.get("image_url"),
+                    )
 
         # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
         extra_raw = script.extra_metadata or {}
