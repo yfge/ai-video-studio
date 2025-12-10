@@ -126,14 +126,13 @@ export function MultiModelSelector({
     if (!loading && models.length > 0) {
       onModelsLoaded?.(models, defaultModel)
 
-      // 如果未选中且不仅允许自动（或者允许自动但要求默认选中），则选中默认值
-      // 注意：如果 allowAuto 为 true 且 value 为空，通常表示"自动"，不需要 set defaultModel
-      // 但如果 autoSelectDefault 为 true，则强制选中默认值
+      // 当允许自动选择时，只在当前没有选中值的情况下选中默认模型
       if (value.length === 0 && defaultModel && autoSelectDefault) {
         onChange([defaultModel])
       }
     }
-  }, [loading, models, defaultModel, autoSelectDefault]) // 去掉 onChange/value 避免死循环，仅在加载完成时触发
+    // 明确依赖 onChange/onModelsLoaded/value.length，避免闭包用旧值
+  }, [loading, models, defaultModel, autoSelectDefault, value.length, onChange, onModelsLoaded])
 
   useEffect(() => {
     if (providers.length === 0) return
@@ -197,6 +196,12 @@ export function MultiModelSelector({
                 setProvider(next)
                 if (next !== 'all' && value[0] && !value[0].startsWith(`${next}:`)) {
                   onChange([])
+                }
+                if (!multiple && next !== 'all') {
+                  const first = filteredModels.find(model => model.provider === next)
+                  if (first) {
+                    onChange([first.model_id])
+                  }
                 }
               }}
               disabled={disabled || loading || providers.length === 0}
