@@ -367,6 +367,7 @@ async def generate_environment_images(
         except Exception:
             payload = {}
 
+    prefer_provider: Optional[str] = None
     extra_prompt = payload.get("prompt", prompt)
     final_prompt = _compose_environment_prompt(env, extra_prompt)
     selected_model_raw = (payload.get("model") or model or "").strip() or None
