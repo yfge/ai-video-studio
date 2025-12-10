@@ -8,6 +8,8 @@ import oss2
 import httpx
 import asyncio
 import hashlib
+import hmac
+import base64
 import mimetypes
 import logging
 from datetime import datetime, timedelta
@@ -32,13 +34,21 @@ class OSSService:
         if not all([self.access_key_id, self.access_key_secret, self.endpoint, self.bucket_name]):
             raise ValueError("阿里云OSS配置不完整，请检查环境变量")
         
-        # 初始化OSS客户端
+        # 初始化OSS客户端（仅用于非上传操作；上传走自定义签名路径以便更好排查问题）
+        parsed = urlparse(self.endpoint)
+        if parsed.scheme:
+            endpoint_host = parsed.netloc or parsed.path
+        else:
+            endpoint_host = parsed.path or parsed.netloc
+        # 规范化为不带协议的 endpoint，避免签名歧义
+        self._endpoint_host = endpoint_host
+
         auth = oss2.Auth(self.access_key_id, self.access_key_secret)
-        self.bucket = oss2.Bucket(auth, self.endpoint, self.bucket_name)
-        
+        self.bucket = oss2.Bucket(auth, f"https://{self._endpoint_host}", self.bucket_name)
+
         # 设置默认域名
         if not self.domain:
-            self.domain = f"https://{self.bucket_name}.{self.endpoint.replace('https://', '').replace('http://', '')}"
+            self.domain = f"https://{self.bucket_name}.{self._endpoint_host}"
     
     def _generate_object_key(self, file_type: str, original_filename: str = None, prefix: str = None) -> str:
         """生成OSS对象键名"""
@@ -72,66 +82,35 @@ class OSSService:
         return content_type or 'application/octet-stream'
     
     async def upload_from_url(
-        self, 
-        url: str, 
+        self,
+        url: str,
         file_type: str = "image",
         prefix: str = None,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
-        """从URL下载文件并上传到OSS"""
+        """从URL下载文件并上传到OSS（使用自定义签名，便于排查签名问题）。"""
         try:
-            # 下载文件
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.get(url)
                 response.raise_for_status()
-                
+
                 file_content = response.content
-                content_type = response.headers.get('content-type', self._get_content_type(url))
-            
-            # 生成对象键
-            object_key = self._generate_object_key(file_type, None, prefix)
-            
-            # 准备元数据 - 完全简化，只设置metadata
-            headers = {}
-            
-            if metadata:
-                # 添加自定义元数据
-                for key, value in metadata.items():
-                    value_str = str(value)
-                    # 检查是否包含非ASCII字符
-                    try:
-                        # 尝试编码为ASCII，如果成功则直接使用
-                        value_str.encode('ascii')
-                        headers[f'x-oss-meta-{key}'] = value_str
-                    except UnicodeEncodeError:
-                        # 包含中文等非ASCII字符，跳过此metadata以避免签名问题
-                        self.logger.warning(f"跳过包含非ASCII字符的metadata: {key}={value_str}")
-                        continue
-            
-            # 上传到OSS
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.bucket.put_object(object_key, file_content, headers=headers)
+                # 使用远端 content-type 或根据 URL 推断
+                content_type = response.headers.get("content-type", self._get_content_type(url))
+
+            filename = Path(urlparse(url).path).name or None
+            return await self.upload_file_content(
+                file_content=file_content,
+                filename=filename or "remote_file",
+                file_type=file_type,
+                prefix=prefix,
+                metadata=metadata,
             )
-            
-            # 生成访问URL
-            file_url = f"{self.domain}/{object_key}"
-            
-            return {
-                "success": True,
-                "object_key": object_key,
-                "file_url": file_url,
-                "file_size": len(file_content),
-                "content_type": content_type,
-                "upload_time": datetime.now().isoformat(),
-                "metadata": metadata or {}
-            }
-            
         except Exception as e:
             return {
                 "success": False,
                 "error": f"上传失败: {str(e)}",
-                "original_url": url
+                "original_url": url,
             }
     
     async def upload_file_content(
@@ -142,39 +121,77 @@ class OSSService:
         prefix: str = None,
         metadata: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """上传文件内容到OSS"""
+        """上传文件内容到OSS（使用手工签名以避免SDK内部签名差异）。"""
         try:
             # 生成对象键
             object_key = self._generate_object_key(file_type, filename, prefix)
-            
+
             # 获取内容类型
             content_type = self._get_content_type(filename)
-            
-            # 准备元数据 - 完全简化，只设置metadata
-            headers = {}
-            
+
+            # 准备元数据头（仅 ASCII）
+            meta_headers: Dict[str, str] = {}
             if metadata:
                 for key, value in metadata.items():
                     value_str = str(value)
-                    # 检查是否包含非ASCII字符
                     try:
-                        # 尝试编码为ASCII，如果成功则直接使用
-                        value_str.encode('ascii')
-                        headers[f'x-oss-meta-{key}'] = value_str
+                        value_str.encode("ascii")
+                        meta_headers[f"x-oss-meta-{key}"] = value_str
                     except UnicodeEncodeError:
-                        # 包含中文等非ASCII字符，跳过此metadata以避免签名问题
                         self.logger.warning(f"跳过包含非ASCII字符的metadata: {key}={value_str}")
                         continue
-            
-            # 上传到OSS
-            await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.bucket.put_object(object_key, file_content, headers=headers)
+
+            # 构造签名所需字段
+            method = "PUT"
+            content_md5 = ""
+            date_str = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+            # CanonicalizedOSSHeaders
+            oss_headers = {k.lower(): v.strip() for k, v in meta_headers.items()}
+            canonical_oss_headers = ""
+            for k in sorted(oss_headers.keys()):
+                canonical_oss_headers += f"{k}:{oss_headers[k]}\n"
+
+            # CanonicalizedResource: /bucket/object
+            canonical_resource = f"/{self.bucket_name}/{object_key}"
+
+            string_to_sign = (
+                f"{method}\n"
+                f"{content_md5}\n"
+                f"{content_type}\n"
+                f"{date_str}\n"
+                f"{canonical_oss_headers}{canonical_resource}"
             )
-            
-            # 生成访问URL
+
+            # 计算签名
+            h = hashlib.sha1()
+            hmac_obj = hmac.new(self.access_key_secret.encode("utf-8"), string_to_sign.encode("utf-8"), hashlib.sha1)
+            signature = base64.b64encode(hmac_obj.digest()).decode("utf-8")
+            authorization = f"OSS {self.access_key_id}:{signature}"
+
+            # 实际请求 Host: <bucket>.<endpoint_host>
+            base_url = f"https://{self.bucket_name}.{self._endpoint_host}"
+            url = f"{base_url}/{object_key}"
+
+            # 组装 HTTP 头
+            headers = {
+                "Authorization": authorization,
+                "Date": date_str,
+                "Content-Type": content_type,
+            }
+            headers.update(meta_headers)
+
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.put(url, content=file_content, headers=headers)
+                if resp.status_code >= 300:
+                    return {
+                        "success": False,
+                        "error": f"上传失败: status={resp.status_code}, body={resp.text}",
+                        "filename": filename,
+                    }
+
             file_url = f"{self.domain}/{object_key}"
-            
+
             return {
                 "success": True,
                 "object_key": object_key,
@@ -182,14 +199,14 @@ class OSSService:
                 "file_size": len(file_content),
                 "content_type": content_type,
                 "upload_time": datetime.now().isoformat(),
-                "metadata": metadata or {}
+                "metadata": metadata or {},
             }
-            
+
         except Exception as e:
             return {
                 "success": False,
                 "error": f"上传失败: {str(e)}",
-                "filename": filename
+                "filename": filename,
             }
     
     async def upload_multiple_urls(
