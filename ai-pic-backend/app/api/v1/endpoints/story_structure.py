@@ -265,6 +265,12 @@ def _infer_provider_from_model(model: Optional[str]) -> Optional[str]:
     return None
 
 
+def _strip_provider_prefix(model: Optional[str]) -> Optional[str]:
+    if not model:
+        return None
+    return model.split(":", 1)[1] if ":" in model else model
+
+
 async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[str]:
     saved: List[str] = []
     for image_url in image_urls:
@@ -375,7 +381,7 @@ async def generate_environment_images(
     try:
         response = await ai_service.ai_manager.generate_image(
             prompt=final_prompt,
-            model=selected_model,
+            model=_strip_provider_prefix(selected_model),
             n=count_int,
             size=size_value if prefer_provider == "volcengine" else None,
             prefer_provider=prefer_provider,
@@ -434,7 +440,7 @@ async def generate_environment_image_variants(
     prefer_provider = _infer_provider_from_model(payload.get("model") or model)
     extra_prompt = payload.get("prompt", prompt)
     prompt_value = _compose_environment_prompt(env, extra_prompt or "Generate stylistically consistent variants based on this environment reference")
-    model_value = (payload.get("model") or model or "").strip() or None
+    model_value = _strip_provider_prefix((payload.get("model") or model or "").strip() or None)
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
     try:
