@@ -63,6 +63,51 @@ def _supports_json_object(model_id: str) -> bool:
         "gpt-3.5-turbo-0125",
     ]
     return any(lid.startswith(p) for p in prefixes)
+
+
+def _add_additional_properties_false(schema: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    递归地为 JSON schema 中的所有对象添加 additionalProperties: false。
+    OpenAI structured outputs 要求所有对象都必须显式设置 additionalProperties: false。
+
+    参考：https://platform.openai.com/docs/guides/structured-outputs
+    """
+    if not isinstance(schema, dict):
+        return schema
+
+    # 复制schema避免修改原对象
+    result = schema.copy()
+
+    # 如果是对象类型，添加 additionalProperties: false
+    if result.get("type") == "object":
+        result["additionalProperties"] = False
+
+        # 递归处理 properties
+        if "properties" in result:
+            result["properties"] = {
+                key: _add_additional_properties_false(value)
+                for key, value in result["properties"].items()
+            }
+
+    # 递归处理数组的 items
+    if "items" in result:
+        result["items"] = _add_additional_properties_false(result["items"])
+
+    # 递归处理 anyOf, oneOf, allOf
+    for key in ["anyOf", "oneOf", "allOf"]:
+        if key in result:
+            result[key] = [_add_additional_properties_false(item) for item in result[key]]
+
+    # 递归处理 $defs (definitions)
+    if "$defs" in result:
+        result["$defs"] = {
+            key: _add_additional_properties_false(value)
+            for key, value in result["$defs"].items()
+        }
+
+    return result
+
+
 class OpenAIProvider(BaseProvider):
     """OpenAI服务提供商"""
     
@@ -276,11 +321,15 @@ class OpenAIProvider(BaseProvider):
             # 优先使用 OpenAI 的 response_format json_schema（如可用）
             if json_schema:
                 if _supports_structured_outputs(model):
+                    # 获取原始 schema 并添加 additionalProperties: false
+                    raw_schema = json_schema.get("schema", json_schema)
+                    fixed_schema = _add_additional_properties_false(raw_schema)
+
                     payload["response_format"] = {
                         "type": "json_schema",
                         "json_schema": {
                             "name": json_schema.get("name", "response"),
-                            "schema": json_schema.get("schema", json_schema),
+                            "schema": fixed_schema,
                             # 严格模式放在 json_schema 内，避免 OpenAI API 报 Unknown parameter: response_format.strict
                             "strict": True,
                         },
