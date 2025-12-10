@@ -21,26 +21,38 @@ class PromptTemplate(Enum):
     # 角色相关
     VIRTUAL_IP_CREATION = "virtual_ip_creation"
     CHARACTER_PROFILE = "character_profile"
-    
+
     # 故事相关
     STORY_OUTLINE = "story_outline"
     STORY_SUMMARY = "story_summary"
-    
+
     # 剧集相关
     EPISODE_GENERATION = "episode_generation"
     EPISODE_OUTLINE = "episode_outline"
-    
+    EPISODE_LIST = "episode_list"  # 剧集列表生成
+
     # 剧本相关
     SCRIPT_GENERATION = "script_generation"
     SCENE_WRITING = "scene_writing"
     DIALOGUE_WRITING = "dialogue_writing"
     SCRIPT_SCENES = "script_scenes"
     SCRIPT_DIALOGUES = "script_dialogues"
-    
+    SCENE_DESCRIPTION = "scene_description"  # 场景描述
+
+    # 分镜相关
+    STORYBOARD_GENERATION = "storyboard_generation"  # 分镜生成
+    STORYBOARD_SHOT = "storyboard_shot"  # 单个分镜画面
+
     # 图像相关
     IMAGE_GENERATION = "image_generation"
     PORTRAIT_GENERATION = "portrait_generation"
     SCENE_IMAGE = "scene_image"
+    ENVIRONMENT_IMAGE = "environment_image"  # 环境图像
+
+    # 系统提示词 (System Prompts)
+    SYSTEM_PROMPT_STORY = "system_prompt_story"  # 故事创作系统提示
+    SYSTEM_PROMPT_SCRIPT = "system_prompt_script"  # 剧本创作系统提示
+    SYSTEM_PROMPT_JSON_STRICT = "system_prompt_json_strict"  # 严格JSON系统提示
 
 class ImageStyle(Enum):
     """图像风格枚举"""
@@ -93,22 +105,31 @@ class Pacing(Enum):
 TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.VIRTUAL_IP_CREATION: PromptCategory.CHARACTER,
     PromptTemplate.CHARACTER_PROFILE: PromptCategory.CHARACTER,
-    
+
     PromptTemplate.STORY_OUTLINE: PromptCategory.STORY,
     PromptTemplate.STORY_SUMMARY: PromptCategory.STORY,
-    
+
     PromptTemplate.EPISODE_GENERATION: PromptCategory.EPISODE,
     PromptTemplate.EPISODE_OUTLINE: PromptCategory.EPISODE,
-    
+    PromptTemplate.EPISODE_LIST: PromptCategory.EPISODE,
+
     PromptTemplate.SCRIPT_GENERATION: PromptCategory.SCRIPT,
     PromptTemplate.SCENE_WRITING: PromptCategory.SCRIPT,
     PromptTemplate.DIALOGUE_WRITING: PromptCategory.SCRIPT,
     PromptTemplate.SCRIPT_SCENES: PromptCategory.SCRIPT,
     PromptTemplate.SCRIPT_DIALOGUES: PromptCategory.SCRIPT,
-    
+    PromptTemplate.SCENE_DESCRIPTION: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_GENERATION: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_SHOT: PromptCategory.SCRIPT,
+
     PromptTemplate.IMAGE_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.PORTRAIT_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.SCENE_IMAGE: PromptCategory.IMAGE,
+    PromptTemplate.ENVIRONMENT_IMAGE: PromptCategory.IMAGE,
+
+    PromptTemplate.SYSTEM_PROMPT_STORY: PromptCategory.GENERAL,
+    PromptTemplate.SYSTEM_PROMPT_SCRIPT: PromptCategory.GENERAL,
+    PromptTemplate.SYSTEM_PROMPT_JSON_STRICT: PromptCategory.GENERAL,
 }
 
 # 默认参数配置

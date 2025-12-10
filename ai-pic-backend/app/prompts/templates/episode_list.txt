@@ -1,0 +1,60 @@
+你是一个专业的剧集编剧，擅长将故事概要分解为具体的剧集内容。请基于以下故事信息生成{{ episode_count }}集的剧集大纲：
+
+## 故事信息
+故事标题：{{ story.get('title', '未命名故事') }}
+类型：{{ story.get('genre', '剧情') }}
+故事概要：{{ story.get('synopsis', '暂无概要') }}
+主要冲突：{{ story.get('main_conflict', '暂无') }}
+
+## 剧集参数
+总集数：{{ episode_count }}集
+每集时长：{{ episode_duration or 30 }}分钟
+情节复杂度：{{ plot_complexity }}
+节奏控制：{{ pacing }}
+{% if focus_characters %}
+
+## 重点角色
+{% for char in focus_characters %}
+- {{ char.get('name', '未知') }}: {{ char.get('description', '暂无描述') }}
+{% endfor %}
+{% endif %}
+{% if additional_requirements %}
+
+## 特殊要求
+{{ additional_requirements }}
+{% endif %}
+
+## 输出格式
+请以JSON格式返回，包含episodes数组，每集包含：
+- episode_number: 集数
+- title: 剧集标题
+- summary: 剧集概要
+- plot_points: 主要情节点列表
+- character_arcs: 角色发展安排
+- conflicts: 本集的冲突设置
+- scene_count: 预估场景数量
+- scenes: 场景列表（数组），每个至少包含 scene_number, slug_line（如 INT. 办公室 - 日）, location, time_of_day, summary
+
+示例格式：
+{
+    "episodes": [
+        {
+            "episode_number": 1,
+            "title": "新的开始",
+            "summary": "介绍主要角色和背景设定",
+            "plot_points": [{"description": "角色出场", "timing": "开场"}],
+            "character_arcs": {"protagonist": "初始状态展示"},
+            "conflicts": [{"description": "内心困扰", "intensity": "low"}],
+            "scene_count": 5,
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "slug_line": "INT. 办公室 - 日",
+                    "location": "公司总部办公室",
+                    "time_of_day": "day",
+                    "summary": "场景概要，交代人物/冲突铺垫"
+                }
+            ]
+        }
+    ]
+}
