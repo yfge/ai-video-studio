@@ -24,7 +24,7 @@ from app.services.storyboard_reasoner import (
 from app.services.episode_agent import EpisodeLangGraphAgent
 from app.services.script_agent import ScriptLangGraphAgent
 from app.services.story_agent import StoryLangGraphAgent
-from app.utils.story_parser import extract_json_block
+from app.utils.json_utils import extract_json_block
 
 # 尝试导入AI服务管理器，如果失败则使用None
 try:

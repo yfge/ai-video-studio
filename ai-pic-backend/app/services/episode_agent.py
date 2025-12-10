@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from app.core.logging import get_logger
 from app.schemas.generation import EpisodePlanModel
-from app.utils.story_parser import extract_json_block
+from app.utils.json_utils import extract_json_block
 
 try:
     from langgraph.graph import StateGraph, END

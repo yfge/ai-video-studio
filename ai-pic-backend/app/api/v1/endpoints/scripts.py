@@ -26,6 +26,7 @@ from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryboardModel, StoryboardPlanModel, StoryboardPlanScene
 from app.core.logging import get_logger
 from app.utils.script_parser import extract_script_structure
+from app.utils.json_utils import extract_json_block
 import json
 
 
@@ -300,27 +301,6 @@ def _build_story_data(
         "previous_episode_summaries": previous_episode_summaries,
         "character_profiles": character_profiles,
     }
-
-
-def _unwrap_json_block(content: Optional[str]) -> str:
-    """去除被```json ```等Markdown代码块包裹的JSON文本。"""
-    if not content:
-        return ""
-
-    text = content.strip()
-    if text.startswith("```"):
-        text = text[3:]
-        newline = text.find("\n")
-        if newline != -1:
-            language = text[:newline].strip()
-            # 常见语言标签直接跳过
-            if language:
-                text = text[newline + 1 :]
-            else:
-                text = text[newline + 1 :]
-        text = text.rstrip("`")
-
-    return text.strip()
 
 
 def _normalize_script_content(
@@ -874,11 +854,11 @@ async def generate_script(
     if isinstance(raw_content, dict):
         ai_content = raw_content
     else:
-        normalized_text = _unwrap_json_block(raw_content)
-        try:
-            ai_content = json.loads(normalized_text)
-        except (json.JSONDecodeError, TypeError):
-            source_text = normalized_text if normalized_text else (raw_content or "")
+        parsed = extract_json_block(raw_content)
+        if parsed:
+            ai_content = parsed
+        else:
+            source_text = raw_content or ""
             extracted = extract_script_structure(source_text)
             ai_content = {
                 "content": extracted.get("content", source_text),
@@ -1014,7 +994,7 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             character_profiles=character_profiles,
         )
 
-        import anyio, json as _json
+        import anyio
 
         async def _run():
             prefer_provider = None
@@ -1043,11 +1023,11 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if isinstance(raw_content, dict):
             ai_content = raw_content
         else:
-            normalized_text = _unwrap_json_block(raw_content)
-            try:
-                ai_content = _json.loads(normalized_text)
-            except Exception:
-                source_text = normalized_text if normalized_text else (raw_content or "")
+            parsed = extract_json_block(raw_content)
+            if parsed:
+                ai_content = parsed
+            else:
+                source_text = raw_content or ""
                 extracted = extract_script_structure(source_text)
                 ai_content = {
                     "content": extracted.get("content", source_text),
@@ -1305,11 +1285,11 @@ async def generate_storyboard(
     if reasoner_result and reasoner_result.get("content"):
         try:
             reasoned_raw = reasoner_result.get("content")
-            if isinstance(reasoned_raw, dict):
-                reasoned_payload = reasoned_raw
-            else:
-                normalized_text = _unwrap_json_block(reasoned_raw)
-                reasoned_payload = json.loads(normalized_text)
+            reasoned_payload = (
+                reasoned_raw if isinstance(reasoned_raw, dict) else extract_json_block(reasoned_raw)
+            )
+            if not isinstance(reasoned_payload, dict):
+                raise ValueError("Storyboard reasoner returned non-JSON payload")
             StoryboardModel.model_validate(reasoned_payload)
             frames_generated = reasoned_payload.get("frames") or []
             provider_used = reasoner_result.get("provider_used") or prefer_provider
@@ -1389,15 +1369,12 @@ async def generate_storyboard(
                 pass
             try:
                 sb_raw = result.get("content")
-                if isinstance(sb_raw, dict):
-                    pass
-                else:
-                    normalized_text = _unwrap_json_block(sb_raw)
-                    sb_raw = json.loads(normalized_text)
+                if not isinstance(sb_raw, dict):
+                    sb_raw = extract_json_block(sb_raw)
             except Exception as exc:
                 logger.warning(f"StoryboardGen JSON parse failed: {exc}")
                 sb_raw = None
-            if sb_raw:
+            if isinstance(sb_raw, dict):
                 try:
                     sb_obj = StoryboardModel.model_validate(sb_raw)
                     sb_data = sb_obj.model_dump(mode="python")
@@ -2232,13 +2209,14 @@ async def regenerate_script(
     if isinstance(raw_content, dict):
         ai_content = raw_content
     else:
-        normalized_text = _unwrap_json_block(raw_content)
-        try:
-            ai_content = json.loads(normalized_text)
-        except (json.JSONDecodeError, TypeError):
-            extracted = extract_script_structure(normalized_text if normalized_text else (raw_content or ""))
+        parsed = extract_json_block(raw_content)
+        if parsed:
+            ai_content = parsed
+        else:
+            source_text = raw_content or ""
+            extracted = extract_script_structure(source_text)
             ai_content = {
-                "content": extracted.get("content", normalized_text if normalized_text else (raw_content or "")),
+                "content": extracted.get("content", source_text),
                 "scenes": extracted.get("scenes", []),
                 "dialogues": extracted.get("dialogues", []),
                 "stage_directions": extracted.get("stage_directions", []),

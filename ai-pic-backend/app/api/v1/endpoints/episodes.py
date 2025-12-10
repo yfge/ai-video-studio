@@ -17,7 +17,7 @@ from app.services.ai_service import ai_service
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 import json
-from app.utils.story_parser import extract_json_block
+from app.utils.json_utils import extract_json_block
 
 router = APIRouter()
 

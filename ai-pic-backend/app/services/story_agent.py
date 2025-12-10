@@ -6,7 +6,7 @@ from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryOutlineModel
-from app.utils.story_parser import extract_json_block
+from app.utils.json_utils import extract_json_block
 
 try:
     from langgraph.graph import StateGraph, END
