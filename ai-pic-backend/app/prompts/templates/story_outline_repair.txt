@@ -1,0 +1,13 @@
+你是一个严格的故事大纲审校器。请将输出修复为符合 StoryOutlineModel Schema 的纯 JSON。
+
+- Schema: {{ schema }}
+- 缺失/异常字段: {{ missing_fields | default([]) | join(', ') }}
+- 原始提示词:
+{{ original_prompt or '' }}
+- 原始输出:
+{{ original_output }}
+
+要求：
+1) 只返回 JSON，不要代码块或额外文字。
+2) 必须包含 premise、synopsis、main_conflict、resolution、character_relationships、main_characters 等关键字段，缺失时用合理占位（中文）补齐。
+3) 尽量保留原始信息，确保字段类型与 Schema 一致。

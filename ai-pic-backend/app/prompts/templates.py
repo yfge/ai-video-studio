@@ -53,6 +53,8 @@ class PromptTemplate(Enum):
     SYSTEM_PROMPT_STORY = "system_prompt_story"  # 故事创作系统提示
     SYSTEM_PROMPT_SCRIPT = "system_prompt_script"  # 剧本创作系统提示
     SYSTEM_PROMPT_JSON_STRICT = "system_prompt_json_strict"  # 严格JSON系统提示
+    STORY_OUTLINE_REPAIR = "story_outline_repair"
+    EPISODE_PLAN_REPAIR = "episode_plan_repair"
 
 class ImageStyle(Enum):
     """图像风格枚举"""
@@ -130,6 +132,8 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.SYSTEM_PROMPT_STORY: PromptCategory.GENERAL,
     PromptTemplate.SYSTEM_PROMPT_SCRIPT: PromptCategory.GENERAL,
     PromptTemplate.SYSTEM_PROMPT_JSON_STRICT: PromptCategory.GENERAL,
+    PromptTemplate.STORY_OUTLINE_REPAIR: PromptCategory.GENERAL,
+    PromptTemplate.EPISODE_PLAN_REPAIR: PromptCategory.GENERAL,
 }
 
 # 默认参数配置

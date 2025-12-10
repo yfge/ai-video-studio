@@ -1,0 +1,31 @@
+name: story_outline_repair
+description: "修复故事大纲输出为符合 StoryOutlineModel 的纯 JSON"
+category: general
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-10"
+updated_at: "2025-12-10"
+
+variables:
+  schema:
+    type: any
+    required: true
+    description: "StoryOutlineModel 的 JSON Schema"
+  missing_fields:
+    type: list
+    required: false
+    description: "校验失败时缺失或异常的字段路径列表"
+  original_prompt:
+    type: string
+    required: false
+    description: "初次生成使用的提示词"
+  original_output:
+    type: string
+    required: true
+    description: "需要修复的原始模型输出"
+
+usage_examples:
+  - schema: "{...StoryOutlineModel schema...}"
+    missing_fields: ["premise", "synopsis"]
+    original_prompt: "生成故事大纲"
+    original_output: "{\"premise\": \"...\"}"

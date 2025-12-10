@@ -46,88 +46,11 @@ class EpisodeLangGraphAgent:
 
         schema = EpisodePlanModel.model_json_schema()
 
-        async def _validate_and_repair(
-            content: Any,
-            *,
-            base_reasoning: list[str],
-            original_prompt: str | None,
-        ) -> Optional[Dict[str, Any]]:
-            """Parse + schema-validate, with up to 2 repair attempts via ReAct-style hints."""
-            reasoning = list(base_reasoning)
-            provider_used = None
-            model_used = None
-            usage = None
-            latest_text = (
-                content
-                if isinstance(content, str)
-                else ("" if content is None else str(content))
-            )
-
-            for attempt in range(3):
-                parsed = (
-                    extract_json_block(latest_text)
-                    if isinstance(latest_text, str)
-                    else (latest_text if isinstance(latest_text, dict) else None)
-                )
-                if parsed:
-                    try:
-                        EpisodePlanModel.model_validate(parsed)
-                        reasoning.append(f"validated_attempt_{attempt}")
-                        return {
-                            "normalized": parsed,
-                            "content": latest_text,
-                            "provider_used": provider_used,
-                            "model_used": model_used,
-                            "usage": usage,
-                            "reasoning": reasoning,
-                        }
-                    except Exception as exc:  # pragma: no cover - schema guard
-                        error_msg = str(exc)
-                        reasoning.append(f"schema_invalid_attempt_{attempt}:{error_msg}")
-                        self.logger.info(
-                            "LangGraph episode validation failed; retrying",
-                            extra={"attempt": attempt, "error": error_msg},
-                        )
-                else:
-                    reasoning.append(f"parse_failed_attempt_{attempt}")
-                    self.logger.info(
-                        "LangGraph episode parse failed; retrying",
-                        extra={"attempt": attempt},
-                    )
-
-                if attempt >= 2:
-                    break
-
-                repair_prompt_parts = [
-                    "以下是一次剧集规划的原始输出，需修复为满足 EpisodePlanModel Schema 的纯 JSON。",
-                    "请补齐 episodes 数组及必需字段（episode_number/title/summary/plot_points/conflicts/character_arcs），保持原有信息并用中文，严格只输出 JSON。",
-                    f"Schema: {schema}",
-                ]
-                if original_prompt:
-                    repair_prompt_parts.append(f"原始提示词:\n{original_prompt}")
-                repair_prompt_parts.append(f"原始输出:\n{latest_text}")
-                repair_prompt = "\n".join(repair_prompt_parts)
-                resp = await self.service.ai_manager.generate_text(
-                    prompt=repair_prompt,
-                    temperature=temperature,
-                    model=model,
-                    prefer_provider=prefer_provider,
-                    json_schema={"name": "episode_plan_repair", "schema": schema},
-                    system_prompt=prompt_manager.render_prompt(
-                        PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
-                    ),
-                )
-                latest_text = (
-                    resp.data
-                    if isinstance(resp.data, str)
-                    else ("" if resp.data is None else str(resp.data))
-                )
-                provider_used = resp.provider or provider_used
-                model_used = resp.model or model_used
-                usage = resp.usage or usage
-                reasoning.append(f"repair_attempt_{attempt + 1}")
-
-            return None
+        def _extract_missing_fields(exc: Exception) -> list[str]:
+            try:
+                return ["/".join(map(str, err.get("loc", []))) for err in exc.errors()]
+            except Exception:
+                return []
 
         graph = StateGraph(dict)
 
@@ -149,34 +72,92 @@ class EpisodeLangGraphAgent:
                 return {"error": "plan_failed", "reasoning": ["plan_failed"]}
             return {"result": res, "reasoning": ["plan_ok"]}
 
-        async def finalize_node(state: Dict[str, Any]) -> Dict[str, Any]:
+        async def repair_node(state: Dict[str, Any]) -> Dict[str, Any]:
             res = state.get("result") or {}
             content = res.get("content")
-            validation = await _validate_and_repair(
-                content,
-                base_reasoning=state.get("reasoning", []),
-                original_prompt=res.get("prompt"),
+            reasoning = list(state.get("reasoning", []))
+            provider_used = res.get("provider_used")
+            model_used = res.get("model_used")
+            usage = res.get("usage")
+            latest_text = (
+                content
+                if isinstance(content, str)
+                else ("" if content is None else str(content))
             )
-            if not validation:
-                return {
-                    "error": "episodes_invalid",
-                    "reasoning": state.get("reasoning", []) + ["episodes_invalid"],
-                    "content": res.get("content"),
-                }
 
-            res["normalized"] = validation["normalized"]
-            res["content"] = validation["content"]
-            res["generation_method"] = res.get("generation_method") or "langgraph_episode"
-            res["provider_used"] = validation.get("provider_used") or res.get("provider_used")
-            res["model_used"] = validation.get("model_used") or res.get("model_used")
-            res["usage"] = validation.get("usage") or res.get("usage")
-            res["reasoning"] = validation.get("reasoning", []) + ["done"]
-            return res
+            for attempt in range(3):
+                parsed = (
+                    extract_json_block(latest_text)
+                    if isinstance(latest_text, str)
+                    else (latest_text if isinstance(latest_text, dict) else None)
+                )
+                if parsed:
+                    try:
+                        EpisodePlanModel.model_validate(parsed)
+                        reasoning.append(f"validated_attempt_{attempt}")
+                        res["normalized"] = parsed
+                        res["content"] = latest_text
+                        res["generation_method"] = res.get("generation_method") or "langgraph_episode"
+                        res["provider_used"] = provider_used
+                        res["model_used"] = model_used
+                        res["usage"] = usage
+                        res["reasoning"] = reasoning + ["done"]
+                        return res
+                    except Exception as exc:  # pragma: no cover - schema guard
+                        missing_fields = _extract_missing_fields(exc)
+                        reasoning.append(f"schema_invalid_attempt_{attempt}")
+                        self.logger.info(
+                            "Episode validation failed; repairing",
+                            extra={"attempt": attempt, "missing": missing_fields},
+                        )
+                else:
+                    reasoning.append(f"parse_failed_attempt_{attempt}")
+                    self.logger.info(
+                        "Episode parse failed; repairing", extra={"attempt": attempt}
+                    )
+
+                if attempt >= 2:
+                    break
+
+                repair_prompt = prompt_manager.render_prompt(
+                    PromptTemplate.EPISODE_PLAN_REPAIR.value,
+                    {
+                        "schema": schema,
+                        "original_prompt": res.get("prompt"),
+                        "original_output": latest_text,
+                        "missing_fields": missing_fields if parsed else [],
+                    },
+                )
+                resp = await self.service.ai_manager.generate_text(
+                    prompt=repair_prompt,
+                    temperature=temperature,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    json_schema={"name": "episode_plan_repair", "schema": schema},
+                    system_prompt=prompt_manager.render_prompt(
+                        PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
+                    ),
+                )
+                latest_text = (
+                    resp.data
+                    if isinstance(resp.data, str)
+                    else ("" if resp.data is None else str(resp.data))
+                )
+                provider_used = resp.provider or provider_used
+                model_used = resp.model or model_used
+                usage = resp.usage or usage
+                reasoning.append(f"repair_attempt_{attempt + 1}")
+
+            return {
+                "error": "episodes_invalid",
+                "reasoning": reasoning + ["episodes_invalid"],
+                "content": content,
+            }
 
         graph.add_node("plan", plan_node)
-        graph.add_node("finalize", finalize_node)
-        graph.add_edge("plan", "finalize")
-        graph.add_edge("finalize", END)
+        graph.add_node("repair", repair_node)
+        graph.add_edge("plan", "repair")
+        graph.add_edge("repair", END)
         graph.set_entry_point("plan")
 
         app = graph.compile()

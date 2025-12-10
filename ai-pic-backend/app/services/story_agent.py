@@ -51,84 +51,11 @@ class StoryLangGraphAgent:
 
         schema = StoryOutlineModel.model_json_schema()
 
-        async def _validate_and_repair(
-            raw: Any, *, base_reasoning: list[str], original_prompt: str | None
-        ) -> Optional[Dict[str, Any]]:
-            """Validate against StoryOutlineModel; attempt up to 2 ReAct repair passes."""
-            reasoning = list(base_reasoning)
-            latest_text = (
-                raw
-                if isinstance(raw, str)
-                else ("" if raw is None else json.dumps(raw, ensure_ascii=False))
-            )
-            provider_used = None
-            model_used = None
-            usage = None
-
-            for attempt in range(3):
-                parsed = (
-                    extract_json_block(latest_text)
-                    if isinstance(latest_text, str)
-                    else (latest_text if isinstance(latest_text, dict) else None)
-                )
-                if parsed:
-                    try:
-                        StoryOutlineModel.model_validate(parsed)
-                        reasoning.append(f"validated_attempt_{attempt}")
-                        return {
-                            "normalized": parsed,
-                            "content": latest_text,
-                            "provider_used": provider_used,
-                            "model_used": model_used,
-                            "usage": usage,
-                            "reasoning": reasoning,
-                        }
-                    except Exception as exc:  # pragma: no cover - schema guard
-                        err = str(exc)
-                        reasoning.append(f"schema_invalid_attempt_{attempt}:{err}")
-                        self.logger.info(
-                            "LangGraph story validation failed; retrying",
-                            extra={"attempt": attempt, "error": err},
-                        )
-                else:
-                    reasoning.append(f"parse_failed_attempt_{attempt}")
-                    self.logger.info(
-                        "LangGraph story parse failed; retrying",
-                        extra={"attempt": attempt},
-                    )
-
-                if attempt >= 2:
-                    break
-
-                repair_prompt_parts = [
-                    "请将以下输出修复为符合 StoryOutlineModel Schema 的 JSON，保持原始信息并补齐缺失字段，严格只返回 JSON，不要代码块。",
-                    f"Schema: {schema}",
-                ]
-                if original_prompt:
-                    repair_prompt_parts.append(f"原始提示词:\n{original_prompt}")
-                repair_prompt_parts.append(f"原始输出:\n{latest_text}")
-                repair_prompt = "\n".join(repair_prompt_parts)
-                resp = await self.service.ai_manager.generate_text(
-                    prompt=repair_prompt,
-                    temperature=temperature,
-                    model=model,
-                    prefer_provider=prefer_provider,
-                    json_schema={"name": "story_outline_repair", "schema": schema},
-                    system_prompt=prompt_manager.render_prompt(
-                        PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
-                    ),
-                )
-                latest_text = (
-                    resp.data
-                    if isinstance(resp.data, str)
-                    else ("" if resp.data is None else str(resp.data))
-                )
-                provider_used = resp.provider or provider_used
-                model_used = resp.model or model_used
-                usage = resp.usage or usage
-                reasoning.append(f"repair_attempt_{attempt + 1}")
-
-            return None
+        def _extract_missing_fields(exc: Exception) -> list[str]:
+            try:
+                return ["/".join(map(str, err.get("loc", []))) for err in exc.errors()]
+            except Exception:
+                return []
 
         variables = {
             "title": title,
@@ -177,36 +104,90 @@ class StoryLangGraphAgent:
                 state_update["error"] = "draft_failed"
             return state_update
 
-        async def validate(state: Dict[str, Any]) -> Dict[str, Any]:
+        async def repair(state: Dict[str, Any]) -> Dict[str, Any]:
             content_text = state.get("content") or ""
-            validation = await _validate_and_repair(
-                content_text,
-                base_reasoning=state.get("reasoning", []),
-                original_prompt=state.get("prompt"),
-            )
-            if not validation:
-                return {
-                    "error": "schema_invalid",
-                    "raw": content_text,
-                    "reasoning": state.get("reasoning", []) + ["schema_invalid"],
-                }
+            reasoning = list(state.get("reasoning", []))
+            provider_used = state.get("provider")
+            model_used = state.get("model_used")
+            usage = state.get("usage")
+            latest_text = content_text
+
+            for attempt in range(3):
+                parsed = (
+                    extract_json_block(latest_text)
+                    if isinstance(latest_text, str)
+                    else (latest_text if isinstance(latest_text, dict) else None)
+                )
+                if parsed:
+                    try:
+                        StoryOutlineModel.model_validate(parsed)
+                        reasoning.append(f"validated_attempt_{attempt}")
+                        return {
+                            "content": latest_text,
+                            "normalized": parsed,
+                            "generation_method": "langgraph_story",
+                            "template_used": PromptTemplate.STORY_OUTLINE.value,
+                            "provider_used": provider_used,
+                            "model_used": model_used,
+                            "usage": usage,
+                            "prompt": state.get("prompt"),
+                            "reasoning": reasoning + ["validated"],
+                        }
+                    except Exception as exc:  # pragma: no cover - schema guard
+                        missing_fields = _extract_missing_fields(exc)
+                        reasoning.append(f"schema_invalid_attempt_{attempt}")
+                        self.logger.info(
+                            "Story validation failed; repairing",
+                            extra={"attempt": attempt, "missing": missing_fields},
+                        )
+                else:
+                    reasoning.append(f"parse_failed_attempt_{attempt}")
+                    self.logger.info(
+                        "Story parse failed; repairing", extra={"attempt": attempt}
+                    )
+
+                if attempt >= 2:
+                    break
+
+                repair_prompt = prompt_manager.render_prompt(
+                    PromptTemplate.STORY_OUTLINE_REPAIR.value,
+                    {
+                        "schema": schema,
+                        "original_prompt": state.get("prompt"),
+                        "original_output": latest_text,
+                        "missing_fields": missing_fields if parsed else [],
+                    },
+                )
+                resp = await self.service.ai_manager.generate_text(
+                    prompt=repair_prompt,
+                    temperature=temperature,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    json_schema={"name": "story_outline_repair", "schema": schema},
+                    system_prompt=prompt_manager.render_prompt(
+                        PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
+                    ),
+                )
+                latest_text = (
+                    resp.data
+                    if isinstance(resp.data, str)
+                    else ("" if resp.data is None else str(resp.data))
+                )
+                provider_used = resp.provider or provider_used
+                model_used = resp.model or model_used
+                usage = resp.usage or usage
+                reasoning.append(f"repair_attempt_{attempt + 1}")
 
             return {
-                "content": validation["content"],
-                "normalized": validation["normalized"],
-                "generation_method": "langgraph_story",
-                "template_used": PromptTemplate.STORY_OUTLINE.value,
-                "provider_used": validation.get("provider_used") or state.get("provider"),
-                "model_used": validation.get("model_used") or state.get("model_used"),
-                "usage": validation.get("usage") or state.get("usage"),
-                "prompt": state.get("prompt"),
-                "reasoning": validation.get("reasoning", []) + ["validated"],
+                "error": "schema_invalid",
+                "raw": latest_text,
+                "reasoning": reasoning + ["schema_invalid"],
             }
 
         graph.add_node("draft", draft)
-        graph.add_node("validate", validate)
-        graph.add_edge("draft", "validate")
-        graph.add_edge("validate", END)
+        graph.add_node("repair", repair)
+        graph.add_edge("draft", "repair")
+        graph.add_edge("repair", END)
         graph.set_entry_point("draft")
 
         app = graph.compile()
