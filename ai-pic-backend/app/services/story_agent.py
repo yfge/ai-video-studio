@@ -52,7 +52,7 @@ class StoryLangGraphAgent:
         schema = StoryOutlineModel.model_json_schema()
 
         async def _validate_and_repair(
-            raw: Any, *, base_reasoning: list[str]
+            raw: Any, *, base_reasoning: list[str], original_prompt: str | None
         ) -> Optional[Dict[str, Any]]:
             """Validate against StoryOutlineModel; attempt up to 2 ReAct repair passes."""
             reasoning = list(base_reasoning)
@@ -100,12 +100,14 @@ class StoryLangGraphAgent:
                 if attempt >= 2:
                     break
 
-                repair_prompt = (
-                    "请将以下输出修复为符合 StoryOutlineModel Schema 的 JSON，保持原始信息并补齐缺失字段，"
-                    " 严格只返回 JSON，不要代码块：\n"
-                    f"Schema: {schema}\n"
-                    f"原始输出:\n{latest_text}"
-                )
+                repair_prompt_parts = [
+                    "请将以下输出修复为符合 StoryOutlineModel Schema 的 JSON，保持原始信息并补齐缺失字段，严格只返回 JSON，不要代码块。",
+                    f"Schema: {schema}",
+                ]
+                if original_prompt:
+                    repair_prompt_parts.append(f"原始提示词:\n{original_prompt}")
+                repair_prompt_parts.append(f"原始输出:\n{latest_text}")
+                repair_prompt = "\n".join(repair_prompt_parts)
                 resp = await self.service.ai_manager.generate_text(
                     prompt=repair_prompt,
                     temperature=temperature,
@@ -178,7 +180,9 @@ class StoryLangGraphAgent:
         async def validate(state: Dict[str, Any]) -> Dict[str, Any]:
             content_text = state.get("content") or ""
             validation = await _validate_and_repair(
-                content_text, base_reasoning=state.get("reasoning", [])
+                content_text,
+                base_reasoning=state.get("reasoning", []),
+                original_prompt=state.get("prompt"),
             )
             if not validation:
                 return {

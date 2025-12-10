@@ -50,6 +50,7 @@ class EpisodeLangGraphAgent:
             content: Any,
             *,
             base_reasoning: list[str],
+            original_prompt: str | None,
         ) -> Optional[Dict[str, Any]]:
             """Parse + schema-validate, with up to 2 repair attempts via ReAct-style hints."""
             reasoning = list(base_reasoning)
@@ -97,13 +98,15 @@ class EpisodeLangGraphAgent:
                 if attempt >= 2:
                     break
 
-                repair_prompt = (
-                    "以下是一次剧集规划的原始输出，需修复为满足 EpisodePlanModel Schema 的纯 JSON。"
-                    " 请补齐 episodes 数组及必需字段（episode_number/title/summary/plot_points/conflicts/character_arcs），"
-                    " 保持原有信息并用中文，严格只输出 JSON：\n"
-                    f"Schema: {schema}\n"
-                    f"原始输出:\n{latest_text}"
-                )
+                repair_prompt_parts = [
+                    "以下是一次剧集规划的原始输出，需修复为满足 EpisodePlanModel Schema 的纯 JSON。",
+                    "请补齐 episodes 数组及必需字段（episode_number/title/summary/plot_points/conflicts/character_arcs），保持原有信息并用中文，严格只输出 JSON。",
+                    f"Schema: {schema}",
+                ]
+                if original_prompt:
+                    repair_prompt_parts.append(f"原始提示词:\n{original_prompt}")
+                repair_prompt_parts.append(f"原始输出:\n{latest_text}")
+                repair_prompt = "\n".join(repair_prompt_parts)
                 resp = await self.service.ai_manager.generate_text(
                     prompt=repair_prompt,
                     temperature=temperature,
@@ -150,7 +153,9 @@ class EpisodeLangGraphAgent:
             res = state.get("result") or {}
             content = res.get("content")
             validation = await _validate_and_repair(
-                content, base_reasoning=state.get("reasoning", [])
+                content,
+                base_reasoning=state.get("reasoning", []),
+                original_prompt=res.get("prompt"),
             )
             if not validation:
                 return {
