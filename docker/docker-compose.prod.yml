@@ -24,8 +24,7 @@ services:
     image: "registry.cn-beijing.aliyuncs.com/geyunfei/ai-video-backend:${IMAGE_TAG:-latest}"
     env_file:
       - .env
-    working_dir: /app/ai-pic-backend
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    command: ["/bin/bash", "/app/backend-entrypoint.sh"]
     volumes:
       - uploads_data:/app/ai-pic-backend/uploads
     depends_on:

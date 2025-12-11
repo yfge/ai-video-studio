@@ -13,9 +13,12 @@ COPY ai-pic-backend/requirements.txt ai-pic-backend/requirements-test.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ai-pic-backend ./ai-pic-backend
+COPY docker/backend-entrypoint.sh ./backend-entrypoint.sh
+RUN chmod +x ./backend-entrypoint.sh
+
 WORKDIR /app/ai-pic-backend
 
-ENV UVICORN_WORKERS=4
+ENV UVICORN_WORKERS=4 \
+    UVICORN_RELOAD=0
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
-
+CMD ["/bin/bash", "/app/backend-entrypoint.sh"]

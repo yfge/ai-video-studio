@@ -38,4 +38,11 @@ if ! alembic upgrade head; then
 fi
 
 echo "[backend-entrypoint] Starting uvicorn..."
-exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+if [[ "${UVICORN_RELOAD:-1}" == "1" ]]; then
+  echo "[backend-entrypoint] Using reload mode for development"
+  exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+else
+  workers="${UVICORN_WORKERS:-4}"
+  echo "[backend-entrypoint] Using ${workers} workers for production"
+  exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers "${workers}"
+fi
