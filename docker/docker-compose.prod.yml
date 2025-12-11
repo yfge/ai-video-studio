@@ -21,9 +21,7 @@ services:
 
   ai-video-backend:
     container_name: ai-video-backend
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.backend.prod
+    image: "registry.cn-beijing.aliyuncs.com/geyunfei/ai-video-backend:${IMAGE_TAG:-latest}"
     env_file:
       - .env
     working_dir: /app/ai-pic-backend
@@ -37,9 +35,7 @@ services:
 
   ai-video-frontend:
     container_name: ai-video-frontend
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.frontend.prod
+    image: "registry.cn-beijing.aliyuncs.com/geyunfei/ai-video-frontend:${IMAGE_TAG:-latest}"
     env_file:
       - .env
     working_dir: /app/ai-pic-frontend
@@ -64,4 +60,3 @@ volumes:
   mysql_data:
   redis_data:
   uploads_data:
-
