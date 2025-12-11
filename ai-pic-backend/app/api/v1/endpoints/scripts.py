@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from collections import defaultdict
 from uuid import UUID, uuid4
+from urllib.parse import urlparse, urlunparse
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -74,6 +75,13 @@ def _abs_url(url: str) -> str:
     if not url:
         return ""
     if url.startswith("http"):
+        # 将 localhost/127.0.0.1 替换为 INTERNAL_BACKEND_URL，便于容器内访问
+        parsed = urlparse(url)
+        if parsed.hostname in {"localhost", "127.0.0.1"}:
+            base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+            base_parsed = urlparse(base)
+            rebuilt = parsed._replace(netloc=base_parsed.netloc, scheme=base_parsed.scheme)
+            return urlunparse(rebuilt)
         return url
     if not url.startswith("/"):
         url = "/" + url
