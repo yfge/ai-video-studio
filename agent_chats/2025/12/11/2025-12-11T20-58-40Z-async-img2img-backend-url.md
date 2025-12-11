@@ -29,4 +29,4 @@ summary: "Ensure Celery img2img tasks resolve backend URL off localhost to keep 
 - [ ] Run Chrome end-to-end check for an async img2img path once backend is reachable.
 
 ## Linked Commits
-- (pending)
+- 5066500 fix(backend): default internal backend url for workers
