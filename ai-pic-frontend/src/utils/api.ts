@@ -169,6 +169,7 @@ export interface ImageToImageRequestPayload {
   prefer_provider?: string;
   count?: number;
   size?: string;
+  reference_images?: string[];
 }
 
 export interface AIModel {
@@ -846,10 +847,28 @@ class ApiClient {
   }
 
   // 任务相关 API
-  async getTasks(): Promise<
+  async getTasks(params?: {
+    page?: number;
+    size?: number;
+    status_filter?: string;
+    task_type?: string;
+  }): Promise<
     ApiResponse<{ tasks: Task[]; total: number; page: number; size: number }>
   > {
-    return this.request("/api/v1/tasks");
+    const searchParams = new URLSearchParams();
+    const size = params?.size && params.size > 0 ? params.size : 20;
+    const page = params?.page && params.page > 0 ? params.page : 1;
+    searchParams.append("skip", String((page - 1) * size));
+    searchParams.append("limit", String(size));
+    if (params?.status_filter) {
+      searchParams.append("status_filter", params.status_filter);
+    }
+    if (params?.task_type) {
+      searchParams.append("task_type", params.task_type);
+    }
+    const qs = searchParams.toString();
+    const endpoint = qs ? `/api/v1/tasks?${qs}` : "/api/v1/tasks";
+    return this.request(endpoint);
   }
 
   async createTask(taskData: CreateTaskRequest): Promise<ApiResponse<Task>> {
@@ -1225,6 +1244,45 @@ class ApiClient {
     );
   }
 
+  async generateEnvironmentImagesAsync(
+    envId: number,
+    payload: {
+      prompt?: string;
+      model?: string;
+      count?: number;
+      size?: string;
+      style?: string;
+    },
+  ): Promise<ApiResponse<{ task_id: number; status: string }>> {
+    return this.request(
+      `/api/v1/story-structure/environments/${envId}/images/generate-async`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+
+  async generateEnvironmentImageVariantsAsync(
+    envId: number,
+    payload: {
+      base_image?: string;
+      prompt?: string;
+      model?: string;
+      count?: number;
+      size?: string;
+      style?: string;
+    },
+  ): Promise<ApiResponse<{ task_id: number; status: string }>> {
+    return this.request(
+      `/api/v1/story-structure/environments/${envId}/images/variants-async`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+
   async deleteEnvironmentImage(
     envId: number,
     imageUrl: string,
@@ -1442,6 +1500,34 @@ class ApiClient {
     const qs = params.toString();
     return this.request<StoryboardPayload>(
       `/api/v1/scripts/${scriptId}/storyboard/generate${qs ? `?${qs}` : ""}`,
+      { method: "POST" },
+    );
+  }
+  async generateStoryboardAsync(
+    scriptId: number,
+    data?: {
+      model?: string;
+      temperature?: number;
+      frames_per_scene?: number;
+      max_frames?: number;
+      scene_numbers?: number[];
+      use_plan?: boolean;
+    },
+  ) {
+    const params = new URLSearchParams();
+    if (data?.model) params.append("model", data.model);
+    if (typeof data?.temperature === "number")
+      params.append("temperature", String(data.temperature));
+    if (typeof data?.frames_per_scene === "number")
+      params.append("frames_per_scene", String(data.frames_per_scene));
+    if (typeof data?.max_frames === "number")
+      params.append("max_frames", String(data.max_frames));
+    if (data?.scene_numbers && data.scene_numbers.length > 0)
+      params.append("scene_numbers", data.scene_numbers.join(","));
+    if (data?.use_plan) params.append("use_plan", "true");
+    const qs = params.toString();
+    return this.request<{ task_id: number; status: string }>(
+      `/api/v1/scripts/${scriptId}/storyboard/generate-async${qs ? `?${qs}` : ""}`,
       { method: "POST" },
     );
   }
@@ -1802,6 +1888,7 @@ export const scriptAPI = {
   getStoryboard: apiClient.getStoryboard.bind(apiClient),
   previewStoryboardPrompt: apiClient.previewStoryboardPrompt.bind(apiClient),
   generateStoryboard: apiClient.generateStoryboard.bind(apiClient),
+  generateStoryboardAsync: apiClient.generateStoryboardAsync.bind(apiClient),
   generateStoryboardVideo: apiClient.generateStoryboardVideo.bind(apiClient),
   generateStoryboardImages: apiClient.generateStoryboardImages.bind(apiClient),
   updateStoryboard: apiClient.updateStoryboard.bind(apiClient),
@@ -1822,6 +1909,10 @@ export const storyStructureAPI = {
     apiClient.generateEnvironmentImages.bind(apiClient),
   generateEnvironmentImageVariants:
     apiClient.generateEnvironmentImageVariants.bind(apiClient),
+  generateEnvironmentImagesAsync:
+    apiClient.generateEnvironmentImagesAsync.bind(apiClient),
+  generateEnvironmentImageVariantsAsync:
+    apiClient.generateEnvironmentImageVariantsAsync.bind(apiClient),
   deleteEnvironmentImage: apiClient.deleteEnvironmentImage.bind(apiClient),
   updateScene: apiClient.updateScene.bind(apiClient),
   updateSceneShot: apiClient.updateSceneShot.bind(apiClient),
@@ -1873,6 +1964,28 @@ export const virtualIPImageAPI = {
     );
   },
 
+  // 文生图（异步：通过 Task 执行）
+  generateImageAsync: async (
+    virtualIPId: number,
+    request: AIImageGenerationRequest,
+  ): Promise<ApiResponse<{ task_id: number; status: string }>> => {
+    return apiClient.makeRequest(
+      `/api/v1/virtual-ips/${virtualIPId}/images/generate-async`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          style: request.style,
+          category: request.category,
+          model: request.model,
+          additional_prompts: request.additional_prompts,
+          is_default: request.is_default,
+          count: request.count ?? 1,
+          size: request.size,
+        }),
+      },
+    );
+  },
+
   // 图生图（通用接口：仅返回 URL，不入库）
   generateVariantFromImage: async (
     imageUrl: string,
@@ -1908,6 +2021,30 @@ export const virtualIPImageAPI = {
           model: payload.model,
           count: payload.count ?? 1,
           size: payload.size,
+        }),
+      },
+    );
+  },
+
+  // 图生图（异步：通过 Task 执行）
+  generateVariantAndSaveAsync: async (
+    virtualIPId: number,
+    imageId: number,
+    payload: Pick<
+      ImageToImageRequestPayload,
+      "prompt" | "model" | "count" | "size" | "reference_images"
+    >,
+  ): Promise<ApiResponse<{ task_id: number; status: string }>> => {
+    return apiClient.makeRequest(
+      `/api/v1/virtual-ips/${virtualIPId}/images/${imageId}/variants-async`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          prompt: payload.prompt,
+          model: payload.model,
+          count: payload.count ?? 1,
+          size: payload.size,
+          reference_images: payload.reference_images,
         }),
       },
     );

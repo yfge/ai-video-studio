@@ -6,7 +6,6 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   aiAPI,
   AIModelType,
-  taskAPI,
   virtualIPAPI,
   virtualIPImageAPI,
   type AIImageGenerationRequest,
@@ -167,13 +166,12 @@ export default function VirtualIPImagesPage() {
         return;
       }
 
-      const response = await virtualIPImageAPI.generateImage(virtualIPId, {
+      const response = await virtualIPImageAPI.generateImageAsync(virtualIPId, {
         ...generateForm,
         model: modelToUse,
       });
 
       if (response.success && response.data) {
-        setImages(prev => [response.data as VirtualIPImage, ...prev]);
         setShowGenerateForm(false);
         setGenerateForm({
           style: 'realistic',
@@ -184,14 +182,24 @@ export default function VirtualIPImagesPage() {
           count: 1,
           size: undefined,
         });
-        showAlert({ message: 'AI图像生成成功！', variant: 'success' });
+        showAlert({
+          title: '已创建图像生成任务',
+          message: '任务会在后台异步执行，是否前往任务管理页面查看进度？',
+          variant: 'success',
+          confirmText: '前往任务页',
+          onConfirm: () => {
+            router.push('/tasks');
+          },
+        });
       } else {
-        throw new Error(response.error || 'AI图像生成失败');
+        throw new Error(response.error || 'AI图像生成任务创建失败');
       }
     } catch (error) {
       console.error('AI图像生成失败:', error);
       showAlert({
-        message: `AI图像生成失败: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message: `AI图像生成失败: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
         variant: 'error',
       });
     } finally {
@@ -290,44 +298,6 @@ export default function VirtualIPImagesPage() {
     }
   };
 
-  const handleCreateTask = async () => {
-    try {
-      const selectedModel = availableModels.find(
-        m => m.model_id === (generateForm.model || recommendedModel)
-      );
-      
-      const taskData = {
-        title: `${virtualIP?.name} - ${generateForm.category} 图像生成`,
-        prompt: `为虚拟IP "${virtualIP?.name}" 生成${generateForm.category}图像，风格：${generateForm.style}，额外提示：${generateForm.additional_prompts}`,
-        platform: selectedModel?.provider === 'openai' ? 'gpt' : 
-                  selectedModel?.provider === 'keling' ? 'keling' : 'jimeng'
-      };
-
-      const response = await taskAPI.createTask(taskData);
-      
-      if (response.success) {
-        setShowGenerateForm(false);
-        showAlert({
-          title: '任务创建成功',
-          message: '是否前往任务管理页面查看进度？',
-          variant: 'success',
-          confirmText: '前往任务页',
-          onConfirm: () => {
-            router.push('/tasks');
-          },
-        });
-      } else {
-        throw new Error(response.error || '创建任务失败');
-      }
-    } catch (error) {
-      console.error('创建任务失败:', error);
-      showAlert({
-        message: `创建任务失败: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: 'error',
-      });
-    }
-  };
-
   const filteredImages = selectedCategory 
     ? images.filter(img => img.category === selectedCategory)
     : images;
@@ -367,7 +337,7 @@ export default function VirtualIPImagesPage() {
 
     try {
       setVariantSubmitting(true);
-      const res = await virtualIPImageAPI.generateVariantAndSave(
+      const res = await virtualIPImageAPI.generateVariantAndSaveAsync(
         virtualIPId,
         variantTarget.id,
         {
@@ -375,17 +345,21 @@ export default function VirtualIPImagesPage() {
           model: modelFallback || undefined,
           count: payload.count,
           size: payload.size || generateForm.size,
+          reference_images: payload.referenceImages,
         },
       );
       if (!res.success || !res.data) {
         throw new Error(res.error || '图生图生成失败');
       }
-      const createdImages = (Array.isArray(res.data) ? res.data : [res.data]) as VirtualIPImage[];
-      setImages(prev => [...createdImages, ...prev]);
       showAlert({
-        title: '已提交图生图任务',
-        message: '生成完成的变体会自动添加到当前列表。',
+        title: '已创建图生图任务',
+        message:
+          '任务会在后台异步执行，生成完成后刷新本页即可看到新图像，是否前往任务管理页面查看进度？',
         variant: 'success',
+        confirmText: '前往任务页',
+        onConfirm: () => {
+          router.push('/tasks');
+        },
       });
       setVariantTarget(null);
       setVariantPrompt('');
@@ -619,14 +593,7 @@ export default function VirtualIPImagesPage() {
                 disabled={generating}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
-                {generating ? '生成中...' : '立即生成'}
-              </button>
-              <button
-                onClick={handleCreateTask}
-                disabled={generating}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                创建任务
+                {generating ? '提交中...' : '提交生成任务'}
               </button>
               <button
                 onClick={() => setShowGenerateForm(false)}
