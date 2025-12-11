@@ -37,6 +37,7 @@ from app.schemas.story_structure import (
     EnvironmentUpdate,
 )
 from app.core.config import settings
+from app.utils.model_utils import parse_model_and_provider, normalize_openai_image_style
 
 
 router = APIRouter()
