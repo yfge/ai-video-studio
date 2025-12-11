@@ -1,5 +1,5 @@
-// API 基础配置
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// API 基础配置：默认使用相对路径，生产通过反向代理到后端
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 // 通用响应类型
 export interface ApiResponse<T = unknown> {
