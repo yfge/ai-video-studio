@@ -51,6 +51,9 @@ def test_db_session(db_session):
 def mock_ai_service(monkeypatch):
     """mock AI 服务，避免真实外部依赖。"""
     from app.services import ai_service as ai_module
+    from app.api.v1.endpoints import stories as stories_ep
+    from app.api.v1.endpoints import episodes as episodes_ep
+    from app.api.v1.endpoints import scripts as scripts_ep
 
     uploads_dir = Path(settings.UPLOAD_DIR)
     uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -58,6 +61,31 @@ def mock_ai_service(monkeypatch):
     created_files: List[Path] = []
 
     class _MockAIService:
+        def __init__(self) -> None:
+            # 提供一个最小的 ai_manager mock，支持 image_to_image
+            class _MockAIManager:
+                async def image_to_image(
+                    self,
+                    image_url: str,
+                    prompt: str,
+                    model: str | None = None,
+                    prefer_provider: str | None = None,
+                    count: int = 1,
+                    size: str | None = None,
+                    **_: str,
+                ):
+                    from types import SimpleNamespace
+
+                    return SimpleNamespace(
+                        success=True,
+                        data={"images": [f"https://example.com/mock-img2img/{uuid4().hex}.png"]},
+                        provider=prefer_provider or "mock-provider",
+                        model=model or "mock-model",
+                        usage={},
+                    )
+
+            self.ai_manager = _MockAIManager()
+
         async def generate_virtual_ip_image(
             self,
             ip_name: str,
@@ -81,6 +109,42 @@ def mock_ai_service(monkeypatch):
                 "oss_upload": None,
                 "usage": {"provider": "mock-provider", "model": model or "mock-model"},
                 "additional_prompts": list(additional_prompts or []),
+            }
+
+        async def _persist_generated_image(
+            self,
+            image_data: str,
+            *,
+            ip_name: str,
+            category: str,
+            prefix: str,
+            metadata: dict | None = None,
+            require_upload: bool = False,
+        ) -> dict:
+            # 直接在本地生成一个假的图片文件，模拟下载+上传后的返回结构
+            filename = f"mock-variant-{uuid4().hex}.png"
+            file_path = uploads_dir / filename
+            file_path.write_bytes(b"mock image bytes")
+            created_files.append(file_path)
+
+            oss_url = None
+            oss_upload = None
+            if require_upload:
+                oss_url = f"https://oss.example.com/{prefix}/{filename}"
+                oss_upload = {"success": True, "file_url": oss_url}
+
+            return {
+                "local_file_path": str(file_path),
+                "relative_path": f"/uploads/{filename}",
+                "file_size": file_path.stat().st_size,
+                "filename": filename,
+                "oss_url": oss_url,
+                "oss_upload": oss_upload,
+                "metadata": metadata or {},
+                "ip_name": ip_name,
+                "category": category,
+                "prefix": prefix,
+                "source_image": image_data,
             }
 
         async def generate_story_outline(self, **_: str) -> dict:
@@ -110,7 +174,13 @@ def mock_ai_service(monkeypatch):
                         "summary": "Mock summary",
                         "plot_points": [{"order": 1, "description": "Mock plot"}],
                         "character_arcs": {"Hero": "Learns trust"},
-                        "conflicts": ["Mock conflict"],
+                        "conflicts": [
+                            {
+                                "type": "mock",
+                                "description": "Mock conflict",
+                                "intensity": "medium",
+                            }
+                        ],
                         "scene_count": 3,
                     }
                     for idx in range(episode_count or 1)
@@ -149,6 +219,10 @@ def mock_ai_service(monkeypatch):
     original_service = ai_module.ai_service
     mock_service = _MockAIService()
     monkeypatch.setattr(ai_module, "ai_service", mock_service)
+    # 覆盖各业务端点模块中缓存的 ai_service 引用，确保所有生成路径都使用 mock
+    monkeypatch.setattr(stories_ep, "ai_service", mock_service)
+    monkeypatch.setattr(episodes_ep, "ai_service", mock_service)
+    monkeypatch.setattr(scripts_ep, "ai_service", mock_service)
 
     try:
         yield mock_service

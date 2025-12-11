@@ -28,6 +28,8 @@ from app.schemas.generation import StoryboardModel, StoryboardPlanModel, Storybo
 from app.core.logging import get_logger
 from app.utils.script_parser import extract_script_structure
 from app.utils.json_utils import extract_json_block
+from app.models.task import Task, TaskStatus
+from app.services.task_worker import script_generate_task
 import json
 
 
@@ -855,7 +857,19 @@ async def generate_script(
     
     if not result:
         raise HTTPException(status_code=500, detail="AI剧本生成失败")
-    
+
+    # 结构化 agent 运行信息，便于落库与排查
+    agent_run: Dict[str, Any] = {}
+    if isinstance(result, dict):
+        agent_run = {
+            "generation_method": result.get("generation_method"),
+            "template_used": result.get("template_used"),
+            "provider_used": result.get("provider_used"),
+            "model_used": result.get("model_used"),
+            "usage": result.get("usage"),
+            "reasoning": result.get("reasoning"),
+        }
+
     # 解析AI生成的内容
     raw_content = result.get("content")
     if isinstance(raw_content, dict):
@@ -898,7 +912,16 @@ async def generate_script(
     
     # 创建剧本记录
     # 额外元数据
-    extra_meta = {k: v for k, v in ai_content.items() if k not in {"content","scenes","dialogues","stage_directions","metadata"}}
+    extra_meta = {
+        k: v
+        for k, v in ai_content.items()
+        if k not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
+    }
+    if agent_run:
+        extra_meta = {
+            **(extra_meta or {}),
+            "agent_run": agent_run,
+        }
 
     db_script = Script(
         episode_id=request.episode_id,
@@ -979,7 +1002,6 @@ async def preview_script_prompt(
 
 def _process_script_generation_task(task_id: int, request_dict: dict, user_id: int):
     from app.core.database import SessionLocal
-    from app.models.task import Task, TaskStatus
     db = SessionLocal()
     try:
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -1037,6 +1059,17 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if not result:
             raise RuntimeError("AI剧本生成失败")
 
+        agent_run: Dict[str, Any] = {}
+        if isinstance(result, dict):
+            agent_run = {
+                "generation_method": result.get("generation_method"),
+                "template_used": result.get("template_used"),
+                "provider_used": result.get("provider_used"),
+                "model_used": result.get("model_used"),
+                "usage": result.get("usage"),
+                "reasoning": result.get("reasoning"),
+            }
+
         raw_content = result.get("content")
         if isinstance(raw_content, dict):
             ai_content = raw_content
@@ -1069,7 +1102,16 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
             scenes, dialogues_raw, stage_directions_raw, story=story
         )
-        extra_meta = {k: v for k, v in ai_content.items() if k not in {"content","scenes","dialogues","stage_directions","metadata"}}
+        extra_meta = {
+            k: v
+            for k, v in ai_content.items()
+            if k not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
+        }
+        if agent_run:
+            extra_meta = {
+                **(extra_meta or {}),
+                "agent_run": agent_run,
+            }
 
         word_count = len(script_content.split()) if script_content else 0
         character_count = len(script_content) if script_content else 0
@@ -1124,7 +1166,6 @@ async def generate_script_async(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
-    from app.models.task import Task
     t = Task(
         title=f"生成剧本 - 剧集{request.episode_id}",
         description="异步剧本生成",
@@ -1137,7 +1178,8 @@ async def generate_script_async(
     db.commit()
     db.refresh(t)
 
-    background_tasks.add_task(_process_script_generation_task, t.id, request.dict(), current_user.id)
+    # 交给 Celery worker 处理
+    script_generate_task.delay(t.id, request.dict(), current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 
@@ -2126,7 +2168,6 @@ async def generate_storyboard_video(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
-    from app.models.task import Task
     t = Task(
         title=f"分镜视频生成 - 剧本{script_id}",
         description="根据分镜生成视频",
@@ -2351,7 +2392,18 @@ async def regenerate_script(
     
     if not result:
         raise HTTPException(status_code=500, detail="AI剧本重新生成失败")
-    
+
+    agent_run: Dict[str, Any] = {}
+    if isinstance(result, dict):
+        agent_run = {
+            "generation_method": result.get("generation_method"),
+            "template_used": result.get("template_used"),
+            "provider_used": result.get("provider_used"),
+            "model_used": result.get("model_used"),
+            "usage": result.get("usage"),
+            "reasoning": result.get("reasoning"),
+        }
+
     # 解析AI生成的内容
     raw_content = result.get("content")
     if isinstance(raw_content, dict):
@@ -2392,6 +2444,12 @@ async def regenerate_script(
     script.stage_directions = stage_directions
     script.generation_prompt = result.get("prompt")
     script.ai_model = result.get("generation_method")
+
+    # 更新 agent 运行元信息
+    if agent_run:
+        meta = dict(script.extra_metadata or {})
+        meta["agent_run"] = agent_run
+        script.extra_metadata = meta
     
     # 重新计算统计信息
     script.word_count = len(script_content.split()) if script_content else 0

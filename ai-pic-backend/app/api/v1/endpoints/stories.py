@@ -23,6 +23,7 @@ from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 import json
 from app.models.task import Task, TaskType, TaskStatus
+from app.services.task_worker import story_generate_task
 
 router = APIRouter()
 
@@ -146,6 +147,22 @@ async def generate_story(
             result.get("content") if isinstance(result, dict) else ""
         )
 
+    # 结构化 agent 运行信息，便于排查与审计
+    agent_run = {}
+    if isinstance(result, dict):
+        agent_run = {
+            "generation_method": result.get("generation_method"),
+            "template_used": result.get("template_used"),
+            "provider_used": result.get("provider_used"),
+            "model_used": result.get("model_used"),
+            "usage": result.get("usage"),
+            "reasoning": result.get("reasoning"),
+        }
+
+    extra_metadata = _build_extra_metadata(ai_content)
+    if agent_run:
+        extra_metadata = {**extra_metadata, "agent_run": agent_run}
+
     # 创建故事记录
     story_data = {
         "user_id": current_user.id,
@@ -174,7 +191,7 @@ async def generate_story(
             "temperature": request.temperature or 0.7,
         },
         "tags": request.tags,
-        "extra_metadata": _build_extra_metadata(ai_content),
+        "extra_metadata": extra_metadata,
         "status": "draft",
     }
 
@@ -301,6 +318,18 @@ def _process_story_generation_task(task_id: int, request_dict: dict, user_id: in
         else:
             ai_content = extract_outline_from_text(result.get("content") or "")
 
+        # 结构化 agent 运行信息，方便落库与排查
+        agent_run = {}
+        if isinstance(result, dict):
+            agent_run = {
+                "generation_method": result.get("generation_method"),
+                "template_used": result.get("template_used"),
+                "provider_used": result.get("provider_used"),
+                "model_used": result.get("model_used"),
+                "usage": result.get("usage"),
+                "reasoning": result.get("reasoning"),
+            }
+
         story_data = {
             "user_id": user_id,
             "title": request_dict.get("title"),
@@ -333,7 +362,10 @@ def _process_story_generation_task(task_id: int, request_dict: dict, user_id: in
                 }
             },
             "tags": request_dict.get("tags"),
-            "extra_metadata": _build_extra_metadata(ai_content),
+            "extra_metadata": {
+                **_build_extra_metadata(ai_content),
+                "agent_run": agent_run,
+            },
             "status": "draft",
         }
 
@@ -389,17 +421,15 @@ async def generate_story_async(
         description="异步故事生成",
         task_type=TaskType.IMAGE_GENERATION,
         prompt=f"Story outline: {request.title}",
-        parameters=json.dumps(request.dict()),
+        parameters=json.dumps(request.dict(), ensure_ascii=False),
         user_id=current_user.id,
     )
     db.add(task)
     db.commit()
     db.refresh(task)
 
-    # 后台处理
-    background_tasks.add_task(
-        _process_story_generation_task, task.id, request.dict(), current_user.id
-    )
+    # 后台处理：交给 Celery worker，而非本进程 BackgroundTasks
+    story_generate_task.delay(task.id, request.dict(), current_user.id)
 
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 

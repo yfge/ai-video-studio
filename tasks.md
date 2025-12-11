@@ -56,6 +56,27 @@
 - 后端在 `generate_image` / `image_to_image` 中按模型映射规范化参数并记录实际下发规格，前端表单按模型展示受限尺寸
 - 增补模型×分辨率测试与 Ark 调试说明，校验文档覆盖背面照/全身照等变体
 
+## Feature: 任务队列与 Agent 执行落库（高优）
+
+:information_source: 背景：已有 Task 表与 Story/Episode/Script 异步生成入口（`/generate-async`）、前端任务管理页 `/tasks`，但任务执行目前依赖 `BackgroundTasks`、散落在各 endpoint 中，LangGraph Agents（故事/剧集/剧本）也未统一落库运行轨迹，难以在任务层面排查与审计。
+
+### 进度（功能→后端→前端→验证）
+
+- [ ] 功能/需求：统一 Story/Episode/Script/图像等任务到 Task 队列，使用 Celery Worker 处理，Agent 每次执行结果在 Task 与目标实体（Story/Episode/Script）上都可追踪
+- [ ] 后端：补全 `TaskType` 枚举（如 `story_generation` / `episode_generation` / `script_generation` / `image_generation`），提炼 `task_runner` / `task_worker`，以 Celery 任务消费 Task 表并调用 `AIService` / LangGraph Agents，更新 `Task.status` / `result_file_path` / `error_message`
+- [ ] 后端：在 Task 的 `parameters.agent_run` 中落库 agent 输入/输出（prompt、normalized 结构、provider/model、usage、reasoning），保证每次 LangGraph 执行有完整轨迹
+- [x] 后端：在 Story/Episode/Script 的 `extra_metadata.agent_run` 中写入 LangGraph/AI 管理器的运行信息，覆盖同步与 `/generate-async` 路径
+- [ ] 后端：为虚拟 IP 图像、环境图像、分镜图像等长耗时图像生成操作提供标准 Task 创建 + Celery 异步处理路径（与现有 `/api/v1/tasks` 结构对齐）
+- [x] 后端：新增 `app/core/celery_app.py` 与 `app/services/task_worker.py`，并在 `docker/docker-compose.prod.yml` 中增加 `ai-video-celery-worker` 服务（与 backend 共用镜像与配置）
+- [ ] 前端：在任务管理页 `/tasks` 中支持按 `task_type` 过滤，并在任务详情中展示 `parameters.agent_run` 的关键信息（provider/model/usage/reasoning）
+- [ ] 验证：为 Story/Episode/Script/图像任务增加集成测试（任务创建 → Celery handler 执行 → Task 状态与目标实体写入校验），并在 `TESTING_GUIDE.md` 中记录 Celery 本地运行与调试流程
+
+### 下一步
+
+- 先在后端实现 Celery 应用与通用 `process_task` 处理逻辑，并将 `/stories/episodes/scripts/*/generate-async` 与虚拟 IP 图像生成统一改造为创建 Task → `process_task.delay(task_id)` 调用链
+- 为 `StoryLangGraphAgent` / `EpisodeLangGraphAgent` / `ScriptLangGraphAgent` 增加标准化返回结构（明确 `normalized`、`provider_used`、`model_used`、`usage`、`reasoning` 字段），在 `AIService` 层集中写入实体与 Task 的 `agent_run`
+- 更新生产 `docker-compose.prod.yml`，增加 `celery_worker` service，并在部署文档中标记任务队列为核心组件；通过 `/tasks` + 诊断 API 验证任务与 Agent 执行轨迹可见
+
 ## Feature: 场景/环境资产与分镜联动
 
 :information_source: 背景：需要把环境/场景资产（办公室/学校/商场等）与角色 IP 绑定到分镜帧，支撑“分镜→图像→视频”闭环。

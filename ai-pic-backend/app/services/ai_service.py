@@ -1812,21 +1812,19 @@ class AIService:
             raise RuntimeError(f"OSS 上传失败: {oss_result}")
         return oss_result
 
-    async def _persist_generated_image(
+    async def _persist_local_image(
         self,
-        image_data: str,
+        local_file_path: str,
         *,
-        ip_name: str,
-        category: str,
         prefix: str,
         metadata: Optional[Dict[str, Any]] = None,
         require_upload: bool = False,
     ) -> Dict[str, Any]:
-        """下载/保存生成图像，并在配置 OSS 时上传，返回路径与元数据。"""
-        local_file_path = await self._download_image(image_data, ip_name, category)
-        if not local_file_path:
-            raise RuntimeError("图像下载失败")
+        """
+        将已存在的本地图像文件持久化（计算相对路径、可选上传 OSS）。
 
+        供不同来源的图像复用：包括 AI 生成后下载到本地的文件，以及用户直接上传落盘的文件。
+        """
         file_size = os.path.getsize(local_file_path)
         filename = os.path.basename(local_file_path)
         relative_path = f"/uploads/{filename}"
@@ -1857,6 +1855,60 @@ class AIService:
             "oss_url": oss_url,
             "oss_upload": oss_result,
         }
+
+    async def _persist_generated_image(
+        self,
+        image_data: str,
+        *,
+        ip_name: str,
+        category: str,
+        prefix: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        require_upload: bool = False,
+    ) -> Dict[str, Any]:
+        """下载/保存生成图像，并在配置 OSS 时上传，返回路径与元数据。"""
+        local_file_path = await self._download_image(image_data, ip_name, category)
+        if not local_file_path:
+            raise RuntimeError("图像下载失败")
+
+        return await self._persist_local_image(
+            local_file_path,
+            prefix=prefix,
+            metadata=metadata,
+            require_upload=require_upload,
+        )
+
+    async def persist_uploaded_image(
+        self,
+        file_bytes: bytes,
+        original_filename: str,
+        *,
+        prefix: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        require_upload: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        持久化用户上传的图像文件：先写入本地 uploads，再根据配置上传到 OSS。
+
+        返回结构与 _persist_generated_image 保持一致，便于上层统一处理。
+        """
+        import uuid
+        from pathlib import Path
+
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        ext = Path(original_filename).suffix or ".png"
+        unique_filename = f"{uuid.uuid4().hex}{ext}"
+        local_file_path = os.path.join(settings.UPLOAD_DIR, unique_filename)
+
+        with open(local_file_path, "wb") as f:
+            f.write(file_bytes)
+
+        return await self._persist_local_image(
+            local_file_path,
+            prefix=prefix,
+            metadata=metadata,
+            require_upload=require_upload,
+        )
 
     async def generate_video(
         self,

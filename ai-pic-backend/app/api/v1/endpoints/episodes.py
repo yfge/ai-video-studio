@@ -18,6 +18,8 @@ from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 import json
 from app.utils.json_utils import extract_json_block
+from app.models.task import Task, TaskStatus
+from app.services.task_worker import episode_generate_task
 
 router = APIRouter()
 
@@ -137,6 +139,18 @@ async def generate_episodes(
         raise HTTPException(status_code=500, detail="AI生成内容格式错误")
     episodes_data = ai_content.get("episodes", [])
 
+    # 结构化 agent 运行信息，便于落库与排查
+    agent_run = {}
+    if isinstance(result, dict):
+        agent_run = {
+            "generation_method": result.get("generation_method"),
+            "template_used": result.get("template_used"),
+            "provider_used": result.get("provider_used"),
+            "model_used": result.get("model_used"),
+            "usage": result.get("usage"),
+            "reasoning": result.get("reasoning"),
+        }
+
     # 创建剧集记录
     created_episodes = []
     for i, episode_data in enumerate(episodes_data[: request.episode_count]):
@@ -165,6 +179,12 @@ async def generate_episodes(
             "scene_count",
         }
         extra_meta = {k: v for k, v in episode_data.items() if k not in known_keys}
+        extra_metadata = extra_meta or None
+        if agent_run:
+            extra_metadata = {
+                **(extra_metadata or {}),
+                "agent_run": agent_run,
+            }
 
         db_episode = Episode(
             story_id=request.story_id,
@@ -185,7 +205,7 @@ async def generate_episodes(
                 "additional_requirements": request.additional_requirements,
                 "style_preferences": request.style_preferences,
             },
-            extra_metadata=extra_meta or None,
+            extra_metadata=extra_metadata,
             status="draft",
         )
 
@@ -472,6 +492,17 @@ async def regenerate_episode(
     if not result:
         raise HTTPException(status_code=500, detail="AI剧集重新生成失败")
 
+    agent_run = {}
+    if isinstance(result, dict):
+        agent_run = {
+            "generation_method": result.get("generation_method"),
+            "template_used": result.get("template_used"),
+            "provider_used": result.get("provider_used"),
+            "model_used": result.get("model_used"),
+            "usage": result.get("usage"),
+            "reasoning": result.get("reasoning"),
+        }
+
     # 解析AI生成的内容
     ai_content = (
         result.get("normalized") if isinstance(result, dict) else None
@@ -502,6 +533,11 @@ async def regenerate_episode(
             } or {}
             if scenes and "scenes" not in extra_meta:
                 extra_meta["scenes"] = scenes
+            if agent_run:
+                extra_meta = {
+                    **(extra_meta or {}),
+                    "agent_run": agent_run,
+                }
             episode.extra_metadata = extra_meta or None
             episode.generation_prompt = result["prompt"]
             episode.ai_model = result["generation_method"]
@@ -515,7 +551,6 @@ async def regenerate_episode(
 
 def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: int):
     from app.core.database import SessionLocal
-    from app.models.task import Task, TaskStatus
 
     db = SessionLocal()
     try:
@@ -595,6 +630,17 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             raise RuntimeError("AI生成内容格式错误")
         episodes_data = content.get("episodes", [])
 
+        agent_run = {}
+        if isinstance(result, dict):
+            agent_run = {
+                "generation_method": result.get("generation_method"),
+                "template_used": result.get("template_used"),
+                "provider_used": result.get("provider_used"),
+                "model_used": result.get("model_used"),
+                "usage": result.get("usage"),
+                "reasoning": result.get("reasoning"),
+            }
+
         created_ids = []
         for i, ep_data in enumerate(
             episodes_data[: request_dict.get("episode_count", 1)]
@@ -647,7 +693,10 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
                         "temperature",
                     ]
                 },
-                extra_metadata=extra_meta or None,
+                extra_metadata={
+                    **(extra_meta or {}),
+                    "agent_run": agent_run,
+                },
                 status="draft",
             )
             db.add(ep)
@@ -677,8 +726,6 @@ async def generate_episodes_async(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    from app.models.task import Task
-
     t = Task(
         title=f"生成剧集 - 故事{request.story_id}",
         description="异步剧集生成",
@@ -691,9 +738,8 @@ async def generate_episodes_async(
     db.commit()
     db.refresh(t)
 
-    background_tasks.add_task(
-        _process_episode_generation_task, t.id, request.dict(), current_user.id
-    )
+    # 交给 Celery worker 处理
+    episode_generate_task.delay(t.id, request.dict(), current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 

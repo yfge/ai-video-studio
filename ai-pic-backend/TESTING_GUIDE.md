@@ -198,6 +198,17 @@ def test_migration_sqlite_compatibility():
   ```
 - 覆盖场景、节拍顺序冲突、镜头号重复、beat 场景不匹配等 400 场景。
 
+## 异步任务与 Celery Worker
+
+- 后端异步故事/剧集/剧本生成（`/stories/generate-async`、`/episodes/generate-async`、`/scripts/generate-async`）通过 Celery 执行。
+- 本地验证异步任务时，需在 `ai-pic-backend` 目录下额外启动 worker：
+
+  ```bash
+  celery -A app.core.celery_app.celery_app worker -l info
+  ```
+
+- 生产环境中，`docker/docker-compose.prod.yml` 中的 `ai-video-celery-worker` 服务会自动随后端一同启动。
+
 ### 迁移验证与回滚
 - 在本地 MySQL/SQLite 运行迁移回填：
   ```bash

@@ -130,6 +130,123 @@ class TestVirtualIPAPI:
         assert result["success"] is True
         assert "image_url" in result
 
+    def test_generate_virtual_ip_image_variant(
+        self,
+        client: TestClient,
+        db_session: Session,
+        monkeypatch,
+    ):
+        """测试基于已有虚拟IP图像生成变体（图生图）"""
+        setup_factories(db_session)
+
+        virtual_ip = VirtualIPFactory()
+
+        # 手动创建一条基础图像记录，避免依赖过时的工厂字段
+        from app.models.virtual_ip import VirtualIPImage
+
+        base_image = VirtualIPImage(
+            virtual_ip_id=virtual_ip.id,
+            filename="base_test.png",
+            original_filename="base_test.png",
+            file_path="/uploads/base_test.png",
+            file_size=1024,
+            mime_type="image/png",
+            category="portrait",
+            subcategory=None,
+            tags=["test", "base"],
+            is_default=True,
+            is_public=True,
+        )
+        db_session.add(base_image)
+        db_session.commit()
+        db_session.refresh(base_image)
+
+        payload = {
+            "prompt": "为当前角色生成不同视角/姿态的图像，如背面照或全身照",
+            "model": "google:gemini-3-pro-image-preview",
+            "count": 1,
+        }
+
+        # 为本测试用例注入最小的 ai_service mock，避免真实外部调用
+        from app.api.v1.endpoints import virtual_ip_images as vip_images_module
+
+        class _DummyResp:
+            def __init__(self) -> None:
+                self.success = True
+                self.data = {"images": ["https://example.com/mock-img2img.png"]}
+                self.provider = "mock-provider"
+                self.model = "mock-model"
+                self.usage = {}
+
+        class _DummyAIManager:
+            async def image_to_image(
+                self,
+                image_url: str,
+                prompt: str,
+                model: str | None = None,
+                prefer_provider: str | None = None,
+                count: int = 1,
+                size: str | None = None,
+                **_: str,
+            ):
+                return _DummyResp()
+
+        class _DummyAIService:
+            def __init__(self) -> None:
+                self.ai_manager = _DummyAIManager()
+
+            async def _persist_generated_image(
+                self,
+                image_data: str,
+                *,
+                ip_name: str,
+                category: str,
+                prefix: str,
+                metadata: dict | None = None,
+                require_upload: bool = False,
+            ) -> dict:
+                filename = "variant_test.png"
+                return {
+                    "local_file_path": f"/tmp/{filename}",
+                    "relative_path": f"/uploads/{filename}",
+                    "file_size": 1024,
+                    "filename": filename,
+                    "oss_url": "https://oss.example.com/ai-generated/virtual-ip/image/variant_test.png"
+                    if require_upload
+                    else None,
+                    "oss_upload": {
+                        "success": True,
+                        "file_url": "https://oss.example.com/ai-generated/virtual-ip/image/variant_test.png",
+                    }
+                    if require_upload
+                    else None,
+                    "metadata": metadata or {},
+                    "ip_name": ip_name,
+                    "category": category,
+                    "prefix": prefix,
+                    "source_image": image_data,
+                }
+
+        dummy_service = _DummyAIService()
+        monkeypatch.setattr(vip_images_module, "ai_service", dummy_service)
+        # 避免真实文件系统依赖
+        monkeypatch.setattr(vip_images_module.os.path, "exists", lambda _: True)
+        monkeypatch.setattr(vip_images_module.os.path, "getsize", lambda _: 1024)
+
+        response = client.post(
+            f"/api/v1/virtual-ips/{virtual_ip.id}/images/{base_image.id}/variants",
+            json=payload,
+        )
+
+        # 如果失败，在断言消息中带上响应内容便于调试
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert isinstance(result, list)
+        assert len(result) == 1
+        image_item = result[0]
+        assert image_item["virtual_ip_id"] == virtual_ip.id
+        assert image_item["file_path"].startswith("/uploads/")
+
 
 @pytest.mark.integration
 class TestStoryAPI:
@@ -202,6 +319,7 @@ class TestStoryAPI:
         virtual_ip2 = VirtualIPFactory()
         
         data = {
+            "title": "Story Outline Title",
             "character_ids": [virtual_ip1.id, virtual_ip2.id],
             "genre": "Romance",
             "theme": "Love conquers all",
@@ -209,7 +327,6 @@ class TestStoryAPI:
             "duration_minutes": 120,
             "setting_time": "Modern",
             "setting_location": "New York",
-            "ai_service": "openai"
         }
         
         response = client.post("/api/v1/stories/generate", json=data)
@@ -217,7 +334,12 @@ class TestStoryAPI:
         assert response.status_code == 200
         result = response.json()
         assert result["success"] is True
-        assert "story" in result
+        story_payload = result["data"]
+        assert story_payload["title"] == data["title"]
+        extra_meta = story_payload.get("extra_metadata") or {}
+        agent_run = extra_meta.get("agent_run") or {}
+        # LangGraph / 管理器可能不同实现，这里仅校验字段存在与方法标记
+        assert "generation_method" in agent_run
     
     def test_update_story(self, client: TestClient, db_session: Session):
         """测试更新故事"""
@@ -310,15 +432,19 @@ class TestEpisodeAPI:
             "story_id": story.id,
             "episode_count": 3,
             "episode_duration": 15,
-            "ai_service": "openai"
         }
         
         response = client.post("/api/v1/episodes/generate", json=data)
         
         assert response.status_code == 200
         result = response.json()
-        assert result["success"] is True
-        assert "episodes" in result
+        assert isinstance(result, list)
+        assert len(result) == data["episode_count"]
+        first = result[0]
+        assert first["story_id"] == story.id
+        extra_meta = first.get("extra_metadata") or {}
+        agent_run = extra_meta.get("agent_run") or {}
+        assert "generation_method" in agent_run
 
 
 @pytest.mark.integration
@@ -374,17 +500,20 @@ class TestScriptAPI:
         
         data = {
             "episode_id": episode.id,
-            "format_type": "standard",
-            "style_requirements": "Romantic and emotional",
-            "ai_service": "openai"
+            "format_type": "screenplay",
+            "language": "zh-CN",
+            "dialogue_style": "natural",
+            "scene_detail_level": "medium",
         }
         
         response = client.post("/api/v1/scripts/generate", json=data)
         
         assert response.status_code == 200
         result = response.json()
-        assert result["success"] is True
-        assert "script" in result
+        assert result["episode_id"] == episode.id
+        extra_meta = result.get("extra_metadata") or {}
+        agent_run = extra_meta.get("agent_run") or {}
+        assert "generation_method" in agent_run
     
     def test_export_script(self, client: TestClient, db_session: Session):
         """测试导出剧本"""

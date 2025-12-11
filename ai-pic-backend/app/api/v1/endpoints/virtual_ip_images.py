@@ -32,34 +32,6 @@ def _get_owned_virtual_ip(
         raise HTTPException(status_code=404, detail="虚拟IP不存在")
     return vip
 
-def save_virtual_ip_image(upload_file: UploadFile, virtual_ip_id: int) -> tuple[str, str, int]:
-    """保存虚拟IP图像文件"""
-    # 生成唯一文件名
-    file_extension = os.path.splitext(upload_file.filename)[1]
-    if file_extension.lower() not in settings.ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"不支持的文件类型。支持的类型: {', '.join(settings.ALLOWED_EXTENSIONS)}"
-        )
-    
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    ip_upload_dir = os.path.join(settings.UPLOAD_DIR, "virtual_ips", str(virtual_ip_id))
-    os.makedirs(ip_upload_dir, exist_ok=True)
-    
-    file_path = os.path.join(ip_upload_dir, unique_filename)
-    
-    # 保存文件
-    with open(file_path, "wb") as buffer:
-        content = upload_file.file.read()
-        if len(content) > settings.MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"文件大小超过限制 ({settings.MAX_FILE_SIZE / 1024 / 1024}MB)"
-            )
-        buffer.write(content)
-    
-    return unique_filename, file_path, len(content)
-
 @router.post("/{virtual_ip_id}/images", response_model=VirtualIPImageResponse)
 async def create_virtual_ip_image(
     virtual_ip_id: int,
@@ -74,16 +46,36 @@ async def create_virtual_ip_image(
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     
     # 检查文件类型
-    if not image.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-        raise HTTPException(status_code=400, detail="不支持的文件类型")
-    
-    # 保存文件
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"ip_{virtual_ip_id}_{timestamp}_{image.filename}"
-    filepath = os.path.join("uploads", filename)
-    
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
+    file_extension = os.path.splitext(image.filename)[1].lower()
+    if file_extension not in settings.ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"不支持的文件类型。支持的类型: {', '.join(settings.ALLOWED_EXTENSIONS)}",
+        )
+
+    # 读取文件内容并做体积校验
+    content = await image.read()
+    if len(content) > settings.MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"文件大小超过限制 ({settings.MAX_FILE_SIZE / 1024 / 1024}MB)",
+        )
+
+    # 通过统一持久化抽象处理：本地保存 + 可选 OSS 上传
+    try:
+        stored = await ai_service.persist_uploaded_image(
+            file_bytes=content,
+            original_filename=image.filename,
+            prefix="user-uploads/virtual-ip",
+            metadata={
+                "virtual_ip_id": virtual_ip_id,
+                "uploader_id": current_user.id,
+                "category": category,
+            },
+            require_upload=bool(oss_service),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"虚拟IP图像保存失败: {exc}") from exc
     
     # 如果设置为默认图像，先取消其他默认图像
     if is_default:
@@ -95,7 +87,12 @@ async def create_virtual_ip_image(
     # 创建图像记录
     image_data = VirtualIPImageCreate(
         virtual_ip_id=virtual_ip_id,
-        file_path=f"/uploads/{filename}",
+        file_path=stored.get("relative_path") or f"/uploads/{stored.get('filename')}",
+        oss_url=stored.get("oss_url"),
+        filename=stored.get("filename"),
+        original_filename=image.filename,
+        file_size=stored.get("file_size"),
+        mime_type=image.content_type or "image/png",
         category=category,
         tags=tags.split(",") if tags else [],
         is_default=is_default
@@ -524,36 +521,36 @@ async def generate_virtual_ip_image_variant(
     created_images: list[VirtualIPImage] = []
 
     for idx, variant_url in enumerate(images):
-        # 下载变体图像到本地 uploads 目录
-        local_file_path = await ai_service._download_image(
-            variant_url,
-            virtual_ip.name,
-            base_image.category or "portrait",
-        )
+        # 统一使用 AIService._persist_generated_image 做本地保存 + OSS 上传，
+        # 行为与文生图、环境图生成保持一致
+        try:
+            stored = await ai_service._persist_generated_image(
+                image_data=variant_url,
+                ip_name=virtual_ip.name,
+                category=base_image.category or "portrait",
+                prefix="ai-generated/virtual-ip",
+                metadata={
+                    "virtual_ip_id": virtual_ip_id,
+                    "base_image_id": base_image.id,
+                    "prompt": prompt_value,
+                    "provider": response.provider,
+                    "model": selected_model or response.model,
+                },
+                # 如果配置了 OSS，则要求上传成功；未配置时退回本地
+                require_upload=bool(oss_service),
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"图生图文件保存失败: {exc}") from exc
+
+        local_file_path = stored.get("local_file_path")
         if not local_file_path or not os.path.exists(local_file_path):
             raise HTTPException(status_code=500, detail="图生图文件下载失败")
 
-        file_size = os.path.getsize(local_file_path)
-        filename = os.path.basename(local_file_path)
-        relative_path = f"/uploads/{filename}"
-        oss_url = None
-        oss_result = None
-        if oss_service:
-            try:
-                oss_result = await ai_service._upload_local_image_to_oss(
-                    local_file_path,
-                    prefix="ai-generated/virtual-ip",
-                    metadata={
-                        "virtual_ip_id": virtual_ip_id,
-                        "base_image_id": base_image.id,
-                        "prompt": prompt_value,
-                        "provider": response.provider,
-                        "model": selected_model or response.model,
-                    },
-                )
-                oss_url = oss_result.get("file_url")
-            except Exception as exc:
-                raise HTTPException(status_code=500, detail=f"OSS上传失败: {exc}") from exc
+        file_size = stored.get("file_size") or os.path.getsize(local_file_path)
+        filename = stored.get("filename") or os.path.basename(local_file_path)
+        relative_path = stored.get("relative_path") or f"/uploads/{filename}"
+        oss_result = stored.get("oss_upload")
+        oss_url = stored.get("oss_url")
 
         tags = [
             base_image.category or "portrait",
