@@ -643,6 +643,8 @@ class AIServiceManager:
                         inferred_provider = "jimeng"
                     elif lower.startswith("dall-e") or lower.startswith("dalle"):
                         inferred_provider = "openai"
+                    elif lower.startswith("gemini"):
+                        inferred_provider = "google"
 
                 fallback_prompt = prompt or "为当前角色生成不同视角/姿态的图像，例如背面照或全身照"
                 self.logger.warning(

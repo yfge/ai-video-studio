@@ -308,6 +308,8 @@ def _infer_provider_from_model(model: Optional[str]) -> Optional[str]:
         return "jimeng"
     if normalized.startswith(("dall-e", "dalle")):
         return "openai"
+    if normalized.startswith("gemini"):
+        return "google"
     return None
 
 

@@ -21,6 +21,7 @@ from app.services.task_worker import (
     virtual_ip_image_generate_task,
     virtual_ip_image_variant_task,
 )
+from app.utils.model_utils import infer_provider_from_model
 import shutil
 
 router = APIRouter()
@@ -626,18 +627,7 @@ async def generate_virtual_ip_image_variant(
         backend_base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
         image_url = f"{backend_base}{file_path}"
 
-    normalized_model = (selected_model or "").lower()
-    prefer_provider: Optional[str] = None
-    if normalized_model.startswith("seedream") or normalized_model.startswith("volcengine"):
-        prefer_provider = "volcengine"
-    elif normalized_model.startswith("deepseek"):
-        prefer_provider = "deepseek"
-    elif normalized_model.startswith("keling") or normalized_model.startswith("kling"):
-        prefer_provider = "keling"
-    elif normalized_model.startswith("jimeng"):
-        prefer_provider = "jimeng"
-    elif normalized_model.startswith("dall-e") or normalized_model.startswith("dalle"):
-        prefer_provider = "openai"
+    prefer_provider = infer_provider_from_model(selected_model or "")
 
     if not ai_service.ai_manager:
         raise HTTPException(status_code=503, detail="AI管理器未初始化，无法执行图生图")
@@ -781,6 +771,12 @@ async def generate_virtual_ip_image_variant_async(
     count_value = payload_body.get("count", count)
     size_value = payload_body.get("size", size)
     reference_images_value = payload_body.get("reference_images") or []
+
+    # DEBUG: 打印收到的 payload
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"[DEBUG] 虚拟IP图生图异步接口收到 payload_body: {payload_body.keys()}")
+    logger.warning(f"[DEBUG] reference_images_value: {reference_images_value}")
     selected_model = (
         payload_body.get("model_id") or model_id or raw_model or base_image.ai_model or ""
     ).strip()
@@ -996,25 +992,7 @@ def _process_virtual_ip_image_variant_task(
             )
             count_int = int(payload.get("count") or 1)
             size_value = payload.get("size")
-
-            normalized_model = (selected_model or "").lower()
-            prefer_provider: Optional[str] = None
-            if normalized_model.startswith("seedream") or normalized_model.startswith(
-                "volcengine"
-            ):
-                prefer_provider = "volcengine"
-            elif normalized_model.startswith("deepseek"):
-                prefer_provider = "deepseek"
-            elif normalized_model.startswith("keling") or normalized_model.startswith(
-                "kling"
-            ):
-                prefer_provider = "keling"
-            elif normalized_model.startswith("jimeng"):
-                prefer_provider = "jimeng"
-            elif normalized_model.startswith("dall-e") or normalized_model.startswith(
-                "dalle"
-            ):
-                prefer_provider = "openai"
+            prefer_provider = infer_provider_from_model(selected_model or "")
 
             if not ai_service.ai_manager:
                 raise RuntimeError("AI管理器未初始化，无法执行图生图")

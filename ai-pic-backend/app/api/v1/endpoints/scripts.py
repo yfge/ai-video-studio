@@ -34,6 +34,7 @@ from app.services.task_worker import (
     storyboard_image_generate_task,
     storyboard_generate_task,
 )
+from app.utils.model_utils import infer_provider_from_model
 import json
 from app.core.config import settings
 
@@ -1976,6 +1977,8 @@ def _process_storyboard_image_task(
                 model_id = model
                 if model_id and ":" in model_id:
                     prefer_provider, model_id = model_id.split(":", 1)
+                if not prefer_provider:
+                    prefer_provider = infer_provider_from_model(model_id or "")
 
                 refs = [_abs_url(u) for u in ref_imgs if u]
 
