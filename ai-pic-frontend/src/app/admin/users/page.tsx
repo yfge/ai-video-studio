@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AdminLayout from '../../../components/AdminLayout'
 import UserDetailsModal from '../../../components/UserDetailsModal'
@@ -41,7 +41,7 @@ const DotsVerticalIcon = ({ className = '' }) => (
   </svg>
 )
 
-export default function AdminUsersPage() {
+function AdminUsersPageContent() {
   const searchParams = useSearchParams()
   
   // 状态管理
@@ -457,5 +457,21 @@ export default function AdminUsersPage() {
         onApprovalComplete={handleApprovalComplete}
       />
     </AdminLayout>
+  )
+}
+
+export default function AdminUsersPage() {
+  return (
+    <Suspense
+      fallback={
+        <AdminLayout>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </AdminLayout>
+      }
+    >
+      <AdminUsersPageContent />
+    </Suspense>
   )
 }

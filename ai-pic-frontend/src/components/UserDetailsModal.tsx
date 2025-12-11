@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { adminAPI } from '../utils/api'
+import { adminAPI, type AdminUser } from '../utils/api'
 import RoleManagementModal from './RoleManagementModal'
 
 // Icons
@@ -34,23 +34,6 @@ const ExclamationIcon = ({ className = '' }) => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
   </svg>
 )
-
-// Types
-interface AdminUser {
-  id: number
-  username: string
-  email: string
-  full_name: string | null
-  is_active: boolean
-  is_admin: boolean
-  is_approved: boolean
-  email_verified: boolean
-  failed_login_attempts: number
-  account_locked_until: string | null
-  created_at: string
-  updated_at: string
-  last_login_at: string | null
-}
 
 interface UserAuditLog {
   id: number
@@ -112,7 +95,7 @@ export default function UserDetailsModal({
     setIsPerformingAction(true)
     try {
       const response = await adminAPI.approveUser(user.id, {
-        approved: true,
+        action: 'approve',
         reason: 'Approved via user details modal'
       })
       
@@ -133,7 +116,7 @@ export default function UserDetailsModal({
     setIsPerformingAction(true)
     try {
       const response = await adminAPI.approveUser(user.id, {
-        approved: false,
+        action: 'reject',
         reason: 'Rejected via user details modal'
       })
       
@@ -173,9 +156,7 @@ export default function UserDetailsModal({
     
     setIsPerformingAction(true)
     try {
-      const response = await adminAPI.reactivateUser(user.id, {
-        reason: 'Reactivated via user details modal'
-      })
+      const response = await adminAPI.reactivateUser(user.id)
       
       if (response.success && response.data) {
         onUserUpdate(response.data)
@@ -193,7 +174,8 @@ export default function UserDetailsModal({
     setShowRoleModal(false)
   }
 
-  const formatDateTime = (dateString: string) => {
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return '-'
     return new Date(dateString).toLocaleString('zh-CN')
   }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { adminAPI } from '../utils/api'
+import { adminAPI, type AdminUser } from '../utils/api'
 
 // Icons
 const XIcon = ({ className = '' }) => (
@@ -27,23 +27,6 @@ const UserIcon = ({ className = '' }) => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 )
-
-// Types
-interface AdminUser {
-  id: number
-  username: string
-  email: string
-  full_name: string | null
-  is_active: boolean
-  is_admin: boolean
-  is_approved: boolean
-  email_verified: boolean
-  failed_login_attempts: number
-  account_locked_until: string | null
-  created_at: string
-  updated_at: string
-  last_login_at: string | null
-}
 
 interface UserApprovalModalProps {
   user: AdminUser | null

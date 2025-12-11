@@ -103,16 +103,21 @@ function StoriesPageContent() {
 
     try {
       setGenerating(true);
-      const response = useAsync
-        ? await storyAPI.generateStoryAsync(generateForm)
-        : await storyAPI.generateStory(generateForm);
-
-      if (response.success && response.data) {
-        if (!useAsync) {
-          setStories(prev => [response.data, ...prev]);
-        } else {
+      if (useAsync) {
+        const response = await storyAPI.generateStoryAsync(generateForm);
+        if (response.success) {
           showAlert({ message: '已创建异步任务，稍后在任务页查看进度', variant: 'info' });
+        } else {
+          showAlert({ message: `故事生成失败：${response.error || '未知错误'}`, variant: 'error' });
         }
+      } else {
+        const response = await storyAPI.generateStory(generateForm);
+        if (response.success && response.data) {
+          setStories(prev => [response.data as Story, ...prev]);
+        } else {
+          showAlert({ message: `故事生成失败：${response.error || '未知错误'}`, variant: 'error' });
+        }
+      }
         setShowGenerateForm(false);
         setGenerateForm({
           title: '',
@@ -133,9 +138,6 @@ function StoriesPageContent() {
         });
         setPromptPreview('');
         showAlert({ message: '故事生成成功！', variant: 'success' });
-      } else {
-        showAlert({ message: `故事生成失败：${response.error || '未知错误'}`, variant: 'error' });
-      }
     } catch (error) {
       console.error('故事生成失败:', error);
       showAlert({ message: '故事生成失败', variant: 'error' });

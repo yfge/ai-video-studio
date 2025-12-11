@@ -79,6 +79,7 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
+  full_name?: string;
 }
 
 // 任务相关类型
@@ -649,7 +650,7 @@ class ApiClient {
 
     console.log("Login request:", credentials.email, credentials.password);
 
-    const response = await this.request(
+    const response = await this.request<{ access_token: string; token_type: string }>(
       "/api/v1/auth/login",
       {
         method: "POST",
@@ -1519,7 +1520,7 @@ class ApiClient {
       slug_line: string;
       scene_number: string;
       story_step_outline_id: number;
-      environment_id: number;
+      environment_id?: number | null;
       environment_type: string;
       location: string;
       time_of_day: string;
@@ -1822,6 +1823,8 @@ export const storyStructureAPI = {
   generateEnvironmentImageVariants:
     apiClient.generateEnvironmentImageVariants.bind(apiClient),
   deleteEnvironmentImage: apiClient.deleteEnvironmentImage.bind(apiClient),
+  updateScene: apiClient.updateScene.bind(apiClient),
+  updateSceneShot: apiClient.updateSceneShot.bind(apiClient),
 };
 
 export const aiAPI = {

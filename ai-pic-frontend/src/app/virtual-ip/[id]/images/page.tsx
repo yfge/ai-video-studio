@@ -173,7 +173,7 @@ export default function VirtualIPImagesPage() {
       });
 
       if (response.success && response.data) {
-        setImages(prev => [response.data, ...prev]);
+        setImages(prev => [response.data as VirtualIPImage, ...prev]);
         setShowGenerateForm(false);
         setGenerateForm({
           style: 'realistic',
@@ -216,7 +216,7 @@ export default function VirtualIPImagesPage() {
       );
       
       if (response.success && response.data) {
-        setImages(prev => [response.data, ...prev]);
+        setImages(prev => [response.data as VirtualIPImage, ...prev]);
         setUploadForm({
           file: null,
           category: 'portrait',
@@ -380,7 +380,7 @@ export default function VirtualIPImagesPage() {
       if (!res.success || !res.data) {
         throw new Error(res.error || '图生图生成失败');
       }
-      const createdImages = Array.isArray(res.data) ? res.data : [res.data];
+      const createdImages = (Array.isArray(res.data) ? res.data : [res.data]) as VirtualIPImage[];
       setImages(prev => [...createdImages, ...prev]);
       showAlert({
         title: '已提交图生图任务',
@@ -748,6 +748,9 @@ export default function VirtualIPImagesPage() {
               const fp = image.file_path || ''
               return fp ? `${API_BASE}${fp.startsWith('/') ? '' : '/'}${fp}` : ''
             })()
+            const isAiGenerated = Boolean(
+              (image.metadata as { generation_method?: string } | null | undefined)?.generation_method,
+            )
 
             const handleError = (event: React.SyntheticEvent<HTMLImageElement>) => {
               if (fallbackSrc && event.currentTarget.src !== fallbackSrc) {
@@ -772,7 +775,7 @@ export default function VirtualIPImagesPage() {
                       默认
                     </div>
                   )}
-                  {image.metadata?.generation_method && (
+                  {isAiGenerated && (
                     <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs">
                       AI生成
                     </div>

@@ -13,7 +13,7 @@ services:
       - mysql_data:/var/lib/mysql
 
   ai-video-redis:
-    image: redis:7-alpine
+    image: redis:7
     container_name: ai-video-redis
     restart: always
     volumes:

@@ -134,7 +134,7 @@ export default function EpisodeDetailPage() {
       } else {
         const response = await scriptAPI.generateScript(generateForm);
         if (response.success && response.data) {
-          setScripts((prev) => [response.data, ...prev]);
+          setScripts((prev) => [response.data as Script, ...prev]);
           setShowGenerateForm(false);
           showAlert({ message: "剧本生成成功！", variant: "success" });
         } else {
@@ -176,7 +176,7 @@ export default function EpisodeDetailPage() {
       if (response.success && response.data) {
         setScripts((prev) =>
           prev.map((script) =>
-            script.id === scriptId ? response.data : script,
+            script.id === scriptId ? (response.data as Script) : script,
           ),
         );
         showAlert({ message: "剧本重新生成成功", variant: "success" });
@@ -431,15 +431,19 @@ export default function EpisodeDetailPage() {
                       (scene.time_of_day as string) ||
                       (scene.time as string) ||
                       (scene.period as string);
+                    const status = scene.status as string | undefined;
+                    const sceneNumber =
+                      (scene as { scene_number?: number | string }).scene_number ??
+                      idx + 1;
                     return (
                       <div key={idx} className="border rounded p-3 bg-gray-50">
                         <div className="flex items-center justify-between">
                           <div className="font-medium text-gray-900">
-                            场景 {scene?.scene_number ?? idx + 1}
+                            场景 {sceneNumber}
                           </div>
-                          {scene?.status && (
+                          {status && (
                             <span className="text-xs text-gray-600">
-                              {scene.status}
+                              {status}
                             </span>
                           )}
                         </div>

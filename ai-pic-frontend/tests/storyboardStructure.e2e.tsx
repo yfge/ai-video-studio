@@ -1,9 +1,9 @@
-import { describe, it } from 'node:test'
+import { describe, it, afterEach } from 'node:test'
 import assert from 'node:assert'
 import React from 'react'
 import { render, cleanup } from '@testing-library/react'
 import { JSDOM } from 'jsdom'
-import { FrameCard } from '../src/app/scripts/[id]/page'
+import { FrameCard } from '../src/components/StoryboardFrameCard'
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>')
 ;(globalThis as any).window = dom.window

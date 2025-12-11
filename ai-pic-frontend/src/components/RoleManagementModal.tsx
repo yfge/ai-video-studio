@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { adminAPI } from '../utils/api'
+import { adminAPI, type AdminUser } from '../utils/api'
 
 // Icons
 const XIcon = ({ className = '' }) => (
@@ -27,23 +27,6 @@ const CrownIcon = ({ className = '' }) => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
   </svg>
 )
-
-// Types
-interface AdminUser {
-  id: number
-  username: string
-  email: string
-  full_name: string | null
-  is_active: boolean
-  is_admin: boolean
-  is_approved: boolean
-  email_verified: boolean
-  failed_login_attempts: number
-  account_locked_until: string | null
-  created_at: string
-  updated_at: string
-  last_login_at: string | null
-}
 
 interface RoleManagementModalProps {
   user: AdminUser | null
