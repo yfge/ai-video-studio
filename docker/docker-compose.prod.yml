@@ -58,5 +58,20 @@ services:
 
 volumes:
   mysql_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/mysql
   redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
   uploads_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/uploads
