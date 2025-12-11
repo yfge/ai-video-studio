@@ -89,5 +89,17 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+
+def _normalize_optional_str(value: Optional[str]) -> Optional[str]:
+    """Trim whitespace and treat empty strings as None for optional secrets."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+# 规范化部分可选密钥，避免 ".env" 中留下空字符串时被误判为已配置
+settings.GOOGLE_API_KEY = _normalize_optional_str(settings.GOOGLE_API_KEY)
+
 # 确保上传目录存在
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True) 

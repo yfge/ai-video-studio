@@ -217,7 +217,8 @@ class GoogleProvider(BaseProvider):
             )
             body_preview = resp.text[:500]
             if resp.status_code >= 400:
-                logger.warning(
+                # 配置了 API Key 但拉取模型列表失败，记录简要信息并回退静态列表
+                logger.info(
                     "GoogleProvider GLM list models failed status=%s url=%s body=%s",
                     resp.status_code,
                     f"{google_base.rstrip('/')}/v1beta/models",
@@ -229,7 +230,8 @@ class GoogleProvider(BaseProvider):
             models = self._from_payload(server_models, model_type)
             return self._dedupe(models) or fallback
         except Exception as exc:
-            logger.warning("GoogleProvider list models exception: %s", exc)
+            # 避免在未正确配置或网络异常时大量刷屏，记录为调试信息并回退静态列表
+            logger.debug("GoogleProvider list models exception: %s", exc)
             return fallback
 
     def _clean_model_id(self, model: Optional[str]) -> Optional[str]:
