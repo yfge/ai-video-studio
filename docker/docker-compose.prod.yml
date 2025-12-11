@@ -13,7 +13,7 @@ services:
       - mysql_data:/var/lib/mysql
 
   ai-video-redis:
-    image: redis:7
+    image: redis
     container_name: ai-video-redis
     restart: always
     volumes:
@@ -73,7 +73,7 @@ services:
 
   ai-video-nginx:
     container_name: ai-video-nginx
-    image: nginx:1.27-alpine
+    image: nginx
     depends_on:
       - ai-video-frontend
       - ai-video-backend
