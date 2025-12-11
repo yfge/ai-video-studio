@@ -80,7 +80,8 @@ async def create_virtual_ip_image(
                 "uploader_id": current_user.id,
                 "category": category,
             },
-            require_upload=bool(oss_service),
+            # 宽松兜底：OSS 上传失败时自动回退到本地存储
+            require_upload=False,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"虚拟IP图像保存失败: {exc}") from exc
@@ -678,8 +679,8 @@ async def generate_virtual_ip_image_variant(
                     "provider": response.provider,
                     "model": selected_model or response.model,
                 },
-                # 如果配置了 OSS，则要求上传成功；未配置时退回本地
-                require_upload=bool(oss_service),
+                # 宽松兜底：OSS 上传失败时自动回退到本地存储
+                require_upload=False,
             )
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"图生图文件保存失败: {exc}") from exc
@@ -1068,7 +1069,8 @@ def _process_virtual_ip_image_variant_task(
                         "provider": response.provider,
                         "model": selected_model or response.model,
                     },
-                    require_upload=bool(oss_service),
+                    # 宽松兜底：OSS 上传失败时自动回退到本地存储，确保任务成功
+                    require_upload=False,
                 )
 
                 local_file_path = stored.get("local_file_path")

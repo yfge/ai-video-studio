@@ -330,8 +330,8 @@ async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[
                     "environment_id": env.id,
                     "environment_name": env.name or "",
                 },
-                # 如果配置了 OSS，则要求上传成功；未配置时退回本地
-                require_upload=bool(oss_service),
+                # 宽松兜底：OSS 上传失败时自动回退到本地存储，确保任务成功
+                require_upload=False,
             )
         except Exception:
             continue

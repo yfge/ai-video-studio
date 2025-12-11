@@ -2038,7 +2038,8 @@ def _process_storyboard_image_task(
                         "provider": provider,
                         "model": model,
                     },
-                    require_upload=bool(oss_service),
+                    # 宽松兜底：OSS 上传失败时自动回退到本地存储，确保任务成功
+                    require_upload=False,
                 )
             except Exception as e:
                 print(f"分镜图像持久化失败 idx={idx}: {e}")
