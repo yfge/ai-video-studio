@@ -119,10 +119,45 @@ settings.DEEPSEEK_API_KEY = _normalize_optional_str(settings.DEEPSEEK_API_KEY)
 settings.VOLCENGINE_API_KEY = _normalize_optional_str(settings.VOLCENGINE_API_KEY)
 settings.VOLCENGINE_SECRET_KEY = _normalize_optional_str(settings.VOLCENGINE_SECRET_KEY)
 settings.VOLCENGINE_REGION = _normalize_optional_str(settings.VOLCENGINE_REGION)
+settings.INTERNAL_BACKEND_URL = _normalize_optional_str(settings.INTERNAL_BACKEND_URL)
 
-# 容器外本地默认使用 localhost:8000；在 docker-compose 中可显式设置为 http://ai-video-backend:8000
-if not settings.INTERNAL_BACKEND_URL:
-    settings.INTERNAL_BACKEND_URL = "http://localhost:8000"
+def _is_container_env() -> bool:
+    """Heuristic to detect containerized environments (Docker/K8s)."""
+    return bool(os.getenv("KUBERNETES_SERVICE_HOST")) or os.path.exists("/.dockerenv")
+
+
+def _looks_like_localhost(url: str | None) -> bool:
+    if not url:
+        return False
+    lowered = url.lower()
+    return "localhost" in lowered or "127.0.0.1" in lowered
+
+
+def _resolve_internal_backend_url(raw: Optional[str]) -> str:
+    """
+    Resolve a backend base URL that Celery workers/providers can reach.
+
+    - Prefer explicit env/setting when it's not localhost inside a container.
+    - When running in Docker/K8s without an explicit URL (or explicitly set to localhost),
+      fall back to the service name used in docker-compose.
+    - Default to localhost for bare-metal dev.
+    """
+    normalized = _normalize_optional_str(raw)
+    if normalized:
+        normalized = normalized.rstrip("/")
+    container_default = os.getenv("CONTAINER_BACKEND_URL") or "http://ai-video-backend:8000"
+
+    if _is_container_env():
+        # 在容器里不要使用 localhost，Celery worker 需要访问后端容器
+        if normalized and not _looks_like_localhost(normalized):
+            return normalized
+        return container_default
+
+    return normalized or "http://localhost:8000"
+
+
+# 容器外默认 localhost，容器内默认 docker-compose service，允许显式覆盖
+settings.INTERNAL_BACKEND_URL = _resolve_internal_backend_url(settings.INTERNAL_BACKEND_URL)
 
 # 确保上传目录存在
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True) 
