@@ -32,8 +32,10 @@ from app.models.task import Task, TaskStatus
 from app.services.task_worker import (
     script_generate_task,
     storyboard_image_generate_task,
+    storyboard_generate_task,
 )
 import json
+from app.core.config import settings
 
 
 def _now_iso() -> str:
@@ -74,7 +76,8 @@ def _abs_url(url: str) -> str:
         return url
     if not url.startswith("/"):
         url = "/" + url
-    return f"http://localhost:8000{url}"
+    base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+    return f"{base}{url}"
 
 
 def _serialize_frame(frame: Dict[str, Any]) -> Dict[str, Any]:
@@ -1426,7 +1429,10 @@ async def generate_storyboard(
             prefer_provider=prefer_provider,
             temperature=temperature,
             frames_per_scene=frames_per_scene,
-            max_frames=max_frames
+            max_frames=max_frames,
+            # 此处已在上方显式尝试过 LangGraph / 规划管线，这里只作为直连兜底，
+            # 因此关闭 AIService 内部的 LangGraph 优先逻辑，避免重复尝试。
+            prefer_graph=False,
         )
         if result:
             try:
@@ -1456,6 +1462,7 @@ async def generate_storyboard(
                     provider_used = result.get("provider_used") or prefer_provider
                     generation_source = f"ai:{provider_used or 'auto'}"
                     generation_model = result.get("model_used") or model_id
+                    generation_method = result.get("generation_method") or generation_method
                 except Exception as exc:
                     logger.warning(f"StoryboardGen validation failed: {exc}")
 
@@ -1705,6 +1712,120 @@ async def generate_storyboard(
     return {"success": True, "data": sb}
 
 
+@router.post("/{script_id}/storyboard/generate-async")
+async def generate_storyboard_async(
+    script_id: int,
+    model: str | None = None,
+    temperature: float = Query(0.7, ge=0.0, le=1.5, description="创造性温度"),
+    frames_per_scene: int = Query(7, ge=1, le=10, description="每场景建议分镜数"),
+    max_frames: int | None = Query(None, ge=1, le=500, description="最大分镜帧数上限"),
+    scene_numbers: str | None = Query(None, description="逗号分隔的场景编号列表，如 1,3,4"),
+    use_plan: bool = Query(False, description="是否先使用分镜规划，再逐场景生成"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """异步生成分镜结构：创建任务并交给 Celery 处理。"""
+    from app.models.task import Task
+
+    # 校验剧本归属，与 generate_storyboard_images 对齐
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
+    if not script:
+        raise HTTPException(status_code=404, detail="剧本不存在")
+
+    params = {
+        "script_id": script_id,
+        "model": model,
+        "temperature": temperature,
+        "frames_per_scene": frames_per_scene,
+        "max_frames": max_frames,
+        "scene_numbers": scene_numbers,
+        "use_plan": use_plan,
+    }
+    t = Task(
+        title=f"分镜生成 - 剧本{script_id}",
+        description="生成分镜结构（帧列表）",
+        task_type="image_generation",
+        prompt=f"Storyboard generation for script {script_id}",
+        parameters=json.dumps(params, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    storyboard_generate_task.delay(t.id, params, current_user.id)
+    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
+
+
+def _process_storyboard_generation_task(
+    task_id: int,
+    payload: dict,
+    user_id: int,
+):
+    """后台处理分镜结构生成任务（供 Celery 调用）。"""
+    from app.core.database import SessionLocal
+    from app.models.task import Task, TaskStatus
+    from app.models.user import User
+    import anyio
+
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+
+        script_id = int(payload.get("script_id"))
+
+        async def _run():
+            user = db.query(User).filter(User.id == user_id).first()
+            model = payload.get("model")
+            temperature = float(payload.get("temperature") or 0.7)
+            frames_per_scene = int(payload.get("frames_per_scene") or 7)
+            max_frames = payload.get("max_frames")
+            max_frames_arg = int(max_frames) if max_frames is not None else None
+            scene_numbers = payload.get("scene_numbers")
+            use_plan = bool(payload.get("use_plan"))
+            # 直接复用同步路由的生成逻辑，确保行为一致
+            await generate_storyboard(
+                script_id=script_id,
+                model=model,
+                temperature=temperature,
+                frames_per_scene=frames_per_scene,
+                max_frames=max_frames_arg,
+                scene_numbers=scene_numbers,
+                use_plan=use_plan,
+                current_user=user,  # type: ignore[arg-type]
+                db=db,  # type: ignore[arg-type]
+            )
+
+        anyio.run(_run)
+
+        if task:
+            task.status = TaskStatus.COMPLETED
+            task.result_file_path = f"script:{script_id}:storyboard"
+            db.commit()
+    except Exception as e:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            db.commit()
+    finally:
+        db.close()
+
+
 class StoryboardUpdateRequest(BaseModel):
     frames: list[dict]
 
@@ -1939,9 +2060,28 @@ def _process_storyboard_image_task(
                 continue
 
             scene_no = _to_int(fr.get("scene_number"))
-            env_refs = env_images_by_scene.get(scene_no or -1, [])
             char_refs: List[str] = []
-            ref_images: List[str] = []
+
+            # 1) 已存在于分镜帧上的参考图（用户手动/前序管线写入），优先使用
+            frame_refs = [
+                _abs_url(u)
+                for u in (fr.get("reference_images") or [])
+                if isinstance(u, str) and u
+            ]
+            ref_images_raw: List[str] = list(frame_refs)
+            if frame_refs:
+                char_refs.append("帧参考图")
+
+            # 2) 前端调用时附带的额外参考图（单次请求作用域）
+            payload_refs = [
+                _abs_url(u) for u in (reference_images or []) if isinstance(u, str) and u
+            ]
+            if payload_refs:
+                char_refs.append("用户提供的参考图")
+                ref_images_raw.extend(payload_refs)
+
+            # 3) 角色锚点参考图（默认/最新的虚拟 IP 图像）
+            char_anchor_refs: List[str] = []
             if scene_no and scene_no in scene_by_number:
                 sc_obj = scene_by_number.get(scene_no)
                 if sc_obj and sc_obj.id in scene_char_ids:
@@ -1949,20 +2089,25 @@ def _process_storyboard_image_task(
                         name = vip_map.get(cid).name if cid in vip_map else f"角色{cid}"
                         img_url = char_image_map.get(cid)
                         if img_url:
-                            char_refs.append(f"{name}: {img_url}")
-                            ref_images.append(img_url)
-            ref_images.extend(env_refs)
-            if reference_images:
-                ref_images.extend(reference_images)
+                            # 参考图 URL 通过 ref_images 传给 image_to_image，提示词只保留语义描述，避免在日志中泄露具体地址
+                            char_refs.append(f"{name} 的参考图")
+                            char_anchor_refs.append(_abs_url(img_url))
+
+            # 4) 场景环境参考图
+            env_refs = [
+                _abs_url(u) for u in (env_images_by_scene.get(scene_no or -1, []) or []) if u
+            ]
             if env_refs:
-                char_refs.append(f"环境参考图: {' '.join(env_refs[:3])}")
-            if reference_images:
-                char_refs.append(f"用户参考图: {' '.join(reference_images[:3])}")
+                char_refs.append("环境参考图")
+
+            ref_images_raw.extend(char_anchor_refs)
+            ref_images_raw.extend(env_refs)
+            ref_images = list(dict.fromkeys(ref_images_raw))
 
             if char_refs:
                 prompt = prompt + "\n参考图像：" + " | ".join(char_refs)
             if ref_images:
-                fr["reference_images"] = list(dict.fromkeys([_abs_url(u) for u in ref_images]))
+                fr["reference_images"] = ref_images
 
             result = anyio.run(_gen_image, prompt, ref_images)
             if result:
@@ -2322,10 +2467,12 @@ async def get_episode_scripts(
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
     
+    # 为避免在 MySQL 中对大文本结果做排序耗尽 sort buffer，
+    # 这里不再对结果做 ORDER BY，仅取一批脚本返回，前端默认使用第一条。
     scripts = (
         db.query(Script)
         .filter(Script.episode_id == episode_id)
-        .order_by(Script.created_at.desc())
+        .limit(50)
         .all()
     )
     return [ScriptResponse.from_orm(script) for script in scripts]
