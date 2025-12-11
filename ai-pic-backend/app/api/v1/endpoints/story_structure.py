@@ -11,6 +11,9 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.story_structure import Environment
 from app.services import story_structure_service as svc
+from app.services.ai_service import ai_service
+from app.services.storage import oss_service
+from app.services.task_worker import environment_image_variant_task
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.story_structure import (
