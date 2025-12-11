@@ -1272,6 +1272,7 @@ class ApiClient {
       count?: number;
       size?: string;
       style?: string;
+      reference_images?: string[];
     },
   ): Promise<ApiResponse<{ task_id: number; status: string }>> {
     return this.request(

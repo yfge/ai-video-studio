@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -8,17 +9,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.services import story_structure_service as svc
-from app.services.ai_service import ai_service
-from app.services.storage.oss_service import oss_service
-from app.services.task_worker import (
-    environment_image_generate_task,
-    environment_image_variant_task,
-)
-from app.utils.model_utils import parse_model_and_provider, normalize_openai_image_style
 from app.models.story_structure import Environment
-from app.models.user import User
+from app.services import story_structure_service as svc
 from app.models.task import Task, TaskStatus, TaskType
+from app.models.user import User
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
     StoryTreatmentResponse,
@@ -39,6 +33,7 @@ from app.schemas.story_structure import (
     EnvironmentResponse,
     EnvironmentUpdate,
 )
+from app.core.config import settings
 
 
 router = APIRouter()
@@ -665,7 +660,8 @@ async def generate_environment_image_variants(
         path = base if isinstance(base, str) else ""
         if path and not path.startswith("/"):
             path = "/" + path
-        image_url = f"http://localhost:8000{path}"
+        base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+        image_url = f"{base}{path}"
 
     model_raw = (payload.get("model") or model or "").strip() or None
     model_value, provider_from_model = parse_model_and_provider(model_raw)
@@ -751,6 +747,7 @@ async def generate_environment_image_variants_async(
     size_value = body.get("size", size)
     style_hint = body.get("style") or "realistic"
     extra_prompt = body.get("prompt", prompt)
+    reference_images_value = body.get("reference_images") or []
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
@@ -765,6 +762,7 @@ async def generate_environment_image_variants_async(
         "size": size_value,
         "style": style_hint,
         "prompt": extra_prompt,
+        "reference_images": reference_images_value,
     }
 
     task = Task(
@@ -808,7 +806,8 @@ def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any
             path = base if isinstance(base, str) else ""
             if path and not path.startswith("/"):
                 path = "/" + path
-            image_url = f"http://localhost:8000{path}"
+            backend_base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+            image_url = f"{backend_base}{path}"
 
         import anyio
 
@@ -832,6 +831,22 @@ def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any
             count_int = int(payload.get("count") or 1)
             size_value = payload.get("size")
 
+            # 提取参考图并转换为绝对 URL
+            reference_images = payload.get("reference_images") or []
+            extra_images = []
+            for ref_url in reference_images:
+                if not ref_url:
+                    continue
+                if ref_url.startswith("http"):
+                    extra_images.append(ref_url)
+                else:
+                    # 转换相对路径为绝对 URL
+                    path = ref_url if ref_url.startswith("/") else f"/{ref_url}"
+                    backend_base = (
+                        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+                    ).rstrip("/")
+                    extra_images.append(f"{backend_base}{path}")
+
             response = await ai_service.ai_manager.image_to_image(
                 image_url=image_url,
                 prompt=prompt_value,
@@ -840,6 +855,7 @@ def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any
                 count=max(1, min(count_int, 4)),
                 size=size_value,
                 style=style_hint_local,
+                extra_images=extra_images,
             )
             if not response.success:
                 raise RuntimeError(response.error or "环境图生图生成失败")

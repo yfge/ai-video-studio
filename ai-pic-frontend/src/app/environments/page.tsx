@@ -126,10 +126,13 @@ function EnvironmentsPageContent() {
         size: options.size,
         count: 1,
       }
-      const res = await storyStructureAPI.generateEnvironmentImages(env.id, payload)
+      const res = await storyStructureAPI.generateEnvironmentImagesAsync(env.id, payload)
       if (res.success) {
-        showAlert({ message: '环境图生成成功', variant: 'success' })
-        await load()
+        showAlert({
+          title: '已创建环境图生成任务',
+          message: '任务会在后台异步执行，生成完成后刷新环境列表即可看到新参考图。',
+          variant: 'success',
+        })
       } else {
         showAlert({ message: res.error || '生成失败', variant: 'error' })
       }
@@ -152,20 +155,24 @@ function EnvironmentsPageContent() {
     setVariantModalOpen(true)
   }
 
-  const handleGenerateVariant = async (payload: { prompt: string; model?: string; count: number; size?: string }) => {
+  const handleGenerateVariant = async (payload: { prompt: string; model?: string; count: number; size?: string; referenceImages: string[] }) => {
     if (!variantTarget) return
     setVariantSubmitting(true)
     try {
-      const res = await storyStructureAPI.generateEnvironmentImageVariants(variantTarget.env.id, {
+      const res = await storyStructureAPI.generateEnvironmentImageVariantsAsync(variantTarget.env.id, {
         base_image: variantTarget.url,
         prompt: payload.prompt || variantPrompt,
         model: payload.model || variantTarget.modelHint,
         size: payload.size,
         count: payload.count,
+        reference_images: payload.referenceImages,
       })
       if (res.success) {
-        showAlert({ message: '变体生成任务已提交', variant: 'success' })
-        await load()
+        showAlert({
+          title: '已创建环境图变体任务',
+          message: '任务会在后台异步执行，生成完成后刷新环境列表即可看到新参考图。',
+          variant: 'success',
+        })
         setVariantModalOpen(false)
         setVariantTarget(null)
       } else {
