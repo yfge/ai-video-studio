@@ -78,6 +78,14 @@ def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_i
 
     script_id = int(payload.get("script_id"))
     frame_indexes = payload.get("frames") or []
+    try:
+        count_int = int(payload.get("count") or 1)
+    except (TypeError, ValueError):
+        count_int = 1
+    if count_int < 1:
+        count_int = 1
+    if count_int > 4:
+        count_int = 4
     _process_storyboard_image_task(
         task_id,
         script_id,
@@ -87,6 +95,7 @@ def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_i
         height=int(payload.get("height") or 1024),
         style=payload.get("style") or "realistic",
         reference_images=payload.get("reference_images") or [],
+        count=count_int,
     )
 
 

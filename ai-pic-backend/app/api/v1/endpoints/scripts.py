@@ -1899,9 +1899,11 @@ def _process_storyboard_image_task(
     height: int = 1024,
     style: str = "realistic",
     reference_images: Optional[List[str]] = None,
+    count: int = 1,
 ):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
+    logger = get_logger("storyboard_image_task")
     db = SessionLocal()
     try:
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -1925,7 +1927,7 @@ def _process_storyboard_image_task(
         target_indexes = frame_indexes or list(range(len(frames)))
         start_log = (
             f"[SBIMG] task start | script_id={script_id} task_id={task_id} "
-            f"frames_total={len(frames)} target_indexes={target_indexes} model={model} count={payload.get('count')}"
+            f"frames_total={len(frames)} target_indexes={target_indexes} model={model} count={count}"
         )
         logger.info(start_log)
         print(start_log, flush=True)
@@ -1986,9 +1988,8 @@ def _process_storyboard_image_task(
 
         import anyio
 
-        count_int_raw = payload.get("count")
         try:
-            count_int = int(count_int_raw) if count_int_raw is not None else 1
+            count_int = int(count) if count is not None else 1
         except (TypeError, ValueError):
             count_int = 1
         count_int = max(1, min(count_int, 4))
