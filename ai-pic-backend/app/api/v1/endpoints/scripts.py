@@ -2077,7 +2077,10 @@ def _process_storyboard_image_task(
             fr = frames[idx]
             prompt = fr.get("ai_prompt") or fr.get("description") or ""
             if not prompt:
-                continue
+                prompt = (
+                    f"Generate an image for storyboard frame {idx + 1} (scene {fr.get('scene_number') or ''}) "
+                    "consistent with references and overall story style."
+                )
 
             scene_no = _to_int(fr.get("scene_number"))
             char_refs: List[str] = []
