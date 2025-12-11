@@ -1,0 +1,23 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY ai-pic-frontend/package*.json ./
+RUN npm ci
+
+COPY ai-pic-frontend ./ai-pic-frontend
+WORKDIR /app/ai-pic-frontend
+ENV NODE_ENV=production
+RUN npm run build
+
+FROM node:20-alpine
+
+WORKDIR /app/ai-pic-frontend
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+
+COPY --from=builder /app/ai-pic-frontend ./
+RUN npm ci --omit=dev
+
+CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+

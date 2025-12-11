@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  ai-video-mysql:
+    image: mysql:8.0
+    container_name: ai-video-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ai-video}
+      MYSQL_DATABASE: ai_video_studio
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  ai-video-redis:
+    image: redis:7-alpine
+    container_name: ai-video-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  ai-video-backend:
+    container_name: ai-video-backend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend.prod
+    env_file:
+      - .env
+    working_dir: /app/ai-pic-backend
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    volumes:
+      - uploads_data:/app/ai-pic-backend/uploads
+    depends_on:
+      - ai-video-mysql
+      - ai-video-redis
+    restart: always
+
+  ai-video-frontend:
+    container_name: ai-video-frontend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend.prod
+    env_file:
+      - .env
+    working_dir: /app/ai-pic-frontend
+    command: ["npm", "run", "start", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+    depends_on:
+      - ai-video-backend
+    restart: always
+
+  ai-video-nginx:
+    container_name: ai-video-nginx
+    image: nginx:1.27-alpine
+    depends_on:
+      - ai-video-frontend
+      - ai-video-backend
+    ports:
+      - "80:8080"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    restart: always
+
+volumes:
+  mysql_data:
+  redis_data:
+  uploads_data:
+
