@@ -1971,6 +1971,13 @@ def _process_storyboard_image_task(
 
         import anyio
 
+        count_int_raw = payload.get("count")
+        try:
+            count_int = int(count_int_raw) if count_int_raw is not None else 1
+        except (TypeError, ValueError):
+            count_int = 1
+        count_int = max(1, min(count_int, 4))
+
         async def _gen_image(prompt: str, ref_imgs: List[str]) -> dict | None:
             try:
                 prefer_provider = None
@@ -1990,7 +1997,7 @@ def _process_storyboard_image_task(
                         prompt=prompt,
                         model=model_id,
                         prefer_provider=prefer_provider,
-                        count=1,
+                        count=count_int,
                         extra_images=extra,
                         width=width,
                         height=height,
@@ -2004,6 +2011,7 @@ def _process_storyboard_image_task(
                         width=width,
                         height=height,
                         style=style,
+                        n=count_int,
                     )
                 if resp.success:
                     data = resp.data if isinstance(resp.data, dict) else {}
@@ -2182,6 +2190,7 @@ class StoryboardImageRequest(BaseModel):
     width: int = Field(default=1024, ge=64, le=2048)
     height: int = Field(default=1024, ge=64, le=2048)
     style: str = Field(default="realistic")
+    count: int = Field(default=1, ge=1, le=4, description="每帧生成的图像数量")
     reference_images: Optional[List[str]] = Field(
         default=None,
         description="优先使用的参考图（环境/角色），传入则走图生图；会与场景环境/角色自动锚点合并",
@@ -2224,6 +2233,7 @@ async def generate_storyboard_images(
                 "width": body.width,
                 "height": body.height,
                 "style": body.style,
+                "count": body.count,
                 "reference_images": body.reference_images or [],
             },
             ensure_ascii=False,
@@ -2241,6 +2251,7 @@ async def generate_storyboard_images(
         "width": body.width,
         "height": body.height,
         "style": body.style,
+        "count": body.count,
         "reference_images": body.reference_images or [],
     }
     storyboard_image_generate_task.delay(t.id, payload, current_user.id)
