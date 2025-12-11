@@ -2103,13 +2103,12 @@ def _process_storyboard_image_task(
             scene_no = _to_int(fr.get("scene_number"))
             char_refs: List[str] = []
 
-            # 1) 已存在于分镜帧上的参考图（用户手动/前序管线写入），优先使用
+            # 1) 已存在于分镜帧上的参考图（用户手动/前序管线写入）
             frame_refs = [
                 _abs_url(u)
                 for u in (fr.get("reference_images") or [])
                 if isinstance(u, str) and u
             ]
-            ref_images_raw: List[str] = list(frame_refs)
             if frame_refs:
                 char_refs.append("帧参考图")
 
@@ -2119,7 +2118,6 @@ def _process_storyboard_image_task(
             ]
             if payload_refs:
                 char_refs.append("用户提供的参考图")
-                ref_images_raw.extend(payload_refs)
 
             # 3) 角色锚点参考图（默认/最新的虚拟 IP 图像）
             char_anchor_refs: List[str] = []
@@ -2141,6 +2139,11 @@ def _process_storyboard_image_task(
             if env_refs:
                 char_refs.append("环境参考图")
 
+            # 参考图顺序：优先使用用户附带的参考图作为 base_image，
+            # 然后是帧已有参考图、角色锚点和环境参考图
+            ref_images_raw: List[str] = []
+            ref_images_raw.extend(payload_refs)
+            ref_images_raw.extend(frame_refs)
             ref_images_raw.extend(char_anchor_refs)
             ref_images_raw.extend(env_refs)
             ref_images = list(dict.fromkeys(ref_images_raw))
