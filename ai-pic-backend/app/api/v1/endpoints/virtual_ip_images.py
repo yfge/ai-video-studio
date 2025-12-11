@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Any
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
+from app.models.task import Task, TaskType, TaskStatus
 from app.models.user import User
 from app.schemas.virtual_ip import VirtualIPImageCreate, VirtualIPImageResponse, VirtualIPImageUpdate
 from app.services.ai_service import ai_service
@@ -323,6 +324,74 @@ async def generate_virtual_ip_image(
     db.refresh(db_image)
     
     return VirtualIPImageResponse.from_orm(db_image)
+
+
+@router.post("/{virtual_ip_id}/images/generate-async")
+async def generate_virtual_ip_image_async(
+    virtual_ip_id: int,
+    request: Request,
+    style: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    model: Optional[str] = Form(None),
+    model_id: Optional[str] = Form(None),
+    additional_prompts: Optional[str] = Form(None),
+    is_default: Optional[str] = Form(None),
+    count: Optional[int] = Form(None),
+    size: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """异步生成虚拟IP图像：创建 Task 并委托 Celery 处理。"""
+    # 先解析请求体，复用同步接口的参数处理逻辑
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+
+    payload_body: Dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            payload_body = await request.json()
+        except Exception:
+            payload_body = {}
+
+    style = payload_body.get("style", style)
+    category = payload_body.get("category", category)
+    raw_model = payload_body.get("model", model)
+    count_value = payload_body.get("count", count)
+    size_value = payload_body.get("size", size)
+    additional_prompts_value = payload_body.get("additional_prompts", additional_prompts) or ""
+    is_default_value = payload_body.get("is_default", is_default)
+    selected_model = (payload_body.get("model_id") or model_id or raw_model or "dalle-3").strip()
+
+    # 组装用于 worker 的 payload
+    payload = _build_virtual_ip_image_payload(
+        virtual_ip_id=virtual_ip_id,
+        style=style,
+        category=category,
+        model=selected_model,
+        count=count_value,
+        size=size_value,
+        additional_prompts=additional_prompts_value,
+        is_default=is_default_value,
+        current_user=current_user,
+        db=db,
+    )
+
+    # 创建任务
+    task = Task(
+        title=f"虚拟IP文生图 - {virtual_ip.name}",
+        description="异步生成虚拟IP图像",
+        task_type=TaskType.IMAGE_GENERATION,
+        prompt=f"VirtualIP image gen for {virtual_ip.name}",
+        parameters=json.dumps(payload, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    # 委托 Celery worker 处理
+    virtual_ip_image_generate_task.delay(task.id, payload, current_user.id)
+
+    return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 
 @router.get("/{virtual_ip_id}/images/categories")
 async def get_image_categories(
@@ -663,3 +732,81 @@ async def generate_virtual_ip_image_variant(
         db.refresh(img)
 
     return [VirtualIPImageResponse.from_orm(img) for img in created_images]
+
+
+@router.post("/{virtual_ip_id}/images/{image_id}/variants-async")
+async def generate_virtual_ip_image_variant_async(
+    virtual_ip_id: int,
+    image_id: int,
+    request: Request,
+    prompt: Optional[str] = Form(None),
+    model: Optional[str] = Form(None),
+    model_id: Optional[str] = Form(None),
+    count: Optional[int] = Form(1),
+    size: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """异步基于已有虚拟IP图像生成变体：创建 Task 并委托 Celery 处理。"""
+    # 权限与基础图像校验
+    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    base_image = (
+        db.query(VirtualIPImage)
+        .filter(
+            VirtualIPImage.id == image_id,
+            VirtualIPImage.virtual_ip_id == virtual_ip_id,
+        )
+        .first()
+    )
+    if not base_image:
+        raise HTTPException(status_code=404, detail="基础图像不存在")
+
+    payload_body: Dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            payload_body = await request.json()
+        except Exception:
+            payload_body = {}
+
+    prompt_value = (
+        payload_body.get("prompt", prompt)
+        or "为当前角色生成不同视角/姿态的图像，如背面照或全身照"
+    )
+    raw_model = payload_body.get("model", model)
+    count_value = payload_body.get("count", count)
+    size_value = payload_body.get("size", size)
+    selected_model = (
+        payload_body.get("model_id") or model_id or raw_model or base_image.ai_model or ""
+    ).strip()
+
+    try:
+        count_int = int(count_value) if count_value is not None else 1
+    except (TypeError, ValueError):
+        count_int = 1
+
+    # 组装 payload
+    payload: Dict[str, Any] = {
+        "virtual_ip_id": virtual_ip_id,
+        "image_id": image_id,
+        "prompt": prompt_value,
+        "model": selected_model,
+        "count": count_int,
+        "size": size_value,
+    }
+
+    # 创建任务
+    task = Task(
+        title=f"虚拟IP图生图 - 图像{image_id}",
+        description="异步生成虚拟IP图像变体",
+        task_type=TaskType.IMAGE_GENERATION,
+        prompt=f"VirtualIP img2img for image {image_id}",
+        parameters=json.dumps(payload, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    virtual_ip_image_variant_task.delay(task.id, payload, current_user.id)
+
+    return {"success": True, "data": {"task_id": task.id, "status": task.status}}

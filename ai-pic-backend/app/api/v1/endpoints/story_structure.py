@@ -18,6 +18,7 @@ from app.services.task_worker import (
 from app.utils.model_utils import parse_model_and_provider, normalize_openai_image_style
 from app.models.story_structure import Environment
 from app.models.user import User
+from app.models.task import Task, TaskStatus, TaskType
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
     StoryTreatmentResponse,
@@ -489,6 +490,143 @@ async def generate_environment_images(
     return {"success": True, "data": {"images": saved, "count": len(saved)}}
 
 
+@router.post("/environments/{env_id}/images/generate-async")
+async def generate_environment_images_async(
+    env_id: int,
+    request: Request,
+    prompt: Optional[str] = Query(None, description="生成提示词，不填则用环境描述/名称"),
+    model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
+    count: int = Query(1, ge=1, le=4, description="生成数量"),
+    size: Optional[str] = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """异步环境文生图：创建 Task 并委托 Celery 处理。"""
+    env = svc.get_environment(db, env_id)
+    if env and not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        env = None
+    if not env:
+        raise HTTPException(status_code=404, detail="environment not found")
+    if not ai_service.ai_manager:
+        raise HTTPException(status_code=503, detail="AI管理器未初始化，无法生成环境图")
+
+    body: Dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+    extra_prompt = body.get("prompt", prompt)
+    selected_model_raw = (body.get("model") or model or "").strip() or None
+    count_value = body.get("count", count)
+    size_value = body.get("size", size)
+    style_hint = body.get("style") or "realistic"
+    try:
+        count_int = int(count_value) if count_value is not None else 1
+    except (TypeError, ValueError):
+        count_int = 1
+    count_int = max(1, min(count_int, 4))
+
+    payload = {
+        "env_id": env_id,
+        "extra_prompt": extra_prompt,
+        "model": selected_model_raw,
+        "count": count_int,
+        "size": size_value,
+        "style": style_hint,
+    }
+
+    task = Task(
+        title=f"环境文生图 - 环境{env_id}",
+        description="异步生成环境图像",
+        task_type=TaskType.IMAGE_GENERATION,
+        prompt=_compose_environment_prompt(env, extra_prompt),
+        parameters=json.dumps(payload, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    environment_image_generate_task.delay(task.id, payload, current_user.id)
+
+    return {"success": True, "data": {"task_id": task.id, "status": task.status}}
+
+
+def _process_environment_image_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """Celery worker 使用的环境文生图处理函数。"""
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+
+        env = svc.get_environment(db, payload["env_id"])
+        if not env:
+            raise RuntimeError("environment not found")
+
+        import anyio
+
+        async def _run() -> list[str]:
+            prefer_provider: Optional[str] = None
+            selected_model_raw = (payload.get("model") or "").strip() or None
+            selected_model, prefer_provider_from_model = parse_model_and_provider(
+                selected_model_raw
+            )
+            count_int = int(payload.get("count") or 1)
+            size_value = payload.get("size")
+            style_hint = payload.get("style") or "realistic"
+
+            prefer_provider_local = prefer_provider or prefer_provider_from_model
+            prefer_provider_local = prefer_provider_local or _infer_provider_from_model(
+                selected_model or ""
+            )
+            if (prefer_provider_local or "").lower() == "openai":
+                style_hint_local = normalize_openai_image_style(style_hint)
+            else:
+                style_hint_local = style_hint
+
+            final_prompt = _compose_environment_prompt(env, payload.get("extra_prompt"))
+
+            response = await ai_service.ai_manager.generate_image(
+                prompt=final_prompt,
+                model=_strip_provider_prefix(selected_model),
+                n=max(1, min(count_int, 4)),
+                size=size_value if prefer_provider_local == "volcengine" else None,
+                prefer_provider=prefer_provider_local,
+                style=style_hint_local,
+            )
+            if not response.success:
+                raise RuntimeError(response.error or "环境文生图生成失败")
+            images = response.data.get("images", []) if isinstance(response.data, dict) else []
+            if not images:
+                raise RuntimeError("环境文生图接口未返回任何图像")
+
+            saved_urls = await _download_and_attach(db, env, images)
+            db.commit()
+            return saved_urls
+
+        saved = anyio.run(_run)
+        if task:
+            task.status = TaskStatus.COMPLETED
+            task.result_file_path = f"environment_images:{payload['env_id']}:{len(saved)}"
+            db.commit()
+    except Exception as exc:  # pragma: no cover - defensive
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(exc)
+            db.commit()
+    finally:
+        db.close()
+
+
 @router.post("/environments/{env_id}/images/variants")
 async def generate_environment_image_variants(
     env_id: int,
@@ -572,6 +710,160 @@ async def generate_environment_image_variants(
     db.commit()
     db.refresh(env)
     return {"success": True, "data": {"images": saved, "count": len(saved)}}
+
+
+@router.post("/environments/{env_id}/images/variants-async")
+async def generate_environment_image_variants_async(
+    env_id: int,
+    request: Request,
+    base_image: Optional[str] = Query(None, description="基准图 URL 或相对路径"),
+    prompt: Optional[str] = Query(None, description="变体提示词"),
+    model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
+    count: int = Query(1, ge=1, le=4, description="生成数量"),
+    size: Optional[str] = Query(None, description="分辨率/尺寸"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """异步环境图生图：创建 Task 并委托 Celery 处理。"""
+    env = svc.get_environment(db, env_id)
+    if env and not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        env = None
+    if not env:
+        raise HTTPException(status_code=404, detail="environment not found")
+    if not ai_service.ai_manager:
+        raise HTTPException(status_code=503, detail="AI管理器未初始化，无法生成变体")
+
+    body: Dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+    base = body.get("base_image", base_image) or (env.reference_images[0] if env.reference_images else None)
+    if not base:
+        raise HTTPException(status_code=400, detail="缺少基准图像")
+
+    model_raw = (body.get("model") or model or "").strip() or None
+    count_value = body.get("count", count)
+    size_value = body.get("size", size)
+    style_hint = body.get("style") or "realistic"
+    extra_prompt = body.get("prompt", prompt)
+    try:
+        count_int = int(count_value) if count_value is not None else 1
+    except (TypeError, ValueError):
+        count_int = 1
+    count_int = max(1, min(count_int, 4))
+
+    payload = {
+        "env_id": env_id,
+        "base_image": base,
+        "model": model_raw,
+        "count": count_int,
+        "size": size_value,
+        "style": style_hint,
+        "prompt": extra_prompt,
+    }
+
+    task = Task(
+        title=f"环境图生图 - 环境{env_id}",
+        description="异步生成环境图像变体",
+        task_type=TaskType.IMAGE_GENERATION,
+        prompt=_compose_environment_prompt(env, extra_prompt),
+        parameters=json.dumps(payload, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    environment_image_variant_task.delay(task.id, payload, current_user.id)
+
+    return {"success": True, "data": {"task_id": task.id, "status": task.status}}
+
+
+def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """Celery worker 使用的环境图生图处理函数。"""
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+
+        env = svc.get_environment(db, payload["env_id"])
+        if not env:
+            raise RuntimeError("environment not found")
+
+        base = payload.get("base_image")
+        if not base:
+            raise RuntimeError("缺少基准图像")
+        if isinstance(base, str) and base.startswith("http"):
+            image_url = base
+        else:
+            path = base if isinstance(base, str) else ""
+            if path and not path.startswith("/"):
+                path = "/" + path
+            image_url = f"http://localhost:8000{path}"
+
+        import anyio
+
+        async def _run() -> list[str]:
+            model_raw = (payload.get("model") or "").strip() or None
+            model_value, provider_from_model = parse_model_and_provider(model_raw)
+            prefer_provider = provider_from_model or _infer_provider_from_model(
+                model_value or ""
+            )
+            style_hint = payload.get("style") or "realistic"
+            if (prefer_provider or "").lower() == "openai":
+                style_hint_local = normalize_openai_image_style(style_hint)
+            else:
+                style_hint_local = style_hint
+            extra_prompt = payload.get("prompt")
+            prompt_value = _compose_environment_prompt(
+                env,
+                extra_prompt
+                or "Generate stylistically consistent variants based on this environment reference",
+            )
+            count_int = int(payload.get("count") or 1)
+            size_value = payload.get("size")
+
+            response = await ai_service.ai_manager.image_to_image(
+                image_url=image_url,
+                prompt=prompt_value,
+                model=model_value,
+                prefer_provider=prefer_provider,
+                count=max(1, min(count_int, 4)),
+                size=size_value,
+                style=style_hint_local,
+            )
+            if not response.success:
+                raise RuntimeError(response.error or "环境图生图生成失败")
+            images = response.data.get("images", []) if isinstance(response.data, dict) else []
+            if not images:
+                raise RuntimeError("环境图生图接口未返回任何图像")
+
+            saved_urls = await _download_and_attach(db, env, images)
+            db.commit()
+            return saved_urls
+
+        saved = anyio.run(_run)
+        if task:
+            task.status = TaskStatus.COMPLETED
+            task.result_file_path = f"environment_image_variants:{payload['env_id']}:{len(saved)}"
+            db.commit()
+    except Exception as exc:  # pragma: no cover - defensive
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(exc)
+            db.commit()
+    finally:
+        db.close()
 
 
 @router.put("/scene-beats/{beat_id}", response_model=SceneBeatResponse)
