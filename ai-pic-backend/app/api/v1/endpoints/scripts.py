@@ -1923,15 +1923,12 @@ def _process_storyboard_image_task(
             _copy.deepcopy(fr) if isinstance(fr, dict) else fr for fr in frames_src
         ]
         target_indexes = frame_indexes or list(range(len(frames)))
-        logger.info(
-            "Storyboard image task start | script_id=%s task_id=%s frames_total=%s target_indexes=%s model=%s count=%s",
-            script_id,
-            task_id,
-            len(frames),
-            target_indexes,
-            model,
-            payload.get("count"),
+        start_log = (
+            f"[SBIMG] task start | script_id={script_id} task_id={task_id} "
+            f"frames_total={len(frames)} target_indexes={target_indexes} model={model} count={payload.get('count')}"
         )
+        logger.info(start_log)
+        print(start_log, flush=True)
 
         # 准备环境 / 角色参考图
         scenes = db.query(Scene).filter(Scene.script_id == script_id).all()
@@ -2085,7 +2082,9 @@ def _process_storyboard_image_task(
         # 逐帧生成图像URL
         for idx in target_indexes:
             if idx < 0 or idx >= len(frames):
-                logger.warning("Storyboard frame index out of range | idx=%s total=%s", idx, len(frames))
+                warn = f"[SBIMG] frame index out of range | idx={idx} total={len(frames)}"
+                logger.warning(warn)
+                print(warn, flush=True)
                 continue
             fr = frames[idx]
             prompt = fr.get("ai_prompt") or fr.get("description") or ""
@@ -2094,12 +2093,11 @@ def _process_storyboard_image_task(
                     f"Generate an image for storyboard frame {idx + 1} (scene {fr.get('scene_number') or ''}) "
                     "consistent with references and overall story style."
                 )
-            logger.info(
-                "Storyboard generating frame | idx=%s scene=%s prompt_len=%s",
-                idx,
-                fr.get("scene_number"),
-                len(prompt),
+            frame_log = (
+                f"[SBIMG] generating frame | idx={idx} scene={fr.get('scene_number')} prompt_len={len(prompt)}"
             )
+            logger.info(frame_log)
+            print(frame_log, flush=True)
 
             scene_no = _to_int(fr.get("scene_number"))
             char_refs: List[str] = []
@@ -2145,15 +2143,13 @@ def _process_storyboard_image_task(
             ref_images_raw.extend(char_anchor_refs)
             ref_images_raw.extend(env_refs)
             ref_images = list(dict.fromkeys(ref_images_raw))
-            logger.info(
-                "Storyboard frame refs | idx=%s total_refs=%s frame_refs=%s payload_refs=%s char_anchor=%s env_refs=%s",
-                idx,
-                len(ref_images),
-                len(frame_refs),
-                len(payload_refs),
-                len(char_anchor_refs),
-                len(env_refs),
+            refs_log = (
+                f"[SBIMG] frame refs | idx={idx} total_refs={len(ref_images)} "
+                f"frame_refs={len(frame_refs)} payload_refs={len(payload_refs)} "
+                f"char_anchor={len(char_anchor_refs)} env_refs={len(env_refs)}"
             )
+            logger.info(refs_log)
+            print(refs_log, flush=True)
 
             if char_refs:
                 prompt = prompt + "\n参考图像：" + " | ".join(char_refs)
