@@ -526,9 +526,18 @@ class VolcengineProvider(BaseProvider):
                 extra_images: list[str] = kwargs.pop("extra_images", []) or []
                 base64_images: list[str] = kwargs.pop("base64_images", []) or []
                 if base64_images:
+                    # 上游已将所有参考图转为 data:image/...;base64,... 形式，这里直接复用
                     image_payloads = base64_images[:14]
                 else:
-                    urls: list[str] = [image_url] + [u for u in extra_images if u]
+                    # 兼容直接传入 URL 的调用路径，此时在 Provider 内部逐个下载并容忍部分失败
+                    urls_raw: list[str] = [image_url] + [u for u in extra_images if u]
+                    urls: list[str] = []
+                    for u in urls_raw:
+                        if not u:
+                            continue
+                        if u not in urls:
+                            urls.append(u)
+
                     # Seedream 最多 14 张参考图
                     urls = urls[:14]
 
@@ -536,18 +545,52 @@ class VolcengineProvider(BaseProvider):
 
                     image_payloads: list[str] = []
                     for url in urls:
-                        img_resp = await client.get(url)
-                        img_resp.raise_for_status()
+                        try:
+                            img_resp = await client.get(url)
+                            img_resp.raise_for_status()
+                        except Exception as e:
+                            logger.warning(
+                                "Volcengine image_to_image skip bad ref url=%s error=%s",
+                                url,
+                                e,
+                            )
+                            continue
+
                         content_type = img_resp.headers.get("Content-Type", "image/png")
                         subtype = "png"
                         if "/" in content_type:
                             subtype = content_type.split("/")[-1] or "png"
                         b64_data = base64.b64encode(img_resp.content).decode("ascii")
-                        image_payloads.append(f"data:image/{subtype.lower()};base64,{b64_data}")
+                        image_payloads.append(
+                            f"data:image/{subtype.lower()};base64,{b64_data}"
+                        )
+
+                # 如果所有参考图都不可用，则显式返回失败，让上层根据配置决定是否走纯文生图兜底
+                if not image_payloads:
+                    return AIResponse(
+                        success=False,
+                        error="没有可用的参考图用于图生图",
+                        provider=self.name,
+                        model=model or ark_model,
+                        task_type=AITaskType.SCENE_GENERATION,
+                        model_type=AIModelType.IMAGE_TO_IMAGE,
+                    )
 
                 # 2) 组装 Ark 请求体（单图=字符串，多图=数组）
+                #    对齐官方文档：参考图数量 + 最终生成图片数量 ≤ 15
                 effective_size = size or "2K"
                 max_images = max(1, int(n) if n and n > 0 else 1)
+                try:
+                    total_refs = len(image_payloads)
+                    remaining = 15 - total_refs
+                    if remaining < 1:
+                        # 参考图已经占满或超出上限时，强制只生成 1 张，交由模型内部裁剪
+                        max_images = 1
+                    else:
+                        max_images = min(max_images, remaining)
+                except Exception:
+                    # 计算失败时保持原始 max_images，交由服务端做进一步约束
+                    pass
 
                 request_data: Dict[str, Any] = {
                     "model": ark_model,
@@ -556,6 +599,8 @@ class VolcengineProvider(BaseProvider):
                     "size": effective_size,
                     "response_format": "url",
                     "watermark": kwargs.pop("watermark", False),
+                    # 图生图场景下统一使用非流式输出，简化上游处理逻辑
+                    "stream": False,
                 }
 
                 # 多图时开启组图能力；单图保持 sequential_image_generation=disabled

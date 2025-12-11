@@ -553,24 +553,52 @@ class AIServiceManager:
         # 预读取参考图，转换为 data:image/...;base64,...，避免外部模型无法访问内网 URL
         base64_images: list[str] = []
         try:
-            urls = [u for u in [image_url] + list(kwargs.get("extra_images") or []) if u]
+            # 去重并过滤空 URL，最多预读取 14 张参考图
+            urls_raw = [image_url] + list(kwargs.get("extra_images") or [])
+            urls: list[str] = []
+            for u in urls_raw:
+                if not u:
+                    continue
+                if u not in urls:
+                    urls.append(u)
+
             if urls:
                 import base64
                 import httpx
 
                 async with httpx.AsyncClient(timeout=self.config.default_timeout) as client:
                     for url in urls[:14]:
-                        resp = await client.get(url)
-                        resp.raise_for_status()
+                        try:
+                            resp = await client.get(url)
+                            resp.raise_for_status()
+                        except Exception as e:
+                            # 局部失败时仅跳过该 URL，不让单个 404/网络错误拖垮整个图生图调用
+                            self.logger.warning(
+                                "image_to_image base64 preload skip url=%s error=%s",
+                                self._truncate(str(url), 256),
+                                e,
+                            )
+                            continue
+
                         ctype = resp.headers.get("Content-Type", "image/png")
                         subtype = "png"
                         if "/" in ctype:
                             subtype = ctype.split("/")[-1] or "png"
                         b64 = base64.b64encode(resp.content).decode("ascii")
-                        base64_images.append(f"data:image/{subtype.lower()};base64,{b64}")
-                # 将处理好的 base64 传递给 provider，避免重复下载
-                kwargs["base64_images"] = base64_images
+                        base64_images.append(
+                            f"data:image/{subtype.lower()};base64,{b64}"
+                        )
+
+                if base64_images:
+                    # 将处理好的 base64 传递给 provider，避免重复下载
+                    kwargs["base64_images"] = base64_images
+                else:
+                    self.logger.warning(
+                        "image_to_image base64 preload finished with no valid images | urls=%s",
+                        [self._truncate(str(u), 128) for u in urls],
+                    )
         except Exception as e:
+            # 预加载整体失败时记录告警，但不阻断后续 Provider 内部的 URL 访问/兜底逻辑
             self.logger.warning("image_to_image base64 preload failed: %s", e)
 
         for _ in range(self.config.max_retries):
