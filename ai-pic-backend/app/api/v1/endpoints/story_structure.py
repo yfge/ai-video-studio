@@ -298,7 +298,7 @@ def _infer_provider_from_model(model: Optional[str]) -> Optional[str]:
     if not model:
         return None
     normalized = model.lower()
-    if normalized.startswith(("seedream", "volcengine")):
+    if normalized.startswith(("seedream", "volcengine")) or "doubao" in normalized or "seedream" in normalized:
         return "volcengine"
     if normalized.startswith("deepseek"):
         return "deepseek"

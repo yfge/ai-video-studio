@@ -633,7 +633,7 @@ class AIServiceManager:
                 inferred_provider: str | None = None
                 if model:
                     lower = model.lower()
-                    if lower.startswith("seedream") or lower.startswith("volcengine"):
+                    if lower.startswith("seedream") or lower.startswith("volcengine") or "doubao" in lower or "seedream" in lower:
                         inferred_provider = "volcengine"
                     elif lower.startswith("deepseek"):
                         inferred_provider = "deepseek"

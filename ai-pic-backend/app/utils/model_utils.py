@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 def infer_provider_from_model(model_id: str) -> Optional[str]:
     """Infer provider from a model id heuristic."""
     mid = model_id.lower()
-    if mid.startswith(("seedream", "volcengine")):
+    if mid.startswith(("seedream", "volcengine")) or "doubao" in mid or "seedream" in mid:
         return "volcengine"
     if mid.startswith("deepseek"):
         return "deepseek"
