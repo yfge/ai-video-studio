@@ -446,22 +446,24 @@ async def generate_environment_images(
 
     prefer_provider: Optional[str] = None
     extra_prompt = payload.get("prompt", prompt)
-    final_prompt = _compose_environment_prompt(env, extra_prompt)
     selected_model_raw = (payload.get("model") or model or "").strip() or None
     selected_model, prefer_provider_from_model = parse_model_and_provider(selected_model_raw)
-    prefer_provider = prefer_provider or prefer_provider_from_model
-    style_hint = payload.get("style") or "realistic"
-    if (prefer_provider or "").lower() == "openai":
-        style_hint = normalize_openai_image_style(style_hint)
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
+    style_hint = payload.get("style") or "realistic"
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
         count_int = 1
     count_int = max(1, min(count_int, 4))
 
+    prefer_provider = prefer_provider or prefer_provider_from_model
     prefer_provider = prefer_provider or _infer_provider_from_model(selected_model or "")
+    if (prefer_provider or "").lower() == "openai":
+        style_hint = normalize_openai_image_style(style_hint)
+
+    final_prompt = _compose_environment_prompt(env, extra_prompt)
+
     try:
         response = await ai_service.ai_manager.generate_image(
             prompt=final_prompt,
@@ -534,7 +536,10 @@ async def generate_environment_image_variants(
     if (prefer_provider or "").lower() == "openai":
         style_hint = normalize_openai_image_style(style_hint)
     extra_prompt = payload.get("prompt", prompt)
-    prompt_value = _compose_environment_prompt(env, extra_prompt or "Generate stylistically consistent variants based on this environment reference")
+    prompt_value = _compose_environment_prompt(
+        env,
+        extra_prompt or "Generate stylistically consistent variants based on this environment reference",
+    )
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
     try:

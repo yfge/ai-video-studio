@@ -76,4 +76,15 @@ def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_i
     """异步分镜图像生成任务入口。"""
     from app.api.v1.endpoints.scripts import _process_storyboard_image_task
 
-    _process_storyboard_image_task(task_id, payload, user_id)
+    script_id = int(payload.get("script_id"))
+    frame_indexes = payload.get("frames") or []
+    _process_storyboard_image_task(
+        task_id,
+        script_id,
+        frame_indexes,
+        model=payload.get("model"),
+        width=int(payload.get("width") or 1024),
+        height=int(payload.get("height") or 1024),
+        style=payload.get("style") or "realistic",
+        reference_images=payload.get("reference_images") or [],
+    )
