@@ -11,6 +11,10 @@ from app.models.user import User
 from app.schemas.virtual_ip import VirtualIPImageCreate, VirtualIPImageResponse, VirtualIPImageUpdate
 from app.services.ai_service import ai_service
 from app.services.storage import oss_service
+from app.services.task_worker import (
+    virtual_ip_image_generate_task,
+    virtual_ip_image_variant_task,
+)
 from app.core.middleware import get_current_active_user
 import shutil
 from datetime import datetime
@@ -105,6 +109,71 @@ async def create_virtual_ip_image(
     
     return VirtualIPImageResponse.from_orm(db_image)
 
+
+def _build_virtual_ip_image_payload(
+    virtual_ip_id: int,
+    style: Optional[str],
+    category: Optional[str],
+    model: Optional[str],
+    count: Optional[int],
+    size: Optional[str],
+    additional_prompts: Optional[str],
+    is_default: Optional[str] | Optional[bool],
+    current_user: User,
+    db: Session,
+) -> Dict[str, Any]:
+    """将前端传入的参数收敛为任务 payload，便于 Celery worker 重建上下文。"""
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+
+    style_value = style or "realistic"
+    category_value = category or "portrait"
+    raw_model = model
+    selected_model = (raw_model or "dalle-3").strip()
+    if not selected_model:
+        selected_model = "dalle-3"
+
+    try:
+        count_int = int(count) if count is not None else 1
+    except (TypeError, ValueError):
+        count_int = 1
+
+    additional_prompt_list = [
+        p.strip()
+        for p in (additional_prompts or "").split(",")
+        if p.strip()
+    ]
+
+    is_default_bool = False
+    if isinstance(is_default, bool):
+        is_default_bool = is_default
+    elif isinstance(is_default, str):
+        is_default_bool = is_default.lower() in {"true", "1", "yes", "on"}
+
+    # 将虚拟 IP 页面上填写的多种文案聚合进描述，保证提示词包含角色设定
+    description_parts = []
+    if virtual_ip.description:
+        description_parts.append(f"角色简介：{virtual_ip.description}")
+    if getattr(virtual_ip, "background_story", None):
+        description_parts.append(f"背景故事：{virtual_ip.background_story}")
+    if getattr(virtual_ip, "biography", None):
+        description_parts.append(f"人物小传：{virtual_ip.biography}")
+    if getattr(virtual_ip, "style_prompt", None):
+        description_parts.append(f"风格设定：{virtual_ip.style_prompt}")
+    aggregated_description = "；".join(description_parts) or (virtual_ip.description or "")
+
+    return {
+        "virtual_ip_id": virtual_ip_id,
+        "virtual_ip_name": virtual_ip.name,
+        "aggregated_description": aggregated_description,
+        "style": style_value,
+        "category": category_value,
+        "model": selected_model,
+        "count": count_int,
+        "size": size,
+        "additional_prompts": additional_prompt_list,
+        "is_default": is_default_bool,
+    }
+
 @router.post("/{virtual_ip_id}/images/generate", response_model=VirtualIPImageResponse)
 async def generate_virtual_ip_image(
     virtual_ip_id: int,
@@ -119,7 +188,7 @@ async def generate_virtual_ip_image(
     size: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
-    """使用AI生成虚拟IP图像"""
+    """使用AI生成虚拟IP图像（同步路径，保留以兼容旧调用）"""
     # 尽量使用 OSS，若未配置则退回本地相对路径
     # 检查虚拟IP是否存在且归属当前用户（或管理员）
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
@@ -440,7 +509,7 @@ async def generate_virtual_ip_image_variant(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """基于已有虚拟IP图像生成变体并保存"""
+    """基于已有虚拟IP图像生成变体并保存（同步路径，保留以兼容旧调用）"""
     # 优先使用 OSS，未配置则退回本地存储
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
 

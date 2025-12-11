@@ -11,6 +11,10 @@ from app.core.middleware import get_current_active_user
 from app.services import story_structure_service as svc
 from app.services.ai_service import ai_service
 from app.services.storage.oss_service import oss_service
+from app.services.task_worker import (
+    environment_image_generate_task,
+    environment_image_variant_task,
+)
 from app.utils.model_utils import parse_model_and_provider, normalize_openai_image_style
 from app.models.story_structure import Environment
 from app.models.user import User

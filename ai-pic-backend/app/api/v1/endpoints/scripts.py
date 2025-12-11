@@ -29,7 +29,10 @@ from app.core.logging import get_logger
 from app.utils.script_parser import extract_script_structure
 from app.utils.json_utils import extract_json_block
 from app.models.task import Task, TaskStatus
-from app.services.task_worker import script_generate_task
+from app.services.task_worker import (
+    script_generate_task,
+    storyboard_image_generate_task,
+)
 import json
 
 
@@ -2081,18 +2084,17 @@ async def generate_storyboard_images(
     db.add(t)
     db.commit()
     db.refresh(t)
-
-    background_tasks.add_task(
-        _process_storyboard_image_task,
-        t.id,
-        script_id,
-        body.frames,
-        model=body.model,
-        width=body.width,
-        height=body.height,
-        style=body.style,
-        reference_images=body.reference_images,
-    )
+    # 委托 Celery worker 执行分镜图像生成
+    payload = {
+        "script_id": script_id,
+        "frames": body.frames or [],
+        "model": body.model,
+        "width": body.width,
+        "height": body.height,
+        "style": body.style,
+        "reference_images": body.reference_images or [],
+    }
+    storyboard_image_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 

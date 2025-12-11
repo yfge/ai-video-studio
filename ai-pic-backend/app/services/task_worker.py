@@ -38,3 +38,42 @@ def script_generate_task(task_id: int, request_dict: Dict[str, Any], user_id: in
 
     _process_script_generation_task(task_id, request_dict, user_id)
 
+
+@celery_app.task(name="tasks.virtual_ip_image_generate")
+def virtual_ip_image_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """异步虚拟 IP 文生图任务入口。"""
+    from app.api.v1.endpoints.virtual_ip_images import _process_virtual_ip_image_task
+
+    _process_virtual_ip_image_task(task_id, payload, user_id)
+
+
+@celery_app.task(name="tasks.virtual_ip_image_variant")
+def virtual_ip_image_variant_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """异步虚拟 IP 图生图任务入口。"""
+    from app.api.v1.endpoints.virtual_ip_images import _process_virtual_ip_image_variant_task
+
+    _process_virtual_ip_image_variant_task(task_id, payload, user_id)
+
+
+@celery_app.task(name="tasks.environment_image_generate")
+def environment_image_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """异步环境文生图任务入口。"""
+    from app.api.v1.endpoints.story_structure import _process_environment_image_task
+
+    _process_environment_image_task(task_id, payload, user_id)
+
+
+@celery_app.task(name="tasks.environment_image_variant")
+def environment_image_variant_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """异步环境图生图任务入口。"""
+    from app.api.v1.endpoints.story_structure import _process_environment_image_variant_task
+
+    _process_environment_image_variant_task(task_id, payload, user_id)
+
+
+@celery_app.task(name="tasks.storyboard_image_generate")
+def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """异步分镜图像生成任务入口。"""
+    from app.api.v1.endpoints.scripts import _process_storyboard_image_task
+
+    _process_storyboard_image_task(task_id, payload, user_id)
