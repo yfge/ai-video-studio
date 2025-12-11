@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import Navigation from '@/components/Navigation'
 
 export default function Home() {
@@ -18,17 +17,7 @@ export default function Home() {
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             集成多种AI能力，支持虚拟IP管理、AI图像生成、剧本创作等完整短剧制作工作流
           </p>
-          <div className="flex justify-center space-x-4">
-            <Link href="/virtual-ip" className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-medium hover:bg-blue-700 transition-colors">
-              虚拟IP管理
-            </Link>
-            <Link href="/stories" className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-medium hover:bg-green-700 transition-colors">
-              剧本创作
-            </Link>
-            <Link href="/gallery" className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-medium hover:bg-purple-700 transition-colors">
-              作品展示
-            </Link>
-          </div>
+          <div className="flex justify-center space-x-4" />
         </div>
 
         {/* Features Grid */}
@@ -120,14 +109,7 @@ export default function Home() {
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-8 text-center">
           <h3 className="text-2xl font-bold text-white mb-4">开始您的AI短剧创作之旅</h3>
           <p className="text-blue-100 mb-6">只需几步，即可创建专业的短剧剧本</p>
-          <div className="flex justify-center space-x-4">
-            <Link href="/virtual-ip" className="bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors">
-              创建虚拟IP
-            </Link>
-            <Link href="/stories" className="bg-blue-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-400 transition-colors">
-              开始创作
-            </Link>
-          </div>
+          <div className="flex justify-center space-x-4" />
         </div>
       </main>
 

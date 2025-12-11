@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { taskAPI, type Task as APITask } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
+import Navigation from '@/components/Navigation'
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<APITask[]>([])
@@ -150,47 +150,28 @@ export default function Tasks() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-bold text-gray-900">任务管理</h1>
-              <nav className="flex space-x-8">
-                <Link
-                  href="/tasks"
-                  className="text-blue-600 border-b-2 border-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  任务管理
-                </Link>
-                <Link
-                  href="/gallery"
-                  className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium"
-                >
-                  图片画廊
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              <label className="text-sm text-gray-600 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={poll}
-                  onChange={e => setPoll(e.target.checked)}
-                />
-                自动刷新
-              </label>
-              <button
-                onClick={() => loadTasks()}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                刷新
-              </button>
-            </div>
+      <Navigation />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">任务管理</h1>
+          <div className="flex items-center space-x-4">
+            <label className="text-sm text-gray-600 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={poll}
+                onChange={e => setPoll(e.target.checked)}
+              />
+              自动刷新
+            </label>
+            <button
+              onClick={() => loadTasks()}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              刷新
+            </button>
           </div>
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">任务列表</h2>
