@@ -366,8 +366,11 @@ def delete_shot(db: Session, shot_id: int) -> bool:
 
 # Environment CRUD
 
-def list_environments(db: Session) -> List[Environment]:
-    return db.query(Environment).order_by(Environment.id.asc()).all()
+def list_environments(db: Session, owner_id: int | None = None) -> List[Environment]:
+    query = db.query(Environment)
+    if owner_id is not None:
+        query = query.filter(Environment.user_id == owner_id)
+    return query.order_by(Environment.id.asc()).all()
 
 
 def get_environment(db: Session, env_id: int) -> Optional[Environment]:

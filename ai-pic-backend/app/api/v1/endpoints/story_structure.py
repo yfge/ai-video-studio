@@ -7,10 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.middleware import get_current_active_user
 from app.services import story_structure_service as svc
 from app.services.ai_service import ai_service
+from app.services.storage.oss_service import oss_service
 from app.utils.model_utils import parse_model_and_provider, normalize_openai_image_style
 from app.models.story_structure import Environment
+from app.models.user import User
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
     StoryTreatmentResponse,
@@ -208,22 +211,44 @@ async def delete_shot(shot_id: int, db: Session = Depends(get_db)):
 # Environment management
 
 @router.get("/environments", response_model=List[EnvironmentResponse])
-async def list_environments(db: Session = Depends(get_db)):
-    items = svc.list_environments(db)
+async def list_environments(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    items = svc.list_environments(
+        db,
+        owner_id=None
+        if current_user.is_admin or current_user.is_superuser
+        else current_user.id,
+    )
     return [EnvironmentResponse.model_validate(it) for it in items]
 
 
 @router.get("/environments/{env_id}", response_model=EnvironmentResponse)
-async def get_environment(env_id: int, db: Session = Depends(get_db)):
+async def get_environment(
+    env_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     env = svc.get_environment(db, env_id)
+    if env and not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        env = None
     if not env:
         raise HTTPException(status_code=404, detail="environment not found")
     return EnvironmentResponse.model_validate(env)
 
 
 @router.post("/environments", response_model=EnvironmentResponse)
-async def create_environment(body: EnvironmentCreate, db: Session = Depends(get_db)):
-    env = svc.create_environment(db, body.model_dump(exclude_none=True))
+async def create_environment(
+    body: EnvironmentCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    payload = body.model_dump(exclude_none=True)
+    payload["user_id"] = current_user.id
+    env = svc.create_environment(db, payload)
     return EnvironmentResponse.model_validate(env)
 
 
@@ -231,8 +256,14 @@ async def create_environment(body: EnvironmentCreate, db: Session = Depends(get_
 async def update_environment(
     env_id: int,
     body: EnvironmentUpdate,
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    env = svc.get_environment(db, env_id)
+    if not env or not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        raise HTTPException(status_code=404, detail="environment not found")
     env = svc.update_environment(db, env_id, body.model_dump(exclude_none=True))
     if not env:
         raise HTTPException(status_code=404, detail="environment not found")
@@ -240,8 +271,18 @@ async def update_environment(
 
 
 @router.delete("/environments/{env_id}", status_code=204)
-async def delete_environment(env_id: int, db: Session = Depends(get_db)):
-    ok = svc.delete_environment(db, env_id)
+async def delete_environment(
+    env_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    env = svc.get_environment(db, env_id)
+    if not env or not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        ok = False
+    else:
+        ok = svc.delete_environment(db, env_id)
     if not ok:
         raise HTTPException(status_code=404, detail="environment not found")
     return None
@@ -285,8 +326,8 @@ async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[
                     "environment_id": env.id,
                     "environment_name": env.name or "",
                 },
-                # 环境参考图像在有 OSS 时上传，否则落盘本地
-                require_upload=False,
+                # 如果配置了 OSS，则要求上传成功；未配置时退回本地
+                require_upload=bool(oss_service),
             )
         except Exception:
             continue
@@ -331,8 +372,16 @@ def _compose_environment_prompt(env, extra: Optional[str] = None) -> str:
 
 
 @router.get("/environments/{env_id}/images")
-async def list_environment_images(env_id: int, db: Session = Depends(get_db)):
+async def list_environment_images(
+    env_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     env = svc.get_environment(db, env_id)
+    if env and not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        env = None
     if not env:
         raise HTTPException(status_code=404, detail="environment not found")
     images = env.reference_images or []
@@ -344,8 +393,17 @@ async def list_environment_images(env_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/environments/{env_id}/images")
-async def delete_environment_image(env_id: int, image_url: str, db: Session = Depends(get_db)):
+async def delete_environment_image(
+    env_id: int,
+    image_url: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     env = svc.get_environment(db, env_id)
+    if env and not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        env = None
     if not env:
         raise HTTPException(status_code=404, detail="environment not found")
     refs = env.reference_images or []
@@ -362,9 +420,14 @@ async def generate_environment_images(
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
     size: Optional[str] = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     env = svc.get_environment(db, env_id)
+    if env and not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        env = None
     if not env:
         raise HTTPException(status_code=404, detail="environment not found")
     if not ai_service.ai_manager:
@@ -429,9 +492,14 @@ async def generate_environment_image_variants(
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
     size: Optional[str] = Query(None, description="分辨率/尺寸"),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     env = svc.get_environment(db, env_id)
+    if env and not (
+        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+    ):
+        env = None
     if not env:
         raise HTTPException(status_code=404, detail="environment not found")
     if not ai_service.ai_manager:

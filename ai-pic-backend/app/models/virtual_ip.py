@@ -8,6 +8,7 @@ class VirtualIP(Base):
     __tablename__ = "virtual_ips"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     name = Column(String(64), unique=True, nullable=False, index=True)
     description = Column(Text, nullable=True)
     tags = Column(JSON, nullable=True)  # 存储标签列表

@@ -44,6 +44,9 @@ class User(Base):
     images = relationship("Image", back_populates="user")
     tasks = relationship("Task", back_populates="user")
     approved_by = relationship("User", remote_side=[id], backref="approved_users")
+    virtual_ips = relationship("VirtualIP", backref="owner")
+    stories = relationship("Story", backref="owner")
+    environments = relationship("Environment", backref="owner")
     
     @property
     def can_login(self):

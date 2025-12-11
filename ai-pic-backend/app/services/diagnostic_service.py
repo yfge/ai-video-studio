@@ -239,6 +239,61 @@ class DiagnosticService:
         except Exception as e:
             self._log_test_result("OSS服务", False, error=f"OSS测试异常: {str(e)}")
             return False
+
+    async def test_oss_image_upload(self) -> bool:
+        """使用PNG图片测试OSS上传（模拟虚拟IP图像路径）"""
+        self.logger.info("🔍 测试OSS图片上传...")
+
+        if not oss_service:
+            self._log_test_result("OSS图片上传", False, error="OSS服务未初始化（配置可能不完整）")
+            return False
+
+        try:
+            import base64
+
+            # 一个最小的 1x1 PNG（白色像素）
+            tiny_png_b64 = (
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMA"
+                "ASsJTYQAAAAASUVORK5CYII="
+            )
+            file_content = base64.b64decode(tiny_png_b64)
+            filename = "diagnostic_test.png"
+
+            upload_result = await oss_service.upload_file_content(
+                file_content=file_content,
+                filename=filename,
+                file_type="image",
+                prefix="diagnostic-test",
+                metadata={
+                    "test": "true",
+                    "purpose": "diagnostic_image",
+                    "provider": "diagnostic",
+                    "model": "diagnostic-image",
+                },
+            )
+
+            if upload_result.get("success"):
+                file_url = upload_result.get("file_url")
+                object_key = upload_result.get("object_key")
+
+                # 测试删除（清理）
+                try:
+                    delete_result = oss_service.delete_object(object_key)
+                    cleanup_status = "已清理" if delete_result.get("success") else "清理失败"
+                except Exception:
+                    cleanup_status = "清理异常"
+
+                details = f"图片上传成功，文件URL: {file_url}, {cleanup_status}"
+                self._log_test_result("OSS图片上传", True, details)
+                return True
+            else:
+                error_msg = upload_result.get("error", "上传失败，原因未知")
+                self._log_test_result("OSS图片上传", False, error=error_msg)
+                return False
+
+        except Exception as e:
+            self._log_test_result("OSS图片上传", False, error=f"OSS图片测试异常: {str(e)}")
+            return False
     
     async def test_file_system(self) -> bool:
         """测试文件系统操作"""

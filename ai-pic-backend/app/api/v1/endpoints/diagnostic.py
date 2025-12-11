@@ -66,6 +66,23 @@ async def test_oss_service(
             "error": f"OSS服务测试失败: {str(e)}"
         }
 
+@router.post("/oss-image")
+async def test_oss_image_upload(
+    current_user: User = Depends(get_current_active_user)
+) -> Dict[str, Any]:
+    """测试OSS图片上传（使用1x1 PNG模拟虚拟IP图像上传路径）"""
+    try:
+        success = await diagnostic_service.test_oss_image_upload()
+        return {
+            "success": success,
+            "test_result": diagnostic_service.test_results.get("OSS图片上传", {})
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"OSS图片上传测试失败: {str(e)}"
+        }
+
 @router.post("/database")
 async def test_database_connection(
     current_user: User = Depends(get_current_active_user)

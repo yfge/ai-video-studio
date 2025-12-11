@@ -126,6 +126,8 @@ Before yielding work back to the user:
 
 **CRITICAL — Chrome self-test (MCP):** After completing each functional change, run a quick end-to-end verification using Chrome via MCP/DevTools; record the scenario in `agent_chats` before marking the task done. Use test account `geyunfei` / `Gyf@845261` to log in. Do not defer runs due to model cost—assume budget is OK.
 
+**CRITICAL — 不要嘴硬:** 当日志、请求结果或用户现场信息与你的推断不一致时，**优先承认不确定性和可能的误判，先复盘/排查，再给结论**；禁止反复坚持“代码没问题”“环境有问题”这类口头判断。遇到冲突信号时，要主动用真实请求（curl、自测脚本、浏览器实际路径）复现问题，并在 `agent_chats` 的 `## Validation` 段明确记录你是如何验证和纠正自己的。
+
 1. Ensure relevant tests (`pytest`, `npm run lint`, targeted suites) pass locally.
 2. Verify `pre-commit run --all-files` is clean or document any justified skips.
 2.1 Ensure the working tree is clean (no unstaged changes) at commit time.

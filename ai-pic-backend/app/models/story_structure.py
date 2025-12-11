@@ -205,6 +205,7 @@ class Environment(Base):
     __tablename__ = "environments"
 
     id = Column(BIGINT_PK, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     name = Column(String(255), nullable=False)
     category = Column(String(50), comment="indoor/outdoor/other")
     tags = Column(JSON)

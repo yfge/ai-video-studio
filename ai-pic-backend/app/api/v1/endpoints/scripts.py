@@ -771,8 +771,11 @@ async def create_script(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """创建剧本"""
-    # 检查剧集是否存在
-    episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
+    # 检查剧集是否存在且归属当前用户（或管理员）
+    episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        episode_query = episode_query.filter(Story.user_id == current_user.id)
+    episode = episode_query.filter(Episode.id == script.episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
     
@@ -803,12 +806,15 @@ async def generate_script(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """使用AI生成剧本"""
-    # 获取剧集信息
-    episode = db.query(Episode).filter(Episode.id == request.episode_id).first()
+    # 获取剧集信息（按用户隔离）
+    episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        episode_query = episode_query.filter(Story.user_id == current_user.id)
+    episode = episode_query.filter(Episode.id == request.episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
     
-    # 获取故事信息
+    # 获取故事信息（确保与当前用户匹配）
     story = db.query(Story).filter(Story.id == episode.story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
@@ -938,7 +944,10 @@ async def preview_script_prompt(
     request: ScriptGenerationRequest,
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
-    episode = db.query(Episode).filter(Episode.id == request.episode_id).first()
+    episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        episode_query = episode_query.filter(Story.user_id == current_user.id)
+    episode = episode_query.filter(Episode.id == request.episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
     story = db.query(Story).filter(Story.id == episode.story_id).first()
@@ -978,7 +987,15 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             task.status = TaskStatus.PROCESSING
             db.commit()
 
-        episode = db.query(Episode).filter(Episode.id == request_dict.get("episode_id")).first()
+        episode = (
+            db.query(Episode)
+            .join(Story, Episode.story_id == Story.id)
+            .filter(
+                Episode.id == request_dict.get("episode_id"),
+                Story.user_id == user_id,
+            )
+            .first()
+        )
         if not episode:
             raise RuntimeError("剧集不存在")
         story = db.query(Story).filter(Story.id == episode.story_id).first()
@@ -1132,7 +1149,18 @@ async def get_storyboard(
 ):
     from app.core.logging import get_logger
     logger = get_logger()
-    script = db.query(Script).filter(Script.id == script_id).first()
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
     storyboard = (script.extra_metadata or {}).get("storyboard") if script.extra_metadata else None
@@ -1974,6 +2002,21 @@ async def generate_storyboard_images(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     from app.models.task import Task
+    # 校验剧本归属
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
+    if not script:
+        raise HTTPException(status_code=404, detail="剧本不存在")
     t = Task(
         title=f"分镜图像生成 - 剧本{script_id}",
         description="根据分镜生成图像",
@@ -2120,6 +2163,13 @@ async def get_scripts(
     if format_type:
         query = query.filter(Script.format_type == format_type)
     
+    # 只允许访问当前用户故事下的剧本
+    query = query.join(Episode, Script.episode_id == Episode.id).join(
+        Story, Episode.story_id == Story.id
+    )
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+
     scripts = query.order_by(Script.created_at.desc()).offset(skip).limit(limit).all()
     return [ScriptResponse.from_orm(script) for script in scripts]
 
@@ -2129,7 +2179,18 @@ async def get_script(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """获取剧本详情"""
-    script = db.query(Script).filter(Script.id == script_id).first()
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
     
@@ -2142,7 +2203,18 @@ async def update_script(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """更新剧本"""
-    script = db.query(Script).filter(Script.id == script_id).first()
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
     
@@ -2173,7 +2245,18 @@ async def delete_script(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """删除剧本"""
-    script = db.query(Script).filter(Script.id == script_id).first()
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
     
@@ -2188,12 +2271,20 @@ async def get_episode_scripts(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """获取剧集的所有剧本"""
-    # 检查剧集是否存在
-    episode = db.query(Episode).filter(Episode.id == episode_id).first()
+    # 检查剧集是否存在且归属当前用户
+    episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        episode_query = episode_query.filter(Story.user_id == current_user.id)
+    episode = episode_query.filter(Episode.id == episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
     
-    scripts = db.query(Script).filter(Script.episode_id == episode_id).order_by(Script.created_at.desc()).all()
+    scripts = (
+        db.query(Script)
+        .filter(Script.episode_id == episode_id)
+        .order_by(Script.created_at.desc())
+        .all()
+    )
     return [ScriptResponse.from_orm(script) for script in scripts]
 
 @router.post("/{script_id}/regenerate", response_model=ScriptResponse)
@@ -2202,7 +2293,18 @@ async def regenerate_script(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """重新生成剧本内容"""
-    script = db.query(Script).filter(Script.id == script_id).first()
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
     
@@ -2314,7 +2416,18 @@ async def export_script(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """导出剧本"""
-    script = db.query(Script).filter(Script.id == script_id).first()
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
     

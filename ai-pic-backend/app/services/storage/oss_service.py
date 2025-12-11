@@ -4,49 +4,58 @@
 提供文件上传、下载、管理等功能
 """
 
-import oss2
-import httpx
 import asyncio
-import hashlib
-import hmac
-import base64
-import mimetypes
 import logging
+import mimetypes
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Union
-from urllib.parse import urlparse
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+from urllib.parse import urlparse
+
+import httpx
+import oss2
 
 from app.core.config import settings
 
 
 class OSSService:
     """阿里云OSS存储服务"""
-    
+
     def __init__(self):
-        self.access_key_id = getattr(settings, 'ALIYUN_ACCESS_KEY_ID', None)
-        self.access_key_secret = getattr(settings, 'ALIYUN_ACCESS_KEY_SECRET', None)
-        self.endpoint = getattr(settings, 'ALIYUN_OSS_ENDPOINT', None)
-        self.bucket_name = getattr(settings, 'ALIYUN_OSS_BUCKET', None)
-        self.domain = getattr(settings, 'ALIYUN_OSS_DOMAIN', None)
+        # 基本配置，统一做strip去掉可能的空白字符，避免签名失败
+        raw_access_key_id = getattr(settings, "ALIYUN_ACCESS_KEY_ID", None)
+        raw_access_key_secret = getattr(settings, "ALIYUN_ACCESS_KEY_SECRET", None)
+        raw_endpoint = getattr(settings, "ALIYUN_OSS_ENDPOINT", None)
+        raw_bucket = getattr(settings, "ALIYUN_OSS_BUCKET", None)
+        raw_domain = getattr(settings, "ALIYUN_OSS_DOMAIN", None)
+
+        self.access_key_id = (
+            raw_access_key_id.strip() if isinstance(raw_access_key_id, str) else raw_access_key_id
+        )
+        self.access_key_secret = (
+            raw_access_key_secret.strip() if isinstance(raw_access_key_secret, str) else raw_access_key_secret
+        )
+        self.endpoint = raw_endpoint.strip() if isinstance(raw_endpoint, str) else raw_endpoint
+        self.bucket_name = raw_bucket.strip() if isinstance(raw_bucket, str) else raw_bucket
+        self.domain = raw_domain.strip() if isinstance(raw_domain, str) else raw_domain
         self.logger = logging.getLogger(__name__)
-        
+
         if not all([self.access_key_id, self.access_key_secret, self.endpoint, self.bucket_name]):
             raise ValueError("阿里云OSS配置不完整，请检查环境变量")
-        
-        # 初始化OSS客户端（仅用于非上传操作；上传走自定义签名路径以便更好排查问题）
+
+        # 规范化 endpoint，保证后续 SDK 使用一致
         parsed = urlparse(self.endpoint)
         if parsed.scheme:
             endpoint_host = parsed.netloc or parsed.path
         else:
             endpoint_host = parsed.path or parsed.netloc
-        # 规范化为不带协议的 endpoint，避免签名歧义
         self._endpoint_host = endpoint_host
 
+        # 使用官方 SDK 负责签名，避免手写签名出错导致 403
         auth = oss2.Auth(self.access_key_id, self.access_key_secret)
         self.bucket = oss2.Bucket(auth, f"https://{self._endpoint_host}", self.bucket_name)
 
-        # 设置默认域名
+        # 设置默认访问域名
         if not self.domain:
             self.domain = f"https://{self.bucket_name}.{self._endpoint_host}"
     
@@ -88,15 +97,18 @@ class OSSService:
         prefix: str = None,
         metadata: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
-        """从URL下载文件并上传到OSS（使用自定义签名，便于排查签名问题）。"""
+        """
+        从URL下载文件并上传到OSS。
+
+        仍然使用 httpx 下载远端内容，但真正上传交给官方 SDK，
+        避免手写签名导致 SignatureDoesNotMatch。
+        """
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.get(url)
                 response.raise_for_status()
 
                 file_content = response.content
-                # 使用远端 content-type 或根据 URL 推断
-                content_type = response.headers.get("content-type", self._get_content_type(url))
 
             filename = Path(urlparse(url).path).name or None
             return await self.upload_file_content(
@@ -121,74 +133,53 @@ class OSSService:
         prefix: str = None,
         metadata: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """上传文件内容到OSS（使用手工签名以避免SDK内部签名差异）。"""
+        """
+        上传文件内容到OSS。
+
+        使用 oss2.Bucket.put_object，由 SDK 负责签名，避免 403 SignatureDoesNotMatch。
+        """
         try:
             # 生成对象键
             object_key = self._generate_object_key(file_type, filename, prefix)
 
-            # 获取内容类型
+            # 获取内容类型（目前不直接写入 Content-Type 头，避免部分环境下签名不一致）
             content_type = self._get_content_type(filename)
 
-            # 准备元数据头（仅 ASCII）
-            meta_headers: Dict[str, str] = {}
+            # 准备 headers（仅 ASCII 的自定义元数据）
+            headers: Dict[str, str] = {}
             if metadata:
                 for key, value in metadata.items():
                     value_str = str(value)
                     try:
                         value_str.encode("ascii")
-                        meta_headers[f"x-oss-meta-{key}"] = value_str
+                        # OSS 对 header 名有一些约束，这里统一把 metadata key 中的下划线替换为短横线，
+                        # 避免客户端和服务端在 canonicalization 上出现差异。
+                        safe_key = str(key).replace("_", "-")
+                        headers[f"x-oss-meta-{safe_key}"] = value_str
                     except UnicodeEncodeError:
-                        self.logger.warning(f"跳过包含非ASCII字符的metadata: {key}={value_str}")
-                        continue
+                        self.logger.warning("跳过包含非ASCII字符的metadata: %s=%s", key, value_str)
 
-            # 构造签名所需字段
-            method = "PUT"
-            content_md5 = ""
-            date_str = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+            # oss2 是同步接口，这里放到线程池里避免阻塞事件循环
+            def _put():
+                return self.bucket.put_object(object_key, file_content, headers=headers)
 
-            # CanonicalizedOSSHeaders
-            oss_headers = {k.lower(): v.strip() for k, v in meta_headers.items()}
-            canonical_oss_headers = ""
-            for k in sorted(oss_headers.keys()):
-                canonical_oss_headers += f"{k}:{oss_headers[k]}\n"
+            result = await asyncio.to_thread(_put)
 
-            # CanonicalizedResource: /bucket/object
-            canonical_resource = f"/{self.bucket_name}/{object_key}"
-
-            string_to_sign = (
-                f"{method}\n"
-                f"{content_md5}\n"
-                f"{content_type}\n"
-                f"{date_str}\n"
-                f"{canonical_oss_headers}{canonical_resource}"
-            )
-
-            # 计算签名
-            h = hashlib.sha1()
-            hmac_obj = hmac.new(self.access_key_secret.encode("utf-8"), string_to_sign.encode("utf-8"), hashlib.sha1)
-            signature = base64.b64encode(hmac_obj.digest()).decode("utf-8")
-            authorization = f"OSS {self.access_key_id}:{signature}"
-
-            # 实际请求 Host: <bucket>.<endpoint_host>
-            base_url = f"https://{self.bucket_name}.{self._endpoint_host}"
-            url = f"{base_url}/{object_key}"
-
-            # 组装 HTTP 头
-            headers = {
-                "Authorization": authorization,
-                "Date": date_str,
-                "Content-Type": content_type,
-            }
-            headers.update(meta_headers)
-
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.put(url, content=file_content, headers=headers)
-                if resp.status_code >= 300:
-                    return {
-                        "success": False,
-                        "error": f"上传失败: status={resp.status_code}, body={resp.text}",
-                        "filename": filename,
-                    }
+            # 理论上 put_object 异常会直接抛出，这里双保险检查一下 status
+            status = getattr(result, "status", 200)
+            if status >= 300:
+                self.logger.warning(
+                    "OSS 上传失败 | status=%s bucket=%s endpoint=%s object_key=%s",
+                    status,
+                    self.bucket_name,
+                    self._endpoint_host,
+                    object_key,
+                )
+                return {
+                    "success": False,
+                    "error": f"上传失败: status={status}",
+                    "filename": filename,
+                }
 
             file_url = f"{self.domain}/{object_key}"
 

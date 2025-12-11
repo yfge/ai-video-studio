@@ -30,7 +30,10 @@ async def create_episode(
 ):
     """创建剧集"""
     # 检查故事是否存在
-    story = db.query(Story).filter(Story.id == episode.story_id).first()
+    story_query = db.query(Story).filter(Story.id == episode.story_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        story_query = story_query.filter(Story.user_id == current_user.id)
+    story = story_query.first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
@@ -62,7 +65,10 @@ async def generate_episodes(
 ):
     """使用AI生成剧集"""
     # 获取故事信息
-    story = db.query(Story).filter(Story.id == request.story_id).first()
+    story_query = db.query(Story).filter(Story.id == request.story_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        story_query = story_query.filter(Story.user_id == current_user.id)
+    story = story_query.first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
@@ -70,7 +76,10 @@ async def generate_episodes(
     focus_characters = []
     if request.focus_characters:
         for char_id in request.focus_characters:
-            virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == char_id).first()
+            vip_query = db.query(VirtualIP).filter(VirtualIP.id == char_id)
+            if not current_user.is_admin and not current_user.is_superuser:
+                vip_query = vip_query.filter(VirtualIP.user_id == current_user.id)
+            virtual_ip = vip_query.first()
             if virtual_ip:
                 focus_characters.append(
                     {
@@ -194,10 +203,15 @@ async def generate_episodes(
 
 @router.post("/prompt/preview")
 async def preview_episode_prompt(
-    request: EpisodeGenerationRequest, db: Session = Depends(get_db)
+    request: EpisodeGenerationRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """返回剧集生成的最终提示词（不调用模型）"""
-    story = db.query(Story).filter(Story.id == request.story_id).first()
+    story_query = db.query(Story).filter(Story.id == request.story_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        story_query = story_query.filter(Story.user_id == current_user.id)
+    story = story_query.first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
@@ -250,7 +264,11 @@ async def get_episodes(
     db: Session = Depends(get_db),
 ):
     """获取剧集列表"""
-    query = db.query(Episode)
+    query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+
+    # 普通用户只能查看自己的故事下的剧集
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
 
     if story_id:
         query = query.filter(Episode.story_id == story_id)
@@ -274,7 +292,17 @@ async def get_episode(
     db: Session = Depends(get_db),
 ):
     """获取剧集详情"""
-    episode = db.query(Episode).filter(Episode.id == episode_id).first()
+    episode = (
+        db.query(Episode)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Episode.id == episode_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
 
@@ -289,7 +317,17 @@ async def update_episode(
     db: Session = Depends(get_db),
 ):
     """更新剧集"""
-    episode = db.query(Episode).filter(Episode.id == episode_id).first()
+    episode = (
+        db.query(Episode)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Episode.id == episode_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
 
@@ -327,7 +365,17 @@ async def delete_episode(
     db: Session = Depends(get_db),
 ):
     """删除剧集"""
-    episode = db.query(Episode).filter(Episode.id == episode_id).first()
+    episode = (
+        db.query(Episode)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Episode.id == episode_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
 
@@ -345,7 +393,10 @@ async def get_story_episodes(
 ):
     """获取故事的所有剧集"""
     # 检查故事是否存在
-    story = db.query(Story).filter(Story.id == story_id).first()
+    story_query = db.query(Story).filter(Story.id == story_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        story_query = story_query.filter(Story.user_id == current_user.id)
+    story = story_query.first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
@@ -370,7 +421,17 @@ async def regenerate_episode(
     db: Session = Depends(get_db),
 ):
     """重新生成剧集内容"""
-    episode = db.query(Episode).filter(Episode.id == episode_id).first()
+    episode = (
+        db.query(Episode)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Episode.id == episode_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
 
@@ -463,7 +524,14 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             task.status = TaskStatus.PROCESSING
             db.commit()
 
-        story = db.query(Story).filter(Story.id == request_dict.get("story_id")).first()
+        story = (
+            db.query(Story)
+            .filter(
+                Story.id == request_dict.get("story_id"),
+                Story.user_id == user_id,
+            )
+            .first()
+        )
         if not story:
             raise RuntimeError("故事不存在")
 
@@ -483,7 +551,11 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
 
         focus_characters = []
         for cid in request_dict.get("focus_characters") or []:
-            vip = db.query(VirtualIP).filter(VirtualIP.id == cid).first()
+            vip = (
+                db.query(VirtualIP)
+                .filter(VirtualIP.id == cid, VirtualIP.user_id == user_id)
+                .first()
+            )
             if vip:
                 focus_characters.append(
                     {"id": vip.id, "name": vip.name, "description": vip.description}

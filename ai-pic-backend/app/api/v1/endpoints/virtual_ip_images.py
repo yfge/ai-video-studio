@@ -17,6 +17,21 @@ from datetime import datetime
 
 router = APIRouter()
 
+
+def _get_owned_virtual_ip(
+    db: Session,
+    current_user: User,
+    virtual_ip_id: int,
+) -> VirtualIP:
+    """获取当前用户可访问的虚拟 IP 资产。"""
+    query = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(VirtualIP.user_id == current_user.id)
+    vip = query.first()
+    if not vip:
+        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    return vip
+
 def save_virtual_ip_image(upload_file: UploadFile, virtual_ip_id: int) -> tuple[str, str, int]:
     """保存虚拟IP图像文件"""
     # 生成唯一文件名
@@ -55,10 +70,8 @@ async def create_virtual_ip_image(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """上传虚拟IP图像"""
-    # 检查虚拟IP是否存在
-    virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
-    if not virtual_ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    # 检查虚拟IP是否存在且归属当前用户（或管理员）
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     
     # 检查文件类型
     if not image.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
@@ -111,10 +124,8 @@ async def generate_virtual_ip_image(
 ):
     """使用AI生成虚拟IP图像"""
     # 尽量使用 OSS，若未配置则退回本地相对路径
-    # 检查虚拟IP是否存在
-    virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
-    if not virtual_ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    # 检查虚拟IP是否存在且归属当前用户（或管理员）
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     
     payload: Dict[str, Any] = {}
     if request.headers.get("content-type", "").startswith("application/json"):
@@ -253,10 +264,8 @@ async def get_image_categories(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """获取虚拟IP图像分类列表"""
-    # 检查虚拟IP是否存在
-    virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
-    if not virtual_ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    # 检查虚拟IP是否存在且归属当前用户（或管理员）
+    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     
     categories = db.query(VirtualIPImage.category).filter(
         VirtualIPImage.virtual_ip_id == virtual_ip_id
@@ -271,10 +280,8 @@ async def get_virtual_ip_images(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """获取虚拟IP的所有图像"""
-    # 检查虚拟IP是否存在
-    virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
-    if not virtual_ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    # 检查虚拟IP是否存在且归属当前用户（或管理员）
+    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     
     query = db.query(VirtualIPImage).filter(VirtualIPImage.virtual_ip_id == virtual_ip_id)
     
@@ -291,6 +298,8 @@ async def get_virtual_ip_image(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """获取特定虚拟IP图像"""
+    # 先校验虚拟 IP 归属
+    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = db.query(VirtualIPImage).filter(
         VirtualIPImage.id == image_id,
         VirtualIPImage.virtual_ip_id == virtual_ip_id
@@ -308,6 +317,8 @@ def download_virtual_ip_image(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """下载虚拟IP图像文件"""
+    # 校验虚拟 IP 归属
+    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = db.query(VirtualIPImage).filter(
         VirtualIPImage.id == image_id,
         VirtualIPImage.virtual_ip_id == virtual_ip_id
@@ -333,6 +344,8 @@ async def update_virtual_ip_image(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """更新虚拟IP图像信息"""
+    # 校验虚拟 IP 归属
+    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = db.query(VirtualIPImage).filter(
         VirtualIPImage.id == image_id,
         VirtualIPImage.virtual_ip_id == virtual_ip_id
@@ -365,6 +378,8 @@ async def delete_virtual_ip_image(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """删除虚拟IP图像"""
+    # 校验虚拟 IP 归属
+    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = db.query(VirtualIPImage).filter(
         VirtualIPImage.id == image_id,
         VirtualIPImage.virtual_ip_id == virtual_ip_id
@@ -392,7 +407,8 @@ async def set_default_image(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """设置默认图像"""
-    # 检查图像是否存在
+    # 检查虚拟 IP 归属和图像是否存在
+    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = db.query(VirtualIPImage).filter(
         VirtualIPImage.id == image_id,
         VirtualIPImage.virtual_ip_id == virtual_ip_id
@@ -429,9 +445,7 @@ async def generate_virtual_ip_image_variant(
 ):
     """基于已有虚拟IP图像生成变体并保存"""
     # 优先使用 OSS，未配置则退回本地存储
-    virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).first()
-    if not virtual_ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
 
     base_image = (
         db.query(VirtualIPImage)

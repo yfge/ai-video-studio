@@ -14,6 +14,21 @@ from app.services.virtual_ip_ai_service import virtual_ip_ai_service
 
 router = APIRouter()
 
+
+def _get_owned_virtual_ip(
+    db: Session,
+    current_user: User,
+    ip_id: int,
+) -> VirtualIP:
+    """获取当前用户可访问的虚拟 IP（非管理员只能访问自己的资产）。"""
+    query = db.query(VirtualIP).filter(VirtualIP.id == ip_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(VirtualIP.user_id == current_user.id)
+    ip = query.first()
+    if not ip:
+        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    return ip
+
 @router.get("/")
 def list_virtual_ips(
     skip: int = 0, 
@@ -21,7 +36,11 @@ def list_virtual_ips(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    virtual_ips = db.query(VirtualIP).offset(skip).limit(limit).all()
+    query = db.query(VirtualIP)
+    # 普通用户只看到自己的虚拟 IP，管理员/超级用户可以查看全部
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(VirtualIP.user_id == current_user.id)
+    virtual_ips = query.offset(skip).limit(limit).all()
     return {
         "success": True,
         "data": [VirtualIPResponse.from_orm(ip) for ip in virtual_ips]
@@ -33,7 +52,10 @@ def create_virtual_ip(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    db_ip = VirtualIP(**ip.dict())
+    db_ip = VirtualIP(
+        user_id=current_user.id,
+        **ip.dict(),
+    )
     db.add(db_ip)
     db.commit()
     db.refresh(db_ip)
@@ -48,9 +70,7 @@ def get_virtual_ip(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    ip = db.query(VirtualIP).filter(VirtualIP.id == ip_id).first()
-    if not ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    ip = _get_owned_virtual_ip(db, current_user, ip_id)
     return {
         "success": True,
         "data": VirtualIPResponse.from_orm(ip)
@@ -63,9 +83,7 @@ def update_virtual_ip(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    ip = db.query(VirtualIP).filter(VirtualIP.id == ip_id).first()
-    if not ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    ip = _get_owned_virtual_ip(db, current_user, ip_id)
     for k, v in ip_update.dict(exclude_unset=True).items():
         setattr(ip, k, v)
     db.commit()
@@ -81,9 +99,7 @@ def delete_virtual_ip(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    ip = db.query(VirtualIP).filter(VirtualIP.id == ip_id).first()
-    if not ip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    ip = _get_owned_virtual_ip(db, current_user, ip_id)
     db.delete(ip)
     db.commit()
     return {
@@ -198,6 +214,7 @@ async def create_virtual_ip_with_ai(
         
         # 创建虚拟IP
         db_ip = VirtualIP(
+            user_id=current_user.id,
             name=request.name,
             description=ai_content["description"],
             background_story=ai_content["background_story"],
@@ -205,7 +222,7 @@ async def create_virtual_ip_with_ai(
             style_prompt=style_prompt,
             tags=request.tags,
             is_active=request.is_active,
-            is_public=request.is_public
+            is_public=request.is_public,
         )
         
         db.add(db_ip)

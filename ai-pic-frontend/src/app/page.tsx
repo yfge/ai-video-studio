@@ -115,8 +115,9 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-gray-800 text-white py-8 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-2">
           <p>&copy; 2024 AI短剧制作工作流平台. 保留所有权利.</p>
+          <p className="text-sm text-gray-300">京ICP备2024077334号-1</p>
         </div>
       </footer>
     </div>

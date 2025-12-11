@@ -51,7 +51,7 @@ async def create_story(
     """创建故事"""
     # 创建故事记录
     story_data = story.dict(exclude={"characters"})
-    db_story = Story(**story_data)
+    db_story = Story(user_id=current_user.id, **story_data)
     db.add(db_story)
     db.commit()
     db.refresh(db_story)
@@ -89,7 +89,10 @@ async def generate_story(
     # 获取角色信息
     characters = []
     for char_id in request.character_ids:
-        virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == char_id).first()
+        vip_query = db.query(VirtualIP).filter(VirtualIP.id == char_id)
+        if not current_user.is_admin and not current_user.is_superuser:
+            vip_query = vip_query.filter(VirtualIP.user_id == current_user.id)
+        virtual_ip = vip_query.first()
         if not virtual_ip:
             raise HTTPException(status_code=404, detail=f"虚拟IP {char_id} 不存在")
 
@@ -145,6 +148,7 @@ async def generate_story(
 
     # 创建故事记录
     story_data = {
+        "user_id": current_user.id,
         "title": request.title,
         "genre": request.genre,
         "theme": request.theme,
@@ -241,7 +245,11 @@ def _process_story_generation_task(task_id: int, request_dict: dict, user_id: in
         # 补充角色详细信息
         characters = []
         for char_id in request_dict.get("character_ids", []):
-            vip = db.query(VirtualIP).filter(VirtualIP.id == char_id).first()
+            vip = (
+                db.query(VirtualIP)
+                .filter(VirtualIP.id == char_id, VirtualIP.user_id == user_id)
+                .first()
+            )
             if vip:
                 characters.append(
                     {
@@ -294,6 +302,7 @@ def _process_story_generation_task(task_id: int, request_dict: dict, user_id: in
             ai_content = extract_outline_from_text(result.get("content") or "")
 
         story_data = {
+            "user_id": user_id,
             "title": request_dict.get("title"),
             "genre": request_dict.get("genre"),
             "theme": request_dict.get("theme"),
@@ -407,6 +416,10 @@ async def get_stories(
     """获取故事列表"""
     query = db.query(Story)
 
+    # 普通用户只查看自己的故事，管理员/超级用户可查看全部
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+
     if genre:
         query = query.filter(Story.genre == genre)
 
@@ -427,7 +440,10 @@ async def get_story(
     db: Session = Depends(get_db),
 ):
     """获取故事详情"""
-    story = db.query(Story).filter(Story.id == story_id).first()
+    query = db.query(Story).filter(Story.id == story_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+    story = query.first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
@@ -442,7 +458,10 @@ async def update_story(
     db: Session = Depends(get_db),
 ):
     """更新故事"""
-    story = db.query(Story).filter(Story.id == story_id).first()
+    query = db.query(Story).filter(Story.id == story_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+    story = query.first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
@@ -463,7 +482,10 @@ async def delete_story(
     db: Session = Depends(get_db),
 ):
     """删除故事"""
-    story = db.query(Story).filter(Story.id == story_id).first()
+    query = db.query(Story).filter(Story.id == story_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+    story = query.first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
@@ -480,7 +502,10 @@ async def get_story_characters(
     db: Session = Depends(get_db),
 ):
     """获取故事角色列表"""
-    story = db.query(Story).filter(Story.id == story_id).first()
+    query = db.query(Story).filter(Story.id == story_id)
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+    story = query.first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 

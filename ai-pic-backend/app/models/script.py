@@ -8,6 +8,7 @@ class Story(Base):
     __tablename__ = "stories"
     
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, comment="所属用户ID")
     title = Column(String(255), nullable=False, comment="故事标题")
     genre = Column(String(50), nullable=False, comment="故事类型")
     theme = Column(String(255), comment="故事主题")
