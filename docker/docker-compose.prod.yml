@@ -39,6 +39,8 @@ services:
       - .env
     working_dir: /app/ai-pic-backend
     command: ["celery", "-A", "app.core.celery_app.celery_app", "worker", "-l", "info"]
+    volumes:
+      - uploads_data:/app/ai-pic-backend/uploads
     depends_on:
       - ai-video-backend
       - ai-video-redis
