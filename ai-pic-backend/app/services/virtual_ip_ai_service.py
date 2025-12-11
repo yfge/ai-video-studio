@@ -1,22 +1,30 @@
 """
 Virtual IP AI Generation Service
 专门为虚拟IP创建提供AI生成功能
+
+注意：
+- 不再直接依赖 AsyncOpenAI，而是复用统一的 AIService / AIServiceManager。
+- 文本提示词改为通过 prompt_manager + virtual_ip_creation 模板管理。
 """
-import asyncio
-import json
-from typing import Dict, Optional, List
-from openai import AsyncOpenAI
-from app.core.config import settings
+
+import time
+from typing import Any, Dict, Optional, List
+
+from app.core.logging import get_logger
+from app.prompts.manager import prompt_manager
+from app.prompts.templates import PromptTemplate
+from app.utils.json_utils import extract_json_block
+from app.services.ai_service import ai_service
 
 
 class VirtualIPAIService:
     """虚拟IP AI生成服务"""
-    
+
     def __init__(self):
-        if settings.OPENAI_API_KEY:
-            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        else:
-            self.client = None
+        # 复用全局 AIService 管理器，保持模型选择与日志统一
+        self.ai_service = ai_service
+        self.ai_manager = getattr(ai_service, "ai_manager", None)
+        self.logger = get_logger(__name__)
 
     async def generate_complete_ip_with_details(
         self, 
@@ -25,88 +33,60 @@ class VirtualIPAIService:
         style_preference: Optional[str] = None
     ) -> Dict[str, any]:
         """
-        根据基本信息生成完整的虚拟IP，包含详细生成信息
-        
-        Args:
-            name: IP名称
-            basic_info: 基本信息描述 (可选)
-            style_preference: 风格偏好 (可选)
-            
-        Returns:
-            包含内容和生成详情的完整字典
+        根据基本信息生成完整的虚拟IP，包含详细生成信息。
+
+        逻辑：
+        - 优先通过 prompt_manager + virtual_ip_creation 模板生成结构化 JSON，再映射到描述/背景/小传。
+        - 当 AI 管理器不可用或解析失败时，回退到本地模板文案。
         """
-        if not self.client:
-            # 如果没有OpenAI配置，返回模板内容
-            template_content = self._generate_template_content(name, basic_info)
-            return {
-                "content": template_content,
-                "generation_details": {
-                    "model": "template",
-                    "temperature": 0,
-                    "prompts_used": ["Template-based generation"],
-                    "tokens_used": 0,
-                    "generation_time": 0.1
-                }
-            }
-        
-        try:
-            import time
-            start_time = time.time()
-            
-            # 记录生成详情
-            generation_details = {
-                "model": "gpt-3.5-turbo",
-                "temperature": 0.7,  # 描述和小传使用0.7，背景故事使用0.8
-                "prompts_used": [],
-                "tokens_used": 0,
-                "generation_time": 0,
-                "steps": []
-            }
-            
-            # 生成描述
-            generation_details["steps"].append("正在生成角色描述...")
-            description_result = await self._generate_description_with_details(name, basic_info, style_preference)
-            generation_details["prompts_used"].append(f"描述生成: {description_result['prompt'][:100]}...")
-            generation_details["tokens_used"] += description_result.get('tokens_used', 0)
-            
-            # 生成背景故事
-            generation_details["steps"].append("正在生成背景故事...")
-            background_result = await self._generate_background_story_with_details(name, basic_info, style_preference)
-            generation_details["prompts_used"].append(f"背景故事生成: {background_result['prompt'][:100]}...")
-            generation_details["tokens_used"] += background_result.get('tokens_used', 0)
-            
-            # 生成人物小传
-            generation_details["steps"].append("正在生成人物小传...")
-            biography_result = await self._generate_biography_with_details(name, basic_info, style_preference)
-            generation_details["prompts_used"].append(f"人物小传生成: {biography_result['prompt'][:100]}...")
-            generation_details["tokens_used"] += biography_result.get('tokens_used', 0)
-            
-            generation_details["generation_time"] = round(time.time() - start_time, 2)
-            generation_details["steps"].append("生成完成!")
-            
-            return {
-                "content": {
-                    "description": description_result['content'],
-                    "background_story": background_result['content'],
-                    "biography": biography_result['content']
-                },
-                "generation_details": generation_details
-            }
-            
-        except Exception as e:
-            # 如果AI生成失败，返回模板内容
-            template_content = self._generate_template_content(name, basic_info)
-            return {
-                "content": template_content,
-                "generation_details": {
-                    "model": "template (fallback)",
-                    "temperature": 0,
-                    "prompts_used": [f"Error occurred: {str(e)}"],
-                    "tokens_used": 0,
-                    "generation_time": 0.1,
-                    "steps": ["使用模板生成（AI服务不可用）"]
-                }
-            }
+        temperature = 0.7
+        start_time = time.time()
+
+        # 默认使用本地模板作为兜底
+        content: Dict[str, str] = self._generate_template_content(name, basic_info)
+        prompts_used: List[str] = ["Template-based generation"]
+        tokens_used = 0
+        model_used = "template"
+        steps: List[str] = []
+
+        if self.ai_manager:
+            try:
+                steps.append("正在生成虚拟IP完整设定（描述/背景/小传）...")
+                profile, prompt, model_used, usage = await self._generate_profile_with_ai(
+                    name=name,
+                    basic_info=basic_info,
+                    style_preference=style_preference,
+                    temperature=temperature,
+                )
+                content = profile
+                if prompt:
+                    prompts_used = [f"虚拟IP设定: {prompt[:100]}..."]
+                usage = usage or {}
+                tokens_used = int(usage.get("total_tokens") or 0)
+                steps.append("生成完成!")
+            except Exception as e:
+                # 失败时记录并回退到模板
+                self.logger.warning(
+                    "VirtualIPAIService.generate_complete_ip_with_details 出错，使用模板兜底: %s",
+                    e,
+                )
+                steps.append("AI 生成失败，使用模板兜底")
+        else:
+            steps.append("AI 管理器不可用，使用模板兜底")
+
+        generation_details = {
+            "model": model_used,
+            "temperature": temperature,
+            "prompts_used": prompts_used,
+            "tokens_used": tokens_used,
+            "generation_time": round(time.time() - start_time, 2),
+            "steps": steps or ["生成完成!"],
+        }
+
+        return {
+            "content": content,
+            "generation_details": generation_details,
+        }
     
     async def generate_complete_ip(
         self, 
@@ -119,108 +99,6 @@ class VirtualIPAIService:
         """
         result = await self.generate_complete_ip_with_details(name, basic_info, style_preference)
         return result["content"]
-
-    async def _generate_description(
-        self, 
-        name: str, 
-        basic_info: Optional[str], 
-        style_preference: Optional[str]
-    ) -> str:
-        """生成角色描述"""
-        prompt = f"""请为名为"{name}"的虚拟IP角色生成一个简洁的描述。
-
-基本信息：{basic_info or '无特殊要求'}
-风格偏好：{style_preference or '现代风格'}
-
-要求：
-1. 50-100字的简洁描述
-2. 突出角色的核心特征和魅力
-3. 适合用作角色的简介和标签
-4. 语言生动有趣，有吸引力
-
-只返回描述内容，不要包含其他说明文字。"""
-
-        response = await self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是一个专业的角色设计师，擅长创造有趣的虚拟角色。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7
-        )
-        
-        return response.choices[0].message.content.strip()
-
-    async def _generate_background_story(
-        self, 
-        name: str, 
-        basic_info: Optional[str], 
-        style_preference: Optional[str]
-    ) -> str:
-        """生成背景故事"""
-        prompt = f"""请为名为"{name}"的虚拟IP角色创作一个引人入胜的背景故事。
-
-基本信息：{basic_info or '无特殊要求'}
-风格偏好：{style_preference or '现代风格'}
-
-要求：
-1. 200-400字的完整故事
-2. 包含角色的起源、成长经历或关键转折点
-3. 故事要有趣、有深度，能体现角色个性
-4. 适合作为角色的官方背景设定
-5. 语言流畅生动，富有画面感
-
-只返回故事内容，不要包含其他说明文字。"""
-
-        response = await self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是一个优秀的故事创作者，专门为虚拟角色编写背景故事。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.8
-        )
-        
-        return response.choices[0].message.content.strip()
-
-    async def _generate_biography(
-        self, 
-        name: str, 
-        basic_info: Optional[str], 
-        style_preference: Optional[str]
-    ) -> str:
-        """生成人物小传"""
-        prompt = f"""请为名为"{name}"的虚拟IP角色编写一份详细的人物小传。
-
-基本信息：{basic_info or '无特殊要求'}
-风格偏好：{style_preference or '现代风格'}
-
-要求：
-1. 300-500字的详细小传
-2. 包含：外貌特征、性格特点、兴趣爱好、特长技能、人际关系等
-3. 展现角色的立体性和独特性
-4. 便于其他创作者理解和使用这个角色
-5. 语言准确专业，条理清晰
-
-格式示例：
-**外貌特征**：...
-**性格特点**：...
-**兴趣爱好**：...
-**特长技能**：...
-**背景经历**：...
-
-只返回小传内容，不要包含其他说明文字。"""
-
-        response = await self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是一个专业的角色档案编写专家，擅长创建详细的人物小传。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.6
-        )
-        
-        return response.choices[0].message.content.strip()
 
     def _generate_template_content(self, name: str, basic_info: Optional[str]) -> Dict[str, str]:
         """生成模板内容（当AI不可用时使用）"""
@@ -255,22 +133,14 @@ class VirtualIPAIService:
         image_category: str = "portrait"
     ) -> str:
         """
-        根据角色信息生成用于AI绘画的风格提示词
-        
-        Args:
-            name: 角色名称
-            description: 角色描述
-            biography: 人物小传
-            image_category: 图片类别 (portrait, full_body, scene等)
-            
-        Returns:
-            优化的AI绘画提示词
+        根据角色信息生成用于AI绘画的风格提示词。
+
+        优先通过统一 AI 管理器生成英文提示词，失败时回退到本地模板。
         """
-        if not self.client:
+        if not self.ai_manager:
             return self._generate_template_style_prompt(name, description, image_category)
 
-        try:
-            prompt = f"""根据以下虚拟角色信息，生成用于AI绘画的英文提示词：
+        prompt = f"""根据以下虚拟角色信息，生成用于AI绘画的英文提示词：
 
 角色名称：{name}
 角色描述：{description}
@@ -288,18 +158,30 @@ class VirtualIPAIService:
 提示词格式示例：
 a beautiful anime girl, [specific features], [style], [composition], high quality, detailed"""
 
-            response = await self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "你是AI绘画提示词专家，擅长将角色描述转换为优质的绘画提示词。"},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7
+        try:
+            response = await self.ai_manager.generate_text(
+                prompt=prompt,
+                temperature=0.7,
+                model=None,
+                prefer_provider=None,
+                system_prompt=None,
+                json_schema=None,
+                stream=False,
             )
-            
-            return response.choices[0].message.content.strip()
-            
-        except Exception:
+            text = ""
+            if isinstance(response.data, str):
+                text = response.data
+            elif response.data is not None:
+                text = str(response.data)
+            text = (text or "").strip()
+            if not text:
+                return self._generate_template_style_prompt(name, description, image_category)
+            return text
+        except Exception as e:
+            self.logger.warning(
+                "VirtualIPAIService.generate_style_prompt 失败，使用模板兜底: %s",
+                e,
+            )
             return self._generate_template_style_prompt(name, description, image_category)
 
     def _generate_template_style_prompt(self, name: str, description: str, image_category: str) -> str:
@@ -324,125 +206,115 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
         return f"{base_prompt}, {modifier}, high quality, detailed, anime style"
 
 
-    async def _generate_description_with_details(
-        self, 
-        name: str, 
-        basic_info: Optional[str], 
-        style_preference: Optional[str]
-    ) -> Dict[str, any]:
-        """生成角色描述（带详细信息）"""
-        prompt = f"""请为名为"{name}"的虚拟IP角色生成一个简洁的描述。
-
-基本信息：{basic_info or '无特殊要求'}
-风格偏好：{style_preference or '现代风格'}
-
-要求：
-1. 50-100字的简洁描述
-2. 突出角色的核心特征和魅力
-3. 适合用作角色的简介和标签
-4. 语言生动有趣，有吸引力
-
-只返回描述内容，不要包含其他说明文字。"""
-
-        response = await self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是一个专业的角色设计师，擅长创造有趣的虚拟角色。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7
-        )
-        
-        return {
-            "content": response.choices[0].message.content.strip(),
-            "prompt": prompt,
-            "model": "gpt-3.5-turbo",
-            "temperature": 0.7,
-            "tokens_used": response.usage.total_tokens if response.usage else 0
+    async def _generate_profile_with_ai(
+        self,
+        name: str,
+        basic_info: Optional[str],
+        style_preference: Optional[str],
+        temperature: float = 0.7,
+    ) -> tuple[Dict[str, str], Optional[str], str, Dict[str, Any]]:
+        """
+        使用 prompt_manager + virtual_ip_creation 模板生成完整的角色设定，
+        并映射到 description / background_story / biography 三段文案。
+        """
+        variables: Dict[str, Any] = {
+            "name": name,
+            "description": basic_info,
+            "age": None,
+            "gender": None,
+            "personality_traits": None,
+            "style_preference": style_preference,
+            "target_audience": None,
+            "content_type": None,
         }
 
-    async def _generate_background_story_with_details(
-        self, 
-        name: str, 
-        basic_info: Optional[str], 
-        style_preference: Optional[str]
-    ) -> Dict[str, any]:
-        """生成背景故事（带详细信息）"""
-        prompt = f"""请为名为"{name}"的虚拟IP角色创作一个引人入胜的背景故事。
-
-基本信息：{basic_info or '无特殊要求'}
-风格偏好：{style_preference or '现代风格'}
-
-要求：
-1. 200-400字的完整故事
-2. 包含角色的起源、成长经历或关键转折点
-3. 故事要有趣、有深度，能体现角色个性
-4. 适合作为角色的官方背景设定
-5. 语言流畅生动，富有画面感
-
-只返回故事内容，不要包含其他说明文字。"""
-
-        response = await self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是一个优秀的故事创作者，专门为虚拟角色编写背景故事。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.8
+        prompt = prompt_manager.render_prompt(
+            PromptTemplate.VIRTUAL_IP_CREATION.value,
+            variables,
         )
-        
-        return {
-            "content": response.choices[0].message.content.strip(),
-            "prompt": prompt,
-            "model": "gpt-3.5-turbo",
-            "temperature": 0.8,
-            "tokens_used": response.usage.total_tokens if response.usage else 0
-        }
+        self.logger.info("VirtualIP 生成提示词: %s", prompt[:200])
 
-    async def _generate_biography_with_details(
-        self, 
-        name: str, 
-        basic_info: Optional[str], 
-        style_preference: Optional[str]
-    ) -> Dict[str, any]:
-        """生成人物小传（带详细信息）"""
-        prompt = f"""请为名为"{name}"的虚拟IP角色编写一份详细的人物小传。
-
-基本信息：{basic_info or '无特殊要求'}
-风格偏好：{style_preference or '现代风格'}
-
-要求：
-1. 300-500字的详细小传
-2. 包含：外貌特征、性格特点、兴趣爱好、特长技能、人际关系等
-3. 展现角色的立体性和独特性
-4. 便于其他创作者理解和使用这个角色
-5. 语言准确专业，条理清晰
-
-格式示例：
-**外貌特征**：...
-**性格特点**：...
-**兴趣爱好**：...
-**特长技能**：...
-**背景经历**：...
-
-只返回小传内容，不要包含其他说明文字。"""
-
-        response = await self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是一个专业的角色档案编写专家，擅长创建详细的人物小传。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.6
+        response = await self.ai_manager.generate_text(
+            prompt=prompt,
+            temperature=temperature,
+            model=None,
+            prefer_provider=None,
+            system_prompt=None,
+            json_schema=None,
+            stream=False,
         )
-        
-        return {
-            "content": response.choices[0].message.content.strip(),
-            "prompt": prompt,
-            "model": "gpt-3.5-turbo",
-            "temperature": 0.6,
-            "tokens_used": response.usage.total_tokens if response.usage else 0
+
+        text = ""
+        if isinstance(response.data, str):
+            text = response.data
+        elif response.data is not None:
+            text = str(response.data)
+
+        profile: Optional[Dict[str, Any]] = None
+        if text:
+            try:
+                data = extract_json_block(text)
+                if isinstance(data, dict):
+                    profile = data
+            except Exception as e:
+                self.logger.warning(
+                    "VirtualIPAIService._generate_profile_with_ai 解析JSON失败，将使用模板兜底: %s",
+                    e,
+                )
+
+        if not profile:
+            # 使用模板内容兜底
+            return (
+                self._generate_template_content(name, basic_info),
+                prompt,
+                response.model or "unknown",
+                response.usage or {},
+            )
+
+        # 从结构化 profile 中提取三段文案
+        description = (
+            profile.get("detailed_description")
+            or profile.get("description")
+            or profile.get("summary")
+        )
+        background_story = profile.get("background_story")
+        biography = self._build_biography_from_profile(profile)
+
+        # 对缺失字段使用模板兜底
+        if not (description and background_story and biography):
+            template = self._generate_template_content(name, basic_info)
+            description = description or template["description"]
+            background_story = background_story or template["background_story"]
+            biography = biography or template["biography"]
+
+        content = {
+            "description": description,
+            "background_story": background_story,
+            "biography": biography,
         }
+        return content, prompt, response.model or "unknown", response.usage or {}
+
+    def _build_biography_from_profile(self, profile: Dict[str, Any]) -> str:
+        """根据 virtual_ip_creation 的各字段拼接成一段人物小传。"""
+        sections: List[str] = []
+        mapping = [
+            ("性格特征", "personality"),
+            ("技能特长", "skills"),
+            ("人际关系", "relationships"),
+            ("生活方式", "lifestyle"),
+            ("标志性特征", "signature_traits"),
+            ("发展潜力", "development_potential"),
+        ]
+        for title, key in mapping:
+            value = profile.get(key)
+            if not value:
+                continue
+            sections.append(f"**{title}**：{value}")
+        text = "\n\n".join(sections).strip()
+        if not text:
+            # 兜底：如果结构化内容为空，则返回空字符串，由调用方处理
+            return ""
+        return text
 
 
 # 全局实例
