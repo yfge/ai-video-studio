@@ -8,6 +8,8 @@ RUN npm ci
 
 COPY ai-pic-frontend ./ai-pic-frontend
 WORKDIR /app/ai-pic-frontend
+## 生产镜像不使用本地开发的 .env.local，避免把 localhost 等开发配置打进 bundle
+RUN rm -f .env.local
 ENV NODE_ENV=production
 RUN npm run build
 
@@ -20,4 +22,3 @@ COPY --from=builder /app/ai-pic-frontend ./
 RUN npm ci --omit=dev
 
 CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0", "--port", "3000"]
-
