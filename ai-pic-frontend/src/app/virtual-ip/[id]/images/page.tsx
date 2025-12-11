@@ -33,7 +33,7 @@ export default function VirtualIPImagesPage() {
   const [uploading, setUploading] = useState(false);
 
   // 统一的后端基础地址（用于拼接本地文件路径）
-  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
   const resolveImageUrl = useCallback(
     (image: VirtualIPImage) => {

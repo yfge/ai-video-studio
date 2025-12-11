@@ -49,7 +49,10 @@ function EnvironmentsPageContent() {
     void load()
   }, [load])
 
-  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000', [])
+  const apiBase = useMemo(
+    () => (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, ''),
+    [],
+  )
 
   const imageSrc = useCallback(
     (url: string) => {

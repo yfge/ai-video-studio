@@ -12,7 +12,7 @@ export default function TestAuth() {
 
     try {
       // 直接使用 fetch API 测试
-      const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+      const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -40,7 +40,7 @@ export default function TestAuth() {
 
   const testProtectedEndpoint = async (token: string) => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/virtual-ips/', {
+      const response = await fetch('/api/v1/virtual-ips/', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
