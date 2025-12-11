@@ -31,4 +31,4 @@ summary: "Infer google provider for img2img flows so Gemini receives reference i
 - [ ] Add a focused test or log assertion for provider inference when model strings omit prefixes.
 
 ## Linked Commits
-- (pending)
+- 61df1a6 fix(backend): prefer google provider for img2img
