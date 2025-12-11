@@ -100,6 +100,18 @@ def _normalize_optional_str(value: Optional[str]) -> Optional[str]:
 
 # 规范化部分可选密钥，避免 ".env" 中留下空字符串时被误判为已配置
 settings.GOOGLE_API_KEY = _normalize_optional_str(settings.GOOGLE_API_KEY)
+settings.OPENAI_API_KEY = _normalize_optional_str(settings.OPENAI_API_KEY)
+settings.STABILITY_API_KEY = _normalize_optional_str(settings.STABILITY_API_KEY)
+settings.KELING_API_KEY = _normalize_optional_str(settings.KELING_API_KEY)
+settings.KELING_SECRET_KEY = _normalize_optional_str(settings.KELING_SECRET_KEY)
+settings.JIMENG_API_KEY = _normalize_optional_str(settings.JIMENG_API_KEY)
+settings.JIMENG_SECRET_KEY = _normalize_optional_str(settings.JIMENG_SECRET_KEY)
+settings.MINIMAX_API_KEY = _normalize_optional_str(settings.MINIMAX_API_KEY)
+settings.MINIMAX_GROUP_ID = _normalize_optional_str(settings.MINIMAX_GROUP_ID)
+settings.DEEPSEEK_API_KEY = _normalize_optional_str(settings.DEEPSEEK_API_KEY)
+settings.VOLCENGINE_API_KEY = _normalize_optional_str(settings.VOLCENGINE_API_KEY)
+settings.VOLCENGINE_SECRET_KEY = _normalize_optional_str(settings.VOLCENGINE_SECRET_KEY)
+settings.VOLCENGINE_REGION = _normalize_optional_str(settings.VOLCENGINE_REGION)
 
 # 确保上传目录存在
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True) 
