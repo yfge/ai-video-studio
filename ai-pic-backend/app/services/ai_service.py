@@ -228,10 +228,11 @@ class AIService:
 
             # OpenAI配置
             if self.openai_api_key:
+                openai_base = settings.OPENAI_BASE_URL or "https://api.openai.com/v1"
                 providers["openai"] = ProviderConfig(
                     name="openai",
                     api_key=self.openai_api_key,
-                    base_url="https://api.openai.com/v1",
+                    base_url=openai_base,
                     timeout=120.0,
                 )
                 provider_weights["openai"] = ProviderWeight(
@@ -311,11 +312,12 @@ class AIService:
 
             # Google Gemini / Vertex AI 文本模型
             if settings.GOOGLE_API_KEY:
+                google_base = settings.GOOGLE_BASE_URL or "https://generativelanguage.googleapis.com"
                 providers["google"] = ProviderConfig(
                     name="google",
                     api_key=settings.GOOGLE_API_KEY,
-                    # 使用 Generative Language API (不是 Vertex AI)
-                    base_url="https://generativelanguage.googleapis.com",
+                    # 默认使用 Generative Language API，可通过 GOOGLE_BASE_URL 覆盖
+                    base_url=google_base,
                     timeout=120.0,
                     default_model=settings.GOOGLE_DEFAULT_MODEL,
                 )
@@ -1088,9 +1090,18 @@ class AIService:
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "dialogues": {"type": "array"},
-                        "stage_directions": {"type": "array"},
-                        "scenes": {"type": "array"},
+                        "dialogues": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                        },
+                        "stage_directions": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                        },
+                        "scenes": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                        },
                     },
                 },
             },
@@ -1226,8 +1237,51 @@ class AIService:
         temperature: float = 0.7,
         frames_per_scene: int = 3,
         max_frames: Optional[int] = None,
+        prefer_graph: bool = True,
     ) -> Optional[Dict[str, Any]]:
         """基于剧本信息生成分镜（Storyboard）"""
+        # 优先尝试 LangGraph ReAct 管线（如可用），确保其它调用点也默认走「规划+生成」路径
+        if prefer_graph and getattr(self, "storyboard_reasoner", None):
+            try:
+                graph_result = await self.storyboard_reasoner.generate(
+                    script=script,
+                    frames_per_scene=frames_per_scene,
+                    max_frames=max_frames,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    temperature=temperature,
+                    selected_scenes=None,
+                )
+                if graph_result and graph_result.get("content"):
+                    content_raw = graph_result.get("content")
+                    if isinstance(content_raw, str):
+                        content_text = content_raw
+                    else:
+                        content_text = json.dumps(content_raw, ensure_ascii=False)
+                    normalized = extract_json_block(content_text)
+                    if normalized:
+                        try:
+                            StoryboardModel.model_validate(normalized)
+                        except Exception:
+                            normalized = None
+                    if normalized:
+                        return {
+                            "content": content_text,
+                            "normalized": normalized,
+                            "prompt": None,
+                            "generation_method": graph_result.get("generation_method") or "langgraph_plan",
+                            "template_used": "storyboard_langgraph",
+                            "provider_used": graph_result.get("provider_used") or prefer_provider,
+                            "model_used": graph_result.get("model_used") or model,
+                            "usage": graph_result.get("usage"),
+                            "reasoning_trace": graph_result.get("reasoning_trace"),
+                            "plan": graph_result.get("plan"),
+                            "fixes": graph_result.get("fixes"),
+                        }
+            except Exception as exc:
+                self.logger.warning(f"Storyboard LangGraph pipeline failed in AIService, fallback to direct pipeline: {exc}")
+
+        # LangGraph 未可用或结果不合法时，回退至原有 AI 管理器直连管线
         if self.ai_manager:
             try:
                 variables = {
@@ -1444,11 +1498,12 @@ class AIService:
         """使用OpenAI GPT生成文本"""
         if not self.openai_api_key:
             return None
+        base_url = settings.OPENAI_BASE_URL or "https://api.openai.com/v1"
 
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
+                    f"{base_url.rstrip('/')}/chat/completions",
                     headers={
                         "Authorization": f"Bearer {self.openai_api_key}",
                         "Content-Type": "application/json",
@@ -2235,11 +2290,12 @@ class AIService:
         """使用OpenAI DALL-E生成图像"""
         if not self.openai_api_key:
             return None
+        base_url = settings.OPENAI_BASE_URL or "https://api.openai.com/v1"
 
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    "https://api.openai.com/v1/images/generations",
+                    f"{base_url.rstrip('/')}/images/generations",
                     headers={
                         "Authorization": f"Bearer {self.openai_api_key}",
                         "Content-Type": "application/json",

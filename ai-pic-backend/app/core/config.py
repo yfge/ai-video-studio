@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     
     # OpenAI配置
     OPENAI_API_KEY: Optional[str] = None
+    OPENAI_BASE_URL: Optional[str] = None
     
     # Stability AI配置
     STABILITY_API_KEY: Optional[str] = None
@@ -61,6 +62,7 @@ class Settings(BaseSettings):
     # Google Gemini / Vertex AI 配置（文本模型）
     GOOGLE_API_KEY: Optional[str] = None
     GOOGLE_DEFAULT_MODEL: Optional[str] = "gemini-3-pro-preview"
+    GOOGLE_BASE_URL: Optional[str] = None
     
     # 阿里云OSS配置
     ALIYUN_ACCESS_KEY_ID: Optional[str] = None
@@ -82,6 +84,9 @@ class Settings(BaseSettings):
     ENABLE_CONSOLE_LOGGING: bool = True
     LOG_BACKUP_COUNT: int = 7
     FEISHU_WEBHOOK_URL: Optional[str] = None
+
+    # 容器内部访问后端的基础地址（用于 Celery / Provider 拉取本机上传的图片等资源）
+    INTERNAL_BACKEND_URL: Optional[str] = None
     
     class Config:
         env_file = ".env"
@@ -101,6 +106,8 @@ def _normalize_optional_str(value: Optional[str]) -> Optional[str]:
 # 规范化部分可选密钥，避免 ".env" 中留下空字符串时被误判为已配置
 settings.GOOGLE_API_KEY = _normalize_optional_str(settings.GOOGLE_API_KEY)
 settings.OPENAI_API_KEY = _normalize_optional_str(settings.OPENAI_API_KEY)
+settings.OPENAI_BASE_URL = _normalize_optional_str(settings.OPENAI_BASE_URL)
+settings.GOOGLE_BASE_URL = _normalize_optional_str(settings.GOOGLE_BASE_URL)
 settings.STABILITY_API_KEY = _normalize_optional_str(settings.STABILITY_API_KEY)
 settings.KELING_API_KEY = _normalize_optional_str(settings.KELING_API_KEY)
 settings.KELING_SECRET_KEY = _normalize_optional_str(settings.KELING_SECRET_KEY)
@@ -112,6 +119,10 @@ settings.DEEPSEEK_API_KEY = _normalize_optional_str(settings.DEEPSEEK_API_KEY)
 settings.VOLCENGINE_API_KEY = _normalize_optional_str(settings.VOLCENGINE_API_KEY)
 settings.VOLCENGINE_SECRET_KEY = _normalize_optional_str(settings.VOLCENGINE_SECRET_KEY)
 settings.VOLCENGINE_REGION = _normalize_optional_str(settings.VOLCENGINE_REGION)
+
+# 容器外本地默认使用 localhost:8000；在 docker-compose 中可显式设置为 http://ai-video-backend:8000
+if not settings.INTERNAL_BACKEND_URL:
+    settings.INTERNAL_BACKEND_URL = "http://localhost:8000"
 
 # 确保上传目录存在
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True) 

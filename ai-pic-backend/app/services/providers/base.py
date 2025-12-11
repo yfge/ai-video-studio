@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Dict, Any, Optional, List, Union
 from pydantic import BaseModel
 from datetime import datetime
+import asyncio
 
 class AIModelType(Enum):
     """AI模型类型枚举"""
@@ -101,6 +102,7 @@ class BaseProvider(ABC):
         self.config = config
         self.name = config.name
         self._client = None
+        self._loop_id: Optional[int] = None
     
     @property
     @abstractmethod
@@ -120,11 +122,29 @@ class BaseProvider(ABC):
         pass
     
     async def get_client(self):
-        """获取API客户端，若已关闭则重新初始化。"""
+        """
+        获取API客户端，若已关闭或绑定在不同事件循环上则重新初始化。
+
+        Celery worker 中会通过 anyio.run 启动新的事件循环，
+        若复用绑定在旧 loop 上的 AsyncClient 会导致 `Event loop is closed`。
+        因此这里按当前 loop id 做一次隔离。
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            loop_id = id(loop)
+        except RuntimeError:
+            # 没有运行中的事件循环（不太可能出现在异步上下文），退回简单检查
+            loop_id = None
+
         client = self._client
-        if client is None or getattr(client, "is_closed", False):
+        if (
+            client is None
+            or getattr(client, "is_closed", False)
+            or (loop_id is not None and self._loop_id != loop_id)
+        ):
             await self._initialize_client()
             client = self._client
+            self._loop_id = loop_id
         return client
     
     @abstractmethod

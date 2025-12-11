@@ -30,8 +30,9 @@ class GoogleProvider(BaseProvider):
 
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
-        # aiplatform.googleapis.com
-        self.base_url = config.base_url or "https://generativelanguage.googleapis.com"
+        # aiplatform.googleapis.com 或代理网关，通过 base_url 支持自定义
+        # 统一去掉末尾 /，避免后续拼接路径出现 //
+        self.base_url = (config.base_url or "https://generativelanguage.googleapis.com").rstrip("/")
         # publishers/google/models/{model_id}:{method}
         self.default_model = config.default_model or "gemini-3-pro-preview"
         # text 模型只需要 API key
@@ -205,11 +206,8 @@ class GoogleProvider(BaseProvider):
         if client is None:
             return fallback
 
-        google_base = (
-            self.base_url
-            if self.base_url and "generativelanguage.googleapis.com" in self.base_url
-            else "https://generativelanguage.googleapis.com"
-        )
+        # 始终尊重配置的 base_url（可为官方域名或代理网关）
+        google_base = self.base_url or "https://generativelanguage.googleapis.com"
         try:
             resp = await client.get(
                 f"{google_base.rstrip('/')}/v1beta/models",
@@ -217,14 +215,13 @@ class GoogleProvider(BaseProvider):
             )
             body_preview = resp.text[:500]
             if resp.status_code >= 400:
-                # 配置了 API Key 但拉取模型列表失败，记录简要信息并回退静态列表
-                logger.info(
+                logger.debug(
                     "GoogleProvider GLM list models failed status=%s url=%s body=%s",
                     resp.status_code,
                     f"{google_base.rstrip('/')}/v1beta/models",
                     body_preview,
                 )
-            resp.raise_for_status()
+                return fallback
             payload = resp.json()
             server_models = payload.get("models") or []
             models = self._from_payload(server_models, model_type)
@@ -284,8 +281,7 @@ class GoogleProvider(BaseProvider):
         **kwargs: Any,
     ) -> AIResponse:
         """调用 Gemini 图像生成 API（文生图）。"""
-        client = await self.get_client()
-        if client is None:
+        if not self.config.api_key:
             return AIResponse(
                 success=False,
                 error="GoogleProvider 未配置 API Key",
@@ -299,6 +295,18 @@ class GoogleProvider(BaseProvider):
         # 清理模型 ID，去掉可能的 provider 前缀
         model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
         endpoint = f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
+
+        client = await self.get_client()
+        if client is None:
+            return AIResponse(
+                success=False,
+                error="Google 客户端未初始化",
+                provider=self.name,
+                model=model_id,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+            )
+
         body = {
             "model": model_id,
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -362,8 +370,7 @@ class GoogleProvider(BaseProvider):
         **kwargs: Any,
     ) -> AIResponse:
         """调用 Gemini 图像生成 API（图生图，使用参考图 inlineData）。"""
-        client = await self.get_client()
-        if client is None:
+        if not self.config.api_key:
             return AIResponse(
                 success=False,
                 error="GoogleProvider 未配置 API Key",
@@ -377,12 +384,56 @@ class GoogleProvider(BaseProvider):
         model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
         endpoint = f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
 
+        client = await self.get_client()
+        if client is None:
+            return AIResponse(
+                success=False,
+                error="Google 客户端未初始化",
+                provider=self.name,
+                model=model_id,
+                task_type=AITaskType.SCENE_GENERATION,
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+            )
+
         try:
-            inline_image = await self._fetch_inline_image(image_url)
+            # 优先使用上游预加载好的 base64_images（data:image/...;base64,...），
+            # 这样可以支持多张参考图且避免在 Provider 内部重复下载。
+            base64_images: List[str] = kwargs.pop("base64_images", []) or []
             parts: List[Dict[str, Any]] = []
             if prompt:
                 parts.append({"text": prompt})
-            parts.append({"inlineData": inline_image})
+
+            if base64_images:
+                # 最多支持 14 张参考图，超出的在上游已被截断
+                for data_url in base64_images[:14]:
+                    if not isinstance(data_url, str) or not data_url:
+                        continue
+                    mime_type = "image/png"
+                    b64_data = data_url
+                    if data_url.startswith("data:"):
+                        # 形如 data:image/png;base64,AAAA...
+                        try:
+                            header, b64_data = data_url.split(",", 1)
+                            header = header[5:]  # 去掉 "data:"
+                            if ";" in header:
+                                mime_type = header.split(";", 1)[0] or "image/png"
+                            elif header:
+                                mime_type = header
+                        except ValueError:
+                            # 回退到原始字符串
+                            b64_data = data_url
+                    parts.append(
+                        {
+                            "inlineData": {
+                                "mimeType": mime_type,
+                                "data": b64_data,
+                            }
+                        }
+                    )
+            else:
+                # 兼容直接传入 URL 的调用路径（例如未经过 AIServiceManager 预加载的场景）
+                inline_image = await self._fetch_inline_image(image_url)
+                parts.append({"inlineData": inline_image})
 
             body: Dict[str, Any] = {
                 "model": model_id,
@@ -526,7 +577,7 @@ class GoogleProvider(BaseProvider):
         stream = bool(kwargs.pop("stream", True))
         method = "streamGenerateContent" if stream else "generateContent"
         endpoint = (
-            f"{self.base_url}/v1/publishers/google/models/{model_id}:{method}"
+            f"{self.base_url.rstrip('/')}/v1/publishers/google/models/{model_id}:{method}"
             f"?key={self.config.api_key}"
         )
         if stream:

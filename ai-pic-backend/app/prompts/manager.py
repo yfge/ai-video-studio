@@ -36,6 +36,11 @@ class PromptManager:
             trim_blocks=True,
             lstrip_blocks=True
         )
+        # 覆盖默认的 tojson 过滤器，避免在提示词和日志中出现 \uXXXX 转义，
+        # 统一按 UTF-8 直接输出中文，提升可读性。
+        self.jinja_env.filters["tojson"] = lambda value: json.dumps(
+            value, ensure_ascii=False
+        )
         
         # 缓存已加载的提示词模板
         self._template_cache: Dict[str, Template] = {}

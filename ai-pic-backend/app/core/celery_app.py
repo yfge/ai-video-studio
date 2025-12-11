@@ -30,3 +30,7 @@ celery_app.conf.update(
     worker_max_tasks_per_child=100,
 )
 
+# 确保在 Celery 应用初始化后注册所有任务
+# 任务定义位于 app.services.task_worker 中，使用显式 name（如 "tasks.virtual_ip_image_generate"）
+# 通过导入该模块完成注册，避免 worker 启动时出现 KeyError。
+import app.services.task_worker  # noqa: E402,F401

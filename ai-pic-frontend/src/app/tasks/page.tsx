@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { taskAPI, type Task as APITask } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import Navigation from '@/components/Navigation'
@@ -12,15 +12,20 @@ export default function Tasks() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [isStartingId, setIsStartingId] = useState<number | null>(null)
   const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
+  const [size, setSize] = useState(20)
+  const [total, setTotal] = useState(0)
 
   const { showAlert } = useAlertModal()
 
-  const loadTasks = async (options?: { silent?: boolean }) => {
+  const totalPages = Math.max(1, Math.ceil(total / size) || 1)
+
+  const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
       setLoading(true)
     }
     try {
-      const res = await taskAPI.getTasks()
+      const res = await taskAPI.getTasks({ page, size })
       if (res.success && res.data) {
         const tasksData = res.data.tasks ?? []
         const normalizedTasks = tasksData.reduce<APITask[]>((acc, task) => {
@@ -33,6 +38,13 @@ export default function Tasks() {
           return acc
         }, [])
         setTasks(normalizedTasks)
+        setTotal(res.data.total ?? 0)
+        if (res.data.page && res.data.page !== page) {
+          setPage(res.data.page)
+        }
+        if (res.data.size && res.data.size !== size) {
+          setSize(res.data.size)
+        }
         setFetchError(null)
       } else {
         setFetchError(res.error || '获取任务列表失败')
@@ -44,11 +56,11 @@ export default function Tasks() {
         setLoading(false)
       }
     }
-  }
+  }, [page, size])
 
   useEffect(() => {
-    loadTasks()
-  }, [])
+    void loadTasks()
+  }, [loadTasks])
 
   useEffect(() => {
     if (!poll) return
@@ -56,7 +68,7 @@ export default function Tasks() {
       void loadTasks({ silent: true })
     }, 5000)
     return () => clearInterval(t)
-  }, [poll])
+  }, [poll, loadTasks])
 
   const getStatusColor = (status: APITask['status']) => {
     switch (status) {
@@ -259,6 +271,29 @@ export default function Tasks() {
               </div>
             ))}
           </div>
+          {!loading && !fetchError && tasks.length > 0 && (
+            <div className="px-6 py-4 flex items-center justify-between text-sm text-gray-600 border-t border-gray-200">
+              <div>
+                共 {total} 个任务，每页 {size} 个，当前第 {page} / {totalPages} 页
+              </div>
+              <div className="space-x-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="px-3 py-1 rounded border text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  上一页
+                </button>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1 rounded border text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

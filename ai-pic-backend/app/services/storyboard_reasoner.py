@@ -136,17 +136,49 @@ class StoryboardReActReasoner:
                     scene_plan = StoryboardPlanScene.model_validate(scene)
                 except Exception:
                     continue
-                frames_scene = await self.service.generate_storyboard_from_plan_for_scene(
-                    script=script,
-                    scene_plan=scene_plan,
-                    model=model,
-                    prefer_provider=prefer_provider,
-                    temperature=temperature,
-                    max_frames=max_frames,
-                )
-                if frames_scene:
-                    frames_all.extend(frames_scene)
-                    per_scene_logs.append(f"scene {scene_plan.scene_number}: {len(frames_scene)} frames")
+
+                target_frames = scene_plan.target_frames or frames_per_scene
+                # 允许最多两轮尝试，为“数量不足”场景做一次 ReAct 补救
+                frames_scene_all: List[Dict[str, Any]] = []
+                attempts = 0
+                while attempts < 2 and len(frames_scene_all) < target_frames:
+                    frames_scene = await self.service.generate_storyboard_from_plan_for_scene(
+                        script=script,
+                        scene_plan=scene_plan,
+                        model=model,
+                        prefer_provider=prefer_provider,
+                        temperature=temperature,
+                        max_frames=max_frames,
+                    )
+                    attempts += 1
+                    if frames_scene:
+                        frames_scene_all.extend(frames_scene)
+                    if not frames_scene:
+                        # 本轮完全失败，留给下一轮或后续 fallback 处理
+                        break
+
+                if frames_scene_all:
+                    frames_all.extend(frames_scene_all)
+                    per_scene_logs.append(
+                        f"scene {scene_plan.scene_number}: {len(frames_scene_all)}/{target_frames} frames (attempts={attempts})"
+                    )
+                    # 如仍不足，只记录告警，后续由上层 fallback 做兜底
+                    if len(frames_scene_all) < target_frames:
+                        self.logger.warning(
+                            "Storyboard frames insufficient after retries",
+                            extra={
+                                "scene_number": scene_plan.scene_number,
+                                "target_frames": target_frames,
+                                "generated": len(frames_scene_all),
+                                "attempts": attempts,
+                            },
+                        )
+                else:
+                    self.logger.warning(
+                        "Storyboard frames empty for scene after retries",
+                        extra={"scene_number": scene_plan.scene_number, "attempts": attempts},
+                    )
+
             if not frames_all:
                 reasoning = state.get("reasoning", []) + ["frames_empty"]
                 return {"frames": [], "reasoning": reasoning, "plan": plan}

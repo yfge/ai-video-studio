@@ -78,16 +78,20 @@ def _add_additional_properties_false(schema: Dict[str, Any]) -> Dict[str, Any]:
     # 复制schema避免修改原对象
     result = schema.copy()
 
-    # 如果是对象类型，添加 additionalProperties: false
+    # 如果是对象类型，添加 additionalProperties: false，并补全 required
     if result.get("type") == "object":
         result["additionalProperties"] = False
+        props = result.get("properties")
 
         # 递归处理 properties
-        if "properties" in result:
+        if isinstance(props, dict):
             result["properties"] = {
                 key: _add_additional_properties_false(value)
-                for key, value in result["properties"].items()
+                for key, value in props.items()
             }
+            # OpenAI strict json_schema 要求：凡声明了 properties，必须提供 required，
+            # 且 required 中包含所有属性名，否则会报 400（Missing 'frame_id' 等）。
+            result["required"] = list(result["properties"].keys())
 
     # 递归处理数组的 items
     if "items" in result:
@@ -113,7 +117,8 @@ class OpenAIProvider(BaseProvider):
     
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
-        self.base_url = config.base_url or "https://api.openai.com/v1"
+        # 统一规范 base_url，避免因为末尾多 / 导致 // 路径
+        self.base_url = (config.base_url or "https://api.openai.com/v1").rstrip("/")
     
     @property
     def supported_model_types(self) -> List[AIModelType]:

@@ -120,8 +120,14 @@ class ScriptLangGraphAgent:
                     "schema": {
                         "type": "object",
                         "properties": {
-                            "dialogues": {"type": "array"},
-                            "stage_directions": {"type": "array"},
+                            "dialogues": {
+                                "type": "array",
+                                "items": {"type": "object"},
+                            },
+                            "stage_directions": {
+                                "type": "array",
+                                "items": {"type": "object"},
+                            },
                         },
                     },
                 },

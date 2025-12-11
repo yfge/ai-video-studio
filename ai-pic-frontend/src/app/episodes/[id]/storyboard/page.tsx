@@ -9,6 +9,7 @@ import {
   scriptAPI,
   storyStructureAPI,
   virtualIPAPI,
+  taskAPI,
 } from "@/utils/api";
 import type {
   Episode,
@@ -333,23 +334,23 @@ export default function EpisodeStoryboardPage() {
     if (!assertNormalizedReady(true)) return;
     setStoryboardBusy(true);
     try {
-      const response = await scriptAPI.generateStoryboard(activeScript.id, {
+      const response = await scriptAPI.generateStoryboardAsync(activeScript.id, {
         model: form.model || undefined,
         temperature: form.temperature,
         frames_per_scene: form.frames_per_scene,
         scene_numbers: [selectedScene],
+        // 分镜生成默认走规划 + LangGraph 管线
+        use_plan: true,
       });
-      if (!response.success) {
+      if (!response.success || !response.data) {
         showAlert({ message: "生成分镜失败", variant: "error" });
         return;
       }
-      if (response.data) {
-        setStoryboard(response.data);
-        if (response.data.plan?.scenes?.length) setShowPlan(true);
-      } else {
-        const fallback = await scriptAPI.getStoryboard(activeScript.id);
-        if (fallback.success && fallback.data) setStoryboard(fallback.data);
-      }
+      showAlert({
+        message: "已创建分镜生成任务，正在等待结果...",
+        variant: "info",
+      });
+      await pollStoryboardTask(activeScript.id, response.data.task_id);
     } finally {
       setStoryboardBusy(false);
     }
@@ -375,28 +376,71 @@ export default function EpisodeStoryboardPage() {
     }
   };
 
-  const handleGenerateAllScenes = async (usePlan: boolean) => {
+  const pollStoryboardTask = useCallback(
+    async (scriptId: number, taskId: number) => {
+      const maxAttempts = 30;
+      let attempts = 0;
+      while (attempts < maxAttempts) {
+        attempts += 1;
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          // eslint-disable-next-line no-await-in-loop
+          const taskRes = await taskAPI.getTask(String(taskId));
+          if (!taskRes.success || !taskRes.data) continue;
+          const status = taskRes.data.status;
+          if (status === "completed") {
+            // eslint-disable-next-line no-await-in-loop
+            const sb = await scriptAPI.getStoryboard(scriptId);
+            if (sb.success && sb.data) {
+              setStoryboard(sb.data);
+              if (sb.data.plan?.scenes?.length) setShowPlan(true);
+            }
+            showAlert({
+              message: "分镜生成完成",
+              variant: "success",
+            });
+            return;
+          }
+          if (status === "failed") {
+            const msg =
+              taskRes.data.error_message || "分镜生成失败，请检查任务详情";
+            showAlert({ message: msg, variant: "error" });
+            return;
+          }
+        } catch {
+          // 单次轮询出错时忽略，继续尝试
+        }
+      }
+      showAlert({
+        message: "分镜生成任务仍在执行中，请稍后在任务页查看进度",
+        variant: "info",
+      });
+    },
+    [showAlert],
+  );
+
+  const handleGenerateAllScenes = async () => {
     if (!activeScript) return;
     if (!assertNormalizedReady()) return;
     setStoryboardBusy(true);
     try {
-      const response = await scriptAPI.generateStoryboard(activeScript.id, {
+      const response = await scriptAPI.generateStoryboardAsync(activeScript.id, {
         model: form.model || undefined,
         temperature: form.temperature,
         frames_per_scene: form.frames_per_scene,
-        use_plan: usePlan,
+        // 分镜生成默认走规划 + LangGraph 管线
+        use_plan: true,
       });
-      if (!response.success) {
+      if (!response.success || !response.data) {
         showAlert({ message: "生成分镜失败", variant: "error" });
         return;
       }
-      if (response.data) {
-        setStoryboard(response.data);
-        if (response.data.plan?.scenes?.length) setShowPlan(true);
-      } else {
-        const sb = await scriptAPI.getStoryboard(activeScript.id);
-        if (sb.success && sb.data) setStoryboard(sb.data);
-      }
+      showAlert({
+        message: "已创建分镜生成任务，正在等待结果...",
+        variant: "info",
+      });
+      await pollStoryboardTask(activeScript.id, response.data.task_id);
     } finally {
       setStoryboardBusy(false);
     }
@@ -816,12 +860,12 @@ export default function EpisodeStoryboardPage() {
     );
   }
 
-  if (!episode || !activeScript) {
+  if (!episode) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            未找到剧集或剧本
+            未找到剧集
           </h2>
           <button
             onClick={() => router.push(`/episodes/${episodeId}`)}
@@ -950,16 +994,10 @@ export default function EpisodeStoryboardPage() {
                 生成当前场景
               </button>
               <button
-                onClick={() => handleGenerateAllScenes(false)}
+                onClick={() => handleGenerateAllScenes()}
                 className="bg-blue-600 text-white px-3 py-2 rounded"
               >
                 生成全部场景
-              </button>
-              <button
-                onClick={() => handleGenerateAllScenes(true)}
-                className="bg-purple-600 text-white px-3 py-2 rounded"
-              >
-                规划后生成全部
               </button>
               <button
                 onClick={handleSaveStoryboard}

@@ -96,6 +96,26 @@
 - 设计多图条件调用适配层（参考 Seedream/SDXL 等），集中映射“人物/环境参考图 + 文本提示词”到各家 API
 - 在真实浏览器路径完成端到端生成验证，补测试与文档
 
+## Feature: 分镜 LangGraph 管线统一（规划+生成）
+
+:information_source: 背景：当前分镜生成同时存在多条路径：直接调用 `generate_storyboard`、基于 `generate_storyboard_plan` 的规划+逐场景生成，以及 `StoryboardReActReasoner` 的 LangGraph ReAct 管线，前端还有“规划/生成”两个操作。希望统一为一条以 LangGraph 为核心的分镜管线，默认走“先规划再生成”，对帧数量不足/JSON 结构不合规能自动 ReAct 修复，这是系统最核心的功能之一。
+
+### 进度（功能→后端→前端→验证）
+
+- [ ] 功能/需求：统一分镜生成模型为“带规划的 LangGraph 管线”，默认每个选定场景至少生成 `frames_per_scene` 帧，帧结构必须满足 `StoryboardModel` JSON Schema
+- [ ] 后端：实现 `StoryboardLangGraphAgent`（或扩展现有 `StoryboardReActReasoner`），graph 中包括：场景选择节点 → 帧规划节点（`StoryboardPlanModel`）→ 帧细化节点（`StoryboardModel`）→ 校验/数量检查节点 → 修复节点（在帧数不足或结构不合法时 ReAct 重试）
+- [ ] 后端：收敛 `AIService.generate_storyboard*` 接口与 `scripts.py` 中分镜生成逻辑，统一通过 LangGraph agent 入口，保留本地 fallback 作为最后兜底；确保同步/异步（`/storyboard/generate`、`/storyboard/generate-async`）走同一套管线
+- [ ] 后端：在分镜生成 Task 与 `script.extra_metadata.storyboard` 中落库完整 agent 运行轨迹（plan、frames、provider/model、usage、reasoning_trace），支持后续审计与问题回溯
+- [ ] 前端：分镜工作台按钮统一切换到 `*-async` 路径，默认 `use_plan=true`，不再显式暴露“规划”动作，仅在高级视图中展示 `storyboard_plan` 与 ReAct 轨迹
+- [ ] 验证：补充端到端测试（长剧集、多场景、多次生成叠加），重点覆盖：帧数量检查与自动补齐、JSON 结构校验与修复、与环境/角色资产联动后的分镜稳定性
+
+### 下一步
+
+- 设计 `StoryboardLangGraphAgent` 的 state 结构（包含 script 摘要、选定场景列表、目标帧数、当前 plan 与 frames、reasoning_trace）
+- 在 `AIService` 中接入该 agent，作为 `generate_storyboard` 的首选路径，并让 `/scripts/{id}/storyboard/generate(-async)` 统一走这一入口
+- 调整 `StoryboardReActReasoner` / `generate_storyboard_plan` / `generate_storyboard_from_plan_for_scene` 的职责，将老的规划/逐场景逻辑收敛到 agent 内部或作为其子节点
+- 在浏览器中跑至少一条“真实故事→剧集→剧本→分镜→分镜图像”完整链路，并在 `agent_chats` 中记录验证路径和观察到的问题
+
 ## Feature: 剧本版本与审校流水线
 
 :information_source: 背景：工业剧本版本色彩流程 (Draft/Blue/Pink...) 与现有 `scripts` 单版本结构  

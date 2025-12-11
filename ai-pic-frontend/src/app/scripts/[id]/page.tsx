@@ -1,8 +1,8 @@
-'use client'
+"use client"
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { authAPI, scriptAPI } from '@/utils/api'
+import { authAPI, scriptAPI, taskAPI } from '@/utils/api'
 import type { Script, User } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { MultiModelSelector } from '@/components/MultiModelSelector'
@@ -415,7 +415,54 @@ export default function ScriptDetailPage() {
 
   type GenerateStoryboardOptions = Parameters<typeof scriptAPI.generateStoryboard>[1]
 
-  const runStoryboardGeneration = async ({ mode, usePlan }: { mode: 'all' | 'selected'; usePlan?: boolean }) => {
+  const pollStoryboardTask = useCallback(
+    async (scriptId: number, taskId: number) => {
+      const maxAttempts = 30
+      let attempts = 0
+      while (attempts < maxAttempts) {
+        attempts += 1
+        try {
+          // 等待一段时间再轮询任务状态
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          // eslint-disable-next-line no-await-in-loop
+          const taskRes = await taskAPI.getTask(String(taskId))
+          if (!taskRes.success || !taskRes.data) {
+            continue
+          }
+          const status = taskRes.data.status
+          if (status === 'completed') {
+            // 任务完成后重新拉取分镜数据
+            // eslint-disable-next-line no-await-in-loop
+            const sbRes = await scriptAPI.getStoryboard(scriptId)
+            if (sbRes.success && sbRes.data) {
+              const parsed = parseStoryboard(sbRes.data)
+              setStoryboard(parsed)
+              const scope = parsed.meta?.scene_scope?.filter((value): value is number => typeof value === 'number') || []
+              if (scope.length > 0) {
+                setSelectedScenes(scope)
+                setFocusedScene(scope[0])
+              }
+              setShowPlan(Boolean(parsed.plan?.scenes?.length))
+            }
+            showAlert({ message: '分镜生成完成', variant: 'success' })
+            return
+          }
+          if (status === 'failed') {
+            const msg = taskRes.data.error_message || '分镜生成失败'
+            showAlert({ message: msg, variant: 'error' })
+            return
+          }
+        } catch {
+          // 忽略单次轮询错误，继续尝试
+        }
+      }
+      showAlert({ message: '分镜生成任务仍在执行中，请稍后在任务页查看进度', variant: 'info' })
+    },
+    [showAlert],
+  )
+
+  const runStoryboardGeneration = async (mode: 'all' | 'selected') => {
     if (!script) return
     const payload: GenerateStoryboardOptions = {
       model: generationForm.model || undefined,
@@ -425,24 +472,20 @@ export default function ScriptDetailPage() {
     if (mode === 'selected' && selectedScenes.length > 0) {
       payload.scene_numbers = selectedScenes
     }
-    if (usePlan) {
-      payload.use_plan = true
-    }
+    // 分镜管线默认使用规划 + LangGraph
+    payload.use_plan = true
     setStoryboardBusy(true)
     try {
-      const response = await scriptAPI.generateStoryboard(script.id, payload)
-      if (response.success) {
-        const parsed = parseStoryboard(response.data)
-        setStoryboard(parsed)
-        const scope = parsed.meta?.scene_scope?.filter((value): value is number => typeof value === 'number') || []
-        if (scope.length > 0) {
-          setSelectedScenes(scope)
-          setFocusedScene(scope[0])
-        }
-        setShowPlan(Boolean(parsed.plan?.scenes?.length))
+      const response = await scriptAPI.generateStoryboardAsync(script.id, payload)
+      if (response.success && response.data) {
+        showAlert({ message: '已创建分镜生成任务，正在等待结果...', variant: 'info' })
+        await pollStoryboardTask(script.id, response.data.task_id)
       } else {
-        showAlert({ message: '生成分镜失败', variant: 'error' })
+        showAlert({ message: `创建分镜任务失败：${response.error || '未知错误'}`, variant: 'error' })
       }
+    } catch (error) {
+      console.error(error)
+      showAlert({ message: '分镜生成失败', variant: 'error' })
     } finally {
       setStoryboardBusy(false)
     }
@@ -763,25 +806,18 @@ export default function ScriptDetailPage() {
                       提示词预览
                     </button>
                     <button
-                      onClick={() => runStoryboardGeneration({ mode: 'selected' })}
+                      onClick={() => runStoryboardGeneration('selected')}
                       className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
                       disabled={storyboardBusy || selectedScenes.length === 0}
                     >
                       生成所选场景
                     </button>
                     <button
-                      onClick={() => runStoryboardGeneration({ mode: 'all' })}
+                      onClick={() => runStoryboardGeneration('all')}
                       className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
                       disabled={storyboardBusy}
                     >
                       生成全部场景
-                    </button>
-                    <button
-                      onClick={() => runStoryboardGeneration({ mode: 'all', usePlan: true })}
-                      className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
-                      disabled={storyboardBusy}
-                    >
-                      规划 + 生成
                     </button>
                   </div>
                 </div>

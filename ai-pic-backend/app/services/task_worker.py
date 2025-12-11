@@ -88,3 +88,11 @@ def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_i
         style=payload.get("style") or "realistic",
         reference_images=payload.get("reference_images") or [],
     )
+
+
+@celery_app.task(name="tasks.storyboard_generate")
+def storyboard_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """异步分镜结构生成任务入口。"""
+    from app.api.v1.endpoints.scripts import _process_storyboard_generation_task
+
+    _process_storyboard_generation_task(task_id, payload, user_id)
