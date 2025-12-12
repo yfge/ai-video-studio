@@ -183,6 +183,14 @@ class OSSService:
 
             file_url = f"{self.domain}/{object_key}"
 
+            self.logger.info(
+                "CDN 上传成功 | object_key=%s url=%s bytes=%s prefix=%s",
+                object_key,
+                file_url,
+                len(file_content),
+                prefix or "",
+            )
+
             return {
                 "success": True,
                 "object_key": object_key,
