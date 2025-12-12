@@ -386,17 +386,14 @@ export default function EpisodeStoryboardPage() {
     async (scriptId: number, taskId: number) => {
       const maxAttempts = 30;
       let attempts = 0;
-      while (attempts < maxAttempts) {
-        attempts += 1;
-        try {
-          // eslint-disable-next-line no-await-in-loop
+        while (attempts < maxAttempts) {
+          attempts += 1;
+          try {
           await new Promise((resolve) => setTimeout(resolve, 2000));
-          // eslint-disable-next-line no-await-in-loop
           const taskRes = await taskAPI.getTask(String(taskId));
           if (!taskRes.success || !taskRes.data) continue;
           const status = taskRes.data.status;
           if (status === "completed") {
-            // eslint-disable-next-line no-await-in-loop
             const sb = await scriptAPI.getStoryboard(scriptId);
             if (sb.success && sb.data) {
               setStoryboard(sb.data);
@@ -483,6 +480,7 @@ export default function EpisodeStoryboardPage() {
     const indexes = collectFrameIndexesForScene(selectedScene);
     const response = await scriptAPI.generateStoryboardImages(activeScript.id, {
       frames: indexes,
+      keyframe_mode: "start_end",
     });
     if (response.success) {
       showAlert({ message: "已创建图像生成任务", variant: "success" });
@@ -621,7 +619,7 @@ export default function EpisodeStoryboardPage() {
         if (sb.success && sb.data) {
           setStoryboard(sb.data);
           const hasImage = (sb.data.frames || []).some(
-            (fr) => fr && fr.image_url,
+            (fr) => fr && (fr.start_image_url || fr.image_url || fr.end_image_url),
           );
           if (hasImage || attempts >= 10) {
             if (pollTimerRef.current) {
@@ -697,6 +695,7 @@ export default function EpisodeStoryboardPage() {
         style: payload.style,
         reference_images: payload.referenceImages,
         count: payload.count,
+        keyframe_mode: "start_end",
       });
       if (response.success) {
         showAlert({ message: "已创建首尾帧图像生成任务", variant: "success" });
@@ -838,6 +837,7 @@ export default function EpisodeStoryboardPage() {
           style: payload.style,
           reference_images: payload.referenceImages,
           count: payload.count,
+          keyframe_mode: "start_end",
         },
       );
       if (response.success) {
@@ -1462,49 +1462,110 @@ export default function EpisodeStoryboardPage() {
                             已绑定参考图：{fr.reference_images.length} 张
                           </div>
                         )}
-                      {fr.image_url && (
+                      {(fr.start_image_url || fr.image_url || fr.end_image_url) && (
                         <div className="mt-2">
                           <div className="text-xs text-gray-700 mb-1">
-                            图像预览：
+                            关键帧预览：
                           </div>
-                          <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
-                            <Image
-                              src={fr.image_url}
-                              alt="frame image"
-                              fill
-                              sizes="(min-width:1024px) 50vw, 100vw"
-                              className="object-contain p-2 cursor-zoom-in"
-                              unoptimized
-                              onClick={() =>
-                                setPreview({
-                                  src: fr.image_url as string,
-                                  alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}`,
-                                  description: fr.description || "分镜图像",
-                                })
-                              }
-                            />
+                          <div
+                            className={`grid gap-2 ${
+                              fr.end_image_url ? "grid-cols-2" : "grid-cols-1"
+                            }`}
+                          >
+                            {(fr.start_image_url || fr.image_url) && (
+                              <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
+                                <Image
+                                  src={(fr.start_image_url || fr.image_url) as string}
+                                  alt="start keyframe"
+                                  fill
+                                  sizes="(min-width:1024px) 50vw, 100vw"
+                                  className="object-contain p-2 cursor-zoom-in"
+                                  unoptimized
+                                  onClick={() =>
+                                    setPreview({
+                                      src: (fr.start_image_url || fr.image_url) as string,
+                                      alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
+                                      description: fr.description || "分镜关键帧（首帧）",
+                                    })
+                                  }
+                                />
+                                <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                                  首
+                                </div>
+                              </div>
+                            )}
+                            {fr.end_image_url && (
+                              <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
+                                <Image
+                                  src={fr.end_image_url as string}
+                                  alt="end keyframe"
+                                  fill
+                                  sizes="(min-width:1024px) 50vw, 100vw"
+                                  className="object-contain p-2 cursor-zoom-in"
+                                  unoptimized
+                                  onClick={() =>
+                                    setPreview({
+                                      src: fr.end_image_url as string,
+                                      alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
+                                      description: fr.description || "分镜关键帧（尾帧）",
+                                    })
+                                  }
+                                />
+                                <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                                  尾
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <div className="mt-2 flex items-center gap-3 text-xs">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setPreview({
-                                  src: fr.image_url as string,
-                                  alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}`,
-                                  description: fr.description || "分镜图像",
-                                })
-                              }
-                              className="text-green-700 hover:text-green-900"
-                            >
-                              查看大图
-                            </button>
-                            <a
-                              href={fr.image_url}
-                              target="_blank"
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              新标签打开
-                            </a>
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                            {(fr.start_image_url || fr.image_url) && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreview({
+                                      src: (fr.start_image_url || fr.image_url) as string,
+                                      alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
+                                      description: fr.description || "分镜关键帧（首帧）",
+                                    })
+                                  }
+                                  className="text-green-700 hover:text-green-900"
+                                >
+                                  查看首帧
+                                </button>
+                                <a
+                                  href={(fr.start_image_url || fr.image_url) as string}
+                                  target="_blank"
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  新标签打开首帧
+                                </a>
+                              </>
+                            )}
+                            {fr.end_image_url && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreview({
+                                      src: fr.end_image_url as string,
+                                      alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
+                                      description: fr.description || "分镜关键帧（尾帧）",
+                                    })
+                                  }
+                                  className="text-green-700 hover:text-green-900"
+                                >
+                                  查看尾帧
+                                </button>
+                                <a
+                                  href={fr.end_image_url as string}
+                                  target="_blank"
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  新标签打开尾帧
+                                </a>
+                              </>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1516,7 +1577,7 @@ export default function EpisodeStoryboardPage() {
                             }}
                             className="text-sm text-green-600 hover:text-green-800"
                           >
-                            选择参考图生成
+                            选择参考图生成关键帧
                           </button>
                           <button
                             onClick={async () => {
@@ -1552,13 +1613,22 @@ export default function EpisodeStoryboardPage() {
                               查看视频
                             </a>
                           )}
-                          {fr.image_url && (
+                          {(fr.start_image_url || fr.image_url) && (
                             <a
-                              href={fr.image_url}
+                              href={(fr.start_image_url || fr.image_url) as string}
                               target="_blank"
                               className="text-sm text-green-600 hover:text-green-800"
                             >
-                              查看图像
+                              查看首帧
+                            </a>
+                          )}
+                          {fr.end_image_url && (
+                            <a
+                              href={fr.end_image_url as string}
+                              target="_blank"
+                              className="text-sm text-green-600 hover:text-green-800"
+                            >
+                              查看尾帧
                             </a>
                           )}
                         </div>
@@ -1621,11 +1691,11 @@ export default function EpisodeStoryboardPage() {
       <ImageToImageModal
         open={imageModalOpen}
         onClose={() => setImageModalOpen(false)}
-        title="选择参考图生成分镜图像"
+        title="选择参考图生成分镜关键帧"
         description={
           imageModalLoading
             ? "参考图加载中..."
-            : "选择环境与角色参考图作为锚点，提交后将在任务中生成图像。"
+            : "选择环境与角色参考图作为锚点，提交后将在任务中生成首尾关键帧。"
         }
         referenceSections={imageModalReferenceSections}
         defaultSelected={

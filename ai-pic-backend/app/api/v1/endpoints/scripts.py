@@ -33,6 +33,7 @@ from app.models.task import Task, TaskStatus
 from app.services.task_worker import (
     script_generate_task,
     storyboard_image_generate_task,
+    storyboard_video_generate_task,
     storyboard_generate_task,
 )
 from app.utils.model_utils import infer_provider_from_model
@@ -1900,6 +1901,7 @@ def _process_storyboard_image_task(
     style: str = "realistic",
     reference_images: Optional[List[str]] = None,
     count: int = 1,
+    keyframe_mode: str = "single",
 ):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
@@ -1927,7 +1929,8 @@ def _process_storyboard_image_task(
         target_indexes = frame_indexes or list(range(len(frames)))
         start_log = (
             f"[SBIMG] task start | script_id={script_id} task_id={task_id} "
-            f"frames_total={len(frames)} target_indexes={target_indexes} model={model} count={count}"
+            f"frames_total={len(frames)} target_indexes={target_indexes} model={model} count={count} "
+            f"keyframe_mode={keyframe_mode}"
         )
         logger.info(start_log)
         print(start_log, flush=True)
@@ -1987,6 +1990,7 @@ def _process_storyboard_image_task(
                     char_image_map[img.virtual_ip_id] = _abs_url(url)
 
         import anyio
+        from functools import partial as _partial
 
         try:
             count_int = int(count) if count is not None else 1
@@ -2051,7 +2055,14 @@ def _process_storyboard_image_task(
                 print(f"图像生成失败: {e}")
             return None
 
-        async def _persist_frame_image(url: str, idx: int, provider: str, model: str) -> dict | None:
+        async def _persist_frame_image(
+            url: str,
+            idx: int,
+            provider: str,
+            model: str,
+            *,
+            keyframe_role: str = "single",
+        ) -> dict | None:
             """将分镜图像下载到本地并上传 OSS，返回最终可用 URL。"""
             try:
                 stored = await ai_service._persist_generated_image(
@@ -2064,6 +2075,7 @@ def _process_storyboard_image_task(
                         "frame_index": idx,
                         "provider": provider,
                         "model": model,
+                        "keyframe_role": keyframe_role,
                     },
                     # 若已配置 OSS/CDN，则要求上传成功；否则退回本地存储
                     require_upload=bool(oss_service),
@@ -2160,30 +2172,87 @@ def _process_storyboard_image_task(
             if ref_images:
                 fr["reference_images"] = ref_images
 
-            result = anyio.run(_gen_image, prompt, ref_images)
-            if result:
-                print(
-                    f"Storyboard image result idx={idx} url={result.get('url')} "
-                    f"provider={result.get('provider')}"
+            if keyframe_mode == "start_end":
+                # 首尾关键帧：生成 start/end 两张，并保持 image_url 指向首帧用于兼容旧 UI
+                start_prompt = (
+                    f"{prompt}\n\n（关键帧：首帧）请生成该镜头开始瞬间的画面，保持构图与风格一致。"
                 )
-            if result and result.get("url"):
-                persist = anyio.run(
-                    _persist_frame_image,
-                    result["url"],
-                    idx,
-                    result.get("provider"),
-                    result.get("model"),
+                end_prompt = (
+                    f"{prompt}\n\n（关键帧：尾帧）请生成该镜头结束瞬间的画面，体现动作完成后的状态，保持构图与风格一致。"
                 )
-                if persist and persist.get("final_url"):
-                    before_url = fr.get("image_url")
-                    fr["image_url_original"] = result["url"]
-                    fr["image_url"] = persist["final_url"]
+
+                start_result = anyio.run(_gen_image, start_prompt, ref_images)
+                if start_result:
+                    url_preview = start_result.get("url")
+                    if isinstance(url_preview, str) and len(url_preview) > 200:
+                        url_preview = url_preview[:200] + "..."
                     print(
-                        "Storyboard frame set idx=%s old_url=%s new_url=%s",
-                        idx,
-                        before_url,
-                        fr.get("image_url"),
+                        f"Storyboard keyframe(start) idx={idx} url={url_preview} "
+                        f"provider={start_result.get('provider')}"
                     )
+                if start_result and start_result.get("url"):
+                    start_persist = anyio.run(
+                        _partial(_persist_frame_image, keyframe_role="start"),
+                        start_result["url"],
+                        idx,
+                        start_result.get("provider"),
+                        start_result.get("model"),
+                    )
+                    if start_persist and start_persist.get("final_url"):
+                        fr["start_image_url_original"] = start_result["url"]
+                        fr["start_image_url"] = start_persist["final_url"]
+                        fr["image_url"] = start_persist["final_url"]
+                        fr["image_url_original"] = start_result["url"]
+
+                end_result = anyio.run(_gen_image, end_prompt, ref_images)
+                if end_result:
+                    url_preview = end_result.get("url")
+                    if isinstance(url_preview, str) and len(url_preview) > 200:
+                        url_preview = url_preview[:200] + "..."
+                    print(
+                        f"Storyboard keyframe(end) idx={idx} url={url_preview} "
+                        f"provider={end_result.get('provider')}"
+                    )
+                if end_result and end_result.get("url"):
+                    end_persist = anyio.run(
+                        _partial(_persist_frame_image, keyframe_role="end"),
+                        end_result["url"],
+                        idx,
+                        end_result.get("provider"),
+                        end_result.get("model"),
+                    )
+                    if end_persist and end_persist.get("final_url"):
+                        fr["end_image_url_original"] = end_result["url"]
+                        fr["end_image_url"] = end_persist["final_url"]
+            else:
+                result = anyio.run(_gen_image, prompt, ref_images)
+                if result:
+                    url_preview = result.get("url")
+                    if isinstance(url_preview, str) and len(url_preview) > 200:
+                        url_preview = url_preview[:200] + "..."
+                    print(
+                        f"Storyboard image result idx={idx} url={url_preview} "
+                        f"provider={result.get('provider')}"
+                    )
+                if result and result.get("url"):
+                    persist = anyio.run(
+                        _partial(_persist_frame_image, keyframe_role="single"),
+                        result["url"],
+                        idx,
+                        result.get("provider"),
+                        result.get("model"),
+                    )
+                    if persist and persist.get("final_url"):
+                        before_url = fr.get("image_url")
+                        fr["image_url_original"] = result["url"]
+                        fr["image_url"] = persist["final_url"]
+                        fr["start_image_url"] = persist["final_url"]
+                        print(
+                            "Storyboard frame set idx=%s old_url=%s new_url=%s",
+                            idx,
+                            before_url,
+                            fr.get("image_url"),
+                        )
 
         # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
         extra_raw = script.extra_metadata or {}
@@ -2230,6 +2299,10 @@ class StoryboardImageRequest(BaseModel):
     height: int = Field(default=1024, ge=64, le=2048)
     style: str = Field(default="realistic")
     count: int = Field(default=1, ge=1, le=4, description="每帧生成的图像数量")
+    keyframe_mode: str = Field(
+        default="single",
+        description="生成模式：single=单张（兼容旧字段 image_url）；start_end=生成首尾关键帧（start_image_url/end_image_url）",
+    )
     reference_images: Optional[List[str]] = Field(
         default=None,
         description="优先使用的参考图（环境/角色），传入则走图生图；会与场景环境/角色自动锚点合并",
@@ -2273,6 +2346,7 @@ async def generate_storyboard_images(
                 "height": body.height,
                 "style": body.style,
                 "count": body.count,
+                "keyframe_mode": body.keyframe_mode,
                 "reference_images": body.reference_images or [],
             },
             ensure_ascii=False,
@@ -2291,13 +2365,16 @@ async def generate_storyboard_images(
         "height": body.height,
         "style": body.style,
         "count": body.count,
+        "keyframe_mode": body.keyframe_mode,
         "reference_images": body.reference_images or [],
     }
     storyboard_image_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 
-def _process_storyboard_video_task(task_id: int, script_id: int, frame_indexes: list[int] | None):
+def _process_storyboard_video_task(
+    task_id: int, script_id: int, frame_indexes: list[int] | None
+):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
     db = SessionLocal()
@@ -2314,34 +2391,88 @@ def _process_storyboard_video_task(task_id: int, script_id: int, frame_indexes: 
         if not sb or not sb.get("frames"):
             raise RuntimeError("未找到分镜数据")
 
-        frames = sb["frames"]
+        if not ai_service.ai_manager:
+            raise RuntimeError("AI管理器未初始化，无法生成视频")
+
+        # 拷贝一份帧列表，避免直接在 SQLAlchemy 追踪的 JSON 结构上就地修改
+        import copy as _copy  # 局部导入避免循环依赖
+
+        frames_src = list((sb or {}).get("frames") or [])
+        frames: List[Dict[str, Any]] = [
+            _copy.deepcopy(fr) if isinstance(fr, dict) else fr for fr in frames_src
+        ]
         target_indexes = frame_indexes or list(range(len(frames)))
 
         import anyio
 
-        async def _gen_video(prompt: str) -> dict | None:
+        def _coerce_duration(value: Any) -> int:
             try:
-                resp = await ai_service.ai_manager.generate_video(prompt=prompt)
-                if resp.success:
-                    return {"url": (resp.data.get("video_url") if isinstance(resp.data, dict) else None) or None, "provider": resp.provider, "model": resp.model}
+                dur = float(value)
+            except (TypeError, ValueError):
+                return 5
+            if dur <= 0:
+                return 5
+            # 单个镜头片段时长做轻度收敛，避免提供商不支持的超长/超短
+            dur_int = int(round(dur))
+            return max(1, min(dur_int, 10))
+
+        async def _gen_video(image_url: str, prompt: Optional[str], duration: int) -> dict | None:
+            try:
+                result = await ai_service.generate_video(
+                    prompt=prompt,
+                    image_url=image_url,
+                    duration=duration,
+                    fps=24,
+                    resolution="1280x720",
+                )
+                if result and result.get("video_url"):
+                    return result
             except Exception as e:
                 print(f"视频生成失败: {e}")
             return None
 
-        # 逐帧生成视频URL（示意）
         for idx in target_indexes:
-            fr = frames[idx]
-            prompt = fr.get("ai_prompt") or fr.get("description") or ""
-            if not prompt:
+            if idx < 0 or idx >= len(frames):
                 continue
-            result = anyio.run(_gen_video, prompt)
-            if result and result.get("url"):
-                fr["video_url"] = result["url"]
+            fr = frames[idx]
+            if not isinstance(fr, dict):
+                continue
 
-        # 保存
-        extra = script.extra_metadata or {}
-        extra["storyboard"] = sb
-        script.extra_metadata = extra
+            raw_image_url = (
+                fr.get("start_image_url") or fr.get("image_url") or fr.get("end_image_url") or ""
+            )
+            if not raw_image_url:
+                continue
+            image_url = _abs_url(str(raw_image_url))
+
+            prompt_value = (fr.get("ai_prompt") or fr.get("description") or "").strip() or None
+            duration_int = _coerce_duration(fr.get("duration_seconds"))
+
+            video = anyio.run(_gen_video, image_url, prompt_value, duration_int)
+            if not video:
+                continue
+
+            fr["video_url"] = video.get("video_url")
+            fr["video_url_original"] = video.get("original_video_url")
+            fr["video_thumbnail_url"] = video.get("thumbnail_url")
+            fr["video_thumbnail_url_original"] = video.get("original_thumbnail_url")
+            fr["video_generation"] = {
+                "duration": video.get("duration"),
+                "provider": video.get("provider_used"),
+                "model": video.get("model_used"),
+                "method": video.get("generation_method"),
+            }
+
+        # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
+        extra_raw = script.extra_metadata or {}
+        extra = dict(extra_raw)
+        storyboard_payload = dict(sb or {})
+        storyboard_payload["frames"] = frames
+        extra["storyboard"] = storyboard_payload
+        db.query(Script).filter(Script.id == script_id).update(
+            {Script.extra_metadata: extra},
+            synchronize_session=False,
+        )
         db.commit()
 
         if task:
@@ -2357,7 +2488,6 @@ def _process_storyboard_video_task(task_id: int, script_id: int, frame_indexes: 
         db.close()
 
 
-@router.post("/{script_id}/storyboard/generate-video")
 class StoryboardVideoRequest(BaseModel):
     frames: list[int] = Field(default_factory=list, description="要生成视频的分镜索引列表（基于0的索引）")
 
@@ -2366,9 +2496,24 @@ class StoryboardVideoRequest(BaseModel):
 async def generate_storyboard_video(
     script_id: int,
     body: StoryboardVideoRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
+    # 校验剧本归属
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
+    if not script:
+        raise HTTPException(status_code=404, detail="剧本不存在")
+
     t = Task(
         title=f"分镜视频生成 - 剧本{script_id}",
         description="根据分镜生成视频",
@@ -2381,7 +2526,8 @@ async def generate_storyboard_video(
     db.commit()
     db.refresh(t)
 
-    background_tasks.add_task(_process_storyboard_video_task, t.id, script_id, body.frames)
+    payload = {"script_id": script_id, "frames": body.frames or []}
+    storyboard_video_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 @router.get("/", response_model=List[ScriptResponse])

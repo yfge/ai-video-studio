@@ -96,7 +96,18 @@ def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_i
         style=payload.get("style") or "realistic",
         reference_images=payload.get("reference_images") or [],
         count=count_int,
+        keyframe_mode=(payload.get("keyframe_mode") or "single"),
     )
+
+
+@celery_app.task(name="tasks.storyboard_video_generate")
+def storyboard_video_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+    """异步分镜视频生成任务入口。"""
+    from app.api.v1.endpoints.scripts import _process_storyboard_video_task
+
+    script_id = int(payload.get("script_id"))
+    frame_indexes = payload.get("frames") or []
+    _process_storyboard_video_task(task_id, script_id, frame_indexes)
 
 
 @celery_app.task(name="tasks.storyboard_generate")

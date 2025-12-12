@@ -87,6 +87,12 @@ class StoryboardFrame(BaseModel):
     ai_prompt: Optional[str] = Field(None, description="用于生成图像/视频的提示词")
     reference_images: Optional[List[str]] = Field(None, description="参考图 URL 列表")
     image_url: Optional[str] = Field(None, description="生成的分镜图像URL（生成后回填）")
+    start_image_url: Optional[str] = Field(
+        None, description="分镜首帧关键帧URL（生成后回填）"
+    )
+    end_image_url: Optional[str] = Field(
+        None, description="分镜尾帧关键帧URL（生成后回填）"
+    )
     video_url: Optional[str] = Field(None, description="生成的视频URL（生成后回填）")
     generation_source: Optional[str] = Field(None, description="生成来源：ai/manual/import/legacy")
     generation_model: Optional[str] = Field(None, description="生成所用模型标识")

@@ -391,6 +391,8 @@ export type StoryboardFrame = {
   ai_prompt?: string;
   reference_images?: string[];
   image_url?: string;
+  start_image_url?: string;
+  end_image_url?: string;
   video_url?: string;
   generation_source?: string;
   generation_method?: string;
@@ -1551,6 +1553,7 @@ class ApiClient {
       style?: string;
       reference_images?: string[];
       count?: number;
+      keyframe_mode?: "single" | "start_end";
     },
   ) {
     return this.request(
@@ -1565,6 +1568,7 @@ class ApiClient {
           style: payload?.style ?? "realistic",
           reference_images: payload?.reference_images,
           count: payload?.count ?? 1,
+          keyframe_mode: payload?.keyframe_mode ?? "single",
         }),
       },
     );
