@@ -8,6 +8,7 @@ import { storyStructureAPI, AIModelType, type EnvironmentCreate, type Environmen
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { ImageToImageModal } from '@/components/ImageToImageModal'
 import { MultiModelSelector } from '@/components/MultiModelSelector'
+import { ImagePreviewModal } from '@/components/ImagePreviewModal'
 
 function EnvironmentsPageContent() {
   const { showAlert } = useAlertModal()
@@ -20,6 +21,7 @@ function EnvironmentsPageContent() {
   const [variantModalOpen, setVariantModalOpen] = useState(false)
   const [variantPrompt, setVariantPrompt] = useState('')
   const [variantSubmitting, setVariantSubmitting] = useState(false)
+  const [preview, setPreview] = useState<{ src: string; alt?: string; description?: string } | null>(null)
   const [newEnv, setNewEnv] = useState<EnvironmentCreate>({
     name: '',
     category: 'indoor',
@@ -294,23 +296,45 @@ function EnvironmentsPageContent() {
                   {env.reference_images && env.reference_images.length > 0 && (
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       {env.reference_images.map(url => (
-                        <div key={url} className="relative group rounded overflow-hidden border h-24">
+                        <div key={url} className="relative group rounded overflow-hidden border h-24 bg-gray-50">
                           <Image
                             src={imageSrc(url)}
                             alt={env.name}
                             fill
                             sizes="100%"
-                            className="object-cover"
+                            className="object-contain p-1 cursor-zoom-in"
                             unoptimized
+                            onClick={() =>
+                              setPreview({
+                                src: imageSrc(url),
+                                alt: env.name,
+                                description: `环境参考图 · ${env.name}`,
+                              })
+                            }
                           />
                           <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-black/40 text-white text-xs group-hover:flex">
                             <button
-                            className="rounded bg-white/80 px-2 py-1 text-gray-800 hover:bg-white"
+                              type="button"
+                              className="rounded bg-white/80 px-2 py-1 text-gray-800 hover:bg-white"
+                              onClick={() =>
+                                setPreview({
+                                  src: imageSrc(url),
+                                  alt: env.name,
+                                  description: `环境参考图 · ${env.name}`,
+                                })
+                              }
+                            >
+                              预览
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded bg-white/80 px-2 py-1 text-gray-800 hover:bg-white"
                               onClick={() => openVariantModal(env, url)}
                             >
                               变体
                             </button>
                             <button
+                              type="button"
                               className="rounded bg-red-500 px-2 py-1 text-white hover:bg-red-600"
                               onClick={() => storyStructureAPI.deleteEnvironmentImage(env.id, url).then(res => {
                                 if (res.success) {
@@ -379,6 +403,14 @@ function EnvironmentsPageContent() {
           modelCacheKey="environment-img2img"
           submitting={variantSubmitting}
           onSubmit={handleGenerateVariant}
+        />
+
+        <ImagePreviewModal
+          open={!!preview}
+          src={preview?.src || ''}
+          alt={preview?.alt}
+          description={preview?.description}
+          onClose={() => setPreview(null)}
         />
       </main>
     </div>

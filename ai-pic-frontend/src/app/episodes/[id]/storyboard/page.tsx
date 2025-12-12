@@ -24,6 +24,7 @@ import type {
 import { useAlertModal } from "@/components/AlertModalProvider";
 import { ImageToImageModal } from "@/components/ImageToImageModal";
 import { MultiModelSelector } from "@/components/MultiModelSelector";
+import { ImagePreviewModal } from "@/components/ImagePreviewModal";
 
 export default function EpisodeStoryboardPage() {
   const params = useParams();
@@ -82,6 +83,11 @@ export default function EpisodeStoryboardPage() {
   const [imagePolling, setImagePolling] = useState(false);
   const [imagePollingLabel, setImagePollingLabel] = useState("");
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [preview, setPreview] = useState<{
+    src: string;
+    alt?: string;
+    description?: string;
+  } | null>(null);
 
   const [form, setForm] = useState({
     model: "",
@@ -1461,20 +1467,45 @@ export default function EpisodeStoryboardPage() {
                           <div className="text-xs text-gray-700 mb-1">
                             图像预览：
                           </div>
-                          <a
-                            href={fr.image_url}
-                            target="_blank"
-                            className="block border rounded overflow-hidden"
-                          >
+                          <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
                             <Image
                               src={fr.image_url}
                               alt="frame image"
-                              width={512}
-                              height={256}
-                              className="w-full h-32 object-cover"
+                              fill
+                              sizes="(min-width:1024px) 50vw, 100vw"
+                              className="object-contain p-2 cursor-zoom-in"
                               unoptimized
+                              onClick={() =>
+                                setPreview({
+                                  src: fr.image_url as string,
+                                  alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}`,
+                                  description: fr.description || "分镜图像",
+                                })
+                              }
                             />
-                          </a>
+                          </div>
+                          <div className="mt-2 flex items-center gap-3 text-xs">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreview({
+                                  src: fr.image_url as string,
+                                  alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}`,
+                                  description: fr.description || "分镜图像",
+                                })
+                              }
+                              className="text-green-700 hover:text-green-900"
+                            >
+                              查看大图
+                            </button>
+                            <a
+                              href={fr.image_url}
+                              target="_blank"
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              新标签打开
+                            </a>
+                          </div>
                         </div>
                       )}
                       <div className="mt-2 flex items-center justify-between">
@@ -1609,6 +1640,13 @@ export default function EpisodeStoryboardPage() {
         useDimensions
         submitting={imageModalSubmitting || imageModalLoading}
         onSubmit={handleConfirmGenerateFrameImage}
+      />
+      <ImagePreviewModal
+        open={!!preview}
+        src={preview?.src || ""}
+        alt={preview?.alt}
+        description={preview?.description}
+        onClose={() => setPreview(null)}
       />
       {imagePolling && (
         <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded bg-white px-3 py-2 shadow border border-gray-200 text-xs text-gray-700">

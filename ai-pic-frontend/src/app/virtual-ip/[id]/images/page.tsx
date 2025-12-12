@@ -16,6 +16,7 @@ import { useAlertModal } from '@/components/AlertModalProvider';
 import { useAvailableModels } from '@/hooks/useAvailableModels';
 import { ImageToImageModal } from '@/components/ImageToImageModal';
 import { MultiModelSelector } from '@/components/MultiModelSelector';
+import { ImagePreviewModal } from '@/components/ImagePreviewModal';
 
 export default function VirtualIPImagesPage() {
   const params = useParams();
@@ -30,6 +31,11 @@ export default function VirtualIPImagesPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<{
+    src: string;
+    alt?: string;
+    description?: string;
+  } | null>(null);
 
   // 统一的后端基础地址（用于拼接本地文件路径）
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
@@ -727,13 +733,23 @@ export default function VirtualIPImagesPage() {
 
             return (
               <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="relative">
+                <div
+                  className="relative aspect-[4/5] bg-gray-50 cursor-zoom-in"
+                  onClick={() => {
+                    if (!primarySrc) return
+                    setPreview({
+                      src: primarySrc,
+                      alt: `${virtualIP.name} - ${image.category}`,
+                      description: `${image.category} ｜ ${new Date(image.created_at).toLocaleString()}`,
+                    })
+                  }}
+                >
                   <Image
                     src={primarySrc}
                     alt={`${virtualIP.name} - ${image.category}`}
-                    width={512}
-                    height={384}
-                    className="w-full h-48 object-cover"
+                    fill
+                    sizes="(min-width:1280px) 25vw, (min-width:768px) 33vw, 50vw"
+                    className="object-contain p-2"
                     unoptimized
                     onError={handleError}
                   />
@@ -836,6 +852,14 @@ export default function VirtualIPImagesPage() {
             </p>
           </div>
         )}
+
+        <ImagePreviewModal
+          open={!!preview}
+          src={preview?.src || ''}
+          alt={preview?.alt}
+          description={preview?.description}
+          onClose={() => setPreview(null)}
+        />
       </div>
     </div>
   );
