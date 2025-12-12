@@ -305,6 +305,30 @@ async def get_episodes(
     return [EpisodeResponse.from_orm(episode) for episode in episodes]
 
 
+@router.get("", response_model=List[EpisodeResponse], include_in_schema=False)
+async def get_episodes_no_slash(
+    story_id: Optional[int] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    status: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    兼容无尾斜杠的 /api/v1/episodes 请求，避免 307 重定向。
+
+    内部直接复用 get_episodes 的过滤与分页逻辑。
+    """
+    return await get_episodes(
+        story_id=story_id,
+        skip=skip,
+        limit=limit,
+        status=status,
+        current_user=current_user,
+        db=db,
+    )
+
+
 @router.get("/{episode_id}", response_model=EpisodeResponse)
 async def get_episode(
     episode_id: int,

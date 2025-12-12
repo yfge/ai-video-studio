@@ -64,7 +64,7 @@ services:
       - ai-video-frontend
       - ai-video-backend
     ports:
-      - "80:8080"
+      - "8080:8080"
     volumes:
       - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
     restart: always

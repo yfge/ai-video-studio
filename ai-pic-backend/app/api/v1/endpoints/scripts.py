@@ -2415,6 +2415,32 @@ async def get_scripts(
     scripts = query.order_by(Script.created_at.desc()).offset(skip).limit(limit).all()
     return [ScriptResponse.from_orm(script) for script in scripts]
 
+
+@router.get("", response_model=List[ScriptResponse], include_in_schema=False)
+async def get_scripts_no_slash(
+    episode_id: Optional[int] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    status: Optional[str] = Query(None),
+    format_type: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    兼容无尾斜杠的 /api/v1/scripts 请求，避免 307 重定向。
+
+    内部直接复用 get_scripts 的过滤与分页逻辑。
+    """
+    return await get_scripts(
+        episode_id=episode_id,
+        skip=skip,
+        limit=limit,
+        status=status,
+        format_type=format_type,
+        current_user=current_user,
+        db=db,
+    )
+
 @router.get("/{script_id}", response_model=ScriptResponse)
 async def get_script(
     script_id: int,

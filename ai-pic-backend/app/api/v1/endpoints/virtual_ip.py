@@ -46,6 +46,21 @@ def list_virtual_ips(
         "data": [VirtualIPResponse.from_orm(ip) for ip in virtual_ips]
     }
 
+
+@router.get("", include_in_schema=False)
+def list_virtual_ips_no_slash(
+    skip: int = 0,
+    limit: int = 20,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    兼容无尾斜杠的 /api/v1/virtual-ips 请求，避免 307 重定向。
+
+    内部直接复用 list_virtual_ips 的分页与权限逻辑。
+    """
+    return list_virtual_ips(skip=skip, limit=limit, current_user=current_user, db=db)
+
 @router.post("/")
 def create_virtual_ip(
     ip: VirtualIPCreate, 

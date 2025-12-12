@@ -463,6 +463,30 @@ async def get_stories(
     }
 
 
+@router.get("", include_in_schema=False)
+async def get_stories_no_slash(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    genre: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    兼容无尾斜杠的 /api/v1/stories 请求，避免 307 重定向。
+
+    内部直接复用 get_stories 的过滤与分页逻辑。
+    """
+    return await get_stories(
+        skip=skip,
+        limit=limit,
+        genre=genre,
+        status=status,
+        current_user=current_user,
+        db=db,
+    )
+
+
 @router.get("/{story_id}")
 async def get_story(
     story_id: int,
