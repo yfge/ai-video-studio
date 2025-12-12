@@ -69,6 +69,32 @@ class AIServiceManager:
         self._initialize_providers()
         self.logger = get_logger()
 
+    def _resolve_prefer_provider_and_model(
+        self,
+        model: str | None,
+        prefer_provider: str | None,
+    ) -> tuple[str | None, str | None]:
+        """
+        If model is prefixed like "google:gemini-...", pin to that provider and strip prefix.
+
+        This prevents trying incompatible providers with a foreign model id.
+        """
+        if model and ":" in model:
+            prefix, rest = model.split(":", 1)
+            prefix_lower = prefix.lower().strip()
+            if prefix_lower in self.providers:
+                if prefer_provider and prefer_provider != prefix_lower:
+                    try:
+                        self.logger.warning(
+                            "model provider prefix overrides prefer_provider | model=%s prefer_provider=%s",
+                            model,
+                            prefer_provider,
+                        )
+                    except Exception:
+                        pass
+                return prefix_lower, rest
+        return prefer_provider, model
+
     def _prefer_http_for_download(self, url: str) -> str:
         """在下载参考图时优先使用 http，避免生产环境 HTTPS 证书问题。"""
         if isinstance(url, str) and url.lower().startswith("https://"):
@@ -319,6 +345,14 @@ class AIServiceManager:
             model_type=AIModelType.TEXT_GENERATION
         )
 
+        prefer_provider, model = self._resolve_prefer_provider_and_model(
+            model, prefer_provider
+        )
+        if prefer_provider:
+            available_providers = [
+                p for p in available_providers if p == prefer_provider
+            ]
+
         original_model = model
         last_model_used = original_model
         
@@ -430,7 +464,11 @@ class AIServiceManager:
             model_type=AIModelType.TEXT_TO_IMAGE
         )
 
-        # 如果调用方显式指定了首选 provider，则仅使用该 provider，避免跨厂商误用模型 id
+        prefer_provider, model = self._resolve_prefer_provider_and_model(
+            model, prefer_provider
+        )
+
+        # 如果调用方显式指定了首选 provider（或 model 已带 provider 前缀），则仅使用该 provider，避免跨厂商误用模型 id
         if prefer_provider:
             available_providers = [
                 p for p in available_providers if p == prefer_provider
@@ -532,7 +570,11 @@ class AIServiceManager:
             model_type=AIModelType.IMAGE_TO_IMAGE
         )
 
-        # 显式指定首选 provider 时，只在该 provider 上尝试，避免带着特定模型 id 在不同厂商间兜底
+        prefer_provider, model = self._resolve_prefer_provider_and_model(
+            model, prefer_provider
+        )
+
+        # 显式指定首选 provider（或 model 带前缀）时，只在该 provider 上尝试，避免带着特定模型 id 在不同厂商间兜底
         if prefer_provider:
             available_providers = [
                 p for p in available_providers if p == prefer_provider
