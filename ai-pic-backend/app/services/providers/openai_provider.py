@@ -611,7 +611,10 @@ class OpenAIProvider(BaseProvider):
                 content_type = header.split(";")[0].split(":")[1] if ":" in header else "image/png"
                 image_bytes = base64.b64decode(b64_data)
             else:
-                image_response = await client.get(image_url)
+                download_url = image_url
+                if isinstance(download_url, str) and download_url.lower().startswith("https://"):
+                    download_url = "http://" + download_url[len("https://"):]
+                image_response = await client.get(download_url)
                 image_response.raise_for_status()
                 content_type = image_response.headers.get("Content-Type", "image/png")
                 image_bytes = image_response.content

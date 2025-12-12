@@ -69,6 +69,12 @@ class AIServiceManager:
         self._initialize_providers()
         self.logger = get_logger()
 
+    def _prefer_http_for_download(self, url: str) -> str:
+        """在下载参考图时优先使用 http，避免生产环境 HTTPS 证书问题。"""
+        if isinstance(url, str) and url.lower().startswith("https://"):
+            return "http://" + url[len("https://"):]
+        return url
+
     def _truncate(self, text: Any, limit: int = 2000) -> str:
         try:
             s = str(text)
@@ -566,16 +572,21 @@ class AIServiceManager:
                 import base64
                 import httpx
 
-                async with httpx.AsyncClient(timeout=self.config.default_timeout) as client:
+                async with httpx.AsyncClient(
+                    timeout=self.config.default_timeout,
+                    trust_env=False,
+                    follow_redirects=True,
+                ) as client:
                     for url in urls[:14]:
                         try:
-                            resp = await client.get(url)
+                            download_url = self._prefer_http_for_download(url)
+                            resp = await client.get(download_url)
                             resp.raise_for_status()
                         except Exception as e:
                             # 局部失败时仅跳过该 URL，不让单个 404/网络错误拖垮整个图生图调用
                             self.logger.warning(
                                 "image_to_image base64 preload skip url=%s error=%s",
-                                self._truncate(str(url), 256),
+                                self._truncate(str(download_url), 256),
                                 e,
                             )
                             continue

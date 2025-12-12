@@ -265,10 +265,21 @@ class GoogleProvider(BaseProvider):
                     images.append(prefix + data)
         return images
 
+    def _prefer_http_for_download(self, url: str) -> str:
+        """下载参考图时优先使用 http，规避 HTTPS 证书校验失败。"""
+        if isinstance(url, str) and url.lower().startswith("https://"):
+            return "http://" + url[len("https://"):]
+        return url
+
     async def _fetch_inline_image(self, image_url: str) -> Dict[str, str]:
         """下载参考图并转换为 inlineData 结构，供 generateImage 使用。"""
-        async with httpx.AsyncClient(timeout=self.config.timeout) as client:
-            resp = await client.get(image_url)
+        async with httpx.AsyncClient(
+            timeout=self.config.timeout,
+            trust_env=False,
+            follow_redirects=True,
+        ) as client:
+            download_url = self._prefer_http_for_download(image_url)
+            resp = await client.get(download_url)
             resp.raise_for_status()
             mime = resp.headers.get("Content-Type", "image/png")
             b64 = base64.b64encode(resp.content).decode("ascii")

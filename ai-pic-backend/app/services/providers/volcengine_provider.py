@@ -546,12 +546,15 @@ class VolcengineProvider(BaseProvider):
                     image_payloads: list[str] = []
                     for url in urls:
                         try:
-                            img_resp = await client.get(url)
+                            download_url = url
+                            if isinstance(download_url, str) and download_url.lower().startswith("https://"):
+                                download_url = "http://" + download_url[len("https://"):]
+                            img_resp = await client.get(download_url)
                             img_resp.raise_for_status()
                         except Exception as e:
                             logger.warning(
                                 "Volcengine image_to_image skip bad ref url=%s error=%s",
-                                url,
+                                download_url,
                                 e,
                             )
                             continue
