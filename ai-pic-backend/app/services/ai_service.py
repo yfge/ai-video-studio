@@ -1899,14 +1899,33 @@ class AIService:
                 file_url = oss_result.get("file_url")
                 if success and file_url:
                     oss_url = file_url
+                    self.logger.info(
+                        "CDN 上传成功 | filename=%s object_key=%s url=%s prefix=%s",
+                        filename,
+                        oss_result.get("object_key"),
+                        file_url,
+                        prefix,
+                    )
                 elif require_upload:
                     raise RuntimeError(f"OSS 上传失败: {oss_result}")
+                else:
+                    self.logger.warning(
+                        "OSS 上传未返回可用URL，使用本地路径 | filename=%s result=%s",
+                        filename,
+                        oss_result,
+                    )
             except Exception as exc:
                 if require_upload:
                     raise
                 self.logger.warning("OSS 上传异常，使用本地路径: %s", exc)
         elif require_upload:
             raise RuntimeError("OSS 未配置，无法上传图像")
+        else:
+            self.logger.info(
+                "OSS/CDN 未配置，使用本地路径 | filename=%s path=%s",
+                filename,
+                relative_path,
+            )
 
         return {
             "local_file_path": local_file_path,
