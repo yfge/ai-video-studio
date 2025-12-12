@@ -6,7 +6,7 @@
 
 - ✅ 稳定/收尾：叙事结构与数据模型对齐（待补迁移验证与权限收口）
 - ⏳ 进行中：虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动
-- 🧭 待启动：剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
+- 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
 
 ## Feature: 叙事结构与数据模型对齐
 
@@ -115,6 +115,38 @@
 - 在 `AIService` 中接入该 agent，作为 `generate_storyboard` 的首选路径，并让 `/scripts/{id}/storyboard/generate(-async)` 统一走这一入口
 - 调整 `StoryboardReActReasoner` / `generate_storyboard_plan` / `generate_storyboard_from_plan_for_scene` 的职责，将老的规划/逐场景逻辑收敛到 agent 内部或作为其子节点
 - 在浏览器中跑至少一条“真实故事→剧集→剧本→分镜→分镜图像”完整链路，并在 `agent_chats` 中记录验证路径和观察到的问题
+
+## Feature: 时间轴/剪辑与渲染导出（首尾帧→视频→拼接）
+
+:information_source: 背景：当前 Story/Episode/Script/Scene/Shot/Storyboard 更多是“内容与资产分层”，但要实现“首尾帧 → 视频片段 → 拼接剪辑导出”，需要一条可渲染主线（Timeline/Sequence/EDL）来承载片段顺序、时长、多轨音视频、版本与导出作业。单集时长 ≤5分钟适合先做“后端渲染 + Web 编排/预览”的 MVP。
+
+:triangular_flag_on_post: 决策点：
+
+- Timeline 的事实来源：从 `shots`（规范化）生成 vs 从 `storyboard.frames`（JSON）生成
+- 时长来源：声音优先（TTS 定时长）vs 视觉优先（分镜估时长）
+- 资产落库：是否引入统一 `media_assets` 表（image/video/audio），以及与现有 `images`/`virtual_ip_images` 的关系
+- 导出策略：proxy（HLS/低清）与 final（mp4）是否都需要；转场/字幕 MVP 边界
+
+### 进度（功能→后端→前端→验证）
+
+- [x] 功能/需求：明确需要新增“时间轴管理”承载剪辑与导出主线（详见设计文档 `docs/timeline-rendering-pipeline.md`）
+- [ ] 后端：新增 `timelines` / `render_jobs` / `media_assets`（或等价结构）数据模型与迁移；定义 Timeline Spec（EDL JSON）并落库版本号（可重渲/可回放）
+- [ ] 后端：实现 Timeline CRUD 与导出 API（创建/更新/版本回滚/触发导出/查询导出结果），统一鉴权到 episode/story 所属用户
+- [ ] 后端：实现渲染任务链路（Task/Celery）：关键帧生成（首尾帧）→ 视频片段生成（image-to-video）→ 拼接剪辑（FFmpeg）→ 上传 OSS/CDN → 回填 RenderJob/Timeline
+- [ ] 前端：新增时间轴页面（列表 + 编辑器 MVP）：clip 列表编排（排序、时长、绑定 shot/storyboard）、单 clip 预览、导出按钮、proxy 播放器
+- [ ] 验证：补 pytest 覆盖（Timeline spec 校验/导出幂等/权限），并在 Chrome 走通端到端用例（创建分镜→生成首尾帧→生成视频片段→导出 proxy/final）
+
+### 下一步（拆分工作项）
+
+- [ ] 冻结 Timeline MVP 需求与 UI 草图：clip 列表编排、proxy 预览、final 导出（≤5分钟）
+- [ ] 定义 Timeline Spec（EDL）Pydantic schema（tracks/clips/assets），并写入 `docs/timeline-rendering-pipeline.md` 的最终字段表
+- [ ] 后端：建表与迁移（timelines/render_jobs/media_assets），补 Alembic 与回填策略（如从现有 storyboard JSON 生成初始 timeline）
+- [ ] 后端：实现 `timeline_service`（CRUD + 版本）与 `render_service`（导出/复用/幂等）
+- [ ] 后端：实现 3 类任务：`keyframe_generate`、`clip_video_generate`、`timeline_render_export`（含失败重试与可续跑）
+- [ ] 后端：FFmpeg 渲染方案落地（concat + audio mix + subtitle 可选），并为 proxy/final 预设出厂配置
+- [ ] 前端：实现 Episode → Timeline 入口与编辑页；复用现有大图预览组件做关键帧查看
+- [ ] 前端：实现导出进度展示（poll `render_jobs` / `tasks`），并提供下载/播放入口（proxy HLS、final mp4）
+- [ ] 验证：写一条标准 E2E 用例脚本（账号 `geyunfei`），并把实际路径记录到 `agent_chats`
 
 ## Feature: 剧本版本与审校流水线
 
