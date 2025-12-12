@@ -6,7 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential default-libmysqlclient-dev pkg-config \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        build-essential \
+        default-libmysqlclient-dev \
+        pkg-config \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ai-pic-backend/requirements.txt ai-pic-backend/requirements-test.txt ./
