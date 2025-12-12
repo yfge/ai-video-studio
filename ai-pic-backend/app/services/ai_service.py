@@ -1893,12 +1893,18 @@ class AIService:
                     prefix=prefix,
                     metadata=metadata or {},
                 )
-                oss_url = oss_result.get("file_url")
+                # 当 require_upload 为 True 时，任何非成功结果都视为失败并抛出异常；
+                # 否则记录告警并回退到本地路径。
+                success = bool(oss_result.get("success"))
+                file_url = oss_result.get("file_url")
+                if success and file_url:
+                    oss_url = file_url
+                elif require_upload:
+                    raise RuntimeError(f"OSS 上传失败: {oss_result}")
             except Exception as exc:
-                # 当允许回退时，记录告警但继续使用本地路径；否则抛出异常
                 if require_upload:
                     raise
-                self.logger.warning("OSS 上传失败，使用本地路径: %s", exc)
+                self.logger.warning("OSS 上传异常，使用本地路径: %s", exc)
         elif require_upload:
             raise RuntimeError("OSS 未配置，无法上传图像")
 

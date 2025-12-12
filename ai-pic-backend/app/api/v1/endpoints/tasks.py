@@ -87,7 +87,31 @@ def get_tasks(
         tasks=[_serialize_task(t) for t in tasks],
         total=total,
         page=skip // limit + 1,
-        size=limit
+        size=limit,
+    )
+
+
+@router.get("", response_model=TaskList, include_in_schema=False)
+def get_tasks_no_slash(
+    skip: int = 0,
+    limit: int = 20,
+    status_filter: TaskStatus = None,
+    task_type: TaskType = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    兼容无尾斜杠的 /api/v1/tasks 请求，避免 FastAPI 返回 307 重定向。
+
+    内部直接复用 get_tasks 的分页与过滤逻辑。
+    """
+    return get_tasks(
+        skip=skip,
+        limit=limit,
+        status_filter=status_filter,
+        task_type=task_type,
+        db=db,
+        current_user=current_user,
     )
 
 @router.get("/{task_id}", response_model=TaskResponse)

@@ -13,7 +13,7 @@ from app.models.story_structure import Environment
 from app.services import story_structure_service as svc
 from app.services.ai_service import ai_service
 from app.services.storage import oss_service
-from app.services.task_worker import environment_image_variant_task
+from app.services.task_worker import environment_image_generate_task, environment_image_variant_task
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.story_structure import (
@@ -332,8 +332,8 @@ async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[
                     "environment_id": env.id,
                     "environment_name": env.name or "",
                 },
-                # 宽松兜底：OSS 上传失败时自动回退到本地存储，确保任务成功
-                require_upload=False,
+                # 若已配置 OSS/CDN，则要求上传成功；否则退回本地存储
+                require_upload=bool(oss_service),
             )
         except Exception:
             continue
