@@ -135,3 +135,92 @@ def test_shot_duplicate_number_and_beat_mismatch(db_session: Session):
     res_mismatch = client.post(f"/api/v1/story-structure/scenes/{scene_b['id']}/shots", json=bad_shot)
     assert res_mismatch.status_code == 400
     assert res_mismatch.json()["detail"] == "beat does not belong to scene"
+
+
+def test_environment_variants_pass_reference_images(db_session: Session, monkeypatch):
+    Base.metadata.create_all(bind=db_session.get_bind())
+
+    from app.core.middleware import get_current_active_user
+    from app.models.story_structure import Environment
+    from app.models.user import User
+    from app.api.v1.endpoints import story_structure as story_structure_module
+
+    user = User(
+        username="env_test_user",
+        email="env_test_user@example.com",
+        hashed_password="x",
+        is_active=True,
+        is_approved=True,
+        email_verified=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    env = Environment(
+        user_id=user.id,
+        name="Env",
+        category="indoor",
+        tags=[],
+        description="Test environment",
+        reference_images=["/uploads/base_env.png"],
+    )
+    db_session.add(env)
+    db_session.commit()
+    db_session.refresh(env)
+
+    captured: dict[str, object] = {}
+
+    class _DummyResp:
+        def __init__(self) -> None:
+            self.success = True
+            self.data = {"images": ["https://example.com/mock-env-variant.png"]}
+            self.provider = "mock-provider"
+            self.model = "mock-model"
+            self.usage = {}
+
+    class _DummyAIManager:
+        async def image_to_image(self, *args, **kwargs):
+            captured["image_url"] = kwargs.get("image_url") or (args[0] if args else None)
+            captured["extra_images"] = kwargs.get("extra_images")
+            return _DummyResp()
+
+    class _DummyAIService:
+        def __init__(self) -> None:
+            self.ai_manager = _DummyAIManager()
+
+        async def _persist_generated_image(
+            self,
+            image_data: str,
+            *,
+            ip_name: str,
+            category: str,
+            prefix: str,
+            metadata: dict | None = None,
+            require_upload: bool = False,
+        ) -> dict:
+            return {
+                "local_file_path": "/tmp/env_variant.png",
+                "relative_path": "/uploads/env_variant.png",
+                "file_size": 123,
+                "filename": "env_variant.png",
+                "oss_url": "https://oss.example.com/env_variant.png" if require_upload else None,
+                "oss_upload": {"success": True, "file_url": "https://oss.example.com/env_variant.png"},
+            }
+
+    dummy_service = _DummyAIService()
+    monkeypatch.setattr(story_structure_module, "ai_service", dummy_service)
+
+    app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_current_active_user] = lambda: user
+    client = TestClient(app)
+
+    payload = {
+        "base_image": "/uploads/base_env.png",
+        "prompt": "variant",
+        "reference_images": ["/uploads/ref_env.png"],
+    }
+    res = client.post(f"/api/v1/story-structure/environments/{env.id}/images/variants", json=payload)
+    assert res.status_code == 200, res.text
+
+    assert captured["extra_images"] == ["http://localhost:8000/uploads/ref_env.png"]

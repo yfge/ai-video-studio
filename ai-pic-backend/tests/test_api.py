@@ -165,6 +165,7 @@ class TestVirtualIPAPI:
             "prompt": "为当前角色生成不同视角/姿态的图像，如背面照或全身照",
             "model": "google:gemini-3-pro-image-preview",
             "count": 1,
+            "reference_images": ["/uploads/ref_test.png"],
         }
 
         # 为本测试用例注入最小的 ai_service mock，避免真实外部调用
@@ -179,6 +180,9 @@ class TestVirtualIPAPI:
                 self.usage = {}
 
         class _DummyAIManager:
+            def __init__(self) -> None:
+                self.last_extra_images: list[str] | None = None
+
             async def image_to_image(
                 self,
                 image_url: str,
@@ -187,8 +191,10 @@ class TestVirtualIPAPI:
                 prefer_provider: str | None = None,
                 count: int = 1,
                 size: str | None = None,
+                extra_images: list[str] | None = None,
                 **_: str,
             ):
+                self.last_extra_images = extra_images
                 return _DummyResp()
 
         class _DummyAIService:
@@ -246,6 +252,9 @@ class TestVirtualIPAPI:
         image_item = result[0]
         assert image_item["virtual_ip_id"] == virtual_ip.id
         assert image_item["file_path"].startswith("/uploads/")
+        assert dummy_service.ai_manager.last_extra_images == [
+            "http://localhost:8000/uploads/ref_test.png"
+        ]
 
 
 @pytest.mark.integration

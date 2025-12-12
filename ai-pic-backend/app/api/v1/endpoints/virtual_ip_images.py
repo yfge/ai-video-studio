@@ -609,6 +609,7 @@ async def generate_virtual_ip_image_variant(
     raw_model = payload.get("model", model)
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
+    reference_images_value = payload.get("reference_images") or []
     selected_model = (payload.get("model_id") or model_id or raw_model or base_image.ai_model or "").strip()
 
     try:
@@ -632,6 +633,26 @@ async def generate_virtual_ip_image_variant(
     if not ai_service.ai_manager:
         raise HTTPException(status_code=503, detail="AI管理器未初始化，无法执行图生图")
 
+    reference_images_iter: list[str]
+    if isinstance(reference_images_value, str):
+        reference_images_iter = [reference_images_value]
+    elif isinstance(reference_images_value, list):
+        reference_images_iter = [u for u in reference_images_value if isinstance(u, str)]
+    else:
+        reference_images_iter = []
+
+    extra_images: list[str] = []
+    if reference_images_iter:
+        backend_base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+        for ref_url in reference_images_iter:
+            if not ref_url:
+                continue
+            if ref_url.startswith("http"):
+                extra_images.append(ref_url)
+            else:
+                path = ref_url if ref_url.startswith("/") else f"/{ref_url}"
+                extra_images.append(f"{backend_base}{path}")
+
     try:
         response = await ai_service.ai_manager.image_to_image(
             image_url=image_url,
@@ -640,6 +661,7 @@ async def generate_virtual_ip_image_variant(
             prefer_provider=prefer_provider,
             count=count_int,
             size=size_value,
+            extra_images=extra_images,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"图生图调用失败: {exc}") from exc

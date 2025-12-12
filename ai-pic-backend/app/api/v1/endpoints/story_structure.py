@@ -676,6 +676,7 @@ async def generate_environment_image_variants(
     if (prefer_provider or "").lower() == "openai":
         style_hint = normalize_openai_image_style(style_hint)
     extra_prompt = payload.get("prompt", prompt)
+    reference_images_value = payload.get("reference_images") or []
     prompt_value = _compose_environment_prompt(
         env,
         extra_prompt or "Generate stylistically consistent variants based on this environment reference",
@@ -688,6 +689,26 @@ async def generate_environment_image_variants(
         count_int = 1
     count_int = max(1, min(count_int, 4))
 
+    reference_images_iter: list[str]
+    if isinstance(reference_images_value, str):
+        reference_images_iter = [reference_images_value]
+    elif isinstance(reference_images_value, list):
+        reference_images_iter = [u for u in reference_images_value if isinstance(u, str)]
+    else:
+        reference_images_iter = []
+
+    extra_images: list[str] = []
+    if reference_images_iter:
+        backend_base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+        for ref_url in reference_images_iter:
+            if not ref_url:
+                continue
+            if ref_url.startswith("http"):
+                extra_images.append(ref_url)
+            else:
+                path = ref_url if ref_url.startswith("/") else f"/{ref_url}"
+                extra_images.append(f"{backend_base}{path}")
+
     try:
         response = await ai_service.ai_manager.image_to_image(
             image_url=image_url,
@@ -697,6 +718,7 @@ async def generate_environment_image_variants(
             count=count_int,
             size=size_value,
             style=style_hint,
+            extra_images=extra_images,
         )
     except Exception as exc:  # pragma: no cover - runtime guard
         raise HTTPException(status_code=500, detail=f"环境图生图调用失败: {exc}") from exc
