@@ -1345,10 +1345,71 @@ async def generate_episodes_async(
 
 
 def _ensure_scenes(ep_data: dict) -> tuple[list[dict], int | None]:
-    """确保剧集数据包含 scenes，若缺失则基于 plot_points 生成占位."""
-    scenes = ep_data.get("scenes") or []
-    if not isinstance(scenes, list):
-        scenes = []
+    """确保剧集数据包含可用的 scenes。
+
+    备注：部分模型/Schema 可能会返回 scenes=[{}, {}, ...]，此时需要过滤空对象并自动补全占位场景，
+    避免前端出现“场景列表存在但内容为空”的不稳定情况。
+    """
+
+    def _as_nonempty_str(value: object | None) -> str | None:
+        if not isinstance(value, str):
+            return None
+        text = value.strip()
+        return text or None
+
+    def _to_int(value: object | None) -> int | None:
+        try:
+            return int(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    raw_scene_count = _to_int(ep_data.get("scene_count"))
+    target_scene_count = (
+        raw_scene_count if raw_scene_count and raw_scene_count > 0 else None
+    )
+
+    raw_scenes = ep_data.get("scenes")
+    scenes: list[dict] = []
+    if isinstance(raw_scenes, list):
+        for idx, raw in enumerate(raw_scenes, start=1):
+            if not isinstance(raw, dict):
+                continue
+
+            slug_line = _as_nonempty_str(raw.get("slug_line")) or _as_nonempty_str(
+                raw.get("title")
+            )
+            summary = (
+                _as_nonempty_str(raw.get("summary"))
+                or _as_nonempty_str(raw.get("description"))
+                or _as_nonempty_str(raw.get("beat_summary"))
+            )
+            location = (
+                _as_nonempty_str(raw.get("location"))
+                or _as_nonempty_str(raw.get("environment"))
+                or _as_nonempty_str(raw.get("setting"))
+            )
+            time_of_day = (
+                _as_nonempty_str(raw.get("time_of_day"))
+                or _as_nonempty_str(raw.get("time"))
+                or _as_nonempty_str(raw.get("period"))
+            )
+
+            # 空对象/无任何有效字段 => 视为无效场景，触发后续自动补全
+            if not (slug_line or summary or location or time_of_day):
+                continue
+
+            scene_number = _to_int(raw.get("scene_number")) or idx
+            scenes.append(
+                {
+                    **raw,
+                    "scene_number": scene_number,
+                    "slug_line": slug_line or f"SCENE {scene_number} - beat",
+                    "summary": summary or "本场景推进剧情。",
+                    "time_of_day": time_of_day or "unspecified",
+                    "location": location or "unspecified",
+                }
+            )
+
     if not scenes:
         plot_points = ep_data.get("plot_points") or []
         if isinstance(plot_points, list) and plot_points:
@@ -1356,8 +1417,8 @@ def _ensure_scenes(ep_data: dict) -> tuple[list[dict], int | None]:
                 desc = None
                 timing = None
                 if isinstance(pp, dict):
-                    desc = pp.get("description")
-                    timing = pp.get("timing")
+                    desc = _as_nonempty_str(pp.get("description"))
+                    timing = _as_nonempty_str(pp.get("timing"))
                 scenes.append(
                     {
                         "scene_number": idx,
@@ -1372,12 +1433,38 @@ def _ensure_scenes(ep_data: dict) -> tuple[list[dict], int | None]:
                 {
                     "scene_number": 1,
                     "slug_line": "SCENE 1 - beat",
-                    "summary": ep_data.get("summary") or "本集开篇场景。",
+                    "summary": _as_nonempty_str(ep_data.get("summary"))
+                    or "本集开篇场景。",
                     "time_of_day": "unspecified",
                     "location": "unspecified",
                 }
             )
-    scene_count = ep_data.get("scene_count")
-    if not scene_count and scenes:
-        scene_count = len(scenes)
+
+    # 若模型给了 scene_count，则尽量对齐数量（不足补齐，超出截断）
+    if target_scene_count:
+        scenes = scenes[:target_scene_count]
+        while len(scenes) < target_scene_count:
+            idx = len(scenes) + 1
+            scenes.append(
+                {
+                    "scene_number": idx,
+                    "slug_line": f"SCENE {idx} - beat",
+                    "summary": "本场景推进剧情。",
+                    "time_of_day": "unspecified",
+                    "location": "unspecified",
+                }
+            )
+
+    # 统一场景编号，避免缺失/重复导致前端展示不稳定
+    for idx, scene in enumerate(scenes, start=1):
+        if not isinstance(scene, dict):
+            continue
+        if _to_int(scene.get("scene_number")) is None:
+            scene["scene_number"] = idx
+        scene.setdefault("slug_line", f"SCENE {idx} - beat")
+        scene.setdefault("summary", "本场景推进剧情。")
+        scene.setdefault("time_of_day", "unspecified")
+        scene.setdefault("location", "unspecified")
+
+    scene_count = target_scene_count or (len(scenes) if scenes else None)
     return scenes, scene_count
