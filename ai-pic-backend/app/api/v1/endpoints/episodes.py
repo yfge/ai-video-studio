@@ -1467,4 +1467,8 @@ def _ensure_scenes(ep_data: dict) -> tuple[list[dict], int | None]:
         scene.setdefault("location", "unspecified")
 
     scene_count = target_scene_count or (len(scenes) if scenes else None)
+    # 写回，确保后续落库使用的是清洗/补全后的 scenes（避免原始 payload 含空对象导致写入无效场景）
+    ep_data["scenes"] = scenes
+    if scene_count is not None:
+        ep_data["scene_count"] = scene_count
     return scenes, scene_count
