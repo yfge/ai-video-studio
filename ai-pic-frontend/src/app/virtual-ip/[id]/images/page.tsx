@@ -18,6 +18,17 @@ import { ImageToImageModal } from '@/components/ImageToImageModal';
 import { MultiModelSelector } from '@/components/MultiModelSelector';
 import { ImagePreviewModal } from '@/components/ImagePreviewModal';
 import { useStylePresets } from '@/hooks/useStylePresets';
+import { StyleSpecAdvancedPanel, type StyleSpecField } from '@/components/StyleSpecAdvancedPanel';
+
+const VIRTUAL_IP_STYLE_SPEC_FIELDS: StyleSpecField[] = [
+  { key: 'style_universe', label: '世界观 / 画风体系' },
+  { key: 'character_proportion', label: '人物比例' },
+  { key: 'character_face_style', label: '五官与人物风格' },
+  { key: 'line_art_style', label: '线稿风格' },
+  { key: 'color_render_style', label: '上色方式' },
+  { key: 'lighting_style', label: '阴影与光影' },
+  { key: 'color_mood', label: '色彩情绪' },
+];
 
 export default function VirtualIPImagesPage() {
   const params = useParams();
@@ -57,6 +68,7 @@ export default function VirtualIPImagesPage() {
   const [generateForm, setGenerateForm] = useState<AIImageGenerationRequest>({
     style: 'realistic',
     style_preset_id: '',
+    style_spec: {},
     category: 'portrait',
     model: '',
     additional_prompts: '',
@@ -182,6 +194,10 @@ export default function VirtualIPImagesPage() {
       const response = await virtualIPImageAPI.generateImageAsync(virtualIPId, {
         ...generateForm,
         model: modelToUse,
+        style_spec:
+          generateForm.style_spec && Object.keys(generateForm.style_spec).length > 0
+            ? generateForm.style_spec
+            : undefined,
       });
 
       if (response.success && response.data) {
@@ -189,6 +205,7 @@ export default function VirtualIPImagesPage() {
         setGenerateForm({
           style: 'realistic',
           style_preset_id: '',
+          style_spec: {},
           category: 'portrait',
           model: recommendedModel || '',
           additional_prompts: '',
@@ -536,6 +553,13 @@ export default function VirtualIPImagesPage() {
                   </p>
                 ) : null}
               </div>
+              <div className="md:col-span-3">
+                <StyleSpecAdvancedPanel
+                  fields={VIRTUAL_IP_STYLE_SPEC_FIELDS}
+                  value={generateForm.style_spec || {}}
+                  onChange={next => setGenerateForm(prev => ({ ...prev, style_spec: next }))}
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   图像类别
@@ -828,6 +852,27 @@ export default function VirtualIPImagesPage() {
                       </div>
                     </div>
                   )}
+                  {(() => {
+                    const params = image.generation_params
+                    if (!params || Object.keys(params).length === 0) return null
+                    const presetId =
+                      typeof params.style_preset_id === 'string' ? params.style_preset_id : null
+                    const spec = params.style_spec
+                    const resolution = params.style_spec_resolution
+                    if (!presetId && !spec && !resolution) return null
+                    return (
+                      <details className="mb-3 rounded border border-gray-200 bg-gray-50 p-2 text-[11px] text-gray-700">
+                        <summary className="cursor-pointer select-none text-xs font-medium text-gray-700">
+                          风格详情
+                        </summary>
+                        <div className="mt-2 break-all">preset: {presetId || '—'}</div>
+                        <div className="mt-1 break-all">spec: {JSON.stringify(spec ?? null)}</div>
+                        <div className="mt-1 break-all">
+                          resolution: {JSON.stringify(resolution ?? null)}
+                        </div>
+                      </details>
+                    )
+                  })()}
                   <div className="flex gap-2">
                     {!image.is_default && (
                       <button
@@ -877,6 +922,8 @@ export default function VirtualIPImagesPage() {
           defaultCount={1}
           defaultSize={generateForm.size || ''}
           defaultStylePresetId={generateForm.style_preset_id || ''}
+          defaultStyleSpec={generateForm.style_spec || {}}
+          styleSpecFields={VIRTUAL_IP_STYLE_SPEC_FIELDS}
           modelType={AIModelType.ImageToImage}
           modelFetcher={() => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })}
           modelCacheKey={`virtual-ip-img2img:${virtualIPId}`}
