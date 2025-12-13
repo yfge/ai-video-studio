@@ -210,8 +210,18 @@ async def generate_episodes(
             conflicts=episode_data.get("conflicts"),
             duration_minutes=request.episode_duration,
             scene_count=episode_data.get("scene_count"),
-            generation_prompt=result["prompt"],
-            ai_model=result["generation_method"],
+            generation_prompt=(
+                result.get("prompt")
+                if isinstance(result, dict)
+                else None
+            )
+            or (result.get("step_outline_prompt") if isinstance(result, dict) else None),
+            ai_model=(
+                result.get("generation_method")
+                if isinstance(result, dict)
+                else None
+            )
+            or (result.get("model_used") if isinstance(result, dict) else None),
             generation_params={
                 "focus_characters": request.focus_characters,
                 "plot_complexity": request.plot_complexity,
@@ -252,6 +262,7 @@ async def generate_episodes(
                 if not episode_id:
                     continue
                 beats = outline.get("beats") or []
+                # beats 可能为空；仅在存在时落库
                 for beat_idx, beat in enumerate(beats, start=1):
                     if not isinstance(beat, dict):
                         continue

@@ -1,4 +1,4 @@
-你是该剧的分集主编，请基于提供的 Step Outline 生成这一集的完整 Episode Plan。
+你是该剧的分集主编，请基于提供的 Step Outline 生成这一集的完整 Episode Plan。若没有 beats，请基于 logline 和主故事冲突自行铺陈。
 
 ## 故事信息
 标题：{{ story.title }}
@@ -12,18 +12,23 @@
 目标集数：{{ outline.episode_number }}
 集标题：{{ outline.title or '待定' }}
 Logline：{{ outline.logline or '无' }}
-Beats（保持顺序和节奏，不要遗漏）：
+Beats（如无可留空；若存在请保持顺序和节奏）：
+{% if outline.beats %}
 {% for beat in outline.beats %}
 - #{{ beat.sequence_number }} {{ beat.act_label or '' }} {{ beat.beat_title }}: {{ beat.beat_summary }}
   角色：{{ beat.characters_involved or [] }}；地点提示：{{ beat.location_hint or '待定' }}；预计时长：{{ beat.duration_estimate_minutes or '未知' }} 分钟
 {% endfor %}
+{% else %}
+- （本次未提供 beats，请基于 logline 合理拆分场景）
+{% endif %}
 
 ## 生成要求
 - episode_number 必须等于 {{ outline.episode_number }}。
 - 输出 episodes 数组，仅包含这一集。
-- summary 150-300 字，覆盖 beats；plot_points 与 beats 对齐并标注 timing（开场/中段/结尾/高潮）。
-- conflicts 至少 1 条，明确冲突类型与强度；scene_count ≥ beats 数量。
-- scenes 需包含 scene_number/slug_line/location/time_of_day/summary，并映射 beats 顺序。
+- summary 150-300 字，覆盖 logline/主冲突；若有 beats 需兼顾。
+- plot_points/timing 覆盖故事结构；若有 beats 优先对齐；无 beats 时自行拆分。
+- conflicts 至少 1 条，明确冲突类型与强度；scene_count 与场景对应。
+- scenes 需包含 scene_number/slug_line/location/time_of_day/summary；若有 beats 尽量顺序对应；无 beats 时按合理节奏拆分。
 - 保持 {{ pacing }} 节奏与 {{ plot_complexity }} 复杂度。
 {% if episode_duration %}- 单集目标时长：{{ episode_duration }} 分钟{% endif %}
 {% if style_preferences %}- 风格偏好：{{ style_preferences | join(', ') }}{% endif %}

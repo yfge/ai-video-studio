@@ -65,11 +65,13 @@ class EpisodeLangGraphAgent:
             )
             for idx, item in enumerate(normalized, start=1):
                 item.setdefault("episode_number", idx)
-                beats = item.get("beats") or []
-                for b_idx, beat in enumerate(beats, start=1):
-                    if isinstance(beat, dict):
-                        beat.setdefault("sequence_number", b_idx)
-                item["beats"] = beats
+                # beats are optional; keep order if present but don't enforce
+                beats = item.get("beats")
+                if isinstance(beats, list):
+                    for b_idx, beat in enumerate(beats, start=1):
+                        if isinstance(beat, dict):
+                            beat.setdefault("sequence_number", b_idx)
+                    item["beats"] = beats
             return normalized
 
         outline_variables = {
@@ -128,18 +130,28 @@ class EpisodeLangGraphAgent:
                     validated = EpisodeStepOutlineModel.model_validate(parsed)
                     outlines = validated.model_dump()
                     episodes = _normalize_episode_numbers(outlines.get("episodes", []))
-                    if len(episodes) < episode_count:
+                    # 只要求集数与 logline/标题存在
+                    filtered = []
+                    for ep in episodes:
+                        logline = ep.get("logline") or ""
+                        if isinstance(logline, str) and logline.strip():
+                            filtered.append(ep)
+                    if len(filtered) < episode_count:
                         reasoning.append("outline_too_short")
                         return {
                             "needs_outline_repair": True,
                             "outline_raw": content,
                             "reasoning": reasoning,
                         }
-                    outlines["episodes"] = episodes[:episode_count]
+                    outlines["episodes"] = filtered[:episode_count]
                     reasoning.append("outline_validated")
                     return {
                         "step_outlines_normalized": outlines,
                         "step_outlines_raw": content,
+                        "outline_prompt": state.get("outline_prompt"),
+                        "outline_provider": state.get("outline_provider"),
+                        "outline_model": state.get("outline_model"),
+                        "outline_usage": state.get("outline_usage"),
                         "reasoning": reasoning,
                         "needs_outline_repair": False,
                     }
@@ -153,6 +165,10 @@ class EpisodeLangGraphAgent:
                 "needs_outline_repair": True,
                 "outline_raw": content,
                 "missing_fields": missing_fields,
+                "outline_prompt": state.get("outline_prompt"),
+                "outline_provider": state.get("outline_provider"),
+                "outline_model": state.get("outline_model"),
+                "outline_usage": state.get("outline_usage"),
                 "reasoning": reasoning,
             }
 
@@ -178,8 +194,11 @@ class EpisodeLangGraphAgent:
                         validated = EpisodeStepOutlineModel.model_validate(parsed)
                         outlines = validated.model_dump()
                         episodes = _normalize_episode_numbers(outlines.get("episodes", []))
-                        if len(episodes) >= episode_count:
-                            outlines["episodes"] = episodes[:episode_count]
+                        filtered = [
+                            ep for ep in episodes if (ep.get("logline") or "").strip()
+                        ]
+                        if len(filtered) >= episode_count:
+                            outlines["episodes"] = filtered[:episode_count]
                             reasoning.append(f"outline_repaired_{attempt}")
                             return {
                                 "step_outlines_normalized": outlines,
@@ -187,6 +206,7 @@ class EpisodeLangGraphAgent:
                                 "outline_provider": provider_used,
                                 "outline_model": model_used,
                                 "outline_usage": usage,
+                                "outline_prompt": state.get("outline_prompt"),
                                 "reasoning": reasoning,
                                 "needs_outline_repair": False,
                             }
@@ -334,6 +354,7 @@ class EpisodeLangGraphAgent:
                 "step_outlines": outlines,
                 "step_outlines_raw": state.get("step_outlines_raw"),
                 "step_outline_prompt": state.get("outline_prompt"),
+                "prompt": state.get("outline_prompt"),
                 "generation_method": "langgraph_episode_step_outline",
                 "template_used": PromptTemplate.EPISODE_FROM_OUTLINE.value,
                 "provider_used": provider_used,

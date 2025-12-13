@@ -1,5 +1,5 @@
 name: episode_from_outline
-description: "基于已生成的 Step Outline，为单集输出完整 Episode Plan（summary/plot_points/scenes 等）"
+description: "基于已生成的 Step Outline，为单集输出完整 Episode Plan（logline 必填，beats 可选）"
 category: episode
 version: "1.0"
 author: "AI Video Studio"
@@ -14,7 +14,7 @@ variables:
   outline:
     type: dict
     required: true
-    description: "单集 Step Outline（含 beats）"
+    description: "单集 Step Outline（含 logline，beats 可选）"
   episode_duration:
     type: number
     required: false
@@ -48,6 +48,64 @@ expected_fields:
     - scene_count
     - scenes
 
-guidelines:
-  alignment: "所有情节必须覆盖并呼应 beats，保持 episode_number 一致"
-  pacing: "使用 outline 的顺序和 act_label 控制节奏"
+prompt: |
+  你是该剧的分集主编，请基于提供的 Step Outline 生成这一集的完整 Episode Plan。若没有 beats，请基于 logline 和主故事冲突自行铺陈。
+
+  ## 故事信息
+  标题：{{ story.title }}
+  类型：{{ story.genre }}
+  {% if story.theme %}主题：{{ story.theme }}{% endif %}
+  {% if story.synopsis %}概要：{{ story.synopsis }}{% endif %}
+  {% if story.main_conflict %}总冲突：{{ story.main_conflict }}{% endif %}
+  {% if story.resolution %}总收束/解法：{{ story.resolution }}{% endif %}
+
+  ## 当前集的 Step Outline
+  目标集数：{{ outline.episode_number }}
+  集标题：{{ outline.title or '待定' }}
+  Logline：{{ outline.logline or '无' }}
+  Beats（如无可留空；若存在请保持顺序和节奏）：
+  {% if outline.beats %}
+  {% for beat in outline.beats %}
+  - #{{ beat.sequence_number }} {{ beat.act_label or '' }} {{ beat.beat_title }}: {{ beat.beat_summary }}
+    角色：{{ beat.characters_involved or [] }}；地点提示：{{ beat.location_hint or '待定' }}；预计时长：{{ beat.duration_estimate_minutes or '未知' }} 分钟
+  {% endfor %}
+  {% else %}
+  - （本次未提供 beats，请基于 logline 合理拆分场景）
+  {% endif %}
+
+  ## 生成要求
+  - episode_number 必须等于 {{ outline.episode_number }}。
+  - 输出 episodes 数组，仅包含这一集。
+  - summary 150-300 字，覆盖 logline/主冲突；若有 beats 需兼顾。
+  - plot_points/timing 覆盖故事结构；若有 beats 优先对齐；无 beats 时自行拆分。
+  - conflicts 至少 1 条，明确冲突类型与强度；scene_count 与场景对应。
+  - scenes 需包含 scene_number/slug_line/location/time_of_day/summary；若有 beats 尽量顺序对应；无 beats 时按合理节奏拆分。
+  - 保持 {{ pacing }} 节奏与 {{ plot_complexity }} 复杂度。
+  {% if episode_duration %}- 单集目标时长：{{ episode_duration }} 分钟{% endif %}
+  {% if style_preferences %}- 风格偏好：{{ style_preferences | join(', ') }}{% endif %}
+  {% if additional_requirements %}- 额外要求：{{ additional_requirements }}{% endif %}
+
+  ## 输出格式
+  仅返回 JSON，符合 EpisodePlanModel，但 episodes 只能有 1 条：
+  {
+    "episodes": [
+      {
+        "episode_number": {{ outline.episode_number }},
+        "title": "第{{ outline.episode_number }}集标题",
+        "summary": "覆盖 logline 的概要",
+        "plot_points": [{"description": "...", "timing": "开场"}],
+        "character_arcs": {"主角": "本集发展"},
+        "conflicts": [{"description": "...", "intensity": "medium"}],
+        "scene_count": 6,
+        "scenes": [
+          {
+            "scene_number": 1,
+            "slug_line": "INT. 地点 - TIME",
+            "location": "主要地点",
+            "time_of_day": "day",
+            "summary": "对应拆分后的场景摘要"
+          }
+        ]
+      }
+    ]
+  }

@@ -139,7 +139,7 @@ class EpisodeStepOutlineItem(BaseModel):
     episode_number: int
     title: Optional[str] = None
     logline: Optional[str] = None
-    beats: List[EpisodeBeat]
+    beats: Optional[List[EpisodeBeat]] = None
 
 
 class EpisodeStepOutlineModel(BaseModel):
