@@ -25,6 +25,15 @@ import { useAlertModal } from "@/components/AlertModalProvider";
 import { ImageToImageModal } from "@/components/ImageToImageModal";
 import { MultiModelSelector } from "@/components/MultiModelSelector";
 import { ImagePreviewModal } from "@/components/ImagePreviewModal";
+import type { StyleSpecField } from "@/components/StyleSpecAdvancedPanel";
+
+const STORYBOARD_STYLE_SPEC_FIELDS: StyleSpecField[] = [
+  { key: "shot_storyboard_style", label: "镜头与分镜风格" },
+  { key: "composition_style", label: "构图与画面密度" },
+  { key: "lighting_style", label: "阴影与光影" },
+  { key: "color_mood", label: "色彩情绪" },
+  { key: "emotion_action_level", label: "动作与情绪强度" },
+];
 
 export default function EpisodeStoryboardPage() {
   const params = useParams();
@@ -1038,6 +1047,30 @@ export default function EpisodeStoryboardPage() {
               <span>模型：{storyboard.meta.generation_model}</span>
             )}
           </div>
+          {(() => {
+            const meta = storyboard.meta || {};
+            const presetId =
+              typeof meta.image_generation_style_preset_id === "string"
+                ? meta.image_generation_style_preset_id
+                : null;
+            const spec = meta.image_generation_style_spec;
+            const resolution = meta.image_generation_style_spec_resolution;
+            if (!presetId && !spec && !resolution) return null;
+            return (
+              <details className="mt-3 rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+                <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
+                  上次图像生成风格信息
+                </summary>
+                <div className="mt-2 break-all">preset: {presetId || "—"}</div>
+                <div className="mt-1 break-all">
+                  spec: {JSON.stringify(spec ?? null)}
+                </div>
+                <div className="mt-1 break-all">
+                  resolution: {JSON.stringify(resolution ?? null)}
+                </div>
+              </details>
+            );
+          })()}
           {promptPreview && (
             <div className="mt-3 bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">
               {promptPreview}
@@ -1669,6 +1702,7 @@ export default function EpisodeStoryboardPage() {
         modelType={AIModelType.ImageToImage}
         modelCacheKey="storyboard-img2img"
         useDimensions
+        styleSpecFields={STORYBOARD_STYLE_SPEC_FIELDS}
         submitting={edgeModalSubmitting || edgeModalLoading}
         onSubmit={handleConfirmEdgeGeneration}
         extraContent={
@@ -1716,6 +1750,7 @@ export default function EpisodeStoryboardPage() {
         modelType={AIModelType.ImageToImage}
         modelCacheKey="storyboard-img2img"
         useDimensions
+        styleSpecFields={STORYBOARD_STYLE_SPEC_FIELDS}
         submitting={imageModalSubmitting || imageModalLoading}
         onSubmit={handleConfirmGenerateFrameImage}
       />
