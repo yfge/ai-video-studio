@@ -43,6 +43,123 @@ def humanize_style_value(value: str) -> str:
     return value.replace("_", " ").strip()
 
 
+STYLE_OPTION_LABELS_ZH: dict[str, dict[str, str]] = {
+    "style_universe": {
+        "japanese_anime": "日系动漫",
+        "chinese_comic": "国漫",
+        "chinese_ink": "水墨国风",
+        "chinese_national_trend": "国潮",
+        "western_comic": "欧美漫画",
+        "western_cartoon": "欧美卡通",
+        "dark_fantasy": "暗黑奇幻",
+        "sci_fi": "科幻",
+        "cyberpunk": "赛博朋克",
+        "steampunk": "蒸汽朋克",
+        "fantasy_magic": "奇幻魔法",
+        "experimental_art": "实验艺术",
+    },
+    "character_proportion": {
+        "chibi_2_head": "Q版（2头身）",
+        "super_deformed_3_head": "超Q（3头身）",
+        "anime_5_head": "动漫（5头身）",
+        "standard_6_head": "标准（6头身）",
+        "realistic_7_head": "写实（7头身）",
+        "cinematic_realistic": "电影写实",
+    },
+    "character_face_style": {
+        "anime_big_eye": "大眼动漫",
+        "anime_light_real": "轻写实动漫",
+        "chinese_realistic": "国风写实",
+        "western_realistic": "欧美写实",
+        "cartoon_exaggerated": "夸张卡通",
+        "minimalist_flat": "极简扁平",
+        "cute_round": "可爱圆润",
+    },
+    "line_art_style": {
+        "no_line_art": "无线稿",
+        "thin_clean_line": "细线干净",
+        "bold_outline": "粗线勾边",
+        "sketchy_line": "草图线",
+        "broken_line": "断线",
+        "ink_brush_line": "墨刷线",
+    },
+    "color_render_style": {
+        "flat_color": "平涂",
+        "cell_shading": "赛璐璐",
+        "soft_shading": "柔和上色",
+        "semi_painterly": "半厚涂",
+        "full_painterly": "厚涂",
+        "watercolor": "水彩",
+        "ink_wash": "水墨晕染",
+    },
+    "lighting_style": {
+        "no_shadow": "无阴影",
+        "single_shadow": "单层阴影",
+        "soft_light": "柔光",
+        "hard_light": "硬光",
+        "cinematic_light": "电影光",
+        "dramatic_contrast": "戏剧对比",
+        "backlight_rim": "逆光轮廓光",
+    },
+    "color_mood": {
+        "bright_vivid": "明亮鲜艳",
+        "soft_pastel": "柔和粉彩",
+        "warm_tone": "暖色调",
+        "cool_tone": "冷色调",
+        "low_saturation": "低饱和",
+        "monochrome": "黑白/单色",
+        "high_contrast": "高对比",
+        "cinematic_lut": "电影LUT",
+    },
+    "shot_storyboard_style": {
+        "anime_dynamic": "动漫动态",
+        "cinematic_film": "电影镜头",
+        "static_comic_panel": "静态漫画分镜",
+        "vertical_webtoon": "竖屏条漫",
+        "ppt_storyboard": "PPT分镜",
+        "motion_comic": "动态漫画",
+    },
+    "composition_style": {
+        "close_up": "特写",
+        "medium_shot": "中景",
+        "wide_shot": "全景",
+        "extreme_wide": "远景",
+        "portrait_focus": "人物肖像",
+        "environment_focus": "环境为主",
+        "negative_space": "留白构图",
+    },
+    "background_detail_level": {
+        "no_background": "无背景",
+        "simple_gradient": "简单渐变",
+        "stylized_background": "风格化背景",
+        "detailed_background": "细节背景",
+        "cinematic_environment": "电影级环境",
+    },
+    "emotion_action_level": {
+        "calm_static": "平静静态",
+        "light_expression": "轻表情",
+        "clear_emotion": "情绪明确",
+        "dramatic_action": "强动作",
+        "extreme_emotion": "极致情绪",
+    },
+    "style_lock_level": {
+        "free": "自由",
+        "scene_consistent": "场景一致",
+        "character_consistent": "角色一致",
+        "episode_consistent": "单集一致",
+        "full_project_lock": "全项目锁定",
+    },
+    "output_target": {
+        "short_video": "短视频",
+        "long_serial": "长连载",
+        "social_media": "社交媒体",
+        "ip_design": "IP设计",
+        "commercial_ad": "商业广告",
+        "concept_art": "概念设定",
+    },
+}
+
+
 STYLE_PROMPT_LABELS: dict[str, str] = {
     "style_universe": "style universe",
     "character_proportion": "character proportion",
@@ -142,14 +259,14 @@ DEFAULT_STYLE_SPEC = StyleSpec(
 STYLE_PRESETS: dict[str, StylePreset] = {
     "default_manga": StylePreset(
         preset_id="default_manga",
-        label="default_manga",
-        description="Baseline manga preset (balanced, general purpose).",
+        label="默认漫画",
+        description="基础漫画预设（通用、均衡）。",
         spec=DEFAULT_STYLE_SPEC,
     ),
     "romance_anime_soft": StylePreset(
         preset_id="romance_anime_soft",
-        label="romance_anime_soft",
-        description="Soft romance anime look (pastel, gentle lighting).",
+        label="恋爱动漫·柔和",
+        description="恋爱向日系动漫（粉彩、柔光、温柔氛围）。",
         spec=StyleSpec(
             style_universe=StyleUniverse.JAPANESE_ANIME,
             character_proportion=CharacterProportion.ANIME_5_HEAD,
@@ -168,8 +285,8 @@ STYLE_PRESETS: dict[str, StylePreset] = {
     ),
     "dark_fantasy_dramatic": StylePreset(
         preset_id="dark_fantasy_dramatic",
-        label="dark_fantasy_dramatic",
-        description="Dark fantasy with dramatic contrast and cinematic lighting.",
+        label="暗黑奇幻·戏剧光影",
+        description="暗黑奇幻（电影光、强对比、戏剧张力）。",
         spec=StyleSpec(
             style_universe=StyleUniverse.DARK_FANTASY,
             character_proportion=CharacterProportion.STANDARD_6_HEAD,
@@ -188,8 +305,8 @@ STYLE_PRESETS: dict[str, StylePreset] = {
     ),
     "chinese_ink_minimal": StylePreset(
         preset_id="chinese_ink_minimal",
-        label="chinese_ink_minimal",
-        description="Chinese ink wash, minimal lines, monochrome mood.",
+        label="国风水墨·极简",
+        description="水墨晕染（极简线条、黑白/单色情绪）。",
         spec=StyleSpec(
             style_universe=StyleUniverse.CHINESE_INK,
             character_proportion=CharacterProportion.STANDARD_6_HEAD,
@@ -208,8 +325,8 @@ STYLE_PRESETS: dict[str, StylePreset] = {
     ),
     "cyberpunk_neon": StylePreset(
         preset_id="cyberpunk_neon",
-        label="cyberpunk_neon",
-        description="Cyberpunk neon with rim light and cinematic LUT.",
+        label="赛博朋克·霓虹",
+        description="赛博霓虹（逆光轮廓光、电影LUT、环境氛围强）。",
         spec=StyleSpec(
             style_universe=StyleUniverse.CYBERPUNK,
             character_proportion=CharacterProportion.REALISTIC_7_HEAD,
@@ -228,8 +345,8 @@ STYLE_PRESETS: dict[str, StylePreset] = {
     ),
     "western_cartoon_bright": StylePreset(
         preset_id="western_cartoon_bright",
-        label="western_cartoon_bright",
-        description="Bright western cartoon with bold outlines and flat color.",
+        label="欧美卡通·明亮",
+        description="欧美卡通（粗线勾边、平涂、明亮色彩）。",
         spec=StyleSpec(
             style_universe=StyleUniverse.WESTERN_CARTOON,
             character_proportion=CharacterProportion.STANDARD_6_HEAD,
@@ -248,8 +365,8 @@ STYLE_PRESETS: dict[str, StylePreset] = {
     ),
     "realistic_cinematic": StylePreset(
         preset_id="realistic_cinematic",
-        label="realistic_cinematic",
-        description="Cinematic realism (no line art, soft shading, film-like lighting).",
+        label="写实·电影感",
+        description="电影写实（无线稿、柔和上色、电影灯光）。",
         spec=StyleSpec(
             style_universe=StyleUniverse.EXPERIMENTAL_ART,
             character_proportion=CharacterProportion.CINEMATIC_REALISTIC,
@@ -268,8 +385,8 @@ STYLE_PRESETS: dict[str, StylePreset] = {
     ),
     "portrait_realistic": StylePreset(
         preset_id="portrait_realistic",
-        label="portrait_realistic",
-        description="Realistic portrait focus (clean background, soft light).",
+        label="写实·肖像",
+        description="写实肖像（干净背景、柔光、人物聚焦）。",
         spec=StyleSpec(
             style_universe=StyleUniverse.EXPERIMENTAL_ART,
             character_proportion=CharacterProportion.CINEMATIC_REALISTIC,
@@ -293,11 +410,12 @@ def build_style_schema_options() -> dict[str, list[StyleOption]]:
     dimensions: dict[str, list[StyleOption]] = {}
     for key, enum_cls in STYLE_DIMENSIONS.items():
         options: list[StyleOption] = []
+        zh_map = STYLE_OPTION_LABELS_ZH.get(key, {})
         for item in enum_cls:  # type: ignore[assignment]
+            value = str(item.value)
+            label = zh_map.get(value) or humanize_style_value(value)
             options.append(
-                StyleOption(
-                    value=str(item.value), label=humanize_style_value(str(item.value))
-                )
+                StyleOption(value=value, label=label)
             )
         dimensions[key] = options
     return dimensions

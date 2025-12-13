@@ -37,5 +37,5 @@ async def get_style_preset_detail(
     _ = current_user  # auth guard
     preset = get_style_preset(preset_id)
     if not preset:
-        raise HTTPException(status_code=404, detail="style preset not found")
+        raise HTTPException(status_code=404, detail="风格预设不存在")
     return preset

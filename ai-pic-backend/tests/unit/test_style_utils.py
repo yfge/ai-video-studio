@@ -4,9 +4,11 @@ from app.schemas.style import ColorMood, CompositionStyle, StyleUniverse
 from app.utils.style_utils import (
     DEFAULT_STYLE_SPEC,
     LEGACY_STYLE_PRESET_MAP,
+    build_style_schema_options,
     build_style_prompt,
     derive_legacy_image_style,
     derive_openai_image_style,
+    list_style_presets,
     resolve_style_spec,
 )
 
@@ -46,6 +48,19 @@ def test_build_style_prompt_contains_stable_labels():
     assert prompt.startswith("STYLE_SPEC => ")
     assert "style universe: japanese anime" in prompt
     assert "color mood: soft pastel" in prompt
+
+
+def test_style_schema_options_use_chinese_labels():
+    schema = build_style_schema_options()
+    style_universe_labels = {opt.value: opt.label for opt in schema["style_universe"]}
+    assert style_universe_labels["japanese_anime"] == "日系动漫"
+
+
+def test_style_presets_expose_chinese_labels_and_descriptions():
+    presets = {preset.preset_id: preset for preset in list_style_presets()}
+    cyberpunk = presets["cyberpunk_neon"]
+    assert cyberpunk.label == "赛博朋克·霓虹"
+    assert cyberpunk.description and "赛博" in cyberpunk.description
 
 
 def test_derive_legacy_image_style_portrait_focus():
