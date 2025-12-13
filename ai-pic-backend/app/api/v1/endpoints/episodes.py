@@ -141,6 +141,38 @@ def _build_outline_rows(
     return outline_rows
 
 
+def _build_stub_episodes_from_outlines(
+    outlines: Optional[Dict[str, Any]], episode_count: int
+) -> list[Dict[str, Any]]:
+    """当模型返回无法解析的内容时，基于大纲兜底生成可落库的剧集草稿。"""
+    if not outlines:
+        return []
+    episodes: list[Dict[str, Any]] = []
+    for idx, outline in enumerate(outlines.get("episodes", [])[:episode_count], start=1):
+        logline = (outline.get("logline") or "").strip()
+        if not logline:
+            continue
+        ep_number = outline.get("episode_number") or idx
+        title = outline.get("title") or f"第{ep_number}集"
+        episodes.append(
+            {
+                "episode_number": ep_number,
+                "title": title,
+                "summary": logline,
+                "plot_points": [],
+                "character_arcs": None,
+                "conflicts": [
+                    {
+                        "description": logline,
+                        "intensity": "medium",
+                    }
+                ],
+                "scene_count": None,
+            }
+        )
+    return episodes
+
+
 @router.post("/", response_model=EpisodeResponse)
 async def create_episode(
     episode: EpisodeCreate,
@@ -247,15 +279,6 @@ async def generate_episodes(
     if not result:
         raise HTTPException(status_code=500, detail="AI剧集生成失败")
 
-    # 解析AI生成的内容
-    normalized = result.get("normalized") if isinstance(result, dict) else None
-    ai_content = normalized or extract_json_block(
-        result.get("content") if isinstance(result, dict) else None
-    )
-    if not ai_content:
-        raise HTTPException(status_code=500, detail="AI生成内容格式错误")
-    episodes_data = ai_content.get("episodes", [])
-
     # 结构化 agent 运行信息，便于落库与排查
     agent_run = {}
     if isinstance(result, dict):
@@ -284,6 +307,20 @@ async def generate_episodes(
             prompt=result.get("step_outline_prompt") if isinstance(result, dict) else None,
             agent_run=agent_run,
         )
+
+    # 解析AI生成的内容；若失败则使用大纲兜底
+    normalized = result.get("normalized") if isinstance(result, dict) else None
+    ai_content = normalized or extract_json_block(
+        result.get("content") if isinstance(result, dict) else None
+    )
+    episodes_data = ai_content.get("episodes", []) if ai_content else []
+    if not episodes_data and step_outlines:
+        episodes_data = _build_stub_episodes_from_outlines(
+            step_outlines, request.episode_count
+        )
+        agent_run = {**agent_run, "fallback_from_outline": True}
+    if not episodes_data:
+        raise HTTPException(status_code=500, detail="AI生成内容格式错误")
 
     # 创建剧集记录
     created_episodes = []
@@ -876,11 +913,9 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
         ) or extract_json_block(
             result.get("content") if isinstance(result, dict) else None
         )
-        if not content:
-            raise RuntimeError("AI生成内容格式错误")
-        episodes_data = content.get("episodes", [])
+        episodes_data = content.get("episodes", []) if content else []
 
-        agent_run = {}
+        agent_run: dict[str, Any] = {}
         if isinstance(result, dict):
             agent_run = {
                 "generation_method": result.get("generation_method"),
@@ -909,8 +944,15 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             )
             if task:
                 task.description = "剧集生成：大纲校验通过，写入故事信息"
-            db.commit()
+                db.commit()
             db.refresh(story)
+        if not episodes_data and step_outlines:
+            episodes_data = _build_stub_episodes_from_outlines(
+                step_outlines, episode_count
+            )
+            agent_run = {**agent_run, "fallback_from_outline": True}
+        if not episodes_data:
+            raise RuntimeError("AI生成内容格式错误")
 
         created_ids = []
         created_episodes: list[Episode] = []
