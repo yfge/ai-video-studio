@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
@@ -67,17 +68,23 @@ def create_virtual_ip(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    db_ip = VirtualIP(
-        user_id=current_user.id,
-        **ip.dict(),
-    )
+    existing_ip = db.query(VirtualIP).filter(VirtualIP.name == ip.name).first()
+    if existing_ip:
+        raise HTTPException(status_code=400, detail="虚拟IP名称已存在")
+
+    db_ip = VirtualIP(user_id=current_user.id, **ip.dict())
     db.add(db_ip)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="虚拟IP名称已存在")
+    except Exception:
+        db.rollback()
+        raise
+
     db.refresh(db_ip)
-    return {
-        "success": True,
-        "data": VirtualIPResponse.from_orm(db_ip)
-    }
+    return {"success": True, "data": VirtualIPResponse.from_orm(db_ip)}
 
 @router.get("/{ip_id}")
 def get_virtual_ip(
@@ -99,14 +106,27 @@ def update_virtual_ip(
     db: Session = Depends(get_db)
 ):
     ip = _get_owned_virtual_ip(db, current_user, ip_id)
-    for k, v in ip_update.dict(exclude_unset=True).items():
+
+    updates = ip_update.dict(exclude_unset=True)
+    if "name" in updates and updates["name"] != ip.name:
+        existing_ip = db.query(VirtualIP).filter(VirtualIP.name == updates["name"]).first()
+        if existing_ip:
+            raise HTTPException(status_code=400, detail="虚拟IP名称已存在")
+
+    for k, v in updates.items():
         setattr(ip, k, v)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="虚拟IP名称已存在")
+    except Exception:
+        db.rollback()
+        raise
+
     db.refresh(ip)
-    return {
-        "success": True,
-        "data": VirtualIPResponse.from_orm(ip)
-    }
+    return {"success": True, "data": VirtualIPResponse.from_orm(ip)}
 
 @router.delete("/{ip_id}")
 def delete_virtual_ip(
