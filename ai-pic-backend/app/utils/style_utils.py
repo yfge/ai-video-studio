@@ -63,7 +63,8 @@ STYLE_PROMPT_LABELS: dict[str, str] = {
 def build_style_prompt(spec: StyleSpec) -> str:
     """Convert a resolved StyleSpec into a prompt suffix (stable, engineering-oriented)."""
 
-    data = spec.model_dump(exclude_none=True)
+    # Use JSON mode to get enum values (strings) instead of Enum reprs.
+    data = spec.model_dump(mode="json", exclude_none=True)
     if not data:
         return ""
 
@@ -372,7 +373,7 @@ def resolve_style_spec(
 
 
 def summarize_style_spec(spec: StyleSpec) -> str:
-    data = spec.model_dump(exclude_none=True)
+    data = spec.model_dump(mode="json", exclude_none=True)
     if not data:
         return ""
     parts = [f"{k}={v}" for k, v in data.items()]
