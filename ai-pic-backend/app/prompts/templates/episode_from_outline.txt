@@ -22,6 +22,26 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
 - （本次未提供 beats，请基于 logline 合理拆分场景）
 {% endif %}
 
+## 角色参考
+{% if story.main_characters -%}
+主要角色：
+{% for c in story.main_characters -%}
+- {{ c.name }}: {{ c.description or c.role }}
+{% endfor %}
+{% endif -%}
+{% if story.character_relationships %}角色关系：{{ story.character_relationships }}{% endif %}
+{% if story.main_conflict %}主冲突：{{ story.main_conflict }}{% endif %}
+{% if focus_characters %}重点角色：{{ focus_characters | map(attribute='name') | list | join(', ') }}{% endif %}
+
+## 已生成的前序集（保持连贯）
+{% if previous_episodes and previous_episodes|length > 0 -%}
+{% for prev in previous_episodes %}
+- 第{{ prev.episode_number }}集：{{ prev.title or '' }} — {{ prev.logline or '无概述' }}
+{% endfor %}
+{% else %}
+- （无前序集）
+{% endif %}
+
 ## 生成要求
 - episode_number 必须等于 {{ outline.episode_number }}。
 - 输出 episodes 数组，仅包含这一集。

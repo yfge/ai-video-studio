@@ -270,11 +270,22 @@ class EpisodeLangGraphAgent:
             episode_contents: list[str] = []
 
             for outline in outline_episodes[:episode_count]:
+                ep_num = outline.get("episode_number")
+                previous_eps = [
+                    {
+                        "episode_number": o.get("episode_number"),
+                        "title": o.get("title"),
+                        "logline": o.get("logline"),
+                    }
+                    for o in outline_episodes
+                    if o.get("episode_number") and ep_num and o.get("episode_number") < ep_num
+                ]
                 prompt = prompt_manager.render_prompt(
                     PromptTemplate.EPISODE_FROM_OUTLINE.value,
                     {
                         "story": story,
                         "outline": outline,
+                        "previous_episodes": previous_eps,
                         "episode_duration": episode_duration,
                         "plot_complexity": plot_complexity,
                         "pacing": pacing,
