@@ -20,6 +20,8 @@ import json
 from app.utils.json_utils import extract_json_block
 from app.models.task import Task, TaskStatus
 from app.services.task_worker import episode_generate_task
+from app.schemas.story_structure import StoryStepOutlineCreate
+from app.services import story_structure_service
 
 router = APIRouter()
 
@@ -139,6 +141,18 @@ async def generate_episodes(
         raise HTTPException(status_code=500, detail="AI生成内容格式错误")
     episodes_data = ai_content.get("episodes", [])
 
+    # 可选的 step outline（用于写入 story_step_outlines）
+    raw_step_outlines = None
+    if isinstance(result, dict):
+        raw_step_outlines = result.get("step_outlines") or result.get("step_outlines_raw")
+    step_outlines = None
+    if raw_step_outlines:
+        step_outlines = (
+            extract_json_block(raw_step_outlines)
+            if isinstance(raw_step_outlines, str)
+            else raw_step_outlines
+        )
+
     # 结构化 agent 运行信息，便于落库与排查
     agent_run = {}
     if isinstance(result, dict):
@@ -213,6 +227,66 @@ async def generate_episodes(
         created_episodes.append(db_episode)
 
     db.commit()
+
+    # 将 Step Outline beats 落库到 story_step_outlines
+    if step_outlines and created_episodes:
+        try:
+            treatment = story_structure_service.ensure_auto_treatment(
+                db,
+                story,
+                prompt_snapshot={
+                    "outline_prompt": result.get("step_outline_prompt")
+                    if isinstance(result, dict)
+                    else None,
+                    "step_outlines_raw": result.get("step_outlines_raw")
+                    if isinstance(result, dict)
+                    else None,
+                    "agent_generation_method": agent_run.get("generation_method"),
+                },
+            )
+            episode_id_map = {ep.episode_number: ep.id for ep in created_episodes}
+            outline_rows: list[StoryStepOutlineCreate] = []
+            for outline in step_outlines.get("episodes", []):
+                ep_number = outline.get("episode_number")
+                episode_id = episode_id_map.get(ep_number)
+                if not episode_id:
+                    continue
+                beats = outline.get("beats") or []
+                for beat_idx, beat in enumerate(beats, start=1):
+                    if not isinstance(beat, dict):
+                        continue
+                    outline_rows.append(
+                        StoryStepOutlineCreate(
+                            story_id=story.id,
+                            story_treatment_id=treatment.id,
+                            episode_id=episode_id,
+                            sequence_number=beat.get("sequence_number") or beat_idx,
+                            act_label=beat.get("act_label"),
+                            beat_title=beat.get("beat_title") or f"Beat {beat_idx}",
+                            beat_summary=beat.get("beat_summary")
+                            or beat.get("description")
+                            or f"情节点 {beat_idx}",
+                            dramatic_question=beat.get("dramatic_question"),
+                            characters_involved=beat.get("characters_involved"),
+                            location_hint=beat.get("location_hint"),
+                            duration_estimate_minutes=beat.get(
+                                "duration_estimate_minutes"
+                            ),
+                            status="draft",
+                            metadata={
+                                "source": agent_run.get("generation_method"),
+                                "agent_reasoning": agent_run.get("reasoning"),
+                            },
+                        )
+                    )
+            if outline_rows:
+                story_structure_service.bulk_create_step_outlines(db, outline_rows)
+        except Exception as exc:
+            # 不阻断主流程，记录日志方便排查
+            ai_service.logger.warning(
+                "Failed to persist step outlines",
+                extra={"error": str(exc), "story_id": story.id},
+            )
 
     # 刷新所有创建的剧集
     for episode in created_episodes:

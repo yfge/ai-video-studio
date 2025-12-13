@@ -120,6 +120,32 @@ class ConflictItem(BaseModel):
     parties: Optional[List[str]] = Field(None, description="冲突双方/多方")
 
 
+class EpisodeBeat(BaseModel):
+    sequence_number: int = Field(..., ge=1, description="顺序编号，从1开始")
+    beat_title: str = Field(..., description="情节点标题")
+    beat_summary: str = Field(..., description="情节点摘要")
+    act_label: Optional[str] = Field(None, description="所在幕：ACT I/II/III 等")
+    dramatic_question: Optional[str] = Field(None, description="悬念/戏剧问题")
+    characters_involved: Optional[List[str]] = Field(
+        None, description="参与角色名称列表"
+    )
+    location_hint: Optional[str] = Field(None, description="场景/地点提示")
+    duration_estimate_minutes: Optional[float] = Field(
+        None, ge=0, description="预估时长（分钟）"
+    )
+
+
+class EpisodeStepOutlineItem(BaseModel):
+    episode_number: int
+    title: Optional[str] = None
+    logline: Optional[str] = None
+    beats: List[EpisodeBeat]
+
+
+class EpisodeStepOutlineModel(BaseModel):
+    episodes: List[EpisodeStepOutlineItem]
+
+
 class EpisodePlanItem(BaseModel):
     episode_number: int
     title: str

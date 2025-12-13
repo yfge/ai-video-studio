@@ -571,8 +571,12 @@ class AIService:
                     prefer_provider=prefer_provider,
                     temperature=temperature,
                 )
-                if lg_result:
+                if lg_result and not lg_result.get("error"):
                     return lg_result
+                self.logger.warning(
+                    "LangGraph episode agent returned error; falling back",
+                    extra={"error": lg_result.get("error") if lg_result else None},
+                )
             except Exception as e:
                 self.logger.warning(f"LangGraph episode agent failed: {e}")
 

@@ -1,0 +1,57 @@
+你是一名剧集主编，先帮我把故事拆成「Step Outline」，逐集列出戏剧节点。
+
+## 故事信息
+标题：{{ story.title }}
+类型：{{ story.genre }}
+{% if story.theme %}主题：{{ story.theme }}{% endif %}
+{% if story.synopsis %}概要：{{ story.synopsis }}{% endif %}
+{% if story.main_conflict %}主要冲突：{{ story.main_conflict }}{% endif %}
+{% if story.resolution %}结局/解法：{{ story.resolution }}{% endif %}
+{% if story.world_building %}世界观：{{ story.world_building | trim | truncate(300, True, '…') }}{% endif %}
+
+## 角色
+{% if story.main_characters -%}
+{% for char in story.main_characters %}
+- {{ char.name }}: {{ char.description or char.role }}
+{% endfor %}
+{% endif -%}
+{% if focus_characters -%}
+重点角色：{{ focus_characters | map(attribute='name') | list | join(', ') }}
+{% endif -%}
+
+## 生成要求
+- 总集数：{{ episode_count }} 集{% if episode_duration %}，每集约 {{ episode_duration }} 分钟{% endif %}
+- 情节复杂度：{{ plot_complexity }}；节奏：{{ pacing }}
+- 请按三幕式覆盖：Act I 设定与钩子、Act II 冲突升级与中点、Act III 高潮/收束/悬念。
+- 每集 beats ≥3 且按顺序编号（sequence_number 从 1 开始）。
+- 每个 beat 需给出：act_label、beat_title、beat_summary、dramatic_question（可空）、characters_involved、location_hint、duration_estimate_minutes。
+{% if additional_requirements -%}
+- 额外要求：{{ additional_requirements }}
+{% endif -%}
+{% if style_preferences -%}
+- 风格偏好：{{ style_preferences | join(', ') }}
+{% endif -%}
+
+## 输出格式
+仅返回 JSON，无需代码块，符合 EpisodeStepOutlineModel：
+{
+  "episodes": [
+    {
+      "episode_number": 1,
+      "title": "第1集标题",
+      "logline": "一句话钩子",
+      "beats": [
+        {
+          "sequence_number": 1,
+          "act_label": "ACT I",
+          "beat_title": "开场/引子",
+          "beat_summary": "情节点摘要，包含目标/阻力/转折",
+          "dramatic_question": "...",
+          "characters_involved": ["主角A", "配角B"],
+          "location_hint": "主要地点或场景提示",
+          "duration_estimate_minutes": 5
+        }
+      ]
+    }
+  ]
+}

@@ -12,7 +12,7 @@ from app.models.story_structure import (
     Shot,
     Environment,
 )
-from app.models.script import Script
+from app.models.script import Script, Story
 from app.schemas.story_structure import (
     StoryTreatmentCreate,
     StoryStepOutlineCreate,
@@ -51,6 +51,38 @@ def create_treatment(db: Session, data: StoryTreatmentCreate) -> StoryTreatment:
     return obj
 
 
+def ensure_auto_treatment(
+    db: Session, story: Story, prompt_snapshot: Optional[dict[str, Any]] = None
+) -> StoryTreatment:
+    """
+    Ensure a StoryTreatment row exists for the story.
+
+    - If there is an existing non-deleted treatment, increment revision_number.
+    - Otherwise create revision 1.
+    """
+    latest = (
+        db.query(StoryTreatment)
+        .filter(StoryTreatment.story_id == story.id, StoryTreatment.is_deleted == False)  # noqa: E712
+        .order_by(StoryTreatment.revision_number.desc())
+        .first()
+    )
+    next_revision = (latest.revision_number + 1) if latest else 1
+    title = f"{story.title} Step Outline v{next_revision}" if story.title else f"Step Outline v{next_revision}"
+    treatment = StoryTreatment(
+        story_id=story.id,
+        revision_number=next_revision,
+        status="draft",
+        title=title[:255],
+        logline=story.premise or story.synopsis,
+        theme_summary=story.theme,
+        ai_prompt_snapshot=prompt_snapshot,
+    )
+    db.add(treatment)
+    db.commit()
+    db.refresh(treatment)
+    return treatment
+
+
 def list_step_outlines(db: Session, treatment_id: int) -> List[StoryStepOutline]:
     return (
         db.query(StoryStepOutline)
@@ -66,6 +98,23 @@ def create_step_outline(db: Session, data: StoryStepOutlineCreate) -> StoryStepO
     db.commit()
     db.refresh(obj)
     return obj
+
+
+def bulk_create_step_outlines(
+    db: Session, rows: List[StoryStepOutlineCreate]
+) -> List[StoryStepOutline]:
+    """Insert multiple step outlines in one transaction."""
+    if not rows:
+        return []
+    objects: List[StoryStepOutline] = []
+    for row in rows:
+        obj = StoryStepOutline(**row.model_dump())
+        db.add(obj)
+        objects.append(obj)
+    db.commit()
+    for obj in objects:
+        db.refresh(obj)
+    return objects
 
 
 def list_scenes_by_script(db: Session, script_id: int) -> List[Scene]:

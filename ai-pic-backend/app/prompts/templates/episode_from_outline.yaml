@@ -1,0 +1,53 @@
+name: episode_from_outline
+description: "基于已生成的 Step Outline，为单集输出完整 Episode Plan（summary/plot_points/scenes 等）"
+category: episode
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-13"
+updated_at: "2025-12-13"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息对象"
+  outline:
+    type: dict
+    required: true
+    description: "单集 Step Outline（含 beats）"
+  episode_duration:
+    type: number
+    required: false
+    description: "目标时长（分钟）"
+  plot_complexity:
+    type: string
+    required: false
+    description: "情节复杂度 simple/medium/complex"
+  pacing:
+    type: string
+    required: false
+    description: "节奏 slow/medium/fast"
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外要求"
+  style_preferences:
+    type: list
+    required: false
+    description: "风格偏好"
+
+output_format: "JSON"
+expected_fields:
+  - episodes
+    - episode_number
+    - title
+    - summary
+    - plot_points
+    - character_arcs
+    - conflicts
+    - scene_count
+    - scenes
+
+guidelines:
+  alignment: "所有情节必须覆盖并呼应 beats，保持 episode_number 一致"
+  pacing: "使用 outline 的顺序和 act_label 控制节奏"

@@ -29,6 +29,9 @@ class PromptTemplate(Enum):
     # 剧集相关
     EPISODE_GENERATION = "episode_generation"
     EPISODE_OUTLINE = "episode_outline"
+    EPISODE_STEP_OUTLINE = "episode_step_outline"
+    EPISODE_STEP_OUTLINE_REPAIR = "episode_step_outline_repair"
+    EPISODE_FROM_OUTLINE = "episode_from_outline"
     EPISODE_LIST = "episode_list"  # 剧集列表生成
 
     # 剧本相关
@@ -113,6 +116,9 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
 
     PromptTemplate.EPISODE_GENERATION: PromptCategory.EPISODE,
     PromptTemplate.EPISODE_OUTLINE: PromptCategory.EPISODE,
+    PromptTemplate.EPISODE_STEP_OUTLINE: PromptCategory.EPISODE,
+    PromptTemplate.EPISODE_STEP_OUTLINE_REPAIR: PromptCategory.EPISODE,
+    PromptTemplate.EPISODE_FROM_OUTLINE: PromptCategory.EPISODE,
     PromptTemplate.EPISODE_LIST: PromptCategory.EPISODE,
 
     PromptTemplate.SCRIPT_GENERATION: PromptCategory.SCRIPT,
@@ -134,6 +140,7 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.SYSTEM_PROMPT_JSON_STRICT: PromptCategory.GENERAL,
     PromptTemplate.STORY_OUTLINE_REPAIR: PromptCategory.GENERAL,
     PromptTemplate.EPISODE_PLAN_REPAIR: PromptCategory.GENERAL,
+    PromptTemplate.EPISODE_STEP_OUTLINE_REPAIR: PromptCategory.GENERAL,
 }
 
 # 默认参数配置

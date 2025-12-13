@@ -1,0 +1,65 @@
+name: episode_step_outline
+description: "基于故事先生成每集的 Step Outline（幕/情节点/角色/地点提示）"
+category: episode
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-13"
+updated_at: "2025-12-13"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息对象"
+  episode_count:
+    type: number
+    required: true
+    description: "目标集数"
+    min: 1
+    max: 50
+  episode_duration:
+    type: number
+    required: false
+    description: "单集目标时长（分钟）"
+  plot_complexity:
+    type: string
+    required: false
+    description: "情节复杂度 simple/medium/complex"
+  pacing:
+    type: string
+    required: false
+    description: "节奏 slow/medium/fast"
+  focus_characters:
+    type: list
+    required: false
+    description: "重点角色列表"
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外生成要求"
+  style_preferences:
+    type: list
+    required: false
+    description: "风格偏好"
+
+output_format: "JSON"
+expected_fields:
+  - episodes
+    - episode_number
+    - title
+    - logline
+    - beats (array)
+      - sequence_number
+      - act_label
+      - beat_title
+      - beat_summary
+      - dramatic_question
+      - characters_involved
+      - location_hint
+      - duration_estimate_minutes
+
+guidelines:
+  acts:
+    "1": "25% 开场设定与角色动机"
+    "2": "50% 冲突升级与中点反转"
+    "3": "25% 高潮与收束/悬念"

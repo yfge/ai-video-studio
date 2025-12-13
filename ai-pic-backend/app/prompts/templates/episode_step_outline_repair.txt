@@ -1,0 +1,12 @@
+你是一个严格的剧集 Step Outline 审校器，请修复输出使其满足 EpisodeStepOutlineModel。
+
+- 目标集数：{{ episode_count }}
+- Schema: {{ schema }}
+- 原始提示词: {{ original_prompt or '' }}
+- 原始输出: {{ original_output }}
+- 缺失/异常字段: {{ missing_fields | default([]) | join(', ') }}
+
+要求：
+1) 只返回 JSON（无代码块、无额外文字）。
+2) episodes 数量必须 >= 目标集数，episode_number 按 1..N 连续。
+3) 每个 beat 必须包含 sequence_number/beat_title/beat_summary，若缺失请合理补齐中文占位；act_label 优先 ACT I/II/III。
