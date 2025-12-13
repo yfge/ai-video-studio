@@ -4,11 +4,13 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { MultiModelSelector } from '@/components/MultiModelSelector';
+import { useStylePresets } from '@/hooks/useStylePresets';
 import {
   AIModelType,
   type AIModel,
   type ApiResponse,
   type AvailableModelsResponse,
+  type StyleSpec,
 } from '@/utils/api';
 
 type ReferenceSection = {
@@ -35,6 +37,7 @@ interface ImageToImageModalProps {
   defaultCount?: number;
   defaultSize?: string;
   defaultStyle?: string;
+  defaultStylePresetId?: string;
   defaultWidth?: number;
   defaultHeight?: number;
   minCount?: number;
@@ -44,6 +47,7 @@ interface ImageToImageModalProps {
   modelCacheKey?: string;
   resolutionOptions?: ResolutionOption[];
   styleOptions?: { value: string; label: string }[];
+  showStylePreset?: boolean;
   useDimensions?: boolean;
   extraContent?: ReactNode;
   submitting?: boolean;
@@ -54,6 +58,8 @@ interface ImageToImageModalProps {
     count: number;
     size?: string;
     style?: string;
+    style_preset_id?: string;
+    style_spec?: StyleSpec;
     width?: number;
     height?: number;
     referenceImages: string[];
@@ -101,6 +107,7 @@ export function ImageToImageModal({
   defaultCount = 1,
   defaultSize = '',
   defaultStyle = 'realistic',
+  defaultStylePresetId = '',
   defaultWidth = 1024,
   defaultHeight = 1024,
   minCount = 1,
@@ -110,6 +117,7 @@ export function ImageToImageModal({
   modelCacheKey,
   resolutionOptions,
   styleOptions,
+  showStylePreset = true,
   useDimensions = false,
   extraContent,
   submitting = false,
@@ -124,8 +132,15 @@ export function ImageToImageModal({
   const [count, setCount] = useState(defaultCount);
   const [size, setSize] = useState(defaultSize);
   const [style, setStyle] = useState(defaultStyle);
+  const [stylePresetId, setStylePresetId] = useState(defaultStylePresetId);
   const [width, setWidth] = useState(defaultWidth);
   const [height, setHeight] = useState(defaultHeight);
+
+  const { presets: stylePresets } = useStylePresets({ enabled: showStylePreset });
+  const selectedStylePreset = useMemo(() => {
+    if (!stylePresetId) return undefined;
+    return stylePresets.find(p => p.preset_id === stylePresetId);
+  }, [stylePresets, stylePresetId]);
 
   useEffect(() => {
     if (!open) return;
@@ -135,6 +150,7 @@ export function ImageToImageModal({
     setCount(defaultCount);
     setSize(defaultSize);
     setStyle(defaultStyle);
+    setStylePresetId(defaultStylePresetId);
     setWidth(defaultWidth);
     setHeight(defaultHeight);
   }, [
@@ -145,6 +161,7 @@ export function ImageToImageModal({
     defaultCount,
     defaultSize,
     defaultStyle,
+    defaultStylePresetId,
     defaultWidth,
     defaultHeight,
   ]);
@@ -191,6 +208,7 @@ export function ImageToImageModal({
       count: Math.max(minCount, Math.min(maxCount, count || minCount)),
       size: useDimensions ? undefined : size || undefined,
       style: style || undefined,
+      style_preset_id: stylePresetId || undefined,
       width: useDimensions ? width || defaultWidth : undefined,
       height: useDimensions ? height || defaultHeight : undefined,
       referenceImages: refs,
@@ -351,6 +369,31 @@ export function ImageToImageModal({
                 </select>
               </div>
             </div>
+
+            {showStylePreset ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  风格预设
+                </label>
+                <select
+                  value={stylePresetId}
+                  onChange={e => setStylePresetId(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">（不使用预设）</option>
+                  {stylePresets.map(preset => (
+                    <option key={preset.preset_id} value={preset.preset_id}>
+                      {preset.label || preset.preset_id}
+                    </option>
+                  ))}
+                </select>
+                {selectedStylePreset?.description ? (
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    {selectedStylePreset.description}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -153,8 +153,44 @@ export interface VirtualIPImageUpdate {
   metadata?: Record<string, unknown>;
 }
 
+// 风格 schema（后端为唯一真源）
+export interface StyleOption {
+  value: string;
+  label: string;
+}
+
+export type StyleSpec = Partial<{
+  style_universe: string;
+  character_proportion: string;
+  character_face_style: string;
+  line_art_style: string;
+  color_render_style: string;
+  lighting_style: string;
+  color_mood: string;
+  shot_storyboard_style: string;
+  composition_style: string;
+  background_detail_level: string;
+  emotion_action_level: string;
+  style_lock_level: string;
+  output_target: string;
+}>;
+
+export interface StylePreset {
+  preset_id: string;
+  label: string;
+  description?: string | null;
+  spec: StyleSpec;
+}
+
+export interface StyleSchemaResponse {
+  dimensions: Record<string, StyleOption[]>;
+  defaults: StyleSpec;
+}
+
 export interface AIImageGenerationRequest {
   style: string;
+  style_preset_id?: string;
+  style_spec?: StyleSpec;
   category: string;
   model: string;
   additional_prompts: string;
@@ -168,6 +204,9 @@ export interface ImageToImageRequestPayload {
   prompt?: string;
   model?: string;
   prefer_provider?: string;
+  style?: string;
+  style_preset_id?: string;
+  style_spec?: StyleSpec;
   count?: number;
   size?: string;
   reference_images?: string[];
@@ -1217,7 +1256,15 @@ class ApiClient {
 
   async generateEnvironmentImages(
     envId: number,
-    payload: { prompt?: string; model?: string; count?: number; size?: string },
+    payload: {
+      prompt?: string;
+      model?: string;
+      count?: number;
+      size?: string;
+      style?: string;
+      style_preset_id?: string;
+      style_spec?: StyleSpec;
+    },
   ): Promise<ApiResponse<{ images: string[]; count: number }>> {
     return this.request(
       `/api/v1/story-structure/environments/${envId}/images/generate`,
@@ -1236,6 +1283,9 @@ class ApiClient {
       model?: string;
       count?: number;
       size?: string;
+      style?: string;
+      style_preset_id?: string;
+      style_spec?: StyleSpec;
     },
   ): Promise<ApiResponse<{ images: string[]; count: number }>> {
     return this.request(
@@ -1255,6 +1305,8 @@ class ApiClient {
       count?: number;
       size?: string;
       style?: string;
+      style_preset_id?: string;
+      style_spec?: StyleSpec;
     },
   ): Promise<ApiResponse<{ task_id: number; status: string }>> {
     return this.request(
@@ -1275,6 +1327,8 @@ class ApiClient {
       count?: number;
       size?: string;
       style?: string;
+      style_preset_id?: string;
+      style_spec?: StyleSpec;
       reference_images?: string[];
     },
   ): Promise<ApiResponse<{ task_id: number; status: string }>> {
@@ -1308,6 +1362,19 @@ class ApiClient {
     return this.request<AvailableModelsResponse>(
       `/api/v1/ai/models/available?model_type=${encodeURIComponent(t)}`,
     );
+  }
+
+  // 风格 schema / presets（后端为唯一真源）
+  async getStyleSchema() {
+    return this.request<StyleSchemaResponse>(`/api/v1/styles/schema`);
+  }
+
+  async listStylePresets() {
+    return this.request<StylePreset[]>(`/api/v1/styles/presets`);
+  }
+
+  async getStylePreset(presetId: string) {
+    return this.request<StylePreset>(`/api/v1/styles/presets/${presetId}`);
   }
 
   // 剧集相关方法
@@ -1552,6 +1619,8 @@ class ApiClient {
       width?: number;
       height?: number;
       style?: string;
+      style_preset_id?: string;
+      style_spec?: StyleSpec;
       reference_images?: string[];
       count?: number;
       keyframe_mode?: "single" | "start_end";
@@ -1567,6 +1636,8 @@ class ApiClient {
           width: payload?.width ?? 1024,
           height: payload?.height ?? 1024,
           style: payload?.style ?? "realistic",
+          style_preset_id: payload?.style_preset_id,
+          style_spec: payload?.style_spec,
           reference_images: payload?.reference_images,
           count: payload?.count ?? 1,
           keyframe_mode: payload?.keyframe_mode ?? "single",
@@ -1928,6 +1999,12 @@ export const aiAPI = {
   getAvailableModels: apiClient.getAvailableModels.bind(apiClient),
 };
 
+export const styleAPI = {
+  getSchema: apiClient.getStyleSchema.bind(apiClient),
+  listPresets: apiClient.listStylePresets.bind(apiClient),
+  getPreset: apiClient.getStylePreset.bind(apiClient),
+};
+
 // 虚拟IP图像管理API（使用统一的API客户端）
 export const virtualIPImageAPI = {
   // 获取虚拟IP图像列表
@@ -1959,6 +2036,8 @@ export const virtualIPImageAPI = {
         method: "POST",
         body: JSON.stringify({
           style: request.style,
+          style_preset_id: request.style_preset_id,
+          style_spec: request.style_spec,
           category: request.category,
           model: request.model,
           additional_prompts: request.additional_prompts,
@@ -1981,6 +2060,8 @@ export const virtualIPImageAPI = {
         method: "POST",
         body: JSON.stringify({
           style: request.style,
+          style_preset_id: request.style_preset_id,
+          style_spec: request.style_spec,
           category: request.category,
           model: request.model,
           additional_prompts: request.additional_prompts,
@@ -2004,6 +2085,9 @@ export const virtualIPImageAPI = {
         prompt: payload.prompt,
         model: payload.model,
         prefer_provider: payload.prefer_provider,
+        style: payload.style,
+        style_preset_id: payload.style_preset_id,
+        style_spec: payload.style_spec,
         count: payload.count ?? 1,
       }),
     });
@@ -2015,7 +2099,7 @@ export const virtualIPImageAPI = {
     imageId: number,
     payload: Pick<
       ImageToImageRequestPayload,
-      "prompt" | "model" | "count" | "size"
+      "prompt" | "model" | "count" | "size" | "style" | "style_preset_id" | "style_spec"
     >,
   ): Promise<ApiResponse<VirtualIPImage | VirtualIPImage[]>> => {
     return apiClient.makeRequest(
@@ -2027,6 +2111,9 @@ export const virtualIPImageAPI = {
           model: payload.model,
           count: payload.count ?? 1,
           size: payload.size,
+          style: payload.style,
+          style_preset_id: payload.style_preset_id,
+          style_spec: payload.style_spec,
         }),
       },
     );
@@ -2038,7 +2125,14 @@ export const virtualIPImageAPI = {
     imageId: number,
     payload: Pick<
       ImageToImageRequestPayload,
-      "prompt" | "model" | "count" | "size" | "reference_images"
+      | "prompt"
+      | "model"
+      | "count"
+      | "size"
+      | "reference_images"
+      | "style"
+      | "style_preset_id"
+      | "style_spec"
     >,
   ): Promise<ApiResponse<{ task_id: number; status: string }>> => {
     return apiClient.makeRequest(
@@ -2051,6 +2145,9 @@ export const virtualIPImageAPI = {
           count: payload.count ?? 1,
           size: payload.size,
           reference_images: payload.reference_images,
+          style: payload.style,
+          style_preset_id: payload.style_preset_id,
+          style_spec: payload.style_spec,
         }),
       },
     );

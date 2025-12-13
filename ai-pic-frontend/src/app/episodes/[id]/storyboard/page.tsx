@@ -655,6 +655,8 @@ export default function EpisodeStoryboardPage() {
     count: number;
     size?: string;
     style?: string;
+    style_preset_id?: string;
+    style_spec?: Record<string, unknown>;
     width?: number;
     height?: number;
     referenceImages: string[];
@@ -693,6 +695,8 @@ export default function EpisodeStoryboardPage() {
         width: payload.width ?? 1024,
         height: payload.height ?? 1024,
         style: payload.style,
+        style_preset_id: payload.style_preset_id,
+        style_spec: payload.style_spec,
         reference_images: payload.referenceImages,
         count: payload.count,
         keyframe_mode: "start_end",
@@ -813,6 +817,8 @@ export default function EpisodeStoryboardPage() {
     count: number;
     size?: string;
     style?: string;
+    style_preset_id?: string;
+    style_spec?: Record<string, unknown>;
     width?: number;
     height?: number;
     referenceImages: string[];
@@ -835,6 +841,8 @@ export default function EpisodeStoryboardPage() {
           width: payload.width ?? 1024,
           height: payload.height ?? 1024,
           style: payload.style,
+          style_preset_id: payload.style_preset_id,
+          style_spec: payload.style_spec,
           reference_images: payload.referenceImages,
           count: payload.count,
           keyframe_mode: "start_end",

@@ -17,6 +17,7 @@ import { useAvailableModels } from '@/hooks/useAvailableModels';
 import { ImageToImageModal } from '@/components/ImageToImageModal';
 import { MultiModelSelector } from '@/components/MultiModelSelector';
 import { ImagePreviewModal } from '@/components/ImagePreviewModal';
+import { useStylePresets } from '@/hooks/useStylePresets';
 
 export default function VirtualIPImagesPage() {
   const params = useParams();
@@ -55,12 +56,18 @@ export default function VirtualIPImagesPage() {
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [generateForm, setGenerateForm] = useState<AIImageGenerationRequest>({
     style: 'realistic',
+    style_preset_id: '',
     category: 'portrait',
     model: '',
     additional_prompts: '',
     is_default: false,
     count: 1,
   });
+  const { presets: stylePresets } = useStylePresets();
+  const selectedStylePreset = useMemo(() => {
+    if (!generateForm.style_preset_id) return undefined;
+    return stylePresets.find(p => p.preset_id === generateForm.style_preset_id);
+  }, [generateForm.style_preset_id, stylePresets]);
 
   const fetchModels = useCallback(
     () => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage }),
@@ -181,6 +188,7 @@ export default function VirtualIPImagesPage() {
         setShowGenerateForm(false);
         setGenerateForm({
           style: 'realistic',
+          style_preset_id: '',
           category: 'portrait',
           model: recommendedModel || '',
           additional_prompts: '',
@@ -331,6 +339,8 @@ export default function VirtualIPImagesPage() {
     count: number;
     size?: string;
     style?: string;
+    style_preset_id?: string;
+    style_spec?: Record<string, unknown>;
     referenceImages: string[];
   }) => {
     if (!variantTarget) return;
@@ -352,6 +362,9 @@ export default function VirtualIPImagesPage() {
           count: payload.count,
           size: payload.size || generateForm.size,
           reference_images: payload.referenceImages,
+          style: payload.style || generateForm.style,
+          style_preset_id: payload.style_preset_id || generateForm.style_preset_id,
+          style_spec: payload.style_spec,
         },
       );
       if (!res.success || !res.data) {
@@ -495,6 +508,33 @@ export default function VirtualIPImagesPage() {
                   <option value="anime">动漫风格</option>
                   <option value="cartoon">卡通风格</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  风格预设
+                </label>
+                <select
+                  value={generateForm.style_preset_id || ''}
+                  onChange={e =>
+                    setGenerateForm(prev => ({
+                      ...prev,
+                      style_preset_id: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">（不使用预设）</option>
+                  {stylePresets.map(preset => (
+                    <option key={preset.preset_id} value={preset.preset_id}>
+                      {preset.label || preset.preset_id}
+                    </option>
+                  ))}
+                </select>
+                {selectedStylePreset?.description ? (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {selectedStylePreset.description}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -836,6 +876,7 @@ export default function VirtualIPImagesPage() {
           }
           defaultCount={1}
           defaultSize={generateForm.size || ''}
+          defaultStylePresetId={generateForm.style_preset_id || ''}
           modelType={AIModelType.ImageToImage}
           modelFetcher={() => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })}
           modelCacheKey={`virtual-ip-img2img:${virtualIPId}`}

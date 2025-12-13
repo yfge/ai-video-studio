@@ -4,11 +4,18 @@ import Image from "next/image"
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
-import { storyStructureAPI, AIModelType, type EnvironmentCreate, type Environment } from '@/utils/api'
+import {
+  storyStructureAPI,
+  AIModelType,
+  type EnvironmentCreate,
+  type Environment,
+  type StyleSpec,
+} from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { ImageToImageModal } from '@/components/ImageToImageModal'
 import { MultiModelSelector } from '@/components/MultiModelSelector'
 import { ImagePreviewModal } from '@/components/ImagePreviewModal'
+import { useStylePresets } from '@/hooks/useStylePresets'
 
 function EnvironmentsPageContent() {
   const { showAlert } = useAlertModal()
@@ -17,7 +24,17 @@ function EnvironmentsPageContent() {
   const [creating, setCreating] = useState(false)
   const [generating, setGenerating] = useState<Record<number, boolean>>({})
   const [selectedModels, setSelectedModels] = useState<Record<number, string>>({})
-  const [variantTarget, setVariantTarget] = useState<{ env: Environment; url: string; displayUrl: string; modelHint?: string } | null>(null)
+  const [selectedStylePresets, setSelectedStylePresets] = useState<
+    Record<number, string>
+  >({})
+  const { presets: stylePresets } = useStylePresets()
+  const [variantTarget, setVariantTarget] = useState<{
+    env: Environment
+    url: string
+    displayUrl: string
+    modelHint?: string
+    stylePresetHint?: string
+  } | null>(null)
   const [variantModalOpen, setVariantModalOpen] = useState(false)
   const [variantPrompt, setVariantPrompt] = useState('')
   const [variantSubmitting, setVariantSubmitting] = useState(false)
@@ -127,6 +144,7 @@ function EnvironmentsPageContent() {
         model: options.model,
         size: options.size,
         count: 1,
+        style_preset_id: selectedStylePresets[env.id] || undefined,
       }
       const res = await storyStructureAPI.generateEnvironmentImagesAsync(env.id, payload)
       if (res.success) {
@@ -152,12 +170,22 @@ function EnvironmentsPageContent() {
       url,
       displayUrl: imageSrc(url),
       modelHint: selectedModels[env.id],
+      stylePresetHint: selectedStylePresets[env.id],
     })
     setVariantPrompt(env.description || env.name || '基于此环境图生成风格一致的变体')
     setVariantModalOpen(true)
   }
 
-  const handleGenerateVariant = async (payload: { prompt: string; model?: string; count: number; size?: string; referenceImages: string[] }) => {
+  const handleGenerateVariant = async (payload: {
+    prompt: string
+    model?: string
+    count: number
+    size?: string
+    style?: string
+    style_preset_id?: string
+    style_spec?: StyleSpec
+    referenceImages: string[]
+  }) => {
     if (!variantTarget) return
     setVariantSubmitting(true)
     try {
@@ -167,6 +195,9 @@ function EnvironmentsPageContent() {
         model: payload.model || variantTarget.modelHint,
         size: payload.size,
         count: payload.count,
+        style: payload.style,
+        style_preset_id: payload.style_preset_id || variantTarget.stylePresetHint,
+        style_spec: payload.style_spec,
         reference_images: payload.referenceImages,
       })
       if (res.success) {
@@ -364,6 +395,26 @@ function EnvironmentsPageContent() {
                         multiple={false}
                         className="text-sm"
                       />
+                      <div className="space-y-1">
+                        <div className="text-xs text-gray-500">风格预设</div>
+                        <select
+                          value={selectedStylePresets[env.id] || ''}
+                          onChange={e =>
+                            setSelectedStylePresets(prev => ({
+                              ...prev,
+                              [env.id]: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">（不使用预设）</option>
+                          {stylePresets.map(preset => (
+                            <option key={preset.preset_id} value={preset.preset_id}>
+                              {preset.label || preset.preset_id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <button
                       onClick={() => handleGenerateImage(env, { prompt: env.description || env.name, model: selectedModels[env.id] })}
                       disabled={generating[env.id]}
@@ -399,6 +450,7 @@ function EnvironmentsPageContent() {
           defaultPrompt={variantPrompt}
           defaultModel={variantTarget?.modelHint || ''}
           defaultCount={1}
+          defaultStylePresetId={variantTarget?.stylePresetHint || ''}
           modelType={AIModelType.ImageToImage}
           modelCacheKey="environment-img2img"
           submitting={variantSubmitting}
