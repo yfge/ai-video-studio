@@ -12,42 +12,66 @@ from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.services.ai_service import ai_service
 from app.services.storage.oss_service import oss_service
+from app.schemas.style import StyleSpec
 
 router = APIRouter()
 
 
 class TextGenerationRequest(BaseModel):
     """文本生成请求"""
+
     prompt: str = Field(..., description="生成提示词")
     model: Optional[str] = Field(None, description="指定模型")
     prefer_provider: Optional[str] = Field(None, description="首选提供商")
     system_prompt: Optional[str] = Field(None, description="系统提示词")
-    max_tokens: Optional[int] = Field(None, description="最大token数（为空则不限制，由模型决定）")
+    max_tokens: Optional[int] = Field(
+        None, description="最大token数（为空则不限制，由模型决定）"
+    )
     temperature: float = Field(0.7, description="创造性参数")
 
 
 class ImageGenerationRequest(BaseModel):
     """图像生成请求"""
+
     prompt: str = Field(..., description="图像描述")
     model: Optional[str] = Field(None, description="指定模型")
     prefer_provider: Optional[str] = Field(None, description="首选提供商")
     width: int = Field(1024, description="图像宽度")
     height: int = Field(1024, description="图像高度")
     style: str = Field("realistic", description="图像风格")
+    style_preset_id: Optional[str] = Field(
+        None, description="风格预设ID（后端为唯一真源）"
+    )
+    style_spec: Optional[StyleSpec] = Field(
+        default=None, description="风格 schema（允许只传部分字段）"
+    )
     count: int = Field(1, description="生成图像数量")
 
 
 class ImageToImageRequest(BaseModel):
     """图生图请求"""
+
     image_url: str = Field(..., description="原始图像URL")
     prompt: Optional[str] = Field(None, description="可选的引导提示词")
-    model: Optional[str] = Field(None, description="指定模型（如不指定则由服务自动选择）")
+    model: Optional[str] = Field(
+        None, description="指定模型（如不指定则由服务自动选择）"
+    )
     prefer_provider: Optional[str] = Field(None, description="首选提供商")
+    style: Optional[str] = Field(
+        None, description="兼容旧风格字段（realistic/anime/cartoon/portrait）"
+    )
+    style_preset_id: Optional[str] = Field(
+        None, description="风格预设ID（后端为唯一真源）"
+    )
+    style_spec: Optional[StyleSpec] = Field(
+        default=None, description="风格 schema（允许只传部分字段）"
+    )
     count: int = Field(1, description="生成图像数量")
 
 
 class VideoGenerationRequest(BaseModel):
     """视频生成请求"""
+
     prompt: Optional[str] = Field(None, description="视频描述")
     image_url: Optional[str] = Field(None, description="参考图像URL")
     model: Optional[str] = Field(None, description="指定模型")
@@ -60,6 +84,7 @@ class VideoGenerationRequest(BaseModel):
 
 class SpeechGenerationRequest(BaseModel):
     """语音生成请求"""
+
     text: str = Field(..., description="要转换的文本")
     model: Optional[str] = Field(None, description="指定模型")
     prefer_provider: Optional[str] = Field(None, description="首选提供商")
@@ -69,6 +94,7 @@ class SpeechGenerationRequest(BaseModel):
 
 class ProviderConfigRequest(BaseModel):
     """提供商配置请求"""
+
     enabled: Optional[bool] = Field(None, description="是否启用")
     weight: Optional[float] = Field(None, description="权重")
     priority: Optional[str] = Field(None, description="优先级(high/medium/low)")
@@ -78,7 +104,7 @@ class ProviderConfigRequest(BaseModel):
 @router.post("/generate/text")
 async def generate_text(
     request: TextGenerationRequest,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """生成文本"""
     try:
@@ -92,7 +118,7 @@ async def generate_text(
         if request.max_tokens is not None:
             kwargs["max_tokens"] = request.max_tokens
         response = await ai_service.ai_manager.generate_text(**kwargs)
-        
+
         if response.success:
             return {
                 "success": True,
@@ -101,12 +127,12 @@ async def generate_text(
                     "provider": response.provider,
                     "model": response.model,
                     "usage": response.usage,
-                    "metadata": response.metadata
-                }
+                    "metadata": response.metadata,
+                },
             }
         else:
             raise HTTPException(status_code=400, detail=response.error)
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文本生成失败: {str(e)}")
 
@@ -114,7 +140,7 @@ async def generate_text(
 @router.post("/generate/image")
 async def generate_image(
     request: ImageGenerationRequest,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """生成图像"""
     try:
@@ -125,9 +151,11 @@ async def generate_image(
             width=request.width,
             height=request.height,
             style=request.style,
+            style_preset_id=request.style_preset_id,
+            style_spec=request.style_spec,
             n=request.count,
         )
-        
+
         if response.success:
             return {
                 "success": True,
@@ -136,20 +164,19 @@ async def generate_image(
                     "provider": response.provider,
                     "model": response.model,
                     "usage": response.usage,
-                    "metadata": response.metadata
-                }
+                    "metadata": response.metadata,
+                },
             }
         else:
             raise HTTPException(status_code=400, detail=response.error)
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"图像生成失败: {str(e)}")
 
 
 @router.post("/generate/image-to-image")
 async def generate_image_to_image(
-    request: ImageToImageRequest,
-    current_user: User = Depends(get_current_active_user)
+    request: ImageToImageRequest, current_user: User = Depends(get_current_active_user)
 ):
     """图生图生成接口（统一路由到支持 IMAGE_TO_IMAGE 的提供商）"""
     try:
@@ -158,6 +185,9 @@ async def generate_image_to_image(
             prompt=request.prompt,
             model=request.model,
             prefer_provider=request.prefer_provider,
+            style=request.style,
+            style_preset_id=request.style_preset_id,
+            style_spec=request.style_spec,
             count=request.count,
         )
 
@@ -182,13 +212,13 @@ async def generate_image_to_image(
 @router.post("/generate/video")
 async def generate_video(
     request: VideoGenerationRequest,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """生成视频"""
     try:
         if not request.prompt and not request.image_url:
             raise HTTPException(status_code=400, detail="必须提供prompt或image_url")
-        
+
         response = await ai_service.ai_manager.generate_video(
             prompt=request.prompt,
             image_url=request.image_url,
@@ -196,9 +226,9 @@ async def generate_video(
             prefer_provider=request.prefer_provider,
             duration=request.duration,
             fps=request.fps,
-            resolution=request.resolution
+            resolution=request.resolution,
         )
-        
+
         if response.success:
             return {
                 "success": True,
@@ -209,12 +239,12 @@ async def generate_video(
                     "provider": response.provider,
                     "model": response.model,
                     "usage": response.usage,
-                    "metadata": response.metadata
-                }
+                    "metadata": response.metadata,
+                },
             }
         else:
             raise HTTPException(status_code=400, detail=response.error)
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"视频生成失败: {str(e)}")
 
@@ -222,7 +252,7 @@ async def generate_video(
 @router.post("/generate/speech")
 async def generate_speech(
     request: SpeechGenerationRequest,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """生成语音"""
     try:
@@ -231,9 +261,9 @@ async def generate_speech(
             model=request.model,
             prefer_provider=request.prefer_provider,
             voice_type=request.voice_type,
-            speed=request.speed
+            speed=request.speed,
         )
-        
+
         if response.success:
             return {
                 "success": True,
@@ -243,27 +273,22 @@ async def generate_speech(
                     "provider": response.provider,
                     "model": response.model,
                     "usage": response.usage,
-                    "metadata": response.metadata
-                }
+                    "metadata": response.metadata,
+                },
             }
         else:
             raise HTTPException(status_code=400, detail=response.error)
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"语音生成失败: {str(e)}")
 
 
 @router.get("/providers/status")
-async def get_providers_status(
-    current_user: User = Depends(get_current_active_user)
-):
+async def get_providers_status(current_user: User = Depends(get_current_active_user)):
     """获取所有提供商状态"""
     try:
         status = ai_service.get_ai_providers_status()
-        return {
-            "success": True,
-            "data": status
-        }
+        return {"success": True, "data": status}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取状态失败: {str(e)}")
 
@@ -272,28 +297,28 @@ async def get_providers_status(
 async def update_provider_config(
     provider_name: str,
     request: ProviderConfigRequest,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """更新提供商配置"""
     try:
         # 验证提供商是否存在
         status = ai_service.get_ai_providers_status()
         if provider_name not in status:
-            raise HTTPException(status_code=404, detail=f"提供商 {provider_name} 不存在")
-        
+            raise HTTPException(
+                status_code=404, detail=f"提供商 {provider_name} 不存在"
+            )
+
         ai_service.update_provider_config(
             provider_name=provider_name,
             enabled=request.enabled,
             weight=request.weight,
             priority=request.priority,
-            max_requests_per_minute=request.max_requests_per_minute
+            max_requests_per_minute=request.max_requests_per_minute,
         )
-        
+
         return {
             "success": True,
-            "data": {
-                "message": f"提供商 {provider_name} 配置已更新"
-            }
+            "data": {"message": f"提供商 {provider_name} 配置已更新"},
         }
     except HTTPException:
         raise
@@ -303,23 +328,26 @@ async def update_provider_config(
 
 @router.get("/providers/{provider_name}/models")
 async def get_provider_models(
-    provider_name: str,
-    current_user: User = Depends(get_current_active_user)
+    provider_name: str, current_user: User = Depends(get_current_active_user)
 ):
     """获取指定提供商的可用模型"""
     try:
         status = ai_service.get_ai_providers_status()
         if provider_name not in status:
-            raise HTTPException(status_code=404, detail=f"提供商 {provider_name} 不存在")
-        
+            raise HTTPException(
+                status_code=404, detail=f"提供商 {provider_name} 不存在"
+            )
+
         provider_status = status[provider_name]
         return {
             "success": True,
             "data": {
                 "provider": provider_name,
                 "models": provider_status.get("available_models", []),
-                "supported_model_types": provider_status.get("supported_model_types", [])
-            }
+                "supported_model_types": provider_status.get(
+                    "supported_model_types", []
+                ),
+            },
         }
     except HTTPException:
         raise
@@ -345,8 +373,7 @@ async def get_available_models(
 
         status = ai_service.get_ai_providers_status()
         enabled_providers = [
-            name for name, meta in status.items()
-            if meta.get("enabled", True)
+            name for name, meta in status.items() if meta.get("enabled", True)
         ]
         if not enabled_providers:
             raise HTTPException(
@@ -355,7 +382,9 @@ async def get_available_models(
             )
 
         # 通过统一的 AIService/AIServiceManager 列出模型
-        models = await ai_service.list_models(model_type_alias=model_type, source=source)
+        models = await ai_service.list_models(
+            model_type_alias=model_type, source=source
+        )
         if not models:
             raise HTTPException(
                 status_code=503,
@@ -383,8 +412,7 @@ async def get_available_models(
 
 @router.post("/providers/test/{provider_name}")
 async def test_provider(
-    provider_name: str,
-    current_user: User = Depends(get_current_active_user)
+    provider_name: str, current_user: User = Depends(get_current_active_user)
 ):
     """测试指定提供商的连接"""
     try:
@@ -393,7 +421,7 @@ async def test_provider(
             prompt="请说'Hello World'",
             prefer_provider=provider_name,
         )
-        
+
         if response.success:
             return {
                 "success": True,
@@ -402,8 +430,8 @@ async def test_provider(
                     "status": "connected",
                     "test_response": response.data,
                     "model_used": response.model,
-                    "usage": response.usage
-                }
+                    "usage": response.usage,
+                },
             }
         else:
             return {
@@ -411,25 +439,23 @@ async def test_provider(
                 "data": {
                     "provider": provider_name,
                     "status": "failed",
-                    "error": response.error
-                }
+                    "error": response.error,
+                },
             }
-            
+
     except Exception as e:
         return {
             "success": False,
-            "data": {
-                "provider": provider_name,
-                "status": "error",
-                "error": str(e)
-            }
+            "data": {"provider": provider_name, "status": "error", "error": str(e)},
         }
 
 
 # OSS存储管理相关接口
 
+
 class UploadUrlRequest(BaseModel):
     """URL上传请求"""
+
     url: str = Field(..., description="要上传的文件URL")
     file_type: str = Field("image", description="文件类型(image/video/audio)")
     prefix: Optional[str] = Field(None, description="存储前缀")
@@ -438,6 +464,7 @@ class UploadUrlRequest(BaseModel):
 
 class BatchUploadRequest(BaseModel):
     """批量上传请求"""
+
     urls: List[str] = Field(..., description="要上传的文件URL列表")
     file_type: str = Field("image", description="文件类型")
     prefix: Optional[str] = Field(None, description="存储前缀")
@@ -446,63 +473,58 @@ class BatchUploadRequest(BaseModel):
 
 @router.post("/storage/upload-url")
 async def upload_from_url(
-    request: UploadUrlRequest,
-    current_user: User = Depends(get_current_active_user)
+    request: UploadUrlRequest, current_user: User = Depends(get_current_active_user)
 ):
     """从URL上传文件到OSS"""
     if not oss_service:
         raise HTTPException(status_code=503, detail="OSS服务未配置")
-    
+
     try:
         result = await oss_service.upload_from_url(
             url=request.url,
             file_type=request.file_type,
             prefix=request.prefix,
-            metadata=request.metadata
+            metadata=request.metadata,
         )
-        
+
         if result["success"]:
-            return {
-                "success": True,
-                "data": result
-            }
+            return {"success": True, "data": result}
         else:
             raise HTTPException(status_code=400, detail=result["error"])
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
 
 
 @router.post("/storage/batch-upload")
 async def batch_upload_from_urls(
-    request: BatchUploadRequest,
-    current_user: User = Depends(get_current_active_user)
+    request: BatchUploadRequest, current_user: User = Depends(get_current_active_user)
 ):
     """批量从URL上传文件到OSS"""
     if not oss_service:
         raise HTTPException(status_code=503, detail="OSS服务未配置")
-    
+
     try:
         results = await oss_service.upload_multiple_urls(
             urls=request.urls,
             file_type=request.file_type,
             prefix=request.prefix,
-            metadata=request.metadata
+            metadata=request.metadata,
         )
-        
+
         success_count = sum(1 for r in results if r.get("success"))
         failed_count = len(results) - success_count
-        
+
         return {
             "success": True,
             "data": {
                 "total": len(results),
                 "success_count": success_count,
                 "failed_count": failed_count,
-                "results": results
-            }
+                "results": results,
+            },
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"批量上传失败: {str(e)}")
 
@@ -512,75 +534,62 @@ async def list_storage_objects(
     prefix: str = "",
     max_keys: int = 100,
     marker: str = "",
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """列出OSS存储对象"""
     if not oss_service:
         raise HTTPException(status_code=503, detail="OSS服务未配置")
-    
+
     try:
         result = oss_service.list_objects(
-            prefix=prefix,
-            max_keys=max_keys,
-            marker=marker
+            prefix=prefix, max_keys=max_keys, marker=marker
         )
-        
+
         if result["success"]:
-            return {
-                "success": True,
-                "data": result
-            }
+            return {"success": True, "data": result}
         else:
             raise HTTPException(status_code=400, detail=result["error"])
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"列出对象失败: {str(e)}")
 
 
 @router.get("/storage/info/{object_key:path}")
 async def get_object_info(
-    object_key: str,
-    current_user: User = Depends(get_current_active_user)
+    object_key: str, current_user: User = Depends(get_current_active_user)
 ):
     """获取OSS对象信息"""
     if not oss_service:
         raise HTTPException(status_code=503, detail="OSS服务未配置")
-    
+
     try:
         result = oss_service.get_object_info(object_key)
-        
+
         if result["success"]:
-            return {
-                "success": True,
-                "data": result
-            }
+            return {"success": True, "data": result}
         else:
             raise HTTPException(status_code=404, detail=result["error"])
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取对象信息失败: {str(e)}")
 
 
 @router.delete("/storage/{object_key:path}")
 async def delete_storage_object(
-    object_key: str,
-    current_user: User = Depends(get_current_active_user)
+    object_key: str, current_user: User = Depends(get_current_active_user)
 ):
     """删除OSS存储对象"""
     if not oss_service:
         raise HTTPException(status_code=503, detail="OSS服务未配置")
-    
+
     try:
         result = oss_service.delete_object(object_key)
-        
+
         if result["success"]:
-            return {
-                "success": True,
-                "data": result
-            }
+            return {"success": True, "data": result}
         else:
             raise HTTPException(status_code=400, detail=result["error"])
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"删除对象失败: {str(e)}")
 
@@ -590,51 +599,44 @@ async def get_signed_url(
     object_key: str,
     expires: int = 3600,
     method: str = "GET",
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """生成OSS对象签名URL"""
     if not oss_service:
         raise HTTPException(status_code=503, detail="OSS服务未配置")
-    
+
     try:
         signed_url = oss_service.get_signed_url(
-            object_key=object_key,
-            expires=expires,
-            method=method
+            object_key=object_key, expires=expires, method=method
         )
-        
+
         return {
             "success": True,
             "data": {
                 "object_key": object_key,
                 "signed_url": signed_url,
                 "expires_in": expires,
-                "method": method
-            }
+                "method": method,
+            },
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"生成签名URL失败: {str(e)}")
 
 
 @router.get("/storage/status")
-async def get_storage_status(
-    current_user: User = Depends(get_current_active_user)
-):
+async def get_storage_status(current_user: User = Depends(get_current_active_user)):
     """获取OSS存储服务状态"""
     if not oss_service:
         return {
             "success": False,
-            "data": {
-                "status": "disabled",
-                "message": "OSS服务未配置"
-            }
+            "data": {"status": "disabled", "message": "OSS服务未配置"},
         }
-    
+
     try:
         # 测试OSS连接
         test_result = oss_service.list_objects(prefix="", max_keys=1)
-        
+
         return {
             "success": True,
             "data": {
@@ -642,15 +644,16 @@ async def get_storage_status(
                 "bucket": oss_service.bucket_name,
                 "endpoint": oss_service.endpoint,
                 "domain": oss_service.domain,
-                "message": "OSS服务正常" if test_result["success"] else test_result.get("error", "连接失败")
-            }
+                "message": (
+                    "OSS服务正常"
+                    if test_result["success"]
+                    else test_result.get("error", "连接失败")
+                ),
+            },
         }
-        
+
     except Exception as e:
         return {
             "success": False,
-            "data": {
-                "status": "error",
-                "message": f"OSS服务状态检查失败: {str(e)}"
-            }
+            "data": {"status": "error", "message": f"OSS服务状态检查失败: {str(e)}"},
         }

@@ -4,13 +4,18 @@ AI服务管理器
 统一管理所有AI服务提供商，提供负载均衡、故障转移等功能
 """
 
-import asyncio
 import random
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .providers.base import BaseProvider, AIResponse, AIModelType, AITaskType, ProviderConfig
+from .providers.base import (
+    BaseProvider,
+    AIResponse,
+    AIModelType,
+    AITaskType,
+    ProviderConfig,
+)
 from .providers.openai_provider import OpenAIProvider
 from .providers.keling_provider import KelingProvider
 from .providers.jimeng_provider import JimengProvider
@@ -23,6 +28,7 @@ from app.core.logging import get_logger
 
 class ProviderPriority(Enum):
     """提供商优先级"""
+
     HIGH = 1
     MEDIUM = 2
     LOW = 3
@@ -31,6 +37,7 @@ class ProviderPriority(Enum):
 @dataclass
 class ProviderWeight:
     """提供商权重配置"""
+
     provider_name: str
     weight: float = 1.0  # 权重，越高越容易被选中
     priority: ProviderPriority = ProviderPriority.MEDIUM
@@ -43,6 +50,7 @@ class ProviderWeight:
 @dataclass
 class AIServiceConfig:
     """AI服务配置"""
+
     providers: Dict[str, ProviderConfig] = field(default_factory=dict)
     provider_weights: Dict[str, ProviderWeight] = field(default_factory=dict)
     enable_fallback: bool = True
@@ -53,7 +61,7 @@ class AIServiceConfig:
 
 class AIServiceManager:
     """AI服务管理器"""
-    
+
     def __init__(self, config: AIServiceConfig):
         self.config = config
         self.providers: Dict[str, BaseProvider] = {}
@@ -98,7 +106,7 @@ class AIServiceManager:
     def _prefer_http_for_download(self, url: str) -> str:
         """在下载参考图时优先使用 http，避免生产环境 HTTPS 证书问题。"""
         if isinstance(url, str) and url.lower().startswith("https://"):
-            return "http://" + url[len("https://"):]
+            return "http://" + url[len("https://") :]
         return url
 
     def _maybe_compress_inline_image(
@@ -163,7 +171,14 @@ class AIServiceManager:
             return ""
         return s if len(s) <= limit else s[:limit] + "...<truncated>"
 
-    def _log_request(self, *, task: str, provider: Optional[str], model: Optional[str], params: Dict[str, Any] | None = None):
+    def _log_request(
+        self,
+        *,
+        task: str,
+        provider: Optional[str],
+        model: Optional[str],
+        params: Dict[str, Any] | None = None,
+    ):
         try:
             self.logger.info(
                 f"LLM Request | task={task} provider={provider or 'auto'} model={model or 'auto'} params={params or {}}"
@@ -179,14 +194,21 @@ class AIServiceManager:
         except Exception:
             pass
 
-    def _log_response(self, *, task: str, provider: Optional[str], model: Optional[str], response: AIResponse):
+    def _log_response(
+        self,
+        *,
+        task: str,
+        provider: Optional[str],
+        model: Optional[str],
+        response: AIResponse,
+    ):
         try:
             status = "success" if (response and response.success) else "failure"
             if response and not response.success and response.error:
                 body_preview = f"ERROR: {self._truncate(response.error, 2000)}"
             else:
                 body_preview = self._truncate(response.data if response else None, 2000)
-            usage = getattr(response, 'usage', None)
+            usage = getattr(response, "usage", None)
             p = response.provider if response and response.provider else provider
             m = response.model if response and response.model else model
             self.logger.info(
@@ -194,114 +216,113 @@ class AIServiceManager:
             )
         except Exception:
             pass
-    
+
     def _initialize_providers(self):
         """初始化所有提供商"""
         for provider_name, provider_config in self.config.providers.items():
             if provider_name in self.provider_classes:
                 provider_class = self.provider_classes[provider_name]
                 self.providers[provider_name] = provider_class(provider_config)
-                
+
                 # 初始化权重配置
                 if provider_name not in self.config.provider_weights:
                     self.config.provider_weights[provider_name] = ProviderWeight(
                         provider_name=provider_name
                     )
-    
+
     def get_available_providers(
-        self, 
-        model_type: AIModelType = None,
-        task_type: AITaskType = None
+        self, model_type: AIModelType = None, task_type: AITaskType = None
     ) -> List[str]:
         """获取可用的提供商列表"""
         available = []
-        
+
         for name, provider in self.providers.items():
             weight = self.config.provider_weights.get(name)
             if not weight or not weight.enabled:
                 continue
-                
+
             # 检查是否支持指定的模型类型
             if model_type and model_type not in provider.supported_model_types:
                 continue
-                
+
             # 检查请求频率限制
             if self._check_rate_limit(name):
                 available.append(name)
-        
+
         return available
-    
+
     def _check_rate_limit(self, provider_name: str) -> bool:
         """检查提供商的请求频率限制"""
         weight = self.config.provider_weights.get(provider_name)
         if not weight:
             return True
-            
+
         import time
+
         current_time = time.time()
-        
+
         # 每分钟重置计数器
         if current_time - weight.last_reset_time > 60:
             weight.current_requests = 0
             weight.last_reset_time = current_time
-        
+
         return weight.current_requests < weight.max_requests_per_minute
-    
+
     def _select_provider(
-        self, 
-        available_providers: List[str],
-        prefer_provider: str = None
+        self, available_providers: List[str], prefer_provider: str = None
     ) -> Optional[str]:
         """选择最佳提供商"""
         if not available_providers:
             return None
-            
+
         # 如果指定了首选提供商且可用，直接使用
         if prefer_provider and prefer_provider in available_providers:
             return prefer_provider
-        
+
         if not self.config.enable_load_balancing:
             # 不启用负载均衡时，按优先级选择
             return self._select_by_priority(available_providers)
-        
+
         # 启用负载均衡时，按权重随机选择
         return self._select_by_weight(available_providers)
-    
+
     def _select_by_priority(self, providers: List[str]) -> str:
         """按优先级选择提供商"""
         priority_map = {}
         for name in providers:
             weight = self.config.provider_weights.get(name)
-            priority = weight.priority.value if weight else ProviderPriority.MEDIUM.value
+            priority = (
+                weight.priority.value if weight else ProviderPriority.MEDIUM.value
+            )
             if priority not in priority_map:
                 priority_map[priority] = []
             priority_map[priority].append(name)
-        
+
         # 选择最高优先级的提供商
         highest_priority = min(priority_map.keys())
         return random.choice(priority_map[highest_priority])
-    
+
     def _select_by_weight(self, providers: List[str]) -> str:
         """按权重选择提供商"""
         weights = []
         for name in providers:
             weight = self.config.provider_weights.get(name)
             weights.append(weight.weight if weight else 1.0)
-        
+
         # 加权随机选择
         total_weight = sum(weights)
         if total_weight == 0:
             return random.choice(providers)
-        
+
         r = random.uniform(0, total_weight)
         cumulative = 0
         for i, weight in enumerate(weights):
             cumulative += weight
             if r <= cumulative:
                 return providers[i]
-        
+
         return providers[-1]
-    
+
     def _update_request_count(self, provider_name: str):
         """更新请求计数"""
         weight = self.config.provider_weights.get(provider_name)
@@ -361,9 +382,8 @@ class AIServiceManager:
                 # model_type 进一步过滤（以防 Provider 忽略了参数）
                 if model_type:
                     caps = [str(c).lower() for c in mi.capabilities or []]
-                    supports_capability = (
-                        model_type == AIModelType.IMAGE_TO_IMAGE
-                        and ("image_to_image" in caps)
+                    supports_capability = model_type == AIModelType.IMAGE_TO_IMAGE and (
+                        "image_to_image" in caps
                     )
                     if not supports_capability and mi.model_type != model_type:
                         continue
@@ -380,7 +400,7 @@ class AIServiceManager:
         # 简单排序：provider, name
         models.sort(key=lambda x: (x["provider"], x.get("name") or x["id"]))
         return models
-    
+
     async def generate_text(
         self,
         prompt: str,
@@ -391,7 +411,7 @@ class AIServiceManager:
         temperature: float = 0.7,
         json_schema: dict | None = None,
         stream: bool = True,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """统一文本生成接口"""
         available_providers = self.get_available_providers(
@@ -408,7 +428,7 @@ class AIServiceManager:
 
         original_model = model
         last_model_used = original_model
-        
+
         if not available_providers:
             return AIResponse(
                 success=False,
@@ -416,9 +436,9 @@ class AIServiceManager:
                 provider="ai_service_manager",
                 model=model or "unknown",
                 task_type=AITaskType.STORY_GENERATION,
-                model_type=AIModelType.TEXT_GENERATION
+                model_type=AIModelType.TEXT_GENERATION,
             )
-        
+
         # 记录请求
         params = {
             "temperature": temperature,
@@ -437,7 +457,7 @@ class AIServiceManager:
             provider_name = self._select_provider(available_providers, prefer_provider)
             if not provider_name:
                 break
-                
+
             provider = self.providers[provider_name]
             self._update_request_count(provider_name)
 
@@ -446,7 +466,9 @@ class AIServiceManager:
             if not provider_model:
                 static_models = [
                     m
-                    for m in getattr(provider, "available_models", [])  # static list is more reliable
+                    for m in getattr(
+                        provider, "available_models", []
+                    )  # static list is more reliable
                     if m.model_type == AIModelType.TEXT_GENERATION
                 ]
                 if static_models:
@@ -457,9 +479,13 @@ class AIServiceManager:
                         AIModelType.TEXT_GENERATION,
                     )
                     text_models = available_models
-                    provider_model = text_models[0].model_id if text_models else getattr(provider, "default_model", "default")
+                    provider_model = (
+                        text_models[0].model_id
+                        if text_models
+                        else getattr(provider, "default_model", "default")
+                    )
             last_model_used = provider_model
-            
+
             try:
                 provider_kwargs = {
                     "prompt": prompt,
@@ -474,10 +500,15 @@ class AIServiceManager:
                     provider_kwargs["max_tokens"] = max_tokens
                 response = await provider.generate_text(**provider_kwargs)
                 # 记录响应
-                self._log_response(task="generate_text", provider=provider_name, model=provider_model, response=response)
+                self._log_response(
+                    task="generate_text",
+                    provider=provider_name,
+                    model=provider_model,
+                    response=response,
+                )
                 if response.success or not self.config.enable_fallback:
                     return response
-                    
+
             except Exception as e:
                 if not self.config.enable_fallback:
                     return AIResponse(
@@ -486,22 +517,22 @@ class AIServiceManager:
                         provider=provider_name,
                         model=model,
                         task_type=AITaskType.STORY_GENERATION,
-                        model_type=AIModelType.TEXT_GENERATION
+                        model_type=AIModelType.TEXT_GENERATION,
                     )
-            
+
             # 失败时从可用列表中移除该提供商
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
-        
+
         return AIResponse(
             success=False,
             error="所有文本生成提供商都失败了",
             provider="ai_service_manager",
             model=last_model_used or "unknown",
             task_type=AITaskType.STORY_GENERATION,
-            model_type=AIModelType.TEXT_GENERATION
+            model_type=AIModelType.TEXT_GENERATION,
         )
-    
+
     async def generate_image(
         self,
         prompt: str,
@@ -510,9 +541,40 @@ class AIServiceManager:
         width: int = 1024,
         height: int = 1024,
         style: str = "realistic",
-        **kwargs
+        style_preset_id: str | None = None,
+        style_spec: Any | None = None,
+        **kwargs,
     ) -> AIResponse:
         """统一图像生成接口"""
+        resolved_style_spec = None
+        style_resolution_meta: dict[str, Any] | None = None
+        openai_style_override: str | None = None
+        try:
+            if style_preset_id or style_spec is not None:
+                from app.utils.style_utils import (
+                    build_style_prompt,
+                    derive_legacy_image_style,
+                    derive_openai_image_style,
+                    resolve_style_spec,
+                )
+
+                resolved_style_spec, style_resolution_meta = resolve_style_spec(
+                    style_spec=style_spec,
+                    style_preset_id=style_preset_id,
+                    legacy_style=style,
+                    fill_defaults=True,
+                )
+                style_prompt = build_style_prompt(resolved_style_spec)
+                if style_prompt:
+                    prompt = f"{prompt.rstrip()}\n\n{style_prompt}"
+                style = derive_legacy_image_style(resolved_style_spec)
+                openai_style_override = derive_openai_image_style(
+                    resolved_style_spec, fallback=style
+                )
+        except Exception as exc:  # pragma: no cover - defensive
+            resolved_style_spec = None
+            style_resolution_meta = {"error": str(exc)}
+
         available_providers = self.get_available_providers(
             model_type=AIModelType.TEXT_TO_IMAGE
         )
@@ -529,7 +591,7 @@ class AIServiceManager:
 
         original_model = model
         last_model_used = original_model
-        
+
         if not available_providers:
             return AIResponse(
                 success=False,
@@ -537,23 +599,26 @@ class AIServiceManager:
                 provider="ai_service_manager",
                 model=model or "unknown",
                 task_type=AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.TEXT_TO_IMAGE
+                model_type=AIModelType.TEXT_TO_IMAGE,
             )
-        
+
         # 记录请求
-        self._log_request(task="generate_image", provider=prefer_provider, model=model, params={
-            "width": width, "height": height, "style": style
-        })
+        self._log_request(
+            task="generate_image",
+            provider=prefer_provider,
+            model=model,
+            params={"width": width, "height": height, "style": style},
+        )
         self._log_prompt(kwargs.get("prompt_override", prompt))
 
         for attempt in range(self.config.max_retries):
             provider_name = self._select_provider(available_providers, prefer_provider)
             if not provider_name:
                 break
-                
+
             provider = self.providers[provider_name]
             self._update_request_count(provider_name)
-            
+
             # 为当前 provider 选择合适的默认模型，不影响下一轮选择
             provider_model = original_model
             if not provider_model:
@@ -570,22 +635,47 @@ class AIServiceManager:
                         AIModelType.TEXT_TO_IMAGE,
                     )
                     image_models = available_models
-                    provider_model = image_models[0].model_id if image_models else getattr(provider, "default_model", "default")
+                    provider_model = (
+                        image_models[0].model_id
+                        if image_models
+                        else getattr(provider, "default_model", "default")
+                    )
             last_model_used = provider_model
-            
+
             try:
+                provider_style = style
+                if provider_name == "openai":
+                    from app.utils.model_utils import normalize_openai_image_style
+
+                    provider_style = normalize_openai_image_style(
+                        openai_style_override or provider_style
+                    )
+
                 response = await provider.generate_image(
                     prompt=prompt,
                     model=provider_model,
                     width=width,
                     height=height,
-                    style=style,
-                    **kwargs
+                    style=provider_style,
+                    **kwargs,
                 )
-                self._log_response(task="generate_image", provider=provider_name, model=provider_model, response=response)
+                if resolved_style_spec is not None:
+                    meta = dict(response.metadata or {})
+                    meta["style_spec"] = resolved_style_spec.model_dump(
+                        mode="json", exclude_none=True
+                    )
+                    if style_resolution_meta:
+                        meta["style_spec_resolution"] = style_resolution_meta
+                    response.metadata = meta
+                self._log_response(
+                    task="generate_image",
+                    provider=provider_name,
+                    model=provider_model,
+                    response=response,
+                )
                 if response.success or not self.config.enable_fallback:
                     return response
-                    
+
             except Exception as e:
                 if not self.config.enable_fallback:
                     return AIResponse(
@@ -594,19 +684,19 @@ class AIServiceManager:
                         provider=provider_name,
                         model=model,
                         task_type=AITaskType.PORTRAIT_GENERATION,
-                        model_type=AIModelType.TEXT_TO_IMAGE
+                        model_type=AIModelType.TEXT_TO_IMAGE,
                     )
-            
+
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
-        
+
         return AIResponse(
             success=False,
             error="所有图像生成提供商都失败了",
             provider="ai_service_manager",
             model=last_model_used or "unknown",
             task_type=AITaskType.PORTRAIT_GENERATION,
-            model_type=AIModelType.TEXT_TO_IMAGE
+            model_type=AIModelType.TEXT_TO_IMAGE,
         )
 
     async def image_to_image(
@@ -616,9 +706,40 @@ class AIServiceManager:
         model: str | None = None,
         prefer_provider: str | None = None,
         count: int | None = None,
+        style_preset_id: str | None = None,
+        style_spec: Any | None = None,
         **kwargs,
     ) -> AIResponse:
         """统一图生图接口"""
+        resolved_style_spec = None
+        style_resolution_meta: dict[str, Any] | None = None
+        legacy_style = str(kwargs.get("style") or "realistic")
+        try:
+            if style_preset_id or style_spec is not None:
+                from app.utils.style_utils import (
+                    build_style_prompt,
+                    derive_legacy_image_style,
+                    resolve_style_spec,
+                )
+
+                resolved_style_spec, style_resolution_meta = resolve_style_spec(
+                    style_spec=style_spec,
+                    style_preset_id=style_preset_id,
+                    legacy_style=legacy_style,
+                    fill_defaults=True,
+                )
+                style_prompt = build_style_prompt(resolved_style_spec)
+                if style_prompt:
+                    if prompt:
+                        prompt = f"{prompt.rstrip()}\n\n{style_prompt}"
+                    else:
+                        prompt = style_prompt
+                legacy_style = derive_legacy_image_style(resolved_style_spec)
+                kwargs["style"] = legacy_style
+        except Exception as exc:  # pragma: no cover - defensive
+            resolved_style_spec = None
+            style_resolution_meta = {"error": str(exc)}
+
         available_providers = self.get_available_providers(
             model_type=AIModelType.IMAGE_TO_IMAGE
         )
@@ -671,7 +792,11 @@ class AIServiceManager:
                 prefer_is_google = (prefer_provider or "").lower() == "google"
                 maybe_google = prefer_is_google or ("google" in available_providers)
                 max_refs = 4 if prefer_is_google else (8 if maybe_google else 14)
-                target_max_bytes = 220_000 if prefer_is_google else (350_000 if maybe_google else 2_000_000)
+                target_max_bytes = (
+                    220_000
+                    if prefer_is_google
+                    else (350_000 if maybe_google else 2_000_000)
+                )
                 max_side = 512 if prefer_is_google else (768 if maybe_google else 2048)
 
                 async with httpx.AsyncClient(
@@ -702,7 +827,9 @@ class AIServiceManager:
                         )
                         subtype = "png"
                         if "/" in ctype:
-                            subtype = (ctype.split("/", 1)[1].split(";", 1)[0] or "png").strip()
+                            subtype = (
+                                ctype.split("/", 1)[1].split(";", 1)[0] or "png"
+                            ).strip()
                         b64 = base64.b64encode(content).decode("ascii")
                         base64_images.append(
                             f"data:image/{subtype.lower()};base64,{b64}"
@@ -742,7 +869,9 @@ class AIServiceManager:
                         provider,
                         AIModelType.TEXT_TO_IMAGE,
                     )
-                    effective_model = t2i_models[0].model_id if t2i_models else "default"
+                    effective_model = (
+                        t2i_models[0].model_id if t2i_models else "default"
+                    )
 
             try:
                 # 部分提供商可能未重写 image_to_image，此时调用 BaseProvider 的默认实现返回未实现错误
@@ -759,6 +888,14 @@ class AIServiceManager:
                     model=effective_model,
                     response=response,
                 )
+                if resolved_style_spec is not None:
+                    meta = dict(response.metadata or {})
+                    meta["style_spec"] = resolved_style_spec.model_dump(
+                        mode="json", exclude_none=True
+                    )
+                    if style_resolution_meta:
+                        meta["style_spec_resolution"] = style_resolution_meta
+                    response.metadata = meta
                 if response.success or not self.config.enable_fallback:
                     return response
             except Exception as e:
@@ -780,7 +917,12 @@ class AIServiceManager:
                 inferred_provider: str | None = None
                 if model:
                     lower = model.lower()
-                    if lower.startswith("seedream") or lower.startswith("volcengine") or "doubao" in lower or "seedream" in lower:
+                    if (
+                        lower.startswith("seedream")
+                        or lower.startswith("volcengine")
+                        or "doubao" in lower
+                        or "seedream" in lower
+                    ):
                         inferred_provider = "volcengine"
                     elif lower.startswith("deepseek"):
                         inferred_provider = "deepseek"
@@ -793,7 +935,9 @@ class AIServiceManager:
                     elif lower.startswith("gemini"):
                         inferred_provider = "google"
 
-                fallback_prompt = prompt or "为当前角色生成不同视角/姿态的图像，例如背面照或全身照"
+                fallback_prompt = (
+                    prompt or "为当前角色生成不同视角/姿态的图像，例如背面照或全身照"
+                )
                 self.logger.warning(
                     "image_to_image fallback: using text-to-image without reference | model=%s provider_hint=%s image_url=%s",
                     model,
@@ -806,6 +950,9 @@ class AIServiceManager:
                     model=model,
                     prefer_provider=inferred_provider or prefer_provider,
                     prompt_override=fallback_prompt,
+                    style=legacy_style,
+                    style_preset_id=style_preset_id,
+                    style_spec=style_spec,
                     n=count or 1,
                 )
                 if text_resp and text_resp.success:
@@ -832,7 +979,7 @@ class AIServiceManager:
             task_type=AITaskType.SCENE_GENERATION,
             model_type=AIModelType.IMAGE_TO_IMAGE,
         )
-    
+
     async def generate_video(
         self,
         prompt: str = None,
@@ -842,14 +989,16 @@ class AIServiceManager:
         duration: int = 5,
         fps: int = 24,
         resolution: str = "1280x720",
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """统一视频生成接口"""
         # 根据输入类型确定模型类型
-        model_type = AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
-        
+        model_type = (
+            AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
+        )
+
         available_providers = self.get_available_providers(model_type=model_type)
-        
+
         if not available_providers:
             return AIResponse(
                 success=False,
@@ -857,26 +1006,38 @@ class AIServiceManager:
                 provider="ai_service_manager",
                 model=model or "unknown",
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=model_type
+                model_type=model_type,
             )
-        
+
         # 记录请求
-        self._log_request(task="generate_video", provider=prefer_provider, model=model, params={
-            "duration": duration, "fps": fps, "resolution": resolution, "mode": ("image_to_video" if image_url else "text_to_video")
-        })
-        self._log_prompt(prompt if not image_url else f"<image_url>: {self._truncate(image_url, 256)}")
+        self._log_request(
+            task="generate_video",
+            provider=prefer_provider,
+            model=model,
+            params={
+                "duration": duration,
+                "fps": fps,
+                "resolution": resolution,
+                "mode": ("image_to_video" if image_url else "text_to_video"),
+            },
+        )
+        self._log_prompt(
+            prompt
+            if not image_url
+            else f"<image_url>: {self._truncate(image_url, 256)}"
+        )
 
         for attempt in range(self.config.max_retries):
             provider_name = self._select_provider(available_providers, prefer_provider)
             if not provider_name:
                 break
-                
+
             provider = self.providers[provider_name]
             self._update_request_count(provider_name)
-            
+
             try:
                 # 根据提供商类型调用不同方法
-                if hasattr(provider, 'generate_video'):
+                if hasattr(provider, "generate_video"):
                     response = await provider.generate_video(
                         prompt=prompt,
                         image_url=image_url,
@@ -884,7 +1045,7 @@ class AIServiceManager:
                         duration=duration,
                         fps=fps,
                         resolution=resolution,
-                        **kwargs
+                        **kwargs,
                     )
                 else:
                     response = AIResponse(
@@ -893,12 +1054,17 @@ class AIServiceManager:
                         provider=provider_name,
                         model=model or "unknown",
                         task_type=AITaskType.VIDEO_GENERATION,
-                        model_type=model_type
+                        model_type=model_type,
                     )
-                self._log_response(task="generate_video", provider=provider_name, model=model, response=response)
+                self._log_response(
+                    task="generate_video",
+                    provider=provider_name,
+                    model=model,
+                    response=response,
+                )
                 if response.success or not self.config.enable_fallback:
                     return response
-                    
+
             except Exception as e:
                 if not self.config.enable_fallback:
                     return AIResponse(
@@ -907,21 +1073,21 @@ class AIServiceManager:
                         provider=provider_name,
                         model=model or "unknown",
                         task_type=AITaskType.VIDEO_GENERATION,
-                        model_type=model_type
+                        model_type=model_type,
                     )
-            
+
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
-        
+
         return AIResponse(
             success=False,
             error="所有视频生成提供商都失败了",
             provider="ai_service_manager",
             model=model or "unknown",
             task_type=AITaskType.VIDEO_GENERATION,
-            model_type=model_type
+            model_type=model_type,
         )
-    
+
     async def text_to_speech(
         self,
         text: str,
@@ -929,13 +1095,13 @@ class AIServiceManager:
         prefer_provider: str = None,
         voice_type: str = None,
         speed: float = 1.0,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """统一语音合成接口"""
         available_providers = self.get_available_providers(
             model_type=AIModelType.TEXT_TO_SPEECH
         )
-        
+
         if not available_providers:
             return AIResponse(
                 success=False,
@@ -943,31 +1109,34 @@ class AIServiceManager:
                 provider="ai_service_manager",
                 model=model or "unknown",
                 task_type=AITaskType.VOICE_GENERATION,
-                model_type=AIModelType.TEXT_TO_SPEECH
+                model_type=AIModelType.TEXT_TO_SPEECH,
             )
-        
+
         # 记录请求
-        self._log_request(task="text_to_speech", provider=prefer_provider, model=model, params={
-            "voice_type": voice_type, "speed": speed
-        })
+        self._log_request(
+            task="text_to_speech",
+            provider=prefer_provider,
+            model=model,
+            params={"voice_type": voice_type, "speed": speed},
+        )
         self._log_prompt(text)
 
         for attempt in range(self.config.max_retries):
             provider_name = self._select_provider(available_providers, prefer_provider)
             if not provider_name:
                 break
-                
+
             provider = self.providers[provider_name]
             self._update_request_count(provider_name)
-            
+
             try:
-                if hasattr(provider, 'text_to_speech'):
+                if hasattr(provider, "text_to_speech"):
                     response = await provider.text_to_speech(
                         text=text,
                         model=model,
                         voice_type=voice_type,
                         speed=speed,
-                        **kwargs
+                        **kwargs,
                     )
                 else:
                     response = AIResponse(
@@ -976,12 +1145,17 @@ class AIServiceManager:
                         provider=provider_name,
                         model=model or "unknown",
                         task_type=AITaskType.VOICE_GENERATION,
-                        model_type=AIModelType.TEXT_TO_SPEECH
+                        model_type=AIModelType.TEXT_TO_SPEECH,
                     )
-                self._log_response(task="text_to_speech", provider=provider_name, model=model, response=response)
+                self._log_response(
+                    task="text_to_speech",
+                    provider=provider_name,
+                    model=model,
+                    response=response,
+                )
                 if response.success or not self.config.enable_fallback:
                     return response
-                    
+
             except Exception as e:
                 if not self.config.enable_fallback:
                     return AIResponse(
@@ -990,21 +1164,21 @@ class AIServiceManager:
                         provider=provider_name,
                         model=model or "unknown",
                         task_type=AITaskType.VOICE_GENERATION,
-                        model_type=AIModelType.TEXT_TO_SPEECH
+                        model_type=AIModelType.TEXT_TO_SPEECH,
                     )
-            
+
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
-        
+
         return AIResponse(
             success=False,
             error="所有语音合成提供商都失败了",
             provider="ai_service_manager",
             model=model,
             task_type=AITaskType.VOICE_GENERATION,
-            model_type=AIModelType.TEXT_TO_SPEECH
+            model_type=AIModelType.TEXT_TO_SPEECH,
         )
-    
+
     def get_provider_status(self) -> Dict[str, Any]:
         """获取所有提供商的状态"""
         status = {}
@@ -1015,36 +1189,40 @@ class AIServiceManager:
                 "priority": weight.priority.name if weight else "MEDIUM",
                 "weight": weight.weight if weight else 1.0,
                 "current_requests": weight.current_requests if weight else 0,
-                "max_requests_per_minute": weight.max_requests_per_minute if weight else 60,
-                "supported_model_types": [mt.value for mt in provider.supported_model_types],
+                "max_requests_per_minute": (
+                    weight.max_requests_per_minute if weight else 60
+                ),
+                "supported_model_types": [
+                    mt.value for mt in provider.supported_model_types
+                ],
                 "available_models": [
                     {
                         "id": model.model_id,
                         "name": model.name,
                         "type": model.model_type.value,
-                        "capabilities": model.capabilities
+                        "capabilities": model.capabilities,
                     }
                     for model in provider.available_models
-                ]
+                ],
             }
         return status
-    
+
     def update_provider_config(
-        self, 
-        provider_name: str, 
+        self,
+        provider_name: str,
         enabled: bool = None,
         weight: float = None,
         priority: ProviderPriority = None,
-        max_requests_per_minute: int = None
+        max_requests_per_minute: int = None,
     ):
         """更新提供商配置"""
         if provider_name not in self.config.provider_weights:
             self.config.provider_weights[provider_name] = ProviderWeight(
                 provider_name=provider_name
             )
-        
+
         weight_config = self.config.provider_weights[provider_name]
-        
+
         if enabled is not None:
             weight_config.enabled = enabled
         if weight is not None:

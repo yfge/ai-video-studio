@@ -12,7 +12,9 @@ from app.core.celery_app import celery_app
 
 
 @celery_app.task(name="tasks.story_generate")
-def story_generate_task(task_id: int, request_dict: Dict[str, Any], user_id: int) -> None:
+def story_generate_task(
+    task_id: int, request_dict: Dict[str, Any], user_id: int
+) -> None:
     """
     异步故事生成任务入口。
 
@@ -24,7 +26,9 @@ def story_generate_task(task_id: int, request_dict: Dict[str, Any], user_id: int
 
 
 @celery_app.task(name="tasks.episode_generate")
-def episode_generate_task(task_id: int, request_dict: Dict[str, Any], user_id: int) -> None:
+def episode_generate_task(
+    task_id: int, request_dict: Dict[str, Any], user_id: int
+) -> None:
     """异步剧集生成任务入口。"""
     from app.api.v1.endpoints.episodes import _process_episode_generation_task
 
@@ -32,7 +36,9 @@ def episode_generate_task(task_id: int, request_dict: Dict[str, Any], user_id: i
 
 
 @celery_app.task(name="tasks.script_generate")
-def script_generate_task(task_id: int, request_dict: Dict[str, Any], user_id: int) -> None:
+def script_generate_task(
+    task_id: int, request_dict: Dict[str, Any], user_id: int
+) -> None:
     """异步剧本生成任务入口。"""
     from app.api.v1.endpoints.scripts import _process_script_generation_task
 
@@ -40,7 +46,9 @@ def script_generate_task(task_id: int, request_dict: Dict[str, Any], user_id: in
 
 
 @celery_app.task(name="tasks.virtual_ip_image_generate")
-def virtual_ip_image_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def virtual_ip_image_generate_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """异步虚拟 IP 文生图任务入口。"""
     from app.api.v1.endpoints.virtual_ip_images import _process_virtual_ip_image_task
 
@@ -48,15 +56,21 @@ def virtual_ip_image_generate_task(task_id: int, payload: Dict[str, Any], user_i
 
 
 @celery_app.task(name="tasks.virtual_ip_image_variant")
-def virtual_ip_image_variant_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def virtual_ip_image_variant_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """异步虚拟 IP 图生图任务入口。"""
-    from app.api.v1.endpoints.virtual_ip_images import _process_virtual_ip_image_variant_task
+    from app.api.v1.endpoints.virtual_ip_images import (
+        _process_virtual_ip_image_variant_task,
+    )
 
     _process_virtual_ip_image_variant_task(task_id, payload, user_id)
 
 
 @celery_app.task(name="tasks.environment_image_generate")
-def environment_image_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def environment_image_generate_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """异步环境文生图任务入口。"""
     from app.api.v1.endpoints.story_structure import _process_environment_image_task
 
@@ -64,15 +78,21 @@ def environment_image_generate_task(task_id: int, payload: Dict[str, Any], user_
 
 
 @celery_app.task(name="tasks.environment_image_variant")
-def environment_image_variant_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def environment_image_variant_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """异步环境图生图任务入口。"""
-    from app.api.v1.endpoints.story_structure import _process_environment_image_variant_task
+    from app.api.v1.endpoints.story_structure import (
+        _process_environment_image_variant_task,
+    )
 
     _process_environment_image_variant_task(task_id, payload, user_id)
 
 
 @celery_app.task(name="tasks.storyboard_image_generate")
-def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def storyboard_image_generate_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """异步分镜图像生成任务入口。"""
     from app.api.v1.endpoints.scripts import _process_storyboard_image_task
 
@@ -94,6 +114,8 @@ def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_i
         width=int(payload.get("width") or 1024),
         height=int(payload.get("height") or 1024),
         style=payload.get("style") or "realistic",
+        style_preset_id=payload.get("style_preset_id"),
+        style_spec=payload.get("style_spec"),
         reference_images=payload.get("reference_images") or [],
         count=count_int,
         keyframe_mode=(payload.get("keyframe_mode") or "single"),
@@ -101,7 +123,9 @@ def storyboard_image_generate_task(task_id: int, payload: Dict[str, Any], user_i
 
 
 @celery_app.task(name="tasks.storyboard_video_generate")
-def storyboard_video_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def storyboard_video_generate_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """异步分镜视频生成任务入口。"""
     from app.api.v1.endpoints.scripts import _process_storyboard_video_task
 
@@ -111,7 +135,9 @@ def storyboard_video_generate_task(task_id: int, payload: Dict[str, Any], user_i
 
 
 @celery_app.task(name="tasks.storyboard_generate")
-def storyboard_generate_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def storyboard_generate_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """异步分镜结构生成任务入口。"""
     from app.api.v1.endpoints.scripts import _process_storyboard_generation_task
 

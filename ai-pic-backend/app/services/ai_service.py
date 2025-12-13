@@ -1643,6 +1643,8 @@ class AIService:
         ip_name: str,
         description: str,
         style: str = "realistic",
+        style_preset_id: str | None = None,
+        style_spec: Any | None = None,
         category: str = "portrait",
         model: str = "dalle-3",
         additional_prompts: List[str] = None,
@@ -1656,13 +1658,45 @@ class AIService:
         pure_model, provider_hint = parse_model_and_provider(raw_model)
         pure_model = pure_model or "dall-e-3"
 
+        resolved_style_spec = None
+        style_spec_resolution: dict[str, Any] | None = None
+        derived_style = style
+        style_prompt = ""
+        openai_style = "natural" if style == "realistic" else "vivid"
+        try:
+            if style_preset_id or style_spec is not None:
+                from app.utils.style_utils import (
+                    build_style_prompt,
+                    derive_legacy_image_style,
+                    derive_openai_image_style,
+                    resolve_style_spec,
+                )
+
+                resolved_style_spec, style_spec_resolution = resolve_style_spec(
+                    style_spec=style_spec,
+                    style_preset_id=style_preset_id,
+                    legacy_style=style,
+                    fill_defaults=True,
+                )
+                derived_style = derive_legacy_image_style(resolved_style_spec)
+                style_prompt = build_style_prompt(resolved_style_spec)
+                openai_style = derive_openai_image_style(
+                    resolved_style_spec, fallback=derived_style
+                )
+        except Exception as exc:  # pragma: no cover - defensive
+            resolved_style_spec = None
+            style_spec_resolution = {"error": str(exc)}
+            derived_style = style
+            style_prompt = ""
+            openai_style = "natural" if style == "realistic" else "vivid"
+
         # 使用提示词管理器生成专业提示词
         try:
             variables = {
                 "character_name": ip_name,
                 "character_description": description,
                 "background_story": background_story,
-                "style": style,
+                "style": derived_style,
                 "category": category,
                 "additional_prompts": additional_prompts or [],
                 "is_default": category == "portrait",
@@ -1674,22 +1708,22 @@ class AIService:
 
             # 使用简单的提示词，避免复杂的AI管理器调用
             if category == "portrait":
-                final_prompt = (
-                    f"A professional {style} portrait of {ip_name}, {description}"
-                )
+                final_prompt = f"A professional {derived_style} portrait of {ip_name}, {description}"
             else:
-                final_prompt = (
-                    f"A professional {style} {category} of {ip_name}, {description}"
-                )
+                final_prompt = f"A professional {derived_style} {category} of {ip_name}, {description}"
             if additional_prompts:
                 final_prompt += f", {', '.join(additional_prompts)}"
+
+            direct_prompt = final_prompt
+            if style_prompt:
+                direct_prompt = f"{final_prompt}\n\n{style_prompt}"
 
             self.logger.info(f"生成图像提示词: {final_prompt[:200]}...")
             self.logger.info(
                 "使用模型: %s (provider_hint=%s), 风格: %s, 类别: %s",
                 pure_model,
                 provider_hint,
-                style,
+                derived_style,
                 category,
             )
 
@@ -1706,7 +1740,12 @@ class AIService:
             ):
                 # 使用可灵AI生成图像
                 image_url = await self._generate_with_keling_image(
-                    final_prompt, style, category, pure_model
+                    final_prompt,
+                    derived_style,
+                    category,
+                    pure_model,
+                    style_preset_id=style_preset_id,
+                    style_spec=style_spec,
                 )
                 provider_used = "keling"
                 generation_method = "keling_image"
@@ -1715,8 +1754,8 @@ class AIService:
             ):
                 # 使用 OpenAI DALL-E 直连 API，并支持按官方 size 选项控制分辨率
                 image_url = await self._generate_with_openai_dalle(
-                    final_prompt,
-                    style,
+                    direct_prompt,
+                    openai_style,
                     category,
                     size=size or "1024x1024",
                 )
@@ -1737,7 +1776,9 @@ class AIService:
                     prompt=final_prompt,
                     width=1024,
                     height=1024,
-                    style=style,
+                    style=derived_style,
+                    style_preset_id=style_preset_id,
+                    style_spec=style_spec,
                     model=pure_model,
                     n=count or 1,
                     prefer_provider=prefer_provider,
@@ -1755,7 +1796,9 @@ class AIService:
             else:
                 # 默认使用OpenAI DALL-E（保持向后兼容）
                 image_url = await self._generate_with_openai_dalle(
-                    final_prompt, style, category
+                    direct_prompt,
+                    openai_style,
+                    category,
                 )
                 provider_used = "openai"
                 generation_method = "openai_dalle"
@@ -1769,8 +1812,17 @@ class AIService:
                         prefix="ai-generated/virtual-ip",
                         metadata={
                             "ip_name": ip_name,
-                            "style": style,
+                            "style": derived_style,
                             "category": category,
+                            "style_preset_id": (style_preset_id or "").strip() or None,
+                            "style_spec": (
+                                resolved_style_spec.model_dump(
+                                    mode="json", exclude_none=True
+                                )
+                                if resolved_style_spec is not None
+                                else None
+                            ),
+                            "style_spec_resolution": style_spec_resolution,
                             "provider": provider_used,
                             "model": model,
                         },
@@ -1789,8 +1841,15 @@ class AIService:
                     "relative_path": stored.get("relative_path"),
                     "original_image_url": image_url,
                     "oss_upload": stored.get("oss_upload"),
-                    "prompt": final_prompt,
-                    "style": style,
+                    "prompt": direct_prompt,
+                    "style": derived_style,
+                    "style_preset_id": (style_preset_id or "").strip() or None,
+                    "style_spec": (
+                        resolved_style_spec.model_dump(mode="json", exclude_none=True)
+                        if resolved_style_spec is not None
+                        else None
+                    ),
+                    "style_spec_resolution": style_spec_resolution,
                     "category": category,
                     "generation_method": generation_method,
                     "template_used": PromptTemplate.IMAGE_GENERATION.value,
@@ -2281,7 +2340,14 @@ class AIService:
             self.logger.warning("模型缓存预热失败: %s", exc)
 
     async def _generate_with_keling_image(
-        self, prompt: str, style: str, category: str, model: str = "kling-image"
+        self,
+        prompt: str,
+        style: str,
+        category: str,
+        model: str = "kling-image",
+        *,
+        style_preset_id: str | None = None,
+        style_spec: Any | None = None,
     ) -> Optional[str]:
         """使用可灵AI生成图像"""
         if not self.ai_manager:
@@ -2296,6 +2362,8 @@ class AIService:
                 width=1024,
                 height=1024,
                 style=style,
+                style_preset_id=style_preset_id,
+                style_spec=style_spec,
                 model=model,
                 prefer_provider="keling",
             )
@@ -2345,7 +2413,11 @@ class AIService:
                         "n": 1,
                         "size": size or "1024x1024",
                         "quality": "hd",
-                        "style": "vivid" if style != "realistic" else "natural",
+                        "style": (
+                            style
+                            if style in {"vivid", "natural"}
+                            else ("natural" if style == "realistic" else "vivid")
+                        ),
                         "response_format": "b64_json",  # 使用base64格式避免URL过期问题
                     },
                     timeout=60.0,

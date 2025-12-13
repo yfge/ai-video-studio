@@ -16,8 +16,10 @@ from app.models.script import Story, Episode, Script
 from app.models.story_structure import Scene, Shot, Environment
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.schemas.script import (
-    ScriptCreate, ScriptUpdate, ScriptResponse, 
-    ScriptGenerationRequest
+    ScriptCreate,
+    ScriptUpdate,
+    ScriptResponse,
+    ScriptGenerationRequest,
 )
 from app.schemas.story_structure import SceneCreate, ShotCreate
 from app.services.ai_service import ai_service
@@ -25,7 +27,12 @@ from app.services.storage.oss_service import oss_service
 from app.services import story_structure_service as story_structure_svc
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
-from app.schemas.generation import StoryboardModel, StoryboardPlanModel, StoryboardPlanScene
+from app.schemas.generation import (
+    StoryboardModel,
+    StoryboardPlanModel,
+    StoryboardPlanScene,
+)
+from app.schemas.style import StyleSpec
 from app.core.logging import get_logger
 from app.utils.script_parser import extract_script_structure
 from app.utils.json_utils import extract_json_block
@@ -79,14 +86,21 @@ def _abs_url(url: str) -> str:
         # 将 localhost/127.0.0.1 替换为 INTERNAL_BACKEND_URL，便于容器内访问
         parsed = urlparse(url)
         if parsed.hostname in {"localhost", "127.0.0.1"}:
-            base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+            base = (
+                getattr(settings, "INTERNAL_BACKEND_URL", None)
+                or "http://localhost:8000"
+            ).rstrip("/")
             base_parsed = urlparse(base)
-            rebuilt = parsed._replace(netloc=base_parsed.netloc, scheme=base_parsed.scheme)
+            rebuilt = parsed._replace(
+                netloc=base_parsed.netloc, scheme=base_parsed.scheme
+            )
             return urlunparse(rebuilt)
         return url
     if not url.startswith("/"):
         url = "/" + url
-    base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+    base = (
+        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+    ).rstrip("/")
     return f"{base}{url}"
 
 
@@ -103,7 +117,11 @@ def _serialize_frame(frame: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _load_existing_frames(script: Script) -> List[Dict[str, Any]]:
-    storyboard = (script.extra_metadata or {}).get("storyboard") if script.extra_metadata else None
+    storyboard = (
+        (script.extra_metadata or {}).get("storyboard")
+        if script.extra_metadata
+        else None
+    )
     frames = storyboard.get("frames") if isinstance(storyboard, dict) else None
     if not isinstance(frames, list):
         return []
@@ -147,7 +165,9 @@ def _augment_frames(
         frame["generation_source"] = frame.get("generation_source") or generation_source
         frame["generation_method"] = frame.get("generation_method") or generation_method
         if generation_model:
-            frame["generation_model"] = frame.get("generation_model") or generation_model
+            frame["generation_model"] = (
+                frame.get("generation_model") or generation_model
+            )
         frame["generated_at"] = _ensure_iso_datetime(frame.get("generated_at"), now_iso)
         frame["updated_at"] = now_iso
         if not isinstance(frame.get("reference_images"), list):
@@ -200,16 +220,24 @@ def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
         profile = profiles.setdefault(name, {"name": name})
         return profile
 
-    main_chars = story.main_characters if isinstance(story.main_characters, list) else []
+    main_chars = (
+        story.main_characters if isinstance(story.main_characters, list) else []
+    )
     for raw in main_chars:
         if isinstance(raw, dict):
             name = raw.get("name") or raw.get("character_name") or raw.get("id")
             if not name:
                 continue
             profile = _ensure_profile(str(name))
-            profile.setdefault("role", raw.get("role") or raw.get("type") or raw.get("role_type"))
-            profile.setdefault("description", raw.get("description") or raw.get("summary"))
-            profile.setdefault("personality", raw.get("personality") or raw.get("traits"))
+            profile.setdefault(
+                "role", raw.get("role") or raw.get("type") or raw.get("role_type")
+            )
+            profile.setdefault(
+                "description", raw.get("description") or raw.get("summary")
+            )
+            profile.setdefault(
+                "personality", raw.get("personality") or raw.get("traits")
+            )
             profile.setdefault("motivation", raw.get("motivation") or raw.get("goal"))
             profile.setdefault("arc", raw.get("arc") or raw.get("character_arc"))
         elif isinstance(raw, str):
@@ -239,7 +267,9 @@ def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
 
     cleaned_profiles: List[Dict[str, Any]] = []
     for profile in profiles.values():
-        cleaned_profiles.append({k: v for k, v in profile.items() if v not in (None, "", [], {}, set())})
+        cleaned_profiles.append(
+            {k: v for k, v in profile.items() if v not in (None, "", [], {}, set())}
+        )
 
     return cleaned_profiles
 
@@ -277,7 +307,9 @@ def _extract_episode_scenes(episode: Episode) -> List[Dict[str, Any]]:
         base = dict(raw)
         scene_no = _to_int(base.get("scene_number")) or idx
         base["scene_number"] = scene_no
-        summary = base.get("summary") or base.get("description") or base.get("beat_summary")
+        summary = (
+            base.get("summary") or base.get("description") or base.get("beat_summary")
+        )
         location = base.get("location") or base.get("place") or base.get("setting")
         time_of_day = base.get("time_of_day") or base.get("time")
         if summary:
@@ -344,7 +376,11 @@ def _normalize_script_content(
         raw_scenes = fallback_scenes
     scenes: List[Dict[str, Any]] = []
     for idx, scene in enumerate(raw_scenes, start=1):
-        base = dict(scene) if isinstance(scene, dict) else {"description": str(scene) if scene is not None else ""}
+        base = (
+            dict(scene)
+            if isinstance(scene, dict)
+            else {"description": str(scene) if scene is not None else ""}
+        )
         scene_no = _safe_int(base.get("scene_number")) or idx
         desc = (
             base.get("description")
@@ -378,7 +414,11 @@ def _normalize_script_content(
         if isinstance(item, str):
             dialogues.append(
                 {
-                    "scene_number": scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx,
+                    "scene_number": (
+                        scenes[idx - 1]["scene_number"]
+                        if idx - 1 < len(scenes)
+                        else idx
+                    ),
                     "content": item,
                 }
             )
@@ -386,13 +426,20 @@ def _normalize_script_content(
         if not isinstance(item, dict):
             continue
         dialog = dict(item)
-        content = dialog.get("content") or dialog.get("line") or dialog.get("text") or dialog.get("dialogue")
+        content = (
+            dialog.get("content")
+            or dialog.get("line")
+            or dialog.get("text")
+            or dialog.get("dialogue")
+        )
         if not content:
             continue
         dialog["content"] = content
         sn = _safe_int(dialog.get("scene_number"))
         if sn is None:
-            dialog["scene_number"] = scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+            dialog["scene_number"] = (
+                scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+            )
         dialogues.append(dialog)
 
     raw_stage = normalized.get("stage_directions") or []
@@ -401,7 +448,11 @@ def _normalize_script_content(
         if isinstance(item, str):
             stage_directions.append(
                 {
-                    "scene_number": scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx,
+                    "scene_number": (
+                        scenes[idx - 1]["scene_number"]
+                        if idx - 1 < len(scenes)
+                        else idx
+                    ),
                     "content": item,
                 }
             )
@@ -409,27 +460,43 @@ def _normalize_script_content(
         if not isinstance(item, dict):
             continue
         direction = dict(item)
-        content = direction.get("content") or direction.get("direction") or direction.get("description")
+        content = (
+            direction.get("content")
+            or direction.get("direction")
+            or direction.get("description")
+        )
         if not content:
             continue
         direction["content"] = content
         sn = _safe_int(direction.get("scene_number"))
         if sn is None:
-            direction["scene_number"] = scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+            direction["scene_number"] = (
+                scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+            )
         stage_directions.append(direction)
 
     # 若未提供场景但对白/舞台指示包含 scene_number，则补充占位场景
     if not scenes:
-        scene_numbers = {item.get("scene_number") for item in dialogues if isinstance(item, dict) and item.get("scene_number")}
-        scene_numbers |= {item.get("scene_number") for item in stage_directions if isinstance(item, dict) and item.get("scene_number")}
+        scene_numbers = {
+            item.get("scene_number")
+            for item in dialogues
+            if isinstance(item, dict) and item.get("scene_number")
+        }
+        scene_numbers |= {
+            item.get("scene_number")
+            for item in stage_directions
+            if isinstance(item, dict) and item.get("scene_number")
+        }
         scene_numbers = {sn for sn in scene_numbers if sn is not None}
         for idx, sn in enumerate(sorted(scene_numbers)):
-            scenes.append({
-                "scene_number": _safe_int(sn) or idx + 1,
-                "slug_line": f"Scene {sn}",
-                "summary": "",
-                "description": "",
-            })
+            scenes.append(
+                {
+                    "scene_number": _safe_int(sn) or idx + 1,
+                    "slug_line": f"Scene {sn}",
+                    "summary": "",
+                    "description": "",
+                }
+            )
 
     normalized["scenes"] = scenes
     normalized["dialogues"] = dialogues
@@ -587,7 +654,12 @@ def _populate_dialogues_and_stage_if_missing(
         if not isinstance(sc, dict):
             continue
         scene_no = _to_int(sc.get("scene_number")) or idx
-        summary = sc.get("summary") or sc.get("description") or sc.get("slug_line") or f"场景 {scene_no}"
+        summary = (
+            sc.get("summary")
+            or sc.get("description")
+            or sc.get("slug_line")
+            or f"场景 {scene_no}"
+        )
         speaker_a = speakers[0]
         speaker_b = speakers[1] if len(speakers) > 1 else speaker_a
         generated_dialogues.append(
@@ -624,7 +696,9 @@ def _merge_frames(
     selected_scenes: Optional[List[int]],
 ) -> List[Dict[str, Any]]:
     has_selection = selected_scenes is not None
-    selected_set = {s for s in (selected_scenes or []) if s is not None} if has_selection else None
+    selected_set = (
+        {s for s in (selected_scenes or []) if s is not None} if has_selection else None
+    )
     merged: List[Dict[str, Any]] = []
     if existing_frames and selected_set:
         for frame in existing_frames:
@@ -639,7 +713,12 @@ def _merge_frames(
         merged = [deepcopy(frame) for frame in existing_frames]
 
     merged.extend(new_frames)
-    merged.sort(key=lambda fr: (_to_int(fr.get("scene_number")) or 0, fr.get("frame_number") or 0))
+    merged.sort(
+        key=lambda fr: (
+            _to_int(fr.get("scene_number")) or 0,
+            fr.get("frame_number") or 0,
+        )
+    )
     for idx, frame in enumerate(merged, start=1):
         frame["frame_number"] = idx
         if frame.get("scene_number") is not None and frame.get("scene_index") is None:
@@ -660,12 +739,25 @@ def _enforce_storyboard_variety(frames: List[Dict[str, Any]]) -> List[Dict[str, 
         seen[key] = count
         if count > 0:
             frame["shot_type"] = shot_cycle[(count + (scene_no or 0)) % len(shot_cycle)]
-            frame["camera_movement"] = movement_cycle[(count + (scene_no or 0)) % len(movement_cycle)]
-            frame["composition"] = composition_cycle[(count + (scene_no or 0)) % len(composition_cycle)]
+            frame["camera_movement"] = movement_cycle[
+                (count + (scene_no or 0)) % len(movement_cycle)
+            ]
+            frame["composition"] = composition_cycle[
+                (count + (scene_no or 0)) % len(composition_cycle)
+            ]
             base_desc = desc or f"场景{scene_no or ''}"
-            frame["description"] = f"{base_desc}（变体{count + 1}，强调{frame['camera_movement']}）"
-            frame["duration_seconds"] = max(2, min(12, (frame.get("duration_seconds") or 3) + ((count % 3) - 1)))
-            prompt_parts = [frame["description"], f"景别:{frame['shot_type']}", f"运镜:{frame['camera_movement']}", f"构图:{frame['composition']}"]
+            frame["description"] = (
+                f"{base_desc}（变体{count + 1}，强调{frame['camera_movement']}）"
+            )
+            frame["duration_seconds"] = max(
+                2, min(12, (frame.get("duration_seconds") or 3) + ((count % 3) - 1))
+            )
+            prompt_parts = [
+                frame["description"],
+                f"景别:{frame['shot_type']}",
+                f"运镜:{frame['camera_movement']}",
+                f"构图:{frame['composition']}",
+            ]
             frame["ai_prompt"] = "；".join(prompt_parts)[:500]
     return frames
 
@@ -677,7 +769,9 @@ def _trim_local(value: Any, limit: int = 120) -> str:
     return text[:limit] + ("…" if len(text) > limit else "")
 
 
-def _collect_dialogues_for_scene(script_obj: Script, scene_number: Optional[int], limit: int = 2) -> List[str]:
+def _collect_dialogues_for_scene(
+    script_obj: Script, scene_number: Optional[int], limit: int = 2
+) -> List[str]:
     results: List[str] = []
     for item in script_obj.dialogues or []:
         if isinstance(item, dict):
@@ -696,7 +790,9 @@ def _collect_dialogues_for_scene(script_obj: Script, scene_number: Optional[int]
     return results
 
 
-def _collect_stage_for_scene(script_obj: Script, scene_number: Optional[int], limit: int = 2) -> List[str]:
+def _collect_stage_for_scene(
+    script_obj: Script, scene_number: Optional[int], limit: int = 2
+) -> List[str]:
     results: List[str] = []
     for item in script_obj.stage_directions or []:
         if isinstance(item, dict):
@@ -737,7 +833,9 @@ def _compose_fallback_text(
             details.append(f"时间:{_trim_local(time_info, 40)}")
         if characters:
             if isinstance(characters, list):
-                details.append(f"角色:{_trim_local(', '.join(map(str, characters)), 80)}")
+                details.append(
+                    f"角色:{_trim_local(', '.join(map(str, characters)), 80)}"
+                )
             else:
                 details.append(f"角色:{_trim_local(characters, 80)}")
         if notes:
@@ -783,10 +881,12 @@ async def get_script_languages():
         {"value": "ko-KR", "label": "韩语"},
     ]
 
+
 @router.post("/", response_model=ScriptResponse)
 async def create_script(
     script: ScriptCreate,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """创建剧本"""
     # 检查剧集是否存在且归属当前用户（或管理员）
@@ -796,15 +896,13 @@ async def create_script(
     episode = episode_query.filter(Episode.id == script.episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
-    
+
     # 计算字数和字符数
     word_count = len(script.content.split()) if script.content else 0
     character_count = len(script.content) if script.content else 0
-    
+
     db_script = Script(
-        **script.dict(),
-        word_count=word_count,
-        character_count=character_count
+        **script.dict(), word_count=word_count, character_count=character_count
     )
     db.add(db_script)
     db.commit()
@@ -815,13 +913,15 @@ async def create_script(
     except Exception:
         logger = get_logger()
         logger.warning("同步规范化场景失败（create）", exc_info=True)
-    
+
     return ScriptResponse.from_orm(db_script)
+
 
 @router.post("/generate", response_model=ScriptResponse)
 async def generate_script(
     request: ScriptGenerationRequest,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """使用AI生成剧本"""
     # 获取剧集信息（按用户隔离）
@@ -831,13 +931,15 @@ async def generate_script(
     episode = episode_query.filter(Episode.id == request.episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
-    
+
     # 获取故事信息（确保与当前用户匹配）
     story = db.query(Story).filter(Story.id == episode.story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
-    
-    previous_episode_summaries = _collect_previous_episode_summaries(db, story.id, episode.episode_number)
+
+    previous_episode_summaries = _collect_previous_episode_summaries(
+        db, story.id, episode.episode_number
+    )
     character_profiles = _build_character_profiles(story)
 
     # 构建剧集数据
@@ -849,7 +951,7 @@ async def generate_script(
         previous_episode_summaries=previous_episode_summaries,
         character_profiles=character_profiles,
     )
-    
+
     # 调用AI服务生成剧本
     # 解析模型与提供商
     prefer_provider = None
@@ -868,9 +970,9 @@ async def generate_script(
         style_preferences=request.style_preferences,
         model=model_id,
         prefer_provider=prefer_provider,
-        temperature=request.temperature or 0.7
+        temperature=request.temperature or 0.7,
     )
-    
+
     if not result:
         raise HTTPException(status_code=500, detail="AI剧本生成失败")
 
@@ -904,7 +1006,7 @@ async def generate_script(
                 "stage_directions": extracted.get("stage_directions", []),
                 "metadata": extracted.get("metadata", {}),
             }
-    
+
     ai_content = _normalize_script_content(
         ai_content,
         format_type=request.format_type,
@@ -920,12 +1022,12 @@ async def generate_script(
     dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
         scenes, dialogues_raw, stage_directions_raw, story=story
     )
-    
+
     # 计算统计信息
     word_count = len(script_content.split()) if script_content else 0
     character_count = len(script_content) if script_content else 0
     page_count = max(1, character_count // 2000)  # 估算页数
-    
+
     # 创建剧本记录
     # 额外元数据
     extra_meta = {
@@ -959,12 +1061,12 @@ async def generate_script(
             "additional_requirements": request.additional_requirements,
             "style_preferences": request.style_preferences,
             "model": request.model,
-            "temperature": request.temperature or 0.7
+            "temperature": request.temperature or 0.7,
         },
         extra_metadata=extra_meta or None,
-        status="draft"
+        status="draft",
     )
-    
+
     db.add(db_script)
     db.commit()
     db.refresh(db_script)
@@ -974,14 +1076,15 @@ async def generate_script(
     except Exception:
         logger = get_logger()
         logger.warning("同步规范化场景失败（generate）", exc_info=True)
-    
+
     return ScriptResponse.from_orm(db_script)
 
 
 @router.post("/prompt/preview")
 async def preview_script_prompt(
     request: ScriptGenerationRequest,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
     if not current_user.is_admin and not current_user.is_superuser:
@@ -993,7 +1096,9 @@ async def preview_script_prompt(
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
-    previous_episode_summaries = _collect_previous_episode_summaries(db, story.id, episode.episode_number)
+    previous_episode_summaries = _collect_previous_episode_summaries(
+        db, story.id, episode.episode_number
+    )
     character_profiles = _build_character_profiles(story)
 
     episode_data = _build_episode_data(episode)
@@ -1010,14 +1115,17 @@ async def preview_script_prompt(
         "dialogue_style": request.dialogue_style,
         "scene_detail_level": request.scene_detail_level,
         "additional_requirements": request.additional_requirements,
-        "style_preferences": request.style_preferences or []
+        "style_preferences": request.style_preferences or [],
     }
-    prompt = PromptManager().render_prompt(PromptTemplate.SCRIPT_GENERATION.value, variables)
+    prompt = PromptManager().render_prompt(
+        PromptTemplate.SCRIPT_GENERATION.value, variables
+    )
     return {"success": True, "data": {"prompt": prompt}}
 
 
 def _process_script_generation_task(task_id: int, request_dict: dict, user_id: int):
     from app.core.database import SessionLocal
+
     db = SessionLocal()
     try:
         logger = get_logger("storyboard_image_task")
@@ -1041,7 +1149,9 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if not story:
             raise RuntimeError("故事不存在")
 
-        previous_episode_summaries = _collect_previous_episode_summaries(db, story.id, episode.episode_number)
+        previous_episode_summaries = _collect_previous_episode_summaries(
+            db, story.id, episode.episode_number
+        )
         character_profiles = _build_character_profiles(story)
 
         episode_data = _build_episode_data(episode)
@@ -1069,7 +1179,7 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                 style_preferences=request_dict.get("style_preferences"),
                 model=model_id,
                 prefer_provider=prefer_provider,
-                temperature=request_dict.get("temperature", 0.7)
+                temperature=request_dict.get("temperature", 0.7),
             )
 
         result = anyio.run(_run)
@@ -1122,7 +1232,8 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         extra_meta = {
             k: v
             for k, v in ai_content.items()
-            if k not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
+            if k
+            not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
         }
         if agent_run:
             extra_meta = {
@@ -1148,9 +1259,19 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             character_count=character_count,
             generation_prompt=result.get("prompt"),
             ai_model=result.get("generation_method"),
-            generation_params={k: request_dict.get(k) for k in ["dialogue_style","scene_detail_level","additional_requirements","style_preferences","model","temperature"]},
+            generation_params={
+                k: request_dict.get(k)
+                for k in [
+                    "dialogue_style",
+                    "scene_detail_level",
+                    "additional_requirements",
+                    "style_preferences",
+                    "model",
+                    "temperature",
+                ]
+            },
             extra_metadata=extra_meta or None,
-            status="draft"
+            status="draft",
         )
         db.add(sc)
         db.commit()
@@ -1181,7 +1302,8 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
 async def generate_script_async(
     request: ScriptGenerationRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     t = Task(
         title=f"生成剧本 - 剧集{request.episode_id}",
@@ -1189,7 +1311,7 @@ async def generate_script_async(
         task_type="image_generation",
         prompt=f"Script for episode {request.episode_id}",
         parameters=json.dumps(request.dict(), ensure_ascii=False),
-        user_id=current_user.id
+        user_id=current_user.id,
     )
     db.add(t)
     db.commit()
@@ -1204,9 +1326,11 @@ async def generate_script_async(
 @router.get("/{script_id}/storyboard")
 async def get_storyboard(
     script_id: int,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     from app.core.logging import get_logger
+
     logger = get_logger()
     script = (
         db.query(Script)
@@ -1222,7 +1346,11 @@ async def get_storyboard(
     )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
-    storyboard = (script.extra_metadata or {}).get("storyboard") if script.extra_metadata else None
+    storyboard = (
+        (script.extra_metadata or {}).get("storyboard")
+        if script.extra_metadata
+        else None
+    )
     try:
         frames = (storyboard or {}).get("frames") or []
         first_url = None
@@ -1250,7 +1378,8 @@ async def get_storyboard(
 @router.post("/{script_id}/storyboard/preview")
 async def preview_storyboard_prompt(
     script_id: int,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     script = db.query(Script).filter(Script.id == script_id).first()
     if not script:
@@ -1270,9 +1399,12 @@ async def generate_storyboard(
     temperature: float = Query(0.7, ge=0.0, le=1.5, description="创造性温度"),
     frames_per_scene: int = Query(7, ge=1, le=10, description="每场景建议分镜数"),
     max_frames: int | None = Query(None, ge=1, le=500, description="最大分镜帧数上限"),
-    scene_numbers: str | None = Query(None, description="逗号分隔的场景编号列表，如 1,3,4"),
+    scene_numbers: str | None = Query(
+        None, description="逗号分隔的场景编号列表，如 1,3,4"
+    ),
     use_plan: bool = Query(False, description="是否先使用分镜规划，再逐场景生成"),
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     logger = get_logger()
     script = db.query(Script).filter(Script.id == script_id).first()
@@ -1283,7 +1415,9 @@ async def generate_storyboard(
     selected_scenes: list[int] | None = None
     if scene_numbers:
         try:
-            selected_scenes = [int(x.strip()) for x in scene_numbers.split(',') if x.strip()]
+            selected_scenes = [
+                int(x.strip()) for x in scene_numbers.split(",") if x.strip()
+            ]
         except Exception:
             raise HTTPException(status_code=400, detail="scene_numbers 格式不正确")
 
@@ -1303,7 +1437,11 @@ async def generate_storyboard(
 
     # 获取剧集与故事元信息
     episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
-    story = db.query(Story).filter(Story.id == episode.story_id).first() if episode else None
+    story = (
+        db.query(Story).filter(Story.id == episode.story_id).first()
+        if episode
+        else None
+    )
 
     script_data = {
         "content": script.content,
@@ -1311,21 +1449,29 @@ async def generate_storyboard(
         "dialogues": script.dialogues,
         "stage_directions": script.stage_directions,
         "scene_indices": scene_order,
-        "episode": {
-            "episode_number": episode.episode_number if episode else None,
-            "title": episode.title if episode else None,
-            "duration_minutes": episode.duration_minutes if episode else None,
-            "scene_count": episode.scene_count if episode else None,
-        } if episode else None,
-        "story": {
-            "title": story.title if story else None,
-            "genre": story.genre if story else None,
-            "theme": story.theme if story else None,
-            "setting_time": story.setting_time if story else None,
-            "setting_location": story.setting_location if story else None,
-            "world_building": story.world_building if story else None,
-            "main_characters": story.main_characters if story else None,
-        } if story else None,
+        "episode": (
+            {
+                "episode_number": episode.episode_number if episode else None,
+                "title": episode.title if episode else None,
+                "duration_minutes": episode.duration_minutes if episode else None,
+                "scene_count": episode.scene_count if episode else None,
+            }
+            if episode
+            else None
+        ),
+        "story": (
+            {
+                "title": story.title if story else None,
+                "genre": story.genre if story else None,
+                "theme": story.theme if story else None,
+                "setting_time": story.setting_time if story else None,
+                "setting_location": story.setting_location if story else None,
+                "world_building": story.world_building if story else None,
+                "main_characters": story.main_characters if story else None,
+            }
+            if story
+            else None
+        ),
     }
     # 默认优先使用 OpenAI（其支持 json_schema 更可靠）
     prefer_provider = "openai"
@@ -1358,7 +1504,9 @@ async def generate_storyboard(
             )
             if reasoner_result and reasoner_result.get("reasoning_trace"):
                 try:
-                    logger.info(f"Storyboard Reasoner trace: {reasoner_result['reasoning_trace']}")
+                    logger.info(
+                        f"Storyboard Reasoner trace: {reasoner_result['reasoning_trace']}"
+                    )
                 except Exception:
                     pass
         except Exception as exc:
@@ -1374,7 +1522,9 @@ async def generate_storyboard(
         try:
             reasoned_raw = reasoner_result.get("content")
             reasoned_payload = (
-                reasoned_raw if isinstance(reasoned_raw, dict) else extract_json_block(reasoned_raw)
+                reasoned_raw
+                if isinstance(reasoned_raw, dict)
+                else extract_json_block(reasoned_raw)
             )
             if not isinstance(reasoned_payload, dict):
                 raise ValueError("Storyboard reasoner returned non-JSON payload")
@@ -1382,10 +1532,14 @@ async def generate_storyboard(
             frames_generated = reasoned_payload.get("frames") or []
             provider_used = reasoner_result.get("provider_used") or prefer_provider
             generation_model = reasoner_result.get("model_used") or model_id
-            generation_method = reasoner_result.get("generation_method") or "langgraph_plan"
+            generation_method = (
+                reasoner_result.get("generation_method") or "langgraph_plan"
+            )
             generation_source = f"langgraph:{provider_used or 'auto'}"
         except Exception as exc:
-            logger.warning(f"Storyboard reasoner response invalid, fallback to standard pipeline: {exc}")
+            logger.warning(
+                f"Storyboard reasoner response invalid, fallback to standard pipeline: {exc}"
+            )
             frames_generated = []
 
     # 先走规划流程（可选）
@@ -1417,13 +1571,15 @@ async def generate_storyboard(
                         sp_model = StoryboardPlanScene.model_validate(sp)
                     except Exception:
                         continue
-                    frames_scene = await ai_service.generate_storyboard_from_plan_for_scene(
-                        script=script_data,
-                        scene_plan=sp_model,
-                        model=model_id,
-                        prefer_provider=prefer_provider,
-                        temperature=temperature,
-                        max_frames=max_frames,
+                    frames_scene = (
+                        await ai_service.generate_storyboard_from_plan_for_scene(
+                            script=script_data,
+                            scene_plan=sp_model,
+                            model=model_id,
+                            prefer_provider=prefer_provider,
+                            temperature=temperature,
+                            max_frames=max_frames,
+                        )
                     )
                     if frames_scene:
                         frames_all.extend(frames_scene)
@@ -1473,7 +1629,9 @@ async def generate_storyboard(
                     provider_used = result.get("provider_used") or prefer_provider
                     generation_source = f"ai:{provider_used or 'auto'}"
                     generation_model = result.get("model_used") or model_id
-                    generation_method = result.get("generation_method") or generation_method
+                    generation_method = (
+                        result.get("generation_method") or generation_method
+                    )
                 except Exception as exc:
                     logger.warning(f"StoryboardGen validation failed: {exc}")
 
@@ -1491,17 +1649,27 @@ async def generate_storyboard(
         frame_no = 1
         if scenes:
             for sidx, sc in enumerate(scenes, start=1):
-                real_scene_number = scene_order[sidx - 1] if (sidx - 1) < len(scene_order) else sidx
+                real_scene_number = (
+                    scene_order[sidx - 1] if (sidx - 1) < len(scene_order) else sidx
+                )
                 if max_frames and len(frames_fallback) >= max_frames:
                     break
-                desc = sc.get("description") if isinstance(sc, dict) else (str(sc) if sc else "")
-                segments = [seg for seg in re.split(r'[。.!?！？]', desc or '') if seg.strip()]
+                desc = (
+                    sc.get("description")
+                    if isinstance(sc, dict)
+                    else (str(sc) if sc else "")
+                )
+                segments = [
+                    seg for seg in re.split(r"[。.!?！？]", desc or "") if seg.strip()
+                ]
                 count = max(1, frames_per_scene)
                 for i in range(count):
                     if max_frames and len(frames_fallback) >= max_frames:
                         break
-                    text = (segments[i] if i < len(segments) else (desc or f"场景 {sidx}"))
-                    variant = (frame_no - 1)
+                    text = (
+                        segments[i] if i < len(segments) else (desc or f"场景 {sidx}")
+                    )
+                    variant = frame_no - 1
                     shot = shot_cycle[variant % len(shot_cycle)]
                     movement = movement_cycle[variant % len(movement_cycle)]
                     composition = composition_cycle[variant % len(composition_cycle)]
@@ -1515,17 +1683,19 @@ async def generate_storyboard(
                         composition=composition,
                     )
                     duration = max(2, min(12, 3 + (variant % 3) - 1))
-                    frames_fallback.append({
-                        "frame_number": frame_no,
-                        "scene_number": real_scene_number,
-                        "shot_type": shot,
-                        "camera_movement": movement,
-                        "composition": composition,
-                        "description": description,
-                        "duration_seconds": duration,
-                        "ai_prompt": ai_prompt,
-                        "reference_images": [],
-                    })
+                    frames_fallback.append(
+                        {
+                            "frame_number": frame_no,
+                            "scene_number": real_scene_number,
+                            "shot_type": shot,
+                            "camera_movement": movement,
+                            "composition": composition,
+                            "description": description,
+                            "duration_seconds": duration,
+                            "ai_prompt": ai_prompt,
+                            "reference_images": [],
+                        }
+                    )
                     frame_no += 1
         else:
             paragraphs = (script.content or "").split("\n\n")
@@ -1535,7 +1705,7 @@ async def generate_storyboard(
                 text = para.strip().replace("\n", " ")[:200]
                 if not text:
                     continue
-                variant = (frame_no - 1)
+                variant = frame_no - 1
                 shot = shot_cycle[variant % len(shot_cycle)]
                 movement = movement_cycle[variant % len(movement_cycle)]
                 composition = composition_cycle[variant % len(composition_cycle)]
@@ -1549,17 +1719,19 @@ async def generate_storyboard(
                     composition=composition,
                 )
                 duration = max(2, min(12, 3 + (variant % 3) - 1))
-                frames_fallback.append({
-                    "frame_number": frame_no,
-                    "scene_number": None,
-                    "shot_type": shot,
-                    "camera_movement": movement,
-                    "composition": composition,
-                    "description": description,
-                    "duration_seconds": duration,
-                    "ai_prompt": ai_prompt,
-                    "reference_images": [],
-                })
+                frames_fallback.append(
+                    {
+                        "frame_number": frame_no,
+                        "scene_number": None,
+                        "shot_type": shot,
+                        "camera_movement": movement,
+                        "composition": composition,
+                        "description": description,
+                        "duration_seconds": duration,
+                        "ai_prompt": ai_prompt,
+                        "reference_images": [],
+                    }
+                )
                 frame_no += 1
         frames_generated = frames_fallback
 
@@ -1578,16 +1750,22 @@ async def generate_storyboard(
 
     if selected_scenes:
         selected_set = {s for s in scene_order if s is not None}
-        frames_list = [fr for fr in frames_list if _to_int(fr.get("scene_number")) in selected_set]
+        frames_list = [
+            fr for fr in frames_list if _to_int(fr.get("scene_number")) in selected_set
+        ]
         try:
-            logger.info(f"StoryboardGen Frames after scene filter {selected_scenes}: {len(frames_list)}")
+            logger.info(
+                f"StoryboardGen Frames after scene filter {selected_scenes}: {len(frames_list)}"
+            )
         except Exception:
             pass
 
     if max_frames:
         frames_list = frames_list[:max_frames]
         try:
-            logger.info(f"StoryboardGen Frames after max_frames({max_frames}) slice: {len(frames_list)}")
+            logger.info(
+                f"StoryboardGen Frames after max_frames({max_frames}) slice: {len(frames_list)}"
+            )
         except Exception:
             pass
 
@@ -1601,25 +1779,33 @@ async def generate_storyboard(
         for s in target_scenes:
             if s is None:
                 continue
-            existing_count = len([fr for fr in frames_list if _to_int(fr.get("scene_number")) == s])
+            existing_count = len(
+                [fr for fr in frames_list if _to_int(fr.get("scene_number")) == s]
+            )
             deficit = max(0, frames_per_scene - existing_count)
             if deficit <= 0:
                 continue
             src = all_scenes[s - 1] if 0 <= (s - 1) < len(all_scenes) else None
-            desc = (src.get("description") if isinstance(src, dict) else (str(src) if src else ""))
-            segs = [seg for seg in re.split(r'[。.!?！？]', desc or '') if seg.strip()]
+            desc = (
+                src.get("description")
+                if isinstance(src, dict)
+                else (str(src) if src else "")
+            )
+            segs = [seg for seg in re.split(r"[。.!?！？]", desc or "") if seg.strip()]
             for i in range(deficit):
-                text = (segs[i] if i < len(segs) else (desc or f"场景 {s}"))
-                supplementary_raw.append({
-                    "scene_number": s,
-                    "description": (text or '').strip()[:200],
-                    "shot_type": "中景",
-                    "camera_movement": "固定",
-                    "composition": "三分法",
-                    "duration_seconds": 3,
-                    "ai_prompt": (text or '').strip()[:200],
-                    "reference_images": [],
-                })
+                text = segs[i] if i < len(segs) else (desc or f"场景 {s}")
+                supplementary_raw.append(
+                    {
+                        "scene_number": s,
+                        "description": (text or "").strip()[:200],
+                        "shot_type": "中景",
+                        "camera_movement": "固定",
+                        "composition": "三分法",
+                        "duration_seconds": 3,
+                        "ai_prompt": (text or "").strip()[:200],
+                        "reference_images": [],
+                    }
+                )
         if supplementary_raw:
             supplementary = _augment_frames(
                 supplementary_raw,
@@ -1644,10 +1830,18 @@ async def generate_storyboard(
     try:
         allowed_shots = {"远景", "中景", "近景", "特写"}
         shot_map = {
-            "wide": "远景", "long": "远景", "establishing": "远景", "ws": "远景",
-            "medium": "中景", "ms": "中景",
-            "close": "近景", "cs": "近景",
-            "close-up": "特写", "cu": "特写", "extreme close-up": "特写", "ecu": "特写",
+            "wide": "远景",
+            "long": "远景",
+            "establishing": "远景",
+            "ws": "远景",
+            "medium": "中景",
+            "ms": "中景",
+            "close": "近景",
+            "cs": "近景",
+            "close-up": "特写",
+            "cu": "特写",
+            "extreme close-up": "特写",
+            "ecu": "特写",
         }
         for fr in frames_list:
             shot = (fr.get("shot_type") or "").strip()
@@ -1672,7 +1866,11 @@ async def generate_storyboard(
                         chars = []
             if not chars and story and story.main_characters:
                 try:
-                    chars = [c.get("name") for c in (story.main_characters or []) if isinstance(c, dict) and c.get("name")]
+                    chars = [
+                        c.get("name")
+                        for c in (story.main_characters or [])
+                        if isinstance(c, dict) and c.get("name")
+                    ]
                 except Exception:
                     pass
             base_desc = (fr.get("description") or "").strip()
@@ -1701,7 +1899,11 @@ async def generate_storyboard(
 
     sb_meta = {
         "version": script.storyboard_version,
-        "updated_at": script.storyboard_updated_at.isoformat() if script.storyboard_updated_at else None,
+        "updated_at": (
+            script.storyboard_updated_at.isoformat()
+            if script.storyboard_updated_at
+            else None
+        ),
         "generation_source": generation_source,
         "generation_method": generation_method,
         "generation_model": generation_model,
@@ -1730,7 +1932,9 @@ async def generate_storyboard_async(
     temperature: float = Query(0.7, ge=0.0, le=1.5, description="创造性温度"),
     frames_per_scene: int = Query(7, ge=1, le=10, description="每场景建议分镜数"),
     max_frames: int | None = Query(None, ge=1, le=500, description="最大分镜帧数上限"),
-    scene_numbers: str | None = Query(None, description="逗号分隔的场景编号列表，如 1,3,4"),
+    scene_numbers: str | None = Query(
+        None, description="逗号分隔的场景编号列表，如 1,3,4"
+    ),
     use_plan: bool = Query(False, description="是否先使用分镜规划，再逐场景生成"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -1845,7 +2049,8 @@ class StoryboardUpdateRequest(BaseModel):
 async def update_storyboard(
     script_id: int,
     body: StoryboardUpdateRequest,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """保存分镜编辑后的结果（整量更新）"""
     script = db.query(Script).filter(Script.id == script_id).first()
@@ -1899,12 +2104,15 @@ def _process_storyboard_image_task(
     width: int = 1024,
     height: int = 1024,
     style: str = "realistic",
+    style_preset_id: str | None = None,
+    style_spec: dict[str, Any] | None = None,
     reference_images: Optional[List[str]] = None,
     count: int = 1,
     keyframe_mode: str = "single",
 ):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
+
     logger = get_logger("storyboard_image_task")
     db = SessionLocal()
     try:
@@ -1916,12 +2124,17 @@ def _process_storyboard_image_task(
         script = db.query(Script).filter(Script.id == script_id).first()
         if not script:
             raise RuntimeError("剧本不存在")
-        sb = (script.extra_metadata or {}).get("storyboard") if script.extra_metadata else None
+        sb = (
+            (script.extra_metadata or {}).get("storyboard")
+            if script.extra_metadata
+            else None
+        )
         if not sb or not sb.get("frames"):
             raise RuntimeError("未找到分镜数据")
 
         # 拷贝一份帧列表，避免直接在 SQLAlchemy 追踪的 JSON 结构上就地修改
         import copy as _copy  # 局部导入避免循环依赖
+
         frames_src = list((sb or {}).get("frames") or [])
         frames: List[Dict[str, Any]] = [
             _copy.deepcopy(fr) if isinstance(fr, dict) else fr for fr in frames_src
@@ -1958,7 +2171,9 @@ def _process_storyboard_image_task(
             for sc in scenes:
                 if sc.environment_id and sc.environment_id in env_map:
                     refs = env_map[sc.environment_id].reference_images or []
-                    env_images_by_scene[int(sc.scene_number)] = [_abs_url(u) for u in refs if u]
+                    env_images_by_scene[int(sc.scene_number)] = [
+                        _abs_url(u) for u in refs if u
+                    ]
 
         scene_char_ids: Dict[int, set[int]] = defaultdict(set)
         if scene_ids:
@@ -1979,7 +2194,9 @@ def _process_storyboard_image_task(
             images = (
                 db.query(VirtualIPImage)
                 .filter(VirtualIPImage.virtual_ip_id.in_(all_char_ids))
-                .order_by(VirtualIPImage.is_default.desc(), VirtualIPImage.created_at.desc())
+                .order_by(
+                    VirtualIPImage.is_default.desc(), VirtualIPImage.created_at.desc()
+                )
                 .all()
             )
             for img in images:
@@ -2022,6 +2239,8 @@ def _process_storyboard_image_task(
                         width=width,
                         height=height,
                         style=style,
+                        style_preset_id=style_preset_id,
+                        style_spec=style_spec,
                     )
                 else:
                     resp = await ai_service.ai_manager.generate_image(
@@ -2031,6 +2250,8 @@ def _process_storyboard_image_task(
                         width=width,
                         height=height,
                         style=style,
+                        style_preset_id=style_preset_id,
+                        style_spec=style_spec,
                         n=count_int,
                     )
                 if resp.success:
@@ -2050,6 +2271,16 @@ def _process_storyboard_image_task(
                             "url": url,
                             "provider": resp.provider,
                             "model": resp.model,
+                            "style_spec": (
+                                (resp.metadata or {}).get("style_spec")
+                                if isinstance(resp.metadata, dict)
+                                else None
+                            ),
+                            "style_spec_resolution": (
+                                (resp.metadata or {}).get("style_spec_resolution")
+                                if isinstance(resp.metadata, dict)
+                                else None
+                            ),
                         }
             except Exception as e:
                 print(f"图像生成失败: {e}")
@@ -2093,9 +2324,13 @@ def _process_storyboard_image_task(
             }
 
         # 逐帧生成图像URL
+        resolved_style_spec_used: dict | None = None
+        resolved_style_spec_resolution_used: Any | None = None
         for idx in target_indexes:
             if idx < 0 or idx >= len(frames):
-                warn = f"[SBIMG] frame index out of range | idx={idx} total={len(frames)}"
+                warn = (
+                    f"[SBIMG] frame index out of range | idx={idx} total={len(frames)}"
+                )
                 logger.warning(warn)
                 print(warn, flush=True)
                 continue
@@ -2106,9 +2341,7 @@ def _process_storyboard_image_task(
                     f"Generate an image for storyboard frame {idx + 1} (scene {fr.get('scene_number') or ''}) "
                     "consistent with references and overall story style."
                 )
-            frame_log = (
-                f"[SBIMG] generating frame | idx={idx} scene={fr.get('scene_number')} prompt_len={len(prompt)}"
-            )
+            frame_log = f"[SBIMG] generating frame | idx={idx} scene={fr.get('scene_number')} prompt_len={len(prompt)}"
             logger.info(frame_log)
             print(frame_log, flush=True)
 
@@ -2126,7 +2359,9 @@ def _process_storyboard_image_task(
 
             # 2) 前端调用时附带的额外参考图（单次请求作用域）
             payload_refs = [
-                _abs_url(u) for u in (reference_images or []) if isinstance(u, str) and u
+                _abs_url(u)
+                for u in (reference_images or [])
+                if isinstance(u, str) and u
             ]
             if payload_refs:
                 char_refs.append("用户提供的参考图")
@@ -2146,7 +2381,9 @@ def _process_storyboard_image_task(
 
             # 4) 场景环境参考图
             env_refs = [
-                _abs_url(u) for u in (env_images_by_scene.get(scene_no or -1, []) or []) if u
+                _abs_url(u)
+                for u in (env_images_by_scene.get(scene_no or -1, []) or [])
+                if u
             ]
             if env_refs:
                 char_refs.append("环境参考图")
@@ -2174,12 +2411,8 @@ def _process_storyboard_image_task(
 
             if keyframe_mode == "start_end":
                 # 首尾关键帧：生成 start/end 两张，并保持 image_url 指向首帧用于兼容旧 UI
-                start_prompt = (
-                    f"{prompt}\n\n（关键帧：首帧）请生成该镜头开始瞬间的画面，保持构图与风格一致。"
-                )
-                end_prompt = (
-                    f"{prompt}\n\n（关键帧：尾帧）请生成该镜头结束瞬间的画面，体现动作完成后的状态，保持构图与风格一致。"
-                )
+                start_prompt = f"{prompt}\n\n（关键帧：首帧）请生成该镜头开始瞬间的画面，保持构图与风格一致。"
+                end_prompt = f"{prompt}\n\n（关键帧：尾帧）请生成该镜头结束瞬间的画面，体现动作完成后的状态，保持构图与风格一致。"
 
                 start_result = anyio.run(_gen_image, start_prompt, ref_images)
                 if start_result:
@@ -2190,6 +2423,13 @@ def _process_storyboard_image_task(
                         f"Storyboard keyframe(start) idx={idx} url={url_preview} "
                         f"provider={start_result.get('provider')}"
                     )
+                    if resolved_style_spec_used is None and isinstance(
+                        start_result.get("style_spec"), dict
+                    ):
+                        resolved_style_spec_used = start_result.get("style_spec")
+                        resolved_style_spec_resolution_used = start_result.get(
+                            "style_spec_resolution"
+                        )
                 if start_result and start_result.get("url"):
                     start_persist = anyio.run(
                         _partial(_persist_frame_image, keyframe_role="start"),
@@ -2213,6 +2453,13 @@ def _process_storyboard_image_task(
                         f"Storyboard keyframe(end) idx={idx} url={url_preview} "
                         f"provider={end_result.get('provider')}"
                     )
+                    if resolved_style_spec_used is None and isinstance(
+                        end_result.get("style_spec"), dict
+                    ):
+                        resolved_style_spec_used = end_result.get("style_spec")
+                        resolved_style_spec_resolution_used = end_result.get(
+                            "style_spec_resolution"
+                        )
                 if end_result and end_result.get("url"):
                     end_persist = anyio.run(
                         _partial(_persist_frame_image, keyframe_role="end"),
@@ -2234,6 +2481,13 @@ def _process_storyboard_image_task(
                         f"Storyboard image result idx={idx} url={url_preview} "
                         f"provider={result.get('provider')}"
                     )
+                    if resolved_style_spec_used is None and isinstance(
+                        result.get("style_spec"), dict
+                    ):
+                        resolved_style_spec_used = result.get("style_spec")
+                        resolved_style_spec_resolution_used = result.get(
+                            "style_spec_resolution"
+                        )
                 if result and result.get("url"):
                     persist = anyio.run(
                         _partial(_persist_frame_image, keyframe_role="single"),
@@ -2258,6 +2512,21 @@ def _process_storyboard_image_task(
         extra_raw = script.extra_metadata or {}
         extra = dict(extra_raw)
         storyboard_payload = dict(sb or {})
+        meta_payload: dict[str, Any] = {}
+        if isinstance(storyboard_payload.get("meta"), dict):
+            meta_payload = dict(storyboard_payload.get("meta") or {})
+        meta_payload.update(
+            {
+                "image_generation_updated_at": datetime.utcnow().isoformat(),
+                "image_generation_style": style,
+                "image_generation_style_preset_id": (style_preset_id or "").strip()
+                or None,
+                "image_generation_style_spec": resolved_style_spec_used
+                or (style_spec if isinstance(style_spec, dict) else None),
+                "image_generation_style_spec_resolution": resolved_style_spec_resolution_used,
+            }
+        )
+        storyboard_payload["meta"] = meta_payload
         storyboard_payload["frames"] = frames
         extra["storyboard"] = storyboard_payload
         # 直接使用 UPDATE 避免 JSON 变更检测问题
@@ -2269,7 +2538,11 @@ def _process_storyboard_image_task(
         # 调试：确认数据库中已写入 image_url
         try:
             script_after = db.query(Script).filter(Script.id == script_id).first()
-            sb_after = (script_after.extra_metadata or {}).get("storyboard") if script_after and script_after.extra_metadata else None
+            sb_after = (
+                (script_after.extra_metadata or {}).get("storyboard")
+                if script_after and script_after.extra_metadata
+                else None
+            )
             frames_after = (sb_after or {}).get("frames") or []
             if frames_after:
                 print(
@@ -2293,11 +2566,21 @@ def _process_storyboard_image_task(
 
 
 class StoryboardImageRequest(BaseModel):
-    frames: list[int] = Field(default_factory=list, description="要生成图像的分镜索引列表（基于0的索引）")
-    model: Optional[str] = Field(default=None, description="模型ID，可选 'provider:model' 形式")
+    frames: list[int] = Field(
+        default_factory=list, description="要生成图像的分镜索引列表（基于0的索引）"
+    )
+    model: Optional[str] = Field(
+        default=None, description="模型ID，可选 'provider:model' 形式"
+    )
     width: int = Field(default=1024, ge=64, le=2048)
     height: int = Field(default=1024, ge=64, le=2048)
     style: str = Field(default="realistic")
+    style_preset_id: Optional[str] = Field(
+        default=None, description="风格预设ID（后端为唯一真源）"
+    )
+    style_spec: Optional[StyleSpec] = Field(
+        default=None, description="风格 schema（允许只传部分字段）"
+    )
     count: int = Field(default=1, ge=1, le=4, description="每帧生成的图像数量")
     keyframe_mode: str = Field(
         default="single",
@@ -2314,9 +2597,11 @@ async def generate_storyboard_images(
     script_id: int,
     body: StoryboardImageRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     from app.models.task import Task
+
     # 校验剧本归属
     script = (
         db.query(Script)
@@ -2332,6 +2617,12 @@ async def generate_storyboard_images(
     )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
+
+    style_spec_payload = (
+        body.style_spec.model_dump(mode="json", exclude_none=True)
+        if body.style_spec is not None
+        else None
+    )
     t = Task(
         title=f"分镜图像生成 - 剧本{script_id}",
         description="根据分镜生成图像",
@@ -2345,6 +2636,8 @@ async def generate_storyboard_images(
                 "width": body.width,
                 "height": body.height,
                 "style": body.style,
+                "style_preset_id": body.style_preset_id,
+                "style_spec": style_spec_payload,
                 "count": body.count,
                 "keyframe_mode": body.keyframe_mode,
                 "reference_images": body.reference_images or [],
@@ -2364,6 +2657,8 @@ async def generate_storyboard_images(
         "width": body.width,
         "height": body.height,
         "style": body.style,
+        "style_preset_id": body.style_preset_id,
+        "style_spec": style_spec_payload,
         "count": body.count,
         "keyframe_mode": body.keyframe_mode,
         "reference_images": body.reference_images or [],
@@ -2377,6 +2672,7 @@ def _process_storyboard_video_task(
 ):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
+
     db = SessionLocal()
     try:
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -2387,7 +2683,11 @@ def _process_storyboard_video_task(
         script = db.query(Script).filter(Script.id == script_id).first()
         if not script:
             raise RuntimeError("剧本不存在")
-        sb = (script.extra_metadata or {}).get("storyboard") if script.extra_metadata else None
+        sb = (
+            (script.extra_metadata or {}).get("storyboard")
+            if script.extra_metadata
+            else None
+        )
         if not sb or not sb.get("frames"):
             raise RuntimeError("未找到分镜数据")
 
@@ -2416,7 +2716,9 @@ def _process_storyboard_video_task(
             dur_int = int(round(dur))
             return max(1, min(dur_int, 10))
 
-        async def _gen_video(image_url: str, prompt: Optional[str], duration: int) -> dict | None:
+        async def _gen_video(
+            image_url: str, prompt: Optional[str], duration: int
+        ) -> dict | None:
             try:
                 result = await ai_service.generate_video(
                     prompt=prompt,
@@ -2439,13 +2741,18 @@ def _process_storyboard_video_task(
                 continue
 
             raw_image_url = (
-                fr.get("start_image_url") or fr.get("image_url") or fr.get("end_image_url") or ""
+                fr.get("start_image_url")
+                or fr.get("image_url")
+                or fr.get("end_image_url")
+                or ""
             )
             if not raw_image_url:
                 continue
             image_url = _abs_url(str(raw_image_url))
 
-            prompt_value = (fr.get("ai_prompt") or fr.get("description") or "").strip() or None
+            prompt_value = (
+                fr.get("ai_prompt") or fr.get("description") or ""
+            ).strip() or None
             duration_int = _coerce_duration(fr.get("duration_seconds"))
 
             video = anyio.run(_gen_video, image_url, prompt_value, duration_int)
@@ -2489,14 +2796,17 @@ def _process_storyboard_video_task(
 
 
 class StoryboardVideoRequest(BaseModel):
-    frames: list[int] = Field(default_factory=list, description="要生成视频的分镜索引列表（基于0的索引）")
+    frames: list[int] = Field(
+        default_factory=list, description="要生成视频的分镜索引列表（基于0的索引）"
+    )
 
 
 @router.post("/{script_id}/storyboard/generate-video")
 async def generate_storyboard_video(
     script_id: int,
     body: StoryboardVideoRequest,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     # 校验剧本归属
     script = (
@@ -2519,8 +2829,10 @@ async def generate_storyboard_video(
         description="根据分镜生成视频",
         task_type="image_generation",
         prompt=f"Storyboard video generation for script {script_id}",
-        parameters=json.dumps({"script_id": script_id, "frames": body.frames or []}, ensure_ascii=False),
-        user_id=current_user.id
+        parameters=json.dumps(
+            {"script_id": script_id, "frames": body.frames or []}, ensure_ascii=False
+        ),
+        user_id=current_user.id,
     )
     db.add(t)
     db.commit()
@@ -2530,6 +2842,7 @@ async def generate_storyboard_video(
     storyboard_video_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
+
 @router.get("/", response_model=List[ScriptResponse])
 async def get_scripts(
     episode_id: Optional[int] = Query(None),
@@ -2537,20 +2850,21 @@ async def get_scripts(
     limit: int = Query(100, ge=1, le=100),
     status: Optional[str] = Query(None),
     format_type: Optional[str] = Query(None),
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """获取剧本列表"""
     query = db.query(Script)
-    
+
     if episode_id:
         query = query.filter(Script.episode_id == episode_id)
-    
+
     if status:
         query = query.filter(Script.status == status)
-    
+
     if format_type:
         query = query.filter(Script.format_type == format_type)
-    
+
     # 只允许访问当前用户故事下的剧本
     query = query.join(Episode, Script.episode_id == Episode.id).join(
         Story, Episode.story_id == Story.id
@@ -2587,10 +2901,12 @@ async def get_scripts_no_slash(
         db=db,
     )
 
+
 @router.get("/{script_id}", response_model=ScriptResponse)
 async def get_script(
     script_id: int,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """获取剧本详情"""
     script = (
@@ -2607,14 +2923,16 @@ async def get_script(
     )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
-    
+
     return ScriptResponse.from_orm(script)
+
 
 @router.put("/{script_id}", response_model=ScriptResponse)
 async def update_script(
     script_id: int,
     script_update: ScriptUpdate,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """更新剧本"""
     script = (
@@ -2631,17 +2949,17 @@ async def update_script(
     )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
-    
+
     # 更新剧本信息
     for field, value in script_update.dict(exclude_unset=True).items():
         setattr(script, field, value)
-    
+
     # 重新计算统计信息
     if script_update.content:
         script.word_count = len(script_update.content.split())
         script.character_count = len(script_update.content)
         script.page_count = max(1, script.character_count // 2000)
-    
+
     db.commit()
     db.refresh(script)
 
@@ -2650,13 +2968,15 @@ async def update_script(
     except Exception:
         logger = get_logger()
         logger.warning("同步规范化场景失败（update）", exc_info=True)
-    
+
     return ScriptResponse.from_orm(script)
+
 
 @router.delete("/{script_id}")
 async def delete_script(
     script_id: int,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """删除剧本"""
     script = (
@@ -2673,16 +2993,18 @@ async def delete_script(
     )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
-    
+
     db.delete(script)
     db.commit()
-    
+
     return {"message": "剧本删除成功"}
+
 
 @router.get("/episode/{episode_id}", response_model=List[ScriptResponse])
 async def get_episode_scripts(
     episode_id: int,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """获取剧集的所有剧本"""
     # 检查剧集是否存在且归属当前用户
@@ -2692,21 +3014,18 @@ async def get_episode_scripts(
     episode = episode_query.filter(Episode.id == episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
-    
+
     # 为避免在 MySQL 中对大文本结果做排序耗尽 sort buffer，
     # 这里不再对结果做 ORDER BY，仅取一批脚本返回，前端默认使用第一条。
-    scripts = (
-        db.query(Script)
-        .filter(Script.episode_id == episode_id)
-        .limit(50)
-        .all()
-    )
+    scripts = db.query(Script).filter(Script.episode_id == episode_id).limit(50).all()
     return [ScriptResponse.from_orm(script) for script in scripts]
+
 
 @router.post("/{script_id}/regenerate", response_model=ScriptResponse)
 async def regenerate_script(
     script_id: int,
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """重新生成剧本内容"""
     script = (
@@ -2723,16 +3042,18 @@ async def regenerate_script(
     )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
-    
+
     episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
-    
+
     story = db.query(Story).filter(Story.id == episode.story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
-    
-    previous_episode_summaries = _collect_previous_episode_summaries(db, story.id, episode.episode_number)
+
+    previous_episode_summaries = _collect_previous_episode_summaries(
+        db, story.id, episode.episode_number
+    )
     character_profiles = _build_character_profiles(story)
 
     # 构建剧集/故事数据，保持与生成流程一致
@@ -2742,14 +3063,14 @@ async def regenerate_script(
         previous_episode_summaries=previous_episode_summaries,
         character_profiles=character_profiles,
     )
-    
+
     # 使用原有的生成参数
     original_params = script.generation_params or {}
     prefer_provider = None
     model_id = original_params.get("model")
     if isinstance(model_id, str) and ":" in model_id:
         prefer_provider, model_id = model_id.split(":", 1)
-    
+
     # 调用AI服务重新生成剧本
     result = await ai_service.generate_script(
         episode=episode_data,
@@ -2764,7 +3085,7 @@ async def regenerate_script(
         prefer_provider=prefer_provider,
         temperature=original_params.get("temperature", 0.7),
     )
-    
+
     if not result:
         raise HTTPException(status_code=500, detail="AI剧本重新生成失败")
 
@@ -2797,7 +3118,7 @@ async def regenerate_script(
                 "stage_directions": extracted.get("stage_directions", []),
                 "metadata": extracted.get("metadata", {}),
             }
-    
+
     ai_content = _normalize_script_content(
         ai_content,
         format_type=script.format_type,
@@ -2825,12 +3146,12 @@ async def regenerate_script(
         meta = dict(script.extra_metadata or {})
         meta["agent_run"] = agent_run
         script.extra_metadata = meta
-    
+
     # 重新计算统计信息
     script.word_count = len(script_content.split()) if script_content else 0
     script.character_count = len(script_content) if script_content else 0
     script.page_count = max(1, script.character_count // 2000)
-    
+
     db.commit()
     db.refresh(script)
 
@@ -2839,14 +3160,16 @@ async def regenerate_script(
     except Exception:
         logger = get_logger()
         logger.warning("同步规范化场景失败（regenerate）", exc_info=True)
-    
+
     return ScriptResponse.from_orm(script)
+
 
 @router.post("/{script_id}/export")
 async def export_script(
     script_id: int,
     format: str = Query("txt", description="导出格式：txt, pdf, docx"),
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """导出剧本"""
     script = (
@@ -2863,7 +3186,7 @@ async def export_script(
     )
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
-    
+
     # 这里可以实现不同格式的导出逻辑
     # 目前返回基本信息
     return {
@@ -2871,5 +3194,5 @@ async def export_script(
         "title": script.title,
         "format": format,
         "content": script.content,
-        "export_time": "2024-01-01T00:00:00Z"
-    } 
+        "export_time": "2024-01-01T00:00:00Z",
+    }

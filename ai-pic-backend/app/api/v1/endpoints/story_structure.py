@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 import json
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -13,7 +13,10 @@ from app.models.story_structure import Environment
 from app.services import story_structure_service as svc
 from app.services.ai_service import ai_service
 from app.services.storage import oss_service
-from app.services.task_worker import environment_image_generate_task, environment_image_variant_task
+from app.services.task_worker import (
+    environment_image_generate_task,
+    environment_image_variant_task,
+)
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.story_structure import (
@@ -63,6 +66,7 @@ async def list_beats_for_scene(
         SceneBeatResponse.model_validate(b)
         for b in svc.list_beats_by_scene(db, scene_id)
     ]
+
 
 @router.post("/scenes/{scene_id}/beats", response_model=SceneBeatResponse)
 async def create_beat_for_scene(
@@ -177,7 +181,9 @@ async def create_shot_for_scene(
         if msg == "scene_not_found":
             raise HTTPException(status_code=404, detail="scene not found")
         if msg == "duplicate_shot_number":
-            raise HTTPException(status_code=400, detail="shot_number already exists for scene")
+            raise HTTPException(
+                status_code=400, detail="shot_number already exists for scene"
+            )
         if msg == "beat_scene_mismatch":
             raise HTTPException(status_code=400, detail="beat does not belong to scene")
         raise
@@ -195,7 +201,9 @@ async def update_shot(
     except ValueError as exc:
         msg = str(exc)
         if msg == "duplicate_shot_number":
-            raise HTTPException(status_code=400, detail="shot_number already exists for scene")
+            raise HTTPException(
+                status_code=400, detail="shot_number already exists for scene"
+            )
         if msg == "beat_scene_mismatch":
             raise HTTPException(status_code=400, detail="beat does not belong to scene")
         raise
@@ -214,6 +222,7 @@ async def delete_shot(shot_id: int, db: Session = Depends(get_db)):
 
 # Environment management
 
+
 @router.get("/environments", response_model=List[EnvironmentResponse])
 async def list_environments(
     current_user: User = Depends(get_current_active_user),
@@ -221,9 +230,11 @@ async def list_environments(
 ):
     items = svc.list_environments(
         db,
-        owner_id=None
-        if current_user.is_admin or current_user.is_superuser
-        else current_user.id,
+        owner_id=(
+            None
+            if current_user.is_admin or current_user.is_superuser
+            else current_user.id
+        ),
     )
     return [EnvironmentResponse.model_validate(it) for it in items]
 
@@ -236,7 +247,9 @@ async def get_environment(
 ):
     env = svc.get_environment(db, env_id)
     if env and not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         env = None
     if not env:
@@ -265,7 +278,9 @@ async def update_environment(
 ):
     env = svc.get_environment(db, env_id)
     if not env or not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         raise HTTPException(status_code=404, detail="environment not found")
     env = svc.update_environment(db, env_id, body.model_dump(exclude_none=True))
@@ -282,7 +297,9 @@ async def delete_environment(
 ):
     env = svc.get_environment(db, env_id)
     if not env or not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         ok = False
     else:
@@ -294,11 +311,16 @@ async def delete_environment(
 
 # Environment images (reference-only, used as generation anchors)
 
+
 def _infer_provider_from_model(model: Optional[str]) -> Optional[str]:
     if not model:
         return None
     normalized = model.lower()
-    if normalized.startswith(("seedream", "volcengine")) or "doubao" in normalized or "seedream" in normalized:
+    if (
+        normalized.startswith(("seedream", "volcengine"))
+        or "doubao" in normalized
+        or "seedream" in normalized
+    ):
         return "volcengine"
     if normalized.startswith("deepseek"):
         return "deepseek"
@@ -365,7 +387,11 @@ def _compose_environment_prompt(env, extra: Optional[str] = None) -> str:
     if env.description:
         parts.append(f"Description: {env.description}")
     # Default structured guidance to ensure prompt has整体->细节、室内/室外的层次
-    category_hint = "室内布局、光线、材质细节" if (env.category or "").lower() == "indoor" else "室外空间、天气、周边环境"
+    category_hint = (
+        "室内布局、光线、材质细节"
+        if (env.category or "").lower() == "indoor"
+        else "室外空间、天气、周边环境"
+    )
     parts.append(
         f"Overall-to-detail: 开场远景交代空间 -> 中景展示主要区域 -> 近景刻画关键道具/纹理；"
         f"Environment focus: {category_hint}；保持真实光影和透视，色彩和风格统一。"
@@ -385,7 +411,9 @@ async def list_environment_images(
 ):
     env = svc.get_environment(db, env_id)
     if env and not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         env = None
     if not env:
@@ -407,7 +435,9 @@ async def delete_environment_image(
 ):
     env = svc.get_environment(db, env_id)
     if env and not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         env = None
     if not env:
@@ -415,14 +445,22 @@ async def delete_environment_image(
     refs = env.reference_images or []
     env.reference_images = [u for u in refs if u != image_url]
     db.commit()
-    return {"success": True, "data": {"images": env.reference_images, "count": len(env.reference_images or [])}}
+    return {
+        "success": True,
+        "data": {
+            "images": env.reference_images,
+            "count": len(env.reference_images or []),
+        },
+    }
 
 
 @router.post("/environments/{env_id}/images/generate")
 async def generate_environment_images(
     env_id: int,
     request: Request,
-    prompt: Optional[str] = Query(None, description="生成提示词，不填则用环境描述/名称"),
+    prompt: Optional[str] = Query(
+        None, description="生成提示词，不填则用环境描述/名称"
+    ),
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
     size: Optional[str] = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
@@ -431,7 +469,9 @@ async def generate_environment_images(
 ):
     env = svc.get_environment(db, env_id)
     if env and not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         env = None
     if not env:
@@ -449,10 +489,14 @@ async def generate_environment_images(
     prefer_provider: Optional[str] = None
     extra_prompt = payload.get("prompt", prompt)
     selected_model_raw = (payload.get("model") or model or "").strip() or None
-    selected_model, prefer_provider_from_model = parse_model_and_provider(selected_model_raw)
+    selected_model, prefer_provider_from_model = parse_model_and_provider(
+        selected_model_raw
+    )
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
     style_hint = payload.get("style") or "realistic"
+    style_preset_id = payload.get("style_preset_id")
+    style_spec = payload.get("style_spec")
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
@@ -460,7 +504,9 @@ async def generate_environment_images(
     count_int = max(1, min(count_int, 4))
 
     prefer_provider = prefer_provider or prefer_provider_from_model
-    prefer_provider = prefer_provider or _infer_provider_from_model(selected_model or "")
+    prefer_provider = prefer_provider or _infer_provider_from_model(
+        selected_model or ""
+    )
     if (prefer_provider or "").lower() == "openai":
         style_hint = normalize_openai_image_style(style_hint)
 
@@ -474,18 +520,39 @@ async def generate_environment_images(
             size=size_value if prefer_provider == "volcengine" else None,
             prefer_provider=prefer_provider,
             style=style_hint,
+            style_preset_id=style_preset_id,
+            style_spec=style_spec,
         )
     except Exception as exc:  # pragma: no cover - runtime guard
-        raise HTTPException(status_code=500, detail=f"环境文生图调用失败: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"环境文生图调用失败: {exc}"
+        ) from exc
 
     if not response.success:
-        raise HTTPException(status_code=500, detail=response.error or "环境文生图生成失败")
+        raise HTTPException(
+            status_code=500, detail=response.error or "环境文生图生成失败"
+        )
 
     images = response.data.get("images", []) if isinstance(response.data, dict) else []
     if not images:
         raise HTTPException(status_code=500, detail="环境文生图接口未返回任何图像")
 
     saved = await _download_and_attach(db, env, images)
+    response_meta = getattr(response, "metadata", None)
+    if not isinstance(response_meta, dict):
+        response_meta = {}
+    extra = dict(env.extra_metadata or {})
+    extra["last_text_to_image_generation"] = {
+        "generated_at": datetime.utcnow().isoformat(),
+        "style": style_hint,
+        "style_preset_id": (style_preset_id or "").strip() or None,
+        "style_spec": response_meta.get("style_spec"),
+        "style_spec_resolution": response_meta.get("style_spec_resolution"),
+        "provider": response.provider,
+        "model": response.model,
+        "count": len(saved),
+    }
+    env.extra_metadata = extra
     db.commit()
     db.refresh(env)
     return {"success": True, "data": {"images": saved, "count": len(saved)}}
@@ -495,7 +562,9 @@ async def generate_environment_images(
 async def generate_environment_images_async(
     env_id: int,
     request: Request,
-    prompt: Optional[str] = Query(None, description="生成提示词，不填则用环境描述/名称"),
+    prompt: Optional[str] = Query(
+        None, description="生成提示词，不填则用环境描述/名称"
+    ),
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
     size: Optional[str] = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
@@ -505,7 +574,9 @@ async def generate_environment_images_async(
     """异步环境文生图：创建 Task 并委托 Celery 处理。"""
     env = svc.get_environment(db, env_id)
     if env and not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         env = None
     if not env:
@@ -525,6 +596,8 @@ async def generate_environment_images_async(
     count_value = body.get("count", count)
     size_value = body.get("size", size)
     style_hint = body.get("style") or "realistic"
+    style_preset_id = body.get("style_preset_id")
+    style_spec = body.get("style_spec")
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
@@ -538,6 +611,8 @@ async def generate_environment_images_async(
         "count": count_int,
         "size": size_value,
         "style": style_hint,
+        "style_preset_id": style_preset_id,
+        "style_spec": style_spec,
     }
 
     task = Task(
@@ -557,7 +632,9 @@ async def generate_environment_images_async(
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 
 
-def _process_environment_image_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def _process_environment_image_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """Celery worker 使用的环境文生图处理函数。"""
     from app.core.database import SessionLocal
 
@@ -583,6 +660,8 @@ def _process_environment_image_task(task_id: int, payload: Dict[str, Any], user_
             count_int = int(payload.get("count") or 1)
             size_value = payload.get("size")
             style_hint = payload.get("style") or "realistic"
+            style_preset_id = payload.get("style_preset_id")
+            style_spec = payload.get("style_spec")
 
             prefer_provider_local = prefer_provider or prefer_provider_from_model
             prefer_provider_local = prefer_provider_local or _infer_provider_from_model(
@@ -602,21 +681,44 @@ def _process_environment_image_task(task_id: int, payload: Dict[str, Any], user_
                 size=size_value if prefer_provider_local == "volcengine" else None,
                 prefer_provider=prefer_provider_local,
                 style=style_hint_local,
+                style_preset_id=style_preset_id,
+                style_spec=style_spec,
             )
             if not response.success:
                 raise RuntimeError(response.error or "环境文生图生成失败")
-            images = response.data.get("images", []) if isinstance(response.data, dict) else []
+            images = (
+                response.data.get("images", [])
+                if isinstance(response.data, dict)
+                else []
+            )
             if not images:
                 raise RuntimeError("环境文生图接口未返回任何图像")
 
             saved_urls = await _download_and_attach(db, env, images)
+            response_meta = getattr(response, "metadata", None)
+            if not isinstance(response_meta, dict):
+                response_meta = {}
+            extra = dict(env.extra_metadata or {})
+            extra["last_text_to_image_generation"] = {
+                "generated_at": datetime.utcnow().isoformat(),
+                "style": style_hint_local,
+                "style_preset_id": (style_preset_id or "").strip() or None,
+                "style_spec": response_meta.get("style_spec"),
+                "style_spec_resolution": response_meta.get("style_spec_resolution"),
+                "provider": response.provider,
+                "model": response.model,
+                "count": len(saved_urls),
+            }
+            env.extra_metadata = extra
             db.commit()
             return saved_urls
 
         saved = anyio.run(_run)
         if task:
             task.status = TaskStatus.COMPLETED
-            task.result_file_path = f"environment_images:{payload['env_id']}:{len(saved)}"
+            task.result_file_path = (
+                f"environment_images:{payload['env_id']}:{len(saved)}"
+            )
             db.commit()
     except Exception as exc:  # pragma: no cover - defensive
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -642,7 +744,9 @@ async def generate_environment_image_variants(
 ):
     env = svc.get_environment(db, env_id)
     if env and not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         env = None
     if not env:
@@ -657,7 +761,9 @@ async def generate_environment_image_variants(
         except Exception:
             payload = {}
 
-    base = payload.get("base_image", base_image) or (env.reference_images[0] if env.reference_images else None)
+    base = payload.get("base_image", base_image) or (
+        env.reference_images[0] if env.reference_images else None
+    )
     if not base:
         raise HTTPException(status_code=400, detail="缺少基准图像")
     if isinstance(base, str) and base.startswith("http"):
@@ -666,20 +772,27 @@ async def generate_environment_image_variants(
         path = base if isinstance(base, str) else ""
         if path and not path.startswith("/"):
             path = "/" + path
-        base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+        base = (
+            getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+        ).rstrip("/")
         image_url = f"{base}{path}"
 
     model_raw = (payload.get("model") or model or "").strip() or None
     model_value, provider_from_model = parse_model_and_provider(model_raw)
-    prefer_provider = provider_from_model or _infer_provider_from_model(model_value or "")
+    prefer_provider = provider_from_model or _infer_provider_from_model(
+        model_value or ""
+    )
     style_hint = payload.get("style") or "realistic"
+    style_preset_id = payload.get("style_preset_id")
+    style_spec = payload.get("style_spec")
     if (prefer_provider or "").lower() == "openai":
         style_hint = normalize_openai_image_style(style_hint)
     extra_prompt = payload.get("prompt", prompt)
     reference_images_value = payload.get("reference_images") or []
     prompt_value = _compose_environment_prompt(
         env,
-        extra_prompt or "Generate stylistically consistent variants based on this environment reference",
+        extra_prompt
+        or "Generate stylistically consistent variants based on this environment reference",
     )
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
@@ -693,13 +806,17 @@ async def generate_environment_image_variants(
     if isinstance(reference_images_value, str):
         reference_images_iter = [reference_images_value]
     elif isinstance(reference_images_value, list):
-        reference_images_iter = [u for u in reference_images_value if isinstance(u, str)]
+        reference_images_iter = [
+            u for u in reference_images_value if isinstance(u, str)
+        ]
     else:
         reference_images_iter = []
 
     extra_images: list[str] = []
     if reference_images_iter:
-        backend_base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+        backend_base = (
+            getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+        ).rstrip("/")
         for ref_url in reference_images_iter:
             if not ref_url:
                 continue
@@ -718,19 +835,40 @@ async def generate_environment_image_variants(
             count=count_int,
             size=size_value,
             style=style_hint,
+            style_preset_id=style_preset_id,
+            style_spec=style_spec,
             extra_images=extra_images,
         )
     except Exception as exc:  # pragma: no cover - runtime guard
-        raise HTTPException(status_code=500, detail=f"环境图生图调用失败: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"环境图生图调用失败: {exc}"
+        ) from exc
 
     if not response.success:
-        raise HTTPException(status_code=500, detail=response.error or "环境图生图生成失败")
+        raise HTTPException(
+            status_code=500, detail=response.error or "环境图生图生成失败"
+        )
 
     images = response.data.get("images", []) if isinstance(response.data, dict) else []
     if not images:
         raise HTTPException(status_code=500, detail="环境图生图接口未返回任何图像")
 
     saved = await _download_and_attach(db, env, images)
+    response_meta = getattr(response, "metadata", None)
+    if not isinstance(response_meta, dict):
+        response_meta = {}
+    extra = dict(env.extra_metadata or {})
+    extra["last_image_to_image_generation"] = {
+        "generated_at": datetime.utcnow().isoformat(),
+        "style": style_hint,
+        "style_preset_id": (style_preset_id or "").strip() or None,
+        "style_spec": response_meta.get("style_spec"),
+        "style_spec_resolution": response_meta.get("style_spec_resolution"),
+        "provider": response.provider,
+        "model": response.model,
+        "count": len(saved),
+    }
+    env.extra_metadata = extra
     db.commit()
     db.refresh(env)
     return {"success": True, "data": {"images": saved, "count": len(saved)}}
@@ -751,7 +889,9 @@ async def generate_environment_image_variants_async(
     """异步环境图生图：创建 Task 并委托 Celery 处理。"""
     env = svc.get_environment(db, env_id)
     if env and not (
-        current_user.is_admin or current_user.is_superuser or env.user_id == current_user.id
+        current_user.is_admin
+        or current_user.is_superuser
+        or env.user_id == current_user.id
     ):
         env = None
     if not env:
@@ -766,7 +906,9 @@ async def generate_environment_image_variants_async(
         except Exception:
             body = {}
 
-    base = body.get("base_image", base_image) or (env.reference_images[0] if env.reference_images else None)
+    base = body.get("base_image", base_image) or (
+        env.reference_images[0] if env.reference_images else None
+    )
     if not base:
         raise HTTPException(status_code=400, detail="缺少基准图像")
 
@@ -774,6 +916,8 @@ async def generate_environment_image_variants_async(
     count_value = body.get("count", count)
     size_value = body.get("size", size)
     style_hint = body.get("style") or "realistic"
+    style_preset_id = body.get("style_preset_id")
+    style_spec = body.get("style_spec")
     extra_prompt = body.get("prompt", prompt)
     reference_images_value = body.get("reference_images") or []
     try:
@@ -789,6 +933,8 @@ async def generate_environment_image_variants_async(
         "count": count_int,
         "size": size_value,
         "style": style_hint,
+        "style_preset_id": style_preset_id,
+        "style_spec": style_spec,
         "prompt": extra_prompt,
         "reference_images": reference_images_value,
     }
@@ -810,7 +956,9 @@ async def generate_environment_image_variants_async(
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 
 
-def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any], user_id: int) -> None:
+def _process_environment_image_variant_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
     """Celery worker 使用的环境图生图处理函数。"""
     from app.core.database import SessionLocal
 
@@ -834,7 +982,10 @@ def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any
             path = base if isinstance(base, str) else ""
             if path and not path.startswith("/"):
                 path = "/" + path
-            backend_base = (getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000").rstrip("/")
+            backend_base = (
+                getattr(settings, "INTERNAL_BACKEND_URL", None)
+                or "http://localhost:8000"
+            ).rstrip("/")
             image_url = f"{backend_base}{path}"
 
         import anyio
@@ -846,6 +997,8 @@ def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any
                 model_value or ""
             )
             style_hint = payload.get("style") or "realistic"
+            style_preset_id = payload.get("style_preset_id")
+            style_spec = payload.get("style_spec")
             if (prefer_provider or "").lower() == "openai":
                 style_hint_local = normalize_openai_image_style(style_hint)
             else:
@@ -871,7 +1024,8 @@ def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any
                     # 转换相对路径为绝对 URL
                     path = ref_url if ref_url.startswith("/") else f"/{ref_url}"
                     backend_base = (
-                        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+                        getattr(settings, "INTERNAL_BACKEND_URL", None)
+                        or "http://localhost:8000"
                     ).rstrip("/")
                     extra_images.append(f"{backend_base}{path}")
 
@@ -883,22 +1037,45 @@ def _process_environment_image_variant_task(task_id: int, payload: Dict[str, Any
                 count=max(1, min(count_int, 4)),
                 size=size_value,
                 style=style_hint_local,
+                style_preset_id=style_preset_id,
+                style_spec=style_spec,
                 extra_images=extra_images,
             )
             if not response.success:
                 raise RuntimeError(response.error or "环境图生图生成失败")
-            images = response.data.get("images", []) if isinstance(response.data, dict) else []
+            images = (
+                response.data.get("images", [])
+                if isinstance(response.data, dict)
+                else []
+            )
             if not images:
                 raise RuntimeError("环境图生图接口未返回任何图像")
 
             saved_urls = await _download_and_attach(db, env, images)
+            response_meta = getattr(response, "metadata", None)
+            if not isinstance(response_meta, dict):
+                response_meta = {}
+            extra = dict(env.extra_metadata or {})
+            extra["last_image_to_image_generation"] = {
+                "generated_at": datetime.utcnow().isoformat(),
+                "style": style_hint_local,
+                "style_preset_id": (style_preset_id or "").strip() or None,
+                "style_spec": response_meta.get("style_spec"),
+                "style_spec_resolution": response_meta.get("style_spec_resolution"),
+                "provider": response.provider,
+                "model": response.model,
+                "count": len(saved_urls),
+            }
+            env.extra_metadata = extra
             db.commit()
             return saved_urls
 
         saved = anyio.run(_run)
         if task:
             task.status = TaskStatus.COMPLETED
-            task.result_file_path = f"environment_image_variants:{payload['env_id']}:{len(saved)}"
+            task.result_file_path = (
+                f"environment_image_variants:{payload['env_id']}:{len(saved)}"
+            )
             db.commit()
     except Exception as exc:  # pragma: no cover - defensive
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -920,7 +1097,9 @@ async def update_scene_beat(
         obj = svc.update_scene_beat(db, beat_id, body.model_dump(exclude_none=True))
     except ValueError as exc:
         if str(exc) == "duplicate_order_index":
-            raise HTTPException(status_code=400, detail="order_index already exists for scene")
+            raise HTTPException(
+                status_code=400, detail="order_index already exists for scene"
+            )
         raise
     if not obj:
         raise HTTPException(status_code=404, detail="beat not found")

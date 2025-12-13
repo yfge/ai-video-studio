@@ -43,6 +43,84 @@ def humanize_style_value(value: str) -> str:
     return value.replace("_", " ").strip()
 
 
+STYLE_PROMPT_LABELS: dict[str, str] = {
+    "style_universe": "style universe",
+    "character_proportion": "character proportion",
+    "character_face_style": "face style",
+    "line_art_style": "line art",
+    "color_render_style": "color render",
+    "lighting_style": "lighting",
+    "color_mood": "color mood",
+    "shot_storyboard_style": "shot/storyboard",
+    "composition_style": "composition",
+    "background_detail_level": "background detail",
+    "emotion_action_level": "emotion/action",
+    "style_lock_level": "style lock",
+    "output_target": "output target",
+}
+
+
+def build_style_prompt(spec: StyleSpec) -> str:
+    """Convert a resolved StyleSpec into a prompt suffix (stable, engineering-oriented)."""
+
+    data = spec.model_dump(exclude_none=True)
+    if not data:
+        return ""
+
+    # Prefer explicit labels to reduce ambiguity across providers.
+    parts: list[str] = []
+    for key, value in data.items():
+        label = STYLE_PROMPT_LABELS.get(key, key)
+        parts.append(f"{label}: {humanize_style_value(str(value))}")
+    return "STYLE_SPEC => " + "; ".join(parts)
+
+
+def derive_legacy_image_style(spec: StyleSpec) -> str:
+    """Map StyleSpec to the platform legacy `style` string (realistic/anime/cartoon/portrait)."""
+
+    if spec.composition_style == CompositionStyle.PORTRAIT_FOCUS:
+        return "portrait"
+
+    if spec.style_universe in {
+        StyleUniverse.JAPANESE_ANIME,
+        StyleUniverse.CHINESE_COMIC,
+        StyleUniverse.WESTERN_COMIC,
+        StyleUniverse.FANTASY_MAGIC,
+        StyleUniverse.SCI_FI,
+        StyleUniverse.CYBERPUNK,
+        StyleUniverse.STEAMPUNK,
+        StyleUniverse.DARK_FANTASY,
+        StyleUniverse.CHINESE_NATIONAL_TREND,
+    }:
+        return "anime"
+
+    if spec.style_universe in {StyleUniverse.WESTERN_CARTOON}:
+        return "cartoon"
+
+    if (
+        spec.line_art_style == LineArtStyle.NO_LINE_ART
+        and spec.character_face_style
+        in {CharacterFaceStyle.CHINESE_REALISTIC, CharacterFaceStyle.WESTERN_REALISTIC}
+    ):
+        return "realistic"
+
+    return "realistic"
+
+
+def derive_openai_image_style(spec: StyleSpec, *, fallback: str = "realistic") -> str:
+    """Map StyleSpec to OpenAI image `style` ('vivid'|'natural')."""
+
+    if spec.color_mood in {ColorMood.LOW_SATURATION, ColorMood.MONOCHROME}:
+        return "natural"
+    if spec.color_mood in {
+        ColorMood.BRIGHT_VIVID,
+        ColorMood.HIGH_CONTRAST,
+        ColorMood.CINEMATIC_LUT,
+    }:
+        return "vivid"
+    return "natural" if fallback == "realistic" else "vivid"
+
+
 DEFAULT_STYLE_SPEC = StyleSpec(
     style_universe=StyleUniverse.JAPANESE_ANIME,
     character_proportion=CharacterProportion.ANIME_5_HEAD,
@@ -80,7 +158,9 @@ STYLE_PRESETS: dict[str, StylePreset] = {
             lighting_style=LightingStyle.SOFT_LIGHT,
             color_mood=ColorMood.SOFT_PASTEL,
             shot_storyboard_style=ShotStoryboardStyle.ANIME_DYNAMIC,
+            composition_style=CompositionStyle.PORTRAIT_FOCUS,
             background_detail_level=BackgroundDetailLevel.STYLIZED_BACKGROUND,
+            emotion_action_level=EmotionActionLevel.CLEAR_EMOTION,
             style_lock_level=StyleLockLevel.CHARACTER_CONSISTENT,
             output_target=OutputTarget.LONG_SERIAL,
         ),
@@ -98,6 +178,7 @@ STYLE_PRESETS: dict[str, StylePreset] = {
             lighting_style=LightingStyle.DRAMATIC_CONTRAST,
             color_mood=ColorMood.HIGH_CONTRAST,
             shot_storyboard_style=ShotStoryboardStyle.CINEMATIC_FILM,
+            composition_style=CompositionStyle.WIDE_SHOT,
             background_detail_level=BackgroundDetailLevel.CINEMATIC_ENVIRONMENT,
             emotion_action_level=EmotionActionLevel.DRAMATIC_ACTION,
             style_lock_level=StyleLockLevel.EPISODE_CONSISTENT,
@@ -117,7 +198,9 @@ STYLE_PRESETS: dict[str, StylePreset] = {
             lighting_style=LightingStyle.SOFT_LIGHT,
             color_mood=ColorMood.MONOCHROME,
             shot_storyboard_style=ShotStoryboardStyle.STATIC_COMIC_PANEL,
+            composition_style=CompositionStyle.NEGATIVE_SPACE,
             background_detail_level=BackgroundDetailLevel.STYLIZED_BACKGROUND,
+            emotion_action_level=EmotionActionLevel.CALM_STATIC,
             style_lock_level=StyleLockLevel.SCENE_CONSISTENT,
             output_target=OutputTarget.CONCEPT_ART,
         ),
@@ -135,6 +218,7 @@ STYLE_PRESETS: dict[str, StylePreset] = {
             lighting_style=LightingStyle.BACKLIGHT_RIM,
             color_mood=ColorMood.CINEMATIC_LUT,
             shot_storyboard_style=ShotStoryboardStyle.MOTION_COMIC,
+            composition_style=CompositionStyle.ENVIRONMENT_FOCUS,
             background_detail_level=BackgroundDetailLevel.CINEMATIC_ENVIRONMENT,
             emotion_action_level=EmotionActionLevel.CLEAR_EMOTION,
             style_lock_level=StyleLockLevel.EPISODE_CONSISTENT,
@@ -154,6 +238,7 @@ STYLE_PRESETS: dict[str, StylePreset] = {
             lighting_style=LightingStyle.SINGLE_SHADOW,
             color_mood=ColorMood.BRIGHT_VIVID,
             shot_storyboard_style=ShotStoryboardStyle.STATIC_COMIC_PANEL,
+            composition_style=CompositionStyle.MEDIUM_SHOT,
             background_detail_level=BackgroundDetailLevel.SIMPLE_GRADIENT,
             emotion_action_level=EmotionActionLevel.DRAMATIC_ACTION,
             style_lock_level=StyleLockLevel.CHARACTER_CONSISTENT,
