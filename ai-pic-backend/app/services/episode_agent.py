@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import inspect
 import json
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from app.core.logging import get_logger
 from app.schemas.generation import (
@@ -22,6 +24,26 @@ except ImportError:  # pragma: no cover - optional dependency
 
 if TYPE_CHECKING:
     from .ai_service import AIService
+
+
+@dataclass(slots=True)
+class EpisodeGenerationCallbacks:
+    """Optional hooks for streaming progress/persistence during agent execution."""
+
+    on_progress: Callable[[str], Any] | None = None
+    on_outline: Callable[[dict[str, Any], dict[str, Any]], Any] | None = None
+    on_episode: Callable[[dict[str, Any], dict[str, Any]], Any] | None = None
+
+
+async def _maybe_await(
+    callback: Callable[..., Any] | None, *args: Any, **kwargs: Any
+) -> Any:
+    if not callback:
+        return None
+    result = callback(*args, **kwargs)
+    if inspect.isawaitable(result):
+        return await result
+    return result
 
 
 class EpisodeLangGraphAgent:
@@ -45,6 +67,7 @@ class EpisodeLangGraphAgent:
         model: Optional[str],
         prefer_provider: Optional[str],
         temperature: float,
+        callbacks: EpisodeGenerationCallbacks | None = None,
     ) -> Optional[Dict[str, Any]]:
         if not LANGGRAPH_AVAILABLE or not self.service.ai_manager:
             return None
@@ -52,13 +75,18 @@ class EpisodeLangGraphAgent:
         outline_schema = EpisodeStepOutlineModel.model_json_schema()
         plan_schema = EpisodePlanModel.model_json_schema()
 
+        async def _progress(message: str) -> None:
+            await _maybe_await(callbacks.on_progress if callbacks else None, message)
+
         def _extract_missing_fields(exc: Exception) -> list[str]:
             try:
                 return ["/".join(map(str, err.get("loc", []))) for err in exc.errors()]
             except Exception:
                 return []
 
-        def _normalize_episode_numbers(outlines: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+        def _normalize_episode_numbers(
+            outlines: list[Dict[str, Any]],
+        ) -> list[Dict[str, Any]]:
             normalized = sorted(
                 [o for o in outlines if isinstance(o, dict)],
                 key=lambda x: x.get("episode_number") or 0,
@@ -85,6 +113,21 @@ class EpisodeLangGraphAgent:
                 return True, None
             return False, "invalid_conflicts"
 
+        def _stub_episode_from_outline(outline: Dict[str, Any]) -> Dict[str, Any]:
+            ep_num = outline.get("episode_number") or 1
+            logline = (outline.get("logline") or "").strip() or "本集出现关键转折。"
+            title = outline.get("title") or f"第{ep_num}集"
+            return {
+                "episode_number": ep_num,
+                "title": title,
+                "summary": logline,
+                "plot_points": [],
+                "character_arcs": None,
+                "conflicts": [{"description": logline, "intensity": "medium"}],
+                "scene_count": None,
+                "fallback_from_outline": True,
+            }
+
         outline_variables = {
             "story": story,
             "episode_count": episode_count,
@@ -99,6 +142,7 @@ class EpisodeLangGraphAgent:
         graph = StateGraph(dict)
 
         async def outline_node(state: Dict[str, Any]) -> Dict[str, Any]:
+            await _progress("剧集大纲：调用模型")
             prompt = prompt_manager.render_prompt(
                 PromptTemplate.EPISODE_STEP_OUTLINE.value, outline_variables
             )
@@ -204,7 +248,9 @@ class EpisodeLangGraphAgent:
                     try:
                         validated = EpisodeStepOutlineModel.model_validate(parsed)
                         outlines = validated.model_dump()
-                        episodes = _normalize_episode_numbers(outlines.get("episodes", []))
+                        episodes = _normalize_episode_numbers(
+                            outlines.get("episodes", [])
+                        )
                         filtered = [
                             ep for ep in episodes if (ep.get("logline") or "").strip()
                         ]
@@ -273,6 +319,20 @@ class EpisodeLangGraphAgent:
                     "reasoning": state.get("reasoning", []) + ["outline_missing"],
                 }
 
+            await _maybe_await(
+                callbacks.on_outline if callbacks else None,
+                outlines,
+                {
+                    "prompt": state.get("outline_prompt"),
+                    "raw": state.get("step_outlines_raw"),
+                    "provider": state.get("outline_provider"),
+                    "model": state.get("outline_model"),
+                    "usage": state.get("outline_usage"),
+                    "reasoning": state.get("reasoning", []),
+                    "generation_method": "langgraph_episode_step_outline",
+                },
+            )
+
             provider_used = state.get("outline_provider")
             model_used = state.get("outline_model")
             usage = state.get("outline_usage")
@@ -282,6 +342,7 @@ class EpisodeLangGraphAgent:
 
             for outline in outline_episodes[:episode_count]:
                 ep_num = outline.get("episode_number")
+                await _progress(f"生成第{ep_num}集：调用模型")
                 previous_eps = [
                     {
                         "episode_number": o.get("episode_number"),
@@ -289,7 +350,9 @@ class EpisodeLangGraphAgent:
                         "logline": o.get("logline"),
                     }
                     for o in outline_episodes
-                    if o.get("episode_number") and ep_num and o.get("episode_number") < ep_num
+                    if o.get("episode_number")
+                    and ep_num
+                    and o.get("episode_number") < ep_num
                 ]
                 prompt = prompt_manager.render_prompt(
                     PromptTemplate.EPISODE_FROM_OUTLINE.value,
@@ -297,6 +360,7 @@ class EpisodeLangGraphAgent:
                         "story": story,
                         "outline": outline,
                         "previous_episodes": previous_eps,
+                        "focus_characters": focus_characters or [],
                         "episode_duration": episode_duration,
                         "plot_complexity": plot_complexity,
                         "pacing": pacing,
@@ -324,32 +388,49 @@ class EpisodeLangGraphAgent:
                     if isinstance(content, str)
                     else (content if isinstance(content, dict) else None)
                 )
-                episode_obj = None
+                episode_obj: Dict[str, Any] | None = None
                 if parsed and isinstance(parsed, dict):
-                    episodes_arr = parsed.get("episodes") if "episodes" in parsed else None
+                    episodes_arr = (
+                        parsed.get("episodes") if "episodes" in parsed else None
+                    )
                     if isinstance(episodes_arr, list) and episodes_arr:
                         episode_obj = episodes_arr[0]
 
+                fallback_used = False
                 if not episode_obj:
-                    reasoning.append(
-                        f"episode_parse_failed_{outline.get('episode_number', 'na')}"
-                    )
-                    continue
+                    fallback_used = True
+                    await _progress(f"生成第{ep_num}集：模型输出无效，使用大纲兜底")
+                    episode_obj = _stub_episode_from_outline(outline)
+                    reasoning.append(f"episode_parse_failed_{ep_num}")
 
                 episode_obj.setdefault("episode_number", outline.get("episode_number"))
+                await _progress(f"生成第{ep_num}集：校验中")
                 try:
                     EpisodePlanItem.model_validate(episode_obj)
                     valid, reason = _is_episode_valid(episode_obj)
                     if not valid:
-                        reasoning.append(f"episode_invalid_{reason}")
-                        continue
+                        fallback_used = True
+                        episode_obj = _stub_episode_from_outline(outline)
+                        reasoning.append(f"episode_invalid_{ep_num}_{reason}")
+                    else:
+                        reasoning.append(f"episode_ok_{ep_num}")
                     episodes_payload.append(episode_obj)
                     episode_contents.append(content)
                     provider_used = resp.provider or provider_used
                     model_used = resp.model or model_used
                     usage = resp.usage or usage
-                    reasoning.append(
-                        f"episode_ok_{outline.get('episode_number', len(episodes_payload))}"
+                    await _maybe_await(
+                        callbacks.on_episode if callbacks else None,
+                        episode_obj,
+                        {
+                            "prompt": prompt,
+                            "raw": content,
+                            "provider": resp.provider,
+                            "model": resp.model,
+                            "usage": resp.usage,
+                            "outline": outline,
+                            "fallback_from_outline": fallback_used,
+                        },
                     )
                 except Exception as exc:  # pragma: no cover - schema guard
                     missing_fields = _extract_missing_fields(exc)
@@ -360,17 +441,23 @@ class EpisodeLangGraphAgent:
                             "missing": missing_fields,
                         },
                     )
-                    reasoning.append(
-                        f"episode_invalid_{outline.get('episode_number', 'na')}"
+                    episode_obj = _stub_episode_from_outline(outline)
+                    episodes_payload.append(episode_obj)
+                    reasoning.append(f"episode_schema_invalid_{ep_num}")
+                    await _maybe_await(
+                        callbacks.on_episode if callbacks else None,
+                        episode_obj,
+                        {
+                            "prompt": prompt,
+                            "raw": content,
+                            "provider": resp.provider,
+                            "model": resp.model,
+                            "usage": resp.usage,
+                            "outline": outline,
+                            "fallback_from_outline": True,
+                            "missing_fields": missing_fields,
+                        },
                     )
-
-            if len(episodes_payload) < episode_count:
-                return {
-                    "error": "episodes_incomplete",
-                    "reasoning": reasoning + ["episodes_incomplete"],
-                    "step_outlines_normalized": outlines,
-                    "step_outlines_raw": state.get("step_outlines_raw"),
-                }
 
             return {
                 "content": json.dumps(

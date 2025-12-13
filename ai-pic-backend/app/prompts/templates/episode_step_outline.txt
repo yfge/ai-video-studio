@@ -22,7 +22,7 @@
 ## 生成要求
 - 总集数：{{ episode_count }} 集{% if episode_duration %}，每集约 {{ episode_duration }} 分钟{% endif %}
 - 情节复杂度：{{ plot_complexity }}；节奏：{{ pacing }}
-- 每集只需要 1 句 logline，明确该集主要冲突/转折，需与主线一致；可给标题。
+- 每集只需要 1 句 logline（不要分段/换行），需与主线一致；建议在同一句话里包含「起承转合 + 钩子」（可用分号/顿号分隔）。
 - beats/详细节点此阶段可以省略（如果提供也可，但非必填）。
 {% if additional_requirements -%}
 - 额外要求：{{ additional_requirements }}
@@ -38,7 +38,7 @@
     {
       "episode_number": 1,
       "title": "第1集标题",
-      "logline": "一句话钩子"
+      "logline": "起：…；承：…；转：…；合：…；钩子：…"
     }
   ]
 }

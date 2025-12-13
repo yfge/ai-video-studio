@@ -11,7 +11,6 @@ from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import (
     StoryOutlineModel,
-    ScriptModel,
     EpisodePlanModel,
     StoryboardModel,
     StoryboardPlanModel,
@@ -21,7 +20,7 @@ from app.services.storyboard_reasoner import (
     StoryboardReActReasoner,
     LANGGRAPH_AVAILABLE,
 )
-from app.services.episode_agent import EpisodeLangGraphAgent
+from app.services.episode_agent import EpisodeGenerationCallbacks, EpisodeLangGraphAgent
 from app.services.script_agent import ScriptLangGraphAgent
 from app.services.story_agent import StoryLangGraphAgent
 from app.utils.json_utils import extract_json_block
@@ -165,7 +164,9 @@ def _build_storyboard_context(script: Dict[str, Any]) -> str:
             details.append(f"时间:{_trim_text(time, 40)}")
         if characters:
             if isinstance(characters, list):
-                details.append(f"角色:{_trim_text(', '.join(map(str, characters)), 80)}")
+                details.append(
+                    f"角色:{_trim_text(', '.join(map(str, characters)), 80)}"
+                )
             else:
                 details.append(f"角色:{_trim_text(str(characters), 80)}")
         if notes:
@@ -312,7 +313,10 @@ class AIService:
 
             # Google Gemini / Vertex AI 文本模型
             if settings.GOOGLE_API_KEY:
-                google_base = settings.GOOGLE_BASE_URL or "https://generativelanguage.googleapis.com"
+                google_base = (
+                    settings.GOOGLE_BASE_URL
+                    or "https://generativelanguage.googleapis.com"
+                )
                 providers["google"] = ProviderConfig(
                     name="google",
                     api_key=settings.GOOGLE_API_KEY,
@@ -452,7 +456,8 @@ class AIService:
                         if not normalized:
                             # 简单重试一次，提示严格JSON
                             retry_prompt = (
-                                prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
+                                prompt
+                                + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
                             )
                             retry = await self.ai_manager.generate_text(
                                 prompt=retry_prompt,
@@ -553,6 +558,7 @@ class AIService:
         model: Optional[str] = None,
         prefer_provider: Optional[str] = None,
         temperature: float = 0.7,
+        callbacks: EpisodeGenerationCallbacks | None = None,
     ) -> Optional[Dict[str, Any]]:
         """基于故事概要生成剧集"""
         # 优先尝试 LangGraph agent
@@ -570,6 +576,7 @@ class AIService:
                     model=model,
                     prefer_provider=prefer_provider,
                     temperature=temperature,
+                    callbacks=callbacks,
                 )
                 if lg_result and not lg_result.get("error"):
                     return lg_result
@@ -701,7 +708,9 @@ class AIService:
         )
         normalized = _parse_episode_json(content_text)
         if not normalized:
-            retry_prompt = prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
+            retry_prompt = (
+                prompt + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
+            )
             retry = await self.ai_manager.generate_text(
                 prompt=retry_prompt,
                 temperature=temperature,
@@ -840,7 +849,11 @@ class AIService:
         base_scenes = episode.get("scenes") or []
         plot_points = episode.get("plot_points") or []
         if not base_scenes and not plot_points:
-            summary = episode.get("summary") or story.get("synopsis") or "角色在本集中推进剧情。"
+            summary = (
+                episode.get("summary")
+                or story.get("synopsis")
+                or "角色在本集中推进剧情。"
+            )
             plot_points = [{"description": summary, "timing": "中段"}]
 
         focus_characters: List[str] = []
@@ -1273,9 +1286,11 @@ class AIService:
                             "content": content_text,
                             "normalized": normalized,
                             "prompt": None,
-                            "generation_method": graph_result.get("generation_method") or "langgraph_plan",
+                            "generation_method": graph_result.get("generation_method")
+                            or "langgraph_plan",
                             "template_used": "storyboard_langgraph",
-                            "provider_used": graph_result.get("provider_used") or prefer_provider,
+                            "provider_used": graph_result.get("provider_used")
+                            or prefer_provider,
                             "model_used": graph_result.get("model_used") or model,
                             "usage": graph_result.get("usage"),
                             "reasoning_trace": graph_result.get("reasoning_trace"),
@@ -1283,22 +1298,14 @@ class AIService:
                             "fixes": graph_result.get("fixes"),
                         }
             except Exception as exc:
-                self.logger.warning(f"Storyboard LangGraph pipeline failed in AIService, fallback to direct pipeline: {exc}")
+                self.logger.warning(
+                    f"Storyboard LangGraph pipeline failed in AIService, fallback to direct pipeline: {exc}"
+                )
 
         # LangGraph 未可用或结果不合法时，回退至原有 AI 管理器直连管线
         if self.ai_manager:
             try:
-                variables = {
-                    "script": script,
-                    "style_preferences": style_preferences or [],
-                    "additional_requirements": additional_requirements or "",
-                }
                 # 构造更强提示词，包含故事/剧集上下文与场景角色信息
-                context = {
-                    "story": (script or {}).get("story"),
-                    "episode": (script or {}).get("episode"),
-                    "scenes_count": len((script or {}).get("scenes") or []),
-                }
                 context_text = _build_storyboard_context(script)
                 prompt = (
                     "你是具备导演、摄影与美术能力的专业分镜师。请采用 ReAct 思考流程：先在内心推理每个场景应该呈现的节奏与视觉差异，再输出最终JSON。\n"
@@ -1661,16 +1668,19 @@ class AIService:
                 "is_default": category == "portrait",
             }
 
-            # 生成AI图像提示词
-            prompt_result = prompt_manager.render_prompt(
+            prompt_manager.render_prompt(
                 PromptTemplate.IMAGE_GENERATION.value, variables
             )
 
             # 使用简单的提示词，避免复杂的AI管理器调用
             if category == "portrait":
-                final_prompt = f"A professional {style} portrait of {ip_name}, {description}"
+                final_prompt = (
+                    f"A professional {style} portrait of {ip_name}, {description}"
+                )
             else:
-                final_prompt = f"A professional {style} {category} of {ip_name}, {description}"
+                final_prompt = (
+                    f"A professional {style} {category} of {ip_name}, {description}"
+                )
             if additional_prompts:
                 final_prompt += f", {', '.join(additional_prompts)}"
 
@@ -2346,7 +2356,9 @@ class AIService:
                 # 处理base64数据
                 if "b64_json" in result["data"][0]:
                     base64_data = result["data"][0]["b64_json"]
-                    self.logger.info(f"获取到OpenAI base64图像数据，长度: {len(base64_data)}")
+                    self.logger.info(
+                        f"获取到OpenAI base64图像数据，长度: {len(base64_data)}"
+                    )
                     return f"data:image/png;base64,{base64_data}"
                 else:
                     # 兼容URL格式
@@ -2359,7 +2371,7 @@ class AIService:
                 try:
                     error_detail = e.response.json()
                     self.logger.error(f"OpenAI API错误详情: {error_detail}")
-                except:
+                except Exception:
                     self.logger.error(f"OpenAI API响应: {e.response.text}")
             return None
 
