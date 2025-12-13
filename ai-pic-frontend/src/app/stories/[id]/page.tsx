@@ -170,6 +170,21 @@ export default function StoryDetailPage() {
     extra && typeof extra.plot_structure === 'object'
       ? (extra.plot_structure as Record<string, string>)
       : null
+  const episodeStepOutlines =
+    extra && typeof extra.episode_step_outlines === 'object'
+      ? (extra.episode_step_outlines as Record<string, unknown>)
+      : null
+  const outlineEpisodes = Array.isArray(episodeStepOutlines?.episodes)
+    ? [...(episodeStepOutlines?.episodes as Record<string, unknown>[])]
+        .filter(Boolean)
+        .sort((a, b) => {
+          const aNumRaw = a['episode_number']
+          const bNumRaw = b['episode_number']
+          const aNum = typeof aNumRaw === 'number' ? aNumRaw : Number(aNumRaw || 0)
+          const bNum = typeof bNumRaw === 'number' ? bNumRaw : Number(bNumRaw || 0)
+          return aNum - bNum
+        })
+    : []
   const sellingPoints = Array.isArray(extra?.selling_points) ? (extra.selling_points as string[]) : []
   const coreValues = typeof extra?.core_values === 'string' ? extra.core_values : ''
   const visualStyle = typeof extra?.visual_style === 'string' ? extra.visual_style : ''
@@ -311,6 +326,63 @@ export default function StoryDetailPage() {
                 </ul>
               </div>
             )}
+          </div>
+        )}
+
+        {outlineEpisodes.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">剧集大纲</h2>
+              <span className="text-sm text-gray-500">共 {outlineEpisodes.length} 集</span>
+            </div>
+            <div className="space-y-3">
+              {outlineEpisodes.map((outline, idx) => {
+                const epNumRaw = outline['episode_number']
+                const epNum = typeof epNumRaw === 'number' ? epNumRaw : Number(epNumRaw || idx + 1)
+                const title =
+                  typeof outline['title'] === 'string' && (outline['title'] as string).trim()
+                    ? (outline['title'] as string)
+                    : `第${epNum || idx + 1}集`
+                const logline =
+                  typeof outline['logline'] === 'string' && (outline['logline'] as string).trim()
+                    ? (outline['logline'] as string)
+                    : ''
+                const beats = Array.isArray(outline['beats']) ? (outline['beats'] as Record<string, unknown>[]) : []
+                return (
+                  <div key={`outline-${epNum}-${title}`} className="border border-gray-100 rounded p-4 bg-gray-50">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium text-gray-900">第{epNum}集 · {title}</div>
+                      {logline && <span className="text-xs text-gray-500">一句话概要</span>}
+                    </div>
+                    {logline && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{logline}</p>}
+                    {beats.length > 0 && (
+                      <div className="mt-3 space-y-1 text-xs text-gray-700">
+                        <div className="text-gray-500">情节点</div>
+                        {beats.slice(0, 3).map((beat, bIdx) => {
+                          const seqRaw = beat?.['sequence_number']
+                          const seq = typeof seqRaw === 'number' ? seqRaw : bIdx + 1
+                          const beatTitle =
+                            typeof beat?.['beat_title'] === 'string' && (beat['beat_title'] as string).trim()
+                              ? (beat['beat_title'] as string)
+                              : typeof beat?.['beat_summary'] === 'string'
+                                ? (beat['beat_summary'] as string)
+                                : `节点 ${seq}`
+                          return (
+                            <div key={`beat-${seq}-${beatTitle}`} className="flex items-center justify-between">
+                              <span className="font-medium text-gray-800">节点 {seq}</span>
+                              <span className="text-[11px] text-gray-500 truncate max-w-[220px]">{beatTitle}</span>
+                            </div>
+                          )
+                        })}
+                        {beats.length > 3 && (
+                          <div className="text-[11px] text-gray-400">还有 {beats.length - 3} 个节点…</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 

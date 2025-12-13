@@ -1,7 +1,11 @@
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
 from fastapi import BackgroundTasks
+from pydantic import ValidationError
+
 from app.core.database import get_db
 from app.models.user import User
 from app.core.middleware import get_current_active_user
@@ -22,8 +26,119 @@ from app.models.task import Task, TaskStatus
 from app.services.task_worker import episode_generate_task
 from app.schemas.story_structure import StoryStepOutlineCreate
 from app.services import story_structure_service
+from app.schemas.generation import EpisodePlanItem, EpisodeStepOutlineModel
 
 router = APIRouter()
+
+
+def _is_episode_payload_valid(episode_data: Dict[str, Any]) -> bool:
+    """Ensure minimal episode payload validity before persisting."""
+    summary = (episode_data.get("summary") or "").strip()
+    conflicts = episode_data.get("conflicts")
+    if not summary:
+        return False
+    if not conflicts or not isinstance(conflicts, list):
+        return False
+    return any(isinstance(c, dict) for c in conflicts)
+
+
+def _parse_step_outlines(
+    raw_step_outlines: Any, episode_count: int
+) -> Optional[Dict[str, Any]]:
+    parsed = (
+        extract_json_block(raw_step_outlines)
+        if isinstance(raw_step_outlines, str)
+        else (raw_step_outlines if isinstance(raw_step_outlines, dict) else None)
+    )
+    if not parsed:
+        return None
+    try:
+        validated = EpisodeStepOutlineModel.model_validate(parsed)
+    except ValidationError:
+        return None
+
+    outlines = validated.model_dump()
+    episodes = []
+    for ep in sorted(
+        outlines.get("episodes", []),
+        key=lambda item: item.get("episode_number") or 0,
+    ):
+        logline = (ep.get("logline") or "").strip()
+        if not logline:
+            continue
+        item = {
+            "episode_number": ep.get("episode_number"),
+            "title": ep.get("title"),
+            "logline": logline,
+        }
+        if ep.get("beats"):
+            item["beats"] = ep["beats"]
+        episodes.append(item)
+    if not episodes:
+        return None
+    outlines["episodes"] = episodes[:episode_count]
+    return outlines
+
+
+def _persist_story_outlines(
+    story: Story,
+    outlines: Dict[str, Any],
+    *,
+    prompt: Optional[str],
+    agent_run: Dict[str, Any],
+) -> None:
+    existing_meta = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
+    outline_payload = {
+        "episodes": outlines.get("episodes", []),
+        "prompt": prompt,
+        "agent_run": agent_run or None,
+        "updated_at": datetime.utcnow().isoformat() + "Z",
+    }
+    existing_meta["episode_step_outlines"] = outline_payload
+    story.extra_metadata = existing_meta
+
+
+def _build_outline_rows(
+    *,
+    outlines: Dict[str, Any],
+    treatment,
+    story: Story,
+    episode_id_map: Dict[int, int],
+    agent_run: Dict[str, Any],
+) -> List[StoryStepOutlineCreate]:
+    outline_rows: list[StoryStepOutlineCreate] = []
+    for outline in outlines.get("episodes", []):
+        ep_number = outline.get("episode_number")
+        episode_id = episode_id_map.get(ep_number)
+        if not episode_id:
+            continue
+        beats = outline.get("beats") or []
+        for beat_idx, beat in enumerate(beats, start=1):
+            if not isinstance(beat, dict):
+                continue
+            outline_rows.append(
+                StoryStepOutlineCreate(
+                    story_id=story.id,
+                    story_treatment_id=treatment.id,
+                    episode_id=episode_id,
+                    sequence_number=beat.get("sequence_number") or beat_idx,
+                    act_label=beat.get("act_label"),
+                    beat_title=beat.get("beat_title") or f"Beat {beat_idx}",
+                    beat_summary=beat.get("beat_summary")
+                    or beat.get("description")
+                    or f"情节点 {beat_idx}",
+                    dramatic_question=beat.get("dramatic_question"),
+                    characters_involved=beat.get("characters_involved"),
+                    location_hint=beat.get("location_hint"),
+                    duration_estimate_minutes=beat.get("duration_estimate_minutes"),
+                    status="draft",
+                    metadata={
+                        "source": agent_run.get("generation_method"),
+                        "agent_reasoning": agent_run.get("reasoning"),
+                    },
+                )
+            )
+    return outline_rows
 
 
 @router.post("/", response_model=EpisodeResponse)
@@ -141,18 +256,6 @@ async def generate_episodes(
         raise HTTPException(status_code=500, detail="AI生成内容格式错误")
     episodes_data = ai_content.get("episodes", [])
 
-    # 可选的 step outline（用于写入 story_step_outlines）
-    raw_step_outlines = None
-    if isinstance(result, dict):
-        raw_step_outlines = result.get("step_outlines") or result.get("step_outlines_raw")
-    step_outlines = None
-    if raw_step_outlines:
-        step_outlines = (
-            extract_json_block(raw_step_outlines)
-            if isinstance(raw_step_outlines, str)
-            else raw_step_outlines
-        )
-
     # 结构化 agent 运行信息，便于落库与排查
     agent_run = {}
     if isinstance(result, dict):
@@ -164,6 +267,23 @@ async def generate_episodes(
             "usage": result.get("usage"),
             "reasoning": result.get("reasoning"),
         }
+
+    # 可选的 step outline（用于写入 story_step_outlines / story.extra_metadata）
+    raw_step_outlines = None
+    if isinstance(result, dict):
+        raw_step_outlines = result.get("step_outlines") or result.get("step_outlines_raw")
+    step_outlines = (
+        _parse_step_outlines(raw_step_outlines, request.episode_count)
+        if raw_step_outlines
+        else None
+    )
+    if step_outlines:
+        _persist_story_outlines(
+            story,
+            step_outlines,
+            prompt=result.get("step_outline_prompt") if isinstance(result, dict) else None,
+            agent_run=agent_run,
+        )
 
     # 创建剧集记录
     created_episodes = []
@@ -181,6 +301,22 @@ async def generate_episodes(
 
         if existing_episode:
             continue  # 跳过已存在的集数
+
+        try:
+            EpisodePlanItem.model_validate(episode_data)
+        except ValidationError:
+            ai_service.logger.warning(
+                "Episode schema validation failed; skip persisting",
+                extra={"story_id": story.id, "episode_number": episode_number},
+            )
+            continue
+
+        if not _is_episode_payload_valid(episode_data):
+            ai_service.logger.warning(
+                "Episode validation failed; skip persisting",
+                extra={"story_id": story.id, "episode_number": episode_number},
+            )
+            continue
 
         # 提取额外元数据
         known_keys = {
@@ -666,6 +802,7 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
             task.status = TaskStatus.PROCESSING
+            task.description = "剧集生成：准备调用模型"
             db.commit()
 
         story = (
@@ -730,6 +867,10 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
         if not result:
             raise RuntimeError("AI剧集生成失败")
 
+        if task:
+            task.description = "剧集生成：模型返回结果解析中"
+            db.commit()
+
         content = (
             result.get("normalized") if isinstance(result, dict) else None
         ) or extract_json_block(
@@ -750,10 +891,30 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
                 "reasoning": result.get("reasoning"),
             }
 
+        raw_step_outlines = None
+        if isinstance(result, dict):
+            raw_step_outlines = result.get("step_outlines") or result.get("step_outlines_raw")
+        episode_count = request_dict.get("episode_count") or len(episodes_data) or 1
+        step_outlines = (
+            _parse_step_outlines(raw_step_outlines, episode_count)
+            if raw_step_outlines
+            else None
+        )
+        if step_outlines:
+            _persist_story_outlines(
+                story,
+                step_outlines,
+                prompt=result.get("step_outline_prompt") if isinstance(result, dict) else None,
+                agent_run=agent_run,
+            )
+            if task:
+                task.description = "剧集生成：大纲校验通过，写入故事信息"
+            db.commit()
+            db.refresh(story)
+
         created_ids = []
-        for i, ep_data in enumerate(
-            episodes_data[: request_dict.get("episode_count", 1)]
-        ):
+        created_episodes: list[Episode] = []
+        for i, ep_data in enumerate(episodes_data[:episode_count]):
             episode_number = ep_data.get("episode_number", i + 1)
             exists = (
                 db.query(Episode)
@@ -765,6 +926,14 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             )
             if exists:
                 continue
+
+            try:
+                EpisodePlanItem.model_validate(ep_data)
+            except ValidationError:
+                continue
+            if not _is_episode_payload_valid(ep_data):
+                continue
+
             scenes, scene_count = _ensure_scenes(ep_data)
             known_keys = {
                 "episode_number",
@@ -809,14 +978,50 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
                 status="draft",
             )
             db.add(ep)
+            created_episodes.append(ep)
+
+        if created_episodes:
             db.commit()
-            db.refresh(ep)
-            created_ids.append(ep.id)
+            for ep in created_episodes:
+                db.refresh(ep)
+                created_ids.append(ep.id)
+
+        if step_outlines and created_episodes:
+            try:
+                treatment = story_structure_service.ensure_auto_treatment(
+                    db,
+                    story,
+                    prompt_snapshot={
+                        "outline_prompt": result.get("step_outline_prompt")
+                        if isinstance(result, dict)
+                        else None,
+                        "step_outlines_raw": result.get("step_outlines_raw")
+                        if isinstance(result, dict)
+                        else None,
+                        "agent_generation_method": agent_run.get("generation_method"),
+                    },
+                )
+                episode_id_map = {ep.episode_number: ep.id for ep in created_episodes}
+                outline_rows = _build_outline_rows(
+                    outlines=step_outlines,
+                    treatment=treatment,
+                    story=story,
+                    episode_id_map=episode_id_map,
+                    agent_run=agent_run,
+                )
+                if outline_rows:
+                    story_structure_service.bulk_create_step_outlines(db, outline_rows)
+            except Exception as exc:  # pragma: no cover - defensive logging for async path
+                ai_service.logger.warning(
+                    "Failed to persist step outlines in async task",
+                    extra={"error": str(exc), "story_id": story.id},
+                )
 
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
             task.status = TaskStatus.COMPLETED
             task.result_file_path = f"episodes:{','.join(map(str, created_ids))}"
+            task.description = "剧集生成完成"
             db.commit()
     except Exception as e:
         task = db.query(Task).filter(Task.id == task_id).first()
