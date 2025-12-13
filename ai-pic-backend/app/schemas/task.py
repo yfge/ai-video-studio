@@ -30,6 +30,7 @@ class TaskResponse(TaskBase):
     user_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    progress_detail: Optional[str] = None
     
     class Config:
         from_attributes = True

@@ -20,6 +20,10 @@ def _serialize_task(task: Task) -> TaskResponse:
         except Exception:
             params = None
 
+    progress_detail = task.description or None
+    if task.status == TaskStatus.FAILED and task.error_message:
+        progress_detail = task.error_message
+
     return TaskResponse(
         id=task.id,
         title=task.title,
@@ -31,6 +35,7 @@ def _serialize_task(task: Task) -> TaskResponse:
         result_file_path=task.result_file_path,
         error_message=task.error_message,
         user_id=task.user_id,
+        progress_detail=progress_detail,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -81,7 +86,7 @@ def get_tasks(
         query = query.filter(Task.task_type == task_type)
     
     total = query.count()
-    tasks = query.offset(skip).limit(limit).all()
+    tasks = query.order_by(Task.id.desc()).offset(skip).limit(limit).all()
     
     return TaskList(
         tasks=[_serialize_task(t) for t in tasks],

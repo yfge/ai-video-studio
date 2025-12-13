@@ -36,7 +36,7 @@ export default function Tasks() {
           }
           acc.push({ ...task, id: taskId })
           return acc
-        }, [])
+        }, []).sort((a, b) => b.id - a.id)
         setTasks(normalizedTasks)
         setTotal(res.data.total ?? 0)
         if (res.data.page && res.data.page !== page) {
@@ -208,6 +208,11 @@ export default function Tasks() {
                         {getStatusText(task.status)}
                       </span>
                     </div>
+                    {task.progress_detail && (
+                      <p className="text-sm text-gray-700 mb-2">
+                        进度：<span className="text-gray-800">{task.progress_detail}</span>
+                      </p>
+                    )}
                     {task.prompt && <p className="text-gray-600 mb-3">{task.prompt}</p>}
                     <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                       <span>

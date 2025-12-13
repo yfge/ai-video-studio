@@ -88,6 +88,7 @@ export interface Task {
   title: string;
   prompt?: string;
   status: "pending" | "processing" | "completed" | "failed";
+  progress_detail?: string;
   created_at: string;
   updated_at?: string;
   description?: string;
