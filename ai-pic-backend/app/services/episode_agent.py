@@ -74,6 +74,17 @@ class EpisodeLangGraphAgent:
                     item["beats"] = beats
             return normalized
 
+        def _is_episode_valid(episode_obj: Dict[str, Any]) -> tuple[bool, str | None]:
+            """Lightweight sanity checks after schema validation."""
+            if not episode_obj.get("summary"):
+                return False, "missing_summary"
+            conflicts = episode_obj.get("conflicts")
+            if not conflicts or not isinstance(conflicts, list):
+                return False, "missing_conflicts"
+            if any(isinstance(c, dict) for c in conflicts):
+                return True, None
+            return False, "invalid_conflicts"
+
         outline_variables = {
             "story": story,
             "episode_count": episode_count,
@@ -328,6 +339,10 @@ class EpisodeLangGraphAgent:
                 episode_obj.setdefault("episode_number", outline.get("episode_number"))
                 try:
                     EpisodePlanItem.model_validate(episode_obj)
+                    valid, reason = _is_episode_valid(episode_obj)
+                    if not valid:
+                        reasoning.append(f"episode_invalid_{reason}")
+                        continue
                     episodes_payload.append(episode_obj)
                     episode_contents.append(content)
                     provider_used = resp.provider or provider_used

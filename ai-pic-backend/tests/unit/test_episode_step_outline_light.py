@@ -74,7 +74,16 @@ async def test_outline_logline_only(monkeypatch):
     monkeypatch.setattr("app.services.episode_agent.END", "END")
 
     outline = {"episodes": [{"episode_number": 1, "title": "E1", "logline": "钩子"}]}
-    episode = {"episodes": [{"episode_number": 1, "title": "E1", "summary": "S"}]}
+    episode = {
+        "episodes": [
+            {
+                "episode_number": 1,
+                "title": "E1",
+                "summary": "S",
+                "conflicts": [{"description": "c", "intensity": "low"}],
+            }
+        ]
+    }
 
     ai_manager = FakeAIManager(
         [
@@ -116,7 +125,16 @@ async def test_outline_missing_logline_triggers_repair(monkeypatch):
 
     outline_bad = {"episodes": [{"episode_number": 1, "title": "E1", "logline": ""}]}
     outline_fixed = {"episodes": [{"episode_number": 1, "title": "E1", "logline": "修复后"}]}
-    episode = {"episodes": [{"episode_number": 1, "title": "E1", "summary": "S"}]}
+    episode = {
+        "episodes": [
+            {
+                "episode_number": 1,
+                "title": "E1",
+                "summary": "S",
+                "conflicts": [{"description": "c", "intensity": "low"}],
+            }
+        ]
+    }
 
     ai_manager = FakeAIManager(
         [
