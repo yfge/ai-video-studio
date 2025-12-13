@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { MultiModelSelector } from '@/components/MultiModelSelector';
+import { StyleSpecAdvancedPanel, type StyleSpecField } from '@/components/StyleSpecAdvancedPanel';
 import { useStylePresets } from '@/hooks/useStylePresets';
 import {
   AIModelType,
@@ -48,6 +49,8 @@ interface ImageToImageModalProps {
   resolutionOptions?: ResolutionOption[];
   styleOptions?: { value: string; label: string }[];
   showStylePreset?: boolean;
+  styleSpecFields?: StyleSpecField[];
+  defaultStyleSpec?: StyleSpec;
   useDimensions?: boolean;
   extraContent?: ReactNode;
   submitting?: boolean;
@@ -108,6 +111,7 @@ export function ImageToImageModal({
   defaultSize = '',
   defaultStyle = 'realistic',
   defaultStylePresetId = '',
+  defaultStyleSpec,
   defaultWidth = 1024,
   defaultHeight = 1024,
   minCount = 1,
@@ -118,6 +122,7 @@ export function ImageToImageModal({
   resolutionOptions,
   styleOptions,
   showStylePreset = true,
+  styleSpecFields,
   useDimensions = false,
   extraContent,
   submitting = false,
@@ -133,6 +138,7 @@ export function ImageToImageModal({
   const [size, setSize] = useState(defaultSize);
   const [style, setStyle] = useState(defaultStyle);
   const [stylePresetId, setStylePresetId] = useState(defaultStylePresetId);
+  const [styleSpec, setStyleSpec] = useState<StyleSpec>(defaultStyleSpec ?? {});
   const [width, setWidth] = useState(defaultWidth);
   const [height, setHeight] = useState(defaultHeight);
 
@@ -151,6 +157,7 @@ export function ImageToImageModal({
     setSize(defaultSize);
     setStyle(defaultStyle);
     setStylePresetId(defaultStylePresetId);
+    setStyleSpec(defaultStyleSpec ?? {});
     setWidth(defaultWidth);
     setHeight(defaultHeight);
   }, [
@@ -162,6 +169,7 @@ export function ImageToImageModal({
     defaultSize,
     defaultStyle,
     defaultStylePresetId,
+    defaultStyleSpec,
     defaultWidth,
     defaultHeight,
   ]);
@@ -209,6 +217,7 @@ export function ImageToImageModal({
       size: useDimensions ? undefined : size || undefined,
       style: style || undefined,
       style_preset_id: stylePresetId || undefined,
+      style_spec: styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
       width: useDimensions ? width || defaultWidth : undefined,
       height: useDimensions ? height || defaultHeight : undefined,
       referenceImages: refs,
@@ -393,6 +402,14 @@ export function ImageToImageModal({
                   </p>
                 ) : null}
               </div>
+            ) : null}
+
+            {styleSpecFields && styleSpecFields.length > 0 ? (
+              <StyleSpecAdvancedPanel
+                fields={styleSpecFields}
+                value={styleSpec}
+                onChange={setStyleSpec}
+              />
             ) : null}
 
             <div>

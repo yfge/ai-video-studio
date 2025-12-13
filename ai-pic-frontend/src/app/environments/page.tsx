@@ -4,6 +4,7 @@ import Image from "next/image"
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
+import { StyleSpecAdvancedPanel, type StyleSpecField } from '@/components/StyleSpecAdvancedPanel'
 import {
   storyStructureAPI,
   AIModelType,
@@ -17,6 +18,14 @@ import { MultiModelSelector } from '@/components/MultiModelSelector'
 import { ImagePreviewModal } from '@/components/ImagePreviewModal'
 import { useStylePresets } from '@/hooks/useStylePresets'
 
+const ENV_STYLE_SPEC_FIELDS: StyleSpecField[] = [
+  { key: 'style_universe', label: '世界观 / 画风体系' },
+  { key: 'lighting_style', label: '阴影与光影' },
+  { key: 'color_mood', label: '色彩情绪' },
+  { key: 'background_detail_level', label: '背景复杂度' },
+  { key: 'composition_style', label: '构图与画面密度' },
+]
+
 function EnvironmentsPageContent() {
   const { showAlert } = useAlertModal()
   const [list, setList] = useState<Environment[]>([])
@@ -27,6 +36,7 @@ function EnvironmentsPageContent() {
   const [selectedStylePresets, setSelectedStylePresets] = useState<
     Record<number, string>
   >({})
+  const [selectedStyleSpecs, setSelectedStyleSpecs] = useState<Record<number, StyleSpec>>({})
   const { presets: stylePresets } = useStylePresets()
   const [variantTarget, setVariantTarget] = useState<{
     env: Environment
@@ -34,6 +44,7 @@ function EnvironmentsPageContent() {
     displayUrl: string
     modelHint?: string
     stylePresetHint?: string
+    styleSpecHint?: StyleSpec
   } | null>(null)
   const [variantModalOpen, setVariantModalOpen] = useState(false)
   const [variantPrompt, setVariantPrompt] = useState('')
@@ -139,12 +150,14 @@ function EnvironmentsPageContent() {
   const handleGenerateImage = async (env: Environment, options: { prompt?: string; model?: string; size?: string }) => {
     setGenerating(prev => ({ ...prev, [env.id]: true }))
     try {
+      const selectedSpec = selectedStyleSpecs[env.id]
       const payload = {
         prompt: options.prompt || env.description || env.name,
         model: options.model,
         size: options.size,
         count: 1,
         style_preset_id: selectedStylePresets[env.id] || undefined,
+        style_spec: selectedSpec && Object.keys(selectedSpec).length > 0 ? selectedSpec : undefined,
       }
       const res = await storyStructureAPI.generateEnvironmentImagesAsync(env.id, payload)
       if (res.success) {
@@ -171,6 +184,7 @@ function EnvironmentsPageContent() {
       displayUrl: imageSrc(url),
       modelHint: selectedModels[env.id],
       stylePresetHint: selectedStylePresets[env.id],
+      styleSpecHint: selectedStyleSpecs[env.id],
     })
     setVariantPrompt(env.description || env.name || '基于此环境图生成风格一致的变体')
     setVariantModalOpen(true)
@@ -415,6 +429,16 @@ function EnvironmentsPageContent() {
                           ))}
                         </select>
                       </div>
+                      <StyleSpecAdvancedPanel
+                        fields={ENV_STYLE_SPEC_FIELDS}
+                        value={selectedStyleSpecs[env.id] || {}}
+                        onChange={next =>
+                          setSelectedStyleSpecs(prev => ({
+                            ...prev,
+                            [env.id]: next,
+                          }))
+                        }
+                      />
                       <button
                       onClick={() => handleGenerateImage(env, { prompt: env.description || env.name, model: selectedModels[env.id] })}
                       disabled={generating[env.id]}
@@ -423,6 +447,67 @@ function EnvironmentsPageContent() {
                       {generating[env.id] ? '生成中...' : '一键生成参考图'}
                     </button>
                   </div>
+                  {(() => {
+                    const meta = (env.metadata || {}) as Record<string, unknown>
+                    const lastT2IRaw = meta['last_text_to_image_generation']
+                    const lastI2IRaw = meta['last_image_to_image_generation']
+
+                    const asRecord = (input: unknown): Record<string, unknown> | null => {
+                      if (!input || typeof input !== 'object') return null
+                      return input as Record<string, unknown>
+                    }
+
+                    const readString = (
+                      record: Record<string, unknown> | null,
+                      key: string,
+                    ): string | null => {
+                      const value = record ? record[key] : undefined
+                      return typeof value === 'string' && value.trim() ? value : null
+                    }
+
+                    const lastT2I = asRecord(lastT2IRaw)
+                    const lastI2I = asRecord(lastI2IRaw)
+                    if (!lastT2I && !lastI2I) return null
+                    return (
+                      <details className="rounded border border-gray-200 bg-gray-50 p-2 text-[11px] text-gray-700">
+                        <summary className="cursor-pointer select-none text-xs font-medium text-gray-700">
+                          上次生成风格信息
+                        </summary>
+                        {lastT2I ? (
+                          <div className="mt-2">
+                            <div className="font-medium text-gray-700">文生图</div>
+                            <div className="mt-1">
+                              preset: {readString(lastT2I, 'style_preset_id') || '—'} ｜ provider:{' '}
+                              {readString(lastT2I, 'provider') || '—'} ｜ model:{' '}
+                              {readString(lastT2I, 'model') || '—'}
+                            </div>
+                            <div className="mt-1 break-all">
+                              spec: {JSON.stringify(lastT2I['style_spec'] ?? null)}
+                            </div>
+                            <div className="mt-1 break-all">
+                              resolution: {JSON.stringify(lastT2I['style_spec_resolution'] ?? null)}
+                            </div>
+                          </div>
+                        ) : null}
+                        {lastI2I ? (
+                          <div className="mt-3">
+                            <div className="font-medium text-gray-700">图生图</div>
+                            <div className="mt-1">
+                              preset: {readString(lastI2I, 'style_preset_id') || '—'} ｜ provider:{' '}
+                              {readString(lastI2I, 'provider') || '—'} ｜ model:{' '}
+                              {readString(lastI2I, 'model') || '—'}
+                            </div>
+                            <div className="mt-1 break-all">
+                              spec: {JSON.stringify(lastI2I['style_spec'] ?? null)}
+                            </div>
+                            <div className="mt-1 break-all">
+                              resolution: {JSON.stringify(lastI2I['style_spec_resolution'] ?? null)}
+                            </div>
+                          </div>
+                        ) : null}
+                      </details>
+                    )
+                  })()}
                   <div className="text-xs text-gray-400 mt-1">
                     创建于 {new Date(env.created_at).toLocaleDateString()}
                   </div>
@@ -451,6 +536,8 @@ function EnvironmentsPageContent() {
           defaultModel={variantTarget?.modelHint || ''}
           defaultCount={1}
           defaultStylePresetId={variantTarget?.stylePresetHint || ''}
+          defaultStyleSpec={variantTarget?.styleSpecHint || {}}
+          styleSpecFields={ENV_STYLE_SPEC_FIELDS}
           modelType={AIModelType.ImageToImage}
           modelCacheKey="environment-img2img"
           submitting={variantSubmitting}

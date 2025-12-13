@@ -423,9 +423,7 @@ export default function ScriptDetailPage() {
         attempts += 1
         try {
           // 等待一段时间再轮询任务状态
-          // eslint-disable-next-line no-await-in-loop
           await new Promise(resolve => setTimeout(resolve, 2000))
-          // eslint-disable-next-line no-await-in-loop
           const taskRes = await taskAPI.getTask(String(taskId))
           if (!taskRes.success || !taskRes.data) {
             continue
@@ -433,7 +431,6 @@ export default function ScriptDetailPage() {
           const status = taskRes.data.status
           if (status === 'completed') {
             // 任务完成后重新拉取分镜数据
-            // eslint-disable-next-line no-await-in-loop
             const sbRes = await scriptAPI.getStoryboard(scriptId)
             if (sbRes.success && sbRes.data) {
               const parsed = parseStoryboard(sbRes.data)
