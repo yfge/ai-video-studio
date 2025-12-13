@@ -173,6 +173,14 @@ def _build_stub_episodes_from_outlines(
     return episodes
 
 
+def _update_task_progress(db: Session, task: Optional[Task], description: str) -> None:
+    """Utility to keep task progress detail in sync."""
+    if not task:
+        return
+    task.description = description
+    db.commit()
+
+
 @router.post("/", response_model=EpisodeResponse)
 async def create_episode(
     episode: EpisodeCreate,
@@ -839,8 +847,7 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
             task.status = TaskStatus.PROCESSING
-            task.description = "剧集生成：准备调用模型"
-            db.commit()
+            _update_task_progress(db, task, "剧集生成：准备调用模型")
 
         story = (
             db.query(Story)
@@ -905,8 +912,7 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             raise RuntimeError("AI剧集生成失败")
 
         if task:
-            task.description = "剧集生成：模型返回结果解析中"
-            db.commit()
+            _update_task_progress(db, task, "剧集生成：模型返回结果解析中")
 
         content = (
             result.get("normalized") if isinstance(result, dict) else None
@@ -943,14 +949,15 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
                 agent_run=agent_run,
             )
             if task:
-                task.description = "剧集生成：大纲校验通过，写入故事信息"
-                db.commit()
+                _update_task_progress(db, task, "剧集生成：大纲校验通过，写入故事信息")
             db.refresh(story)
         if not episodes_data and step_outlines:
             episodes_data = _build_stub_episodes_from_outlines(
                 step_outlines, episode_count
             )
             agent_run = {**agent_run, "fallback_from_outline": True}
+            if task:
+                _update_task_progress(db, task, "模型输出无效，使用大纲兜底生成")
         if not episodes_data:
             raise RuntimeError("AI生成内容格式错误")
 
@@ -958,6 +965,8 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
         created_episodes: list[Episode] = []
         for i, ep_data in enumerate(episodes_data[:episode_count]):
             episode_number = ep_data.get("episode_number", i + 1)
+            if task:
+                _update_task_progress(db, task, f"生成第{episode_number}集：校验中")
             exists = (
                 db.query(Episode)
                 .filter(
@@ -972,8 +981,12 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             try:
                 EpisodePlanItem.model_validate(ep_data)
             except ValidationError:
+                if task:
+                    _update_task_progress(db, task, f"生成第{episode_number}集：schema校验失败")
                 continue
             if not _is_episode_payload_valid(ep_data):
+                if task:
+                    _update_task_progress(db, task, f"生成第{episode_number}集：内容校验失败")
                 continue
 
             scenes, scene_count = _ensure_scenes(ep_data)
@@ -1021,12 +1034,18 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
             )
             db.add(ep)
             created_episodes.append(ep)
+            if task:
+                _update_task_progress(db, task, f"生成第{episode_number}集：已落库")
 
         if created_episodes:
             db.commit()
             for ep in created_episodes:
                 db.refresh(ep)
                 created_ids.append(ep.id)
+            if task:
+                _update_task_progress(
+                    db, task, f"剧集生成：已完成 {len(created_ids)} 集，写入大纲/beats"
+                )
 
         if step_outlines and created_episodes:
             try:
@@ -1063,14 +1082,18 @@ def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: 
         if task:
             task.status = TaskStatus.COMPLETED
             task.result_file_path = f"episodes:{','.join(map(str, created_ids))}"
-            task.description = "剧集生成完成"
-            db.commit()
+            final_desc = (
+                f"剧集生成完成：共写入 {len(created_ids)} 集"
+                if created_ids
+                else "剧集生成完成但无新剧集写入"
+            )
+            _update_task_progress(db, task, final_desc)
     except Exception as e:
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
-            db.commit()
+            _update_task_progress(db, task, f"剧集生成失败：{e}")
     finally:
         db.close()
 
