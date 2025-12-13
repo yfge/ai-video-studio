@@ -86,7 +86,9 @@ export interface RegisterRequest {
 export interface Task {
   id: number;
   title: string;
+  task_type?: string;
   prompt?: string;
+  parameters?: Record<string, unknown> | null;
   status: "pending" | "processing" | "completed" | "failed";
   progress_detail?: string;
   created_at: string;
@@ -1094,6 +1096,13 @@ class ApiClient {
     return this.request(endpoint);
   }
 
+  async getVirtualIPImage(
+    virtual_ip_id: number,
+    image_id: number,
+  ): Promise<ApiResponse<VirtualIPImage>> {
+    return this.request(`/api/v1/virtual-ips/${virtual_ip_id}/images/${image_id}`);
+  }
+
   async uploadVirtualIPImage(
     virtual_ip_id: number,
     file: File,
@@ -2010,6 +2019,10 @@ export const virtualIPImageAPI = {
   // 获取虚拟IP图像列表
   getImages: (virtualIPId: number, category?: string) =>
     apiClient.getVirtualIPImages(virtualIPId, { category }),
+
+  // 获取单张虚拟IP图像
+  getImage: (virtualIPId: number, imageId: number) =>
+    apiClient.getVirtualIPImage(virtualIPId, imageId),
 
   // 上传图像
   uploadImage: (

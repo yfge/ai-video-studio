@@ -1,9 +1,44 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { taskAPI, type Task as APITask } from '@/utils/api'
+import { scriptAPI, storyStructureAPI, taskAPI, virtualIPImageAPI, type Environment, type Task as APITask } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import Navigation from '@/components/Navigation'
+
+type PersistedStyleInfo =
+  | {
+      source: string
+      style_spec?: unknown
+      style_spec_resolution?: unknown
+      error?: undefined
+    }
+  | {
+      source: string
+      error: string
+    }
+
+const toInt = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number.parseInt(value, 10)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object') return null
+  return value as Record<string, unknown>
+}
+
+const renderJson = (value: unknown) => {
+  if (value == null) return '—'
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<APITask[]>([])
@@ -15,6 +50,10 @@ export default function Tasks() {
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(20)
   const [total, setTotal] = useState(0)
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({})
+  const [persistedStyle, setPersistedStyle] = useState<Record<number, PersistedStyleInfo>>({})
+  const [persistedLoading, setPersistedLoading] = useState<Record<number, boolean>>({})
+  const [envCache, setEnvCache] = useState<Record<number, Environment>>({})
 
   const { showAlert } = useAlertModal()
 
@@ -100,6 +139,107 @@ export default function Tasks() {
     }
   }
 
+  const ensureEnvironmentsLoaded = useCallback(async () => {
+    if (Object.keys(envCache).length > 0) return envCache
+    const res = await storyStructureAPI.listEnvironments()
+    if (!res.success || !Array.isArray(res.data)) {
+      throw new Error(res.error || '加载环境资产失败')
+    }
+    const next: Record<number, Environment> = {}
+    res.data.forEach(env => {
+      next[env.id] = env
+    })
+    setEnvCache(next)
+    return next
+  }, [envCache])
+
+  const loadPersistedStyleForTask = useCallback(async (task: APITask) => {
+    const taskId = task.id
+    if (!Number.isInteger(taskId)) return
+    if (persistedStyle[taskId] || persistedLoading[taskId]) return
+
+    setPersistedLoading(prev => ({ ...prev, [taskId]: true }))
+    try {
+      const params = (task.parameters || {}) as Record<string, unknown>
+      const resultPath = task.result_file_path || ''
+
+      if (resultPath.startsWith('virtual_ip_image:')) {
+        const [, vipRaw, imageRaw] = resultPath.split(':')
+        const vipId = toInt(vipRaw)
+        const imageId = toInt(imageRaw)
+        if (vipId && imageId) {
+          const res = await virtualIPImageAPI.getImage(vipId, imageId)
+          if (!res.success || !res.data) {
+            throw new Error(res.error || '加载虚拟IP图像失败')
+          }
+          const generationParams = (res.data.generation_params || {}) as Record<string, unknown>
+          setPersistedStyle(prev => ({
+            ...prev,
+            [taskId]: {
+              source: `virtual_ip_image:${vipId}:${imageId}`,
+              style_spec: generationParams.style_spec,
+              style_spec_resolution: generationParams.style_spec_resolution,
+            },
+          }))
+          return
+        }
+      }
+
+      const envId = toInt(params.env_id)
+      if (envId) {
+        const envMap = await ensureEnvironmentsLoaded()
+        const env = envMap[envId]
+        const meta = asRecord(env?.metadata) || {}
+        const key = resultPath.startsWith('environment_image_variants:')
+          ? 'last_image_to_image_generation'
+          : 'last_text_to_image_generation'
+        const generation = asRecord(meta[key])
+        setPersistedStyle(prev => ({
+          ...prev,
+          [taskId]: {
+            source: `environment:${envId}:${key}`,
+            style_spec: generation?.style_spec,
+            style_spec_resolution: generation?.style_spec_resolution,
+          },
+        }))
+        return
+      }
+
+      const scriptId = toInt(params.script_id)
+      if (scriptId) {
+        const sb = await scriptAPI.getStoryboard(scriptId)
+        if (!sb.success || !sb.data) {
+          throw new Error(sb.error || '加载分镜数据失败')
+        }
+        const meta = (sb.data.meta || {}) as Record<string, unknown>
+        setPersistedStyle(prev => ({
+          ...prev,
+          [taskId]: {
+            source: `script:${scriptId}:storyboard`,
+            style_spec: meta.image_generation_style_spec,
+            style_spec_resolution: meta.image_generation_style_spec_resolution,
+          },
+        }))
+        return
+      }
+
+      setPersistedStyle(prev => ({
+        ...prev,
+        [taskId]: { source: 'unknown', error: '未能识别可读取的落库风格来源' },
+      }))
+    } catch (error) {
+      setPersistedStyle(prev => ({
+        ...prev,
+        [taskId]: {
+          source: 'error',
+          error: error instanceof Error ? error.message : '加载落库风格信息失败',
+        },
+      }))
+    } finally {
+      setPersistedLoading(prev => ({ ...prev, [taskId]: false }))
+    }
+  }, [ensureEnvironmentsLoaded, persistedLoading, persistedStyle])
+
   const handleStart = async (id: APITask['id']) => {
     const taskId = typeof id === 'number' ? id : Number(id)
     if (!Number.isInteger(taskId)) {
@@ -157,6 +297,18 @@ export default function Tasks() {
       onConfirm: () => {
         void deleteTaskCore(taskId)
       },
+    })
+  }
+
+  const toggleExpanded = (task: APITask) => {
+    const taskId = task.id
+    if (!Number.isInteger(taskId)) return
+    setExpanded(prev => {
+      const next = !prev[taskId]
+      if (next) {
+        void loadPersistedStyleForTask(task)
+      }
+      return { ...prev, [taskId]: next }
     })
   }
 
@@ -227,7 +379,62 @@ export default function Tasks() {
                         </span>
                       )}
                       {task.description && <span>描述：{task.description}</span>}
+                      {task.task_type && <span>类型：{task.task_type}</span>}
                     </div>
+                    {expanded[task.id] && (
+                      <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 space-y-3">
+                        <div className="flex flex-wrap items-center gap-4">
+                          <span className="font-medium">任务ID：{task.id}</span>
+                          {task.result_file_path ? (
+                            <span className="break-all">result: {task.result_file_path}</span>
+                          ) : null}
+                        </div>
+
+                        <div>
+                          <div className="font-medium text-gray-800">parameters</div>
+                          <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-white p-2 border border-gray-200">
+                            {renderJson(task.parameters)}
+                          </pre>
+                        </div>
+
+                        {(() => {
+                          const params = (task.parameters || {}) as Record<string, unknown>
+                          const presetId = params.style_preset_id
+                          const spec = params.style_spec
+                          if (!presetId && !spec) return null
+                          return (
+                            <div>
+                              <div className="font-medium text-gray-800">请求风格</div>
+                              <div className="mt-1 break-all">preset: {String(presetId || '—')}</div>
+                              <div className="mt-1 break-all">spec: {renderJson(spec)}</div>
+                            </div>
+                          )
+                        })()}
+
+                        <div>
+                          <div className="font-medium text-gray-800">落库风格</div>
+                          {persistedLoading[task.id] ? (
+                            <div className="mt-1 text-gray-500">加载中...</div>
+                          ) : persistedStyle[task.id]?.error ? (
+                            <div className="mt-1 text-red-600">{persistedStyle[task.id]?.error}</div>
+                          ) : persistedStyle[task.id] ? (
+                            <>
+                              <div className="mt-1 break-all">
+                                source: {persistedStyle[task.id]?.source}
+                              </div>
+                              <div className="mt-1 break-all">
+                                spec: {renderJson(persistedStyle[task.id]?.style_spec)}
+                              </div>
+                              <div className="mt-1 break-all">
+                                resolution: {renderJson(persistedStyle[task.id]?.style_spec_resolution)}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="mt-1 text-gray-500">（未加载）</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center space-x-3">
                     {task.status === 'processing' && (
@@ -270,6 +477,12 @@ export default function Tasks() {
                       className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {deletingTaskId === task.id ? '删除中...' : '删除'}
+                    </button>
+                    <button
+                      onClick={() => toggleExpanded(task)}
+                      className="text-gray-600 hover:text-gray-800 text-sm"
+                    >
+                      {expanded[task.id] ? '收起详情' : '详情'}
                     </button>
                   </div>
                 </div>
