@@ -10,7 +10,15 @@ def test_storyboard_model_accepts_keyframe_urls():
                     "scene_number": 1,
                     "description": "角色走进房间，停下。",
                     "start_image_url": "https://cdn.example.com/start.png",
+                    "start_image_urls": [
+                        "https://cdn.example.com/start.png",
+                        "https://cdn.example.com/start-2.png",
+                    ],
                     "end_image_url": "https://cdn.example.com/end.png",
+                    "end_image_urls": [
+                        "https://cdn.example.com/end.png",
+                        "https://cdn.example.com/end-2.png",
+                    ],
                     "video_url": "https://cdn.example.com/clip.mp4",
                 }
             ]
@@ -18,6 +26,13 @@ def test_storyboard_model_accepts_keyframe_urls():
     )
 
     assert storyboard.frames[0].start_image_url == "https://cdn.example.com/start.png"
+    assert storyboard.frames[0].start_image_urls == [
+        "https://cdn.example.com/start.png",
+        "https://cdn.example.com/start-2.png",
+    ]
     assert storyboard.frames[0].end_image_url == "https://cdn.example.com/end.png"
+    assert storyboard.frames[0].end_image_urls == [
+        "https://cdn.example.com/end.png",
+        "https://cdn.example.com/end-2.png",
+    ]
     assert storyboard.frames[0].video_url == "https://cdn.example.com/clip.mp4"
-

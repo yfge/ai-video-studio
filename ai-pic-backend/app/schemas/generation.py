@@ -90,8 +90,14 @@ class StoryboardFrame(BaseModel):
     start_image_url: Optional[str] = Field(
         None, description="分镜首帧关键帧URL（生成后回填）"
     )
+    start_image_urls: Optional[List[str]] = Field(
+        None, description="分镜首帧关键帧URL列表（生成后回填）"
+    )
     end_image_url: Optional[str] = Field(
         None, description="分镜尾帧关键帧URL（生成后回填）"
+    )
+    end_image_urls: Optional[List[str]] = Field(
+        None, description="分镜尾帧关键帧URL列表（生成后回填）"
     )
     video_url: Optional[str] = Field(None, description="生成的视频URL（生成后回填）")
     generation_source: Optional[str] = Field(None, description="生成来源：ai/manual/import/legacy")

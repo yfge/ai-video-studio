@@ -434,7 +434,9 @@ export type StoryboardFrame = {
   reference_images?: string[];
   image_url?: string;
   start_image_url?: string;
+  start_image_urls?: string[];
   end_image_url?: string;
+  end_image_urls?: string[];
   video_url?: string;
   generation_source?: string;
   generation_method?: string;
@@ -1611,12 +1613,23 @@ class ApiClient {
       { method: "POST" },
     );
   }
-  async generateStoryboardVideo(scriptId: number, frames?: number[]) {
+  async generateStoryboardVideo(
+    scriptId: number,
+    frames?: number[],
+    selections?: Array<{
+      frame_index: number;
+      start_image_url?: string;
+      end_image_url?: string;
+    }>,
+  ) {
     return this.request(
       `/api/v1/scripts/${scriptId}/storyboard/generate-video`,
       {
         method: "POST",
-        body: JSON.stringify({ frames: frames || [] }),
+        body: JSON.stringify({
+          frames: frames || [],
+          selections: selections || [],
+        }),
       },
     );
   }

@@ -131,7 +131,8 @@ def storyboard_video_generate_task(
 
     script_id = int(payload.get("script_id"))
     frame_indexes = payload.get("frames") or []
-    _process_storyboard_video_task(task_id, script_id, frame_indexes)
+    selections = payload.get("selections") or []
+    _process_storyboard_video_task(task_id, script_id, frame_indexes, selections)
 
 
 @celery_app.task(name="tasks.storyboard_generate")

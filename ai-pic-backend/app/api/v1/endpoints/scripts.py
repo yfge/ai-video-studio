@@ -2215,7 +2215,7 @@ def _process_storyboard_image_task(
             count_int = 1
         count_int = max(1, min(count_int, 4))
 
-        async def _gen_image(prompt: str, ref_imgs: List[str]) -> dict | None:
+        async def _gen_images(prompt: str, ref_imgs: List[str]) -> dict | None:
             try:
                 prefer_provider = None
                 model_id = model
@@ -2256,19 +2256,26 @@ def _process_storyboard_image_task(
                     )
                 if resp.success:
                     data = resp.data if isinstance(resp.data, dict) else {}
-                    url = data.get("image_url") or data.get("url")
+                    urls: list[str] = []
+                    url_single = data.get("image_url") or data.get("url")
+                    if isinstance(url_single, str) and url_single:
+                        urls.append(url_single)
                     # 兼容火山 Seedream 等返回 {"images": [...]} 的格式
-                    if not url:
-                        images = data.get("images")
-                        if isinstance(images, list) and images:
-                            first = images[0]
-                            if isinstance(first, str):
-                                url = first
-                            elif isinstance(first, dict):
-                                url = first.get("url")
-                    if url:
+                    images = data.get("images")
+                    if isinstance(images, list):
+                        for item in images:
+                            if isinstance(item, str) and item:
+                                urls.append(item)
+                            elif isinstance(item, dict) and item.get("url"):
+                                urls.append(str(item.get("url")))
+
+                    deduped: list[str] = []
+                    for u in urls:
+                        if u and u not in deduped:
+                            deduped.append(u)
+                    if deduped:
                         return {
-                            "url": url,
+                            "urls": deduped,
                             "provider": resp.provider,
                             "model": resp.model,
                             "style_spec": (
@@ -2293,21 +2300,25 @@ def _process_storyboard_image_task(
             model: str,
             *,
             keyframe_role: str = "single",
+            variant_index: int | None = None,
         ) -> dict | None:
             """将分镜图像下载到本地并上传 OSS，返回最终可用 URL。"""
             try:
+                metadata = {
+                    "script_id": script_id,
+                    "frame_index": idx,
+                    "provider": provider,
+                    "model": model,
+                    "keyframe_role": keyframe_role,
+                }
+                if variant_index is not None:
+                    metadata["variant_index"] = variant_index
                 stored = await ai_service._persist_generated_image(
                     image_data=url,
                     ip_name=f"script-{script_id}",
                     category="storyboard",
                     prefix="ai-generated/storyboard",
-                    metadata={
-                        "script_id": script_id,
-                        "frame_index": idx,
-                        "provider": provider,
-                        "model": model,
-                        "keyframe_role": keyframe_role,
-                    },
+                    metadata=metadata,
                     # 若已配置 OSS/CDN，则要求上传成功；否则退回本地存储
                     require_upload=bool(oss_service),
                 )
@@ -2414,9 +2425,10 @@ def _process_storyboard_image_task(
                 start_prompt = f"{prompt}\n\n（关键帧：首帧）请生成该镜头开始瞬间的画面，保持构图与风格一致。"
                 end_prompt = f"{prompt}\n\n（关键帧：尾帧）请生成该镜头结束瞬间的画面，体现动作完成后的状态，保持构图与风格一致。"
 
-                start_result = anyio.run(_gen_image, start_prompt, ref_images)
+                start_result = anyio.run(_gen_images, start_prompt, ref_images)
                 if start_result:
-                    url_preview = start_result.get("url")
+                    urls_preview = start_result.get("urls") or []
+                    url_preview = urls_preview[0] if urls_preview else None
                     if isinstance(url_preview, str) and len(url_preview) > 200:
                         url_preview = url_preview[:200] + "..."
                     print(
@@ -2430,23 +2442,41 @@ def _process_storyboard_image_task(
                         resolved_style_spec_resolution_used = start_result.get(
                             "style_spec_resolution"
                         )
-                if start_result and start_result.get("url"):
-                    start_persist = anyio.run(
-                        _partial(_persist_frame_image, keyframe_role="start"),
-                        start_result["url"],
-                        idx,
-                        start_result.get("provider"),
-                        start_result.get("model"),
-                    )
-                    if start_persist and start_persist.get("final_url"):
-                        fr["start_image_url_original"] = start_result["url"]
-                        fr["start_image_url"] = start_persist["final_url"]
-                        fr["image_url"] = start_persist["final_url"]
-                        fr["image_url_original"] = start_result["url"]
+                start_final_urls: list[str] = []
+                start_original_urls: list[str] = []
+                if start_result:
+                    for variant_index, raw_url in enumerate(
+                        start_result.get("urls") or [], start=1
+                    ):
+                        if not raw_url:
+                            continue
+                        start_original_urls.append(raw_url)
+                        start_persist = anyio.run(
+                            _partial(
+                                _persist_frame_image,
+                                keyframe_role="start",
+                                variant_index=variant_index,
+                            ),
+                            raw_url,
+                            idx,
+                            start_result.get("provider"),
+                            start_result.get("model"),
+                        )
+                        if start_persist and start_persist.get("final_url"):
+                            start_final_urls.append(start_persist["final_url"])
 
-                end_result = anyio.run(_gen_image, end_prompt, ref_images)
+                if start_final_urls:
+                    fr["start_image_urls"] = start_final_urls
+                    fr["start_image_url"] = start_final_urls[0]
+                    fr["image_url"] = start_final_urls[0]
+                    if start_original_urls:
+                        fr["start_image_url_original"] = start_original_urls[0]
+                        fr["image_url_original"] = start_original_urls[0]
+
+                end_result = anyio.run(_gen_images, end_prompt, ref_images)
                 if end_result:
-                    url_preview = end_result.get("url")
+                    urls_preview = end_result.get("urls") or []
+                    url_preview = urls_preview[0] if urls_preview else None
                     if isinstance(url_preview, str) and len(url_preview) > 200:
                         url_preview = url_preview[:200] + "..."
                     print(
@@ -2460,21 +2490,39 @@ def _process_storyboard_image_task(
                         resolved_style_spec_resolution_used = end_result.get(
                             "style_spec_resolution"
                         )
-                if end_result and end_result.get("url"):
-                    end_persist = anyio.run(
-                        _partial(_persist_frame_image, keyframe_role="end"),
-                        end_result["url"],
-                        idx,
-                        end_result.get("provider"),
-                        end_result.get("model"),
-                    )
-                    if end_persist and end_persist.get("final_url"):
-                        fr["end_image_url_original"] = end_result["url"]
-                        fr["end_image_url"] = end_persist["final_url"]
+                end_final_urls: list[str] = []
+                end_original_urls: list[str] = []
+                if end_result:
+                    for variant_index, raw_url in enumerate(
+                        end_result.get("urls") or [], start=1
+                    ):
+                        if not raw_url:
+                            continue
+                        end_original_urls.append(raw_url)
+                        end_persist = anyio.run(
+                            _partial(
+                                _persist_frame_image,
+                                keyframe_role="end",
+                                variant_index=variant_index,
+                            ),
+                            raw_url,
+                            idx,
+                            end_result.get("provider"),
+                            end_result.get("model"),
+                        )
+                        if end_persist and end_persist.get("final_url"):
+                            end_final_urls.append(end_persist["final_url"])
+
+                if end_final_urls:
+                    fr["end_image_urls"] = end_final_urls
+                    fr["end_image_url"] = end_final_urls[0]
+                    if end_original_urls:
+                        fr["end_image_url_original"] = end_original_urls[0]
             else:
-                result = anyio.run(_gen_image, prompt, ref_images)
+                result = anyio.run(_gen_images, prompt, ref_images)
                 if result:
-                    url_preview = result.get("url")
+                    urls_preview = result.get("urls") or []
+                    url_preview = urls_preview[0] if urls_preview else None
                     if isinstance(url_preview, str) and len(url_preview) > 200:
                         url_preview = url_preview[:200] + "..."
                     print(
@@ -2488,25 +2536,43 @@ def _process_storyboard_image_task(
                         resolved_style_spec_resolution_used = result.get(
                             "style_spec_resolution"
                         )
-                if result and result.get("url"):
-                    persist = anyio.run(
-                        _partial(_persist_frame_image, keyframe_role="single"),
-                        result["url"],
-                        idx,
-                        result.get("provider"),
-                        result.get("model"),
-                    )
-                    if persist and persist.get("final_url"):
-                        before_url = fr.get("image_url")
-                        fr["image_url_original"] = result["url"]
-                        fr["image_url"] = persist["final_url"]
-                        fr["start_image_url"] = persist["final_url"]
-                        print(
-                            "Storyboard frame set idx=%s old_url=%s new_url=%s",
+                final_urls: list[str] = []
+                original_urls: list[str] = []
+                if result:
+                    for variant_index, raw_url in enumerate(
+                        result.get("urls") or [], start=1
+                    ):
+                        if not raw_url:
+                            continue
+                        original_urls.append(raw_url)
+                        persist = anyio.run(
+                            _partial(
+                                _persist_frame_image,
+                                keyframe_role="single",
+                                variant_index=variant_index,
+                            ),
+                            raw_url,
                             idx,
-                            before_url,
-                            fr.get("image_url"),
+                            result.get("provider"),
+                            result.get("model"),
                         )
+                        if persist and persist.get("final_url"):
+                            final_urls.append(persist["final_url"])
+
+                if final_urls:
+                    before_url = fr.get("image_url")
+                    fr["image_url"] = final_urls[0]
+                    fr["start_image_url"] = final_urls[0]
+                    fr["start_image_urls"] = final_urls
+                    if original_urls:
+                        fr["image_url_original"] = original_urls[0]
+                        fr["start_image_url_original"] = original_urls[0]
+                    print(
+                        "Storyboard frame set idx=%s old_url=%s new_url=%s",
+                        idx,
+                        before_url,
+                        fr.get("image_url"),
+                    )
 
         # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
         extra_raw = script.extra_metadata or {}
@@ -2581,7 +2647,12 @@ class StoryboardImageRequest(BaseModel):
     style_spec: Optional[StyleSpec] = Field(
         default=None, description="风格 schema（允许只传部分字段）"
     )
-    count: int = Field(default=1, ge=1, le=4, description="每帧生成的图像数量")
+    count: int = Field(
+        default=1,
+        ge=1,
+        le=4,
+        description="每帧生成的图像数量（keyframe_mode=start_end 时表示每个关键帧角色各生成 count 张）",
+    )
     keyframe_mode: str = Field(
         default="single",
         description="生成模式：single=单张（兼容旧字段 image_url）；start_end=生成首尾关键帧（start_image_url/end_image_url）",
@@ -2668,7 +2739,10 @@ async def generate_storyboard_images(
 
 
 def _process_storyboard_video_task(
-    task_id: int, script_id: int, frame_indexes: list[int] | None
+    task_id: int,
+    script_id: int,
+    frame_indexes: list[int] | None,
+    selections: list[dict[str, Any]] | None = None,
 ):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
@@ -2716,13 +2790,29 @@ def _process_storyboard_video_task(
             dur_int = int(round(dur))
             return max(1, min(dur_int, 10))
 
+        selection_by_index: dict[int, dict[str, Any]] = {}
+        for item in selections or []:
+            if not isinstance(item, dict):
+                continue
+            raw_idx = item.get("frame_index")
+            try:
+                idx_int = int(raw_idx)
+            except (TypeError, ValueError):
+                continue
+            selection_by_index[idx_int] = item
+
         async def _gen_video(
-            image_url: str, prompt: Optional[str], duration: int
+            image_url: str,
+            prompt: Optional[str],
+            duration: int,
+            *,
+            end_image_url: Optional[str] = None,
         ) -> dict | None:
             try:
                 result = await ai_service.generate_video(
                     prompt=prompt,
                     image_url=image_url,
+                    end_image_url=end_image_url,
                     duration=duration,
                     fps=24,
                     resolution="1280x720",
@@ -2740,22 +2830,56 @@ def _process_storyboard_video_task(
             if not isinstance(fr, dict):
                 continue
 
-            raw_image_url = (
-                fr.get("start_image_url")
-                or fr.get("image_url")
-                or fr.get("end_image_url")
-                or ""
-            )
-            if not raw_image_url:
+            selection = selection_by_index.get(idx) or {}
+            raw_start_url = selection.get("start_image_url")
+            raw_end_url = selection.get("end_image_url")
+
+            if not raw_start_url:
+                raw_start_url = (
+                    fr.get("start_image_url")
+                    or fr.get("image_url")
+                    or (
+                        (fr.get("start_image_urls") or [None])[0]
+                        if isinstance(fr.get("start_image_urls"), list)
+                        else None
+                    )
+                    or fr.get("end_image_url")
+                    or (
+                        (fr.get("end_image_urls") or [None])[0]
+                        if isinstance(fr.get("end_image_urls"), list)
+                        else None
+                    )
+                    or ""
+                )
+            if not raw_end_url:
+                raw_end_url = (
+                    fr.get("end_image_url")
+                    or (
+                        (fr.get("end_image_urls") or [None])[0]
+                        if isinstance(fr.get("end_image_urls"), list)
+                        else None
+                    )
+                    or ""
+                )
+
+            if not raw_start_url:
                 continue
-            image_url = _abs_url(str(raw_image_url))
+
+            start_url = _abs_url(str(raw_start_url))
+            end_url = _abs_url(str(raw_end_url)) if raw_end_url else None
 
             prompt_value = (
                 fr.get("ai_prompt") or fr.get("description") or ""
             ).strip() or None
             duration_int = _coerce_duration(fr.get("duration_seconds"))
 
-            video = anyio.run(_gen_video, image_url, prompt_value, duration_int)
+            video = anyio.run(
+                _gen_video,
+                start_url,
+                prompt_value,
+                duration_int,
+                end_image_url=end_url,
+            )
             if not video:
                 continue
 
@@ -2768,6 +2892,8 @@ def _process_storyboard_video_task(
                 "provider": video.get("provider_used"),
                 "model": video.get("model_used"),
                 "method": video.get("generation_method"),
+                "start_image_url": raw_start_url,
+                "end_image_url": raw_end_url or None,
             }
 
         # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
@@ -2795,9 +2921,23 @@ def _process_storyboard_video_task(
         db.close()
 
 
+class StoryboardVideoSelection(BaseModel):
+    frame_index: int = Field(..., ge=0, description="分镜索引（基于0）")
+    start_image_url: Optional[str] = Field(
+        default=None, description="可选：指定该分镜使用的首帧关键帧 URL"
+    )
+    end_image_url: Optional[str] = Field(
+        default=None, description="可选：指定该分镜使用的尾帧关键帧 URL"
+    )
+
+
 class StoryboardVideoRequest(BaseModel):
     frames: list[int] = Field(
         default_factory=list, description="要生成视频的分镜索引列表（基于0的索引）"
+    )
+    selections: list[StoryboardVideoSelection] = Field(
+        default_factory=list,
+        description="可选：为每个分镜显式指定首/尾关键帧，用于任意组合生成视频",
     )
 
 
@@ -2830,7 +2970,15 @@ async def generate_storyboard_video(
         task_type="image_generation",
         prompt=f"Storyboard video generation for script {script_id}",
         parameters=json.dumps(
-            {"script_id": script_id, "frames": body.frames or []}, ensure_ascii=False
+            {
+                "script_id": script_id,
+                "frames": body.frames or [],
+                "selections": [
+                    sel.model_dump(mode="json", exclude_none=True)
+                    for sel in (body.selections or [])
+                ],
+            },
+            ensure_ascii=False,
         ),
         user_id=current_user.id,
     )
@@ -2838,7 +2986,14 @@ async def generate_storyboard_video(
     db.commit()
     db.refresh(t)
 
-    payload = {"script_id": script_id, "frames": body.frames or []}
+    payload = {
+        "script_id": script_id,
+        "frames": body.frames or [],
+        "selections": [
+            sel.model_dump(mode="json", exclude_none=True)
+            for sel in (body.selections or [])
+        ],
+    }
     storyboard_video_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 

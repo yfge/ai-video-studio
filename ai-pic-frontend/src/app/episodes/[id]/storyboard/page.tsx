@@ -474,9 +474,27 @@ export default function EpisodeStoryboardPage() {
     if (!activeScript) return;
     if (!assertNormalizedReady(true)) return;
     const indexes = collectFrameIndexesForScene(selectedScene);
+    const selections = indexes
+      .map((idx) => {
+        const fr = (storyboard.frames ?? [])[idx] || ({} as StoryboardFrame);
+        const start =
+          fr.start_image_url ||
+          fr.image_url ||
+          (Array.isArray(fr.start_image_urls) ? fr.start_image_urls[0] : undefined);
+        const end =
+          fr.end_image_url ||
+          (Array.isArray(fr.end_image_urls) ? fr.end_image_urls[0] : undefined);
+        return {
+          frame_index: idx,
+          start_image_url: start,
+          end_image_url: end,
+        };
+      })
+      .filter((sel) => sel.start_image_url || sel.end_image_url);
     const response = await scriptAPI.generateStoryboardVideo(
       activeScript.id,
       indexes,
+      selections,
     );
     if (response.success)
       showAlert({ message: "已创建视频生成任务", variant: "success" });
@@ -624,11 +642,19 @@ export default function EpisodeStoryboardPage() {
       let attempts = 0;
       pollTimerRef.current = setInterval(async () => {
         attempts += 1;
-        const sb = await scriptAPI.getStoryboard(activeScript.id);
+          const sb = await scriptAPI.getStoryboard(activeScript.id);
         if (sb.success && sb.data) {
           setStoryboard(sb.data);
           const hasImage = (sb.data.frames || []).some(
-            (fr) => fr && (fr.start_image_url || fr.image_url || fr.end_image_url),
+            (fr) =>
+              fr &&
+              (fr.start_image_url ||
+                fr.image_url ||
+                fr.end_image_url ||
+                (Array.isArray(fr.start_image_urls) &&
+                  fr.start_image_urls.length > 0) ||
+                (Array.isArray(fr.end_image_urls) &&
+                  fr.end_image_urls.length > 0)),
           );
           if (hasImage || attempts >= 10) {
             if (pollTimerRef.current) {
@@ -1376,6 +1402,34 @@ export default function EpisodeStoryboardPage() {
                   const absIndex = (storyboard.frames ?? []).findIndex(
                     (frame) => frame === fr,
                   );
+                  const startCandidates = (() => {
+                    const urls: string[] = [];
+                    const raw = Array.isArray(fr.start_image_urls)
+                      ? fr.start_image_urls
+                      : [];
+                    raw.forEach((u) => {
+                      if (u && !urls.includes(u)) urls.push(u);
+                    });
+                    const fallback = fr.start_image_url || fr.image_url;
+                    if (fallback && !urls.includes(fallback)) urls.unshift(fallback);
+                    return urls;
+                  })();
+                  const endCandidates = (() => {
+                    const urls: string[] = [];
+                    const raw = Array.isArray(fr.end_image_urls)
+                      ? fr.end_image_urls
+                      : [];
+                    raw.forEach((u) => {
+                      if (u && !urls.includes(u)) urls.push(u);
+                    });
+                    const fallback = fr.end_image_url;
+                    if (fallback && !urls.includes(fallback)) urls.unshift(fallback);
+                    return urls;
+                  })();
+                  const selectedStart =
+                    fr.start_image_url || fr.image_url || startCandidates[0];
+                  const selectedEnd = fr.end_image_url || endCandidates[0];
+                  const hasKeyframes = Boolean(selectedStart || selectedEnd);
                   return (
                     <div key={idx} className="border rounded p-3">
                       <div className="flex items-center justify-between mb-1">
@@ -1503,69 +1557,146 @@ export default function EpisodeStoryboardPage() {
                             已绑定参考图：{fr.reference_images.length} 张
                           </div>
                         )}
-                      {(fr.start_image_url || fr.image_url || fr.end_image_url) && (
+                      {hasKeyframes && (
                         <div className="mt-2">
                           <div className="text-xs text-gray-700 mb-1">
                             关键帧预览：
                           </div>
                           <div
                             className={`grid gap-2 ${
-                              fr.end_image_url ? "grid-cols-2" : "grid-cols-1"
+                              selectedEnd ? "grid-cols-2" : "grid-cols-1"
                             }`}
                           >
-                            {(fr.start_image_url || fr.image_url) && (
-                              <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
-                                <Image
-                                  src={(fr.start_image_url || fr.image_url) as string}
-                                  alt="start keyframe"
-                                  fill
-                                  sizes="(min-width:1024px) 50vw, 100vw"
-                                  className="object-contain p-2 cursor-zoom-in"
-                                  unoptimized
-                                  onClick={() =>
-                                    setPreview({
-                                      src: (fr.start_image_url || fr.image_url) as string,
-                                      alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
-                                      description: fr.description || "分镜关键帧（首帧）",
-                                    })
-                                  }
-                                />
-                                <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                                  首
+                            {selectedStart && (
+                              <div>
+                                <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
+                                  <Image
+                                    src={selectedStart as string}
+                                    alt="start keyframe"
+                                    fill
+                                    sizes="(min-width:1024px) 50vw, 100vw"
+                                    className="object-contain p-2 cursor-zoom-in"
+                                    unoptimized
+                                    onClick={() =>
+                                      setPreview({
+                                        src: selectedStart as string,
+                                        alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
+                                        description:
+                                          fr.description || "分镜关键帧（首帧）",
+                                      })
+                                    }
+                                  />
+                                  <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                                    首
+                                  </div>
                                 </div>
+                                {startCandidates.length > 1 && (
+                                  <div className="mt-2 grid grid-cols-4 gap-2">
+                                    {startCandidates.map((url) => (
+                                      <button
+                                        type="button"
+                                        key={url}
+                                        onClick={() => {
+                                          setStoryboard((prev) => {
+                                            const frames = [...(prev.frames || [])];
+                                            const current = frames[absIndex] || {};
+                                            frames[absIndex] = {
+                                              ...current,
+                                              start_image_url: url,
+                                              image_url: url,
+                                            };
+                                            return { ...prev, frames };
+                                          });
+                                        }}
+                                        className={`relative h-16 overflow-hidden rounded border bg-gray-50 ${
+                                          selectedStart === url
+                                            ? "ring-2 ring-purple-500"
+                                            : ""
+                                        }`}
+                                      >
+                                        <Image
+                                          src={url}
+                                          alt="start keyframe candidate"
+                                          fill
+                                          sizes="(min-width:1024px) 25vw, 50vw"
+                                          className="object-contain p-1"
+                                          unoptimized
+                                        />
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )}
-                            {fr.end_image_url && (
-                              <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
-                                <Image
-                                  src={fr.end_image_url as string}
-                                  alt="end keyframe"
-                                  fill
-                                  sizes="(min-width:1024px) 50vw, 100vw"
-                                  className="object-contain p-2 cursor-zoom-in"
-                                  unoptimized
-                                  onClick={() =>
-                                    setPreview({
-                                      src: fr.end_image_url as string,
-                                      alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
-                                      description: fr.description || "分镜关键帧（尾帧）",
-                                    })
-                                  }
-                                />
-                                <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                                  尾
+                            {selectedEnd && (
+                              <div>
+                                <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
+                                  <Image
+                                    src={selectedEnd as string}
+                                    alt="end keyframe"
+                                    fill
+                                    sizes="(min-width:1024px) 50vw, 100vw"
+                                    className="object-contain p-2 cursor-zoom-in"
+                                    unoptimized
+                                    onClick={() =>
+                                      setPreview({
+                                        src: selectedEnd as string,
+                                        alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
+                                        description:
+                                          fr.description || "分镜关键帧（尾帧）",
+                                      })
+                                    }
+                                  />
+                                  <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                                    尾
+                                  </div>
                                 </div>
+                                {endCandidates.length > 1 && (
+                                  <div className="mt-2 grid grid-cols-4 gap-2">
+                                    {endCandidates.map((url) => (
+                                      <button
+                                        type="button"
+                                        key={url}
+                                        onClick={() => {
+                                          setStoryboard((prev) => {
+                                            const frames = [...(prev.frames || [])];
+                                            const current = frames[absIndex] || {};
+                                            frames[absIndex] = {
+                                              ...current,
+                                              end_image_url: url,
+                                            };
+                                            return { ...prev, frames };
+                                          });
+                                        }}
+                                        className={`relative h-16 overflow-hidden rounded border bg-gray-50 ${
+                                          selectedEnd === url
+                                            ? "ring-2 ring-purple-500"
+                                            : ""
+                                        }`}
+                                      >
+                                        <Image
+                                          src={url}
+                                          alt="end keyframe candidate"
+                                          fill
+                                          sizes="(min-width:1024px) 25vw, 50vw"
+                                          className="object-contain p-1"
+                                          unoptimized
+                                        />
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                            {(fr.start_image_url || fr.image_url) && (
+                            {selectedStart && (
                               <>
                                 <button
                                   type="button"
                                   onClick={() =>
                                     setPreview({
-                                      src: (fr.start_image_url || fr.image_url) as string,
+                                      src: selectedStart as string,
                                       alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
                                       description: fr.description || "分镜关键帧（首帧）",
                                     })
@@ -1575,7 +1706,7 @@ export default function EpisodeStoryboardPage() {
                                   查看首帧
                                 </button>
                                 <a
-                                  href={(fr.start_image_url || fr.image_url) as string}
+                                  href={selectedStart as string}
                                   target="_blank"
                                   className="text-blue-600 hover:text-blue-800"
                                 >
@@ -1583,13 +1714,13 @@ export default function EpisodeStoryboardPage() {
                                 </a>
                               </>
                             )}
-                            {fr.end_image_url && (
+                            {selectedEnd && (
                               <>
                                 <button
                                   type="button"
                                   onClick={() =>
                                     setPreview({
-                                      src: fr.end_image_url as string,
+                                      src: selectedEnd as string,
                                       alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
                                       description: fr.description || "分镜关键帧（尾帧）",
                                     })
@@ -1599,7 +1730,7 @@ export default function EpisodeStoryboardPage() {
                                   查看尾帧
                                 </button>
                                 <a
-                                  href={fr.end_image_url as string}
+                                  href={selectedEnd as string}
                                   target="_blank"
                                   className="text-blue-600 hover:text-blue-800"
                                 >
@@ -1623,10 +1754,31 @@ export default function EpisodeStoryboardPage() {
                           <button
                             onClick={async () => {
                               if (!activeScript) return;
+                              const start =
+                                fr.start_image_url ||
+                                fr.image_url ||
+                                (Array.isArray(fr.start_image_urls)
+                                  ? fr.start_image_urls[0]
+                                  : undefined);
+                              const end =
+                                fr.end_image_url ||
+                                (Array.isArray(fr.end_image_urls)
+                                  ? fr.end_image_urls[0]
+                                  : undefined);
+                              const selections = [
+                                {
+                                  frame_index: absIndex,
+                                  start_image_url: start,
+                                  end_image_url: end,
+                                },
+                              ].filter(
+                                (sel) => sel.start_image_url || sel.end_image_url,
+                              );
                               const response =
                                 await scriptAPI.generateStoryboardVideo(
                                   activeScript.id,
                                   [absIndex],
+                                  selections,
                                 );
                               if (response.success)
                                 showAlert({
@@ -1654,18 +1806,18 @@ export default function EpisodeStoryboardPage() {
                               查看视频
                             </a>
                           )}
-                          {(fr.start_image_url || fr.image_url) && (
+                          {selectedStart && (
                             <a
-                              href={(fr.start_image_url || fr.image_url) as string}
+                              href={selectedStart as string}
                               target="_blank"
                               className="text-sm text-green-600 hover:text-green-800"
                             >
                               查看首帧
                             </a>
                           )}
-                          {fr.end_image_url && (
+                          {selectedEnd && (
                             <a
-                              href={fr.end_image_url as string}
+                              href={selectedEnd as string}
                               target="_blank"
                               className="text-sm text-green-600 hover:text-green-800"
                             >
