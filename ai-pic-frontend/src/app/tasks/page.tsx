@@ -5,17 +5,12 @@ import { scriptAPI, storyStructureAPI, taskAPI, virtualIPImageAPI, type Environm
 import { useAlertModal } from '@/components/AlertModalProvider'
 import Navigation from '@/components/Navigation'
 
-type PersistedStyleInfo =
-  | {
-      source: string
-      style_spec?: unknown
-      style_spec_resolution?: unknown
-      error?: undefined
-    }
-  | {
-      source: string
-      error: string
-    }
+type PersistedStyleInfo = {
+  source: string
+  style_spec?: unknown
+  style_spec_resolution?: unknown
+  error?: string
+}
 
 const toInt = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) return value
