@@ -116,6 +116,37 @@ def _serialize_frame(frame: Dict[str, Any]) -> Dict[str, Any]:
     return serialized
 
 
+def _friendly_task_title(
+    prefix: str, script: Script, episode: Episode | None, story: Story | None
+) -> str:
+    story_label = ""
+    if story and story.title:
+        story_label = str(story.title)
+    elif story:
+        story_label = f"故事{story.id}"
+
+    episode_label = ""
+    if episode:
+        ep_num = (
+            f"第{episode.episode_number}集"
+            if episode.episode_number is not None
+            else f"剧集{episode.id}"
+        )
+        ep_title = f" {episode.title}" if episode.title else ""
+        episode_label = f"{ep_num}{ep_title}"
+
+    parts = [prefix]
+    if story_label and episode_label:
+        parts.append(f"{story_label} / {episode_label}")
+    elif story_label:
+        parts.append(story_label)
+    elif episode_label:
+        parts.append(episode_label)
+    else:
+        parts.append(f"剧本{script.id}")
+    return " - ".join(parts)
+
+
 def _load_existing_frames(script: Script) -> List[Dict[str, Any]]:
     storyboard = (
         (script.extra_metadata or {}).get("storyboard")
@@ -1967,8 +1998,9 @@ async def generate_storyboard_async(
         "scene_numbers": scene_numbers,
         "use_plan": use_plan,
     }
+    story = script.episode.story if script.episode else None
     t = Task(
-        title=f"分镜生成 - 剧本{script_id}",
+        title=_friendly_task_title("分镜生成", script, script.episode, story),
         description="生成分镜结构（帧列表）",
         task_type="image_generation",
         prompt=f"Storyboard generation for script {script_id}",
@@ -2485,7 +2517,9 @@ def _process_storyboard_image_task(
                             merged_start_urls.append(url)
                     fr["start_image_urls"] = merged_start_urls or start_final_urls
                     if merged_start_urls:
-                        fr["start_image_url"] = fr.get("start_image_url") or merged_start_urls[0]
+                        fr["start_image_url"] = (
+                            fr.get("start_image_url") or merged_start_urls[0]
+                        )
                         fr["image_url"] = fr.get("image_url") or merged_start_urls[0]
                     if start_original_urls and not fr.get("start_image_url_original"):
                         fr["start_image_url_original"] = start_original_urls[0]
@@ -2736,8 +2770,10 @@ async def generate_storyboard_images(
         if body.style_spec is not None
         else None
     )
+    episode = script.episode
+    story = episode.story if episode else None
     t = Task(
-        title=f"分镜图像生成 - 剧本{script_id}",
+        title=_friendly_task_title("分镜图像生成", script, episode, story),
         description="根据分镜生成图像",
         task_type="image_generation",
         prompt=f"Storyboard image generation for script {script_id}",
@@ -2938,11 +2974,17 @@ def _process_storyboard_video_task(
             prompt_value = (
                 fr.get("ai_prompt") or fr.get("description") or ""
             ).strip() or None
-            prompt_override = (opts.get("prompt") or "").strip() if opts.get("prompt") else None
+            prompt_override = (
+                (opts.get("prompt") or "").strip() if opts.get("prompt") else None
+            )
             if prompt_override:
                 prompt_value = prompt_override
 
-            duration_int = _coerce_duration(opts.get("duration") if opts.get("duration") is not None else fr.get("duration_seconds"))
+            duration_int = _coerce_duration(
+                opts.get("duration")
+                if opts.get("duration") is not None
+                else fr.get("duration_seconds")
+            )
 
             video = anyio.run(
                 _gen_video,
@@ -3056,7 +3098,9 @@ class StoryboardVideoRequest(BaseModel):
         default=None,
         description="可选：视频生成模型（支持 provider:model 前缀，例如 volcengine:doubao-seedance-...）",
     )
-    duration: Optional[int] = Field(default=None, description="可选：覆盖视频时长（秒）")
+    duration: Optional[int] = Field(
+        default=None, description="可选：覆盖视频时长（秒）"
+    )
     fps: Optional[int] = Field(default=None, description="可选：帧率（默认24）")
     resolution: Optional[str] = Field(
         default=None, description="可选：输出分辨率（例如 480p/720p/1080p）"
@@ -3066,7 +3110,9 @@ class StoryboardVideoRequest(BaseModel):
     )
     watermark: Optional[bool] = Field(default=None, description="可选：是否包含水印")
     seed: Optional[int] = Field(default=None, description="可选：种子整数")
-    camera_fixed: Optional[bool] = Field(default=None, description="可选：是否固定摄像头")
+    camera_fixed: Optional[bool] = Field(
+        default=None, description="可选：是否固定摄像头"
+    )
     service_tier: Optional[str] = Field(
         default=None, description="可选：service_tier（default/flex）"
     )
@@ -3102,8 +3148,10 @@ async def generate_storyboard_video(
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
 
+    episode = script.episode
+    story = episode.story if episode else None
     t = Task(
-        title=f"分镜视频生成 - 剧本{script_id}",
+        title=_friendly_task_title("分镜视频生成", script, episode, story),
         description="根据分镜生成视频",
         task_type="image_generation",
         prompt=f"Storyboard video generation for script {script_id}",
