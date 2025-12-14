@@ -2456,10 +2456,12 @@ def _process_storyboard_image_task(
             # 参考图顺序：优先使用用户附带的参考图作为 base_image，
             # 然后是帧已有参考图、角色锚点和环境参考图
             ref_images_raw: List[str] = []
-            ref_images_raw.extend(payload_refs)
-            ref_images_raw.extend(frame_refs)
-            ref_images_raw.extend(char_anchor_refs)
-            ref_images_raw.extend(env_refs)
+            if payload_refs:
+                ref_images_raw.extend(payload_refs)
+            else:
+                ref_images_raw.extend(frame_refs)
+                ref_images_raw.extend(char_anchor_refs)
+                ref_images_raw.extend(env_refs)
             ref_images = _normalize_reference_images(ref_images_raw)
             refs_log = (
                 f"[SBIMG] frame refs | idx={idx} total_refs={len(ref_images)} "
