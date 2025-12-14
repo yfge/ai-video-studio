@@ -1685,6 +1685,10 @@ class ApiClient {
       keyframe_mode?: "single" | "start_end";
     },
   ) {
+    const isStartEnd = payload?.keyframe_mode === "start_end";
+    const desiredCount =
+      payload?.count ?? (isStartEnd ? 4 : 1);
+    const normalizedCount = Math.max(1, Math.min(desiredCount, 4));
     return this.request(
       `/api/v1/scripts/${scriptId}/storyboard/generate-images`,
       {
@@ -1698,7 +1702,7 @@ class ApiClient {
           style_preset_id: payload?.style_preset_id,
           style_spec: payload?.style_spec,
           reference_images: payload?.reference_images,
-          count: payload?.count ?? 1,
+          count: normalizedCount,
           keyframe_mode: payload?.keyframe_mode ?? "single",
         }),
       },

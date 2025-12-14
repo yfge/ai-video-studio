@@ -650,6 +650,7 @@ export default function EpisodeStoryboardPage() {
     const response = await scriptAPI.generateStoryboardImages(activeScript.id, {
       frames: indexes,
       keyframe_mode: "start_end",
+      count: 4,
     });
     if (response.success) {
       showAlert({ message: "已创建图像生成任务", variant: "success" });
@@ -2055,7 +2056,7 @@ export default function EpisodeStoryboardPage() {
             : edgeModalReferenceSections.flatMap((section) => section.images)
         }
         defaultPrompt={edgeModalPrompt}
-        defaultCount={1}
+        defaultCount={4}
         modelType={AIModelType.ImageToImage}
         modelCacheKey="storyboard-img2img"
         useDimensions
@@ -2121,7 +2122,7 @@ export default function EpisodeStoryboardPage() {
             : imageModalReferenceSections.flatMap((section) => section.images)
         }
         defaultPrompt={imageModalPrompt}
-        defaultCount={1}
+        defaultCount={4}
         modelType={AIModelType.ImageToImage}
         modelCacheKey="storyboard-img2img"
         useDimensions
