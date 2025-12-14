@@ -1,0 +1,40 @@
+name: virtual_ip_style_prompt
+description: "虚拟IP绘画风格提示词生成（英文 prompt）"
+category: character
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-14"
+updated_at: "2025-12-14"
+
+variables:
+  name:
+    type: string
+    required: true
+    description: "角色名称"
+    min_length: 1
+    max_length: 50
+  description:
+    type: string
+    required: true
+    description: "角色描述（用于提取视觉特征）"
+    min_length: 1
+    max_length: 2000
+  biography:
+    type: string
+    required: true
+    description: "人物小传（用于补充气质/职业/风格）"
+    min_length: 1
+    max_length: 8000
+  image_category:
+    type: string
+    required: false
+    description: "图片类型（portrait/full_body/scene/action/emotion 等）"
+
+usage_examples:
+  - name: "小雅"
+    description: "22岁，活泼可爱的年轻女孩，短发，甜美笑容。"
+    biography: "性格开朗，喜欢摄影与旅行，常穿休闲风。"
+    image_category: "portrait"
+
+output_format: "TEXT"
+

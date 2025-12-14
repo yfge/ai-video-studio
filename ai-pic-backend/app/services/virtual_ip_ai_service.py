@@ -103,12 +103,12 @@ class VirtualIPAIService:
     def _generate_template_content(self, name: str, basic_info: Optional[str]) -> Dict[str, str]:
         """生成模板内容（当AI不可用时使用）"""
         return {
-            "description": f"{name}是一个充满魅力的虚拟角色。{basic_info or '具有独特的个性和丰富的内在世界。'}",
+            "description": f"{name}拥有鲜明的个性与清晰的形象定位。{basic_info or '外表与气质自洽，言行有迹可循，适合发展为长期叙事角色。'}",
             "background_story": f"""在一个充满无限可能的世界里，{name}的故事开始了。
             
-{basic_info or '作为一个独特的存在，这个角色承载着创作者的想象和观众的期待。'}
+{basic_info or 'Ta的成长经历与关键选择，塑造了当下的性格与处事方式。'}
 
-每一次出现，{name}都会为观众带来新的惊喜和感动。这不仅仅是一个角色，更是一个充满生命力的虚拟伙伴。""",
+每一次出现，{name}都会为观众带来新的惊喜和感动。这不仅仅是一个角色，更是一个充满生命力的叙事核心。""",
             
             "biography": f"""**角色档案：{name}**
 
@@ -125,6 +125,21 @@ class VirtualIPAIService:
 这是一个值得深入了解和喜爱的角色。"""
         }
 
+    def _sanitize_character_text(self, text: str, *, name: str) -> str:
+        """尽量移除模型输出中不符合约束的元叙述词（例如“虚拟IP/虚拟角色”）。"""
+        if not text:
+            return ""
+        cleaned = str(text)
+        # 去掉“虚拟IP/虚拟角色/虚拟人物”等字样，避免输出显得“太傻”
+        for token in ["虚拟IP", "虚拟角色", "虚拟人物", "虚拟人", "IP角色", "虚拟 ip", "virtual ip", "virtual character"]:
+            cleaned = cleaned.replace(token, "")
+        # 仅压缩“连续空格”，保留换行与 markdown 结构
+        import re
+
+        cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+        cleaned = cleaned.replace(" ，", "，").replace(" 。", "。").replace(" ；", "；")
+        return cleaned.strip()
+
     async def generate_style_prompt(
         self,
         name: str,
@@ -140,23 +155,15 @@ class VirtualIPAIService:
         if not self.ai_manager:
             return self._generate_template_style_prompt(name, description, image_category)
 
-        prompt = f"""根据以下虚拟角色信息，生成用于AI绘画的英文提示词：
-
-角色名称：{name}
-角色描述：{description}
-人物小传：{biography}
-图片类型：{image_category}
-
-要求：
-1. 生成专业的英文AI绘画提示词
-2. 突出角色的核心视觉特征
-3. 包含适当的艺术风格描述
-4. 根据图片类型调整构图描述
-5. 提示词要简洁有效，不超过100词
-6. 只返回英文提示词，不要包含其他文字
-
-提示词格式示例：
-a beautiful anime girl, [specific features], [style], [composition], high quality, detailed"""
+        prompt = prompt_manager.render_prompt(
+            PromptTemplate.VIRTUAL_IP_STYLE_PROMPT.value,
+            {
+                "name": name,
+                "description": description,
+                "biography": biography,
+                "image_category": image_category,
+            },
+        )
 
         try:
             response = await self.ai_manager.generate_text(
@@ -288,9 +295,9 @@ a beautiful anime girl, [specific features], [style], [composition], high qualit
             biography = biography or template["biography"]
 
         content = {
-            "description": description,
-            "background_story": background_story,
-            "biography": biography,
+            "description": self._sanitize_character_text(description, name=name),
+            "background_story": self._sanitize_character_text(background_story, name=name),
+            "biography": self._sanitize_character_text(biography, name=name),
         }
         return content, prompt, response.model or "unknown", response.usage or {}
 

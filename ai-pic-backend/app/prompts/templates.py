@@ -20,6 +20,7 @@ class PromptTemplate(Enum):
     """提示词模板枚举"""
     # 角色相关
     VIRTUAL_IP_CREATION = "virtual_ip_creation"
+    VIRTUAL_IP_STYLE_PROMPT = "virtual_ip_style_prompt"
     CHARACTER_PROFILE = "character_profile"
 
     # 故事相关
@@ -109,6 +110,7 @@ class Pacing(Enum):
 # 模板分类映射
 TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.VIRTUAL_IP_CREATION: PromptCategory.CHARACTER,
+    PromptTemplate.VIRTUAL_IP_STYLE_PROMPT: PromptCategory.CHARACTER,
     PromptTemplate.CHARACTER_PROFILE: PromptCategory.CHARACTER,
 
     PromptTemplate.STORY_OUTLINE: PromptCategory.STORY,
@@ -214,6 +216,12 @@ TEMPLATE_EXAMPLES = {
         "personality_traits": ["活泼", "好奇", "乐观"],
         "style_preference": "现代时尚",
         "target_audience": "年轻人"
+    },
+    PromptTemplate.VIRTUAL_IP_STYLE_PROMPT: {
+        "name": "小雅",
+        "description": "22岁活泼女孩，短发，甜美笑容",
+        "biography": "开朗乐观，喜欢摄影与旅行，日常休闲穿搭",
+        "image_category": "portrait",
     },
     
     PromptTemplate.STORY_OUTLINE: {
