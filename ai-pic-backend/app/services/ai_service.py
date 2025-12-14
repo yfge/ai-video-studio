@@ -2077,6 +2077,11 @@ class AIService:
         **kwargs,
     ) -> Optional[Dict[str, Any]]:
         """生成视频"""
+        if not self.ai_manager:
+            return {
+                "success": False,
+                "error": "AI管理器未初始化，无法生成视频（请检查 Celery worker 的环境变量/配置是否与 API 服务一致）",
+            }
         try:
             # 默认请求返回尾帧，便于串联/展示，除非调用方显式关闭
             if "return_last_frame" not in kwargs:
@@ -2187,10 +2192,18 @@ class AIService:
                     "model_used": response.model,
                     "metadata": response.metadata,
                 }
+            return {
+                "success": False,
+                "error": response.error or "视频生成失败",
+                "provider_used": response.provider,
+                "model_used": response.model,
+                "metadata": response.metadata,
+            }
         except Exception as e:
             print(f"视频生成失败: {e}")
+            return {"success": False, "error": str(e)}
 
-        return None
+        return {"success": False, "error": "视频生成失败（未知原因）"}
 
     async def generate_speech(
         self,

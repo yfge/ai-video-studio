@@ -2746,8 +2746,10 @@ def _process_storyboard_video_task(
     options: dict[str, Any] | None = None,
 ):
     from app.core.database import SessionLocal
+    from app.core.logging import get_logger
     from app.models.task import Task, TaskStatus
 
+    logger = get_logger("storyboard_video_task")
     db = SessionLocal()
     try:
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -2813,7 +2815,7 @@ def _process_storyboard_video_task(
             duration: int,
             *,
             end_image_url: Optional[str] = None,
-        ) -> dict | None:
+        ) -> dict:
             try:
                 result = await ai_service.generate_video(
                     prompt=prompt,
@@ -2831,11 +2833,14 @@ def _process_storyboard_video_task(
                     execution_expires_after=opts.get("execution_expires_after"),
                     return_last_frame=return_last_frame,
                 )
-                if result and result.get("video_url"):
-                    return result
+                return result or {"success": False, "error": "视频生成失败（空响应）"}
             except Exception as e:
-                print(f"视频生成失败: {e}")
-            return None
+                logger.exception("视频生成失败: %s", e)
+                return {"success": False, "error": str(e)}
+
+        generated_count = 0
+        skipped_no_start = 0
+        last_error: str | None = None
 
         for idx in target_indexes:
             if idx < 0 or idx >= len(frames):
@@ -2877,6 +2882,7 @@ def _process_storyboard_video_task(
                 )
 
             if not raw_start_url:
+                skipped_no_start += 1
                 continue
 
             start_url = _abs_url(str(raw_start_url))
@@ -2898,7 +2904,11 @@ def _process_storyboard_video_task(
                 duration_int,
                 end_image_url=end_url,
             )
-            if not video:
+            if not isinstance(video, dict) or not video.get("video_url"):
+                if isinstance(video, dict) and video.get("error"):
+                    last_error = str(video.get("error"))
+                else:
+                    last_error = "视频生成失败：未返回 video_url"
                 continue
 
             fr["video_url"] = video.get("video_url")
@@ -2920,6 +2930,12 @@ def _process_storyboard_video_task(
                 "thumbnail_url": video.get("thumbnail_url"),
                 "last_frame_url": video.get("last_frame_url"),
             }
+            generated_count += 1
+
+        if generated_count == 0:
+            if skipped_no_start > 0 and not last_error:
+                raise RuntimeError("未生成任何视频：未找到可用首帧关键帧 URL")
+            raise RuntimeError(f"未生成任何视频：{last_error or '未知错误'}")
 
         # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
         extra_raw = script.extra_metadata or {}
@@ -2942,6 +2958,8 @@ def _process_storyboard_video_task(
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
             db.commit()
+        # 让 Celery 任务也呈现失败，便于从 worker 日志快速定位
+        raise
     finally:
         db.close()
 
