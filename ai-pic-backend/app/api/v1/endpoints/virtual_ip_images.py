@@ -56,6 +56,27 @@ def _set_ip_default_avatar(
     )
 
 
+def _normalize_reference_images(refs: list[str], backend_base: str) -> list[str]:
+    """过滤有效参考图 URL：仅保留 http(s)/data:image 或带图片后缀的路径。"""
+    allowed_ext = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg")
+    normalized: list[str] = []
+    for raw in refs:
+        if not isinstance(raw, str):
+            continue
+        ref_url = raw.strip()
+        if not ref_url:
+            continue
+        lower = ref_url.lower()
+        base_path = lower.split("?", 1)[0]
+        if lower.startswith(("http://", "https://", "data:image/")):
+            normalized.append(ref_url)
+        elif base_path.endswith(allowed_ext):
+            path = ref_url if ref_url.startswith("/") else f"/{ref_url}"
+            normalized.append(f"{backend_base}{path}")
+        # 非 URL/无后缀的描述性字符串会被忽略，避免 404
+    return normalized
+
+
 def _get_owned_virtual_ip(
     db: Session,
     current_user: User,
@@ -766,19 +787,12 @@ async def generate_virtual_ip_image_variant(
     else:
         reference_images_iter = []
 
-    extra_images: list[str] = []
-    if reference_images_iter:
-        backend_base = (
-            getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
-        ).rstrip("/")
-        for ref_url in reference_images_iter:
-            if not ref_url:
-                continue
-            if ref_url.startswith("http"):
-                extra_images.append(ref_url)
-            else:
-                path = ref_url if ref_url.startswith("/") else f"/{ref_url}"
-                extra_images.append(f"{backend_base}{path}")
+    backend_base = (
+        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+    ).rstrip("/")
+    extra_images: list[str] = _normalize_reference_images(
+        reference_images_iter, backend_base
+    )
 
     try:
         response = await ai_service.ai_manager.image_to_image(
@@ -1197,20 +1211,11 @@ def _process_virtual_ip_image_variant_task(
 
             # 提取参考图并转换为绝对 URL
             reference_images = payload.get("reference_images") or []
-            extra_images = []
-            for ref_url in reference_images:
-                if not ref_url:
-                    continue
-                if ref_url.startswith("http"):
-                    extra_images.append(ref_url)
-                else:
-                    # 转换相对路径为绝对 URL
-                    path = ref_url if ref_url.startswith("/") else f"/{ref_url}"
-                    backend_base = (
-                        getattr(settings, "INTERNAL_BACKEND_URL", None)
-                        or "http://localhost:8000"
-                    ).rstrip("/")
-                    extra_images.append(f"{backend_base}{path}")
+            backend_base = (
+                getattr(settings, "INTERNAL_BACKEND_URL", None)
+                or "http://localhost:8000"
+            ).rstrip("/")
+            extra_images = _normalize_reference_images(reference_images, backend_base)
 
             response = await ai_service.ai_manager.image_to_image(
                 image_url=image_url,
