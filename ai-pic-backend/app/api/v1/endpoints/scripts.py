@@ -104,6 +104,32 @@ def _abs_url(url: str) -> str:
     return f"{base}{url}"
 
 
+def _normalize_reference_images(refs: list[str]) -> list[str]:
+    """仅保留看起来像图片 URL 的参考图，避免将描述性文案当作 URL。"""
+    allowed_ext = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg")
+    normalized: list[str] = []
+    for raw in refs:
+        if not isinstance(raw, str):
+            continue
+        ref = raw.strip()
+        if not ref:
+            continue
+        lower = ref.lower()
+        base_path = lower.split("?", 1)[0]
+        if lower.startswith(("http://", "https://", "data:image/")) or base_path.endswith(
+            allowed_ext
+        ):
+            normalized.append(_abs_url(ref))
+    # 去重保持顺序
+    seen = set()
+    deduped: list[str] = []
+    for u in normalized:
+        if u and u not in seen:
+            seen.add(u)
+            deduped.append(u)
+    return deduped
+
+
 def _serialize_frame(frame: Dict[str, Any]) -> Dict[str, Any]:
     serialized: Dict[str, Any] = {}
     for key, val in frame.items():
@@ -2398,20 +2424,12 @@ def _process_storyboard_image_task(
             char_refs: List[str] = []
 
             # 1) 已存在于分镜帧上的参考图（用户手动/前序管线写入）
-            frame_refs = [
-                _abs_url(u)
-                for u in (fr.get("reference_images") or [])
-                if isinstance(u, str) and u
-            ]
+            frame_refs = _normalize_reference_images(fr.get("reference_images") or [])
             if frame_refs:
                 char_refs.append("帧参考图")
 
             # 2) 前端调用时附带的额外参考图（单次请求作用域）
-            payload_refs = [
-                _abs_url(u)
-                for u in (reference_images or [])
-                if isinstance(u, str) and u
-            ]
+            payload_refs = _normalize_reference_images(reference_images or [])
             if payload_refs:
                 char_refs.append("用户提供的参考图")
 
@@ -2429,11 +2447,9 @@ def _process_storyboard_image_task(
                             char_anchor_refs.append(_abs_url(img_url))
 
             # 4) 场景环境参考图
-            env_refs = [
-                _abs_url(u)
-                for u in (env_images_by_scene.get(scene_no or -1, []) or [])
-                if u
-            ]
+            env_refs = _normalize_reference_images(
+                env_images_by_scene.get(scene_no or -1, []) or []
+            )
             if env_refs:
                 char_refs.append("环境参考图")
 
@@ -2444,7 +2460,7 @@ def _process_storyboard_image_task(
             ref_images_raw.extend(frame_refs)
             ref_images_raw.extend(char_anchor_refs)
             ref_images_raw.extend(env_refs)
-            ref_images = list(dict.fromkeys(ref_images_raw))
+            ref_images = _normalize_reference_images(ref_images_raw)
             refs_log = (
                 f"[SBIMG] frame refs | idx={idx} total_refs={len(ref_images)} "
                 f"frame_refs={len(frame_refs)} payload_refs={len(payload_refs)} "
