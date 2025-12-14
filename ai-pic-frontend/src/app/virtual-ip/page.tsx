@@ -116,12 +116,13 @@ function VirtualIPListContent() {
           showAlert({ message: `AI生成失败: ${resp.error || '未知错误'}`, variant: 'error' })
           return
         }
+        const data = resp.data
         setNewIP(prev => ({
           ...prev,
-          description: resp.data.description || '',
-          background_story: resp.data.background_story || '',
-          biography: resp.data.biography || '',
-          style_prompt: resp.data.style_prompt || '',
+          description: data.description || '',
+          background_story: data.background_story || '',
+          biography: data.biography || '',
+          style_prompt: data.style_prompt || '',
         }))
       } catch (err) {
         console.error('AI一键生成失败:', err)
