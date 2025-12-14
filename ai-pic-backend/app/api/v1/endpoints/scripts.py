@@ -2466,11 +2466,22 @@ def _process_storyboard_image_task(
                             start_final_urls.append(start_persist["final_url"])
 
                 if start_final_urls:
-                    fr["start_image_urls"] = start_final_urls
-                    fr["start_image_url"] = start_final_urls[0]
-                    fr["image_url"] = start_final_urls[0]
-                    if start_original_urls:
+                    existing_start_urls = (
+                        list(fr.get("start_image_urls") or [])
+                        if isinstance(fr.get("start_image_urls"), list)
+                        else []
+                    )
+                    merged_start_urls: list[str] = []
+                    for url in existing_start_urls + start_final_urls:
+                        if url and url not in merged_start_urls:
+                            merged_start_urls.append(url)
+                    fr["start_image_urls"] = merged_start_urls or start_final_urls
+                    if merged_start_urls:
+                        fr["start_image_url"] = fr.get("start_image_url") or merged_start_urls[0]
+                        fr["image_url"] = fr.get("image_url") or merged_start_urls[0]
+                    if start_original_urls and not fr.get("start_image_url_original"):
                         fr["start_image_url_original"] = start_original_urls[0]
+                    if start_original_urls and not fr.get("image_url_original"):
                         fr["image_url_original"] = start_original_urls[0]
 
                 end_result = anyio.run(_gen_images, end_prompt, ref_images)
@@ -2514,9 +2525,19 @@ def _process_storyboard_image_task(
                             end_final_urls.append(end_persist["final_url"])
 
                 if end_final_urls:
-                    fr["end_image_urls"] = end_final_urls
-                    fr["end_image_url"] = end_final_urls[0]
-                    if end_original_urls:
+                    existing_end_urls = (
+                        list(fr.get("end_image_urls") or [])
+                        if isinstance(fr.get("end_image_urls"), list)
+                        else []
+                    )
+                    merged_end_urls: list[str] = []
+                    for url in existing_end_urls + end_final_urls:
+                        if url and url not in merged_end_urls:
+                            merged_end_urls.append(url)
+                    fr["end_image_urls"] = merged_end_urls or end_final_urls
+                    if merged_end_urls and not fr.get("end_image_url"):
+                        fr["end_image_url"] = merged_end_urls[0]
+                    if end_original_urls and not fr.get("end_image_url_original"):
                         fr["end_image_url_original"] = end_original_urls[0]
             else:
                 result = anyio.run(_gen_images, prompt, ref_images)
