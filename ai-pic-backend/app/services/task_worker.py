@@ -119,6 +119,8 @@ def storyboard_image_generate_task(
         reference_images=payload.get("reference_images") or [],
         count=count_int,
         keyframe_mode=(payload.get("keyframe_mode") or "single"),
+        start_enabled=payload.get("start_enabled", True),
+        end_enabled=payload.get("end_enabled", True),
     )
 
 

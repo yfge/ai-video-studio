@@ -2109,6 +2109,8 @@ def _process_storyboard_image_task(
     reference_images: Optional[List[str]] = None,
     count: int = 1,
     keyframe_mode: str = "single",
+    start_enabled: bool = True,
+    end_enabled: bool = True,
 ):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
@@ -2143,7 +2145,7 @@ def _process_storyboard_image_task(
         start_log = (
             f"[SBIMG] task start | script_id={script_id} task_id={task_id} "
             f"frames_total={len(frames)} target_indexes={target_indexes} model={model} count={count} "
-            f"keyframe_mode={keyframe_mode}"
+            f"keyframe_mode={keyframe_mode} start_enabled={start_enabled} end_enabled={end_enabled}"
         )
         logger.info(start_log)
         print(start_log, flush=True)
@@ -2425,23 +2427,25 @@ def _process_storyboard_image_task(
                 start_prompt = f"{prompt}\n\n（关键帧：首帧）请生成该镜头开始瞬间的画面，保持构图与风格一致。"
                 end_prompt = f"{prompt}\n\n（关键帧：尾帧）请生成该镜头结束瞬间的画面，体现动作完成后的状态，保持构图与风格一致。"
 
-                start_result = anyio.run(_gen_images, start_prompt, ref_images)
-                if start_result:
-                    urls_preview = start_result.get("urls") or []
-                    url_preview = urls_preview[0] if urls_preview else None
-                    if isinstance(url_preview, str) and len(url_preview) > 200:
-                        url_preview = url_preview[:200] + "..."
-                    print(
-                        f"Storyboard keyframe(start) idx={idx} url={url_preview} "
-                        f"provider={start_result.get('provider')}"
-                    )
-                    if resolved_style_spec_used is None and isinstance(
-                        start_result.get("style_spec"), dict
-                    ):
-                        resolved_style_spec_used = start_result.get("style_spec")
-                        resolved_style_spec_resolution_used = start_result.get(
-                            "style_spec_resolution"
+                start_result = None
+                if start_enabled:
+                    start_result = anyio.run(_gen_images, start_prompt, ref_images)
+                    if start_result:
+                        urls_preview = start_result.get("urls") or []
+                        url_preview = urls_preview[0] if urls_preview else None
+                        if isinstance(url_preview, str) and len(url_preview) > 200:
+                            url_preview = url_preview[:200] + "..."
+                        print(
+                            f"Storyboard keyframe(start) idx={idx} url={url_preview} "
+                            f"provider={start_result.get('provider')}"
                         )
+                        if resolved_style_spec_used is None and isinstance(
+                            start_result.get("style_spec"), dict
+                        ):
+                            resolved_style_spec_used = start_result.get("style_spec")
+                            resolved_style_spec_resolution_used = start_result.get(
+                                "style_spec_resolution"
+                            )
                 start_final_urls: list[str] = []
                 start_original_urls: list[str] = []
                 if start_result:
@@ -2484,23 +2488,25 @@ def _process_storyboard_image_task(
                     if start_original_urls and not fr.get("image_url_original"):
                         fr["image_url_original"] = start_original_urls[0]
 
-                end_result = anyio.run(_gen_images, end_prompt, ref_images)
-                if end_result:
-                    urls_preview = end_result.get("urls") or []
-                    url_preview = urls_preview[0] if urls_preview else None
-                    if isinstance(url_preview, str) and len(url_preview) > 200:
-                        url_preview = url_preview[:200] + "..."
-                    print(
-                        f"Storyboard keyframe(end) idx={idx} url={url_preview} "
-                        f"provider={end_result.get('provider')}"
-                    )
-                    if resolved_style_spec_used is None and isinstance(
-                        end_result.get("style_spec"), dict
-                    ):
-                        resolved_style_spec_used = end_result.get("style_spec")
-                        resolved_style_spec_resolution_used = end_result.get(
-                            "style_spec_resolution"
+                end_result = None
+                if end_enabled:
+                    end_result = anyio.run(_gen_images, end_prompt, ref_images)
+                    if end_result:
+                        urls_preview = end_result.get("urls") or []
+                        url_preview = urls_preview[0] if urls_preview else None
+                        if isinstance(url_preview, str) and len(url_preview) > 200:
+                            url_preview = url_preview[:200] + "..."
+                        print(
+                            f"Storyboard keyframe(end) idx={idx} url={url_preview} "
+                            f"provider={end_result.get('provider')}"
                         )
+                        if resolved_style_spec_used is None and isinstance(
+                            end_result.get("style_spec"), dict
+                        ):
+                            resolved_style_spec_used = end_result.get("style_spec")
+                            resolved_style_spec_resolution_used = end_result.get(
+                                "style_spec_resolution"
+                            )
                 end_final_urls: list[str] = []
                 end_original_urls: list[str] = []
                 if end_result:
@@ -2681,6 +2687,14 @@ class StoryboardImageRequest(BaseModel):
     reference_images: Optional[List[str]] = Field(
         default=None,
         description="优先使用的参考图（环境/角色），传入则走图生图；会与场景环境/角色自动锚点合并",
+    )
+    start_enabled: Optional[bool] = Field(
+        default=True,
+        description="keyframe_mode=start_end 时是否生成首帧（默认生成）",
+    )
+    end_enabled: Optional[bool] = Field(
+        default=True,
+        description="keyframe_mode=start_end 时是否生成尾帧（默认生成）",
     )
 
 

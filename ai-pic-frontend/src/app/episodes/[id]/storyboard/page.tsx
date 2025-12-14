@@ -78,6 +78,10 @@ export default function EpisodeStoryboardPage() {
     Array<{ id: number; name: string; images: string[] }>
   >([]);
   const [imageModalSelected, setImageModalSelected] = useState<string[]>([]);
+  const [imageModalTargets, setImageModalTargets] = useState({
+    first: true,
+    last: true,
+  });
   const [imageModalLoading, setImageModalLoading] = useState(false);
   const [imageModalPrompt, setImageModalPrompt] = useState("");
   const [imageModalSubmitting, setImageModalSubmitting] = useState(false);
@@ -663,6 +667,8 @@ export default function EpisodeStoryboardPage() {
       frames: indexes,
       keyframe_mode: "start_end",
       count: 4,
+      start_enabled: true,
+      end_enabled: true,
     });
     if (response.success) {
       showAlert({ message: "已创建图像生成任务", variant: "success" });
@@ -991,6 +997,7 @@ export default function EpisodeStoryboardPage() {
       "结合选中的环境/角色参考图，生成风格一致的分镜图像。";
     setImageModalPrompt(defaultPrompt);
     setImageModalSelected([]);
+    setImageModalTargets({ first: true, last: true });
 
     try {
       const { envImages, charGroups } = await fetchReferenceImagesForScene();
@@ -1031,8 +1038,21 @@ export default function EpisodeStoryboardPage() {
       });
       return;
     }
+    if (!imageModalTargets.first && !imageModalTargets.last) {
+      showAlert({
+        message: "请选择要生成首帧或尾帧",
+        variant: "warning",
+      });
+      return;
+    }
     setImageModalSubmitting(true);
     try {
+      const targetNote = imageModalTargets.first && imageModalTargets.last
+        ? ""
+        : imageModalTargets.first
+          ? "（仅生成首帧，请突出开场瞬间）"
+          : "（仅生成尾帧，请突出动作结束后的状态）";
+      const promptWithTarget = `${payload.prompt.trim()}\n\n${targetNote}`.trim();
       const response = await scriptAPI.generateStoryboardImages(
         activeScript.id,
         {
@@ -1046,6 +1066,9 @@ export default function EpisodeStoryboardPage() {
           reference_images: payload.referenceImages,
           count: payload.count,
           keyframe_mode: "start_end",
+          start_enabled: imageModalTargets.first,
+          end_enabled: imageModalTargets.last,
+          prompt: promptWithTarget,
         },
       );
       if (response.success) {
@@ -2142,6 +2165,36 @@ export default function EpisodeStoryboardPage() {
         styleSpecFields={STORYBOARD_STYLE_SPEC_FIELDS}
         submitting={imageModalSubmitting || imageModalLoading}
         onSubmit={handleConfirmGenerateFrameImage}
+        extraContent={
+          <div className="flex items-center gap-4 text-sm text-gray-700">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={imageModalTargets.first}
+                onChange={(e) =>
+                  setImageModalTargets((prev) => ({
+                    ...prev,
+                    first: e.target.checked,
+                  }))
+                }
+              />
+              <span>生成首帧</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={imageModalTargets.last}
+                onChange={(e) =>
+                  setImageModalTargets((prev) => ({
+                    ...prev,
+                    last: e.target.checked,
+                  }))
+                }
+              />
+              <span>生成尾帧</span>
+            </label>
+          </div>
+        }
       />
       <ImagePreviewModal
         open={!!preview}

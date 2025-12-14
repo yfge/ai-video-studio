@@ -1673,6 +1673,7 @@ class ApiClient {
   async generateStoryboardImages(
     scriptId: number,
     payload?: {
+      prompt?: string;
       frames?: number[];
       model?: string;
       width?: number;
@@ -1683,6 +1684,8 @@ class ApiClient {
       reference_images?: string[];
       count?: number;
       keyframe_mode?: "single" | "start_end";
+      start_enabled?: boolean;
+      end_enabled?: boolean;
     },
   ) {
     const isStartEnd = payload?.keyframe_mode === "start_end";
@@ -1695,6 +1698,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify({
           frames: payload?.frames || [],
+          prompt: payload?.prompt,
           model: payload?.model,
           width: payload?.width ?? 1024,
           height: payload?.height ?? 1024,
@@ -1704,6 +1708,8 @@ class ApiClient {
           reference_images: payload?.reference_images,
           count: normalizedCount,
           keyframe_mode: payload?.keyframe_mode ?? "single",
+          start_enabled: payload?.start_enabled,
+          end_enabled: payload?.end_enabled,
         }),
       },
     );
