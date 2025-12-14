@@ -5,6 +5,7 @@ AI服务管理器
 """
 
 import random
+from time import monotonic
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -57,6 +58,7 @@ class AIServiceConfig:
     enable_load_balancing: bool = True
     default_timeout: float = 30.0
     max_retries: int = 3
+    model_list_cache_ttl: float = 600.0  # 模型列表缓存时间（秒），0 关闭缓存
 
 
 class AIServiceManager:
@@ -76,6 +78,7 @@ class AIServiceManager:
         }
         self._initialize_providers()
         self.logger = get_logger()
+        self._models_cache: dict[str, tuple[float, List[Dict[str, Any]]]] = {}
 
     def _resolve_prefer_provider_and_model(
         self,
@@ -357,6 +360,15 @@ class AIServiceManager:
         - source='remote'：尽量调用官方模型列表 API（fetch_remote_models），失败时回退静态
         - source='auto'：按 remote 优先，静态兜底
         """
+        if not hasattr(self, "_models_cache"):
+            self._models_cache = {}
+        cache_ttl = getattr(self.config, "model_list_cache_ttl", 0) or 0
+        cache_key = f"{source}:{model_type.value if isinstance(model_type, AIModelType) else model_type or 'all'}"
+        if cache_ttl > 0 and cache_key in self._models_cache:
+            ts, cached = self._models_cache[cache_key]
+            if monotonic() - ts < cache_ttl:
+                return list(cached)
+
         models: List[Dict[str, Any]] = []
         for provider_name, provider in self.providers.items():
             # 仅枚举已启用的 provider
@@ -401,6 +413,8 @@ class AIServiceManager:
 
         # 简单排序：provider, name
         models.sort(key=lambda x: (x["provider"], x.get("name") or x["id"]))
+        if cache_ttl > 0:
+            self._models_cache[cache_key] = (monotonic(), list(models))
         return models
 
     async def generate_text(
