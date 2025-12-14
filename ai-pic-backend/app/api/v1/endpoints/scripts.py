@@ -2813,7 +2813,6 @@ def _process_storyboard_video_task(
             image_url: str,
             prompt: Optional[str],
             duration: int,
-            *,
             end_image_url: Optional[str] = None,
         ) -> dict:
             try:
@@ -2902,7 +2901,7 @@ def _process_storyboard_video_task(
                 start_url,
                 prompt_value,
                 duration_int,
-                end_image_url=end_url,
+                end_url,
             )
             if not isinstance(video, dict) or not video.get("video_url"):
                 if isinstance(video, dict) and video.get("error"):
