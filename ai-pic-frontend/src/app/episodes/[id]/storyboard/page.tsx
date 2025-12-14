@@ -103,6 +103,7 @@ export default function EpisodeStoryboardPage() {
     alt?: string;
     description?: string;
   } | null>(null);
+  const [videoSelection, setVideoSelection] = useState<Record<string, number>>({});
 
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoModalSubmitting, setVideoModalSubmitting] = useState(false);
@@ -1638,17 +1639,34 @@ export default function EpisodeStoryboardPage() {
                   const videoUrls = resolveUrls(fr.video_urls);
                   const videoThumbs = resolveUrls(fr.video_thumbnail_urls);
                   const videoLastFrames = resolveUrls(fr.video_last_frame_urls);
+                  const frameKey = fr.frame_id || `frame-${absIndex}`;
+                  const currentVideoIndex = (() => {
+                    if (videoUrls.length === 0) return 0;
+                    const raw = videoSelection[frameKey] ?? 0;
+                    if (raw < 0) return 0;
+                    if (raw >= videoUrls.length) return videoUrls.length - 1;
+                    return raw;
+                  })();
+                  const cycleVideo = (delta: number) => {
+                    if (videoUrls.length === 0) return;
+                    setVideoSelection((prev) => {
+                      const current = prev[frameKey] ?? 0;
+                      const next = (current + delta + videoUrls.length) % videoUrls.length;
+                      return { ...prev, [frameKey]: next };
+                    });
+                  };
+
                   const videoUrl =
-                    videoUrls[0] ||
+                    videoUrls[currentVideoIndex] ||
                     imageSrc(fr.video_url || "");
                   const videoThumbnailUrl =
-                    videoThumbs[0] ||
+                    videoThumbs[currentVideoIndex] ||
                     (fr.video_thumbnail_url && imageSrc(fr.video_thumbnail_url)) ||
                     (typeof videoMeta.thumbnail_url === "string"
                       ? imageSrc(videoMeta.thumbnail_url)
                       : undefined);
                   const videoLastFrameUrl =
-                    videoLastFrames[0] ||
+                    videoLastFrames[currentVideoIndex] ||
                     (fr.video_last_frame_url && imageSrc(fr.video_last_frame_url)) ||
                     (typeof videoMeta.last_frame_url === "string"
                       ? imageSrc(videoMeta.last_frame_url)
@@ -1975,7 +1993,30 @@ export default function EpisodeStoryboardPage() {
                       {fr.video_url && (
                         <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-2">
                           <div className="flex items-center justify-between text-sm font-medium text-blue-900">
-                            <span>分镜视频</span>
+                            <div className="flex items-center gap-2">
+                              <span>分镜视频</span>
+                              {videoUrls.length > 1 && (
+                                <div className="flex items-center gap-1 text-xs text-blue-800">
+                                  <button
+                                    type="button"
+                                    onClick={() => cycleVideo(-1)}
+                                    className="px-2 py-0.5 rounded border border-blue-200 bg-white hover:bg-blue-50"
+                                  >
+                                    ←
+                                  </button>
+                                  <span>
+                                    {currentVideoIndex + 1}/{videoUrls.length}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => cycleVideo(1)}
+                                    className="px-2 py-0.5 rounded border border-blue-200 bg-white hover:bg-blue-50"
+                                  >
+                                    →
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                             <span className="text-[11px] text-blue-800">
                               {videoDuration ? `${videoDuration}s` : "时长未知"}
                               {videoMeta.resolution ? ` · ${videoMeta.resolution}` : ""}
