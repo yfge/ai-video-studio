@@ -53,6 +53,17 @@ def _sanitize_environment_style_spec(_: Optional[dict]) -> Optional[dict]:
     return None
 
 
+def _sanitize_environment_style(
+    style: Optional[str], style_preset_id: Optional[str], style_spec: Optional[dict]
+) -> tuple[str, None, None]:
+    """
+    环境图不使用 style_preset/style_spec，防止角色风格干扰。
+    仅保留 style 作为轻量提示，缺省回落 realistic。
+    """
+    style_clean = style or "realistic"
+    return style_clean, None, None
+
+
 def _normalize_reference_images(refs: list[str], backend_base: str) -> list[str]:
     """过滤有效参考图 URL，避免将描述性字符串当作图片路径。"""
     allowed_ext = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg")
@@ -539,9 +550,11 @@ async def generate_environment_images(
     )
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
-    style_hint = payload.get("style") or "realistic"
-    style_preset_id = payload.get("style_preset_id")
-    style_spec = _sanitize_environment_style_spec(payload.get("style_spec"))
+    style_hint, style_preset_id, style_spec = _sanitize_environment_style(
+        payload.get("style"),
+        payload.get("style_preset_id"),
+        payload.get("style_spec"),
+    )
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
@@ -645,9 +658,11 @@ async def generate_environment_images_async(
     selected_model_raw = (body.get("model") or model or "").strip() or None
     count_value = body.get("count", count)
     size_value = body.get("size", size)
-    style_hint = body.get("style") or "realistic"
-    style_preset_id = body.get("style_preset_id")
-    style_spec = _sanitize_environment_style_spec(body.get("style_spec"))
+    style_hint, style_preset_id, style_spec = _sanitize_environment_style(
+        body.get("style"),
+        body.get("style_preset_id"),
+        body.get("style_spec"),
+    )
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
@@ -709,9 +724,11 @@ def _process_environment_image_task(
             )
             count_int = int(payload.get("count") or 1)
             size_value = payload.get("size")
-            style_hint = payload.get("style") or "realistic"
-            style_preset_id = payload.get("style_preset_id")
-            style_spec = _sanitize_environment_style_spec(payload.get("style_spec"))
+            style_hint, style_preset_id, style_spec = _sanitize_environment_style(
+                payload.get("style"),
+                payload.get("style_preset_id"),
+                payload.get("style_spec"),
+            )
 
             prefer_provider_local = prefer_provider or prefer_provider_from_model
             prefer_provider_local = prefer_provider_local or _infer_provider_from_model(
@@ -1044,9 +1061,11 @@ def _process_environment_image_variant_task(
             prefer_provider = provider_from_model or _infer_provider_from_model(
                 model_value or ""
             )
-            style_hint = payload.get("style") or "realistic"
-            style_preset_id = payload.get("style_preset_id")
-            style_spec = _sanitize_environment_style_spec(payload.get("style_spec"))
+            style_hint, style_preset_id, style_spec = _sanitize_environment_style(
+                payload.get("style"),
+                payload.get("style_preset_id"),
+                payload.get("style_spec"),
+            )
             if (prefer_provider or "").lower() == "openai":
                 style_hint_local = normalize_openai_image_style(style_hint)
             else:
