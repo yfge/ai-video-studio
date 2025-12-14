@@ -132,7 +132,27 @@ def storyboard_video_generate_task(
     script_id = int(payload.get("script_id"))
     frame_indexes = payload.get("frames") or []
     selections = payload.get("selections") or []
-    _process_storyboard_video_task(task_id, script_id, frame_indexes, selections)
+    options = {
+        "prompt": payload.get("prompt"),
+        "model": payload.get("model"),
+        "duration": payload.get("duration"),
+        "fps": payload.get("fps"),
+        "resolution": payload.get("resolution"),
+        "ratio": payload.get("ratio"),
+        "watermark": payload.get("watermark"),
+        "seed": payload.get("seed"),
+        "camera_fixed": payload.get("camera_fixed"),
+        "service_tier": payload.get("service_tier"),
+        "execution_expires_after": payload.get("execution_expires_after"),
+        "return_last_frame": payload.get("return_last_frame"),
+    }
+    _process_storyboard_video_task(
+        task_id,
+        script_id,
+        frame_indexes,
+        selections,
+        options=options,
+    )
 
 
 @celery_app.task(name="tasks.storyboard_generate")

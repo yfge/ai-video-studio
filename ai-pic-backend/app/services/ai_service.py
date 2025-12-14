@@ -2068,31 +2068,41 @@ class AIService:
         prompt: str = None,
         image_url: str = None,
         end_image_url: str = None,
+        model: str | None = None,
         duration: int = 5,
         fps: int = 24,
         resolution: str = "1280x720",
         style: str = "realistic",
         prefer_provider: str = None,
+        **kwargs,
     ) -> Optional[Dict[str, Any]]:
         """生成视频"""
         try:
+            # 默认请求返回尾帧，便于串联/展示，除非调用方显式关闭
+            if "return_last_frame" not in kwargs:
+                kwargs["return_last_frame"] = True
+
             response = await self.ai_manager.generate_video(
                 prompt=prompt,
                 image_url=image_url,
                 end_image_url=end_image_url,
+                model=model,
                 duration=duration,
                 fps=fps,
                 resolution=resolution,
                 prefer_provider=prefer_provider,
+                **kwargs,
             )
 
             if response.success:
                 original_video_url = response.data.get("video_url")
                 original_thumbnail_url = response.data.get("thumbnail_url")
+                original_last_frame_url = response.data.get("last_frame_url")
 
                 # 自动上传视频到OSS
                 video_oss_result = None
                 thumbnail_oss_result = None
+                last_frame_oss_result = None
 
                 if original_video_url and oss_service:
                     try:
@@ -2130,6 +2140,22 @@ class AIService:
                     except Exception as e:
                         print(f"缩略图OSS上传失败: {e}")
 
+                if original_last_frame_url and oss_service:
+                    try:
+                        last_frame_oss_result = await oss_service.upload_from_url(
+                            url=original_last_frame_url,
+                            file_type="image",
+                            prefix="ai-generated/video-last-frames",
+                            metadata={
+                                "type": "video_last_frame",
+                                "prompt": prompt or "image_to_video",
+                                "provider": response.provider,
+                                "generation_time": datetime.now().isoformat(),
+                            },
+                        )
+                    except Exception as e:
+                        print(f"尾帧OSS上传失败: {e}")
+
                 return {
                     "video_url": (
                         video_oss_result.get("file_url")
@@ -2143,8 +2169,15 @@ class AIService:
                     ),
                     "original_video_url": original_video_url,
                     "original_thumbnail_url": original_thumbnail_url,
+                    "last_frame_url": (
+                        last_frame_oss_result.get("file_url")
+                        if last_frame_oss_result and last_frame_oss_result.get("success")
+                        else original_last_frame_url
+                    ),
+                    "original_last_frame_url": original_last_frame_url,
                     "video_oss_upload": video_oss_result,
                     "thumbnail_oss_upload": thumbnail_oss_result,
+                    "last_frame_oss_upload": last_frame_oss_result,
                     "duration": response.data.get("duration", duration),
                     "prompt": prompt,
                     "image_url": image_url,
@@ -2254,6 +2287,9 @@ class AIService:
             "text_to_image": AIModelType.TEXT_TO_IMAGE,
             "image_to_image": AIModelType.IMAGE_TO_IMAGE,
             "img2img": AIModelType.IMAGE_TO_IMAGE,
+            "image_to_video": AIModelType.IMAGE_TO_VIDEO,
+            "img2vid": AIModelType.IMAGE_TO_VIDEO,
+            "i2v": AIModelType.IMAGE_TO_VIDEO,
             "video": AIModelType.TEXT_TO_VIDEO,
             "text_to_video": AIModelType.TEXT_TO_VIDEO,
             "tts": AIModelType.TEXT_TO_SPEECH,

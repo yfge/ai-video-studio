@@ -2743,6 +2743,7 @@ def _process_storyboard_video_task(
     script_id: int,
     frame_indexes: list[int] | None,
     selections: list[dict[str, Any]] | None = None,
+    options: dict[str, Any] | None = None,
 ):
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
@@ -2786,9 +2787,9 @@ def _process_storyboard_video_task(
                 return 5
             if dur <= 0:
                 return 5
-            # 单个镜头片段时长做轻度收敛，避免提供商不支持的超长/超短
+            # Seedance 目前支持 2~12 秒（参考 docs/api/volcengine-video.md）
             dur_int = int(round(dur))
-            return max(1, min(dur_int, 10))
+            return max(2, min(dur_int, 12))
 
         selection_by_index: dict[int, dict[str, Any]] = {}
         for item in selections or []:
@@ -2800,6 +2801,11 @@ def _process_storyboard_video_task(
             except (TypeError, ValueError):
                 continue
             selection_by_index[idx_int] = item
+
+        opts = options or {}
+        return_last_frame = opts.get("return_last_frame")
+        if return_last_frame is None:
+            return_last_frame = True
 
         async def _gen_video(
             image_url: str,
@@ -2813,9 +2819,17 @@ def _process_storyboard_video_task(
                     prompt=prompt,
                     image_url=image_url,
                     end_image_url=end_image_url,
+                    model=opts.get("model"),
                     duration=duration,
-                    fps=24,
-                    resolution="1280x720",
+                    fps=int(opts.get("fps") or 24),
+                    resolution=str(opts.get("resolution") or "720p"),
+                    ratio=opts.get("ratio"),
+                    watermark=opts.get("watermark"),
+                    seed=opts.get("seed"),
+                    camera_fixed=opts.get("camera_fixed"),
+                    service_tier=opts.get("service_tier"),
+                    execution_expires_after=opts.get("execution_expires_after"),
+                    return_last_frame=return_last_frame,
                 )
                 if result and result.get("video_url"):
                     return result
@@ -2871,7 +2885,11 @@ def _process_storyboard_video_task(
             prompt_value = (
                 fr.get("ai_prompt") or fr.get("description") or ""
             ).strip() or None
-            duration_int = _coerce_duration(fr.get("duration_seconds"))
+            prompt_override = (opts.get("prompt") or "").strip() if opts.get("prompt") else None
+            if prompt_override:
+                prompt_value = prompt_override
+
+            duration_int = _coerce_duration(opts.get("duration") if opts.get("duration") is not None else fr.get("duration_seconds"))
 
             video = anyio.run(
                 _gen_video,
@@ -2887,13 +2905,20 @@ def _process_storyboard_video_task(
             fr["video_url_original"] = video.get("original_video_url")
             fr["video_thumbnail_url"] = video.get("thumbnail_url")
             fr["video_thumbnail_url_original"] = video.get("original_thumbnail_url")
+            fr["video_last_frame_url"] = video.get("last_frame_url")
+            fr["video_last_frame_url_original"] = video.get("original_last_frame_url")
             fr["video_generation"] = {
                 "duration": video.get("duration"),
                 "provider": video.get("provider_used"),
                 "model": video.get("model_used"),
                 "method": video.get("generation_method"),
+                "prompt": prompt_value,
+                "resolution": opts.get("resolution"),
+                "ratio": opts.get("ratio"),
                 "start_image_url": raw_start_url,
                 "end_image_url": raw_end_url or None,
+                "thumbnail_url": video.get("thumbnail_url"),
+                "last_frame_url": video.get("last_frame_url"),
             }
 
         # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
@@ -2939,6 +2964,35 @@ class StoryboardVideoRequest(BaseModel):
         default_factory=list,
         description="可选：为每个分镜显式指定首/尾关键帧，用于任意组合生成视频",
     )
+    prompt: Optional[str] = Field(
+        default=None,
+        description="可选：覆盖生成提示词（不传则使用分镜帧 description/ai_prompt）",
+    )
+    model: Optional[str] = Field(
+        default=None,
+        description="可选：视频生成模型（支持 provider:model 前缀，例如 volcengine:doubao-seedance-...）",
+    )
+    duration: Optional[int] = Field(default=None, description="可选：覆盖视频时长（秒）")
+    fps: Optional[int] = Field(default=None, description="可选：帧率（默认24）")
+    resolution: Optional[str] = Field(
+        default=None, description="可选：输出分辨率（例如 480p/720p/1080p）"
+    )
+    ratio: Optional[str] = Field(
+        default=None, description="可选：宽高比（例如 16:9/9:16/adaptive）"
+    )
+    watermark: Optional[bool] = Field(default=None, description="可选：是否包含水印")
+    seed: Optional[int] = Field(default=None, description="可选：种子整数")
+    camera_fixed: Optional[bool] = Field(default=None, description="可选：是否固定摄像头")
+    service_tier: Optional[str] = Field(
+        default=None, description="可选：service_tier（default/flex）"
+    )
+    execution_expires_after: Optional[int] = Field(
+        default=None,
+        description="可选：任务超时时间（秒），仅 service_tier=flex 场景生效",
+    )
+    return_last_frame: Optional[bool] = Field(
+        default=True, description="可选：是否返回 last_frame_url（默认开启）"
+    )
 
 
 @router.post("/{script_id}/storyboard/generate-video")
@@ -2977,6 +3031,18 @@ async def generate_storyboard_video(
                     sel.model_dump(mode="json", exclude_none=True)
                     for sel in (body.selections or [])
                 ],
+                "prompt": body.prompt,
+                "model": body.model,
+                "duration": body.duration,
+                "fps": body.fps,
+                "resolution": body.resolution,
+                "ratio": body.ratio,
+                "watermark": body.watermark,
+                "seed": body.seed,
+                "camera_fixed": body.camera_fixed,
+                "service_tier": body.service_tier,
+                "execution_expires_after": body.execution_expires_after,
+                "return_last_frame": body.return_last_frame,
             },
             ensure_ascii=False,
         ),
@@ -2993,6 +3059,18 @@ async def generate_storyboard_video(
             sel.model_dump(mode="json", exclude_none=True)
             for sel in (body.selections or [])
         ],
+        "prompt": body.prompt,
+        "model": body.model,
+        "duration": body.duration,
+        "fps": body.fps,
+        "resolution": body.resolution,
+        "ratio": body.ratio,
+        "watermark": body.watermark,
+        "seed": body.seed,
+        "camera_fixed": body.camera_fixed,
+        "service_tier": body.service_tier,
+        "execution_expires_after": body.execution_expires_after,
+        "return_last_frame": body.return_last_frame,
     }
     storyboard_video_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}

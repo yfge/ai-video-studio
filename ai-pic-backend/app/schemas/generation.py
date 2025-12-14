@@ -100,6 +100,24 @@ class StoryboardFrame(BaseModel):
         None, description="分镜尾帧关键帧URL列表（生成后回填）"
     )
     video_url: Optional[str] = Field(None, description="生成的视频URL（生成后回填）")
+    video_url_original: Optional[str] = Field(
+        None, description="生成视频的原始URL（未上传OSS时的路径）"
+    )
+    video_thumbnail_url: Optional[str] = Field(
+        None, description="视频封面/缩略图URL（生成后回填）"
+    )
+    video_thumbnail_url_original: Optional[str] = Field(
+        None, description="视频封面原始URL（未上传OSS时的路径）"
+    )
+    video_last_frame_url: Optional[str] = Field(
+        None, description="视频尾帧URL（return_last_frame=true 时回填）"
+    )
+    video_last_frame_url_original: Optional[str] = Field(
+        None, description="视频尾帧原始URL（未上传OSS时的路径）"
+    )
+    video_generation: Optional[Dict[str, Any]] = Field(
+        None, description="视频生成元数据（模型/参数/锚点等）"
+    )
     generation_source: Optional[str] = Field(None, description="生成来源：ai/manual/import/legacy")
     generation_model: Optional[str] = Field(None, description="生成所用模型标识")
     generation_method: Optional[str] = Field(None, description="生成方式：direct/plan/fallback 等")

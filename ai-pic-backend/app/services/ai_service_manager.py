@@ -382,8 +382,10 @@ class AIServiceManager:
                 # model_type 进一步过滤（以防 Provider 忽略了参数）
                 if model_type:
                     caps = [str(c).lower() for c in mi.capabilities or []]
-                    supports_capability = model_type == AIModelType.IMAGE_TO_IMAGE and (
-                        "image_to_image" in caps
+                    supports_capability = (
+                        model_type == AIModelType.IMAGE_TO_IMAGE and "image_to_image" in caps
+                    ) or (
+                        model_type == AIModelType.IMAGE_TO_VIDEO and "image_to_video" in caps
                     )
                     if not supports_capability and mi.model_type != model_type:
                         continue
@@ -999,6 +1001,17 @@ class AIServiceManager:
 
         available_providers = self.get_available_providers(model_type=model_type)
 
+        prefer_provider, model = self._resolve_prefer_provider_and_model(
+            model, prefer_provider
+        )
+        if prefer_provider:
+            available_providers = [
+                p for p in available_providers if p == prefer_provider
+            ]
+
+        original_model = model
+        last_model_used = original_model
+
         if not available_providers:
             return AIResponse(
                 success=False,
@@ -1036,12 +1049,47 @@ class AIServiceManager:
             self._update_request_count(provider_name)
 
             try:
+                provider_model = original_model
+                if not provider_model:
+                    static_models = [
+                        m
+                        for m in getattr(provider, "available_models", [])
+                        if m.model_type == model_type
+                    ]
+                    if not static_models and model_type == AIModelType.IMAGE_TO_VIDEO:
+                        static_models = [
+                            m
+                            for m in getattr(provider, "available_models", [])
+                            if m.model_type == AIModelType.TEXT_TO_VIDEO
+                        ]
+                    if static_models:
+                        provider_model = static_models[0].model_id
+                    else:
+                        available_models = await self._get_models_for_type(
+                            provider,
+                            model_type,
+                        )
+                        if (
+                            not available_models
+                            and model_type == AIModelType.IMAGE_TO_VIDEO
+                        ):
+                            available_models = await self._get_models_for_type(
+                                provider,
+                                AIModelType.TEXT_TO_VIDEO,
+                            )
+                        provider_model = (
+                            available_models[0].model_id
+                            if available_models
+                            else getattr(provider, "default_model", "default")
+                        )
+                last_model_used = provider_model
+
                 # 根据提供商类型调用不同方法
                 if hasattr(provider, "generate_video"):
                     response = await provider.generate_video(
                         prompt=prompt,
                         image_url=image_url,
-                        model=model,
+                        model=provider_model,
                         duration=duration,
                         fps=fps,
                         resolution=resolution,
@@ -1059,7 +1107,7 @@ class AIServiceManager:
                 self._log_response(
                     task="generate_video",
                     provider=provider_name,
-                    model=model,
+                    model=provider_model,
                     response=response,
                 )
                 if response.success or not self.config.enable_fallback:
@@ -1071,7 +1119,7 @@ class AIServiceManager:
                         success=False,
                         error=f"视频生成失败: {str(e)}",
                         provider=provider_name,
-                        model=model or "unknown",
+                        model=last_model_used or "unknown",
                         task_type=AITaskType.VIDEO_GENERATION,
                         model_type=model_type,
                     )
@@ -1083,7 +1131,7 @@ class AIServiceManager:
             success=False,
             error="所有视频生成提供商都失败了",
             provider="ai_service_manager",
-            model=model or "unknown",
+            model=last_model_used or "unknown",
             task_type=AITaskType.VIDEO_GENERATION,
             model_type=model_type,
         )

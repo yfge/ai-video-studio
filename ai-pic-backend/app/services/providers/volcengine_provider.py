@@ -27,6 +27,7 @@ class VolcengineProvider(BaseProvider):
             AIModelType.TEXT_GENERATION,
             AIModelType.TEXT_TO_IMAGE,
             AIModelType.IMAGE_TO_IMAGE,
+            AIModelType.IMAGE_TO_VIDEO,
             AIModelType.TEXT_TO_VIDEO,
             AIModelType.TEXT_TO_SPEECH
         ]
@@ -84,14 +85,88 @@ class VolcengineProvider(BaseProvider):
                 supported_formats=["png", "jpg"],
                 capabilities=["text_to_image", "multiple_styles", "ultra_quality"]
             ),
-            # 视频生成模型
+            # Seedream 图生视频（内部走 Ark Video Generation / Seedance）
             ModelInfo(
-                model_id="volcengine-video-v1",
-                name="火山视频生成V1",
-                description="AI视频生成模型",
+                model_id="seedream-i2v-pro",
+                name="Seedream 图生视频 Pro（推荐）",
+                description="Seedream 图生视频，支持首帧/首尾帧",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=[
+                    "image_to_video",
+                    "image_to_video_start_frame",
+                    "image_to_video_start_end_frame",
+                ],
+            ),
+            ModelInfo(
+                model_id="seedream-i2v-fast",
+                name="Seedream 图生视频 Fast",
+                description="Seedream 图生视频（更快），仅支持首帧",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=[
+                    "image_to_video",
+                    "image_to_video_start_frame",
+                ],
+            ),
+            ModelInfo(
+                model_id="seedream-i2v-lite",
+                name="Seedream 图生视频 Lite",
+                description="Seedream 图生视频（Lite），支持首帧/首尾帧",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=[
+                    "image_to_video",
+                    "image_to_video_start_frame",
+                    "image_to_video_start_end_frame",
+                ],
+            ),
+            # 视频生成模型（Volcengine Ark / Seedance）
+            ModelInfo(
+                model_id="doubao-seedance-1-0-pro-250528",
+                name="豆包 Seedance 1.0 Pro（推荐）",
+                description="支持文生视频、图生视频（首帧/首尾帧）",
                 model_type=AIModelType.TEXT_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["text_to_video", "motion_control", "scene_generation"]
+                capabilities=[
+                    "text_to_video",
+                    "image_to_video",
+                    "image_to_video_start_frame",
+                    "image_to_video_start_end_frame",
+                ],
+            ),
+            ModelInfo(
+                model_id="doubao-seedance-1-0-pro-fast-251015",
+                name="豆包 Seedance 1.0 Pro Fast",
+                description="支持文生视频、图生视频（首帧），更快",
+                model_type=AIModelType.TEXT_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=[
+                    "text_to_video",
+                    "image_to_video",
+                    "image_to_video_start_frame",
+                ],
+            ),
+            ModelInfo(
+                model_id="doubao-seedance-1-0-lite-t2v-250428",
+                name="豆包 Seedance 1.0 Lite（文生视频）",
+                description="仅支持文生视频",
+                model_type=AIModelType.TEXT_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["text_to_video"],
+            ),
+            ModelInfo(
+                model_id="doubao-seedance-1-0-lite-i2v-250428",
+                name="豆包 Seedance 1.0 Lite（图生视频）",
+                description="支持图生视频（参考图/首帧/首尾帧）",
+                model_type=AIModelType.TEXT_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=[
+                    "image_to_video",
+                    "image_to_video_reference",
+                    "image_to_video_start_frame",
+                    "image_to_video_start_end_frame",
+                ],
             ),
             # 语音合成模型
             ModelInfo(
@@ -685,89 +760,260 @@ class VolcengineProvider(BaseProvider):
         )
     
     async def generate_video(
-        self, 
-        prompt: str, 
-        model: str = "volcengine-video-v1",
+        self,
+        prompt: str | None = None,
+        image_url: str | None = None,
+        model: str | None = None,
         duration: int = 5,
         fps: int = 24,
-        resolution: str = "1280x720",
-        style: str = "realistic",
-        **kwargs
+        resolution: str = "720p",
+        end_image_url: str | None = None,
+        ratio: str | None = None,
+        watermark: bool | None = None,
+        seed: int | None = None,
+        camera_fixed: bool | None = None,
+        service_tier: str | None = None,
+        execution_expires_after: int | None = None,
+        return_last_frame: bool | None = None,
+        **kwargs,
     ) -> AIResponse:
-        """使用火山引擎生成视频"""
+        """使用火山方舟 Video Generation API（Seedance）生成视频（异步轮询）"""
         try:
             client = await self.get_client()
-            
-            request_data = {
-                "model": model,
-                "prompt": prompt,
-                "duration": duration,
-                "fps": fps,
-                "resolution": resolution,
-                "style": style,
-                **kwargs
-            }
-            
-            response = await client.post(
-                f"{self.base_url}/videos/generations",
-                json=request_data
+
+            ark_model = (model or "").strip() or "doubao-seedance-1-0-pro-250528"
+            normalized = ark_model.lower()
+            if normalized.startswith("volcengine-video"):
+                ark_model = "doubao-seedance-1-0-pro-250528"
+            # 兼容业务侧使用 Seedream 图生视频别名（内部仍调用 Seedance 视频生成 API）
+            if normalized.startswith("seedream-i2v"):
+                if normalized in {"seedream-i2v-fast", "seedream-i2v-pro-fast"}:
+                    ark_model = "doubao-seedance-1-0-pro-fast-251015"
+                elif normalized in {"seedream-i2v-lite"}:
+                    ark_model = "doubao-seedance-1-0-lite-i2v-250428"
+                else:
+                    ark_model = "doubao-seedance-1-0-pro-250528"
+
+            # Ark 支持通过在提示词后追加 --[parameters] 控制输出规格
+            # 参考 docs/api/volcengine-video.md：--rs/--rt/--dur/--fps/--wm/--seed/--cf
+            import re
+
+            def _contains_flag(text: str, flag: str) -> bool:
+                return re.search(rf"(^|\\s){re.escape(flag)}(\\s|$)", text) is not None
+
+            def _normalize_resolution_flag(value: str | None) -> str | None:
+                if not value:
+                    return None
+                v = str(value).strip().lower()
+                if v in {"480p", "720p", "1080p"}:
+                    return v
+                # 兼容常见的 WxH 输入（例如 1280x720 / 1920x1080）
+                if "1080" in v or "1088" in v:
+                    return "1080p"
+                if "720" in v:
+                    return "720p"
+                if "480" in v:
+                    return "480p"
+                return None
+
+            base_prompt = (prompt or "").strip() or "生成一段符合描述的视频"
+            flags: list[str] = []
+
+            rs = _normalize_resolution_flag(resolution)
+            if rs and not _contains_flag(base_prompt, "--rs"):
+                flags.append(f"--rs {rs}")
+
+            rt = (ratio or "").strip()
+            if rt and not (_contains_flag(base_prompt, "--rt") or _contains_flag(base_prompt, "--ratio")):
+                flags.append(f"--rt {rt}")
+
+            # duration: 2~12 秒（参考文档）
+            dur = int(duration or 5)
+            dur = max(2, min(dur, 12))
+            if not _contains_flag(base_prompt, "--dur"):
+                flags.append(f"--dur {dur}")
+
+            fps_int = int(fps or 24)
+            if fps_int != 24:
+                fps_int = 24
+            if not _contains_flag(base_prompt, "--fps"):
+                flags.append(f"--fps {fps_int}")
+
+            if watermark is not None and not _contains_flag(base_prompt, "--wm"):
+                flags.append(f"--wm {'true' if watermark else 'false'}")
+
+            if seed is not None and not _contains_flag(base_prompt, "--seed"):
+                flags.append(f"--seed {int(seed)}")
+
+            if camera_fixed is not None and not _contains_flag(base_prompt, "--cf"):
+                flags.append(f"--cf {'true' if camera_fixed else 'false'}")
+
+            final_prompt = base_prompt
+            if flags:
+                final_prompt = f"{base_prompt} {' '.join(flags)}"
+
+            content: list[dict[str, Any]] = [
+                {"type": "text", "text": final_prompt},
+            ]
+            if image_url:
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url},
+                        "role": "first_frame",
+                    }
+                )
+            if end_image_url:
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": end_image_url},
+                        "role": "last_frame",
+                    }
+                )
+
+            request_data: dict[str, Any] = {"model": ark_model, "content": content}
+            if service_tier:
+                request_data["service_tier"] = service_tier
+            if execution_expires_after is not None:
+                request_data["execution_expires_after"] = int(execution_expires_after)
+            if return_last_frame is not None:
+                request_data["return_last_frame"] = bool(return_last_frame)
+            # 兜底：允许透传未来新增参数（不覆盖已有字段）
+            for key, value in (kwargs or {}).items():
+                if key in request_data:
+                    continue
+                request_data[key] = value
+
+            create_resp = await client.post(
+                f"{self.base_url}/contents/generations/tasks",
+                json=request_data,
             )
-            response.raise_for_status()
-            
-            data = response.json()
-            
-            if data.get("error"):
+            create_resp.raise_for_status()
+            create_data = create_resp.json() if create_resp.content else {}
+            if isinstance(create_data, dict) and create_data.get("error"):
+                err = create_data.get("error") or {}
                 return AIResponse(
                     success=False,
-                    error=f"火山引擎视频生成错误: {data['error'].get('message', 'Unknown error')}",
+                    error=f"火山引擎视频生成错误: {err.get('message') or err.get('code') or 'Unknown error'}",
                     provider=self.name,
-                    model=model,
+                    model=ark_model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.TEXT_TO_VIDEO
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    if image_url
+                    else AIModelType.TEXT_TO_VIDEO,
                 )
-            
-            # 视频生成通常为异步任务
-            task_id = data.get("task_id")
-            if task_id:
-                result = await self._poll_task_status(task_id, "video")
-                if result:
-                    return AIResponse(
-                        success=True,
-                        data={
-                            "video_url": result.get("video_url"),
-                            "thumbnail_url": result.get("thumbnail_url"),
-                            "duration": duration
-                        },
-                        provider=self.name,
-                        model=model,
-                        task_type=AITaskType.VIDEO_GENERATION,
-                        model_type=AIModelType.TEXT_TO_VIDEO,
-                        metadata={
-                            "task_id": task_id,
-                            "duration": duration,
-                            "fps": fps,
-                            "resolution": resolution,
-                            "style": style
-                        }
-                    )
-            
-            return AIResponse(
-                success=False,
-                error="视频生成任务失败",
-                provider=self.name,
-                model=model,
-                task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.TEXT_TO_VIDEO
+
+            task_id = (
+                (create_data.get("id") if isinstance(create_data, dict) else None)
+                or (create_data.get("task_id") if isinstance(create_data, dict) else None)
             )
-            
+            if not task_id and isinstance(create_data, dict):
+                nested = create_data.get("data")
+                if isinstance(nested, dict):
+                    task_id = nested.get("id") or nested.get("task_id")
+
+            if not task_id:
+                return AIResponse(
+                    success=False,
+                    error="火山引擎视频生成响应缺少任务ID",
+                    provider=self.name,
+                    model=ark_model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    if image_url
+                    else AIModelType.TEXT_TO_VIDEO,
+                    metadata={"raw": create_data},
+                )
+
+            result = await self._poll_task_status(
+                str(task_id),
+                max_attempts=120,
+                delay=3,
+            )
+            if not result:
+                return AIResponse(
+                    success=False,
+                    error="视频生成任务失败或超时",
+                    provider=self.name,
+                    model=ark_model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    if image_url
+                    else AIModelType.TEXT_TO_VIDEO,
+                    metadata={"task_id": task_id},
+                )
+
+            content_out = result.get("content") or {}
+            video_url = (
+                content_out.get("video_url")
+                or content_out.get("videoUrl")
+                or content_out.get("url")
+                or result.get("video_url")
+                or result.get("videoUrl")
+                or result.get("url")
+            )
+            thumbnail_url = (
+                content_out.get("thumbnail_url")
+                or content_out.get("cover_image_url")
+                or content_out.get("cover_url")
+                or content_out.get("poster_url")
+            )
+            last_frame_url = content_out.get("last_frame_url") or content_out.get(
+                "lastFrameUrl"
+            )
+
+            if not video_url:
+                return AIResponse(
+                    success=False,
+                    error="火山引擎视频生成成功但未返回视频URL",
+                    provider=self.name,
+                    model=ark_model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    if image_url
+                    else AIModelType.TEXT_TO_VIDEO,
+                    metadata={"task_id": task_id, "raw": result},
+                )
+
+            return AIResponse(
+                success=True,
+                data={
+                    "video_url": video_url,
+                    "thumbnail_url": thumbnail_url,
+                    "duration": dur,
+                    "last_frame_url": last_frame_url,
+                },
+                provider=self.name,
+                model=ark_model,
+                task_type=AITaskType.VIDEO_GENERATION,
+                model_type=AIModelType.IMAGE_TO_VIDEO
+                if image_url
+                else AIModelType.TEXT_TO_VIDEO,
+                metadata={
+                    "task_id": task_id,
+                    "prompt": final_prompt,
+                    "duration": dur,
+                    "fps": fps_int,
+                    "resolution": rs or resolution,
+                    "ratio": rt or None,
+                    "watermark": watermark,
+                    "seed": seed,
+                    "camera_fixed": camera_fixed,
+                    "service_tier": service_tier,
+                },
+            )
+
         except Exception as e:
             return AIResponse(
                 success=False,
                 error=self.format_error(e),
                 provider=self.name,
-                model=model,
+                model=(model or "doubao-seedance-1-0-pro-250528"),
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.TEXT_TO_VIDEO
+                model_type=AIModelType.IMAGE_TO_VIDEO
+                if image_url
+                else AIModelType.TEXT_TO_VIDEO,
             )
     
     async def text_to_speech(
@@ -878,38 +1124,41 @@ class VolcengineProvider(BaseProvider):
     async def _poll_task_status(
         self, 
         task_id: str,
-        task_type: str,
+        task_type: str | None = None,
         max_attempts: int = 60,
         delay: int = 3
     ) -> Optional[Dict[str, Any]]:
-        """轮询任务状态"""
+        """轮询火山方舟内容生成任务状态（Video Generation API）"""
         client = await self.get_client()
-        
+
         for attempt in range(max_attempts):
             try:
                 response = await client.get(
-                    f"{self.base_url}/tasks/{task_id}",
-                    params={"task_type": task_type}
+                    f"{self.base_url}/contents/generations/tasks/{task_id}",
                 )
                 response.raise_for_status()
-                
-                data = response.json()
-                status = data.get("status")
-                
-                if status == "success":
-                    return data.get("result")
-                elif status == "failed":
+
+                data = response.json() if response.content else {}
+                if not isinstance(data, dict):
                     return None
-                elif status in ["pending", "running", "processing"]:
+
+                status = str(data.get("status") or "").lower()
+
+                if status == "succeeded":
+                    return data
+                if status in {"failed", "canceled", "cancelled"}:
+                    return None
+                if status in {"queued", "running", "processing", "pending"}:
                     await asyncio.sleep(delay)
                     continue
-                else:
-                    return None
-                    
+
+                # 未知状态：直接退出，避免死循环
+                return None
+
             except Exception as e:
                 print(f"轮询火山引擎任务状态失败 (尝试 {attempt + 1}): {e}")
                 await asyncio.sleep(delay)
-        
+
         return None
     
     async def _poll_tts_status(

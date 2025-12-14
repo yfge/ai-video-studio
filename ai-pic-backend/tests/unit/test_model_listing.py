@@ -27,7 +27,11 @@ class _DummyProvider(BaseProvider):
 
     @property
     def supported_model_types(self):
-        return [AIModelType.TEXT_TO_IMAGE, AIModelType.IMAGE_TO_IMAGE]
+        return [
+            AIModelType.TEXT_TO_IMAGE,
+            AIModelType.IMAGE_TO_IMAGE,
+            AIModelType.TEXT_TO_VIDEO,
+        ]
 
     @property
     def available_models(self):
@@ -52,6 +56,13 @@ class _DummyProvider(BaseProvider):
                 description="Text-to-image only",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 capabilities=["text_to_image"],
+            ),
+            ModelInfo(
+                model_id="vid-capable",
+                name="Video model w/ i2v",
+                description="Text-to-video model that also supports image-to-video",
+                model_type=AIModelType.TEXT_TO_VIDEO,
+                capabilities=["text_to_video", "image_to_video"],
             ),
         ]
 
@@ -105,6 +116,18 @@ async def test_list_models_accepts_image_to_image_capability():
     assert "img-capable" in ids  # capability-based inclusion
     assert "img-direct" in ids  # native IMAGE_TO_IMAGE type
     assert "img-only" not in ids
+
+
+@pytest.mark.asyncio
+async def test_list_models_accepts_image_to_video_capability():
+    manager = _build_manager_with_dummy_provider()
+
+    models = await manager.list_models(
+        model_type=AIModelType.IMAGE_TO_VIDEO, source="static"
+    )
+
+    ids = {m["id"] for m in models}
+    assert "vid-capable" in ids
 
 
 @pytest.mark.asyncio
