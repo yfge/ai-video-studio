@@ -48,6 +48,11 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_environment_style_spec(_: Optional[dict]) -> Optional[dict]:
+    """环境生成不再透传 style_spec，避免角色/镜头风格干扰环境结果。"""
+    return None
+
+
 def _normalize_reference_images(refs: list[str], backend_base: str) -> list[str]:
     """过滤有效参考图 URL，避免将描述性字符串当作图片路径。"""
     allowed_ext = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg")
@@ -536,7 +541,7 @@ async def generate_environment_images(
     size_value = payload.get("size", size)
     style_hint = payload.get("style") or "realistic"
     style_preset_id = payload.get("style_preset_id")
-    style_spec = payload.get("style_spec")
+    style_spec = _sanitize_environment_style_spec(payload.get("style_spec"))
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
@@ -642,7 +647,7 @@ async def generate_environment_images_async(
     size_value = body.get("size", size)
     style_hint = body.get("style") or "realistic"
     style_preset_id = body.get("style_preset_id")
-    style_spec = body.get("style_spec")
+    style_spec = _sanitize_environment_style_spec(body.get("style_spec"))
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
@@ -706,7 +711,7 @@ def _process_environment_image_task(
             size_value = payload.get("size")
             style_hint = payload.get("style") or "realistic"
             style_preset_id = payload.get("style_preset_id")
-            style_spec = payload.get("style_spec")
+            style_spec = _sanitize_environment_style_spec(payload.get("style_spec"))
 
             prefer_provider_local = prefer_provider or prefer_provider_from_model
             prefer_provider_local = prefer_provider_local or _infer_provider_from_model(
@@ -1041,7 +1046,7 @@ def _process_environment_image_variant_task(
             )
             style_hint = payload.get("style") or "realistic"
             style_preset_id = payload.get("style_preset_id")
-            style_spec = payload.get("style_spec")
+            style_spec = _sanitize_environment_style_spec(payload.get("style_spec"))
             if (prefer_provider or "").lower() == "openai":
                 style_hint_local = normalize_openai_image_style(style_hint)
             else:
