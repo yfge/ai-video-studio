@@ -16,6 +16,7 @@ import type {
   Script,
   StoryboardPayload,
   StoryboardFrame,
+  StoryboardVideoGenerationMeta,
   Environment,
   VirtualIP,
   NormalizedScene,
@@ -25,6 +26,7 @@ import { useAlertModal } from "@/components/AlertModalProvider";
 import { ImageToImageModal } from "@/components/ImageToImageModal";
 import { MultiModelSelector } from "@/components/MultiModelSelector";
 import { ImagePreviewModal } from "@/components/ImagePreviewModal";
+import { StoryboardVideoModal } from "@/components/StoryboardVideoModal";
 import type { StyleSpecField } from "@/components/StyleSpecAdvancedPanel";
 
 const STORYBOARD_STYLE_SPEC_FIELDS: StyleSpecField[] = [
@@ -98,6 +100,26 @@ export default function EpisodeStoryboardPage() {
     description?: string;
   } | null>(null);
 
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [videoModalSubmitting, setVideoModalSubmitting] = useState(false);
+  const [videoModalFrameIndex, setVideoModalFrameIndex] = useState<number | null>(
+    null,
+  );
+  const [videoModalStartCandidates, setVideoModalStartCandidates] = useState<
+    string[]
+  >([]);
+  const [videoModalEndCandidates, setVideoModalEndCandidates] = useState<
+    string[]
+  >([]);
+  const [videoModalDefaultStart, setVideoModalDefaultStart] = useState<
+    string | undefined
+  >(undefined);
+  const [videoModalDefaultEnd, setVideoModalDefaultEnd] = useState<
+    string | undefined
+  >(undefined);
+  const [videoModalPrompt, setVideoModalPrompt] = useState("");
+  const [videoModalDuration, setVideoModalDuration] = useState<number>(5);
+
   const [form, setForm] = useState({
     model: "",
     temperature: 0.7,
@@ -119,6 +141,62 @@ export default function EpisodeStoryboardPage() {
       return `${apiBase}${url.startsWith("/") ? url : `/${url}`}`;
     },
     [apiBase],
+  );
+
+  const openVideoModalForFrame = useCallback(
+    (frameIndex: number) => {
+      const frames = storyboard.frames ?? [];
+      const fr = frames[frameIndex];
+      if (!fr) return;
+
+      const startCandidates = (() => {
+        const urls: string[] = [];
+        const raw = Array.isArray(fr.start_image_urls) ? fr.start_image_urls : [];
+        raw.forEach((u) => {
+          const absolute = imageSrc(u);
+          if (absolute && !urls.includes(absolute)) urls.push(absolute);
+        });
+        const fallback = imageSrc(fr.start_image_url || fr.image_url || "");
+        if (fallback && !urls.includes(fallback)) urls.unshift(fallback);
+        return urls;
+      })();
+
+      const endCandidates = (() => {
+        const urls: string[] = [];
+        const raw = Array.isArray(fr.end_image_urls) ? fr.end_image_urls : [];
+        raw.forEach((u) => {
+          const absolute = imageSrc(u);
+          if (absolute && !urls.includes(absolute)) urls.push(absolute);
+        });
+        const fallback = imageSrc(fr.end_image_url || "");
+        if (fallback && !urls.includes(fallback)) urls.unshift(fallback);
+        return urls;
+      })();
+
+      const defaultStart =
+        fr.start_image_url || fr.image_url || startCandidates[0] || undefined;
+      const defaultEnd = fr.end_image_url || endCandidates[0] || undefined;
+      const prompt = (fr.ai_prompt || fr.description || "").trim();
+
+      const durationRaw = fr.duration_seconds;
+      const durationParsed =
+        typeof durationRaw === "number"
+          ? durationRaw
+          : parseFloat(String(durationRaw || ""));
+      const duration = Number.isFinite(durationParsed)
+        ? Math.max(2, Math.min(12, Math.round(durationParsed)))
+        : 5;
+
+      setVideoModalFrameIndex(frameIndex);
+      setVideoModalStartCandidates(startCandidates);
+      setVideoModalEndCandidates(endCandidates);
+      setVideoModalDefaultStart(defaultStart);
+      setVideoModalDefaultEnd(defaultEnd);
+      setVideoModalPrompt(prompt);
+      setVideoModalDuration(duration);
+      setVideoModalOpen(true);
+    },
+    [imageSrc, storyboard.frames],
   );
 
   const load = useCallback(async () => {
@@ -501,6 +579,70 @@ export default function EpisodeStoryboardPage() {
     else showAlert({ message: "视频生成失败", variant: "error" });
   };
 
+  const handleSubmitStoryboardVideo = async (payload: {
+    start_image_url: string;
+    end_image_url?: string;
+    options: {
+      prompt?: string;
+      model?: string;
+      duration?: number;
+      fps?: number;
+      resolution?: string;
+      ratio?: string;
+      watermark?: boolean;
+      seed?: number;
+      camera_fixed?: boolean;
+      service_tier?: string;
+      execution_expires_after?: number;
+      return_last_frame?: boolean;
+    };
+  }) => {
+    if (!activeScript) return;
+    if (videoModalFrameIndex === null) return;
+    const targetIdx = videoModalFrameIndex;
+    try {
+      setVideoModalSubmitting(true);
+      const selections = [
+        {
+          frame_index: videoModalFrameIndex,
+          start_image_url: payload.start_image_url,
+          end_image_url: payload.end_image_url,
+        },
+      ].filter((sel) => sel.start_image_url || sel.end_image_url);
+      const response = await scriptAPI.generateStoryboardVideo(
+        activeScript.id,
+        [videoModalFrameIndex],
+        selections,
+        payload.options,
+      );
+      if (response.success) {
+        showAlert({ message: "已创建视频生成任务", variant: "success" });
+        startImagePolling(
+          "分镜视频",
+          (sb) => {
+            const frames = sb.frames || [];
+            const target = frames[targetIdx];
+            return Boolean(
+              target &&
+                (target.video_url ||
+                  (target.video_generation &&
+                    (target.video_generation.last_frame_url ||
+                      target.video_generation.thumbnail_url)) ||
+                  target.video_last_frame_url ||
+                  target.video_thumbnail_url),
+            );
+          },
+          30,
+        );
+        setVideoModalOpen(false);
+      } else {
+        showAlert({ message: "视频生成失败", variant: "error" });
+      }
+    } finally {
+      setVideoModalSubmitting(false);
+    }
+  };
+
   const handleGenerateImagesForScene = async () => {
     if (!activeScript) return;
     if (!assertNormalizedReady(true)) return;
@@ -631,7 +773,11 @@ export default function EpisodeStoryboardPage() {
   };
 
   const startImagePolling = useCallback(
-    (label: string) => {
+    (
+      label: string,
+      predicate?: (payload: StoryboardPayload) => boolean,
+      maxAttempts = 10,
+    ) => {
       if (!activeScript) return;
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
@@ -640,36 +786,42 @@ export default function EpisodeStoryboardPage() {
       setImagePolling(true);
       setImagePollingLabel(label);
       let attempts = 0;
-      pollTimerRef.current = setInterval(async () => {
-        attempts += 1;
-          const sb = await scriptAPI.getStoryboard(activeScript.id);
-        if (sb.success && sb.data) {
-          setStoryboard(sb.data);
-          const hasImage = (sb.data.frames || []).some(
-            (fr) =>
-              fr &&
-              (fr.start_image_url ||
-                fr.image_url ||
-                fr.end_image_url ||
-                (Array.isArray(fr.start_image_urls) &&
-                  fr.start_image_urls.length > 0) ||
-                (Array.isArray(fr.end_image_urls) &&
-                  fr.end_image_urls.length > 0)),
-          );
-          if (hasImage || attempts >= 10) {
-            if (pollTimerRef.current) {
-              clearInterval(pollTimerRef.current);
-              pollTimerRef.current = null;
-            }
-            setImagePolling(false);
-            setImagePollingLabel("");
-          }
-        }
-        if (attempts >= 10 && pollTimerRef.current) {
+
+      const defaultPredicate = (payload: StoryboardPayload) =>
+        (payload.frames || []).some(
+          (fr) =>
+            fr &&
+            (fr.start_image_url ||
+              fr.image_url ||
+              fr.end_image_url ||
+              (Array.isArray(fr.start_image_urls) &&
+                fr.start_image_urls.length > 0) ||
+              (Array.isArray(fr.end_image_urls) &&
+                fr.end_image_urls.length > 0)),
+        );
+
+      const clearPolling = () => {
+        if (pollTimerRef.current) {
           clearInterval(pollTimerRef.current);
           pollTimerRef.current = null;
-          setImagePolling(false);
-          setImagePollingLabel("");
+        }
+        setImagePolling(false);
+        setImagePollingLabel("");
+      };
+
+      const stopWhenReady = predicate || defaultPredicate;
+
+      pollTimerRef.current = setInterval(async () => {
+        attempts += 1;
+        const sb = await scriptAPI.getStoryboard(activeScript.id);
+        if (sb.success && sb.data) {
+          setStoryboard(sb.data);
+          if (stopWhenReady(sb.data) || attempts >= maxAttempts) {
+            clearPolling();
+          }
+        }
+        if (attempts >= maxAttempts && pollTimerRef.current) {
+          clearPolling();
         }
       }, 2000);
     },
@@ -1408,9 +1560,10 @@ export default function EpisodeStoryboardPage() {
                       ? fr.start_image_urls
                       : [];
                     raw.forEach((u) => {
-                      if (u && !urls.includes(u)) urls.push(u);
+                      const absolute = imageSrc(u);
+                      if (absolute && !urls.includes(absolute)) urls.push(absolute);
                     });
-                    const fallback = fr.start_image_url || fr.image_url;
+                    const fallback = imageSrc(fr.start_image_url || fr.image_url || "");
                     if (fallback && !urls.includes(fallback)) urls.unshift(fallback);
                     return urls;
                   })();
@@ -1420,16 +1573,39 @@ export default function EpisodeStoryboardPage() {
                       ? fr.end_image_urls
                       : [];
                     raw.forEach((u) => {
-                      if (u && !urls.includes(u)) urls.push(u);
+                      const absolute = imageSrc(u);
+                      if (absolute && !urls.includes(absolute)) urls.push(absolute);
                     });
-                    const fallback = fr.end_image_url;
+                    const fallback = imageSrc(fr.end_image_url || "");
                     if (fallback && !urls.includes(fallback)) urls.unshift(fallback);
                     return urls;
                   })();
                   const selectedStart =
-                    fr.start_image_url || fr.image_url || startCandidates[0];
-                  const selectedEnd = fr.end_image_url || endCandidates[0];
+                    imageSrc(fr.start_image_url || fr.image_url || "") ||
+                    startCandidates[0];
+                  const selectedEnd =
+                    imageSrc(fr.end_image_url || "") || endCandidates[0];
                   const hasKeyframes = Boolean(selectedStart || selectedEnd);
+                  const videoMeta: StoryboardVideoGenerationMeta =
+                    fr.video_generation ?? {};
+                  const videoUrl = imageSrc(fr.video_url || "");
+                  const videoThumbnailUrl =
+                    (fr.video_thumbnail_url && imageSrc(fr.video_thumbnail_url)) ||
+                    (typeof videoMeta.thumbnail_url === "string"
+                      ? imageSrc(videoMeta.thumbnail_url)
+                      : undefined);
+                  const videoLastFrameUrl =
+                    (fr.video_last_frame_url && imageSrc(fr.video_last_frame_url)) ||
+                    (typeof videoMeta.last_frame_url === "string"
+                      ? imageSrc(videoMeta.last_frame_url)
+                      : undefined);
+                  const videoPoster = videoThumbnailUrl || selectedStart;
+                  const videoDurationRaw =
+                    videoMeta?.duration ?? fr.duration_seconds;
+                  const videoDuration =
+                    typeof videoDurationRaw === "number"
+                      ? Math.round(videoDurationRaw)
+                      : undefined;
                   return (
                     <div key={idx} className="border rounded p-3">
                       <div className="flex items-center justify-between mb-1">
@@ -1741,6 +1917,71 @@ export default function EpisodeStoryboardPage() {
                           </div>
                         </div>
                       )}
+
+                      {fr.video_url && (
+                        <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-2">
+                          <div className="flex items-center justify-between text-sm font-medium text-blue-900">
+                            <span>分镜视频</span>
+                            <span className="text-[11px] text-blue-800">
+                              {videoDuration ? `${videoDuration}s` : "时长未知"}
+                              {videoMeta.resolution ? ` · ${videoMeta.resolution}` : ""}
+                              {videoMeta.ratio ? ` · ${videoMeta.ratio}` : ""}
+                            </span>
+                          </div>
+                          <div className="mt-2 overflow-hidden rounded border border-blue-200 bg-black">
+                            <video
+                              src={videoUrl}
+                              controls
+                              preload="metadata"
+                              poster={videoPoster}
+                              className="h-52 w-full bg-black"
+                            />
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-blue-900">
+                            <span>
+                              模型：{videoMeta.model || fr.generation_model || "未知"}
+                            </span>
+                            {videoMeta.provider ? (
+                              <span>提供商：{videoMeta.provider}</span>
+                            ) : null}
+                            {videoMeta.method ? (
+                              <span>方式：{videoMeta.method}</span>
+                            ) : null}
+                            {videoMeta.prompt ? (
+                              <span className="max-w-full truncate" title={videoMeta.prompt}>
+                                提示词：{videoMeta.prompt}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                            <a
+                              href={videoUrl}
+                              target="_blank"
+                              className="text-blue-700 hover:text-blue-900"
+                            >
+                              查看/下载视频
+                            </a>
+                            {videoLastFrameUrl && (
+                              <a
+                                href={videoLastFrameUrl}
+                                target="_blank"
+                                className="text-blue-700 hover:text-blue-900"
+                              >
+                                查看尾帧
+                              </a>
+                            )}
+                            {videoThumbnailUrl && (
+                              <a
+                                href={videoThumbnailUrl}
+                                target="_blank"
+                                className="text-blue-700 hover:text-blue-900"
+                              >
+                                查看封面
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <button
@@ -1753,43 +1994,7 @@ export default function EpisodeStoryboardPage() {
                           </button>
                           <button
                             onClick={async () => {
-                              if (!activeScript) return;
-                              const start =
-                                fr.start_image_url ||
-                                fr.image_url ||
-                                (Array.isArray(fr.start_image_urls)
-                                  ? fr.start_image_urls[0]
-                                  : undefined);
-                              const end =
-                                fr.end_image_url ||
-                                (Array.isArray(fr.end_image_urls)
-                                  ? fr.end_image_urls[0]
-                                  : undefined);
-                              const selections = [
-                                {
-                                  frame_index: absIndex,
-                                  start_image_url: start,
-                                  end_image_url: end,
-                                },
-                              ].filter(
-                                (sel) => sel.start_image_url || sel.end_image_url,
-                              );
-                              const response =
-                                await scriptAPI.generateStoryboardVideo(
-                                  activeScript.id,
-                                  [absIndex],
-                                  selections,
-                                );
-                              if (response.success)
-                                showAlert({
-                                  message: "已创建视频生成任务",
-                                  variant: "success",
-                                });
-                              else
-                                showAlert({
-                                  message: "视频生成失败",
-                                  variant: "error",
-                                });
+                              openVideoModalForFrame(absIndex);
                             }}
                             className="text-sm text-blue-600 hover:text-blue-800"
                           >
@@ -1799,7 +2004,7 @@ export default function EpisodeStoryboardPage() {
                         <div className="flex items-center gap-3">
                           {fr.video_url && (
                             <a
-                              href={fr.video_url}
+                              href={videoUrl}
                               target="_blank"
                               className="text-sm text-blue-600 hover:text-blue-800"
                             >
@@ -1881,6 +2086,24 @@ export default function EpisodeStoryboardPage() {
             </label>
           </div>
         }
+      />
+      <StoryboardVideoModal
+        open={videoModalOpen}
+        onClose={() => setVideoModalOpen(false)}
+        title={
+          videoModalFrameIndex === null
+            ? "生成视频（火山引擎）"
+            : `生成视频（第 ${videoModalFrameIndex + 1} 帧）`
+        }
+        description="选择首/尾帧候选、提示词与模型参数，提交后将创建异步任务并写入分镜。"
+        startCandidates={videoModalStartCandidates}
+        endCandidates={videoModalEndCandidates}
+        defaultStart={videoModalDefaultStart}
+        defaultEnd={videoModalDefaultEnd}
+        defaultPrompt={videoModalPrompt}
+        defaultDuration={videoModalDuration}
+        submitting={videoModalSubmitting}
+        onSubmit={handleSubmitStoryboardVideo}
       />
       <ImageToImageModal
         open={imageModalOpen}

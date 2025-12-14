@@ -214,6 +214,21 @@ export interface ImageToImageRequestPayload {
   reference_images?: string[];
 }
 
+export interface StoryboardVideoGenerationOptions {
+  prompt?: string;
+  model?: string;
+  duration?: number;
+  fps?: number;
+  resolution?: string;
+  ratio?: string;
+  watermark?: boolean;
+  seed?: number;
+  camera_fixed?: boolean;
+  service_tier?: string;
+  execution_expires_after?: number;
+  return_last_frame?: boolean;
+}
+
 export interface AIModel {
   model_id: string;
   id?: string;
@@ -420,6 +435,20 @@ export interface Script {
   updated_at: string;
 }
 
+export type StoryboardVideoGenerationMeta = {
+  duration?: number;
+  provider?: string;
+  model?: string;
+  method?: string;
+  prompt?: string;
+  resolution?: string;
+  ratio?: string;
+  start_image_url?: string;
+  end_image_url?: string;
+  thumbnail_url?: string;
+  last_frame_url?: string;
+} & Record<string, unknown>;
+
 export type StoryboardFrame = {
   frame_id?: string;
   frame_number?: number;
@@ -438,6 +467,12 @@ export type StoryboardFrame = {
   end_image_url?: string;
   end_image_urls?: string[];
   video_url?: string;
+  video_url_original?: string;
+  video_thumbnail_url?: string;
+  video_thumbnail_url_original?: string;
+  video_last_frame_url?: string;
+  video_last_frame_url_original?: string;
+  video_generation?: StoryboardVideoGenerationMeta;
   generation_source?: string;
   generation_method?: string;
   generation_model?: string;
@@ -1621,6 +1656,7 @@ class ApiClient {
       start_image_url?: string;
       end_image_url?: string;
     }>,
+    options?: StoryboardVideoGenerationOptions,
   ) {
     return this.request(
       `/api/v1/scripts/${scriptId}/storyboard/generate-video`,
@@ -1629,6 +1665,7 @@ class ApiClient {
         body: JSON.stringify({
           frames: frames || [],
           selections: selections || [],
+          ...(options || {}),
         }),
       },
     );
