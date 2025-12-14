@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -44,6 +45,7 @@ from app.utils.model_utils import parse_model_and_provider, normalize_openai_ima
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/scripts/{script_id}/scenes", response_model=List[SceneResponse])
@@ -343,6 +345,7 @@ def _strip_provider_prefix(model: Optional[str]) -> Optional[str]:
 
 async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[str]:
     saved: List[str] = []
+    errors: List[str] = []
     for image_url in image_urls:
         try:
             stored = await ai_service._persist_generated_image(
@@ -357,12 +360,29 @@ async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[
                 # 若已配置 OSS/CDN，则要求上传成功；否则退回本地存储
                 require_upload=bool(oss_service),
             )
-        except Exception:
+        except Exception as exc:
+            errors.append(f"{image_url}: {exc}")
+            logger.warning(
+                "环境图像持久化失败 | env_id=%s image_url=%s error=%s",
+                getattr(env, "id", None),
+                image_url,
+                exc,
+            )
             continue
         final_url = stored.get("oss_url") or stored.get("relative_path")
         if not final_url:
+            errors.append(f"{image_url}: missing persisted URL")
+            logger.warning(
+                "环境图像未返回可用路径 | env_id=%s image_url=%s stored=%s",
+                getattr(env, "id", None),
+                image_url,
+                stored,
+            )
             continue
         saved.append(final_url)
+    if not saved:
+        detail = errors[0] if errors else "未找到可用的持久化结果"
+        raise RuntimeError(f"环境图像持久化失败: {detail}")
     refs = env.reference_images or []
     refs.extend(saved)
     env.reference_images = refs
@@ -537,7 +557,12 @@ async def generate_environment_images(
     if not images:
         raise HTTPException(status_code=500, detail="环境文生图接口未返回任何图像")
 
-    saved = await _download_and_attach(db, env, images)
+    try:
+        saved = await _download_and_attach(db, env, images)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"环境图像保存失败: {exc}"
+        ) from exc
     response_meta = getattr(response, "metadata", None)
     if not isinstance(response_meta, dict):
         response_meta = {}
@@ -853,7 +878,12 @@ async def generate_environment_image_variants(
     if not images:
         raise HTTPException(status_code=500, detail="环境图生图接口未返回任何图像")
 
-    saved = await _download_and_attach(db, env, images)
+    try:
+        saved = await _download_and_attach(db, env, images)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"环境图像保存失败: {exc}"
+        ) from exc
     response_meta = getattr(response, "metadata", None)
     if not isinstance(response_meta, dict):
         response_meta = {}
