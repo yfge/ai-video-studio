@@ -127,6 +127,7 @@ export default function EpisodeStoryboardPage() {
   });
   const [promptPreview, setPromptPreview] = useState("");
   const [selectedScene, setSelectedScene] = useState<number>(1);
+  const [sceneSelectionInitialized, setSceneSelectionInitialized] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
 
   const apiBase = useMemo(
@@ -241,21 +242,56 @@ export default function EpisodeStoryboardPage() {
   }, [activeScript]);
 
   useEffect(() => {
-    if (normalizedScenes.length === 0) {
-      setSelectedNormalizedSceneId(null);
-      setSelectedScene(1);
+    if (sceneSelectionInitialized) return;
+
+    const scope = (storyboard.meta?.scene_scope || []).filter(
+      (value): value is number => typeof value === "number",
+    );
+    if (scope.length > 0) {
+      setSelectedScene(scope[0]);
+      const matched = normalizedScenes.find((sc) => {
+        const parsed = parseInt(sc.scene_number, 10);
+        return Number.isFinite(parsed) && parsed === scope[0];
+      });
+      if (matched) setSelectedNormalizedSceneId(matched.id);
+      setSceneSelectionInitialized(true);
       return;
     }
-    if (
-      selectedNormalizedSceneId &&
-      normalizedScenes.some((sc) => sc.id === selectedNormalizedSceneId)
-    )
+
+    if (normalizedScenes.length > 0) {
+      if (
+        selectedNormalizedSceneId &&
+        normalizedScenes.some((sc) => sc.id === selectedNormalizedSceneId)
+      ) {
+        setSceneSelectionInitialized(true);
+        return;
+      }
+      const first = normalizedScenes[0];
+      const sn = parseInt(first.scene_number, 10);
+      if (Number.isFinite(sn)) setSelectedScene(sn);
+      setSelectedNormalizedSceneId(first.id);
+      setSceneSelectionInitialized(true);
       return;
-    const first = normalizedScenes[0];
-    const sn = parseInt(first.scene_number, 10);
-    setSelectedScene(Number.isFinite(sn) ? sn : 1);
-    setSelectedNormalizedSceneId(first.id);
-  }, [normalizedScenes, selectedNormalizedSceneId]);
+    }
+
+    const firstFrame = (storyboard.frames || []).find(
+      (fr) => fr.scene_number != null,
+    );
+    if (firstFrame) {
+      const sceneNo =
+        typeof firstFrame.scene_number === "string"
+          ? parseInt(firstFrame.scene_number, 10)
+          : firstFrame.scene_number;
+      if (sceneNo) setSelectedScene(sceneNo);
+      setSceneSelectionInitialized(true);
+    }
+  }, [
+    normalizedScenes,
+    sceneSelectionInitialized,
+    selectedNormalizedSceneId,
+    storyboard.frames,
+    storyboard.meta?.scene_scope,
+  ]);
 
   const selectedNormalizedScene = useMemo(
     () =>
@@ -379,30 +415,6 @@ export default function EpisodeStoryboardPage() {
       setShowPlan(true);
     }
   }, [storyboard.plan?.scenes?.length]);
-
-  useEffect(() => {
-    const scope = (storyboard.meta?.scene_scope || []).filter(
-      (v): v is number => typeof v === "number",
-    );
-    if (scope.length > 0 && !scope.includes(selectedScene)) {
-      setSelectedScene(scope[0]);
-      return;
-    }
-    if (scope.length === 0) {
-      const firstFrame = storyboard.frames?.find(
-        (fr) => fr.scene_number != null,
-      );
-      if (firstFrame) {
-        const sceneNo =
-          typeof firstFrame.scene_number === "string"
-            ? parseInt(firstFrame.scene_number, 10)
-            : firstFrame.scene_number;
-        if (sceneNo && sceneNo !== selectedScene) {
-          setSelectedScene(sceneNo);
-        }
-      }
-    }
-  }, [storyboard.meta?.scene_scope, storyboard.frames, selectedScene]);
 
   const assertNormalizedReady = (requireSelection: boolean = false) => {
     if (normalizedScenes.length === 0) {
@@ -1332,6 +1344,7 @@ export default function EpisodeStoryboardPage() {
                         const fallbackScene = Number.isFinite(parsed)
                           ? parsed
                           : 1;
+                        setSceneSelectionInitialized(true);
                         setSelectedScene(fallbackScene);
                         setSelectedNormalizedSceneId(scene.id);
                       }}
