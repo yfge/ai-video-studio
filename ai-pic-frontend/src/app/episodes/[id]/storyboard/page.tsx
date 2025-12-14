@@ -1625,13 +1625,30 @@ export default function EpisodeStoryboardPage() {
                   const hasKeyframes = Boolean(selectedStart || selectedEnd);
                   const videoMeta: StoryboardVideoGenerationMeta =
                     fr.video_generation ?? {};
-                  const videoUrl = imageSrc(fr.video_url || "");
+                  const resolveUrls = (items?: unknown): string[] => {
+                    const urls: string[] = [];
+                    if (Array.isArray(items)) {
+                      items.forEach((u) => {
+                        const abs = imageSrc(typeof u === "string" ? u : "");
+                        if (abs && !urls.includes(abs)) urls.push(abs);
+                      });
+                    }
+                    return urls;
+                  };
+                  const videoUrls = resolveUrls(fr.video_urls);
+                  const videoThumbs = resolveUrls(fr.video_thumbnail_urls);
+                  const videoLastFrames = resolveUrls(fr.video_last_frame_urls);
+                  const videoUrl =
+                    videoUrls[0] ||
+                    imageSrc(fr.video_url || "");
                   const videoThumbnailUrl =
+                    videoThumbs[0] ||
                     (fr.video_thumbnail_url && imageSrc(fr.video_thumbnail_url)) ||
                     (typeof videoMeta.thumbnail_url === "string"
                       ? imageSrc(videoMeta.thumbnail_url)
                       : undefined);
                   const videoLastFrameUrl =
+                    videoLastFrames[0] ||
                     (fr.video_last_frame_url && imageSrc(fr.video_last_frame_url)) ||
                     (typeof videoMeta.last_frame_url === "string"
                       ? imageSrc(videoMeta.last_frame_url)

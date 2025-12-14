@@ -2100,6 +2100,7 @@ def _process_storyboard_image_task(
     script_id: int,
     frame_indexes: list[int] | None,
     *,
+    prompt_override: str | None = None,
     model: str | None = None,
     width: int = 1024,
     height: int = 1024,
@@ -2349,6 +2350,9 @@ def _process_storyboard_image_task(
                 continue
             fr = frames[idx]
             prompt = fr.get("ai_prompt") or fr.get("description") or ""
+            override_clean = (prompt_override or "").strip()
+            if override_clean:
+                prompt = override_clean
             if not prompt:
                 prompt = (
                     f"Generate an image for storyboard frame {idx + 1} (scene {fr.get('scene_number') or ''}) "
@@ -2659,6 +2663,9 @@ def _process_storyboard_image_task(
 
 
 class StoryboardImageRequest(BaseModel):
+    prompt: Optional[str] = Field(
+        default=None, description="可选：覆盖默认提示词，用于本次生成"
+    )
     frames: list[int] = Field(
         default_factory=list, description="要生成图像的分镜索引列表（基于0的索引）"
     )
@@ -2737,6 +2744,7 @@ async def generate_storyboard_images(
         parameters=json.dumps(
             {
                 "script_id": script_id,
+                "prompt": body.prompt,
                 "frames": body.frames or [],
                 "model": body.model,
                 "width": body.width,
@@ -2747,6 +2755,8 @@ async def generate_storyboard_images(
                 "count": body.count,
                 "keyframe_mode": body.keyframe_mode,
                 "reference_images": body.reference_images or [],
+                "start_enabled": body.start_enabled,
+                "end_enabled": body.end_enabled,
             },
             ensure_ascii=False,
         ),
@@ -2758,6 +2768,7 @@ async def generate_storyboard_images(
     # 委托 Celery worker 执行分镜图像生成
     payload = {
         "script_id": script_id,
+        "prompt": body.prompt,
         "frames": body.frames or [],
         "model": body.model,
         "width": body.width,
@@ -2768,6 +2779,8 @@ async def generate_storyboard_images(
         "count": body.count,
         "keyframe_mode": body.keyframe_mode,
         "reference_images": body.reference_images or [],
+        "start_enabled": body.start_enabled,
+        "end_enabled": body.end_enabled,
     }
     storyboard_image_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
@@ -2951,6 +2964,25 @@ def _process_storyboard_video_task(
             fr["video_thumbnail_url_original"] = video.get("original_thumbnail_url")
             fr["video_last_frame_url"] = video.get("last_frame_url")
             fr["video_last_frame_url_original"] = video.get("original_last_frame_url")
+
+            def _merge_urls(existing: Any, new_val: str | None) -> list[str]:
+                merged: list[str] = []
+                if isinstance(existing, list):
+                    for u in existing:
+                        if isinstance(u, str) and u and u not in merged:
+                            merged.append(u)
+                if new_val and new_val not in merged:
+                    merged.append(new_val)
+                return merged
+
+            fr["video_urls"] = _merge_urls(fr.get("video_urls"), video.get("video_url"))
+            fr["video_thumbnail_urls"] = _merge_urls(
+                fr.get("video_thumbnail_urls"), video.get("thumbnail_url")
+            )
+            fr["video_last_frame_urls"] = _merge_urls(
+                fr.get("video_last_frame_urls"), video.get("last_frame_url")
+            )
+
             fr["video_generation"] = {
                 "duration": video.get("duration"),
                 "provider": video.get("provider_used"),

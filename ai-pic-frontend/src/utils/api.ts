@@ -468,10 +468,13 @@ export type StoryboardFrame = {
   end_image_urls?: string[];
   video_url?: string;
   video_url_original?: string;
+  video_urls?: string[];
   video_thumbnail_url?: string;
   video_thumbnail_url_original?: string;
+  video_thumbnail_urls?: string[];
   video_last_frame_url?: string;
   video_last_frame_url_original?: string;
+  video_last_frame_urls?: string[];
   video_generation?: StoryboardVideoGenerationMeta;
   generation_source?: string;
   generation_method?: string;

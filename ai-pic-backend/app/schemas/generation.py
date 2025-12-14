@@ -103,17 +103,26 @@ class StoryboardFrame(BaseModel):
     video_url_original: Optional[str] = Field(
         None, description="生成视频的原始URL（未上传OSS时的路径）"
     )
+    video_urls: Optional[List[str]] = Field(
+        None, description="生成的视频URL列表（回填历史记录，去重）"
+    )
     video_thumbnail_url: Optional[str] = Field(
         None, description="视频封面/缩略图URL（生成后回填）"
     )
     video_thumbnail_url_original: Optional[str] = Field(
         None, description="视频封面原始URL（未上传OSS时的路径）"
     )
+    video_thumbnail_urls: Optional[List[str]] = Field(
+        None, description="视频封面/缩略图URL列表（回填历史记录，去重）"
+    )
     video_last_frame_url: Optional[str] = Field(
         None, description="视频尾帧URL（return_last_frame=true 时回填）"
     )
     video_last_frame_url_original: Optional[str] = Field(
         None, description="视频尾帧原始URL（未上传OSS时的路径）"
+    )
+    video_last_frame_urls: Optional[List[str]] = Field(
+        None, description="视频尾帧URL列表（回填历史记录，去重）"
     )
     video_generation: Optional[Dict[str, Any]] = Field(
         None, description="视频生成元数据（模型/参数/锚点等）"
