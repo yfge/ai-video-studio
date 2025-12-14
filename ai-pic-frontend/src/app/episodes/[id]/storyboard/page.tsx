@@ -1353,7 +1353,15 @@ export default function EpisodeStoryboardPage() {
               {normalizedScenes.length === 0 ? (
                 <div className="text-gray-500 text-sm">暂无规范化场景</div>
               ) : (
-                normalizedScenes.map((scene) => {
+                [...normalizedScenes]
+                  .sort((a, b) => {
+                    const aNum = parseInt(a.scene_number, 10);
+                    const bNum = parseInt(b.scene_number, 10);
+                    const aVal = Number.isFinite(aNum) ? aNum : Number.MAX_SAFE_INTEGER;
+                    const bVal = Number.isFinite(bNum) ? bNum : Number.MAX_SAFE_INTEGER;
+                    return aVal - bVal;
+                  })
+                  .map((scene) => {
                   const parsed = parseInt(scene.scene_number, 10);
                   const numericScene = Number.isFinite(parsed)
                     ? parsed
