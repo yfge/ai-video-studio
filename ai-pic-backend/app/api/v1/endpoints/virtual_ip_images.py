@@ -38,6 +38,24 @@ from app.utils.model_utils import infer_provider_from_model
 router = APIRouter()
 
 
+def _resolve_image_url(image: VirtualIPImage) -> Optional[str]:
+    if not image:
+        return None
+    return image.oss_url or image.file_path
+
+
+def _set_ip_default_avatar(
+    db: Session, virtual_ip_id: int, image: VirtualIPImage
+) -> None:
+    url = _resolve_image_url(image)
+    if not url:
+        return
+    db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id).update(
+        {"default_avatar_url": url},
+        synchronize_session=False,
+    )
+
+
 def _get_owned_virtual_ip(
     db: Session,
     current_user: User,
@@ -65,7 +83,7 @@ async def create_virtual_ip_image(
 ):
     """上传虚拟IP图像"""
     # 检查虚拟IP是否存在且归属当前用户（或管理员）
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
 
     # 检查文件类型
     file_extension = os.path.splitext(image.filename)[1].lower()
@@ -125,6 +143,8 @@ async def create_virtual_ip_image(
 
     db_image = VirtualIPImage(**image_data.dict())
     db.add(db_image)
+    if is_default:
+        _set_ip_default_avatar(db, virtual_ip.id, db_image)
     db.commit()
     db.refresh(db_image)
 
@@ -367,6 +387,8 @@ async def generate_virtual_ip_image(
 
     db_image = VirtualIPImage(**image_data.dict())
     db.add(db_image)
+    if is_default_bool:
+        _set_ip_default_avatar(db, virtual_ip.id, db_image)
     db.commit()
     db.refresh(db_image)
 
@@ -556,7 +578,7 @@ async def update_virtual_ip_image(
 ):
     """更新虚拟IP图像信息"""
     # 校验虚拟 IP 归属
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = (
         db.query(VirtualIPImage)
         .filter(
@@ -579,6 +601,9 @@ async def update_virtual_ip_image(
     # 更新图像信息
     for field, value in image_update.dict(exclude_unset=True).items():
         setattr(image, field, value)
+
+    if image_update.is_default:
+        _set_ip_default_avatar(db, virtual_ip.id, image)
 
     db.commit()
     db.refresh(image)
@@ -629,7 +654,7 @@ async def set_default_image(
 ):
     """设置默认图像"""
     # 检查虚拟 IP 归属和图像是否存在
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = (
         db.query(VirtualIPImage)
         .filter(
@@ -649,6 +674,7 @@ async def set_default_image(
 
     # 设置当前图像为默认
     image.is_default = True
+    _set_ip_default_avatar(db, virtual_ip.id, image)
     db.commit()
 
     return {"message": "默认图像设置成功"}
@@ -1078,6 +1104,8 @@ def _process_virtual_ip_image_task(
 
             db_image = VirtualIPImage(**image_data.dict())
             db.add(db_image)
+            if is_default_bool:
+                _set_ip_default_avatar(db, virtual_ip.id, db_image)
             db.commit()
             db.refresh(db_image)
             return db_image
