@@ -142,7 +142,7 @@
 - [x] 前端：在 Episode 详情/剧本页新增“生成对白音轨 / 生成时间轴 / 生成分镜帧”入口，展示进度、失败原因、版本与重试/复用
 - [x] 前端：在 Episode 详情页展示“场景对白音轨（scene）”列表与播放/下载入口（`scene.metadata.dialogue_audio.oss_url`）
 - [x] 前端：Episode 详情页默认展开场景音轨列表；存在 episode 级音频时直接提供播放器（避免“生成成功但不知道在哪里听”）
-- [x] 验证：浏览器端到端用例（账号 `geyunfei`；Playwright Chromium，MCP transport closed）：进入某 Episode → 生成对白音轨 → 校验 beats 时间轴 → 生成分镜帧，并将路径与结果记录到 `agent_chats`
+- [x] 验证：浏览器端到端用例（账号 `geyunfei`；Selenium headless Chrome，MCP transport closed）：episodes/10 → 生成对白音轨 → 生成时间轴 → 覆盖生成分镜帧占位，并将路径与结果记录到 `agent_chats`
 
 ### 下一步
 
