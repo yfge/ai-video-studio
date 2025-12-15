@@ -27,6 +27,16 @@ def _compact(data: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in data.items() if v is not None}
 
 
+def _to_int(value: Optional[Any]) -> Optional[int]:
+    """Coerce numeric to int when not None."""
+    if value is None:
+        return None
+    try:
+        return int(round(float(value)))
+    except (TypeError, ValueError):
+        return None
+
+
 VOICE_TYPE_OPTIONS: List[Dict[str, str]] = [
     {"value": "system", "label_zh": "系统音色", "label_en": "System voices"},
     {"value": "voice_cloning", "label_zh": "快速复刻", "label_en": "Voice cloning"},
@@ -257,7 +267,7 @@ class MinimaxVoiceProvider:
                 "voice_id": voice_id,
                 "speed": speed,
                 "vol": vol,
-                "pitch": pitch,
+                "pitch": _to_int(pitch),
                 "emotion": emotion,
                 "text_normalization": text_normalization,
                 "latex_read": latex_read,
@@ -265,10 +275,10 @@ class MinimaxVoiceProvider:
         )
         audio_setting = _compact(
             {
-                "sample_rate": sample_rate,
-                "bitrate": bitrate,
+                "sample_rate": _to_int(sample_rate),
+                "bitrate": _to_int(bitrate),
                 "format": format,
-                "channel": channel,
+                "channel": _to_int(channel),
             }
         )
         payload = _compact(
