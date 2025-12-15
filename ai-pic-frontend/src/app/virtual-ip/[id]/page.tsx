@@ -38,20 +38,29 @@ export default function VirtualIPDetail() {
 
   const buildDefaultVoiceSettings = (enums: VoiceEnums): VoiceConfig => {
     const provider = enums.providers?.[0]?.value
-    const model =
-      enums.defaults?.tts_model ||
-      enums.tts_models?.[0]?.value ||
-      undefined
-    const voice_id =
-      enums.defaults?.voice_id ||
-      undefined
+    const model = enums.defaults?.tts_model || enums.tts_models?.[0]?.value || undefined
+    const voice_id = enums.defaults?.voice_id || undefined
+    const voice_type = enums.voice_types?.[0]?.value || 'system'
     return {
       provider,
       model,
-      voice_type: 'system',
+      voice_type,
       voice_id
     }
   }
+
+  const mergeVoiceSettings = (
+    current: VoiceConfig,
+    defaults: VoiceConfig,
+    incoming?: VoiceConfig
+  ): VoiceConfig => ({
+    provider: incoming?.provider ?? current.provider ?? defaults.provider,
+    model: incoming?.model ?? current.model ?? defaults.model,
+    voice_type: incoming?.voice_type ?? current.voice_type ?? defaults.voice_type ?? 'system',
+    voice_id: incoming?.voice_id ?? current.voice_id ?? defaults.voice_id,
+    display_name: incoming?.display_name ?? current.display_name,
+    sample_url: incoming?.sample_url ?? current.sample_url
+  })
 
   const hexToAudioUrl = (hexString: string): string => {
     const bytes = new Uint8Array(hexString.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [])
@@ -70,11 +79,7 @@ export default function VirtualIPDetail() {
         }
         // 初始化语音设置
         const defaults = buildDefaultVoiceSettings(res.data)
-        setVoiceSettings((prev) => ({
-          ...defaults,
-          ...prev,
-          voice_type: prev.voice_type || defaults.voice_type
-        }))
+        setVoiceSettings((prev) => mergeVoiceSettings(prev, defaults))
       }
     } catch (error) {
       console.error('获取语音枚举失败', error)
@@ -120,12 +125,7 @@ export default function VirtualIPDetail() {
         setVoiceSettings((prev) => {
           const enums = voiceEnums
           const defaults = enums ? buildDefaultVoiceSettings(enums) : prev
-          return {
-            ...defaults,
-            ...prev,
-            ...incomingVoice,
-            voice_type: incomingVoice?.voice_type || prev.voice_type || 'system'
-          }
+          return mergeVoiceSettings(prev, defaults, incomingVoice)
         })
         if (!voicePreviewText) {
           setVoicePreviewText(`你好，我是${response.data.name}，很高兴和你见面。`)
@@ -241,18 +241,43 @@ export default function VirtualIPDetail() {
   }, [voiceList, voiceTypeFilter, voiceEnums?.system_voices])
 
   const handlePreviewVoice = async () => {
-    if (!voiceSettings.model) {
+    // 确保存在模型/音色默认值
+    const fallbackModel =
+      voiceSettings.model || voiceEnums?.defaults?.tts_model || voiceEnums?.tts_models?.[0]?.value
+    const fallbackVoiceId =
+      voiceSettings.voice_id || voiceEnums?.defaults?.voice_id || voiceOptions[0]?.value
+    const fallbackProvider = voiceSettings.provider || voiceEnums?.providers?.[0]?.value
+
+    if (!fallbackProvider) {
+      showAlert({ message: '请先选择语音提供商', variant: 'error' })
+      return
+    }
+    if (!fallbackModel) {
       showAlert({ message: '请先选择语音模型', variant: 'error' })
       return
     }
+
+    if (
+      fallbackModel !== voiceSettings.model ||
+      fallbackVoiceId !== voiceSettings.voice_id ||
+      fallbackProvider !== voiceSettings.provider
+    ) {
+      setVoiceSettings((prev) => ({
+        ...prev,
+        provider: fallbackProvider,
+        model: fallbackModel,
+        voice_id: fallbackVoiceId
+      }))
+    }
+
     const text = voicePreviewText || `你好，我是${virtualIP?.name || '角色'}，很高兴见到你。`
     setPreviewLoading(true)
     try {
       const res = await voiceAPI.preview({
         text,
-        model: voiceSettings.model,
-        voice_id: voiceSettings.voice_id,
-        provider: voiceSettings.provider,
+        model: fallbackModel,
+        voice_id: fallbackVoiceId,
+        provider: fallbackProvider,
         output_format: 'url'
       })
       if (res.success && res.data) {
@@ -296,6 +321,13 @@ export default function VirtualIPDetail() {
       void fetchVoiceList(voiceTypeFilter, voiceSettings.provider)
     }
   }, [fetchVoiceList, voiceSettings.provider, voiceTypeFilter])
+
+  useEffect(() => {
+    setVoiceSettings((prev) => {
+      if (prev.voice_type === voiceTypeFilter) return prev
+      return { ...prev, voice_type: voiceTypeFilter, voice_id: undefined }
+    })
+  }, [voiceTypeFilter])
 
   useEffect(() => {
     if (!voiceList) return
@@ -547,9 +579,12 @@ export default function VirtualIPDetail() {
                   value={voiceSettings.provider || ''}
                   onChange={(e) => {
                     const value = e.target.value || undefined
+                    const defaultModel =
+                      voiceEnums?.defaults?.tts_model || voiceEnums?.tts_models?.[0]?.value
                     setVoiceSettings((prev) => ({
                       ...prev,
                       provider: value,
+                      model: prev.model ?? defaultModel,
                       voice_id: undefined
                     }))
                   }}
