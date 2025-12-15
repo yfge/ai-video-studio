@@ -269,6 +269,7 @@ export interface VoiceEnums {
     output_format?: string;
     music_model?: string;
   };
+  system_voices?: Array<VoiceOption & { language?: string }>;
 }
 
 export interface VoiceList {

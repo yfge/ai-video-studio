@@ -10,6 +10,7 @@ import asyncio
 from typing import List, Optional, Dict, Any
 
 from app.services.minimax_client import MinimaxAPIError, MinimaxClient
+from app.services.voice_catalog import SYSTEM_VOICE_CATALOG
 
 from .base import (
     BaseProvider,
@@ -295,7 +296,7 @@ class MinimaxProvider(BaseProvider):
         try:
             payload = await self.client.post_json("/get_voice", {"voice_type": "all"})
             voices = {
-                "system_voice": payload.get("system_voice", []),
+                "system_voice": payload.get("system_voice", []) or SYSTEM_VOICE_CATALOG,
                 "voice_cloning": payload.get("voice_cloning", []),
                 "voice_generation": payload.get("voice_generation", []),
                 "trace_id": payload.get("trace_id"),

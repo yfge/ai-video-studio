@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.services.minimax_client import MinimaxClient
+from app.services.voice_catalog import SYSTEM_VOICE_CATALOG
 
 logger = get_logger(__name__)
 
@@ -174,7 +175,7 @@ class MinimaxVoiceProvider:
 
         payload = await self.client.post_json("/get_voice", {"voice_type": voice_type})
         result = {
-            "system_voice": payload.get("system_voice", []),
+            "system_voice": payload.get("system_voice", []) or SYSTEM_VOICE_CATALOG,
             "voice_cloning": payload.get("voice_cloning", []),
             "voice_generation": payload.get("voice_generation", []),
             "trace_id": payload.get("trace_id"),
@@ -376,6 +377,15 @@ class VoiceService:
                 "output_format": "url",
                 "music_model": "music-2.0",
             },
+            "system_voices": [
+                {
+                    "value": item["voice_id"],
+                    "label_zh": item["voice_name"],
+                    "label_en": item["voice_name"],
+                    "language": item.get("language"),
+                }
+                for item in SYSTEM_VOICE_CATALOG
+            ],
         }
 
     def enums(self) -> Dict[str, Any]:

@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { virtualIPAPI, voiceAPI, VirtualIP, VoiceConfig, VoiceEnums, VoiceList, VoiceItem } from '@/utils/api'
+import { apiClient, virtualIPAPI, voiceAPI, VirtualIP, VoiceConfig, VoiceEnums, VoiceList, VoiceItem } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 
 export default function VirtualIPDetail() {
@@ -216,20 +216,29 @@ export default function VirtualIPDetail() {
       })
     }
 
-    if (!voiceList) return options
-    if (voiceTypeFilter === 'all') {
-      pushVoices(voiceList.system_voice)
-      pushVoices(voiceList.voice_cloning)
-      pushVoices(voiceList.voice_generation)
-    } else if (voiceTypeFilter === 'system') {
-      pushVoices(voiceList.system_voice)
-    } else if (voiceTypeFilter === 'voice_cloning') {
-      pushVoices(voiceList.voice_cloning)
-    } else if (voiceTypeFilter === 'voice_generation') {
-      pushVoices(voiceList.voice_generation)
+    if (voiceList) {
+      if (voiceTypeFilter === 'all') {
+        pushVoices(voiceList.system_voice)
+        pushVoices(voiceList.voice_cloning)
+        pushVoices(voiceList.voice_generation)
+      } else if (voiceTypeFilter === 'system') {
+        pushVoices(voiceList.system_voice)
+      } else if (voiceTypeFilter === 'voice_cloning') {
+        pushVoices(voiceList.voice_cloning)
+      } else if (voiceTypeFilter === 'voice_generation') {
+        pushVoices(voiceList.voice_generation)
+      }
+    }
+    if (!options.length && voiceEnums?.system_voices && voiceTypeFilter !== 'voice_cloning' && voiceTypeFilter !== 'voice_generation') {
+      voiceEnums.system_voices.forEach((item) => {
+        options.push({
+          value: item.value,
+          label: item.label_zh || item.label_en || item.value
+        })
+      })
     }
     return options
-  }, [voiceList, voiceTypeFilter])
+  }, [voiceList, voiceTypeFilter, voiceEnums?.system_voices])
 
   const handlePreviewVoice = async () => {
     if (!voiceSettings.model) {
@@ -267,6 +276,10 @@ export default function VirtualIPDetail() {
       setPreviewLoading(false)
     }
   }
+
+  useEffect(() => {
+    apiClient.updateToken()
+  }, [])
 
   useEffect(() => {
     void fetchVoiceEnums()
