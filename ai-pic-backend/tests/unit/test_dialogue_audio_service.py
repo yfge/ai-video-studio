@@ -1,4 +1,8 @@
-from app.services.dialogue_audio_service import plan_scene_segments
+from app.models.story_structure import Scene, SceneBeat
+from app.services.dialogue_audio_service import (
+    build_episode_timeline_beats,
+    plan_scene_segments,
+)
 
 
 def test_plan_scene_segments_orders_stage_and_dialogue() -> None:
@@ -49,3 +53,50 @@ def test_plan_scene_segments_treats_silence_dialogue_as_pause() -> None:
     assert [s.kind for s in segments] == ["pause", "pause"]
     assert segments[0].planned_duration_ms == 800
     assert segments[1].planned_duration_ms == 300
+
+
+def test_build_episode_timeline_beats_offsets_scene_windows() -> None:
+    scene1 = Scene(id=1, script_id=1, scene_number="1", slug_line="S1")
+    scene2 = Scene(id=2, script_id=1, scene_number="2", slug_line="S2")
+
+    beats_by_scene = {
+        1: [
+            SceneBeat(
+                id=11,
+                scene_id=1,
+                order_index=1,
+                beat_type="dialogue",
+                dialogue_excerpt="你好",
+                duration_seconds=1.0,
+                extra_metadata={"start_ms": 0, "end_ms": 1000, "speaker_name": "小明"},
+            ),
+            SceneBeat(
+                id=12,
+                scene_id=1,
+                order_index=2,
+                beat_type="pause",
+                duration_seconds=0.5,
+                extra_metadata={"start_ms": 1000, "end_ms": 1500},
+            ),
+        ],
+        2: [
+            SceneBeat(
+                id=21,
+                scene_id=2,
+                order_index=1,
+                beat_type="action",
+                beat_summary="（走向门口）",
+                duration_seconds=2.0,
+                extra_metadata={"start_ms": 0, "end_ms": 2000},
+            )
+        ],
+    }
+
+    beats, total_ms = build_episode_timeline_beats(
+        scenes=[scene1, scene2],
+        beats_by_scene_id=beats_by_scene,
+    )
+
+    assert total_ms == 3500
+    assert [b["start_ms"] for b in beats] == [0, 1000, 1500]
+    assert [b["end_ms"] for b in beats] == [1000, 1500, 3500]

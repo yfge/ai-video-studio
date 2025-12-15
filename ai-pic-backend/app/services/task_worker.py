@@ -55,6 +55,16 @@ def script_dialogue_audio_generate_task(
     _process_script_dialogue_audio_task(task_id, payload, user_id)
 
 
+@celery_app.task(name="tasks.script_audio_timeline_generate")
+def script_audio_timeline_generate_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
+    """异步生成 episode 对白音轨拼接与时间轴任务入口。"""
+    from app.api.v1.endpoints.scripts import _process_script_audio_timeline_task
+
+    _process_script_audio_timeline_task(task_id, payload, user_id)
+
+
 @celery_app.task(name="tasks.virtual_ip_image_generate")
 def virtual_ip_image_generate_task(
     task_id: int, payload: Dict[str, Any], user_id: int

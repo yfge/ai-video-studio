@@ -392,6 +392,96 @@ def _encode_mp3(in_wav: Path, out_mp3: Path) -> None:
     )
 
 
+def _concat_mp3s(paths: Sequence[Path], out_mp3: Path) -> None:
+    concat_file = out_mp3.parent / "concat.txt"
+    concat_file.write_text(
+        "".join(f"file '{p.as_posix()}'\n" for p in paths), encoding="utf-8"
+    )
+    _run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(concat_file),
+            "-codec:a",
+            "libmp3lame",
+            "-q:a",
+            "4",
+            str(out_mp3),
+        ]
+    )
+
+
+def build_episode_timeline_beats(
+    *,
+    scenes: Sequence[Scene],
+    beats_by_scene_id: dict[int, Sequence[SceneBeat]],
+) -> tuple[list[dict[str, Any]], int]:
+    offset_ms = 0
+    merged: list[dict[str, Any]] = []
+
+    for scene in scenes:
+        scene_id = int(scene.id)
+        try:
+            scene_number = int(str(scene.scene_number).strip())
+        except Exception:
+            scene_number = None
+
+        cursor_ms = 0
+        for beat in beats_by_scene_id.get(scene_id, []):
+            meta = beat.extra_metadata if isinstance(beat.extra_metadata, dict) else {}
+
+            start_ms = meta.get("start_ms")
+            end_ms = meta.get("end_ms")
+
+            start_ms_int = (
+                int(start_ms)
+                if isinstance(start_ms, (int, float, str)) and str(start_ms).strip()
+                else None
+            )
+            end_ms_int = (
+                int(end_ms)
+                if isinstance(end_ms, (int, float, str)) and str(end_ms).strip()
+                else None
+            )
+
+            if start_ms_int is None:
+                start_ms_int = cursor_ms
+            if end_ms_int is None:
+                dur_s = float(beat.duration_seconds or 0)
+                end_ms_int = start_ms_int + max(0, int(round(dur_s * 1000)))
+            if end_ms_int < start_ms_int:
+                end_ms_int = start_ms_int
+
+            cursor_ms = end_ms_int
+
+            text = (
+                beat.dialogue_excerpt
+                if beat.beat_type == "dialogue"
+                else beat.beat_summary
+            )
+            merged.append(
+                {
+                    "scene_id": scene_id,
+                    "scene_number": scene_number,
+                    "beat_id": int(beat.id),
+                    "beat_type": beat.beat_type,
+                    "speaker_name": meta.get("speaker_name"),
+                    "text": text,
+                    "start_ms": offset_ms + start_ms_int,
+                    "end_ms": offset_ms + end_ms_int,
+                }
+            )
+
+        offset_ms += cursor_ms
+
+    return merged, offset_ms
+
+
 async def generate_scene_dialogue_audio(
     db: Session,
     *,
@@ -582,3 +672,128 @@ async def generate_scene_dialogue_audio(
         db.refresh(scene)
 
         return payload
+
+
+async def generate_episode_audio_timeline(
+    db: Session,
+    *,
+    story: Story,
+    episode: Episode,
+    script: Script,
+) -> dict[str, Any]:
+    """
+    Concatenate scene dialogue tracks into 1 episode track and merge beats into an episode timeline.
+
+    Writes `episodes.extra_metadata.audio_timeline` and uploads the episode audio to OSS.
+    """
+    _ensure_oss_configured()
+
+    scenes = db.query(Scene).filter(Scene.script_id == script.id).all()
+    scenes_sorted = sorted(
+        scenes,
+        key=lambda s: (
+            1 if str(getattr(s, "scene_number", "")).strip().isdigit() is False else 0,
+            (
+                int(str(getattr(s, "scene_number", 0)).strip())
+                if str(getattr(s, "scene_number", "")).strip().isdigit()
+                else 0
+            ),
+            str(getattr(s, "scene_number", "")),
+        ),
+    )
+    if not scenes_sorted:
+        raise RuntimeError("no_scenes_found")
+
+    missing_audio: list[str] = []
+    scene_audio_urls: list[str] = []
+    scene_ids: list[int] = []
+    for scene in scenes_sorted:
+        meta = scene.extra_metadata if isinstance(scene.extra_metadata, dict) else {}
+        payload = meta.get("dialogue_audio") if isinstance(meta, dict) else None
+        if not isinstance(payload, dict) or not payload.get("oss_url"):
+            missing_audio.append(str(scene.scene_number))
+            continue
+        scene_audio_urls.append(str(payload["oss_url"]))
+        scene_ids.append(int(scene.id))
+
+    if missing_audio:
+        raise RuntimeError(f"missing_scene_dialogue_audio: {', '.join(missing_audio)}")
+
+    beats = (
+        db.query(SceneBeat)
+        .filter(SceneBeat.scene_id.in_(scene_ids))
+        .order_by(SceneBeat.scene_id.asc(), SceneBeat.order_index.asc())
+        .all()
+    )
+    beats_by_scene: dict[int, list[SceneBeat]] = {sid: [] for sid in scene_ids}
+    for beat in beats:
+        beats_by_scene.setdefault(int(beat.scene_id), []).append(beat)
+
+    missing_beats = [
+        str(scene.scene_number)
+        for scene in scenes_sorted
+        if not beats_by_scene.get(int(scene.id))
+    ]
+    if missing_beats:
+        raise RuntimeError(f"missing_scene_beats: {', '.join(missing_beats)}")
+
+    timeline_beats, duration_ms_total = build_episode_timeline_beats(
+        scenes=scenes_sorted,
+        beats_by_scene_id=beats_by_scene,
+    )
+    duration_seconds_total = round(duration_ms_total / 1000.0, 3)
+
+    with tempfile.TemporaryDirectory(prefix="episode-audio-") as tmp_root:
+        tmp_root_path = Path(tmp_root)
+        mp3_paths: list[Path] = []
+        for idx, url in enumerate(scene_audio_urls, start=1):
+            p = tmp_root_path / f"scene-{idx}.mp3"
+            await _download_to_file(str(url), p)
+            mp3_paths.append(p)
+
+        episode_mp3 = tmp_root_path / "episode.mp3"
+        _concat_mp3s(mp3_paths, episode_mp3)
+
+        oss_result = await oss_service.upload_file_content(
+            file_content=episode_mp3.read_bytes(),
+            filename=f"episode{episode.id}-script{script.id}.mp3",
+            file_type="audio",
+            prefix="episode-dialogue/episodes",
+            metadata={
+                "episode_id": episode.id,
+                "script_id": script.id,
+                "duration_seconds": duration_seconds_total,
+                "generated_at": _utc_now_iso(),
+            },
+        )
+        if not oss_result.get("success") or not oss_result.get("file_url"):
+            raise RuntimeError(f"OSS 上传失败: {oss_result}")
+
+    extra = dict(episode.extra_metadata or {})
+    prev = extra.get("audio_timeline")
+    prev_version = 0
+    if isinstance(prev, dict):
+        ep_audio = prev.get("episode_audio")
+        if isinstance(ep_audio, dict):
+            try:
+                prev_version = int(ep_audio.get("version") or 0)
+            except Exception:
+                prev_version = 0
+
+    payload = {
+        "script_id": script.id,
+        "episode_audio": {
+            "oss_url": oss_result["file_url"],
+            "duration_seconds": duration_seconds_total,
+            "generated_at": _utc_now_iso(),
+            "version": prev_version + 1,
+        },
+        "beats": timeline_beats,
+    }
+    extra["audio_timeline"] = payload
+    episode.extra_metadata = extra
+    db.add(episode)
+    db.commit()
+    db.refresh(episode)
+
+    return payload

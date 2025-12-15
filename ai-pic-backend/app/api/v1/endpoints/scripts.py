@@ -33,9 +33,13 @@ from app.schemas.story_structure import SceneCreate, ShotCreate
 from app.schemas.style import StyleSpec
 from app.services import story_structure_service as story_structure_svc
 from app.services.ai_service import ai_service
-from app.services.dialogue_audio_service import generate_scene_dialogue_audio
+from app.services.dialogue_audio_service import (
+    generate_episode_audio_timeline,
+    generate_scene_dialogue_audio,
+)
 from app.services.storage.oss_service import oss_service
 from app.services.task_worker import (
+    script_audio_timeline_generate_task,
     script_dialogue_audio_generate_task,
     script_generate_task,
     storyboard_generate_task,
@@ -3612,6 +3616,14 @@ def _scene_has_dialogue_audio(scene: Scene, script_id: int) -> bool:
     return bool(payload.get("oss_url"))
 
 
+def _scene_number_sort_key(scene: Scene) -> tuple[int, int, str]:
+    raw = getattr(scene, "scene_number", None)
+    num = _to_int(raw)
+    if num is None:
+        return (1, 0, str(raw or ""))
+    return (0, num, str(raw or ""))
+
+
 @router.post("/{script_id}/dialogue-audio/generate-async")
 async def generate_script_dialogue_audio_async(
     script_id: int,
@@ -3715,6 +3727,7 @@ def _process_script_dialogue_audio_task(
                     for s in scenes
                     if _to_int(getattr(s, "scene_number", None)) in selected_set
                 ]
+            scenes = sorted(scenes, key=_scene_number_sort_key)
             if not scenes:
                 raise RuntimeError("no_scenes_found")
 
@@ -3763,5 +3776,143 @@ def _process_script_dialogue_audio_task(
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
             _update_task_progress(db, task, f"对白音轨生成失败：{e}")
+    finally:
+        db.close()
+
+
+class ScriptAudioTimelineGenerateRequest(BaseModel):
+    overwrite: bool = Field(False, description="是否覆盖重算 episode 音频与时间轴")
+
+
+def _episode_has_audio_timeline(episode: Episode, script_id: int) -> bool:
+    meta = episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {}
+    timeline = meta.get("audio_timeline") if isinstance(meta, dict) else None
+    if not isinstance(timeline, dict):
+        return False
+    if timeline.get("script_id") != script_id:
+        return False
+    ep_audio = timeline.get("episode_audio")
+    if not isinstance(ep_audio, dict) or not ep_audio.get("oss_url"):
+        return False
+    beats = timeline.get("beats")
+    return isinstance(beats, list) and len(beats) > 0
+
+
+@router.post("/{script_id}/audio-timeline/generate-async")
+async def generate_script_audio_timeline_async(
+    script_id: int,
+    body: ScriptAudioTimelineGenerateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """异步生成 episode 级对白音轨拼接与时间轴（存于 episodes.extra_metadata.audio_timeline）。"""
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
+    if not script:
+        raise HTTPException(status_code=404, detail="剧本不存在")
+
+    story = script.episode.story if script.episode else None
+    episode = script.episode if script.episode else None
+
+    params = body.model_dump()
+    params["script_id"] = script_id
+    t = Task(
+        title=_friendly_task_title("时间轴生成", script, episode, story),
+        description="拼接场景音轨并生成时间轴（episode）",
+        task_type="image_generation",
+        prompt=f"Episode audio timeline generation for script {script_id}",
+        parameters=json.dumps(params, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    script_audio_timeline_generate_task.delay(t.id, params, current_user.id)
+    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
+
+
+def _process_script_audio_timeline_task(
+    task_id: int, payload: dict, user_id: int
+) -> None:
+    """后台处理 episode 音频拼接与时间轴生成任务（供 Celery 调用）。"""
+    import anyio
+    from app.core.database import SessionLocal
+    from app.models.user import User
+
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+
+        script_id = int(payload.get("script_id"))
+        overwrite = bool(payload.get("overwrite"))
+
+        async def _run() -> None:
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                raise RuntimeError("user_not_found")
+
+            script = (
+                db.query(Script)
+                .join(Episode, Script.episode_id == Episode.id)
+                .join(Story, Episode.story_id == Story.id)
+                .filter(Script.id == script_id)
+                .filter(
+                    True
+                    if user.is_admin or user.is_superuser
+                    else Story.user_id == user.id
+                )
+                .first()
+            )
+            if not script:
+                raise RuntimeError("script_not_found")
+            episode = script.episode
+            if not episode:
+                raise RuntimeError("episode_not_found")
+            story = episode.story
+            if not story:
+                raise RuntimeError("story_not_found")
+
+            if not overwrite and _episode_has_audio_timeline(episode, script_id):
+                _update_task_progress(
+                    db,
+                    task,
+                    "已存在 episode 时间轴，跳过生成（如需重算请开启 overwrite）",
+                )
+                return
+
+            _update_task_progress(db, task, "拼接场景音轨并生成时间轴中…")
+            await generate_episode_audio_timeline(
+                db,
+                story=story,
+                episode=episode,
+                script=script,
+            )
+
+        anyio.run(_run)
+
+        if task:
+            task.status = TaskStatus.COMPLETED
+            task.result_file_path = f"script:{script_id}:audio_timeline"
+            _update_task_progress(db, task, "时间轴生成完成")
+    except Exception as e:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            _update_task_progress(db, task, f"时间轴生成失败：{e}")
     finally:
         db.close()
