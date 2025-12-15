@@ -295,6 +295,23 @@ class AIService:
                     max_requests_per_minute=60,
                 )
 
+            # MiniMax
+            if settings.MINIMAX_API_KEY:
+                providers["minimax"] = ProviderConfig(
+                    name="minimax",
+                    api_key=settings.MINIMAX_API_KEY,
+                    group_id=settings.MINIMAX_GROUP_ID,
+                    base_url="https://api.minimax.chat/v1",
+                    timeout=120.0,
+                )
+                provider_weights["minimax"] = ProviderWeight(
+                    provider_name="minimax",
+                    weight=0.7,
+                    priority=ProviderPriority.MEDIUM,
+                    enabled=True,
+                    max_requests_per_minute=60,
+                )
+
             # 火山引擎（Ark Seedream / 文本 & 图片）
             if settings.VOLCENGINE_API_KEY:
                 providers["volcengine"] = ProviderConfig(
@@ -2176,7 +2193,8 @@ class AIService:
                     "original_thumbnail_url": original_thumbnail_url,
                     "last_frame_url": (
                         last_frame_oss_result.get("file_url")
-                        if last_frame_oss_result and last_frame_oss_result.get("success")
+                        if last_frame_oss_result
+                        and last_frame_oss_result.get("success")
                         else original_last_frame_url
                     ),
                     "original_last_frame_url": original_last_frame_url,

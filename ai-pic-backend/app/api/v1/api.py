@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import auth, virtual_ip, virtual_ip_images, stories, episodes, scripts, migrations, prompts, diagnostic, admin, tasks, styles
 from app.api.v1.endpoints import story_structure
-from app.api.v1 import ai_providers
+from app.api.v1 import ai_providers, voice
 
 api_router = APIRouter()
 
@@ -29,6 +29,8 @@ api_router.include_router(prompts.router, prefix="/prompts", tags=["prompts"])
 
 # AI服务提供商相关路由
 api_router.include_router(ai_providers.router, prefix="/ai", tags=["ai-providers"])
+# 声音/音乐相关路由
+api_router.include_router(voice.router, prefix="/voice", tags=["voice"])
 
 # 风格 schema / preset（后端为唯一真源）
 api_router.include_router(styles.router, prefix="/styles", tags=["styles"])

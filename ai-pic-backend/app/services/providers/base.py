@@ -83,6 +83,8 @@ class ProviderConfig(BaseModel):
     name: str
     api_key: Optional[str] = None
     api_secret: Optional[str] = None
+    group_id: Optional[str] = None
+    region: Optional[str] = None
     base_url: Optional[str] = None
     timeout: int = 180
     max_retries: int = 3
