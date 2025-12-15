@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { episodeAPI, scriptAPI, taskAPI } from "@/utils/api";
+import { episodeAPI, scriptAPI, storyStructureAPI, taskAPI } from "@/utils/api";
 import type {
   Episode,
+  NormalizedScene,
   Script,
   ScriptGenerationRequest,
   Task,
@@ -36,6 +37,14 @@ export default function EpisodeDetailPage() {
   const [sceneAudioBusy, setSceneAudioBusy] = useState(false);
   const [timelineBusy, setTimelineBusy] = useState(false);
   const [storyboardBusy, setStoryboardBusy] = useState(false);
+
+  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>(
+    [],
+  );
+  const [normalizedScenesLoading, setNormalizedScenesLoading] = useState(false);
+  const [normalizedScenesError, setNormalizedScenesError] = useState<
+    string | null
+  >(null);
 
   const [sceneAudioTaskId, setSceneAudioTaskId] = useState<number | null>(null);
   const [timelineTaskId, setTimelineTaskId] = useState<number | null>(null);
@@ -135,6 +144,32 @@ export default function EpisodeDetailPage() {
     }
   }, []);
 
+  const loadNormalizedScenes = useCallback(async (scriptId: number | null) => {
+    if (!scriptId) {
+      setNormalizedScenes([]);
+      setNormalizedScenesError(null);
+      return;
+    }
+
+    try {
+      setNormalizedScenesLoading(true);
+      setNormalizedScenesError(null);
+      const res = await storyStructureAPI.getNormalizedScenes(scriptId);
+      if (res.success && res.data) {
+        setNormalizedScenes(res.data);
+      } else {
+        setNormalizedScenes([]);
+        setNormalizedScenesError(res.error || "加载场景失败");
+      }
+    } catch (error) {
+      console.error("加载场景失败:", error);
+      setNormalizedScenes([]);
+      setNormalizedScenesError("加载场景失败");
+    } finally {
+      setNormalizedScenesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadData();
     void loadOptions();
@@ -149,6 +184,15 @@ export default function EpisodeDetailPage() {
     if (scripts.length === 0) return;
     setSelectedScriptId(scripts[0].id);
   }, [scripts, selectedScriptId]);
+
+  useEffect(() => {
+    void loadNormalizedScenes(selectedScript?.id ?? null);
+  }, [loadNormalizedScenes, selectedScript?.id]);
+
+  useEffect(() => {
+    if (sceneAudioTask?.status !== "completed") return;
+    void loadNormalizedScenes(selectedScript?.id ?? null);
+  }, [loadNormalizedScenes, sceneAudioTask?.status, selectedScript?.id]);
 
   const fetchTask = useCallback(async (taskId: number) => {
     try {
@@ -504,6 +548,21 @@ export default function EpisodeDetailPage() {
     }
   };
 
+  const normalizedSceneAudio = normalizedScenes.map((scene) => {
+    const meta = asRecord(scene.metadata);
+    const payload = meta ? asRecord(meta["dialogue_audio"]) : null;
+    const ossUrl = payload ? getString(payload["oss_url"]) : undefined;
+    return {
+      scene,
+      ossUrl,
+      version: payload ? payload["version"] : undefined,
+      durationSeconds: payload ? payload["duration_seconds"] : undefined,
+    };
+  });
+  const normalizedSceneAudioCount = normalizedSceneAudio.filter((item) =>
+    Boolean(item.ossUrl),
+  ).length;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -637,6 +696,83 @@ export default function EpisodeDetailPage() {
               </div>
             </div>
           </div>
+
+          <details className="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+            <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
+              场景对白音轨（scene）
+              {normalizedScenes.length > 0
+                ? `：${normalizedSceneAudioCount}/${normalizedScenes.length} 已生成`
+                : ""}
+            </summary>
+            <div className="mt-2 text-[11px] text-gray-600">
+              每个场景一条混音音轨，来源于 scene.metadata.dialogue_audio.oss_url
+            </div>
+            {!normalizedScenesLoading &&
+            !normalizedScenesError &&
+            normalizedScenes.length === 0 ? (
+              <div className="mt-2 text-gray-500">
+                暂无场景数据（请先选择剧本并完成“生成对白音轨”）
+              </div>
+            ) : null}
+            {normalizedScenesLoading ? (
+              <div className="mt-2 text-gray-500">加载中...</div>
+            ) : null}
+            {normalizedScenesError ? (
+              <div className="mt-2 text-red-600">{normalizedScenesError}</div>
+            ) : null}
+            {!normalizedScenesLoading &&
+            !normalizedScenesError &&
+            normalizedSceneAudio.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {normalizedSceneAudio.map((item) => (
+                  <div
+                    key={item.scene.id}
+                    className="rounded border border-gray-200 bg-white p-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-gray-900 truncate">
+                          Scene {item.scene.scene_number}:{" "}
+                          {item.scene.slug_line}
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-gray-500">
+                          id={item.scene.id}
+                          {item.version != null
+                            ? ` • version=${String(item.version)}`
+                            : ""}
+                          {item.durationSeconds != null
+                            ? ` • duration=${String(item.durationSeconds)}s`
+                            : ""}
+                        </div>
+                      </div>
+                      {item.ossUrl ? (
+                        <a
+                          href={item.ossUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0 text-[11px] text-blue-600 hover:underline"
+                        >
+                          打开
+                        </a>
+                      ) : (
+                        <span className="shrink-0 text-[11px] text-gray-400">
+                          未生成
+                        </span>
+                      )}
+                    </div>
+                    {item.ossUrl ? (
+                      <audio
+                        className="mt-2 w-full"
+                        controls
+                        preload="none"
+                        src={item.ossUrl}
+                      />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </details>
 
           <div className="flex flex-wrap gap-2 mb-3">
             <button

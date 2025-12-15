@@ -139,6 +139,7 @@
 - [x] 后端：基于 beats/时间轴生成分镜帧/镜头占位（或触发分镜 agent），将关键点映射到 frames/shots，支持后续视频/剪辑链路复用
 - [x] 后端/运行环境：backend/celery 镜像安装 `ffmpeg`（音频拼接依赖），避免运行时 `No such file or directory: 'ffmpeg'`
 - [x] 前端：在 Episode 详情/剧本页新增“生成对白音轨 / 生成时间轴 / 生成分镜帧”入口，展示进度、失败原因、版本与重试/复用
+- [x] 前端：在 Episode 详情页展示“场景对白音轨（scene）”列表与播放/下载入口（`scene.metadata.dialogue_audio.oss_url`）
 - [x] 验证：浏览器端到端用例（账号 `geyunfei`；Playwright Chromium，MCP transport closed）：进入某 Episode → 生成对白音轨 → 校验 beats 时间轴 → 生成分镜帧，并将路径与结果记录到 `agent_chats`
 
 ### 下一步
