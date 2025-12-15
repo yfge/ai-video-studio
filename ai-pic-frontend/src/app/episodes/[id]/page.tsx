@@ -591,7 +591,12 @@ export default function EpisodeDetailPage() {
                 返回故事
               </button>
               <button
-                onClick={() => router.push(`/episodes/${episodeId}/storyboard`)}
+                onClick={() => {
+                  const suffix = selectedScript?.id
+                    ? `?scriptId=${selectedScript.id}`
+                    : "";
+                  router.push(`/episodes/${episodeId}/storyboard${suffix}`);
+                }}
                 className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
               >
                 分镜管理

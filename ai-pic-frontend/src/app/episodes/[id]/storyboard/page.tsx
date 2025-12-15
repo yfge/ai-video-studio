@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   AIModelType,
   episodeAPI,
@@ -40,8 +40,22 @@ const STORYBOARD_STYLE_SPEC_FIELDS: StyleSpecField[] = [
 export default function EpisodeStoryboardPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const episodeId = Number(params.id);
   const { showAlert } = useAlertModal();
+
+  const asRecord = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : null;
+  const getString = (value: unknown): string | undefined =>
+    typeof value === "string" ? value : undefined;
+
+  const scriptIdFromQuery = useMemo(() => {
+    const raw = searchParams.get("scriptId");
+    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [searchParams]);
 
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
@@ -103,13 +117,15 @@ export default function EpisodeStoryboardPage() {
     alt?: string;
     description?: string;
   } | null>(null);
-  const [videoSelection, setVideoSelection] = useState<Record<string, number>>({});
+  const [videoSelection, setVideoSelection] = useState<Record<string, number>>(
+    {},
+  );
 
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoModalSubmitting, setVideoModalSubmitting] = useState(false);
-  const [videoModalFrameIndex, setVideoModalFrameIndex] = useState<number | null>(
-    null,
-  );
+  const [videoModalFrameIndex, setVideoModalFrameIndex] = useState<
+    number | null
+  >(null);
   const [videoModalStartCandidates, setVideoModalStartCandidates] = useState<
     string[]
   >([]);
@@ -132,13 +148,50 @@ export default function EpisodeStoryboardPage() {
   });
   const [promptPreview, setPromptPreview] = useState("");
   const [selectedScene, setSelectedScene] = useState<number>(1);
-  const [sceneSelectionInitialized, setSceneSelectionInitialized] = useState(false);
+  const [sceneSelectionInitialized, setSceneSelectionInitialized] =
+    useState(false);
   const [showPlan, setShowPlan] = useState(false);
 
   const apiBase = useMemo(
     () => (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, ""),
     [],
   );
+
+  const episodeMeta = useMemo(() => {
+    if (!episode) return {};
+    const meta =
+      (episode as unknown as Record<string, unknown>)?.extra_metadata ??
+      episode.extra_metadata ??
+      episode.metadata ??
+      {};
+    return asRecord(meta) ?? {};
+  }, [episode]);
+
+  const selectedAudioTimeline = useMemo(() => {
+    if (!activeScript) return null;
+    const raw = episodeMeta["audio_timeline"];
+    const tl = asRecord(raw);
+    if (!tl) return null;
+    const scriptIdRaw = tl["script_id"];
+    const scriptId =
+      typeof scriptIdRaw === "number"
+        ? scriptIdRaw
+        : Number.parseInt(String(scriptIdRaw || ""), 10);
+    return Number.isFinite(scriptId) && scriptId === activeScript.id
+      ? tl
+      : null;
+  }, [activeScript, episodeMeta]);
+
+  const selectedEpisodeAudio = asRecord(
+    selectedAudioTimeline?.["episode_audio"],
+  );
+  const selectedEpisodeAudioUrl = getString(selectedEpisodeAudio?.["oss_url"]);
+  const selectedEpisodeAudioVersion = selectedEpisodeAudio?.["version"];
+  const selectedTimelineBeatCount = Array.isArray(
+    selectedAudioTimeline?.["beats"],
+  )
+    ? (selectedAudioTimeline?.["beats"] as unknown[]).length
+    : 0;
 
   const imageSrc = useCallback(
     (url: string) => {
@@ -157,7 +210,9 @@ export default function EpisodeStoryboardPage() {
 
       const startCandidates = (() => {
         const urls: string[] = [];
-        const raw = Array.isArray(fr.start_image_urls) ? fr.start_image_urls : [];
+        const raw = Array.isArray(fr.start_image_urls)
+          ? fr.start_image_urls
+          : [];
         raw.forEach((u) => {
           const absolute = imageSrc(u);
           if (absolute && !urls.includes(absolute)) urls.push(absolute);
@@ -215,13 +270,18 @@ export default function EpisodeStoryboardPage() {
       if (epRes.success && epRes.data) setEpisode(epRes.data);
       if (scRes.success && scRes.data) {
         setScripts(scRes.data);
-        const first = scRes.data[0] || null;
-        setActiveScript(first);
+        const selected =
+          (scriptIdFromQuery != null
+            ? scRes.data.find((sc) => sc.id === scriptIdFromQuery) ?? null
+            : null) ??
+          scRes.data[0] ??
+          null;
+        setActiveScript(selected);
       }
     } finally {
       setLoading(false);
     }
-  }, [episodeId]);
+  }, [episodeId, scriptIdFromQuery]);
 
   useEffect(() => {
     void load();
@@ -444,14 +504,17 @@ export default function EpisodeStoryboardPage() {
     if (!assertNormalizedReady(true)) return;
     setStoryboardBusy(true);
     try {
-      const response = await scriptAPI.generateStoryboardAsync(activeScript.id, {
-        model: form.model || undefined,
-        temperature: form.temperature,
-        frames_per_scene: form.frames_per_scene,
-        scene_numbers: [selectedScene],
-        // 分镜生成默认走规划 + LangGraph 管线
-        use_plan: true,
-      });
+      const response = await scriptAPI.generateStoryboardAsync(
+        activeScript.id,
+        {
+          model: form.model || undefined,
+          temperature: form.temperature,
+          frames_per_scene: form.frames_per_scene,
+          scene_numbers: [selectedScene],
+          // 分镜生成默认走规划 + LangGraph 管线
+          use_plan: true,
+        },
+      );
       if (!response.success || !response.data) {
         showAlert({ message: "生成分镜失败", variant: "error" });
         return;
@@ -490,9 +553,9 @@ export default function EpisodeStoryboardPage() {
     async (scriptId: number, taskId: number) => {
       const maxAttempts = 30;
       let attempts = 0;
-        while (attempts < maxAttempts) {
-          attempts += 1;
-          try {
+      while (attempts < maxAttempts) {
+        attempts += 1;
+        try {
           await new Promise((resolve) => setTimeout(resolve, 2000));
           const taskRes = await taskAPI.getTask(String(taskId));
           if (!taskRes.success || !taskRes.data) continue;
@@ -532,13 +595,16 @@ export default function EpisodeStoryboardPage() {
     if (!assertNormalizedReady()) return;
     setStoryboardBusy(true);
     try {
-      const response = await scriptAPI.generateStoryboardAsync(activeScript.id, {
-        model: form.model || undefined,
-        temperature: form.temperature,
-        frames_per_scene: form.frames_per_scene,
-        // 分镜生成默认走规划 + LangGraph 管线
-        use_plan: true,
-      });
+      const response = await scriptAPI.generateStoryboardAsync(
+        activeScript.id,
+        {
+          model: form.model || undefined,
+          temperature: form.temperature,
+          frames_per_scene: form.frames_per_scene,
+          // 分镜生成默认走规划 + LangGraph 管线
+          use_plan: true,
+        },
+      );
       if (!response.success || !response.data) {
         showAlert({ message: "生成分镜失败", variant: "error" });
         return;
@@ -575,7 +641,9 @@ export default function EpisodeStoryboardPage() {
         const start =
           fr.start_image_url ||
           fr.image_url ||
-          (Array.isArray(fr.start_image_urls) ? fr.start_image_urls[0] : undefined);
+          (Array.isArray(fr.start_image_urls)
+            ? fr.start_image_urls[0]
+            : undefined);
         const end =
           fr.end_image_url ||
           (Array.isArray(fr.end_image_urls) ? fr.end_image_urls[0] : undefined);
@@ -679,17 +747,21 @@ export default function EpisodeStoryboardPage() {
 
   const fetchReferenceImagesForScene = useCallback(async () => {
     if (!selectedNormalizedSceneId) {
-      return { envImages: [] as string[], charGroups: [] as Array<{ id: number; name: string; images: string[] }> };
+      return {
+        envImages: [] as string[],
+        charGroups: [] as Array<{ id: number; name: string; images: string[] }>,
+      };
     }
 
     const envImages: string[] = [];
-    if (selectedEnv?.reference_images && selectedEnv.reference_images.length > 0) {
-      selectedEnv.reference_images
-        .filter(Boolean)
-        .forEach((url) => {
-          const absolute = imageSrc(url as string);
-          if (absolute) envImages.push(absolute);
-        });
+    if (
+      selectedEnv?.reference_images &&
+      selectedEnv.reference_images.length > 0
+    ) {
+      selectedEnv.reference_images.filter(Boolean).forEach((url) => {
+        const absolute = imageSrc(url as string);
+        if (absolute) envImages.push(absolute);
+      });
     }
 
     const sceneCharacterIds = new Set<number>();
@@ -724,7 +796,14 @@ export default function EpisodeStoryboardPage() {
     }
 
     return { envImages, charGroups: characterImageGroups };
-  }, [characters, imageSrc, normalizedShots, selectedEnv?.reference_images, selectedNormalizedSceneId, shotAssignments]);
+  }, [
+    characters,
+    imageSrc,
+    normalizedShots,
+    selectedEnv?.reference_images,
+    selectedNormalizedSceneId,
+    shotAssignments,
+  ]);
 
   const buildReferenceSections = useCallback(
     (
@@ -737,7 +816,10 @@ export default function EpisodeStoryboardPage() {
       }
       charGroups.forEach((group) => {
         if (group.images.length > 0) {
-          sections.push({ title: `${group.name} 参考图`, images: group.images });
+          sections.push({
+            title: `${group.name} 参考图`,
+            images: group.images,
+          });
         }
       });
       return sections;
@@ -879,7 +961,8 @@ export default function EpisodeStoryboardPage() {
     }
     const targets: number[] = [];
     if (edgeTargets.first) targets.push(indexes[0]);
-    if (edgeTargets.last && indexes.length > 1) targets.push(indexes[indexes.length - 1]);
+    if (edgeTargets.last && indexes.length > 1)
+      targets.push(indexes[indexes.length - 1]);
     if (targets.length === 0) {
       showAlert({
         message: "请至少选择首帧或尾帧生成",
@@ -896,18 +979,21 @@ export default function EpisodeStoryboardPage() {
     }
     setEdgeModalSubmitting(true);
     try {
-      const response = await scriptAPI.generateStoryboardImages(activeScript.id, {
-        frames: targets,
-        model: payload.model,
-        width: payload.width ?? 1024,
-        height: payload.height ?? 1024,
-        style: payload.style,
-        style_preset_id: payload.style_preset_id,
-        style_spec: payload.style_spec,
-        reference_images: payload.referenceImages,
-        count: payload.count,
-        keyframe_mode: "start_end",
-      });
+      const response = await scriptAPI.generateStoryboardImages(
+        activeScript.id,
+        {
+          frames: targets,
+          model: payload.model,
+          width: payload.width ?? 1024,
+          height: payload.height ?? 1024,
+          style: payload.style,
+          style_preset_id: payload.style_preset_id,
+          style_spec: payload.style_spec,
+          reference_images: payload.referenceImages,
+          count: payload.count,
+          keyframe_mode: "start_end",
+        },
+      );
       if (response.success) {
         showAlert({ message: "已创建首尾帧图像生成任务", variant: "success" });
         setEdgeModalOpen(false);
@@ -1048,12 +1134,14 @@ export default function EpisodeStoryboardPage() {
     }
     setImageModalSubmitting(true);
     try {
-      const targetNote = imageModalTargets.first && imageModalTargets.last
-        ? ""
-        : imageModalTargets.first
+      const targetNote =
+        imageModalTargets.first && imageModalTargets.last
+          ? ""
+          : imageModalTargets.first
           ? "（仅生成首帧，请突出开场瞬间）"
           : "（仅生成尾帧，请突出动作结束后的状态）";
-      const promptWithTarget = `${payload.prompt.trim()}\n\n${targetNote}`.trim();
+      const promptWithTarget =
+        `${payload.prompt.trim()}\n\n${targetNote}`.trim();
       const response = await scriptAPI.generateStoryboardImages(
         activeScript.id,
         {
@@ -1102,9 +1190,7 @@ export default function EpisodeStoryboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            未找到剧集
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">未找到剧集</h2>
           <button
             onClick={() => router.push(`/episodes/${episodeId}`)}
             className="bg-blue-600 text-white px-4 py-2 rounded"
@@ -1153,6 +1239,57 @@ export default function EpisodeStoryboardPage() {
             >
               返回剧集
             </button>
+          </div>
+        </div>
+
+        {/* 对白时间轴（episode） */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-gray-900">
+                对白时间轴（episode）
+              </div>
+              <div className="mt-1 text-xs text-gray-600">
+                {!activeScript ? (
+                  <span className="text-gray-400">请选择剧本</span>
+                ) : selectedAudioTimeline ? (
+                  <span>
+                    beats={selectedTimelineBeatCount} • version=
+                    {String(selectedEpisodeAudioVersion ?? "—")}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">
+                    未生成（请先在剧集页生成“时间轴”）
+                  </span>
+                )}
+              </div>
+              {selectedEpisodeAudioUrl ? (
+                <div className="mt-2">
+                  <a
+                    href={selectedEpisodeAudioUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-blue-600 hover:underline break-all"
+                  >
+                    {selectedEpisodeAudioUrl}
+                  </a>
+                  <audio
+                    className="mt-2 w-full"
+                    controls
+                    preload="none"
+                    src={selectedEpisodeAudioUrl}
+                  />
+                </div>
+              ) : null}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push(`/episodes/${episodeId}`)}
+                className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
+              >
+                返回剧集页
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1340,8 +1477,8 @@ export default function EpisodeStoryboardPage() {
           )}
         </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {/* 左侧场景列表 */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* 左侧场景列表 */}
           <div className="md:col-span-1 bg-white rounded-lg shadow p-3">
             <h3 className="text-sm font-medium text-gray-900 mb-3">
               场景{" "}
@@ -1357,42 +1494,46 @@ export default function EpisodeStoryboardPage() {
                   .sort((a, b) => {
                     const aNum = parseInt(a.scene_number, 10);
                     const bNum = parseInt(b.scene_number, 10);
-                    const aVal = Number.isFinite(aNum) ? aNum : Number.MAX_SAFE_INTEGER;
-                    const bVal = Number.isFinite(bNum) ? bNum : Number.MAX_SAFE_INTEGER;
+                    const aVal = Number.isFinite(aNum)
+                      ? aNum
+                      : Number.MAX_SAFE_INTEGER;
+                    const bVal = Number.isFinite(bNum)
+                      ? bNum
+                      : Number.MAX_SAFE_INTEGER;
                     return aVal - bVal;
                   })
                   .map((scene) => {
-                  const parsed = parseInt(scene.scene_number, 10);
-                  const numericScene = Number.isFinite(parsed)
-                    ? parsed
-                    : undefined;
-                  const isActive = numericScene
-                    ? selectedScene === numericScene
-                    : false;
-                  return (
-                    <button
-                      key={scene.id}
-                      onClick={() => {
-                        const fallbackScene = Number.isFinite(parsed)
-                          ? parsed
-                          : 1;
-                        setSceneSelectionInitialized(true);
-                        setSelectedScene(fallbackScene);
-                        setSelectedNormalizedSceneId(scene.id);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded text-sm ${
-                        isActive
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
-                          : "hover:bg-gray-50 border border-transparent"
-                      }`}
-                    >
-                      场景 {Number.isFinite(parsed) ? parsed : "?"}
-                      <div className="text-xs text-gray-600 truncate">
-                        {(scene.slug_line ?? "").slice(0, 60)}
-                      </div>
-                    </button>
-                  );
-                })
+                    const parsed = parseInt(scene.scene_number, 10);
+                    const numericScene = Number.isFinite(parsed)
+                      ? parsed
+                      : undefined;
+                    const isActive = numericScene
+                      ? selectedScene === numericScene
+                      : false;
+                    return (
+                      <button
+                        key={scene.id}
+                        onClick={() => {
+                          const fallbackScene = Number.isFinite(parsed)
+                            ? parsed
+                            : 1;
+                          setSceneSelectionInitialized(true);
+                          setSelectedScene(fallbackScene);
+                          setSelectedNormalizedSceneId(scene.id);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded text-sm ${
+                          isActive
+                            ? "bg-blue-50 text-blue-700 border border-blue-200"
+                            : "hover:bg-gray-50 border border-transparent"
+                        }`}
+                      >
+                        场景 {Number.isFinite(parsed) ? parsed : "?"}
+                        <div className="text-xs text-gray-600 truncate">
+                          {(scene.slug_line ?? "").slice(0, 60)}
+                        </div>
+                      </button>
+                    );
+                  })
               )}
             </div>
           </div>
@@ -1607,10 +1748,14 @@ export default function EpisodeStoryboardPage() {
                       : [];
                     raw.forEach((u) => {
                       const absolute = imageSrc(u);
-                      if (absolute && !urls.includes(absolute)) urls.push(absolute);
+                      if (absolute && !urls.includes(absolute))
+                        urls.push(absolute);
                     });
-                    const fallback = imageSrc(fr.start_image_url || fr.image_url || "");
-                    if (fallback && !urls.includes(fallback)) urls.unshift(fallback);
+                    const fallback = imageSrc(
+                      fr.start_image_url || fr.image_url || "",
+                    );
+                    if (fallback && !urls.includes(fallback))
+                      urls.unshift(fallback);
                     return urls;
                   })();
                   const endCandidates = (() => {
@@ -1620,10 +1765,12 @@ export default function EpisodeStoryboardPage() {
                       : [];
                     raw.forEach((u) => {
                       const absolute = imageSrc(u);
-                      if (absolute && !urls.includes(absolute)) urls.push(absolute);
+                      if (absolute && !urls.includes(absolute))
+                        urls.push(absolute);
                     });
                     const fallback = imageSrc(fr.end_image_url || "");
-                    if (fallback && !urls.includes(fallback)) urls.unshift(fallback);
+                    if (fallback && !urls.includes(fallback))
+                      urls.unshift(fallback);
                     return urls;
                   })();
                   const selectedStart =
@@ -1659,7 +1806,8 @@ export default function EpisodeStoryboardPage() {
                     if (videoUrls.length === 0) return;
                     setVideoSelection((prev) => {
                       const current = prev[frameKey] ?? 0;
-                      const next = (current + delta + videoUrls.length) % videoUrls.length;
+                      const next =
+                        (current + delta + videoUrls.length) % videoUrls.length;
                       return { ...prev, [frameKey]: next };
                     });
                   };
@@ -1669,13 +1817,15 @@ export default function EpisodeStoryboardPage() {
                     imageSrc(fr.video_url || "");
                   const videoThumbnailUrl =
                     videoThumbs[currentVideoIndex] ||
-                    (fr.video_thumbnail_url && imageSrc(fr.video_thumbnail_url)) ||
+                    (fr.video_thumbnail_url &&
+                      imageSrc(fr.video_thumbnail_url)) ||
                     (typeof videoMeta.thumbnail_url === "string"
                       ? imageSrc(videoMeta.thumbnail_url)
                       : undefined);
                   const videoLastFrameUrl =
                     videoLastFrames[currentVideoIndex] ||
-                    (fr.video_last_frame_url && imageSrc(fr.video_last_frame_url)) ||
+                    (fr.video_last_frame_url &&
+                      imageSrc(fr.video_last_frame_url)) ||
                     (typeof videoMeta.last_frame_url === "string"
                       ? imageSrc(videoMeta.last_frame_url)
                       : undefined);
@@ -1836,9 +1986,12 @@ export default function EpisodeStoryboardPage() {
                                     onClick={() =>
                                       setPreview({
                                         src: selectedStart as string,
-                                        alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
+                                        alt: `分镜帧 ${
+                                          fr.frame_number ?? absIndex + 1
+                                        }（首帧）`,
                                         description:
-                                          fr.description || "分镜关键帧（首帧）",
+                                          fr.description ||
+                                          "分镜关键帧（首帧）",
                                       })
                                     }
                                   />
@@ -1854,8 +2007,11 @@ export default function EpisodeStoryboardPage() {
                                         key={url}
                                         onClick={() => {
                                           setStoryboard((prev) => {
-                                            const frames = [...(prev.frames || [])];
-                                            const current = frames[absIndex] || {};
+                                            const frames = [
+                                              ...(prev.frames || []),
+                                            ];
+                                            const current =
+                                              frames[absIndex] || {};
                                             frames[absIndex] = {
                                               ...current,
                                               start_image_url: url,
@@ -1897,9 +2053,12 @@ export default function EpisodeStoryboardPage() {
                                     onClick={() =>
                                       setPreview({
                                         src: selectedEnd as string,
-                                        alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
+                                        alt: `分镜帧 ${
+                                          fr.frame_number ?? absIndex + 1
+                                        }（尾帧）`,
                                         description:
-                                          fr.description || "分镜关键帧（尾帧）",
+                                          fr.description ||
+                                          "分镜关键帧（尾帧）",
                                       })
                                     }
                                   />
@@ -1915,8 +2074,11 @@ export default function EpisodeStoryboardPage() {
                                         key={url}
                                         onClick={() => {
                                           setStoryboard((prev) => {
-                                            const frames = [...(prev.frames || [])];
-                                            const current = frames[absIndex] || {};
+                                            const frames = [
+                                              ...(prev.frames || []),
+                                            ];
+                                            const current =
+                                              frames[absIndex] || {};
                                             frames[absIndex] = {
                                               ...current,
                                               end_image_url: url,
@@ -1953,8 +2115,11 @@ export default function EpisodeStoryboardPage() {
                                   onClick={() =>
                                     setPreview({
                                       src: selectedStart as string,
-                                      alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
-                                      description: fr.description || "分镜关键帧（首帧）",
+                                      alt: `分镜帧 ${
+                                        fr.frame_number ?? absIndex + 1
+                                      }（首帧）`,
+                                      description:
+                                        fr.description || "分镜关键帧（首帧）",
                                     })
                                   }
                                   className="text-green-700 hover:text-green-900"
@@ -1977,8 +2142,11 @@ export default function EpisodeStoryboardPage() {
                                   onClick={() =>
                                     setPreview({
                                       src: selectedEnd as string,
-                                      alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
-                                      description: fr.description || "分镜关键帧（尾帧）",
+                                      alt: `分镜帧 ${
+                                        fr.frame_number ?? absIndex + 1
+                                      }（尾帧）`,
+                                      description:
+                                        fr.description || "分镜关键帧（尾帧）",
                                     })
                                   }
                                   className="text-green-700 hover:text-green-900"
@@ -2027,7 +2195,9 @@ export default function EpisodeStoryboardPage() {
                             </div>
                             <span className="text-[11px] text-blue-800">
                               {videoDuration ? `${videoDuration}s` : "时长未知"}
-                              {videoMeta.resolution ? ` · ${videoMeta.resolution}` : ""}
+                              {videoMeta.resolution
+                                ? ` · ${videoMeta.resolution}`
+                                : ""}
                               {videoMeta.ratio ? ` · ${videoMeta.ratio}` : ""}
                             </span>
                           </div>
@@ -2042,7 +2212,8 @@ export default function EpisodeStoryboardPage() {
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-blue-900">
                             <span>
-                              模型：{videoMeta.model || fr.generation_model || "未知"}
+                              模型：
+                              {videoMeta.model || fr.generation_model || "未知"}
                             </span>
                             {videoMeta.provider ? (
                               <span>提供商：{videoMeta.provider}</span>
@@ -2051,7 +2222,10 @@ export default function EpisodeStoryboardPage() {
                               <span>方式：{videoMeta.method}</span>
                             ) : null}
                             {videoMeta.prompt ? (
-                              <span className="max-w-full truncate" title={videoMeta.prompt}>
+                              <span
+                                className="max-w-full truncate"
+                                title={videoMeta.prompt}
+                              >
                                 提示词：{videoMeta.prompt}
                               </span>
                             ) : null}
@@ -2172,7 +2346,10 @@ export default function EpisodeStoryboardPage() {
                 type="checkbox"
                 checked={edgeTargets.first}
                 onChange={(e) =>
-                  setEdgeTargets((prev) => ({ ...prev, first: e.target.checked }))
+                  setEdgeTargets((prev) => ({
+                    ...prev,
+                    first: e.target.checked,
+                  }))
                 }
               />
               <span>生成首帧</span>
@@ -2182,7 +2359,10 @@ export default function EpisodeStoryboardPage() {
                 type="checkbox"
                 checked={edgeTargets.last}
                 onChange={(e) =>
-                  setEdgeTargets((prev) => ({ ...prev, last: e.target.checked }))
+                  setEdgeTargets((prev) => ({
+                    ...prev,
+                    last: e.target.checked,
+                  }))
                 }
               />
               <span>生成尾帧</span>
