@@ -1,30 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+import json
 import re
+from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from collections import defaultdict
-from uuid import UUID, uuid4
 from urllib.parse import urlparse, urlunparse
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from app.core.config import settings
 from app.core.database import get_db
-from app.models.user import User
+from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
-from app.models.script import Story, Episode, Script
-from app.models.story_structure import Scene, Shot, Environment
+from app.models.script import Episode, Script, Story
+from app.models.story_structure import Environment, Scene, SceneBeat, Shot
+from app.models.task import Task, TaskStatus
+from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
-from app.schemas.script import (
-    ScriptCreate,
-    ScriptUpdate,
-    ScriptResponse,
-    ScriptGenerationRequest,
-)
-from app.schemas.story_structure import SceneCreate, ShotCreate
-from app.services.ai_service import ai_service
-from app.services.storage.oss_service import oss_service
-from app.services import story_structure_service as story_structure_svc
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import (
@@ -32,20 +23,31 @@ from app.schemas.generation import (
     StoryboardPlanModel,
     StoryboardPlanScene,
 )
+from app.schemas.script import (
+    ScriptCreate,
+    ScriptGenerationRequest,
+    ScriptResponse,
+    ScriptUpdate,
+)
+from app.schemas.story_structure import SceneCreate, ShotCreate
 from app.schemas.style import StyleSpec
-from app.core.logging import get_logger
-from app.utils.script_parser import extract_script_structure
-from app.utils.json_utils import extract_json_block
-from app.models.task import Task, TaskStatus
+from app.services import story_structure_service as story_structure_svc
+from app.services.ai_service import ai_service
+from app.services.dialogue_audio_service import generate_scene_dialogue_audio
+from app.services.storage.oss_service import oss_service
 from app.services.task_worker import (
+    script_dialogue_audio_generate_task,
     script_generate_task,
+    storyboard_generate_task,
     storyboard_image_generate_task,
     storyboard_video_generate_task,
-    storyboard_generate_task,
 )
+from app.utils.json_utils import extract_json_block
 from app.utils.model_utils import infer_provider_from_model
-import json
-from app.core.config import settings
+from app.utils.script_parser import extract_script_structure
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 
 def _now_iso() -> str:
@@ -116,9 +118,9 @@ def _normalize_reference_images(refs: list[str]) -> list[str]:
             continue
         lower = ref.lower()
         base_path = lower.split("?", 1)[0]
-        if lower.startswith(("http://", "https://", "data:image/")) or base_path.endswith(
-            allowed_ext
-        ):
+        if lower.startswith(
+            ("http://", "https://", "data:image/")
+        ) or base_path.endswith(allowed_ext):
             normalized.append(_abs_url(ref))
     # 去重保持顺序
     seen = set()
@@ -2047,10 +2049,10 @@ def _process_storyboard_generation_task(
     user_id: int,
 ):
     """后台处理分镜结构生成任务（供 Celery 调用）。"""
+    import anyio
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
     from app.models.user import User
-    import anyio
 
     db = SessionLocal()
     try:
@@ -2267,8 +2269,9 @@ def _process_storyboard_image_task(
                 if url:
                     char_image_map[img.virtual_ip_id] = _abs_url(url)
 
-        import anyio
         from functools import partial as _partial
+
+        import anyio
 
         try:
             count_int = int(count) if count is not None else 1
@@ -3579,3 +3582,186 @@ async def export_script(
         "content": script.content,
         "export_time": "2024-01-01T00:00:00Z",
     }
+
+
+class ScriptDialogueAudioGenerateRequest(BaseModel):
+    tts_model: str | None = Field(None, description="TTS 模型（默认 speech-2.6-hd）")
+    scene_numbers: list[int] | None = Field(
+        None, description="指定要生成的场景编号列表（为空则生成全部）"
+    )
+    overwrite_audio: bool = Field(False, description="是否覆盖已有 scene 音频")
+    overwrite_beats: bool = Field(True, description="是否覆盖已有 scene beats")
+
+
+def _update_task_progress(db: Session, task: Task | None, description: str) -> None:
+    if not task:
+        return
+    task.description = description
+    db.commit()
+
+
+def _scene_has_dialogue_audio(scene: Scene, script_id: int) -> bool:
+    meta = scene.extra_metadata
+    if not isinstance(meta, dict):
+        return False
+    payload = meta.get("dialogue_audio")
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("script_id") != script_id:
+        return False
+    return bool(payload.get("oss_url"))
+
+
+@router.post("/{script_id}/dialogue-audio/generate-async")
+async def generate_script_dialogue_audio_async(
+    script_id: int,
+    body: ScriptDialogueAudioGenerateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """异步生成“场景对白音轨 + scene_beats”。"""
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
+    if not script:
+        raise HTTPException(status_code=404, detail="剧本不存在")
+
+    story = script.episode.story if script.episode else None
+    episode = script.episode if script.episode else None
+
+    params = body.model_dump()
+    params["script_id"] = script_id
+    t = Task(
+        title=_friendly_task_title("对白音轨生成", script, episode, story),
+        description="生成场景对白音轨（scene）",
+        task_type="image_generation",
+        prompt=f"Dialogue audio generation for script {script_id}",
+        parameters=json.dumps(params, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    script_dialogue_audio_generate_task.delay(t.id, params, current_user.id)
+    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
+
+
+def _process_script_dialogue_audio_task(
+    task_id: int, payload: dict, user_id: int
+) -> None:
+    """后台处理剧本场景对白音轨生成任务（供 Celery 调用）。"""
+    import anyio
+    from app.core.database import SessionLocal
+    from app.models.user import User
+
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+
+        script_id = int(payload.get("script_id"))
+        overwrite_audio = bool(payload.get("overwrite_audio"))
+        overwrite_beats = bool(payload.get("overwrite_beats", True))
+        tts_model = payload.get("tts_model") or "speech-2.6-hd"
+        selected_scene_numbers = payload.get("scene_numbers") or []
+        selected_set = {
+            int(x)
+            for x in selected_scene_numbers
+            if isinstance(x, (int, str)) and _to_int(x)
+        }
+
+        async def _run() -> None:
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                raise RuntimeError("user_not_found")
+
+            script = (
+                db.query(Script)
+                .join(Episode, Script.episode_id == Episode.id)
+                .join(Story, Episode.story_id == Story.id)
+                .filter(Script.id == script_id)
+                .filter(
+                    True
+                    if user.is_admin or user.is_superuser
+                    else Story.user_id == user.id
+                )
+                .first()
+            )
+            if not script:
+                raise RuntimeError("script_not_found")
+            episode = script.episode
+            if not episode:
+                raise RuntimeError("episode_not_found")
+            story = episode.story
+            if not story:
+                raise RuntimeError("story_not_found")
+
+            scenes = story_structure_svc.list_scenes_by_script(db, script_id)
+            if selected_set:
+                scenes = [
+                    s
+                    for s in scenes
+                    if _to_int(getattr(s, "scene_number", None)) in selected_set
+                ]
+            if not scenes:
+                raise RuntimeError("no_scenes_found")
+
+            total = len(scenes)
+            skipped = 0
+            for idx, scene in enumerate(scenes, start=1):
+                if not overwrite_audio and _scene_has_dialogue_audio(scene, script_id):
+                    beat_count = (
+                        db.query(SceneBeat)
+                        .filter(SceneBeat.scene_id == scene.id)
+                        .count()
+                    )
+                    if beat_count > 0:
+                        skipped += 1
+                        _update_task_progress(
+                            db,
+                            task,
+                            f"生成对白音轨：{idx}/{total}（跳过 {skipped}） 场景 {scene.scene_number}",
+                        )
+                        continue
+
+                _update_task_progress(
+                    db,
+                    task,
+                    f"生成对白音轨：{idx}/{total}（跳过 {skipped}） 场景 {scene.scene_number}",
+                )
+                await generate_scene_dialogue_audio(
+                    db,
+                    story=story,
+                    episode=episode,
+                    script=script,
+                    scene=scene,
+                    tts_model=str(tts_model),
+                    overwrite_beats=overwrite_beats,
+                )
+
+        anyio.run(_run)
+
+        if task:
+            task.status = TaskStatus.COMPLETED
+            task.result_file_path = f"script:{script_id}:dialogue_audio"
+            _update_task_progress(db, task, "对白音轨生成完成")
+    except Exception as e:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            _update_task_progress(db, task, f"对白音轨生成失败：{e}")
+    finally:
+        db.close()

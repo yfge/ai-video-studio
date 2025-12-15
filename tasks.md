@@ -134,7 +134,7 @@
 - [x] 功能/需求：冻结“场景一条对白音轨”输出规范（输入：剧本/场景/角色；输出：audio + beats），并明确留白补足规则与可配置项（见 `docs/dialogue-audio-timeline-spec.md`）
 - [x] 后端：补齐角色音色绑定的查询/落库能力；当角色无绑定时，基于现有音色库运行 agent 自动挑选并绑定（无需人工确认，含审计字段）
 - [x] 后端：为衍生角色提供同等的音色绑定与回退策略：agent 判断作用域（scene/episode/story）→ 创建/复用“派生角色”记录 → 绑定音色；保证幂等
-- [ ] 后端：实现“按场景生成对白混音音轨”：多角色 TTS → 混音为 1 条 scene 音频 → 输出 segment 级 beats（含留白补足的静音/环境段）
+- [x] 后端：实现“按场景生成对白混音音轨”：多角色 TTS → 混音为 1 条 scene 音频 → 输出 segment 级 beats（含留白补足的静音/环境段）
 - [ ] 后端：实现“按 Episode 拼接场景音轨”：拼接生成 episode 级音频，并合并/偏移 beats 形成 episode 时间轴（episode 级落 Timeline Spec；scene 级落 `scene_beats`）
 - [ ] 后端：基于 beats/时间轴生成分镜帧/镜头占位（或触发分镜 agent），将关键点映射到 frames/shots，支持后续视频/剪辑链路复用
 - [ ] 前端：在 Episode 详情/剧本页新增“生成对白音轨 / 生成时间轴 / 生成分镜帧”入口，展示进度、失败原因、版本与重试/复用
