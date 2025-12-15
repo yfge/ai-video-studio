@@ -7,16 +7,16 @@ MiniMax服务提供商
 from __future__ import annotations
 
 import asyncio
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from app.services.minimax_client import MinimaxAPIError, MinimaxClient
 from app.services.voice_catalog import SYSTEM_VOICE_CATALOG
 
 from .base import (
-    BaseProvider,
-    AIResponse,
     AIModelType,
+    AIResponse,
     AITaskType,
+    BaseProvider,
     ModelInfo,
     ProviderConfig,
 )
@@ -219,7 +219,7 @@ class MinimaxProvider(BaseProvider):
         voice_id: str = "Chinese (Mandarin)_Lyrical_Voice",
         speed: float = 1.0,
         pitch: float = 0.0,
-        emotion: str = "neutral",
+        emotion: Optional[str] = None,
         format: str = "mp3",
         output_format: str = "url",
         stream: bool = False,
@@ -227,18 +227,30 @@ class MinimaxProvider(BaseProvider):
     ) -> AIResponse:
         """MiniMax文本转语音"""
         try:
+            # ai_service_manager 会透传 voice_type，但 MiniMax T2A API 不接收该字段
+            kwargs.pop("voice_type", None)
+
+            def _to_int(value: Any) -> Optional[int]:
+                if value is None:
+                    return None
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    return None
+
             voice_setting = {
                 "voice_id": voice_id,
                 "speed": speed,
-                "pitch": pitch,
+                # MiniMax 侧期望 pitch 为整数（int64），避免 float 导致 invalid params
+                "pitch": _to_int(pitch),
                 "emotion": emotion,
                 "vol": kwargs.pop("vol", 1.0),
             }
             audio_setting = {
                 "format": format,
-                "sample_rate": kwargs.pop("sample_rate", None),
-                "bitrate": kwargs.pop("bitrate", None),
-                "channel": kwargs.pop("channel", None),
+                "sample_rate": _to_int(kwargs.pop("sample_rate", None)),
+                "bitrate": _to_int(kwargs.pop("bitrate", None)),
+                "channel": _to_int(kwargs.pop("channel", None)),
             }
             # 清理 None 字段，避免发送冗余参数
             voice_setting = {k: v for k, v in voice_setting.items() if v is not None}
