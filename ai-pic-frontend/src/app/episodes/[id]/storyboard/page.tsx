@@ -37,6 +37,32 @@ const STORYBOARD_STYLE_SPEC_FIELDS: StyleSpecField[] = [
   { key: "emotion_action_level", label: "动作与情绪强度" },
 ];
 
+const parseMs = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.trunc(value) : null;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const formatMs = (ms: number): string => {
+  const safe = Math.max(0, Math.trunc(ms));
+  const totalSeconds = Math.floor(safe / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const millis = safe % 1000;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0",
+  )}.${String(millis).padStart(3, "0")}`;
+};
+
+const roundSeconds3 = (seconds: number): number =>
+  Math.round(seconds * 1000) / 1000;
+
 export default function EpisodeStoryboardPage() {
   const params = useParams();
   const router = useRouter();
@@ -152,6 +178,10 @@ export default function EpisodeStoryboardPage() {
     useState(false);
   const [showPlan, setShowPlan] = useState(false);
 
+  const [overwriteTimelineStoryboard, setOverwriteTimelineStoryboard] =
+    useState(false);
+  const [timelineMinPauseSeconds, setTimelineMinPauseSeconds] = useState(1.5);
+
   const apiBase = useMemo(
     () => (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, ""),
     [],
@@ -239,7 +269,14 @@ export default function EpisodeStoryboardPage() {
       const defaultEnd = fr.end_image_url || endCandidates[0] || undefined;
       const prompt = (fr.ai_prompt || fr.description || "").trim();
 
-      const durationRaw = fr.duration_seconds;
+      const durationFromTimeline = (() => {
+        const startMs = parseMs(fr.start_ms);
+        const endMs = parseMs(fr.end_ms);
+        if (startMs === null || endMs === null) return null;
+        if (endMs < startMs) return null;
+        return roundSeconds3((endMs - startMs) / 1000);
+      })();
+      const durationRaw = durationFromTimeline ?? fr.duration_seconds;
       const durationParsed =
         typeof durationRaw === "number"
           ? durationRaw
@@ -589,6 +626,51 @@ export default function EpisodeStoryboardPage() {
     },
     [showAlert],
   );
+
+  const handleSyncStoryboardFromAudioTimeline = useCallback(async () => {
+    if (!activeScript) return;
+    if (!selectedAudioTimeline) {
+      showAlert({
+        message: "未找到该剧本的 episode 时间轴，请先在剧集页生成“时间轴”。",
+        variant: "warning",
+      });
+      return;
+    }
+    const minPauseSecondsParsed = Number.isFinite(timelineMinPauseSeconds)
+      ? timelineMinPauseSeconds
+      : 1.5;
+    setStoryboardBusy(true);
+    try {
+      const response = await scriptAPI.generateStoryboardFromAudioTimelineAsync(
+        activeScript.id,
+        {
+          overwrite_existing: overwriteTimelineStoryboard,
+          min_pause_seconds: minPauseSecondsParsed,
+        },
+      );
+      if (!response.success || !response.data) {
+        showAlert({
+          message: `从时间轴生成分镜占位失败：${response.error || "未知错误"}`,
+          variant: "error",
+        });
+        return;
+      }
+      showAlert({
+        message: `已创建分镜占位生成任务（task_id=${response.data.task_id}），正在等待结果...`,
+        variant: "info",
+      });
+      await pollStoryboardTask(activeScript.id, response.data.task_id);
+    } finally {
+      setStoryboardBusy(false);
+    }
+  }, [
+    activeScript,
+    overwriteTimelineStoryboard,
+    pollStoryboardTask,
+    selectedAudioTimeline,
+    showAlert,
+    timelineMinPauseSeconds,
+  ]);
 
   const handleGenerateAllScenes = async () => {
     if (!activeScript) return;
@@ -1263,6 +1345,26 @@ export default function EpisodeStoryboardPage() {
                   </span>
                 )}
               </div>
+              {selectedAudioTimeline &&
+              storyboard.meta?.generation_source === "audio_timeline" ? (
+                <div className="mt-1 text-[11px] text-gray-500">
+                  分镜占位基于时间轴版本：
+                  {String(storyboard.meta?.audio_timeline_version ?? "—")}
+                </div>
+              ) : null}
+              {selectedAudioTimeline &&
+              storyboard.meta?.generation_source === "audio_timeline" &&
+              storyboard.meta?.audio_timeline_version != null &&
+              selectedEpisodeAudioVersion != null &&
+              String(storyboard.meta.audio_timeline_version) !==
+                String(selectedEpisodeAudioVersion) ? (
+                <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700">
+                  时间轴已更新（v
+                  {String(storyboard.meta.audio_timeline_version)}→v
+                  {String(selectedEpisodeAudioVersion)}
+                  ），建议同步分镜占位以保持对齐。
+                </div>
+              ) : null}
               {selectedEpisodeAudioUrl ? (
                 <div className="mt-2">
                   <a
@@ -1281,6 +1383,43 @@ export default function EpisodeStoryboardPage() {
                   />
                 </div>
               ) : null}
+              <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-600">
+                <button
+                  type="button"
+                  onClick={handleSyncStoryboardFromAudioTimeline}
+                  disabled={
+                    !activeScript || !selectedAudioTimeline || storyboardBusy
+                  }
+                  className="rounded bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  从时间轴同步分镜占位
+                </button>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={overwriteTimelineStoryboard}
+                    onChange={(e) =>
+                      setOverwriteTimelineStoryboard(e.target.checked)
+                    }
+                  />
+                  覆盖已有分镜
+                </label>
+                <label className="flex items-center gap-2">
+                  pause阈值(s)
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={timelineMinPauseSeconds}
+                    onChange={(e) => {
+                      const v = Number.parseFloat(e.target.value);
+                      setTimelineMinPauseSeconds(Number.isFinite(v) ? v : 1.5);
+                    }}
+                    className="w-20 rounded border border-gray-300 px-2 py-1"
+                  />
+                </label>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -1382,6 +1521,13 @@ export default function EpisodeStoryboardPage() {
               </button>
             </div>
           </div>
+          {selectedAudioTimeline ? (
+            <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              时间轴是事实来源：建议优先使用上方“从时间轴同步分镜占位”（帧数/时长以
+              beats 为准）。本卡片里的 AI
+              生成会重新规划帧数，可能与时间轴不一致。
+            </div>
+          ) : null}
           <div className="mt-2 text-xs text-gray-600 flex flex-wrap gap-4">
             <span>当前分镜帧总数：{(storyboard?.frames || []).length}</span>
             {storyboard.meta?.version !== undefined && (
@@ -1741,6 +1887,15 @@ export default function EpisodeStoryboardPage() {
                   const absIndex = (storyboard.frames ?? []).findIndex(
                     (frame) => frame === fr,
                   );
+                  const startMs = parseMs(fr.start_ms);
+                  const endMs = parseMs(fr.end_ms);
+                  const hasTimelineWindow =
+                    startMs !== null && endMs !== null && endMs >= startMs;
+                  const timelineDurationSeconds = hasTimelineWindow
+                    ? roundSeconds3((endMs - startMs) / 1000)
+                    : null;
+                  const resolvedDurationSeconds =
+                    timelineDurationSeconds ?? fr.duration_seconds;
                   const startCandidates = (() => {
                     const urls: string[] = [];
                     const raw = Array.isArray(fr.start_image_urls)
@@ -1831,7 +1986,7 @@ export default function EpisodeStoryboardPage() {
                       : undefined);
                   const videoPoster = videoThumbnailUrl || selectedStart;
                   const videoDurationRaw =
-                    videoMeta?.duration ?? fr.duration_seconds;
+                    videoMeta?.duration ?? resolvedDurationSeconds;
                   const videoDuration =
                     typeof videoDurationRaw === "number"
                       ? Math.round(videoDurationRaw)
@@ -1848,6 +2003,13 @@ export default function EpisodeStoryboardPage() {
                           </span>
                         )}
                       </div>
+                      {hasTimelineWindow ? (
+                        <div className="mb-1 text-[11px] text-gray-500">
+                          时间轴: {formatMs(startMs ?? 0)}–
+                          {formatMs(endMs ?? 0)} •{" "}
+                          {String(timelineDurationSeconds ?? "—")}s
+                        </div>
+                      ) : null}
                       <div className="text-xs text-gray-600 mb-1">
                         景别：
                         <select
@@ -1876,27 +2038,36 @@ export default function EpisodeStoryboardPage() {
                       </div>
                       <div className="text-xs text-gray-600 mb-1">
                         时长(s)：
-                        <input
-                          type="number"
-                          min={1}
-                          max={30}
-                          value={fr.duration_seconds ?? ""}
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value, 10);
-                            setStoryboard((prev) => {
-                              const frames = [...(prev.frames || [])];
-                              const current = frames[absIndex] || {};
-                              frames[absIndex] = {
-                                ...current,
-                                duration_seconds: Number.isNaN(value)
-                                  ? undefined
-                                  : value,
-                              };
-                              return { ...prev, frames };
-                            });
-                          }}
-                          className="ml-2 w-20 px-2 py-1 border rounded text-xs"
-                        />
+                        {hasTimelineWindow ? (
+                          <span className="ml-2">
+                            {String(resolvedDurationSeconds ?? "—")}
+                            <span className="ml-2 text-[11px] text-gray-400">
+                              来自时间轴
+                            </span>
+                          </span>
+                        ) : (
+                          <input
+                            type="number"
+                            min={1}
+                            max={30}
+                            value={fr.duration_seconds ?? ""}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value, 10);
+                              setStoryboard((prev) => {
+                                const frames = [...(prev.frames || [])];
+                                const current = frames[absIndex] || {};
+                                frames[absIndex] = {
+                                  ...current,
+                                  duration_seconds: Number.isNaN(value)
+                                    ? undefined
+                                    : value,
+                                };
+                                return { ...prev, frames };
+                              });
+                            }}
+                            className="ml-2 w-20 px-2 py-1 border rounded text-xs"
+                          />
+                        )}
                       </div>
                       <div className="text-xs text-gray-600">
                         运镜：
