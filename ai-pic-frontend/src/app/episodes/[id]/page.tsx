@@ -671,14 +671,22 @@ export default function EpisodeDetailPage() {
               <div className="mb-1">
                 Episode 音频:{" "}
                 {selectedEpisodeAudioUrl ? (
-                  <a
-                    href={selectedEpisodeAudioUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 hover:underline break-all"
-                  >
-                    {selectedEpisodeAudioUrl}
-                  </a>
+                  <div className="mt-1">
+                    <a
+                      href={selectedEpisodeAudioUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 hover:underline break-all"
+                    >
+                      {selectedEpisodeAudioUrl}
+                    </a>
+                    <audio
+                      className="mt-2 w-full"
+                      controls
+                      preload="none"
+                      src={selectedEpisodeAudioUrl}
+                    />
+                  </div>
                 ) : (
                   <span className="text-gray-400">—</span>
                 )}
@@ -697,7 +705,10 @@ export default function EpisodeDetailPage() {
             </div>
           </div>
 
-          <details className="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+          <details
+            open={normalizedSceneAudioCount > 0}
+            className="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700"
+          >
             <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
               场景对白音轨（scene）
               {normalizedScenes.length > 0
