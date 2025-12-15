@@ -1,5 +1,11 @@
+import types
+
+import pytest
 from app.models.story_structure import Scene, SceneBeat
+from app.services.ai_service import ai_service
 from app.services.dialogue_audio_service import (
+    _normalize_tts_emotion,
+    _tts_to_wav_file,
     build_episode_timeline_beats,
     build_storyboard_frames_from_audio_timeline,
     plan_scene_segments,
@@ -7,7 +13,7 @@ from app.services.dialogue_audio_service import (
 
 
 def test_plan_scene_segments_orders_stage_and_dialogue() -> None:
-    dialogues = [{"character": "小明", "content": "你好"}]
+    dialogues = [{"character": "小明", "content": "你好", "emotion": "happy"}]
     stage = [
         {"content": "（开场动作）", "timing": "start"},
         {"content": "（中段动作）", "timing": "mid"},
@@ -34,6 +40,7 @@ def test_plan_scene_segments_orders_stage_and_dialogue() -> None:
     ]
     assert segments[0].planned_duration_ms == 800
     assert segments[0].timing == "start"
+    assert segments[1].emotion == "happy"
     assert segments[3].timing == "mid"
     assert segments[5].timing == "end"
 
@@ -54,6 +61,51 @@ def test_plan_scene_segments_treats_silence_dialogue_as_pause() -> None:
     assert [s.kind for s in segments] == ["pause", "pause"]
     assert segments[0].planned_duration_ms == 800
     assert segments[1].planned_duration_ms == 300
+
+
+def test_normalize_tts_emotion_maps_common_labels() -> None:
+    assert _normalize_tts_emotion("happy") == "happy"
+    assert _normalize_tts_emotion("thoughtful") == "calm"
+    assert _normalize_tts_emotion("专业、自信") == "fluent"
+    assert _normalize_tts_emotion(None, action="压低声音") == "whisper"
+
+
+@pytest.mark.asyncio
+async def test_tts_to_wav_file_passes_emotion(monkeypatch, tmp_path) -> None:
+    called = {}
+
+    class StubAIManager:
+        async def text_to_speech(
+            self, *, text, model, prefer_provider, speed, **kwargs
+        ):
+            called["kwargs"] = kwargs
+            return types.SimpleNamespace(
+                success=True,
+                data={"audio_url": "http://example.com/audio.wav"},
+                error=None,
+            )
+
+    async def fake_download(url: str, path):
+        path.write_bytes(b"fake")
+
+    monkeypatch.setattr(ai_service, "ai_manager", StubAIManager(), raising=False)
+    monkeypatch.setattr(
+        "app.services.dialogue_audio_service._download_to_file",
+        fake_download,
+    )
+
+    out_path = tmp_path / "out.wav"
+    await _tts_to_wav_file(
+        text="你好",
+        voice_config={
+            "provider": "minimax",
+            "tts_model": "speech-2.6-hd",
+            "voice_id": "v",
+        },
+        out_path=out_path,
+        emotion="happy",
+    )
+    assert called["kwargs"]["emotion"] == "happy"
 
 
 def test_build_episode_timeline_beats_offsets_scene_windows() -> None:

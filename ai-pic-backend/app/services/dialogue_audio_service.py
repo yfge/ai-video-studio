@@ -25,6 +25,18 @@ from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
+_ALLOWED_TTS_EMOTIONS = {
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "disgusted",
+    "surprised",
+    "calm",
+    "fluent",
+    "whisper",
+}
+
 
 def _utc_now_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
@@ -75,7 +87,20 @@ def _extract_dialogues_for_scene(
             continue
         content = item.get("content") or item.get("text") or item.get("line") or ""
         character = item.get("character") or item.get("speaker") or "旁白"
-        results.append({"character": str(character), "content": str(content)})
+        emotion_raw = item.get("emotion")
+        emotion = str(emotion_raw).strip() if isinstance(emotion_raw, str) else None
+        emotion = emotion or None
+        action_raw = item.get("action")
+        action = str(action_raw).strip() if isinstance(action_raw, str) else None
+        action = action or None
+        results.append(
+            {
+                "character": str(character),
+                "content": str(content),
+                "emotion": emotion,
+                "action": action,
+            }
+        )
     return results
 
 
@@ -108,6 +133,8 @@ class PlannedSegment:
     kind: str  # dialogue | action | pause
     text: str
     speaker_name: str | None = None
+    emotion: str | None = None
+    action: str | None = None
     timing: str | None = None  # start/mid/end (for action)
     planned_duration_ms: int | None = None
 
@@ -170,18 +197,38 @@ def plan_scene_segments(
     for idx, dlg in enumerate(dialogues):
         speaker = str(dlg.get("character") or "旁白")
         content = str(dlg.get("content") or "").strip()
+        emotion = (
+            str(dlg.get("emotion") or "").strip()
+            if isinstance(dlg.get("emotion"), str)
+            else None
+        )
+        emotion = emotion or None
+        action = (
+            str(dlg.get("action") or "").strip()
+            if isinstance(dlg.get("action"), str)
+            else None
+        )
+        action = action or None
         if _looks_like_silence(content):
             planned.append(
                 PlannedSegment(
                     kind="pause",
                     text=content or "…",
                     speaker_name=speaker,
+                    emotion=emotion,
+                    action=action,
                     planned_duration_ms=800,
                 )
             )
         else:
             planned.append(
-                PlannedSegment(kind="dialogue", text=content, speaker_name=speaker)
+                PlannedSegment(
+                    kind="dialogue",
+                    text=content,
+                    speaker_name=speaker,
+                    emotion=emotion,
+                    action=action,
+                )
             )
         planned.append(
             PlannedSegment(
@@ -316,6 +363,7 @@ async def _tts_to_wav_file(
     text: str,
     voice_config: dict[str, Any],
     out_path: Path,
+    emotion: str | None = None,
     tts_speed: float = 1.0,
     tts_format: str = "wav",
 ) -> None:
@@ -332,6 +380,8 @@ async def _tts_to_wav_file(
         kwargs["voice_id"] = voice_id
     if voice_type:
         kwargs["voice_type"] = voice_type
+    if emotion:
+        kwargs["emotion"] = emotion
 
     resp = await ai_service.ai_manager.text_to_speech(
         text=text,
@@ -349,6 +399,77 @@ async def _tts_to_wav_file(
         raise RuntimeError("TTS did not return audio_url")
 
     await _download_to_file(str(audio_url), out_path)
+
+
+def _normalize_tts_emotion(
+    emotion: str | None,
+    *,
+    action: str | None = None,
+) -> str | None:
+    if not emotion and not action:
+        return None
+
+    raw = " ".join(
+        v.strip()
+        for v in [emotion or "", action or ""]
+        if isinstance(v, str) and v.strip()
+    )
+    if not raw:
+        return None
+
+    raw_lower = raw.lower()
+    if isinstance(emotion, str) and emotion.strip().lower() in _ALLOWED_TTS_EMOTIONS:
+        return emotion.strip().lower()
+
+    def _has_any(tokens: Sequence[str]) -> bool:
+        return any(tok in raw_lower for tok in tokens)
+
+    if _has_any(["whisper", "低语", "耳语", "压低", "小声", "悄声", "轻声"]):
+        return "whisper"
+    if _has_any(["angry", "愤怒", "生气", "恼火", "怒", "火大", "暴躁"]):
+        return "angry"
+    if _has_any(["sad", "悲伤", "难过", "沮丧", "哽咽", "哭", "伤心"]):
+        return "sad"
+    if _has_any(["happy", "高兴", "开心", "喜悦", "兴奋", "激动", "欢快", "愉快"]):
+        return "happy"
+    if _has_any(["surprised", "惊讶", "吃惊", "震惊", "惊"]):
+        return "surprised"
+    if _has_any(["fearful", "害怕", "恐惧", "紧张", "慌", "担心", "焦虑", "畏惧"]):
+        return "fearful"
+    if _has_any(["disgusted", "厌恶", "恶心", "反感"]):
+        return "disgusted"
+    if _has_any(
+        [
+            "calm",
+            "neutral",
+            "thoughtful",
+            "平静",
+            "冷静",
+            "中性",
+            "沉稳",
+            "严肃",
+            "思考",
+            "克制",
+        ]
+    ):
+        return "calm"
+    if _has_any(
+        [
+            "fluent",
+            "confident",
+            "assertive",
+            "自信",
+            "坚定",
+            "果断",
+            "专业",
+            "流利",
+            "从容",
+        ]
+    ):
+        return "fluent"
+
+    # Safety fallback: do not send an unknown label to provider.
+    return None
 
 
 def _concat_wavs(paths: Sequence[Path], out_wav: Path) -> None:
@@ -579,8 +700,12 @@ async def generate_scene_dialogue_audio(
                 speaker_kind = "derived"
 
             local_tts = tmp_root_path / f"dlg-{len(wav_paths)+1}.wav"
+            tts_emotion = _normalize_tts_emotion(seg.emotion, action=seg.action)
             await _tts_to_wav_file(
-                text=seg.text, voice_config=voice_config, out_path=local_tts
+                text=seg.text,
+                voice_config=voice_config,
+                out_path=local_tts,
+                emotion=tts_emotion,
             )
             dur_ms = _wav_duration_ms(local_tts)
             wav_paths.append(local_tts)
@@ -592,6 +717,9 @@ async def generate_scene_dialogue_audio(
                     "speaker_name": speaker,
                     "speaker_kind": speaker_kind,
                     "voice_config": voice_config,
+                    "emotion": seg.emotion,
+                    "tts_emotion": tts_emotion,
+                    "action": seg.action,
                     "duration_ms": dur_ms,
                 }
             )
@@ -636,6 +764,9 @@ async def generate_scene_dialogue_audio(
                 "speaker_name": beat.get("speaker_name"),
                 "speaker_kind": beat.get("speaker_kind"),
                 "voice_config": beat.get("voice_config"),
+                "emotion": beat.get("emotion"),
+                "tts_emotion": beat.get("tts_emotion"),
+                "action": beat.get("action"),
                 "source": "dialogue_audio_pipeline",
             }
             row = SceneBeat(
