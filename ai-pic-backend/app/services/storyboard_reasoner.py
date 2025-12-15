@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from app.schemas.generation import StoryboardModel, StoryboardPlanModel, StoryboardPlanScene
 from app.core.logging import get_logger
+from app.schemas.generation import (
+    StoryboardModel,
+    StoryboardPlanModel,
+    StoryboardPlanScene,
+)
 
 try:
-    from langgraph.graph import StateGraph, END
+    from langgraph.graph import END, StateGraph
+
     LANGGRAPH_AVAILABLE = True
 except ImportError:  # pragma: no cover - optional dependency
     LANGGRAPH_AVAILABLE = False
@@ -27,7 +32,9 @@ def _cycle_value(cycle: List[str], position: int) -> str:
     return cycle[position % len(cycle)]
 
 
-def _sanitize_outline(scene_number: int | None, index: int, outline: Dict[str, Any]) -> Tuple[Dict[str, Any], bool]:
+def _sanitize_outline(
+    scene_number: int | None, index: int, outline: Dict[str, Any]
+) -> Tuple[Dict[str, Any], bool]:
     changed = False
     shot = outline.get("shot_type")
     movement = outline.get("camera_movement")
@@ -83,12 +90,18 @@ class StoryboardReActReasoner:
                 temperature=min(0.35, temperature),
             )
             if not plan_resp or not plan_resp.get("normalized"):
-                return {"error": "plan_failed", "reasoning": state.get("reasoning", []) + ["plan_failed"]}
+                return {
+                    "error": "plan_failed",
+                    "reasoning": state.get("reasoning", []) + ["plan_failed"],
+                }
             try:
                 StoryboardPlanModel.model_validate(plan_resp["normalized"])
             except Exception as exc:  # pragma: no cover - schema guard
                 self.logger.warning(f"LangGraph plan validation failed: {exc}")
-                return {"error": "plan_invalid", "reasoning": state.get("reasoning", []) + ["plan_invalid"]}
+                return {
+                    "error": "plan_invalid",
+                    "reasoning": state.get("reasoning", []) + ["plan_invalid"],
+                }
             reasoning = state.get("reasoning", []) + ["plan_ready"]
             return {
                 "plan": plan_resp["normalized"],
@@ -96,6 +109,7 @@ class StoryboardReActReasoner:
                 "model_used": plan_resp.get("model_used"),
                 "reasoning": reasoning,
             }
+
         def critique_node(state: Dict[str, Any]) -> Dict[str, Any]:
             plan = state.get("plan") or {}
             fixes: List[str] = []
@@ -105,7 +119,11 @@ class StoryboardReActReasoner:
                 scene_no = scene.get("scene_number")
                 for idx, frame in enumerate(outlines):
                     frame, changed = _sanitize_outline(scene_no, idx, frame)
-                    key = (frame.get("shot_type"), frame.get("camera_movement"), frame.get("intent"))
+                    key = (
+                        frame.get("shot_type"),
+                        frame.get("camera_movement"),
+                        frame.get("intent"),
+                    )
                     if key in combos:
                         shot = _cycle_value(SHOT_CYCLE, idx + 1)
                         move = _cycle_value(MOVEMENT_CYCLE, idx + 2)
@@ -142,13 +160,15 @@ class StoryboardReActReasoner:
                 frames_scene_all: List[Dict[str, Any]] = []
                 attempts = 0
                 while attempts < 2 and len(frames_scene_all) < target_frames:
-                    frames_scene = await self.service.generate_storyboard_from_plan_for_scene(
-                        script=script,
-                        scene_plan=scene_plan,
-                        model=model,
-                        prefer_provider=prefer_provider,
-                        temperature=temperature,
-                        max_frames=max_frames,
+                    frames_scene = (
+                        await self.service.generate_storyboard_from_plan_for_scene(
+                            script=script,
+                            scene_plan=scene_plan,
+                            model=model,
+                            prefer_provider=prefer_provider,
+                            temperature=temperature,
+                            max_frames=max_frames,
+                        )
                     )
                     attempts += 1
                     if frames_scene:
@@ -176,7 +196,10 @@ class StoryboardReActReasoner:
                 else:
                     self.logger.warning(
                         "Storyboard frames empty for scene after retries",
-                        extra={"scene_number": scene_plan.scene_number, "attempts": attempts},
+                        extra={
+                            "scene_number": scene_plan.scene_number,
+                            "attempts": attempts,
+                        },
                     )
 
             if not frames_all:
@@ -187,9 +210,16 @@ class StoryboardReActReasoner:
             except Exception as exc:  # pragma: no cover - schema guard
                 self.logger.warning(f"LangGraph storyboard validation failed: {exc}")
                 reasoning = state.get("reasoning", []) + ["frames_invalid"]
-                return {"frames": [], "error": "final_invalid", "reasoning": reasoning, "plan": plan}
+                return {
+                    "frames": [],
+                    "error": "final_invalid",
+                    "reasoning": reasoning,
+                    "plan": plan,
+                }
             if per_scene_logs:
-                self.logger.info("LangGraph finalize produced frames: %s", "; ".join(per_scene_logs))
+                self.logger.info(
+                    "LangGraph finalize produced frames: %s", "; ".join(per_scene_logs)
+                )
             reasoning = state.get("reasoning", []) + ["frames_ready"]
             return {
                 "frames": frames_all,
@@ -210,9 +240,12 @@ class StoryboardReActReasoner:
 
         app = graph.compile()
         result = await app.ainvoke({"reasoning": []})
-        if result.get("error") or result.get("frames") is None:
+        frames = result.get("frames")
+        if result.get("error") or frames is None:
             return None
-        frames = result.get("frames") or []
+        frames = frames or []
+        if not frames:
+            return None
         content = json.dumps({"frames": frames}, ensure_ascii=False)
         return {
             "content": content,

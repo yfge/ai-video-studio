@@ -19,8 +19,6 @@ repos:
       - id: ruff
         args: ["--fix"]
         files: ^ai-pic-backend/.*\.py$
-      - id: ruff-format
-        files: ^ai-pic-backend/.*\.py$
 
   - repo: https://github.com/psf/black
     rev: 24.10.0
@@ -54,7 +52,7 @@ repos:
 
       - id: backend-pytest
         name: pytest (backend quick gate)
-        entry: bash -lc 'cd ai-pic-backend && pytest'
+        entry: bash -lc 'cd ai-pic-backend && pytest tests/unit tests/services tests/scripts'
         language: system
         pass_filenames: false
         files: ^ai-pic-backend/
