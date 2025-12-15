@@ -1,6 +1,7 @@
 from app.models.story_structure import Scene, SceneBeat
 from app.services.dialogue_audio_service import (
     build_episode_timeline_beats,
+    build_storyboard_frames_from_audio_timeline,
     plan_scene_segments,
 )
 
@@ -100,3 +101,57 @@ def test_build_episode_timeline_beats_offsets_scene_windows() -> None:
     assert total_ms == 3500
     assert [b["start_ms"] for b in beats] == [0, 1000, 1500]
     assert [b["end_ms"] for b in beats] == [1000, 1500, 3500]
+
+
+def test_build_storyboard_frames_from_audio_timeline_filters_pauses() -> None:
+    audio_timeline = {
+        "beats": [
+            {
+                "scene_id": 1,
+                "scene_number": 1,
+                "beat_id": 11,
+                "beat_type": "dialogue",
+                "speaker_name": "小明",
+                "text": "你好",
+                "start_ms": 0,
+                "end_ms": 1000,
+            },
+            {
+                "scene_id": 1,
+                "scene_number": 1,
+                "beat_id": 12,
+                "beat_type": "pause",
+                "speaker_name": None,
+                "text": None,
+                "start_ms": 1000,
+                "end_ms": 2000,
+            },
+            {
+                "scene_id": 1,
+                "scene_number": 1,
+                "beat_id": 13,
+                "beat_type": "action",
+                "speaker_name": None,
+                "text": "（转身）",
+                "start_ms": 2000,
+                "end_ms": 3500,
+            },
+            {
+                "scene_id": 1,
+                "scene_number": 1,
+                "beat_id": 14,
+                "beat_type": "pause",
+                "speaker_name": None,
+                "text": None,
+                "start_ms": 3500,
+                "end_ms": 6000,
+            },
+        ]
+    }
+
+    frames = build_storyboard_frames_from_audio_timeline(
+        audio_timeline=audio_timeline,
+        min_pause_duration_ms=1500,
+    )
+    assert [f["start_ms"] for f in frames] == [0, 2000, 3500]
+    assert [f["end_ms"] for f in frames] == [1000, 3500, 6000]

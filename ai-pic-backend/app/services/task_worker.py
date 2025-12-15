@@ -65,6 +65,16 @@ def script_audio_timeline_generate_task(
     _process_script_audio_timeline_task(task_id, payload, user_id)
 
 
+@celery_app.task(name="tasks.script_audio_storyboard_generate")
+def script_audio_storyboard_generate_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
+    """异步从 episode 音频时间轴生成分镜帧占位任务入口。"""
+    from app.api.v1.endpoints.scripts import _process_script_audio_storyboard_task
+
+    _process_script_audio_storyboard_task(task_id, payload, user_id)
+
+
 @celery_app.task(name="tasks.virtual_ip_image_generate")
 def virtual_ip_image_generate_task(
     task_id: int, payload: Dict[str, Any], user_id: int

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -22,7 +22,9 @@ class StoryOutlineModel(BaseModel):
     synopsis: str = Field(..., description="详细故事概要")
     main_conflict: Optional[str] = Field(None, description="主要冲突")
     resolution: Optional[str] = Field(None, description="解决方案/结局")
-    character_relationships: Optional[Dict[str, Any]] = Field(None, description="角色关系网")
+    character_relationships: Optional[Dict[str, Any]] = Field(
+        None, description="角色关系网"
+    )
     main_characters: Optional[List[CharacterInfo]] = Field(None, description="主要角色")
     plot_structure: Optional[PlotStructure] = Field(None, description="三幕式结构")
     core_values: Optional[str] = Field(None, description="核心价值")
@@ -72,21 +74,32 @@ class ScriptModel(BaseModel):
     stage_directions: Optional[List[StageDirectionItem]] = None
     metadata: Optional[ScriptMetadata] = None
 
+
 # 分镜（Storyboard）
 class StoryboardFrame(BaseModel):
     # Accept any string id; default to a UUID string when absent.
-    frame_id: str = Field(default_factory=lambda: str(uuid4()), description="分镜帧唯一标识（字符串）")
+    frame_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="分镜帧唯一标识（字符串）"
+    )
     frame_number: Optional[int] = None
     scene_number: Optional[int] = None
-    scene_index: Optional[int] = Field(None, description="在剧本场景列表中的索引（从1开始）")
+    scene_index: Optional[int] = Field(
+        None, description="在剧本场景列表中的索引（从1开始）"
+    )
     shot_type: Optional[str] = Field(None, description="景别：远景/中景/近景/特写 等")
-    camera_movement: Optional[str] = Field(None, description="运镜：推/拉/摇/移/跟/变焦 等")
+    camera_movement: Optional[str] = Field(
+        None, description="运镜：推/拉/摇/移/跟/变焦 等"
+    )
     composition: Optional[str] = Field(None, description="构图：三分法/对称/前后景 等")
     description: str = Field(..., description="画面描述与动作")
     duration_seconds: Optional[float] = Field(None, description="建议时长（秒）")
+    start_ms: Optional[int] = Field(None, description="时间轴起点（毫秒）")
+    end_ms: Optional[int] = Field(None, description="时间轴终点（毫秒）")
     ai_prompt: Optional[str] = Field(None, description="用于生成图像/视频的提示词")
     reference_images: Optional[List[str]] = Field(None, description="参考图 URL 列表")
-    image_url: Optional[str] = Field(None, description="生成的分镜图像URL（生成后回填）")
+    image_url: Optional[str] = Field(
+        None, description="生成的分镜图像URL（生成后回填）"
+    )
     start_image_url: Optional[str] = Field(
         None, description="分镜首帧关键帧URL（生成后回填）"
     )
@@ -127,12 +140,20 @@ class StoryboardFrame(BaseModel):
     video_generation: Optional[Dict[str, Any]] = Field(
         None, description="视频生成元数据（模型/参数/锚点等）"
     )
-    generation_source: Optional[str] = Field(None, description="生成来源：ai/manual/import/legacy")
+    generation_source: Optional[str] = Field(
+        None, description="生成来源：ai/manual/import/legacy"
+    )
     generation_model: Optional[str] = Field(None, description="生成所用模型标识")
-    generation_method: Optional[str] = Field(None, description="生成方式：direct/plan/fallback 等")
+    generation_method: Optional[str] = Field(
+        None, description="生成方式：direct/plan/fallback 等"
+    )
     status: Optional[str] = Field(None, description="状态：draft/confirmed/locked 等")
-    generated_at: Optional[datetime] = Field(default_factory=datetime.utcnow, description="生成时间")
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow, description="最后更新时间")
+    generated_at: Optional[datetime] = Field(
+        default_factory=datetime.utcnow, description="生成时间"
+    )
+    updated_at: Optional[datetime] = Field(
+        default_factory=datetime.utcnow, description="最后更新时间"
+    )
 
 
 class StoryboardModel(BaseModel):
@@ -197,7 +218,9 @@ class EpisodePlanModel(BaseModel):
 # 分镜规划（Storyboard Plan）
 class StoryboardPlanFrameOutline(BaseModel):
     shot_type: Optional[str] = Field(None, description="景别：远景/中景/近景/特写")
-    camera_movement: Optional[str] = Field(None, description="运镜：固定/推/拉/摇/移/跟/变焦")
+    camera_movement: Optional[str] = Field(
+        None, description="运镜：固定/推/拉/摇/移/跟/变焦"
+    )
     composition: Optional[str] = Field(None, description="构图：三分法/对称/前后景")
     intent: Optional[str] = Field(None, description="画面意图/叙事作用（简短）")
 

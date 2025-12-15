@@ -136,7 +136,7 @@
 - [x] 后端：为衍生角色提供同等的音色绑定与回退策略：agent 判断作用域（scene/episode/story）→ 创建/复用“派生角色”记录 → 绑定音色；保证幂等
 - [x] 后端：实现“按场景生成对白混音音轨”：多角色 TTS → 混音为 1 条 scene 音频 → 输出 segment 级 beats（含留白补足的静音/环境段）
 - [x] 后端：实现“按 Episode 拼接场景音轨”：拼接生成 episode 级音频，并合并/偏移 beats 形成 episode 时间轴（episode 级落 Timeline Spec；scene 级落 `scene_beats`）
-- [ ] 后端：基于 beats/时间轴生成分镜帧/镜头占位（或触发分镜 agent），将关键点映射到 frames/shots，支持后续视频/剪辑链路复用
+- [x] 后端：基于 beats/时间轴生成分镜帧/镜头占位（或触发分镜 agent），将关键点映射到 frames/shots，支持后续视频/剪辑链路复用
 - [ ] 前端：在 Episode 详情/剧本页新增“生成对白音轨 / 生成时间轴 / 生成分镜帧”入口，展示进度、失败原因、版本与重试/复用
 - [ ] 验证：Chrome 端到端用例（账号 `geyunfei`）：进入某 Episode → 生成对白音轨 → 校验 beats 时间轴 → 生成分镜帧，并将路径与结果记录到 `agent_chats`
 
