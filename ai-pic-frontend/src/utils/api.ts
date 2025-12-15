@@ -238,6 +238,65 @@ export interface AIModel {
   capabilities: string[];
 }
 
+export interface VoiceOption {
+  value: string;
+  label_zh: string;
+  label_en: string;
+}
+
+export interface VoiceItem {
+  voice_id: string;
+  voice_name?: string;
+  description?: string[];
+  created_time?: string;
+}
+
+export interface VoiceEnums {
+  providers: VoiceOption[];
+  tts_models: VoiceOption[];
+  voice_types: VoiceOption[];
+  emotions: VoiceOption[];
+  language_boost: VoiceOption[];
+  output_formats: VoiceOption[];
+  audio_formats: VoiceOption[];
+  sample_rates: VoiceOption[];
+  bitrates: VoiceOption[];
+  channels: VoiceOption[];
+  music_models: VoiceOption[];
+  defaults?: {
+    tts_model?: string;
+    voice_id?: string;
+    output_format?: string;
+    music_model?: string;
+  };
+}
+
+export interface VoiceList {
+  system_voice?: VoiceItem[];
+  voice_cloning?: VoiceItem[];
+  voice_generation?: VoiceItem[];
+  trace_id?: string;
+  base_resp?: Record<string, unknown>;
+}
+
+export interface VoiceConfig {
+  provider?: string;
+  model?: string;
+  voice_type?: string;
+  voice_id?: string;
+  display_name?: string;
+  sample_url?: string;
+}
+
+export interface VoicePreviewResponse {
+  audio_url?: string | null;
+  audio_hex?: string | null;
+  subtitle_file?: string | null;
+  trace_id?: string | null;
+  extra_info?: Record<string, unknown>;
+  base_resp?: Record<string, unknown>;
+}
+
 // AI模型类型常量 (对应后端 AIModelType)
 export const AIModelType = {
   Text: 'text_generation',
@@ -270,6 +329,7 @@ export interface VirtualIP {
   biography?: string;
   style_prompt?: string;
   style_reference_images?: string[];
+  voice_config?: VoiceConfig;
   is_active: boolean;
   is_public: boolean;
   created_at: string;
@@ -285,6 +345,7 @@ export interface CreateVirtualIPRequest {
   biography?: string;
   style_prompt?: string;
   style_reference_images?: string[];
+  voice_config?: VoiceConfig;
   is_active?: boolean;
   is_public?: boolean;
 }
@@ -1103,6 +1164,43 @@ class ApiClient {
     return this.request("/api/v1/virtual-ips/generate-ai-content-detailed", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  // 语音相关 API
+  async getVoiceEnums(): Promise<ApiResponse<VoiceEnums>> {
+    return this.request("/api/v1/voice/enums");
+  }
+
+  async getVoices(params?: {
+    voice_type?: string;
+    provider?: string;
+    refresh?: boolean;
+  }): Promise<ApiResponse<VoiceList>> {
+    const searchParams = new URLSearchParams();
+    if (params?.voice_type) searchParams.append("voice_type", params.voice_type);
+    if (params?.provider) searchParams.append("provider", params.provider);
+    if (params?.refresh) searchParams.append("refresh", "true");
+    const query = searchParams.toString();
+    const endpoint = query ? `/api/v1/voice/voices?${query}` : "/api/v1/voice/voices";
+    return this.request(endpoint);
+  }
+
+  async previewVoice(payload: {
+    text: string;
+    model: string;
+    voice_id?: string;
+    provider?: string;
+    output_format?: "url" | "hex";
+  }): Promise<ApiResponse<VoicePreviewResponse>> {
+    const body = {
+      ...payload,
+      output_format: payload.output_format || "url",
+      stream: false,
+    };
+    return this.request("/api/v1/voice/tts", {
+      method: "POST",
+      body: JSON.stringify(body),
     });
   }
 
@@ -1994,6 +2092,12 @@ export const virtualIPAPI = {
   uploadVirtualIPImage: apiClient.uploadVirtualIPImage.bind(apiClient),
   deleteVirtualIPImage: apiClient.deleteVirtualIPImage.bind(apiClient),
   setDefaultVirtualIPImage: apiClient.setDefaultVirtualIPImage.bind(apiClient),
+};
+
+export const voiceAPI = {
+  getEnums: apiClient.getVoiceEnums.bind(apiClient),
+  getVoices: apiClient.getVoices.bind(apiClient),
+  preview: apiClient.previewVoice.bind(apiClient),
 };
 
 export const storyAPI = {

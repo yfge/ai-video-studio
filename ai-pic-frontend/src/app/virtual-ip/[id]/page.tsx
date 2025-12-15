@@ -1,10 +1,10 @@
 'use client'
 
 import Image from 'next/image'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { virtualIPAPI, VirtualIP } from '@/utils/api'
+import { virtualIPAPI, voiceAPI, VirtualIP, VoiceConfig, VoiceEnums, VoiceList, VoiceItem } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
 
 export default function VirtualIPDetail() {
@@ -20,8 +20,87 @@ export default function VirtualIPDetail() {
     tags: [] as string[],
     background_story: ''
   })
+  const [voiceEnums, setVoiceEnums] = useState<VoiceEnums | null>(null)
+  const [voiceList, setVoiceList] = useState<VoiceList | null>(null)
+  const [voiceTypeFilter, setVoiceTypeFilter] = useState('system')
+  const [voiceSettings, setVoiceSettings] = useState<VoiceConfig>({
+    provider: undefined,
+    model: undefined,
+    voice_type: 'system',
+    voice_id: undefined
+  })
+  const [voicePreviewText, setVoicePreviewText] = useState('')
+  const [voiceLoading, setVoiceLoading] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null)
 
   const ipId = Number(params.id)
+
+  const buildDefaultVoiceSettings = (enums: VoiceEnums): VoiceConfig => {
+    const provider = enums.providers?.[0]?.value
+    const model =
+      enums.defaults?.tts_model ||
+      enums.tts_models?.[0]?.value ||
+      undefined
+    const voice_id =
+      enums.defaults?.voice_id ||
+      undefined
+    return {
+      provider,
+      model,
+      voice_type: 'system',
+      voice_id
+    }
+  }
+
+  const hexToAudioUrl = (hexString: string): string => {
+    const bytes = new Uint8Array(hexString.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [])
+    const blob = new Blob([bytes], { type: 'audio/mpeg' })
+    return URL.createObjectURL(blob)
+  }
+
+  const fetchVoiceEnums = useCallback(async () => {
+    try {
+      const res = await voiceAPI.getEnums()
+      if (res.success && res.data) {
+        setVoiceEnums(res.data)
+        // 初始化默认试听文本
+        if (!voicePreviewText) {
+          setVoicePreviewText('你好，我是你的虚拟角色，很高兴与您相见。')
+        }
+        // 初始化语音设置
+        const defaults = buildDefaultVoiceSettings(res.data)
+        setVoiceSettings((prev) => ({
+          ...defaults,
+          ...prev,
+          voice_type: prev.voice_type || defaults.voice_type
+        }))
+      }
+    } catch (error) {
+      console.error('获取语音枚举失败', error)
+    }
+  }, [voicePreviewText])
+
+  const fetchVoiceList = useCallback(
+    async (voiceType: string, provider?: string) => {
+      if (!provider) return
+      try {
+        setVoiceLoading(true)
+        const res = await voiceAPI.getVoices({
+          voice_type: voiceType,
+          provider
+        })
+        if (res.success && res.data) {
+          setVoiceList(res.data)
+        }
+      } catch (error) {
+        console.error('获取音色列表失败', error)
+      } finally {
+        setVoiceLoading(false)
+      }
+    },
+    []
+  )
 
   // 获取虚拟IP详情
   const fetchVirtualIP = useCallback(async () => {
@@ -37,6 +116,20 @@ export default function VirtualIPDetail() {
           tags: response.data.tags || [],
           background_story: response.data.background_story || ''
         })
+        const incomingVoice = response.data.voice_config
+        setVoiceSettings((prev) => {
+          const enums = voiceEnums
+          const defaults = enums ? buildDefaultVoiceSettings(enums) : prev
+          return {
+            ...defaults,
+            ...prev,
+            ...incomingVoice,
+            voice_type: incomingVoice?.voice_type || prev.voice_type || 'system'
+          }
+        })
+        if (!voicePreviewText) {
+          setVoicePreviewText(`你好，我是${response.data.name}，很高兴和你见面。`)
+        }
       } else {
         console.error('获取虚拟IP详情失败:', response.error)
         showAlert({ message: '获取虚拟IP详情失败', variant: 'error' })
@@ -47,13 +140,16 @@ export default function VirtualIPDetail() {
     } finally {
       setLoading(false)
     }
-  }, [ipId, showAlert])
+  }, [ipId, showAlert, voiceEnums, voicePreviewText])
 
   // 更新虚拟IP
   const handleUpdateIP = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await virtualIPAPI.updateVirtualIP(ipId, editForm)
+      const response = await virtualIPAPI.updateVirtualIP(ipId, {
+        ...editForm,
+        voice_config: voiceSettings
+      })
       if (response.success && response.data) {
         setVirtualIP(response.data)
         setEditing(false)
@@ -106,11 +202,103 @@ export default function VirtualIPDetail() {
     setEditForm({ ...editForm, tags: editForm.tags.filter(tag => tag !== tagToRemove) })
   }
 
+  const voiceOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = []
+    const pushVoices = (items?: VoiceItem[]) => {
+      if (!items) return
+      items.forEach((item) => {
+        if (item?.voice_id) {
+          options.push({
+            value: item.voice_id,
+            label: item.voice_name || item.voice_id
+          })
+        }
+      })
+    }
+
+    if (!voiceList) return options
+    if (voiceTypeFilter === 'all') {
+      pushVoices(voiceList.system_voice)
+      pushVoices(voiceList.voice_cloning)
+      pushVoices(voiceList.voice_generation)
+    } else if (voiceTypeFilter === 'system') {
+      pushVoices(voiceList.system_voice)
+    } else if (voiceTypeFilter === 'voice_cloning') {
+      pushVoices(voiceList.voice_cloning)
+    } else if (voiceTypeFilter === 'voice_generation') {
+      pushVoices(voiceList.voice_generation)
+    }
+    return options
+  }, [voiceList, voiceTypeFilter])
+
+  const handlePreviewVoice = async () => {
+    if (!voiceSettings.model) {
+      showAlert({ message: '请先选择语音模型', variant: 'error' })
+      return
+    }
+    const text = voicePreviewText || `你好，我是${virtualIP?.name || '角色'}，很高兴见到你。`
+    setPreviewLoading(true)
+    try {
+      const res = await voiceAPI.preview({
+        text,
+        model: voiceSettings.model,
+        voice_id: voiceSettings.voice_id,
+        provider: voiceSettings.provider,
+        output_format: 'url'
+      })
+      if (res.success && res.data) {
+        const audioUrl =
+          res.data.audio_url ||
+          (res.data.audio_hex ? hexToAudioUrl(res.data.audio_hex) : null)
+        if (audioUrl) {
+          if (previewAudioUrl) {
+            URL.revokeObjectURL(previewAudioUrl)
+          }
+          setPreviewAudioUrl(audioUrl)
+        }
+        showAlert({ message: '试听已生成', variant: 'success' })
+      } else {
+        showAlert({ message: `试听失败: ${res.error || '未知错误'}`, variant: 'error' })
+      }
+    } catch (error) {
+      console.error('试听失败', error)
+      showAlert({ message: '试听失败，请重试', variant: 'error' })
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void fetchVoiceEnums()
+  }, [fetchVoiceEnums])
+
   useEffect(() => {
     if (ipId) {
       void fetchVirtualIP()
     }
   }, [fetchVirtualIP, ipId])
+
+  useEffect(() => {
+    if (voiceSettings.provider) {
+      void fetchVoiceList(voiceTypeFilter, voiceSettings.provider)
+    }
+  }, [fetchVoiceList, voiceSettings.provider, voiceTypeFilter])
+
+  useEffect(() => {
+    if (!voiceList) return
+    if (!voiceSettings.voice_id) {
+      const first = voiceOptions[0]
+      if (first) {
+        setVoiceSettings((prev) => ({ ...prev, voice_id: prev.voice_id || first.value }))
+      }
+    }
+  }, [voiceList, voiceTypeFilter, voiceSettings.voice_id, voiceOptions])
+
+  useEffect(() => {
+    if (voiceSettings.voice_type && voiceSettings.voice_type !== voiceTypeFilter) {
+      setVoiceTypeFilter(voiceSettings.voice_type)
+    }
+  }, [voiceSettings.voice_type, voiceTypeFilter])
 
   if (loading) {
     return (
@@ -322,6 +510,140 @@ export default function VirtualIPDetail() {
               )}
             </div>
           )}
+
+          {/* 语音设置 */}
+          <div className="p-8 border-b space-y-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">语音设置</h3>
+                <p className="text-sm text-gray-500">
+                  按 provider → model → voice 绑定角色语音，可随时试听
+                </p>
+              </div>
+              {!voiceEnums && (
+                <span className="text-sm text-gray-500">语音选项加载中...</span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  提供商
+                </label>
+                <select
+                  value={voiceSettings.provider || ''}
+                  onChange={(e) => {
+                    const value = e.target.value || undefined
+                    setVoiceSettings((prev) => ({
+                      ...prev,
+                      provider: value,
+                      voice_id: undefined
+                    }))
+                  }}
+                  disabled={!editing}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {(voiceEnums?.providers || []).map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label_zh || p.label_en}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  语音模型
+                </label>
+                <select
+                  value={voiceSettings.model || ''}
+                  onChange={(e) =>
+                    setVoiceSettings((prev) => ({ ...prev, model: e.target.value || undefined }))
+                  }
+                  disabled={!editing}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {(voiceEnums?.tts_models || []).map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label_zh || m.label_en}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  音色类型
+                </label>
+                <select
+                  value={voiceTypeFilter}
+                  onChange={(e) => setVoiceTypeFilter(e.target.value)}
+                  disabled={!editing}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {(voiceEnums?.voice_types || []).map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label_zh || item.label_en}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                  音色
+                  {voiceLoading && <span className="text-xs text-gray-500">加载中...</span>}
+                </label>
+                <select
+                  value={voiceSettings.voice_id || ''}
+                  onChange={(e) =>
+                    setVoiceSettings((prev) => ({ ...prev, voice_id: e.target.value || undefined }))
+                  }
+                  disabled={!editing || voiceLoading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">请选择音色</option>
+                  {voiceOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  来自 {voiceSettings.provider || '默认'} / {voiceSettings.model || '未选择'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">试听文本</label>
+              <textarea
+                value={voicePreviewText}
+                onChange={(e) => setVoicePreviewText(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="输入要试听的文本"
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => void handlePreviewVoice()}
+                  disabled={previewLoading}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-60"
+                >
+                  {previewLoading ? '生成中...' : '试听'}
+                </button>
+                {previewAudioUrl && (
+                  <audio controls src={previewAudioUrl} className="w-full max-w-md">
+                    您的浏览器不支持音频播放。
+                  </audio>
+                )}
+              </div>
+              <p className="text-sm text-gray-500">
+                保存后将把该音色绑定到当前角色，其他功能可直接复用。
+              </p>
+            </div>
+          </div>
 
           {/* 创建信息 */}
           <div className="p-8">

@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+
 class VirtualIPImageBase(BaseModel):
     category: str
     subcategory: Optional[str] = None
@@ -11,6 +12,7 @@ class VirtualIPImageBase(BaseModel):
     generation_params: Optional[Dict[str, Any]] = None
     is_default: bool = False
     is_public: bool = True
+
 
 class VirtualIPImageCreate(VirtualIPImageBase):
     virtual_ip_id: int
@@ -22,8 +24,10 @@ class VirtualIPImageCreate(VirtualIPImageBase):
     mime_type: Optional[str] = "image/png"
     metadata: Optional[Dict[str, Any]] = None
 
+
 class VirtualIPImageUpdate(VirtualIPImageBase):
     pass
+
 
 class VirtualIPImageResponse(VirtualIPImageBase):
     id: int
@@ -35,9 +39,10 @@ class VirtualIPImageResponse(VirtualIPImageBase):
     file_size: int
     mime_type: str
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class VirtualIPBase(BaseModel):
     name: str
@@ -47,14 +52,18 @@ class VirtualIPBase(BaseModel):
     biography: Optional[str] = None
     style_prompt: Optional[str] = None
     style_reference_images: Optional[List[str]] = []
+    voice_config: Optional[Dict[str, Any]] = None
     is_active: bool = True
     is_public: bool = False
+
 
 class VirtualIPCreate(VirtualIPBase):
     pass
 
+
 class VirtualIPUpdate(VirtualIPBase):
     pass
+
 
 class VirtualIPResponse(VirtualIPBase):
     id: int
@@ -62,9 +71,10 @@ class VirtualIPResponse(VirtualIPBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     images: Optional[List[VirtualIPImageResponse]] = []
-    
+
     class Config:
         from_attributes = True
+
 
 class VirtualIPListResponse(BaseModel):
     virtual_ips: List[VirtualIPResponse]
@@ -72,8 +82,10 @@ class VirtualIPListResponse(BaseModel):
     page: int
     size: int
 
+
 class VirtualIPAICreateRequest(BaseModel):
     """AI增强创建虚拟IP的请求"""
+
     name: str
     basic_info: Optional[str] = None  # 用户提供的基本信息
     style_preference: Optional[str] = None  # 风格偏好
@@ -81,15 +93,19 @@ class VirtualIPAICreateRequest(BaseModel):
     is_active: bool = True
     is_public: bool = False
 
+
 class VirtualIPAIGenerationResponse(BaseModel):
     """AI生成内容的响应"""
+
     description: str
     background_story: str
     biography: str
     style_prompt: str
 
+
 class AIGenerationDetails(BaseModel):
     """AI生成详情"""
+
     model: str
     temperature: float
     prompts_used: List[str]
@@ -97,16 +113,20 @@ class AIGenerationDetails(BaseModel):
     generation_time: float
     steps: List[str]
 
+
 class VirtualIPAIGenerationDetailedResponse(BaseModel):
     """AI生成内容的详细响应"""
+
     description: str
     background_story: str
     biography: str
     style_prompt: str
     generation_details: AIGenerationDetails
-    
+
+
 class VirtualIPAIGenerationRequest(BaseModel):
     """AI生成内容的请求"""
+
     name: str
     basic_info: Optional[str] = None
     style_preference: Optional[str] = None
