@@ -300,18 +300,18 @@ export interface VoicePreviewResponse {
 
 // AI模型类型常量 (对应后端 AIModelType)
 export const AIModelType = {
-  Text: 'text_generation',
-  Image: 'text_to_image',
-  Video: 'text_to_video',
-  Audio: 'text_to_speech',
-  SpeechToText: 'speech_to_text',
-  ImageToImage: 'image_to_image',
-  ImageToVideo: 'image_to_video',
-  ImageUnderstanding: 'image_understanding',
-  VideoUnderstanding: 'video_understanding',
+  Text: "text_generation",
+  Image: "text_to_image",
+  Video: "text_to_video",
+  Audio: "text_to_speech",
+  SpeechToText: "speech_to_text",
+  ImageToImage: "image_to_image",
+  ImageToVideo: "image_to_video",
+  ImageUnderstanding: "image_understanding",
+  VideoUnderstanding: "video_understanding",
 } as const;
 
-export type AIModelType = typeof AIModelType[keyof typeof AIModelType];
+export type AIModelType = (typeof AIModelType)[keyof typeof AIModelType];
 
 export interface AvailableModelsResponse {
   models: AIModel[];
@@ -521,6 +521,8 @@ export type StoryboardFrame = {
   composition?: string;
   description?: string;
   duration_seconds?: number;
+  start_ms?: number;
+  end_ms?: number;
   ai_prompt?: string;
   reference_images?: string[];
   image_url?: string;
@@ -617,6 +619,7 @@ export interface NormalizedScene {
   location?: string | null;
   time_of_day?: string | null;
   summary?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export interface NormalizedShot {
@@ -739,8 +742,8 @@ class ApiClient {
       if (!response.ok) {
         throw new Error(
           data.detail ||
-          data.message ||
-          `HTTP error! status: ${response.status}`,
+            data.message ||
+            `HTTP error! status: ${response.status}`,
         );
       }
 
@@ -797,7 +800,10 @@ class ApiClient {
 
     console.log("Login request:", credentials.email, credentials.password);
 
-    const response = await this.request<{ access_token: string; token_type: string }>(
+    const response = await this.request<{
+      access_token: string;
+      token_type: string;
+    }>(
       "/api/v1/auth/login",
       {
         method: "POST",
@@ -1179,11 +1185,14 @@ class ApiClient {
     refresh?: boolean;
   }): Promise<ApiResponse<VoiceList>> {
     const searchParams = new URLSearchParams();
-    if (params?.voice_type) searchParams.append("voice_type", params.voice_type);
+    if (params?.voice_type)
+      searchParams.append("voice_type", params.voice_type);
     if (params?.provider) searchParams.append("provider", params.provider);
     if (params?.refresh) searchParams.append("refresh", "true");
     const query = searchParams.toString();
-    const endpoint = query ? `/api/v1/voice/voices?${query}` : "/api/v1/voice/voices";
+    const endpoint = query
+      ? `/api/v1/voice/voices?${query}`
+      : "/api/v1/voice/voices";
     return this.request(endpoint);
   }
 
@@ -1239,7 +1248,9 @@ class ApiClient {
     virtual_ip_id: number,
     image_id: number,
   ): Promise<ApiResponse<VirtualIPImage>> {
-    return this.request(`/api/v1/virtual-ips/${virtual_ip_id}/images/${image_id}`);
+    return this.request(
+      `/api/v1/virtual-ips/${virtual_ip_id}/images/${image_id}`,
+    );
   }
 
   async uploadVirtualIPImage(
@@ -1682,6 +1693,55 @@ class ApiClient {
     });
   }
 
+  async generateSceneDialogueAudioAsync(
+    scriptId: number,
+    payload?: {
+      tts_model?: string;
+      scene_numbers?: number[];
+      overwrite_audio?: boolean;
+      overwrite_beats?: boolean;
+    },
+  ) {
+    return this.request<{ task_id: number; status: string }>(
+      `/api/v1/scripts/${scriptId}/dialogue-audio/generate-async`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      },
+    );
+  }
+
+  async generateAudioTimelineAsync(
+    scriptId: number,
+    payload?: {
+      overwrite?: boolean;
+    },
+  ) {
+    return this.request<{ task_id: number; status: string }>(
+      `/api/v1/scripts/${scriptId}/audio-timeline/generate-async`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      },
+    );
+  }
+
+  async generateStoryboardFromAudioTimelineAsync(
+    scriptId: number,
+    payload?: {
+      overwrite_existing?: boolean;
+      min_pause_seconds?: number;
+    },
+  ) {
+    return this.request<{ task_id: number; status: string }>(
+      `/api/v1/scripts/${scriptId}/storyboard/from-audio-timeline/generate-async`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      },
+    );
+  }
+
   // 分镜相关
   async getStoryboard(scriptId: number) {
     return this.request<StoryboardPayload>(
@@ -1746,7 +1806,9 @@ class ApiClient {
     if (data?.use_plan) params.append("use_plan", "true");
     const qs = params.toString();
     return this.request<{ task_id: number; status: string }>(
-      `/api/v1/scripts/${scriptId}/storyboard/generate-async${qs ? `?${qs}` : ""}`,
+      `/api/v1/scripts/${scriptId}/storyboard/generate-async${
+        qs ? `?${qs}` : ""
+      }`,
       { method: "POST" },
     );
   }
@@ -1791,8 +1853,7 @@ class ApiClient {
     },
   ) {
     const isStartEnd = payload?.keyframe_mode === "start_end";
-    const desiredCount =
-      payload?.count ?? (isStartEnd ? 4 : 1);
+    const desiredCount = payload?.count ?? (isStartEnd ? 4 : 1);
     const normalizedCount = Math.max(1, Math.min(desiredCount, 4));
     return this.request(
       `/api/v1/scripts/${scriptId}/storyboard/generate-images`,
@@ -2138,6 +2199,12 @@ export const scriptAPI = {
   getScriptLanguages: apiClient.getScriptLanguages.bind(apiClient),
   exportScript: apiClient.exportScript.bind(apiClient),
   previewScriptPrompt: apiClient.previewScriptPrompt.bind(apiClient),
+  generateSceneDialogueAudioAsync:
+    apiClient.generateSceneDialogueAudioAsync.bind(apiClient),
+  generateAudioTimelineAsync:
+    apiClient.generateAudioTimelineAsync.bind(apiClient),
+  generateStoryboardFromAudioTimelineAsync:
+    apiClient.generateStoryboardFromAudioTimelineAsync.bind(apiClient),
   // Storyboard
   getStoryboard: apiClient.getStoryboard.bind(apiClient),
   previewStoryboardPrompt: apiClient.previewStoryboardPrompt.bind(apiClient),
@@ -2280,7 +2347,13 @@ export const virtualIPImageAPI = {
     imageId: number,
     payload: Pick<
       ImageToImageRequestPayload,
-      "prompt" | "model" | "count" | "size" | "style" | "style_preset_id" | "style_spec"
+      | "prompt"
+      | "model"
+      | "count"
+      | "size"
+      | "style"
+      | "style_preset_id"
+      | "style_spec"
     >,
   ): Promise<ApiResponse<VirtualIPImage | VirtualIPImage[]>> => {
     return apiClient.makeRequest(

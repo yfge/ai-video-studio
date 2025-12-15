@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { episodeAPI, scriptAPI } from "@/utils/api";
-import type { Episode, Script, ScriptGenerationRequest } from "@/utils/api";
+import { episodeAPI, scriptAPI, taskAPI } from "@/utils/api";
+import type {
+  Episode,
+  Script,
+  ScriptGenerationRequest,
+  Task,
+} from "@/utils/api";
 import { useAlertModal } from "@/components/AlertModalProvider";
 import { MultiModelSelector } from "@/components/MultiModelSelector";
 
@@ -20,6 +25,30 @@ export default function EpisodeDetailPage() {
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [useAsync, setUseAsync] = useState(true);
   const [promptPreview, setPromptPreview] = useState("");
+
+  const [selectedScriptId, setSelectedScriptId] = useState<number | null>(null);
+
+  const [overwriteSceneAudio, setOverwriteSceneAudio] = useState(false);
+  const [overwriteTimeline, setOverwriteTimeline] = useState(false);
+  const [overwriteStoryboard, setOverwriteStoryboard] = useState(false);
+  const [minPauseSeconds, setMinPauseSeconds] = useState(1.5);
+
+  const [sceneAudioBusy, setSceneAudioBusy] = useState(false);
+  const [timelineBusy, setTimelineBusy] = useState(false);
+  const [storyboardBusy, setStoryboardBusy] = useState(false);
+
+  const [sceneAudioTaskId, setSceneAudioTaskId] = useState<number | null>(null);
+  const [timelineTaskId, setTimelineTaskId] = useState<number | null>(null);
+  const [storyboardTaskId, setStoryboardTaskId] = useState<number | null>(null);
+
+  const [sceneAudioTask, setSceneAudioTask] = useState<Task | null>(null);
+  const [timelineTask, setTimelineTask] = useState<Task | null>(null);
+  const [storyboardTask, setStoryboardTask] = useState<Task | null>(null);
+
+  const selectedScript =
+    scripts.find((script) => script.id === selectedScriptId) ??
+    scripts[0] ??
+    null;
 
   // 剧本生成表单状态
   const [generateForm, setGenerateForm] = useState<ScriptGenerationRequest>({
@@ -115,6 +144,76 @@ export default function EpisodeDetailPage() {
     setGenerateForm((prev) => ({ ...prev, episode_id: episodeId }));
   }, [episodeId]);
 
+  useEffect(() => {
+    if (selectedScriptId) return;
+    if (scripts.length === 0) return;
+    setSelectedScriptId(scripts[0].id);
+  }, [scripts, selectedScriptId]);
+
+  const fetchTask = useCallback(async (taskId: number) => {
+    try {
+      const res = await taskAPI.getTask(taskId);
+      if (res.success && res.data) return res.data;
+      return null;
+    } catch (error) {
+      console.error("加载任务失败:", error);
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const taskPairs: Array<{
+      id: number | null;
+      setter: (value: Task | null) => void;
+    }> = [
+      { id: sceneAudioTaskId, setter: setSceneAudioTask },
+      { id: timelineTaskId, setter: setTimelineTask },
+      { id: storyboardTaskId, setter: setStoryboardTask },
+    ];
+
+    const active = taskPairs.filter((pair) => typeof pair.id === "number");
+    if (active.length === 0) return;
+
+    let cancelled = false;
+
+    const tick = async () => {
+      await Promise.all(
+        active.map(async ({ id, setter }) => {
+          if (typeof id !== "number") return;
+          const task = await fetchTask(id);
+          if (!cancelled) {
+            setter(task);
+          }
+        }),
+      );
+    };
+
+    void tick();
+    const timer = setInterval(() => void tick(), 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [fetchTask, sceneAudioTaskId, storyboardTaskId, timelineTaskId]);
+
+  useEffect(() => {
+    if (sceneAudioTask?.status === "completed") {
+      void loadData();
+    }
+  }, [sceneAudioTask?.status, loadData]);
+
+  useEffect(() => {
+    if (timelineTask?.status === "completed") {
+      void loadData();
+    }
+  }, [timelineTask?.status, loadData]);
+
+  useEffect(() => {
+    if (storyboardTask?.status === "completed") {
+      void loadData();
+    }
+  }, [storyboardTask?.status, loadData]);
+
   const handleGenerateScript = async () => {
     try {
       setGenerating(true);
@@ -149,6 +248,104 @@ export default function EpisodeDetailPage() {
       showAlert({ message: "剧本生成失败", variant: "error" });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleGenerateSceneDialogueAudio = async () => {
+    if (!selectedScriptId) {
+      showAlert({ message: "请先选择一个剧本", variant: "warning" });
+      return;
+    }
+    try {
+      setSceneAudioBusy(true);
+      const res = await scriptAPI.generateSceneDialogueAudioAsync(
+        selectedScriptId,
+        {
+          overwrite_audio: overwriteSceneAudio,
+          overwrite_beats: true,
+        },
+      );
+      if (res.success && res.data) {
+        setSceneAudioTaskId(res.data.task_id);
+        showAlert({
+          message: `对白音轨任务已创建（task_id=${res.data.task_id}），可在任务页查看进度`,
+          variant: "info",
+        });
+      } else {
+        showAlert({
+          message: `创建对白音轨任务失败：${res.error || "未知错误"}`,
+          variant: "error",
+        });
+      }
+    } catch (error) {
+      console.error("创建对白音轨任务失败:", error);
+      showAlert({ message: "创建对白音轨任务失败", variant: "error" });
+    } finally {
+      setSceneAudioBusy(false);
+    }
+  };
+
+  const handleGenerateAudioTimeline = async () => {
+    if (!selectedScriptId) {
+      showAlert({ message: "请先选择一个剧本", variant: "warning" });
+      return;
+    }
+    try {
+      setTimelineBusy(true);
+      const res = await scriptAPI.generateAudioTimelineAsync(selectedScriptId, {
+        overwrite: overwriteTimeline,
+      });
+      if (res.success && res.data) {
+        setTimelineTaskId(res.data.task_id);
+        showAlert({
+          message: `时间轴任务已创建（task_id=${res.data.task_id}），可在任务页查看进度`,
+          variant: "info",
+        });
+      } else {
+        showAlert({
+          message: `创建时间轴任务失败：${res.error || "未知错误"}`,
+          variant: "error",
+        });
+      }
+    } catch (error) {
+      console.error("创建时间轴任务失败:", error);
+      showAlert({ message: "创建时间轴任务失败", variant: "error" });
+    } finally {
+      setTimelineBusy(false);
+    }
+  };
+
+  const handleGenerateStoryboardFromAudioTimeline = async () => {
+    if (!selectedScriptId) {
+      showAlert({ message: "请先选择一个剧本", variant: "warning" });
+      return;
+    }
+    try {
+      setStoryboardBusy(true);
+      const res = await scriptAPI.generateStoryboardFromAudioTimelineAsync(
+        selectedScriptId,
+        {
+          overwrite_existing: overwriteStoryboard,
+          min_pause_seconds: minPauseSeconds,
+        },
+      );
+      if (res.success && res.data) {
+        setStoryboardTaskId(res.data.task_id);
+        showAlert({
+          message: `分镜占位任务已创建（task_id=${res.data.task_id}），可在任务页查看进度`,
+          variant: "info",
+        });
+      } else {
+        showAlert({
+          message: `创建分镜占位任务失败：${res.error || "未知错误"}`,
+          variant: "error",
+        });
+      }
+    } catch (error) {
+      console.error("创建分镜占位任务失败:", error);
+      showAlert({ message: "创建分镜占位任务失败", variant: "error" });
+    } finally {
+      setStoryboardBusy(false);
     }
   };
 
@@ -243,6 +440,70 @@ export default function EpisodeDetailPage() {
     );
   }
 
+  const episodeMeta = (() => {
+    const meta =
+      (episode as unknown as Record<string, unknown>)?.extra_metadata ??
+      episode.metadata ??
+      {};
+    return asRecord(meta) ?? {};
+  })();
+
+  const selectedAudioTimeline = (() => {
+    if (!selectedScript) return null;
+    const raw = episodeMeta["audio_timeline"];
+    const tl = asRecord(raw);
+    if (!tl) return null;
+    const scriptIdRaw = tl["script_id"];
+    const scriptId =
+      typeof scriptIdRaw === "number"
+        ? scriptIdRaw
+        : Number.parseInt(String(scriptIdRaw || ""), 10);
+    return Number.isFinite(scriptId) && scriptId === selectedScript.id
+      ? tl
+      : null;
+  })();
+
+  const selectedEpisodeAudio = asRecord(
+    selectedAudioTimeline?.["episode_audio"],
+  );
+  const selectedEpisodeAudioUrl = getString(selectedEpisodeAudio?.["oss_url"]);
+  const selectedEpisodeAudioVersion = selectedEpisodeAudio?.["version"];
+  const selectedTimelineBeatCount = Array.isArray(
+    selectedAudioTimeline?.["beats"],
+  )
+    ? (selectedAudioTimeline?.["beats"] as unknown[]).length
+    : 0;
+
+  const selectedStoryboard = (() => {
+    if (!selectedScript) return null;
+    const meta = (selectedScript.extra_metadata ??
+      selectedScript.metadata ??
+      {}) as Record<string, unknown>;
+    return asRecord(meta["storyboard"]);
+  })();
+  const selectedStoryboardFrames = Array.isArray(selectedStoryboard?.["frames"])
+    ? (selectedStoryboard?.["frames"] as unknown[])
+    : [];
+  const selectedStoryboardMeta = asRecord(selectedStoryboard?.["meta"]);
+  const selectedStoryboardSource = getString(
+    selectedStoryboardMeta?.["generation_source"],
+  );
+
+  const taskStatusText = (status: Task["status"] | undefined) => {
+    switch (status) {
+      case "pending":
+        return "等待中";
+      case "processing":
+        return "进行中";
+      case "completed":
+        return "已完成";
+      case "failed":
+        return "失败";
+      default:
+        return "—";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -282,6 +543,209 @@ export default function EpisodeDetailPage() {
               >
                 生成剧本
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 对白音轨与时间轴 */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-xl font-semibold">对白音轨与时间轴</h2>
+              <p className="text-xs text-gray-500 mt-1">
+                声音优先定时长（scene → audio → beats → timeline → storyboard）
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push("/tasks")}
+                className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
+              >
+                任务页
+              </button>
+              {selectedScript && (
+                <button
+                  onClick={() => router.push(`/scripts/${selectedScript.id}`)}
+                  className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
+                >
+                  查看剧本
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                当前剧本
+              </label>
+              <select
+                value={selectedScriptId ?? ""}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setSelectedScriptId(Number.isFinite(next) ? next : null);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="" disabled>
+                  请选择剧本
+                </option>
+                {scripts.map((script) => (
+                  <option key={script.id} value={script.id}>
+                    {script.title} (id={script.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="text-xs text-gray-600">
+              <div className="mb-1">
+                时间轴（episode）:{" "}
+                {selectedAudioTimeline ? (
+                  <span>
+                    beats={selectedTimelineBeatCount} • version=
+                    {String(selectedEpisodeAudioVersion ?? "—")}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">未生成</span>
+                )}
+              </div>
+              <div className="mb-1">
+                Episode 音频:{" "}
+                {selectedEpisodeAudioUrl ? (
+                  <a
+                    href={selectedEpisodeAudioUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:underline break-all"
+                  >
+                    {selectedEpisodeAudioUrl}
+                  </a>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </div>
+              <div>
+                分镜占位（script）:{" "}
+                {selectedStoryboard ? (
+                  <span>
+                    frames={selectedStoryboardFrames.length} • source=
+                    {selectedStoryboardSource || "—"}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-3">
+            <button
+              onClick={handleGenerateSceneDialogueAudio}
+              disabled={sceneAudioBusy || !selectedScriptId}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              {sceneAudioBusy ? "生成中..." : "生成对白音轨"}
+            </button>
+            <button
+              onClick={handleGenerateAudioTimeline}
+              disabled={timelineBusy || !selectedScriptId}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {timelineBusy ? "生成中..." : "生成时间轴"}
+            </button>
+            <button
+              onClick={handleGenerateStoryboardFromAudioTimeline}
+              disabled={storyboardBusy || !selectedScriptId}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            >
+              {storyboardBusy ? "生成中..." : "生成分镜帧占位"}
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={overwriteSceneAudio}
+                onChange={(e) => setOverwriteSceneAudio(e.target.checked)}
+              />
+              覆盖对白音轨
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={overwriteTimeline}
+                onChange={(e) => setOverwriteTimeline(e.target.checked)}
+              />
+              覆盖时间轴
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={overwriteStoryboard}
+                onChange={(e) => setOverwriteStoryboard(e.target.checked)}
+              />
+              覆盖分镜
+            </label>
+            <label className="flex items-center gap-2">
+              pause阈值(s)
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={minPauseSeconds}
+                onChange={(e) => {
+                  const v = Number.parseFloat(e.target.value);
+                  setMinPauseSeconds(Number.isFinite(v) ? v : 1.5);
+                }}
+                className="w-20 px-2 py-1 border border-gray-300 rounded"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="border rounded p-3 bg-gray-50">
+              <div className="text-sm font-medium text-gray-900">
+                对白音轨任务
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                task_id: {sceneAudioTaskId ?? "—"} • 状态:{" "}
+                {taskStatusText(sceneAudioTask?.status)}
+              </div>
+              {sceneAudioTask?.progress_detail && (
+                <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">
+                  {sceneAudioTask.progress_detail}
+                </div>
+              )}
+            </div>
+            <div className="border rounded p-3 bg-gray-50">
+              <div className="text-sm font-medium text-gray-900">
+                时间轴任务
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                task_id: {timelineTaskId ?? "—"} • 状态:{" "}
+                {taskStatusText(timelineTask?.status)}
+              </div>
+              {timelineTask?.progress_detail && (
+                <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">
+                  {timelineTask.progress_detail}
+                </div>
+              )}
+            </div>
+            <div className="border rounded p-3 bg-gray-50">
+              <div className="text-sm font-medium text-gray-900">
+                分镜占位任务
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                task_id: {storyboardTaskId ?? "—"} • 状态:{" "}
+                {taskStatusText(storyboardTask?.status)}
+              </div>
+              {storyboardTask?.progress_detail && (
+                <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">
+                  {storyboardTask.progress_detail}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -433,8 +897,8 @@ export default function EpisodeDetailPage() {
                       (scene.period as string);
                     const status = scene.status as string | undefined;
                     const sceneNumber =
-                      (scene as { scene_number?: number | string }).scene_number ??
-                      idx + 1;
+                      (scene as { scene_number?: number | string })
+                        .scene_number ?? idx + 1;
                     return (
                       <div key={idx} className="border rounded p-3 bg-gray-50">
                         <div className="flex items-center justify-between">
