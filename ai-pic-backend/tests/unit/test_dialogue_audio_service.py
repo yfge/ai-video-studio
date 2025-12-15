@@ -5,6 +5,7 @@ from app.models.story_structure import Scene, SceneBeat
 from app.services.ai_service import ai_service
 from app.services.dialogue_audio_service import (
     _normalize_tts_emotion,
+    _sanitize_dialogue_content,
     _tts_to_wav_file,
     build_episode_timeline_beats,
     build_storyboard_frames_from_audio_timeline,
@@ -68,6 +69,22 @@ def test_normalize_tts_emotion_maps_common_labels() -> None:
     assert _normalize_tts_emotion("thoughtful") == "calm"
     assert _normalize_tts_emotion("专业、自信") == "fluent"
     assert _normalize_tts_emotion(None, action="压低声音") == "whisper"
+    assert _normalize_tts_emotion(None, action="低声自语") == "whisper"
+    assert _normalize_tts_emotion(None, action="叹了一口气") == "sad"
+
+
+def test_sanitize_dialogue_content_strips_inline_actions() -> None:
+    text, action = _sanitize_dialogue_content("（叹了一口气）站起来说：你好")
+    assert text == "你好"
+    assert action == "叹了一口气；站起来说"
+
+    text, action = _sanitize_dialogue_content("你好（叹气）")
+    assert text == "你好"
+    assert action == "叹气"
+
+    text, action = _sanitize_dialogue_content("我说：你好")
+    assert text == "我说：你好"
+    assert action is None
 
 
 @pytest.mark.asyncio

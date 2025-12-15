@@ -136,6 +136,7 @@
 - [x] 后端：为衍生角色提供同等的音色绑定与回退策略：agent 判断作用域（scene/episode/story）→ 创建/复用“派生角色”记录 → 绑定音色；保证幂等
 - [x] 后端：实现“按场景生成对白混音音轨”：多角色 TTS → 混音为 1 条 scene 音频 → 输出 segment 级 beats（含留白补足的静音/环境段）
 - [x] 后端：对白生成传入情绪参数（script.dialogues.emotion/action → provider emotion），并落库到 `scene_beats.extra_metadata.tts_emotion`
+- [x] 后端：对白文本中的（动作）不进入朗读；剥离为 action 并用于推导 `tts_emotion`（避免“叹了一口气…说…”被读出来）
 - [x] 后端：实现“按 Episode 拼接场景音轨”：拼接生成 episode 级音频，并合并/偏移 beats 形成 episode 时间轴（episode 级落 Timeline Spec；scene 级落 `scene_beats`）
 - [x] 后端：基于 beats/时间轴生成分镜帧/镜头占位（或触发分镜 agent），将关键点映射到 frames/shots，支持后续视频/剪辑链路复用
 - [x] 后端/运行环境：backend/celery 镜像安装 `ffmpeg`（音频拼接依赖），避免运行时 `No such file or directory: 'ffmpeg'`
