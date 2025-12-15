@@ -6,14 +6,25 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # System deps for mysqlclient/pymysql and builds + CA 证书
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        build-essential \
-        default-libmysqlclient-dev \
-        pkg-config \
-    && update-ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources; \
+    apt-get update; \
+    for i in 1 2 3 4 5; do \
+        if apt-get install -y --no-install-recommends \
+            ca-certificates \
+            build-essential \
+            default-libmysqlclient-dev \
+            ffmpeg \
+            pkg-config; then \
+            break; \
+        fi; \
+        echo "apt-get install failed (attempt ${i}); retrying..." >&2; \
+        sleep 2; \
+        apt-get update; \
+    done; \
+    command -v ffmpeg; \
+    update-ca-certificates; \
+    rm -rf /var/lib/apt/lists/*
 
 COPY ai-pic-backend/requirements.txt ai-pic-backend/requirements-test.txt ./
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-test.txt
