@@ -196,7 +196,7 @@ export default function EpisodeDetailPage() {
 
   const fetchTask = useCallback(async (taskId: number) => {
     try {
-      const res = await taskAPI.getTask(taskId);
+      const res = await taskAPI.getTask(String(taskId));
       if (res.success && res.data) return res.data;
       return null;
     } catch (error) {

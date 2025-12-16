@@ -46,6 +46,7 @@
 - [x] 后端：虚拟 IP 文案注入提示词，聚合 `description` / `background_story` / `biography` / `style_prompt`，确保生成提示词携带完整角色设定
 - [ ] 后端：分辨率与规格建模，按模型白名单收敛 `size` / `width` / `height` / `aspect_ratio`，并在统一模型注册表与日志中落盘；当前虚拟 IP 图生图变体接口已透传 `size` 到统一的 `image_to_image` 调用
 - [x] 前端：虚拟 IP 图像页支持基于已有图像的变体生成（`/api/v1/virtual-ips/{id}/images/{image_id}/variants`），含模型选择与生成数量，变体会保存为新的虚拟 IP 图像资产
+- [x] 前端：虚拟 IP 更新请求类型补齐 `voice_config`，修复 `next build` 类型检查失败
 - [ ] 前端：在文生图/图生图表单中按模型动态限制分辨率选项，完善错误与限制提示（目前图生图弹窗复用文生图已选的 `size`）
 - [ ] 验证：为不同模型+分辨率补齐端到端用例（含 DALL·E 3 官方三种长宽比、DALL·E 2 三种尺寸、Seedream 2K），在 README / TESTING_GUIDE 记录 Ark 凭证、调试与兼容矩阵
 
@@ -141,6 +142,7 @@
 - [x] 后端：基于 beats/时间轴生成分镜帧/镜头占位（或触发分镜 agent），将关键点映射到 frames/shots，支持后续视频/剪辑链路复用
 - [x] 后端/运行环境：backend/celery 镜像安装 `ffmpeg`（音频拼接依赖），避免运行时 `No such file or directory: 'ffmpeg'`
 - [x] 前端：在 Episode 详情/剧本页新增“生成对白音轨 / 生成时间轴 / 生成分镜帧”入口，展示进度、失败原因、版本与重试/复用
+- [x] 前端：修复 Episode 详情页任务轮询参数类型（`taskAPI.getTask(String(taskId))`），确保 `next build` 类型检查通过
 - [x] 前端：在 Episode 详情页展示“场景对白音轨（scene）”列表与播放/下载入口（`scene.metadata.dialogue_audio.oss_url`）
 - [x] 前端：Episode 详情页默认展开场景音轨列表；存在 episode 级音频时直接提供播放器（避免“生成成功但不知道在哪里听”）
 - [x] 前端：分镜管理页接入 episode `audio_timeline`（携带 scriptId 跳转、展示 beats/version 与 episode 音频播放器；帧级展示时间窗 start/end_ms，提供“从时间轴同步分镜占位”入口）
