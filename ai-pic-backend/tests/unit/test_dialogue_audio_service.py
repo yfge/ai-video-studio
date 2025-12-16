@@ -172,7 +172,7 @@ def test_build_episode_timeline_beats_offsets_scene_windows() -> None:
     assert [b["end_ms"] for b in beats] == [1000, 1500, 3500]
 
 
-def test_build_storyboard_frames_from_audio_timeline_filters_pauses() -> None:
+def test_build_storyboard_frames_from_audio_timeline_merges_short_pauses() -> None:
     audio_timeline = {
         "beats": [
             {
@@ -223,4 +223,4 @@ def test_build_storyboard_frames_from_audio_timeline_filters_pauses() -> None:
         min_pause_duration_ms=1500,
     )
     assert [f["start_ms"] for f in frames] == [0, 2000, 3500]
-    assert [f["end_ms"] for f in frames] == [1000, 3500, 6000]
+    assert [f["end_ms"] for f in frames] == [2000, 3500, 6000]

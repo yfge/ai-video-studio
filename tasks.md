@@ -140,6 +140,7 @@
 - [x] 后端：对白文本中的（动作）不进入朗读；剥离为 action 并用于推导 `tts_emotion`（避免“叹了一口气…说…”被读出来）
 - [x] 后端：实现“按 Episode 拼接场景音轨”：拼接生成 episode 级音频，并合并/偏移 beats 形成 episode 时间轴（episode 级落 Timeline Spec；scene 级落 `scene_beats`）
 - [x] 后端：基于 beats/时间轴生成分镜帧/镜头占位（或触发分镜 agent），将关键点映射到 frames/shots，支持后续视频/剪辑链路复用
+- [x] 后端：分镜占位生成合并短 pause beats（停顿/留白），保证 scene 内分镜总时长与音轨一致（声音优先）
 - [x] 后端/运行环境：backend/celery 镜像安装 `ffmpeg`（音频拼接依赖），避免运行时 `No such file or directory: 'ffmpeg'`
 - [x] 前端：在 Episode 详情/剧本页新增“生成对白音轨 / 生成时间轴 / 生成分镜帧”入口，展示进度、失败原因、版本与重试/复用
 - [x] 前端：修复 Episode 详情页任务轮询参数类型（`taskAPI.getTask(String(taskId))`），确保 `next build` 类型检查通过

@@ -1089,10 +1089,6 @@ def build_storyboard_frames_from_audio_timeline(
         if end_ms_int < start_ms_int:
             continue
 
-        duration_ms = end_ms_int - start_ms_int
-        if beat_type == "pause" and duration_ms < min_pause_duration_ms:
-            continue
-
         scene_id = beat.get("scene_id")
         scene_id_int = (
             int(scene_id)
@@ -1108,6 +1104,58 @@ def build_storyboard_frames_from_audio_timeline(
         if scene_id_int is not None and scene_id_int not in scene_index_map:
             scene_index_map[scene_id_int] = next_scene_index
             next_scene_index += 1
+
+        duration_ms = end_ms_int - start_ms_int
+        if beat_type == "pause" and duration_ms < min_pause_duration_ms:
+            # Keep the timeline continuous by merging short pauses into the previous frame.
+            if frames:
+                last = frames[-1]
+                last_end = last.get("end_ms")
+                last_scene_number = last.get("scene_number")
+                if (
+                    isinstance(last_end, int)
+                    and last_end == start_ms_int
+                    and (
+                        scene_number_int is None
+                        or last_scene_number is None
+                        or int(last_scene_number) == scene_number_int
+                    )
+                ):
+                    last["end_ms"] = end_ms_int
+                    last_start = last.get("start_ms")
+                    if isinstance(last_start, int):
+                        last["duration_seconds"] = round(
+                            (end_ms_int - last_start) / 1000.0, 3
+                        )
+                    else:
+                        last["duration_seconds"] = round(
+                            float(last.get("duration_seconds") or 0.0)
+                            + duration_ms / 1000.0,
+                            3,
+                        )
+                    continue
+
+            # No prior frame to merge; emit a short pause frame to preserve timing.
+            frames.append(
+                {
+                    "frame_id": str(uuid4()),
+                    "frame_number": len(frames) + 1,
+                    "scene_number": scene_number_int,
+                    "scene_index": (
+                        scene_index_map.get(scene_id_int)
+                        if scene_id_int is not None
+                        else None
+                    ),
+                    "description": "（停顿）",
+                    "duration_seconds": round(duration_ms / 1000.0, 3),
+                    "generation_source": "audio_timeline",
+                    "generation_method": "audio_timeline",
+                    "status": "draft",
+                    "start_ms": start_ms_int,
+                    "end_ms": end_ms_int,
+                }
+            )
+            continue
 
         speaker = (
             (beat.get("speaker_name") or "旁白") if beat_type == "dialogue" else None
