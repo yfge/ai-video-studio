@@ -1,40 +1,41 @@
-import httpx
 import asyncio
 import base64
 import json
 import os
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
+import httpx
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import (
-    StoryOutlineModel,
     EpisodePlanModel,
     StoryboardModel,
     StoryboardPlanModel,
     StoryboardPlanScene,
-)
-from app.services.storyboard_reasoner import (
-    StoryboardReActReasoner,
-    LANGGRAPH_AVAILABLE,
+    StoryOutlineModel,
 )
 from app.services.episode_agent import EpisodeGenerationCallbacks, EpisodeLangGraphAgent
 from app.services.script_agent import ScriptLangGraphAgent
 from app.services.story_agent import StoryLangGraphAgent
+from app.services.storyboard_reasoner import (
+    LANGGRAPH_AVAILABLE,
+    StoryboardReActReasoner,
+)
 from app.utils.json_utils import extract_json_block
 from app.utils.model_utils import parse_model_and_provider
 
 # 尝试导入AI服务管理器，如果失败则使用None
 try:
     from .ai_service_manager import (
-        AIServiceManager,
         AIServiceConfig,
-        ProviderWeight,
+        AIServiceManager,
         ProviderPriority,
+        ProviderWeight,
     )
-    from .providers.base import ProviderConfig, AIModelType
+    from .providers.base import AIModelType, ProviderConfig
 
     AI_MANAGER_AVAILABLE = True
 except ImportError as e:
@@ -1126,15 +1127,89 @@ class AIService:
                     "properties": {
                         "dialogues": {
                             "type": "array",
-                            "items": {"type": "object"},
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "scene_number": {
+                                        "anyOf": [
+                                            {"type": "integer"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                    "character": {
+                                        "anyOf": [
+                                            {"type": "string"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                    "content": {"type": "string"},
+                                    "emotion": {
+                                        "anyOf": [
+                                            {"type": "string"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                    "action": {
+                                        "anyOf": [
+                                            {"type": "string"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                },
+                            },
                         },
                         "stage_directions": {
                             "type": "array",
-                            "items": {"type": "object"},
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "scene_number": {
+                                        "anyOf": [
+                                            {"type": "integer"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                    "timing": {
+                                        "anyOf": [
+                                            {"type": "string"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                    "content": {"type": "string"},
+                                    "type": {
+                                        "anyOf": [
+                                            {"type": "string"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                },
+                            },
                         },
                         "scenes": {
                             "type": "array",
-                            "items": {"type": "object"},
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "scene_number": {
+                                        "anyOf": [
+                                            {"type": "integer"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                    "slug_line": {
+                                        "anyOf": [
+                                            {"type": "string"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                    "summary": {
+                                        "anyOf": [
+                                            {"type": "string"},
+                                            {"type": "null"},
+                                        ]
+                                    },
+                                },
+                            },
                         },
                     },
                 },
@@ -1614,7 +1689,7 @@ class AIService:
                         "description": "积极向上的年轻人"
                     },
                     {
-                        "name": "主人公B", 
+                        "name": "主人公B",
                         "role": "supporting",
                         "description": "智慧可靠的朋友"
                     }
@@ -1884,10 +1959,11 @@ class AIService:
         self, image_data: str, ip_name: str, category: str
     ) -> Optional[str]:
         """处理图像数据（URL或base64）并保存到本地"""
+        import base64
         import os
         import uuid
+
         import aiofiles
-        import base64
 
         try:
             # 生成唯一文件名

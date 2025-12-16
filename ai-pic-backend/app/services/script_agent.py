@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.core.logging import get_logger
-from app.schemas.generation import ScriptModel
-from app.prompts.templates import PromptTemplate
 from app.prompts.manager import prompt_manager
+from app.prompts.templates import PromptTemplate
+from app.schemas.generation import ScriptModel
 from app.utils.json_utils import extract_json_block
 
 try:
-    from langgraph.graph import StateGraph, END
+    from langgraph.graph import END, StateGraph
 
     LANGGRAPH_AVAILABLE = True
 except ImportError:  # pragma: no cover - optional dependency
@@ -122,11 +122,63 @@ class ScriptLangGraphAgent:
                         "properties": {
                             "dialogues": {
                                 "type": "array",
-                                "items": {"type": "object"},
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "scene_number": {
+                                            "anyOf": [
+                                                {"type": "integer"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "character": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "content": {"type": "string"},
+                                        "emotion": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "action": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                    },
+                                },
                             },
                             "stage_directions": {
                                 "type": "array",
-                                "items": {"type": "object"},
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "scene_number": {
+                                            "anyOf": [
+                                                {"type": "integer"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "timing": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "content": {"type": "string"},
+                                        "type": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                    },
+                                },
                             },
                         },
                     },

@@ -1,17 +1,16 @@
 """测试 OpenAI provider 的 JSON schema additionalProperties 修复"""
 
-import pytest
-from app.services.providers.openai_provider import _add_additional_properties_false
+from app.services.providers.openai_provider import (
+    _add_additional_properties_false,
+    _is_openai_strict_schema,
+)
 
 
 def test_add_additional_properties_to_simple_object():
     """测试为简单对象添加 additionalProperties: false"""
     schema = {
         "type": "object",
-        "properties": {
-            "name": {"type": "string"},
-            "age": {"type": "integer"}
-        }
+        "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
     }
 
     result = _add_additional_properties_false(schema)
@@ -32,13 +31,11 @@ def test_add_additional_properties_to_nested_objects():
                     "name": {"type": "string"},
                     "address": {
                         "type": "object",
-                        "properties": {
-                            "city": {"type": "string"}
-                        }
-                    }
-                }
+                        "properties": {"city": {"type": "string"}},
+                    },
+                },
             }
-        }
+        },
     }
 
     result = _add_additional_properties_false(schema)
@@ -62,14 +59,9 @@ def test_add_additional_properties_to_array_items():
         "properties": {
             "items": {
                 "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string"}
-                    }
-                }
+                "items": {"type": "object", "properties": {"id": {"type": "string"}}},
             }
-        }
+        },
     }
 
     result = _add_additional_properties_false(schema)
@@ -86,17 +78,13 @@ def test_add_additional_properties_with_defs():
     """测试处理 $defs (definitions) 中的对象"""
     schema = {
         "type": "object",
-        "properties": {
-            "data": {"$ref": "#/$defs/DataObject"}
-        },
+        "properties": {"data": {"$ref": "#/$defs/DataObject"}},
         "$defs": {
             "DataObject": {
                 "type": "object",
-                "properties": {
-                    "value": {"type": "string"}
-                }
+                "properties": {"value": {"type": "string"}},
             }
-        }
+        },
     }
 
     result = _add_additional_properties_false(schema)
@@ -117,15 +105,10 @@ def test_add_additional_properties_with_anyof():
             "value": {
                 "anyOf": [
                     {"type": "string"},
-                    {
-                        "type": "object",
-                        "properties": {
-                            "complex": {"type": "boolean"}
-                        }
-                    }
+                    {"type": "object", "properties": {"complex": {"type": "boolean"}}},
                 ]
             }
-        }
+        },
     }
 
     result = _add_additional_properties_false(schema)
@@ -136,7 +119,9 @@ def test_add_additional_properties_with_anyof():
     # anyOf 中的对象
     any_of_items = result["properties"]["value"]["anyOf"]
     assert any_of_items[0] == {"type": "string"}  # 非对象类型不变
-    assert any_of_items[1]["additionalProperties"] is False  # 对象类型添加了 additionalProperties
+    assert (
+        any_of_items[1]["additionalProperties"] is False
+    )  # 对象类型添加了 additionalProperties
 
 
 def test_preserves_existing_additional_properties():
@@ -144,9 +129,7 @@ def test_preserves_existing_additional_properties():
     schema = {
         "type": "object",
         "additionalProperties": True,  # 已存在，但会被覆盖为 False
-        "properties": {
-            "name": {"type": "string"}
-        }
+        "properties": {"name": {"type": "string"}},
     }
 
     result = _add_additional_properties_false(schema)
@@ -163,3 +146,31 @@ def test_does_not_modify_non_objects():
 
     assert result == {"type": "string"}
     assert "additionalProperties" not in result
+
+
+def test_openai_strict_schema_rejects_generic_object_items():
+    schema = {
+        "type": "object",
+        "properties": {
+            "dialogues": {"type": "array", "items": {"type": "object"}},
+        },
+    }
+    fixed = _add_additional_properties_false(schema)
+    assert _is_openai_strict_schema(fixed) is False
+
+
+def test_openai_strict_schema_accepts_typed_object_items():
+    schema = {
+        "type": "object",
+        "properties": {
+            "dialogues": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"content": {"type": "string"}},
+                },
+            },
+        },
+    }
+    fixed = _add_additional_properties_false(schema)
+    assert _is_openai_strict_schema(fixed) is True

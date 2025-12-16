@@ -4,15 +4,22 @@ OpenAI服务提供商
 支持GPT系列文本生成和DALL-E系列图像生成
 """
 
-import httpx
 import json
-from typing import List, Optional
-from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
+from typing import Any, Dict, List, Optional
+
+import httpx
 from app.core.logging import get_logger
-from typing import Dict, Any
+
+from .base import (
+    AIModelType,
+    AIResponse,
+    AITaskType,
+    BaseProvider,
+    ModelInfo,
+    ProviderConfig,
+)
 
 logger = get_logger(__name__)
-
 
 
 def _reload_openai_params(model_id: str, temperature: float) -> Dict[str, Any]:
@@ -100,7 +107,9 @@ def _add_additional_properties_false(schema: Dict[str, Any]) -> Dict[str, Any]:
     # 递归处理 anyOf, oneOf, allOf
     for key in ["anyOf", "oneOf", "allOf"]:
         if key in result:
-            result[key] = [_add_additional_properties_false(item) for item in result[key]]
+            result[key] = [
+                _add_additional_properties_false(item) for item in result[key]
+            ]
 
     # 递归处理 $defs (definitions)
     if "$defs" in result:
@@ -112,14 +121,78 @@ def _add_additional_properties_false(schema: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
+def _is_openai_strict_schema(schema: Dict[str, Any]) -> bool:
+    """
+    Best-effort validation for OpenAI structured outputs strict json_schema.
+
+    Rules enforced here align with OpenAI's strict requirements:
+    - Every object must declare additionalProperties: false
+    - If an object declares properties, it must declare required, and required must
+      include exactly the same keys as properties.
+
+    We treat object schemas without explicit properties as not strict-compatible,
+    because strict mode would otherwise force empty objects.
+    """
+
+    def _walk(node: Any) -> bool:
+        if not isinstance(node, dict):
+            return True
+
+        node_type = node.get("type")
+        if node_type == "object":
+            if node.get("additionalProperties") is not False:
+                return False
+            props = node.get("properties")
+            if not isinstance(props, dict):
+                return False
+            required = node.get("required")
+            if not isinstance(required, list):
+                return False
+            prop_keys = [k for k in props.keys() if isinstance(k, str)]
+            if len(prop_keys) != len(props):
+                return False
+            if set(required) != set(prop_keys):
+                return False
+
+        if "properties" in node and isinstance(node.get("properties"), dict):
+            for value in node["properties"].values():
+                if not _walk(value):
+                    return False
+
+        if "items" in node:
+            if not _walk(node["items"]):
+                return False
+
+        for key in ["anyOf", "oneOf", "allOf"]:
+            if key in node:
+                items = node.get(key)
+                if not isinstance(items, list):
+                    return False
+                for item in items:
+                    if not _walk(item):
+                        return False
+
+        if "$defs" in node:
+            defs = node.get("$defs")
+            if not isinstance(defs, dict):
+                return False
+            for value in defs.values():
+                if not _walk(value):
+                    return False
+
+        return True
+
+    return _walk(schema)
+
+
 class OpenAIProvider(BaseProvider):
     """OpenAI服务提供商"""
-    
+
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
         # 统一规范 base_url，避免因为末尾多 / 导致 // 路径
         self.base_url = (config.base_url or "https://api.openai.com/v1").rstrip("/")
-    
+
     @property
     def supported_model_types(self) -> List[AIModelType]:
         return [
@@ -128,7 +201,7 @@ class OpenAIProvider(BaseProvider):
             AIModelType.IMAGE_UNDERSTANDING,
             AIModelType.IMAGE_TO_IMAGE,
         ]
-    
+
     @property
     def available_models(self) -> List[ModelInfo]:
         return [
@@ -140,7 +213,11 @@ class OpenAIProvider(BaseProvider):
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=128000,
                 supported_formats=["text", "image"],
-                capabilities=["text_generation", "image_understanding", "code_generation"]
+                capabilities=[
+                    "text_generation",
+                    "image_understanding",
+                    "code_generation",
+                ],
             ),
             ModelInfo(
                 model_id="gpt-4-turbo",
@@ -148,7 +225,7 @@ class OpenAIProvider(BaseProvider):
                 description="GPT-4的增强版本，更快更便宜",
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=128000,
-                capabilities=["text_generation", "code_generation", "analysis"]
+                capabilities=["text_generation", "code_generation", "analysis"],
             ),
             ModelInfo(
                 model_id="gpt-3.5-turbo",
@@ -156,7 +233,7 @@ class OpenAIProvider(BaseProvider):
                 description="快速且经济的文本生成模型",
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=16385,
-                capabilities=["text_generation", "conversation", "summarization"]
+                capabilities=["text_generation", "conversation", "summarization"],
             ),
             # DALL-E模型
             ModelInfo(
@@ -165,7 +242,7 @@ class OpenAIProvider(BaseProvider):
                 description="最新的图像生成模型，高质量输出",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpeg"],
-                capabilities=["text_to_image", "high_resolution", "detailed"]
+                capabilities=["text_to_image", "high_resolution", "detailed"],
             ),
             ModelInfo(
                 model_id="dall-e-2",
@@ -173,8 +250,13 @@ class OpenAIProvider(BaseProvider):
                 description="经典的图像生成模型，快速生成",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpeg"],
-                capabilities=["text_to_image", "variations", "inpainting", "image_to_image"]
-            )
+                capabilities=[
+                    "text_to_image",
+                    "variations",
+                    "inpainting",
+                    "image_to_image",
+                ],
+            ),
         ]
 
     def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
@@ -241,15 +323,15 @@ class OpenAIProvider(BaseProvider):
         except Exception:
             # 出错时退回到静态列表
             return fallback
-    
+
     async def _initialize_client(self):
         """初始化HTTP客户端"""
         self._client = httpx.AsyncClient(
             timeout=self.config.timeout,
             headers={
                 "Authorization": f"Bearer {self.config.api_key}",
-                "Content-Type": "application/json"
-            }
+                "Content-Type": "application/json",
+            },
         )
 
     async def _stream_chat_completion(self, payload: Dict[str, Any], model: str):
@@ -293,31 +375,27 @@ class OpenAIProvider(BaseProvider):
 
         full_content = "".join(content_parts).strip()
         return full_content, usage, finish_reason
-    
+
     async def generate_text(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         model: str = "gpt-4o",
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         system_prompt: str = None,
         json_schema: dict | None = None,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """使用GPT生成文本"""
         try:
             client = await self.get_client()
-            
+
             messages = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
-            
-            payload = {
-                "model": model,
-                "messages": messages,
-                **kwargs
-            }
+
+            payload = {"model": model, "messages": messages, **kwargs}
 
             # 允许外部控制是否使用流式；默认开启
             stream = bool(payload.pop("stream", True))
@@ -329,16 +407,21 @@ class OpenAIProvider(BaseProvider):
                     # 获取原始 schema 并添加 additionalProperties: false
                     raw_schema = json_schema.get("schema", json_schema)
                     fixed_schema = _add_additional_properties_false(raw_schema)
-
-                    payload["response_format"] = {
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": json_schema.get("name", "response"),
-                            "schema": fixed_schema,
-                            # 严格模式放在 json_schema 内，避免 OpenAI API 报 Unknown parameter: response_format.strict
-                            "strict": True,
-                        },
-                    }
+                    if _is_openai_strict_schema(fixed_schema):
+                        payload["response_format"] = {
+                            "type": "json_schema",
+                            "json_schema": {
+                                "name": json_schema.get("name", "response"),
+                                "schema": fixed_schema,
+                                # 严格模式放在 json_schema 内，避免 OpenAI API 报 Unknown parameter: response_format.strict
+                                "strict": True,
+                            },
+                        }
+                    elif _supports_json_object(model):
+                        # Schema is not strict-compatible; fall back to json_object to avoid 400.
+                        payload["response_format"] = {"type": "json_object"}
+                    else:
+                        payload.pop("response_format", None)
                 elif _supports_json_object(model):
                     payload["response_format"] = {"type": "json_object"}
                 else:
@@ -355,9 +438,11 @@ class OpenAIProvider(BaseProvider):
             # 流式优先，失败回落到普通请求
             if stream:
                 try:
-                    streamed_content, usage, finish_reason = await self._stream_chat_completion(
-                        {**payload, "stream": True},
-                        model,
+                    streamed_content, usage, finish_reason = (
+                        await self._stream_chat_completion(
+                            {**payload, "stream": True},
+                            model,
+                        )
                     )
                     if streamed_content:
                         return AIResponse(
@@ -373,19 +458,24 @@ class OpenAIProvider(BaseProvider):
                                 "stream": True,
                             },
                         )
-                    logger.warning("OpenAI stream returned empty content; falling back to non-stream.")
+                    logger.warning(
+                        "OpenAI stream returned empty content; falling back to non-stream."
+                    )
                 except Exception as stream_err:  # noqa: BLE001
-                    logger.warning("OpenAI stream failed, falling back to non-stream: %s", stream_err, exc_info=True)
+                    logger.warning(
+                        "OpenAI stream failed, falling back to non-stream: %s",
+                        stream_err,
+                        exc_info=True,
+                    )
 
             response = await client.post(
-                f"{self.base_url}/chat/completions",
-                json=payload
+                f"{self.base_url}/chat/completions", json=payload
             )
             response.raise_for_status()
-            
+
             data = response.json()
             content = data["choices"][0]["message"]["content"]
-            
+
             return AIResponse(
                 success=True,
                 data=content,
@@ -397,10 +487,12 @@ class OpenAIProvider(BaseProvider):
                 metadata={
                     "finish_reason": data["choices"][0].get("finish_reason"),
                     "prompt_tokens": data.get("usage", {}).get("prompt_tokens", 0),
-                    "completion_tokens": data.get("usage", {}).get("completion_tokens", 0)
-                }
+                    "completion_tokens": data.get("usage", {}).get(
+                        "completion_tokens", 0
+                    ),
+                },
             )
-            
+
         except httpx.HTTPStatusError as e:
             detail = None
             try:
@@ -410,14 +502,19 @@ class OpenAIProvider(BaseProvider):
             msg = self.format_error(e)
             if detail:
                 msg = f"{msg}; body={detail}"
-            logger.error("OpenAI generate_text HTTP %s: %s", e.response.status_code, detail, exc_info=True)
+            logger.error(
+                "OpenAI generate_text HTTP %s: %s",
+                e.response.status_code,
+                detail,
+                exc_info=True,
+            )
             return AIResponse(
                 success=False,
                 error=msg,
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.STORY_GENERATION,
-                model_type=AIModelType.TEXT_GENERATION
+                model_type=AIModelType.TEXT_GENERATION,
             )
         except Exception as e:
             logger.error(f"OpenAI generate_text error: {e}", exc_info=True)
@@ -427,52 +524,45 @@ class OpenAIProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.STORY_GENERATION,
-                model_type=AIModelType.TEXT_GENERATION
+                model_type=AIModelType.TEXT_GENERATION,
             )
-    
+
     async def generate_image(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         model: str = "dall-e-3",
         size: str = "1024x1024",
         quality: str = "standard",
         style: str = "vivid",
         n: int = 1,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """使用DALL-E生成图像"""
         try:
             client = await self.get_client()
-            
+
             # DALL-E 3参数
-            request_data = {
-                "model": model,
-                "prompt": prompt,
-                "n": n,
-                "size": size
-            }
-            
+            request_data = {"model": model, "prompt": prompt, "n": n, "size": size}
+
             # DALL-E 3特有参数
             if model == "dall-e-3":
-                request_data.update({
-                    "quality": quality,
-                    "style": style
-                })
-            
+                request_data.update({"quality": quality, "style": style})
+
             response = await client.post(
-                f"{self.base_url}/images/generations",
-                json=request_data
+                f"{self.base_url}/images/generations", json=request_data
             )
             response.raise_for_status()
-            
+
             data = response.json()
             images = data["data"]
-            
+
             return AIResponse(
                 success=True,
                 data={
                     "images": [img["url"] for img in images],
-                    "revised_prompt": images[0].get("revised_prompt") if model == "dall-e-3" else None
+                    "revised_prompt": (
+                        images[0].get("revised_prompt") if model == "dall-e-3" else None
+                    ),
                 },
                 provider=self.name,
                 model=model,
@@ -482,10 +572,10 @@ class OpenAIProvider(BaseProvider):
                     "size": size,
                     "quality": quality,
                     "style": style,
-                    "count": len(images)
-                }
+                    "count": len(images),
+                },
             )
-            
+
         except httpx.HTTPStatusError as e:
             detail = None
             try:
@@ -495,14 +585,19 @@ class OpenAIProvider(BaseProvider):
             msg = self.format_error(e)
             if detail:
                 msg = f"{msg}; body={detail}"
-            logger.error("OpenAI generate_image HTTP %s: %s", e.response.status_code, detail, exc_info=True)
+            logger.error(
+                "OpenAI generate_image HTTP %s: %s",
+                e.response.status_code,
+                detail,
+                exc_info=True,
+            )
             return AIResponse(
                 success=False,
                 error=msg,
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.TEXT_TO_IMAGE
+                model_type=AIModelType.TEXT_TO_IMAGE,
             )
         except Exception as e:
             return AIResponse(
@@ -511,34 +606,31 @@ class OpenAIProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.TEXT_TO_IMAGE
+                model_type=AIModelType.TEXT_TO_IMAGE,
             )
-    
+
     async def understand_image(
-        self, 
-        image_url: str, 
+        self,
+        image_url: str,
         question: str = "请描述这张图片",
         model: str = "gpt-4o",
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """使用GPT-4V理解图像"""
         try:
             client = await self.get_client()
-            
+
             messages = [
                 {
                     "role": "user",
                     "content": [
                         {"type": "text", "text": question},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": image_url}
-                        }
-                    ]
+                        {"type": "image_url", "image_url": {"url": image_url}},
+                    ],
                 }
             ]
-            
+
             response = await client.post(
                 f"{self.base_url}/chat/completions",
                 json={
@@ -546,13 +638,13 @@ class OpenAIProvider(BaseProvider):
                     "messages": messages,
                     **({} if max_tokens is None else {"max_tokens": max_tokens}),
                     **kwargs,
-                }
+                },
             )
             response.raise_for_status()
-            
+
             data = response.json()
             content = data["choices"][0]["message"]["content"]
-            
+
             return AIResponse(
                 success=True,
                 data=content,
@@ -561,12 +653,9 @@ class OpenAIProvider(BaseProvider):
                 task_type=AITaskType.CHARACTER_CREATION,
                 model_type=AIModelType.IMAGE_UNDERSTANDING,
                 usage=data.get("usage", {}),
-                metadata={
-                    "image_url": image_url,
-                    "question": question
-                }
+                metadata={"image_url": image_url, "question": question},
             )
-            
+
         except Exception as e:
             return AIResponse(
                 success=False,
@@ -574,17 +663,17 @@ class OpenAIProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.CHARACTER_CREATION,
-                model_type=AIModelType.IMAGE_UNDERSTANDING
+                model_type=AIModelType.IMAGE_UNDERSTANDING,
             )
-    
+
     async def image_to_image(
-        self, 
-        image_url: str, 
+        self,
+        image_url: str,
         prompt: str = None,
         model: str = "dall-e-2",
         size: str = "1024x1024",
         n: int = 1,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """DALL-E图像变换（仅DALL-E 2支持）"""
         if model != "dall-e-2":
@@ -594,12 +683,12 @@ class OpenAIProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.SCENE_GENERATION,
-                model_type=AIModelType.IMAGE_TO_IMAGE
-        )
-        
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+            )
+
         try:
             client = await self.get_client()
-            
+
             # 支持 data:image;base64 或 URL
             image_bytes = None
             content_type = "image/png"
@@ -608,47 +697,44 @@ class OpenAIProvider(BaseProvider):
                 import base64
 
                 header, b64_data = base64_images[0].split(",", 1)
-                content_type = header.split(";")[0].split(":")[1] if ":" in header else "image/png"
+                content_type = (
+                    header.split(";")[0].split(":")[1] if ":" in header else "image/png"
+                )
                 image_bytes = base64.b64decode(b64_data)
             else:
                 download_url = image_url
-                if isinstance(download_url, str) and download_url.lower().startswith("https://"):
-                    download_url = "http://" + download_url[len("https://"):]
+                if isinstance(download_url, str) and download_url.lower().startswith(
+                    "https://"
+                ):
+                    download_url = "http://" + download_url[len("https://") :]
                 image_response = await client.get(download_url)
                 image_response.raise_for_status()
                 content_type = image_response.headers.get("Content-Type", "image/png")
                 image_bytes = image_response.content
-            
-            files = {
-                "image": ("image.png", image_bytes, content_type or "image/png")
-            }
-            
-            data = {
-                "n": n,
-                "size": size
-            }
-            
+
+            files = {"image": ("image.png", image_bytes, content_type or "image/png")}
+
+            data = {"n": n, "size": size}
+
             if prompt:
                 data["prompt"] = prompt
-            
+
             # 创建新的客户端用于multipart请求
             form_client = httpx.AsyncClient(
                 timeout=self.config.timeout,
-                headers={"Authorization": f"Bearer {self.config.api_key}"}
+                headers={"Authorization": f"Bearer {self.config.api_key}"},
             )
-            
+
             response = await form_client.post(
-                f"{self.base_url}/images/variations",
-                files=files,
-                data=data
+                f"{self.base_url}/images/variations", files=files, data=data
             )
             response.raise_for_status()
-            
+
             result = response.json()
             images = result["data"]
-            
+
             await form_client.aclose()
-            
+
             return AIResponse(
                 success=True,
                 data={"images": [img["url"] for img in images]},
@@ -659,10 +745,10 @@ class OpenAIProvider(BaseProvider):
                 metadata={
                     "original_image": image_url,
                     "size": size,
-                    "count": len(images)
-                }
+                    "count": len(images),
+                },
             )
-            
+
         except Exception as e:
             return AIResponse(
                 success=False,
@@ -670,5 +756,5 @@ class OpenAIProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.SCENE_GENERATION,
-                model_type=AIModelType.IMAGE_TO_IMAGE
+                model_type=AIModelType.IMAGE_TO_IMAGE,
             )

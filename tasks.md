@@ -69,6 +69,7 @@
 - [x] 后端：在 Story/Episode/Script 的 `extra_metadata.agent_run` 中写入 LangGraph/AI 管理器的运行信息，覆盖同步与 `/generate-async` 路径
 - [ ] 后端：为虚拟 IP 图像、环境图像、分镜图像等长耗时图像生成操作提供标准 Task 创建 + Celery 异步处理路径（与现有 `/api/v1/tasks` 结构对齐）
 - [x] 后端：新增 `app/core/celery_app.py` 与 `app/services/task_worker.py`，并在 `docker/docker-compose.prod.yml` 中增加 `ai-video-celery-worker` 服务（与 backend 共用镜像与配置）
+- [x] 后端：修复 OpenAI `response_format=json_schema` 在 `script_dialogues` 场景的 schema 校验 400（完善 item schema + 非 strict schema 自动回退 `json_object`）
 - [ ] 前端：在任务管理页 `/tasks` 中支持按 `task_type` 过滤，并在任务详情中展示 `parameters.agent_run` 的关键信息（provider/model/usage/reasoning）
 - [ ] 验证：为 Story/Episode/Script/图像任务增加集成测试（任务创建 → Celery handler 执行 → Task 状态与目标实体写入校验），并在 `TESTING_GUIDE.md` 中记录 Celery 本地运行与调试流程
 
