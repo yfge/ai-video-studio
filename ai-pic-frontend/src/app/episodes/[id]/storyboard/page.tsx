@@ -688,6 +688,11 @@ export default function EpisodeStoryboardPage() {
     };
   }, [framesForScene]);
 
+  const framesPerSceneFromTimeline =
+    selectedAudioTimeline && timelineBeatsForScene.length > 0
+      ? timelineBeatsForScene.length
+      : null;
+
   const timelineTracks = useMemo<TimelineTrack[]>(() => {
     const tracks: TimelineTrack[] = [];
     if (timelineBeatsForScene.length > 0) {
@@ -858,12 +863,14 @@ export default function EpisodeStoryboardPage() {
     if (!assertNormalizedReady(true)) return;
     setStoryboardBusy(true);
     try {
+      const framesPerSceneParam =
+        framesPerSceneFromTimeline ?? form.frames_per_scene;
       const response = await scriptAPI.generateStoryboardAsync(
         activeScript.id,
         {
           model: form.model || undefined,
           temperature: form.temperature,
-          frames_per_scene: form.frames_per_scene,
+          frames_per_scene: framesPerSceneParam,
           scene_numbers: [selectedScene],
           // 分镜生成默认走规划 + LangGraph 管线
           use_plan: true,
@@ -994,12 +1001,15 @@ export default function EpisodeStoryboardPage() {
     if (!assertNormalizedReady()) return;
     setStoryboardBusy(true);
     try {
+      const framesPerSceneParam = selectedAudioTimeline
+        ? undefined
+        : form.frames_per_scene;
       const response = await scriptAPI.generateStoryboardAsync(
         activeScript.id,
         {
           model: form.model || undefined,
           temperature: form.temperature,
-          frames_per_scene: form.frames_per_scene,
+          frames_per_scene: framesPerSceneParam,
           // 分镜生成默认走规划 + LangGraph 管线
           use_plan: true,
         },
@@ -1957,11 +1967,11 @@ export default function EpisodeStoryboardPage() {
 
         {/* 顶部生成配置 */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <MultiModelSelector
-              label="模型"
-              value={form.model ? [form.model] : []}
-              onChange={(ids) =>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+              <MultiModelSelector
+                label="模型"
+                value={form.model ? [form.model] : []}
+                onChange={(ids) =>
                 setForm((prev) => ({ ...prev, model: ids[0] || "" }))
               }
               modelType="text"
@@ -1988,28 +1998,35 @@ export default function EpisodeStoryboardPage() {
                 className="w-full"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                每场景分镜数
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                value={form.frames_per_scene}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    frames_per_scene: parseInt(e.target.value) || 3,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={async () => {
-                  if (!activeScript) return;
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  每场景分镜数
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={form.frames_per_scene}
+                  disabled={Boolean(selectedAudioTimeline)}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      frames_per_scene: parseInt(e.target.value) || 3,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border rounded"
+                />
+                {selectedAudioTimeline ? (
+                  <div className="mt-1 text-[11px] text-gray-500">
+                    时间轴已生成：当前场景预计帧数{" "}
+                    {framesPerSceneFromTimeline ?? "—"}（由 beats 决定）
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={async () => {
+                    if (!activeScript) return;
                   setPromptPreview("加载中...");
                   const preview = await scriptAPI.previewStoryboardPrompt(
                     activeScript.id,
