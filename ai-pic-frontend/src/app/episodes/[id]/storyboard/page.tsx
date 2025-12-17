@@ -236,21 +236,6 @@ export default function EpisodeStoryboardPage() {
   )
     ? (selectedAudioTimeline?.["beats"] as unknown[]).length
     : 0;
-  const sceneAudioRange = useMemo(() => {
-    if (timelineBeatWindow.startMs == null || timelineBeatWindow.endMs == null)
-      return null;
-    const startSec = Math.max(0, timelineBeatWindow.startMs / 1000);
-    const endSec = Math.max(startSec, timelineBeatWindow.endMs / 1000);
-    return { startSec, endSec };
-  }, [timelineBeatWindow.endMs, timelineBeatWindow.startMs]);
-  const sceneAudioUrl = useMemo(() => {
-    if (!selectedEpisodeAudioUrl) return null;
-    if (!sceneAudioRange) return selectedEpisodeAudioUrl;
-    const { startSec, endSec } = sceneAudioRange;
-    return `${selectedEpisodeAudioUrl}#t=${startSec.toFixed(
-      3,
-    )},${endSec.toFixed(3)}`;
-  }, [sceneAudioRange, selectedEpisodeAudioUrl]);
 
   const imageSrc = useCallback(
     (url: string) => {
@@ -821,6 +806,23 @@ export default function EpisodeStoryboardPage() {
     if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
     return { startMs: min, endMs: max };
   }, [timelineTracks]);
+
+  const sceneAudioRange = useMemo(() => {
+    if (timelineBeatWindow.startMs == null || timelineBeatWindow.endMs == null)
+      return null;
+    const startSec = Math.max(0, timelineBeatWindow.startMs / 1000);
+    const endSec = Math.max(startSec, timelineBeatWindow.endMs / 1000);
+    return { startSec, endSec };
+  }, [timelineBeatWindow.endMs, timelineBeatWindow.startMs]);
+
+  const sceneAudioUrl = useMemo(() => {
+    if (!selectedEpisodeAudioUrl) return null;
+    if (!sceneAudioRange) return selectedEpisodeAudioUrl;
+    const { startSec, endSec } = sceneAudioRange;
+    return `${selectedEpisodeAudioUrl}#t=${startSec.toFixed(
+      3,
+    )},${endSec.toFixed(3)}`;
+  }, [sceneAudioRange, selectedEpisodeAudioUrl]);
 
   const sceneBeatDurationSeconds = useMemo(() => {
     if (sceneBeatsForSelected.length === 0) return null;
