@@ -8,6 +8,24 @@
 - ⏳ 进行中：虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
 
+## Feature: 全局软删除 + business_id
+
+:information_source: 背景：所有实体需支持软删，默认查询排除已删数据；引入稳定的 `business_id` 作为业务主键，并将关联/唯一性收敛到 `business_id`；再生成改为“新记录 + 旧记录软删”，前端切换到新 ID/business_id。
+
+### 进度（功能→后端→前端→验证）
+
+- [x] 功能/需求：完成全局软删 + business_id 设计稿，落于 `docs/soft-delete-business-id.md`
+- [ ] 后端：Phase 1 落地 `business_id`/软删字段与索引，回填现存数据并统一查询默认过滤 `is_deleted=false`
+- [ ] 后端：Phase 2 为子表补充 `*_business_id` 并回填，唯一约束改为含 `is_deleted` 的复合唯一，服务层双写/优先读 `business_id`
+- [ ] 后端：Phase 3 删除/恢复接口改为软删，regenerate 创建新记录并软删旧记录，派生数据重建/软删策略落地
+- [ ] 前端：接口/路由切换到 `business_id`（兼容旧 `id` 只读），regenerate 后跳转到新记录
+- [ ] 验证：pytest 覆盖软删/重建唯一键/regenerate 新记录链路；前端 `npm run lint` + E2E 检查软删后列表/详情/再生成可用
+
+### 下一步
+
+- 先完成 Phase 1 Alembic 与 mixin 接入，编写回填与校验脚本；随后推进 Phase 2 关联双写/改造
+- 设计 regenerate 子表重建/软删策略（scenes/scene_beats/shots 等）并在后端实现，前端同步切换 business_id 路由
+
 ## Feature: 叙事结构与数据模型对齐
 
 :information_source: 背景：Story → Episode → Script 当前字段概览 vs 工业级 Treatment / Step Outline / Scene / Shot 要求
