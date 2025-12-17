@@ -32,34 +32,48 @@ TABLES = [
 
 
 def _add_columns_and_indexes(default_expr):
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
     for table in TABLES:
-        op.add_column(
-            table,
-            sa.Column(
-                "business_id",
-                sa.String(length=32),
-                nullable=True,
-                server_default=default_expr,
-            ),
-        )
-        op.add_column(
-            table,
-            sa.Column(
-                "is_deleted",
-                sa.Boolean(),
-                nullable=False,
-                server_default=sa.text("0"),
-            ),
-        )
-        op.add_column(
-            table, sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True)
-        )
-        op.add_column(table, sa.Column("deleted_by", sa.Integer(), nullable=True))
-        op.add_column(table, sa.Column("deleted_reason", sa.Text(), nullable=True))
-        op.create_index(
-            f"ix_{table}_business_id", table, ["business_id"], unique=True
-        )
-        op.create_index(f"ix_{table}_is_deleted", table, ["is_deleted"])
+        existing_cols = {col["name"] for col in inspector.get_columns(table)}
+        if "business_id" not in existing_cols:
+            op.add_column(
+                table,
+                sa.Column(
+                    "business_id",
+                    sa.String(length=32),
+                    nullable=True,
+                    server_default=default_expr,
+                ),
+            )
+        if "is_deleted" not in existing_cols:
+            op.add_column(
+                table,
+                sa.Column(
+                    "is_deleted",
+                    sa.Boolean(),
+                    nullable=False,
+                    server_default=sa.text("0"),
+                ),
+            )
+        if "deleted_at" not in existing_cols:
+            op.add_column(
+                table, sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True)
+            )
+        if "deleted_by" not in existing_cols:
+            op.add_column(table, sa.Column("deleted_by", sa.Integer(), nullable=True))
+        if "deleted_reason" not in existing_cols:
+            op.add_column(table, sa.Column("deleted_reason", sa.Text(), nullable=True))
+
+        existing_indexes = {idx["name"] for idx in inspector.get_indexes(table)}
+        business_idx = f"ix_{table}_business_id"
+        is_deleted_idx = f"ix_{table}_is_deleted"
+        if business_idx not in existing_indexes:
+            op.create_index(
+                business_idx, table, ["business_id"], unique=True
+            )
+        if is_deleted_idx not in existing_indexes:
+            op.create_index(is_deleted_idx, table, ["is_deleted"])
 
 
 def _backfill_business_ids(bind):

@@ -32,8 +32,27 @@ BUSINESS_TABLES = [
 
 
 def _recreate_index(table: str, name: str, columns: list[str], unique: bool):
-    op.drop_index(name, table_name=table)
+    """Ensure we always have an index for FK columns before dropping unique ones (MySQL)."""
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing = {idx["name"] for idx in inspector.get_indexes(table)}
+
+    # For MySQL FK safety: create a temporary non-unique index before dropping the unique one.
+    temp_name = f"{name}_nonuniq_tmp"
+    if name in existing and temp_name not in existing and bind.dialect.name == "mysql":
+        op.create_index(temp_name, table, columns, unique=False)
+
+    if name in existing:
+        op.drop_index(name, table_name=table)
     op.create_index(name, table, columns, unique=unique)
+
+    # Clean up temp index if we created one and replaced original name.
+    if temp_name in {idx["name"] for idx in inspector.get_indexes(table)} and name != temp_name:
+        try:
+            op.drop_index(temp_name, table_name=table)
+        except Exception:
+            # If drop fails, leave temp index; it is non-unique and harmless.
+            pass
 
 
 def upgrade():
@@ -48,6 +67,7 @@ def upgrade():
     _recreate_index("virtual_ips", op.f("ix_virtual_ips_name"), ["name"], unique=False)
 
     # Story structure uniqueness -> non-unique indexes
+    # FK-backed indexes: ensure non-unique replacements while keeping FK index coverage.
     _recreate_index(
         "story_treatments",
         "ux_story_treatments_story_revision",
