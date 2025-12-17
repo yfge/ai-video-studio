@@ -12,6 +12,7 @@ import type {
 } from "@/utils/api";
 import { useAlertModal } from "@/components/AlertModalProvider";
 import { MultiModelSelector } from "@/components/MultiModelSelector";
+import { Timeline, type TimelineTrack } from "@/components/Timeline/Timeline";
 
 export default function EpisodeDetailPage() {
   const params = useParams();
@@ -82,6 +83,14 @@ export default function EpisodeDetailPage() {
       : null;
   const getString = (value: unknown): string | undefined =>
     typeof value === "string" ? value : undefined;
+  const parseMs = (value: unknown): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
   const extractScenes = (ep: Episode | null): Record<string, unknown>[] => {
     if (!ep) return [];
     const meta =
@@ -459,6 +468,137 @@ export default function EpisodeDetailPage() {
     });
   };
 
+  const episodeMeta = useMemo(() => {
+    const meta =
+      (episode as unknown as Record<string, unknown>)?.extra_metadata ??
+      (episode as unknown as Record<string, unknown>)?.metadata ??
+      {};
+    return asRecord(meta) ?? {};
+  }, [episode]);
+
+  const selectedAudioTimeline = useMemo(() => {
+    if (!selectedScript) return null;
+    const raw = episodeMeta["audio_timeline"];
+    const tl = asRecord(raw);
+    if (!tl) return null;
+    const scriptIdRaw = tl["script_id"];
+    const scriptId =
+      typeof scriptIdRaw === "number"
+        ? scriptIdRaw
+        : Number.parseInt(String(scriptIdRaw || ""), 10);
+    return Number.isFinite(scriptId) && scriptId === selectedScript.id
+      ? tl
+      : null;
+  }, [episodeMeta, selectedScript]);
+
+  const selectedEpisodeAudio = asRecord(
+    selectedAudioTimeline?.["episode_audio"],
+  );
+  const selectedEpisodeAudioUrl = getString(selectedEpisodeAudio?.["oss_url"]);
+  const selectedEpisodeAudioVersion = selectedEpisodeAudio?.["version"];
+  const selectedTimelineBeatCount = Array.isArray(
+    selectedAudioTimeline?.["beats"],
+  )
+    ? (selectedAudioTimeline?.["beats"] as unknown[]).length
+    : 0;
+
+  const selectedStoryboard = useMemo(() => {
+    if (!selectedScript) return null;
+    const meta = (selectedScript.extra_metadata ??
+      selectedScript.metadata ??
+      {}) as Record<string, unknown>;
+    return asRecord(meta["storyboard"]);
+  }, [selectedScript]);
+  const selectedStoryboardFrames = useMemo(
+    () =>
+      Array.isArray(selectedStoryboard?.["frames"])
+        ? (selectedStoryboard?.["frames"] as unknown[])
+        : [],
+    [selectedStoryboard],
+  );
+  const selectedStoryboardMeta = asRecord(selectedStoryboard?.["meta"]);
+  const selectedStoryboardSource = getString(
+    selectedStoryboardMeta?.["generation_source"],
+  );
+
+  const timelineTracks = useMemo<TimelineTrack[]>(() => {
+    const tracks: TimelineTrack[] = [];
+    const beatsRaw = Array.isArray(selectedAudioTimeline?.["beats"])
+      ? (selectedAudioTimeline?.["beats"] as unknown[])
+      : [];
+    const beatItems = beatsRaw
+      .map((raw, idx) => {
+        const record =
+          raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+        if (!record) return null;
+        const start = parseMs(record["start_ms"]);
+        const end = parseMs(record["end_ms"]);
+        if (start == null || end == null || end < start) return null;
+        const text =
+          getString(record["dialogue_excerpt"]) ??
+          getString(record["text"]) ??
+          getString(record["beat_summary"]);
+        return {
+          id: `beat-${idx}-${start}`,
+          startMs: start,
+          endMs: end,
+          label: text || `Beat ${idx + 1}`,
+          type: getString(record["beat_type"]) ?? undefined,
+          color: "#2563eb",
+        };
+      })
+      .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
+    if (beatItems.length > 0) {
+      tracks.push({
+        id: "dialogue-beats",
+        label: "对白 beats",
+        color: "#2563eb",
+        items: beatItems,
+      });
+    }
+    const storyboardItems = selectedStoryboardFrames
+      .map((fr, idx) => {
+        const start = parseMs((fr as Record<string, unknown>)["start_ms"]);
+        const end = parseMs((fr as Record<string, unknown>)["end_ms"]);
+        if (start == null || end == null || end < start) return null;
+        const label =
+          getString((fr as Record<string, unknown>)["description"]) ||
+          `Frame ${fr.frame_number ?? idx + 1}`;
+        return {
+          id: `frame-${fr.frame_id || idx}`,
+          startMs: start,
+          endMs: end,
+          label,
+          type: "frame",
+          color: "#a855f7",
+        };
+      })
+      .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
+    if (storyboardItems.length > 0) {
+      tracks.push({
+        id: "storyboard-frames",
+        label: "分镜帧",
+        color: "#a855f7",
+        items: storyboardItems,
+      });
+    }
+    return tracks;
+  }, [selectedAudioTimeline, selectedStoryboardFrames]);
+
+  const timelineRange = useMemo(() => {
+    if (timelineTracks.length === 0) return null;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    timelineTracks.forEach((track) => {
+      track.items.forEach((item) => {
+        min = Math.min(min, item.startMs);
+        max = Math.max(max, item.endMs);
+      });
+    });
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+    return { startMs: min, endMs: max };
+  }, [timelineTracks]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -485,55 +625,6 @@ export default function EpisodeDetailPage() {
       </div>
     );
   }
-
-  const episodeMeta = (() => {
-    const meta =
-      (episode as unknown as Record<string, unknown>)?.extra_metadata ??
-      episode.metadata ??
-      {};
-    return asRecord(meta) ?? {};
-  })();
-
-  const selectedAudioTimeline = (() => {
-    if (!selectedScript) return null;
-    const raw = episodeMeta["audio_timeline"];
-    const tl = asRecord(raw);
-    if (!tl) return null;
-    const scriptIdRaw = tl["script_id"];
-    const scriptId =
-      typeof scriptIdRaw === "number"
-        ? scriptIdRaw
-        : Number.parseInt(String(scriptIdRaw || ""), 10);
-    return Number.isFinite(scriptId) && scriptId === selectedScript.id
-      ? tl
-      : null;
-  })();
-
-  const selectedEpisodeAudio = asRecord(
-    selectedAudioTimeline?.["episode_audio"],
-  );
-  const selectedEpisodeAudioUrl = getString(selectedEpisodeAudio?.["oss_url"]);
-  const selectedEpisodeAudioVersion = selectedEpisodeAudio?.["version"];
-  const selectedTimelineBeatCount = Array.isArray(
-    selectedAudioTimeline?.["beats"],
-  )
-    ? (selectedAudioTimeline?.["beats"] as unknown[]).length
-    : 0;
-
-  const selectedStoryboard = (() => {
-    if (!selectedScript) return null;
-    const meta = (selectedScript.extra_metadata ??
-      selectedScript.metadata ??
-      {}) as Record<string, unknown>;
-    return asRecord(meta["storyboard"]);
-  })();
-  const selectedStoryboardFrames = Array.isArray(selectedStoryboard?.["frames"])
-    ? (selectedStoryboard?.["frames"] as unknown[])
-    : [];
-  const selectedStoryboardMeta = asRecord(selectedStoryboard?.["meta"]);
-  const selectedStoryboardSource = getString(
-    selectedStoryboardMeta?.["generation_source"],
-  );
 
   const taskStatusText = (status: Task["status"] | undefined) => {
     switch (status) {
@@ -589,6 +680,111 @@ export default function EpisodeDetailPage() {
         ? "bg-green-50 text-green-700 border border-green-200"
         : "bg-gray-50 text-gray-600 border border-gray-200"
     }`;
+
+  const timelineTracks: TimelineTrack[] = (() => {
+    const tracks: TimelineTrack[] = [];
+    const beatsRaw = Array.isArray(selectedAudioTimeline?.["beats"])
+      ? (selectedAudioTimeline?.["beats"] as unknown[])
+      : [];
+    const beatItems = beatsRaw
+      .map((raw, idx) => {
+        const record =
+          raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+        if (!record) return null;
+        const start = parseMs(record["start_ms"]);
+        const end = parseMs(record["end_ms"]);
+        if (start == null || end == null || end < start) return null;
+        const text =
+          getString(record["dialogue_excerpt"]) ??
+          getString(record["text"]) ??
+          getString(record["beat_summary"]);
+        return {
+          id: `beat-${idx}-${start}`,
+          startMs: start,
+          endMs: end,
+          label: text || `Beat ${idx + 1}`,
+          type: getString(record["beat_type"]) ?? undefined,
+          color: "#2563eb",
+        };
+      })
+      .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
+    if (beatItems.length > 0) {
+      tracks.push({
+        id: "dialogue-beats",
+        label: "对白 beats",
+        color: "#2563eb",
+        items: beatItems,
+      });
+    }
+    const storyboardItems = selectedStoryboardFrames
+      .map((fr, idx) => {
+        const start = parseMs((fr as Record<string, unknown>)["start_ms"]);
+        const end = parseMs((fr as Record<string, unknown>)["end_ms"]);
+        if (start == null || end == null || end < start) return null;
+        const label =
+          getString((fr as Record<string, unknown>)["description"]) ||
+          `Frame ${fr.frame_number ?? idx + 1}`;
+        return {
+          id: `frame-${fr.frame_id || idx}`,
+          startMs: start,
+          endMs: end,
+          label,
+          type: "frame",
+          color: "#a855f7",
+        };
+      })
+      .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
+    if (storyboardItems.length > 0) {
+      tracks.push({
+        id: "storyboard-frames",
+        label: "分镜帧",
+        color: "#a855f7",
+        items: storyboardItems,
+      });
+    }
+    return tracks;
+  })();
+
+  const timelineRange = (() => {
+    if (timelineTracks.length === 0) return null;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    timelineTracks.forEach((track) => {
+      track.items.forEach((item) => {
+        min = Math.min(min, item.startMs);
+        max = Math.max(max, item.endMs);
+      });
+    });
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+    return { startMs: min, endMs: max };
+  })();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!episode) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">剧集不存在</h2>
+          <button
+            onClick={() => router.push("/stories")}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            返回故事列表
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -944,6 +1140,21 @@ export default function EpisodeDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="mt-4">
+            {timelineTracks.length === 0 ? (
+              <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+                生成时间轴后可视化对白 beats / 分镜帧的时间分布；分镜帧需携带 start/end_ms 才能显示。
+              </div>
+            ) : (
+              <Timeline
+                tracks={timelineTracks}
+                startMs={timelineRange?.startMs}
+                endMs={timelineRange?.endMs}
+                initialZoom={1}
+              />
+            )}
           </div>
         </div>
 
