@@ -783,10 +783,15 @@ class ApiClient {
       ...baseHeaders,
       ...normalizeHeaders(options.headers),
     };
+    const sanitizedHeaders = Object.fromEntries(
+      Object.entries(mergedHeaders).filter(
+        ([, value]) => typeof value === "string" && value.length >= 0,
+      ),
+    ) as Record<string, string>;
 
     const config: RequestInit = {
       ...options,
-      headers: mergedHeaders,
+      headers: sanitizedHeaders,
     };
 
     // 添加认证头
