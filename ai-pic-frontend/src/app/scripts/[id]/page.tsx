@@ -201,6 +201,7 @@ export default function ScriptDetailPage() {
   const { showAlert } = useAlertModal()
 
   const [activeTab, setActiveTab] = useState<TabId>('overview')
+  const [sceneView, setSceneView] = useState<'structure' | 'details'>('details')
   const [script, setScript] = useState<Script | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [structuredScenes, setStructuredScenes] = useState<SceneNode[]>([])
@@ -455,45 +456,75 @@ export default function ScriptDetailPage() {
         )}
 
         {activeTab === 'scenes' && (
-          <Section title="场景详情" description="查看逐场景的对白、舞台指示与关键信息">
+          <Section title="场景详情" description="查看或编辑结构化场景，并浏览每个场景的对白与舞台指示">
             <div className="space-y-6 p-6">
-              <SceneStructurePanel
-                scriptId={script.id}
-                canEdit={canEditStructure}
-                onStructureLoaded={setStructuredScenes}
-              />
-              {scenes.length > 1 && (
-                <p className="text-xs text-gray-500">
-                  当前剧本共 {scenes.length} 个场景，点击左侧「场景 X」卡片可切换查看不同场景的对白与舞台指示。
-                </p>
-              )}
-              <div className="grid gap-4 border-t border-gray-100 pt-4 lg:grid-cols-[260px,1fr]">
-                <div className="space-y-2">
-                  {scenes.length === 0 && <p className="text-sm text-gray-500">暂无结构化场景信息。</p>}
-                  {scenes.map((scene, idx) => {
-                    const sceneNumber = toSceneNumber(scene.scene_number) ?? idx + 1
-                    const isActive = focusedScene === sceneNumber
-                    return (
-                      <button
-                        key={`scene-nav-${sceneNumber}`}
-                        onClick={() => {
-                          setFocusedScene(sceneNumber)
-                          setActiveTab('scenes')
-                        }}
-                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
-                          isActive ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-blue-200'
-                        }`}
-                      >
-                        <div className="font-medium">场景 {sceneNumber}</div>
-                        <div className="text-xs text-gray-500">{formatText(scene.description, '暂无描述', 60)}</div>
-                      </button>
-                    )
-                  })}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex gap-2 text-xs">
+                  <button
+                    onClick={() => setSceneView('structure')}
+                    className={`rounded-full px-3 py-1 font-medium ${
+                      sceneView === 'structure'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    结构化场景 / 镜头
+                  </button>
+                  <button
+                    onClick={() => setSceneView('details')}
+                    className={`rounded-full px-3 py-1 font-medium ${
+                      sceneView === 'details'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    场景文本详情
+                  </button>
                 </div>
-                <div className="rounded-lg border border-gray-100 bg-white p-4">
-                  <SceneDetails scene={activeScene || scenes[0] || null} dialogues={dialogues} directions={directions} />
-                </div>
+                {sceneView === 'structure' ? (
+                  <p className="text-xs text-gray-500">可调整场景、节拍与镜头顺序（需管理员权限）。</p>
+                ) : (
+                  <p className="text-xs text-gray-500">从列表选择场景以查看对白和舞台指示。</p>
+                )}
               </div>
+
+              {sceneView === 'structure' ? (
+                <div className="rounded-lg border border-gray-100 bg-white p-4">
+                  <SceneStructurePanel
+                    scriptId={script.id}
+                    canEdit={canEditStructure}
+                    onStructureLoaded={setStructuredScenes}
+                  />
+                </div>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-[260px,1fr]">
+                  <div className="space-y-2">
+                    {scenes.length === 0 && <p className="text-sm text-gray-500">暂无结构化场景信息。</p>}
+                    {scenes.map((scene, idx) => {
+                      const sceneNumber = toSceneNumber(scene.scene_number) ?? idx + 1
+                      const isActive = focusedScene === sceneNumber
+                      return (
+                        <button
+                          key={`scene-nav-${sceneNumber}`}
+                          onClick={() => {
+                            setFocusedScene(sceneNumber)
+                            setActiveTab('scenes')
+                          }}
+                          className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
+                            isActive ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-blue-200'
+                          }`}
+                        >
+                          <div className="font-medium">场景 {sceneNumber}</div>
+                          <div className="text-xs text-gray-500">{formatText(scene.description, '暂无描述', 60)}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="rounded-lg border border-gray-100 bg-white p-4">
+                    <SceneDetails scene={activeScene || scenes[0] || null} dialogues={dialogues} directions={directions} />
+                  </div>
+                </div>
+              )}
             </div>
           </Section>
         )}
