@@ -1475,6 +1475,12 @@ class ApiClient {
     return this.request("/api/v1/story-structure/environments");
   }
 
+  async getEnvironment(
+    id: number,
+  ): Promise<ApiResponse<Environment>> {
+    return this.request(`/api/v1/story-structure/environments/${id}`);
+  }
+
   async createEnvironment(
     payload: EnvironmentCreate,
   ): Promise<ApiResponse<Environment>> {
@@ -1504,6 +1510,21 @@ class ApiClient {
     envId: number,
   ): Promise<ApiResponse<EnvironmentImagesResponse>> {
     return this.request(`/api/v1/story-structure/environments/${envId}/images`);
+  }
+
+  async uploadEnvironmentImage(
+    envId: number,
+    file: File,
+  ): Promise<ApiResponse<{ url: string }>> {
+    const formData = new FormData();
+    formData.append("image", file);
+    return this.request(
+      `/api/v1/story-structure/environments/${envId}/images/upload`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
   }
 
   async generateEnvironmentImages(
