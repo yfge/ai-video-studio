@@ -200,7 +200,7 @@ export default function ScriptDetailPage() {
   const scriptKey = (id as string) || ''
   const { showAlert } = useAlertModal()
 
-  const [activeTab, setActiveTab] = useState<TabId>('overview')
+  const [activeTab, setActiveTab] = useState<TabId>('scenes')
   const [sceneView, setSceneView] = useState<'structure' | 'details'>('details')
   const [script, setScript] = useState<Script | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -290,6 +290,16 @@ export default function ScriptDetailPage() {
     } finally {
       setShowExportMenu(false)
     }
+  }
+
+  const goToSceneDetails = () => {
+    setActiveTab('scenes')
+    setSceneView('details')
+  }
+
+  const goToSceneStructure = () => {
+    setActiveTab('scenes')
+    setSceneView('structure')
   }
 
 
@@ -388,6 +398,44 @@ export default function ScriptDetailPage() {
             <div>最近更新：{formatDate(script.updated_at)}</div>
           </div>
         </header>
+
+        <section className="grid gap-3 rounded-2xl bg-white p-4 shadow md:grid-cols-3">
+          <div className="rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50 to-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">步骤 1</div>
+            <div className="mt-1 text-base font-semibold text-gray-900">场景文本详情</div>
+            <p className="mt-1 text-xs text-gray-600">浏览对白、舞台指示，确认场景意图与角色。</p>
+            <button
+              onClick={goToSceneDetails}
+              className="mt-3 inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              查看场景详情
+            </button>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-gradient-to-br from-indigo-50 to-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-indigo-700">步骤 2</div>
+            <div className="mt-1 text-base font-semibold text-gray-900">结构化场景 / 镜头</div>
+            <p className="mt-1 text-xs text-gray-600">需要调整节拍、镜头顺序时进入此视图。</p>
+            <button
+              onClick={goToSceneStructure}
+              className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+            >
+              打开结构编辑
+            </button>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-gradient-to-br from-purple-50 to-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-purple-700">步骤 3</div>
+            <div className="mt-1 text-base font-semibold text-gray-900">分镜管理</div>
+            <p className="mt-1 text-xs text-gray-600">直接前往分镜工作台，生成或调整镜头。</p>
+            <button
+              onClick={() =>
+                router.push(`/episodes/${script.episode_business_id || script.episode_id}/storyboard`)
+              }
+              className="mt-3 inline-flex items-center rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
+            >
+              跳转分镜工作台
+            </button>
+          </div>
+        </section>
 
         <nav className="flex flex-wrap gap-2">
           {TABS.map(tab => (
