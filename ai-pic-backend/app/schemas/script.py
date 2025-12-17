@@ -89,6 +89,7 @@ class StoryUpdate(BaseModel):
 
 class StoryResponse(StoryBase):
     id: int
+    business_id: str
     generation_prompt: Optional[str] = None
     ai_model: Optional[str] = None
     generation_params: Optional[Dict[str, Any]] = None
@@ -132,7 +133,9 @@ class EpisodeUpdate(BaseModel):
 
 class EpisodeResponse(EpisodeBase):
     id: int
+    business_id: str
     story_id: int
+    story_business_id: Optional[str] = None
     generation_prompt: Optional[str] = None
     ai_model: Optional[str] = None
     generation_params: Optional[Dict[str, Any]] = None
@@ -174,7 +177,9 @@ class ScriptUpdate(BaseModel):
 
 class ScriptResponse(ScriptBase):
     id: int
+    business_id: str
     episode_id: int
+    episode_business_id: Optional[str] = None
     page_count: Optional[int] = None
     word_count: Optional[int] = None
     character_count: Optional[int] = None

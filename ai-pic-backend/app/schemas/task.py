@@ -24,10 +24,12 @@ class TaskUpdate(BaseModel):
 
 class TaskResponse(TaskBase):
     id: int
+    business_id: str
     status: TaskStatus
     result_file_path: Optional[str] = None
     error_message: Optional[str] = None
     user_id: int
+    target_business_id: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     progress_detail: Optional[str] = None

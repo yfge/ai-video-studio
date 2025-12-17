@@ -31,7 +31,9 @@ class VirtualIPImageUpdate(VirtualIPImageBase):
 
 class VirtualIPImageResponse(VirtualIPImageBase):
     id: int
+    business_id: str
     virtual_ip_id: int
+    virtual_ip_business_id: Optional[str] = None
     filename: str
     original_filename: str
     file_path: str
@@ -67,6 +69,7 @@ class VirtualIPUpdate(VirtualIPBase):
 
 class VirtualIPResponse(VirtualIPBase):
     id: int
+    business_id: str
     default_avatar_url: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime] = None

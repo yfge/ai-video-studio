@@ -27,7 +27,9 @@ class StoryTreatmentCreate(BaseModel):
 
 class StoryTreatmentResponse(ORMModel):
     id: int
+    business_id: str
     story_id: int
+    story_business_id: Optional[str] = None
     revision_number: int
     title: str
     status: str
@@ -60,8 +62,11 @@ class StoryStepOutlineCreate(BaseModel):
 
 class StoryStepOutlineResponse(ORMModel):
     id: int
+    business_id: str
     story_id: int
+    story_business_id: Optional[str] = None
     story_treatment_id: int
+    story_treatment_business_id: Optional[str] = None
     sequence_number: int
     act_label: Optional[str]
     beat_title: str
@@ -96,10 +101,13 @@ class SceneCreate(BaseModel):
 
 class SceneResponse(ORMModel):
     id: int
+    business_id: str
     script_id: int
+    script_business_id: Optional[str] = None
     scene_number: str
     slug_line: str
     environment_id: Optional[int]
+    environment_business_id: Optional[str]
     environment_type: Optional[str]
     location: Optional[str]
     time_of_day: Optional[str]
@@ -145,7 +153,9 @@ class SceneBeatCreate(BaseModel):
 
 class SceneBeatResponse(ORMModel):
     id: int
+    business_id: str
     scene_id: int
+    scene_business_id: Optional[str] = None
     order_index: int
     beat_type: Optional[str]
     beat_summary: Optional[str]
@@ -189,7 +199,9 @@ class ShotCreate(BaseModel):
 
 class ShotResponse(ORMModel):
     id: int
+    business_id: str
     scene_id: int
+    scene_business_id: Optional[str] = None
     shot_number: str
     scene_beat_id: Optional[int]
     shot_type: Optional[str]

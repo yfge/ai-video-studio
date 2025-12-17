@@ -30,6 +30,7 @@ def _serialize_task(task: Task) -> TaskResponse:
 
     return TaskResponse(
         id=task.id,
+        business_id=getattr(task, "business_id", None),
         title=task.title,
         description=task.description,
         task_type=task.task_type,
@@ -39,6 +40,7 @@ def _serialize_task(task: Task) -> TaskResponse:
         result_file_path=task.result_file_path,
         error_message=task.error_message,
         user_id=task.user_id,
+        target_business_id=getattr(task, "target_business_id", None),
         progress_detail=progress_detail,
         created_at=task.created_at,
         updated_at=task.updated_at,

@@ -11,6 +11,7 @@ class ImageCreate(ImageBase):
 
 class ImageResponse(ImageBase):
     id: int
+    business_id: str
     filename: str
     original_filename: str
     file_path: str
