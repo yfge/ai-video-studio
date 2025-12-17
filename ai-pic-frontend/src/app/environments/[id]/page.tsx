@@ -6,7 +6,8 @@ import { useParams, useRouter } from 'next/navigation'
 import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
 import { useAlertModal } from '@/components/AlertModalProvider'
-import { storyStructureAPI, type Environment } from '@/utils/api'
+import { ImageToImageModal } from '@/components/ImageToImageModal'
+import { storyStructureAPI, AIModelType, type Environment } from '@/utils/api'
 
 interface EnvironmentImage {
   url: string
@@ -25,6 +26,10 @@ function EnvironmentDetailContent() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [prompt, setPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [variantTarget, setVariantTarget] = useState<EnvironmentImage | null>(null)
+  const [variantPrompt, setVariantPrompt] = useState('')
+  const [variantOpen, setVariantOpen] = useState(false)
+  const [variantSubmitting, setVariantSubmitting] = useState(false)
 
   const apiBase = useMemo(
     () => (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, ''),
@@ -136,6 +141,55 @@ function EnvironmentDetailContent() {
     }
   }
 
+  const openVariant = (image: EnvironmentImage) => {
+    setVariantTarget(image)
+    setVariantPrompt(env?.description || env?.name || '基于该环境参考图生成一致风格的变体')
+    setVariantOpen(true)
+  }
+
+  const handleSubmitVariant = async (payload: {
+    prompt: string
+    model?: string
+    count: number
+    size?: string
+    style?: string
+    style_preset_id?: string
+    style_spec?: Record<string, unknown>
+    referenceImages: string[]
+  }) => {
+    if (!envId || !variantTarget) return
+    try {
+      setVariantSubmitting(true)
+      const res = await storyStructureAPI.generateEnvironmentImageVariantsAsync(envId, {
+        base_image: variantTarget.url,
+        prompt: payload.prompt,
+        model: payload.model,
+        count: payload.count,
+        size: payload.size,
+        style: payload.style,
+        style_preset_id: payload.style_preset_id,
+        style_spec: payload.style_spec,
+        reference_images: payload.referenceImages,
+      })
+      if (res.success) {
+        showAlert({
+          title: '已创建环境图变体任务',
+          message: '任务将在后台生成，完成后刷新即可看到新图片。',
+          variant: 'success',
+        })
+        setVariantOpen(false)
+        setVariantTarget(null)
+      } else {
+        showAlert({ message: res.error || '变体生成失败', variant: 'error' })
+      }
+    } catch (error) {
+      console.error(error)
+      showAlert({ message: '变体生成失败', variant: 'error' })
+    } finally {
+      setVariantSubmitting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
@@ -215,12 +269,20 @@ function EnvironmentDetailContent() {
                       ) : (
                         <div className="h-32 flex items-center justify-center text-gray-400 text-sm">无效图片</div>
                       )}
-                      <button
-                        onClick={() => handleDeleteImage(img.url)}
-                        className="absolute top-1 right-1 rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
-                      >
-                        删除
-                      </button>
+                      <div className="absolute inset-0 flex items-start justify-end gap-2 p-2">
+                        <button
+                          onClick={() => openVariant(img)}
+                          className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                        >
+                          图生图
+                        </button>
+                        <button
+                          onClick={() => handleDeleteImage(img.url)}
+                          className="rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
+                        >
+                          删除
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
@@ -267,6 +329,29 @@ function EnvironmentDetailContent() {
           </div>
         </div>
       </main>
+      <ImageToImageModal
+        open={variantOpen && !!variantTarget}
+        onClose={() => {
+          setVariantOpen(false)
+          setVariantTarget(null)
+        }}
+        title="环境图生图"
+        description="参考当前环境图，调整模型与参数后提交生成变体。"
+        referenceSections={
+          variantTarget
+            ? [{ title: '参考图', images: [imageSrc(variantTarget.url)] }]
+            : []
+        }
+        defaultSelected={
+          variantTarget ? [imageSrc(variantTarget.url)] : []
+        }
+        defaultPrompt={variantPrompt}
+        defaultCount={1}
+        modelType={AIModelType.ImageToImage}
+        modelCacheKey="environment-img2img"
+        submitting={variantSubmitting}
+        onSubmit={handleSubmitVariant}
+      />
     </div>
   )
 }
