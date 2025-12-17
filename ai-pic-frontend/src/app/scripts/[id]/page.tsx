@@ -206,6 +206,7 @@ export default function ScriptDetailPage() {
   const [structuredScenes, setStructuredScenes] = useState<SceneNode[]>([])
   const [loading, setLoading] = useState(true)
   const [showExportMenu, setShowExportMenu] = useState(false)
+  const [focusedScene, setFocusedScene] = useState<number | null>(null)
   const [readOnlyNotified, setReadOnlyNotified] = useState(false)
 
   const loadInitialData = useCallback(async () => {
@@ -261,6 +262,10 @@ export default function ScriptDetailPage() {
   const scenes = structuredSceneViews.length > 0 ? structuredSceneViews : rawScenes
   const dialogues = useMemo(() => normalizeDialogues(script?.dialogues), [script?.dialogues])
   const directions = useMemo(() => normalizeDirections(script?.stage_directions), [script?.stage_directions])
+  const activeScene = useMemo(
+    () => (focusedScene ? scenes.find(scene => toSceneNumber(scene.scene_number) === focusedScene) || null : null),
+    [focusedScene, scenes],
+  )
   const scriptIdentifier = script?.business_id || scriptKey
   const canEditStructure = useMemo(() => isAdmin(currentUser), [currentUser])
   useEffect(() => {
