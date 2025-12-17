@@ -42,6 +42,68 @@ def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
 
 
+def _parse_identifier(identifier: int | str | None) -> tuple[Optional[int], Optional[str]]:
+    if identifier is None:
+        return None, None
+    if isinstance(identifier, int):
+        return identifier, None
+    raw = str(identifier).strip()
+    if not raw:
+        return None, None
+    if raw.isdigit():
+        try:
+            return int(raw), None
+        except Exception:
+            return None, raw
+    return None, raw
+
+
+def _get_owned_virtual_ip(
+    db: Session,
+    current_user: User,
+    virtual_ip_identifier: int | str | None,
+    virtual_ip_business_id: Optional[str] = None,
+) -> VirtualIP:
+    """获取当前用户可访问的虚拟 IP（支持 business_id）。"""
+    vid, biz = _parse_identifier(virtual_ip_identifier)
+    if virtual_ip_business_id:
+        biz = virtual_ip_business_id
+    query = _not_deleted(db.query(VirtualIP), VirtualIP)
+    if biz:
+        query = query.filter(VirtualIP.business_id == biz)
+    elif vid is not None:
+        query = query.filter(VirtualIP.id == vid)
+    else:
+        raise HTTPException(status_code=400, detail="虚拟IP标识缺失")
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(VirtualIP.user_id == current_user.id)
+    vip = query.first()
+    if not vip:
+        raise HTTPException(status_code=404, detail="虚拟IP不存在")
+    return vip
+
+
+def _get_virtual_ip_image(
+    db: Session,
+    virtual_ip: VirtualIP,
+    image_id: Optional[int],
+    image_business_id: Optional[str],
+) -> VirtualIPImage:
+    query = _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
+        VirtualIPImage.virtual_ip_id == virtual_ip.id
+    )
+    if image_business_id:
+        query = query.filter(VirtualIPImage.business_id == image_business_id)
+    elif image_id is not None:
+        query = query.filter(VirtualIPImage.id == image_id)
+    else:
+        raise HTTPException(status_code=400, detail="图像标识缺失")
+    image = query.first()
+    if not image:
+        raise HTTPException(status_code=404, detail="虚拟IP图像不存在")
+    return image
+
+
 def _resolve_image_url(image: VirtualIPImage) -> Optional[str]:
     if not image:
         return None
@@ -81,24 +143,9 @@ def _normalize_reference_images(refs: list[str], backend_base: str) -> list[str]
     return normalized
 
 
-def _get_owned_virtual_ip(
-    db: Session,
-    current_user: User,
-    virtual_ip_id: int,
-) -> VirtualIP:
-    """获取当前用户可访问的虚拟 IP 资产。"""
-    query = _not_deleted(db.query(VirtualIP), VirtualIP).filter(VirtualIP.id == virtual_ip_id)
-    if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(VirtualIP.user_id == current_user.id)
-    vip = query.first()
-    if not vip:
-        raise HTTPException(status_code=404, detail="虚拟IP不存在")
-    return vip
-
-
 @router.post("/{virtual_ip_id}/images", response_model=VirtualIPImageResponse)
 async def create_virtual_ip_image(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     image: UploadFile = File(...),
     category: str = Form("portrait"),
     tags: str = Form(""),
@@ -109,6 +156,7 @@ async def create_virtual_ip_image(
     """上传虚拟IP图像"""
     # 检查虚拟IP是否存在且归属当前用户（或管理员）
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    virtual_ip_id_int = virtual_ip.id
 
     # 检查文件类型
     file_extension = os.path.splitext(image.filename)[1].lower()
@@ -133,7 +181,7 @@ async def create_virtual_ip_image(
             original_filename=image.filename,
             prefix="user-uploads/virtual-ip",
             metadata={
-                "virtual_ip_id": virtual_ip_id,
+                "virtual_ip_id": virtual_ip_id_int,
                 "uploader_id": current_user.id,
                 "category": category,
             },
@@ -148,13 +196,13 @@ async def create_virtual_ip_image(
     # 如果设置为默认图像，先取消其他默认图像
     if is_default:
         _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
-            VirtualIPImage.virtual_ip_id == virtual_ip_id,
+            VirtualIPImage.virtual_ip_id == virtual_ip_id_int,
             VirtualIPImage.is_default.is_(True),
         ).update({"is_default": False})
 
     # 创建图像记录
     image_data = VirtualIPImageCreate(
-        virtual_ip_id=virtual_ip_id,
+        virtual_ip_id=virtual_ip_id_int,
         file_path=stored.get("relative_path") or f"/uploads/{stored.get('filename')}",
         oss_url=stored.get("oss_url"),
         filename=stored.get("filename"),
@@ -166,7 +214,9 @@ async def create_virtual_ip_image(
         is_default=is_default,
     )
 
-    db_image = VirtualIPImage(**image_data.dict())
+    db_image = VirtualIPImage(
+        **image_data.dict(), virtual_ip_business_id=virtual_ip.business_id
+    )
     db.add(db_image)
     if is_default:
         _set_ip_default_avatar(db, virtual_ip.id, db_image)
@@ -231,6 +281,7 @@ def _build_virtual_ip_image_payload(
 
     return {
         "virtual_ip_id": virtual_ip_id,
+        "virtual_ip_business_id": getattr(virtual_ip, "business_id", None),
         "virtual_ip_name": virtual_ip.name,
         "aggregated_description": aggregated_description,
         "style": style_value,
@@ -247,7 +298,7 @@ def _build_virtual_ip_image_payload(
 
 @router.post("/{virtual_ip_id}/images/generate", response_model=VirtualIPImageResponse)
 async def generate_virtual_ip_image(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     request: Request,
     style: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
@@ -264,6 +315,7 @@ async def generate_virtual_ip_image(
     # 尽量使用 OSS，若未配置则退回本地相对路径
     # 检查虚拟IP是否存在且归属当前用户（或管理员）
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    virtual_ip_id_int = virtual_ip.id
 
     payload: Dict[str, Any] = {}
     if request.headers.get("content-type", "").startswith("application/json"):
@@ -353,7 +405,7 @@ async def generate_virtual_ip_image(
     # 如果设置为默认图像，先取消其他默认图像
     if is_default_bool:
         _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
-            VirtualIPImage.virtual_ip_id == virtual_ip_id,
+            VirtualIPImage.virtual_ip_id == virtual_ip_id_int,
             VirtualIPImage.is_default.is_(True),
         ).update({"is_default": False})
 
@@ -386,7 +438,7 @@ async def generate_virtual_ip_image(
         generation_params["style_spec_resolution"] = result.get("style_spec_resolution")
 
     image_data = VirtualIPImageCreate(
-        virtual_ip_id=virtual_ip_id,
+        virtual_ip_id=virtual_ip_id_int,
         file_path=relative_path,  # 使用短的相对路径
         oss_url=oss_url,  # OSS存储URL（未配置时为空）
         filename=filename,
@@ -410,7 +462,9 @@ async def generate_virtual_ip_image(
         },
     )
 
-    db_image = VirtualIPImage(**image_data.dict())
+    db_image = VirtualIPImage(
+        **image_data.dict(), virtual_ip_business_id=virtual_ip.business_id
+    )
     db.add(db_image)
     if is_default_bool:
         _set_ip_default_avatar(db, virtual_ip.id, db_image)
@@ -422,7 +476,7 @@ async def generate_virtual_ip_image(
 
 @router.post("/{virtual_ip_id}/images/generate-async")
 async def generate_virtual_ip_image_async(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     request: Request,
     style: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
@@ -438,6 +492,7 @@ async def generate_virtual_ip_image_async(
     """异步生成虚拟IP图像：创建 Task 并委托 Celery 处理。"""
     # 先解析请求体，复用同步接口的参数处理逻辑
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    virtual_ip_id_int = virtual_ip.id
 
     payload_body: Dict[str, Any] = {}
     if request.headers.get("content-type", "").startswith("application/json"):
@@ -463,7 +518,7 @@ async def generate_virtual_ip_image_async(
 
     # 组装用于 worker 的 payload
     payload = _build_virtual_ip_image_payload(
-        virtual_ip_id=virtual_ip_id,
+        virtual_ip_id=virtual_ip_id_int,
         style=style,
         style_preset_id=style_preset_id,
         style_spec=style_spec,
@@ -498,17 +553,16 @@ async def generate_virtual_ip_image_async(
 
 @router.get("/{virtual_ip_id}/images/categories")
 async def get_image_categories(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """获取虚拟IP图像分类列表"""
-    # 检查虚拟IP是否存在且归属当前用户（或管理员）
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    vip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
 
     categories = (
         db.query(VirtualIPImage.category)
-        .filter(VirtualIPImage.virtual_ip_id == virtual_ip_id)
+        .filter(VirtualIPImage.virtual_ip_id == vip.id)
         .distinct()
         .all()
     )
@@ -518,17 +572,16 @@ async def get_image_categories(
 
 @router.get("/{virtual_ip_id}/images", response_model=List[VirtualIPImageResponse])
 async def get_virtual_ip_images(
-    virtual_ip_id: int,
-    category: Optional[str] = Query(None),
+    virtual_ip_id: str,
+    category: Optional[str] = Query(None, description="按分类过滤"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """获取虚拟IP的所有图像"""
-    # 检查虚拟IP是否存在且归属当前用户（或管理员）
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
 
     query = _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
-        VirtualIPImage.virtual_ip_id == virtual_ip_id
+        VirtualIPImage.virtual_ip_id == virtual_ip.id
     )
 
     if category:
@@ -542,48 +595,30 @@ async def get_virtual_ip_images(
 
 @router.get("/{virtual_ip_id}/images/{image_id}", response_model=VirtualIPImageResponse)
 async def get_virtual_ip_image(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     image_id: int,
+    image_business_id: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """获取特定虚拟IP图像"""
-    # 先校验虚拟 IP 归属
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
-    image = (
-        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
-        .filter(
-            VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
-        )
-        .first()
-    )
-
-    if not image:
-        raise HTTPException(status_code=404, detail="图像不存在")
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    image = _get_virtual_ip_image(db, virtual_ip, image_id, image_business_id)
 
     return VirtualIPImageResponse.from_orm(image)
 
 
 @router.get("/{virtual_ip_id}/images/{image_id}/download")
 def download_virtual_ip_image(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     image_id: int,
+    image_business_id: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """下载虚拟IP图像文件"""
-    # 校验虚拟 IP 归属
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
-    image = (
-        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
-        .filter(
-            VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
-        )
-        .first()
-    )
-
-    if not image:
-        raise HTTPException(status_code=404, detail="图像不存在")
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    image = _get_virtual_ip_image(db, virtual_ip, image_id, image_business_id)
 
     if not os.path.exists(image.file_path):
         raise HTTPException(status_code=404, detail="图像文件不存在")
@@ -595,30 +630,21 @@ def download_virtual_ip_image(
 
 @router.put("/{virtual_ip_id}/images/{image_id}", response_model=VirtualIPImageResponse)
 async def update_virtual_ip_image(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     image_id: int,
+    image_business_id: Optional[str] = None,
     image_update: VirtualIPImageUpdate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """更新虚拟IP图像信息"""
-    # 校验虚拟 IP 归属
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
-    image = (
-        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
-        .filter(
-            VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
-        )
-        .first()
-    )
-
-    if not image:
-        raise HTTPException(status_code=404, detail="图像不存在")
+    image = _get_virtual_ip_image(db, virtual_ip, image_id, image_business_id)
 
     # 如果设置为默认图像，先取消其他默认图像
     if image_update.is_default:
         _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
-            VirtualIPImage.virtual_ip_id == virtual_ip_id,
+            VirtualIPImage.virtual_ip_id == virtual_ip.id,
             VirtualIPImage.is_default.is_(True),
             VirtualIPImage.id != image_id,
         ).update({"is_default": False})
@@ -638,31 +664,15 @@ async def update_virtual_ip_image(
 
 @router.delete("/{virtual_ip_id}/images/{image_id}")
 async def delete_virtual_ip_image(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     image_id: int,
+    image_business_id: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """删除虚拟IP图像"""
-    # 校验虚拟 IP 归属
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
-    image = (
-        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
-        .filter(
-            VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
-        )
-        .first()
-    )
-
-    if not image:
-        raise HTTPException(status_code=404, detail="图像不存在")
-
-    # 删除文件
-    if image.file_path and os.path.exists(image.file_path.lstrip("/")):
-        try:
-            os.remove(image.file_path.lstrip("/"))
-        except Exception as e:
-            print(f"删除文件失败: {e}")
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    image = _get_virtual_ip_image(db, virtual_ip, image_id, image_business_id)
 
     image.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
@@ -672,28 +682,20 @@ async def delete_virtual_ip_image(
 
 @router.post("/{virtual_ip_id}/images/{image_id}/set-default")
 async def set_default_image(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     image_id: int,
+    image_business_id: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """设置默认图像"""
     # 检查虚拟 IP 归属和图像是否存在
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
-    image = (
-        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
-        .filter(
-            VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
-        )
-        .first()
-    )
-
-    if not image:
-        raise HTTPException(status_code=404, detail="图像不存在")
+    image = _get_virtual_ip_image(db, virtual_ip, image_id, image_business_id)
 
     # 取消其他默认图像
     db.query(VirtualIPImage).filter(
-        VirtualIPImage.virtual_ip_id == virtual_ip_id,
+        VirtualIPImage.virtual_ip_id == virtual_ip.id,
         VirtualIPImage.is_default.is_(True),
     ).update({"is_default": False})
 
@@ -710,7 +712,7 @@ async def set_default_image(
     response_model=List[VirtualIPImageResponse],
 )
 async def generate_virtual_ip_image_variant(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     image_id: int,
     request: Request,
     prompt: Optional[str] = Form(None),
@@ -724,17 +726,7 @@ async def generate_virtual_ip_image_variant(
     """基于已有虚拟IP图像生成变体并保存（同步路径，保留以兼容旧调用）"""
     # 优先使用 OSS，未配置则退回本地存储
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
-
-    base_image = (
-        db.query(VirtualIPImage)
-        .filter(
-            VirtualIPImage.id == image_id,
-            VirtualIPImage.virtual_ip_id == virtual_ip_id,
-        )
-        .first()
-    )
-    if not base_image:
-        raise HTTPException(status_code=404, detail="基础图像不存在")
+    base_image = _get_virtual_ip_image(db, virtual_ip, image_id, None)
 
     payload: Dict[str, Any] = {}
     if request.headers.get("content-type", "").startswith("application/json"):
@@ -842,7 +834,7 @@ async def generate_virtual_ip_image_variant(
                 category=base_image.category or "portrait",
                 prefix="ai-generated/virtual-ip",
                 metadata={
-                    "virtual_ip_id": virtual_ip_id,
+                    "virtual_ip_id": virtual_ip.id,
                     "base_image_id": base_image.id,
                     "prompt": prompt_value,
                     "provider": response.provider,
@@ -873,7 +865,7 @@ async def generate_virtual_ip_image_variant(
         ]
 
         image_data = VirtualIPImageCreate(
-            virtual_ip_id=virtual_ip_id,
+            virtual_ip_id=virtual_ip.id,
             file_path=relative_path,
             oss_url=oss_url,
             filename=filename,
@@ -899,7 +891,9 @@ async def generate_virtual_ip_image_variant(
             },
         )
 
-        db_image = VirtualIPImage(**image_data.dict())
+        db_image = VirtualIPImage(
+            **image_data.dict(), virtual_ip_business_id=virtual_ip.business_id
+        )
         db.add(db_image)
         created_images.append(db_image)
 
@@ -912,7 +906,7 @@ async def generate_virtual_ip_image_variant(
 
 @router.post("/{virtual_ip_id}/images/{image_id}/variants-async")
 async def generate_virtual_ip_image_variant_async(
-    virtual_ip_id: int,
+    virtual_ip_id: str,
     image_id: int,
     request: Request,
     prompt: Optional[str] = Form(None),
@@ -925,17 +919,8 @@ async def generate_virtual_ip_image_variant_async(
 ):
     """异步基于已有虚拟IP图像生成变体：创建 Task 并委托 Celery 处理。"""
     # 权限与基础图像校验
-    _get_owned_virtual_ip(db, current_user, virtual_ip_id)
-    base_image = (
-        db.query(VirtualIPImage)
-        .filter(
-            VirtualIPImage.id == image_id,
-            VirtualIPImage.virtual_ip_id == virtual_ip_id,
-        )
-        .first()
-    )
-    if not base_image:
-        raise HTTPException(status_code=404, detail="基础图像不存在")
+    virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
+    base_image = _get_virtual_ip_image(db, virtual_ip, image_id, None)
 
     payload_body: Dict[str, Any] = {}
     if request.headers.get("content-type", "").startswith("application/json"):
@@ -979,7 +964,8 @@ async def generate_virtual_ip_image_variant_async(
 
     # 组装 payload
     payload: Dict[str, Any] = {
-        "virtual_ip_id": virtual_ip_id,
+        "virtual_ip_id": virtual_ip.id,
+        "virtual_ip_business_id": virtual_ip.business_id,
         "image_id": image_id,
         "prompt": prompt_value,
         "model": selected_model,
@@ -1120,7 +1106,9 @@ def _process_virtual_ip_image_task(
                 },
             )
 
-            db_image = VirtualIPImage(**image_data.dict())
+            db_image = VirtualIPImage(
+                **image_data.dict(), virtual_ip_business_id=virtual_ip.business_id
+            )
             db.add(db_image)
             if is_default_bool:
                 _set_ip_default_avatar(db, virtual_ip.id, db_image)

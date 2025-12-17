@@ -16,6 +16,27 @@ router = APIRouter()
 def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
 
+
+def _get_image_by_identifier(
+    db: Session,
+    image_id: Optional[int],
+    image_business_id: Optional[str],
+    user_id: int,
+) -> Image:
+    query = _not_deleted(db.query(Image), Image).filter(Image.user_id == user_id)
+    if image_business_id:
+        query = query.filter(Image.business_id == image_business_id)
+    elif image_id is not None:
+        query = query.filter(Image.id == image_id)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="image identifier missing"
+        )
+    image = query.first()
+    if not image:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="图片不存在")
+    return image
+
 def save_upload_file(upload_file: UploadFile, user_id: int) -> tuple[str, str, int]:
     """保存上传的文件"""
     # 生成唯一文件名
@@ -101,41 +122,33 @@ def get_images(
 @router.get("/{image_id}", response_model=ImageResponse)
 def get_image(
     image_id: int,
+    image_business_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """获取特定图片信息"""
-    image = (
-        _not_deleted(db.query(Image), Image)
-        .filter(Image.id == image_id, Image.user_id == current_user.id)
-        .first()
-    )
-    
-    if image is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="图片不存在"
-        )
-    
+    """获取特定图片信息（支持 business_id）"""
+    image = _get_image_by_identifier(db, image_id, image_business_id, current_user.id)
     return image
+
+
+@router.get("/business/{image_business_id}", response_model=ImageResponse)
+def get_image_by_business_id(
+    image_business_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """按 business_id 获取图片信息"""
+    return get_image(0, image_business_id, db, current_user)  # type: ignore[arg-type]
 
 @router.get("/{image_id}/download")
 def download_image(
     image_id: int,
+    image_business_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """下载图片文件"""
-    image = db.query(Image).filter(
-        Image.id == image_id,
-        Image.user_id == current_user.id
-    ).first()
-    
-    if image is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="图片不存在"
-        )
+    image = _get_image_by_identifier(db, image_id, image_business_id, current_user.id)
     
     if not os.path.exists(image.file_path):
         raise HTTPException(
@@ -149,30 +162,36 @@ def download_image(
         media_type=image.mime_type
     )
 
+
+@router.get("/business/{image_business_id}/download")
+def download_image_by_business_id(
+    image_business_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """按 business_id 下载图片文件"""
+    return download_image(0, image_business_id, db, current_user)  # type: ignore[arg-type]
+
 @router.delete("/{image_id}")
 def delete_image(
     image_id: int,
+    image_business_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """删除图片"""
-    image = db.query(Image).filter(
-        Image.id == image_id,
-        Image.user_id == current_user.id
-    ).first()
-    
-    if image is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="图片不存在"
-        )
-    
-    # 删除文件
-    if os.path.exists(image.file_path):
-        os.remove(image.file_path)
-    
-    # 删除数据库记录
-    db.delete(image)
+    image = _get_image_by_identifier(db, image_id, image_business_id, current_user.id)
+    image.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
     
     return {"message": "图片已删除"} 
+
+
+@router.delete("/business/{image_business_id}")
+def delete_image_by_business_id(
+    image_business_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """按 business_id 删除图片"""
+    return delete_image(0, image_business_id, db, current_user)  # type: ignore[arg-type]
