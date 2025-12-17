@@ -692,6 +692,9 @@ export default function EpisodeStoryboardPage() {
     selectedAudioTimeline && timelineBeatsForScene.length > 0
       ? timelineBeatsForScene.length
       : null;
+  const framesPerSceneValue = selectedAudioTimeline
+    ? framesPerSceneFromTimeline ?? form.frames_per_scene
+    : form.frames_per_scene;
 
   const timelineTracks = useMemo<TimelineTrack[]>(() => {
     const tracks: TimelineTrack[] = [];
@@ -2006,7 +2009,7 @@ export default function EpisodeStoryboardPage() {
                   type="number"
                   min={1}
                   max={10}
-                  value={form.frames_per_scene}
+                  value={framesPerSceneValue}
                   disabled={Boolean(selectedAudioTimeline)}
                   onChange={(e) =>
                     setForm((prev) => ({
