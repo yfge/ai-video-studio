@@ -632,8 +632,8 @@ def download_virtual_ip_image(
 async def update_virtual_ip_image(
     virtual_ip_id: str,
     image_id: int,
-    image_business_id: Optional[str] = None,
     image_update: VirtualIPImageUpdate,
+    image_business_id: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -1302,7 +1302,9 @@ def _process_virtual_ip_image_variant_task(
                     },
                 )
 
-                db_image = VirtualIPImage(**image_data.dict())
+                db_image = VirtualIPImage(
+                    **image_data.dict(), virtual_ip_business_id=virtual_ip.business_id
+                )
                 db.add(db_image)
                 created_images.append(db_image)
 
