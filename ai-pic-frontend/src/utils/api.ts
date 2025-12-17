@@ -2341,6 +2341,7 @@ export const storyStructureAPI = {
   getStoryTreatments: apiClient.getStoryTreatments.bind(apiClient),
   createStoryTreatment: apiClient.createStoryTreatment.bind(apiClient),
   listEnvironments: apiClient.listEnvironments.bind(apiClient),
+  getEnvironment: apiClient.getEnvironment.bind(apiClient),
   createEnvironment: apiClient.createEnvironment.bind(apiClient),
   updateEnvironment: apiClient.updateEnvironment.bind(apiClient),
   deleteEnvironment: apiClient.deleteEnvironment.bind(apiClient),
