@@ -29,6 +29,7 @@ import { MultiModelSelector } from "@/components/MultiModelSelector";
 import { ImagePreviewModal } from "@/components/ImagePreviewModal";
 import { StoryboardVideoModal } from "@/components/StoryboardVideoModal";
 import type { StyleSpecField } from "@/components/StyleSpecAdvancedPanel";
+import { Timeline, type TimelineTrack } from "@/components/Timeline/Timeline";
 
 const STORYBOARD_STYLE_SPEC_FIELDS: StyleSpecField[] = [
   { key: "shot_storyboard_style", label: "镜头与分镜风格" },
@@ -686,6 +687,71 @@ export default function EpisodeStoryboardPage() {
       totalDurationSeconds: hasDuration ? roundSeconds3(totalDurationRaw) : null,
     };
   }, [framesForScene]);
+
+  const timelineTracks = useMemo<TimelineTrack[]>(() => {
+    const tracks: TimelineTrack[] = [];
+    if (timelineBeatsForScene.length > 0) {
+      tracks.push({
+        id: "timeline-beats",
+        label: "对白 beats",
+        color: "#2563eb",
+        items: timelineBeatsForScene
+          .filter(
+            (beat) =>
+              beat.startMs != null &&
+              beat.endMs != null &&
+              beat.endMs >= beat.startMs,
+          )
+          .map((beat, idx) => ({
+            id: `beat-${beat.id ?? idx}`,
+            startMs: beat.startMs ?? 0,
+            endMs: beat.endMs ?? beat.startMs ?? 0,
+            label: beat.text || beat.type || `Beat ${idx + 1}`,
+            type: beat.type ?? undefined,
+            color: "#2563eb",
+          })),
+      });
+    }
+    if (frameTimingSummary.items.length > 0) {
+      tracks.push({
+        id: "storyboard-frames",
+        label: "分镜帧",
+        color: "#a855f7",
+        items: frameTimingSummary.items
+          .filter(
+            (item) =>
+              item.startMs != null &&
+              item.endMs != null &&
+              item.endMs >= item.startMs,
+          )
+          .map((item, idx) => ({
+            id: `frame-${item.frame.frame_id || idx}`,
+            startMs: item.startMs ?? 0,
+            endMs: item.endMs ?? item.startMs ?? 0,
+            label:
+              item.frame.description ||
+              `Frame ${item.frame.frame_number ?? idx + 1}`,
+            type: "frame",
+            color: "#a855f7",
+          })),
+      });
+    }
+    return tracks;
+  }, [frameTimingSummary.items, timelineBeatsForScene]);
+
+  const timelineRange = useMemo(() => {
+    if (timelineTracks.length === 0) return null;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    timelineTracks.forEach((track) => {
+      track.items.forEach((item) => {
+        min = Math.min(min, item.startMs);
+        max = Math.max(max, item.endMs);
+      });
+    });
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+    return { startMs: min, endMs: max };
+  }, [timelineTracks]);
 
   const sceneBeatDurationSeconds = useMemo(() => {
     if (sceneBeatsForSelected.length === 0) return null;
@@ -1787,6 +1853,20 @@ export default function EpisodeStoryboardPage() {
               场景内的 beats 与分镜帧数量、时长基本一致。
             </div>
           )}
+          <div className="mt-3">
+            {timelineTracks.length === 0 ? (
+              <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+                时间轴暂无可视数据（需要 beats start/end_ms 和分镜帧 start/end_ms）。
+              </div>
+            ) : (
+              <Timeline
+                tracks={timelineTracks}
+                startMs={timelineRange?.startMs}
+                endMs={timelineRange?.endMs}
+                initialZoom={1}
+              />
+            )}
+          </div>
           <details className="mt-3 rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
             <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
               查看场景 {selectedScene} 的时间轴与分镜明细
