@@ -16,13 +16,17 @@ from app.services.virtual_ip_ai_service import virtual_ip_ai_service
 router = APIRouter()
 
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
+
 def _get_owned_virtual_ip(
     db: Session,
     current_user: User,
     ip_id: int,
 ) -> VirtualIP:
     """获取当前用户可访问的虚拟 IP（非管理员只能访问自己的资产）。"""
-    query = db.query(VirtualIP).filter(VirtualIP.id == ip_id)
+    query = _not_deleted(db.query(VirtualIP), VirtualIP).filter(VirtualIP.id == ip_id)
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(VirtualIP.user_id == current_user.id)
     ip = query.first()
@@ -37,7 +41,7 @@ def list_virtual_ips(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(VirtualIP)
+    query = _not_deleted(db.query(VirtualIP), VirtualIP)
     # 普通用户只看到自己的虚拟 IP，管理员/超级用户可以查看全部
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(VirtualIP.user_id == current_user.id)
@@ -68,7 +72,11 @@ def create_virtual_ip(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    existing_ip = db.query(VirtualIP).filter(VirtualIP.name == ip.name).first()
+    existing_ip = (
+        _not_deleted(db.query(VirtualIP), VirtualIP)
+        .filter(VirtualIP.name == ip.name)
+        .first()
+    )
     if existing_ip:
         raise HTTPException(status_code=400, detail="虚拟IP名称已存在")
 
@@ -109,7 +117,11 @@ def update_virtual_ip(
 
     updates = ip_update.dict(exclude_unset=True)
     if "name" in updates and updates["name"] != ip.name:
-        existing_ip = db.query(VirtualIP).filter(VirtualIP.name == updates["name"]).first()
+        existing_ip = (
+            _not_deleted(db.query(VirtualIP), VirtualIP)
+            .filter(VirtualIP.name == updates["name"])
+            .first()
+        )
         if existing_ip:
             raise HTTPException(status_code=400, detail="虚拟IP名称已存在")
 
@@ -135,7 +147,7 @@ def delete_virtual_ip(
     db: Session = Depends(get_db)
 ):
     ip = _get_owned_virtual_ip(db, current_user, ip_id)
-    db.delete(ip)
+    ip.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
     return {
         "success": True,

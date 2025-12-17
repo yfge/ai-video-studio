@@ -16,6 +16,9 @@ from app.services.user_management_service import UserManagementService
 
 router = APIRouter()
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
 @router.post("/register", response_model=UserResponse)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """用户注册。
@@ -25,14 +28,22 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """
     is_first_user = db.query(User).count() == 0
     # 检查用户名是否已存在
-    if db.query(User).filter(User.username == user_data.username).first():
+    if (
+        _not_deleted(db.query(User), User)
+        .filter(User.username == user_data.username)
+        .first()
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名已存在"
         )
     
     # 检查邮箱是否已存在
-    if db.query(User).filter(User.email == user_data.email).first():
+    if (
+        _not_deleted(db.query(User), User)
+        .filter(User.email == user_data.email)
+        .first()
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="邮箱已存在"
@@ -74,7 +85,11 @@ def login(
     db: Session = Depends(get_db)
 ):
     """用户登录"""
-    user = db.query(User).filter(User.username == form_data.username).first()
+    user = (
+        _not_deleted(db.query(User), User)
+        .filter(User.username == form_data.username)
+        .first()
+    )
     
     # 验证用户名和密码
     if not user or not verify_password(form_data.password, user.hashed_password):

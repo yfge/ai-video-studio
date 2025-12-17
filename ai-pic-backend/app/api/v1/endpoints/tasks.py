@@ -11,6 +11,10 @@ from app.core.middleware import get_current_active_user
 router = APIRouter()
 
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
+
 def _serialize_task(task: Task) -> TaskResponse:
     """将ORM任务对象序列化为响应模型，解析parameters为dict"""
     params = None
@@ -77,7 +81,7 @@ def get_tasks(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取用户的任务列表"""
-    query = db.query(Task).filter(Task.user_id == current_user.id)
+    query = _not_deleted(db.query(Task), Task).filter(Task.user_id == current_user.id)
     
     if status_filter:
         query = query.filter(Task.status == status_filter)
@@ -126,10 +130,11 @@ def get_task(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取特定任务信息"""
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.user_id == current_user.id
-    ).first()
+    task = (
+        _not_deleted(db.query(Task), Task)
+        .filter(Task.id == task_id, Task.user_id == current_user.id)
+        .first()
+    )
     
     if task is None:
         raise HTTPException(
@@ -147,10 +152,11 @@ def update_task(
     current_user: User = Depends(get_current_active_user)
 ):
     """更新任务信息"""
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.user_id == current_user.id
-    ).first()
+    task = (
+        _not_deleted(db.query(Task), Task)
+        .filter(Task.id == task_id, Task.user_id == current_user.id)
+        .first()
+    )
     
     if task is None:
         raise HTTPException(
@@ -181,10 +187,11 @@ def delete_task(
     current_user: User = Depends(get_current_active_user)
 ):
     """删除任务"""
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.user_id == current_user.id
-    ).first()
+    task = (
+        _not_deleted(db.query(Task), Task)
+        .filter(Task.id == task_id, Task.user_id == current_user.id)
+        .first()
+    )
     
     if task is None:
         raise HTTPException(
@@ -192,7 +199,7 @@ def delete_task(
             detail="任务不存在"
         )
     
-    db.delete(task)
+    task.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
     
     return {"message": "任务已删除"}

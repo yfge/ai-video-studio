@@ -37,6 +37,10 @@ _EXTRA_METADATA_EXCLUDE = {
 }
 
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
+
 def _build_extra_metadata(ai_content):
     if not isinstance(ai_content, dict):
         return {}
@@ -62,7 +66,7 @@ async def create_story(
         for char_data in story.characters:
             # 验证虚拟IP是否存在
             virtual_ip = (
-                db.query(VirtualIP)
+                _not_deleted(db.query(VirtualIP), VirtualIP)
                 .filter(VirtualIP.id == char_data.virtual_ip_id)
                 .first()
             )
@@ -90,7 +94,7 @@ async def generate_story(
     # 获取角色信息
     characters = []
     for char_id in request.character_ids:
-        vip_query = db.query(VirtualIP).filter(VirtualIP.id == char_id)
+        vip_query = _not_deleted(db.query(VirtualIP), VirtualIP).filter(VirtualIP.id == char_id)
         if not current_user.is_admin and not current_user.is_superuser:
             vip_query = vip_query.filter(VirtualIP.user_id == current_user.id)
         virtual_ip = vip_query.first()
@@ -444,7 +448,7 @@ async def get_stories(
     db: Session = Depends(get_db),
 ):
     """获取故事列表"""
-    query = db.query(Story)
+    query = _not_deleted(db.query(Story), Story)
 
     # 普通用户只查看自己的故事，管理员/超级用户可查看全部
     if not current_user.is_admin and not current_user.is_superuser:
@@ -494,7 +498,7 @@ async def get_story(
     db: Session = Depends(get_db),
 ):
     """获取故事详情"""
-    query = db.query(Story).filter(Story.id == story_id)
+    query = _not_deleted(db.query(Story), Story).filter(Story.id == story_id)
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(Story.user_id == current_user.id)
     story = query.first()
@@ -512,7 +516,7 @@ async def update_story(
     db: Session = Depends(get_db),
 ):
     """更新故事"""
-    query = db.query(Story).filter(Story.id == story_id)
+    query = _not_deleted(db.query(Story), Story).filter(Story.id == story_id)
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(Story.user_id == current_user.id)
     story = query.first()
