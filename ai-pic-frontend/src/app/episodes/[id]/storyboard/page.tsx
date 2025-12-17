@@ -693,7 +693,9 @@ export default function EpisodeStoryboardPage() {
       ? timelineBeatsForScene.length
       : null;
   const framesPerSceneValue = selectedAudioTimeline
-    ? framesPerSceneFromTimeline ?? form.frames_per_scene
+    ? framesForScene.length > 0
+      ? framesForScene.length
+      : framesPerSceneFromTimeline ?? form.frames_per_scene
     : form.frames_per_scene;
 
   const timelineTracks = useMemo<TimelineTrack[]>(() => {
@@ -866,8 +868,9 @@ export default function EpisodeStoryboardPage() {
     if (!assertNormalizedReady(true)) return;
     setStoryboardBusy(true);
     try {
-      const framesPerSceneParam =
-        framesPerSceneFromTimeline ?? form.frames_per_scene;
+      const framesPerSceneParam = selectedAudioTimeline
+        ? framesPerSceneValue
+        : form.frames_per_scene;
       const response = await scriptAPI.generateStoryboardAsync(
         activeScript.id,
         {
