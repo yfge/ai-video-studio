@@ -84,7 +84,7 @@ def ensure_auto_treatment(
 
 def list_step_outlines(db: Session, treatment_id: int) -> List[StoryStepOutline]:
     return (
-        db.query(StoryStepOutline)
+        _not_deleted(db.query(StoryStepOutline), StoryStepOutline)
         .filter(StoryStepOutline.story_treatment_id == treatment_id)
         .order_by(StoryStepOutline.sequence_number.asc())
         .all()
@@ -170,11 +170,15 @@ def get_script_structure(db: Session, script_id: int) -> Optional[List[Dict[str,
 
 def create_scene(db: Session, data: SceneCreate) -> Scene:
     # ensure script exists
-    script = db.query(Script).filter(Script.id == data.script_id).first()
+    script = _not_deleted(db.query(Script), Script).filter(Script.id == data.script_id).first()
     if not script:
         raise ValueError("script_not_found")
     if data.environment_id:
-        env = db.query(Environment).filter(Environment.id == data.environment_id).first()
+        env = (
+            _not_deleted(db.query(Environment), Environment)
+            .filter(Environment.id == data.environment_id)
+            .first()
+        )
         if not env:
             raise ValueError("environment_not_found")
     obj = Scene(**data.model_dump())
@@ -186,7 +190,7 @@ def create_scene(db: Session, data: SceneCreate) -> Scene:
 
 def list_beats_by_scene(db: Session, scene_id: int) -> List[SceneBeat]:
     return (
-        db.query(SceneBeat)
+        _not_deleted(db.query(SceneBeat), SceneBeat)
         .filter(SceneBeat.scene_id == scene_id)
         .order_by(SceneBeat.order_index.asc())
         .all()
