@@ -1617,7 +1617,7 @@ class ApiClient {
   async deleteEnvironmentImage(
     envId: number,
     imageUrl: string,
-  ): Promise<ApiResponse> {
+  ): Promise<ApiResponse<EnvironmentImagesResponse>> {
     const params = new URLSearchParams({ image_url: imageUrl });
     return this.request(
       `/api/v1/story-structure/environments/${envId}/images?${params.toString()}`,

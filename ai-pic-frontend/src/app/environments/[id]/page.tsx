@@ -84,7 +84,8 @@ function EnvironmentDetailContent() {
       setUploading(true)
       const res = await storyStructureAPI.uploadEnvironmentImage(envId, selectedFile)
       if (res.success && res.data) {
-        setImages(prev => [{ url: res.data.url }, ...prev])
+        const uploaded = res.data
+        setImages(prev => [{ url: uploaded.url }, ...prev])
         setSelectedFile(null)
         showAlert({ message: '上传成功', variant: 'success' })
       } else {
@@ -108,7 +109,7 @@ function EnvironmentDetailContent() {
       onConfirm: async () => {
         const res = await storyStructureAPI.deleteEnvironmentImage(envId, url)
         if (res.success && res.data) {
-          setImages(res.data.images || [])
+          setImages(res.data.images ?? [])
           showAlert({ message: '删除成功', variant: 'success' })
         } else {
           showAlert({ message: res.error || '删除失败', variant: 'error' })
