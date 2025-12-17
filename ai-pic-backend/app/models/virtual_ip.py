@@ -43,6 +43,7 @@ class VirtualIPImage(SoftDeleteBusinessMixin, Base):
 
     id = Column(Integer, primary_key=True, index=True)
     virtual_ip_id = Column(Integer, ForeignKey("virtual_ips.id"), nullable=False)
+    virtual_ip_business_id = Column(String(32), index=True, nullable=True)
 
     # 图像信息
     filename = Column(String(128), nullable=False)

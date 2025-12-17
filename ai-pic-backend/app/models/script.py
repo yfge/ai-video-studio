@@ -56,6 +56,7 @@ class Episode(SoftDeleteBusinessMixin, Base):
     
     id = Column(Integer, primary_key=True, index=True)
     story_id = Column(Integer, ForeignKey("stories.id"), nullable=False, comment="故事ID")
+    story_business_id = Column(String(32), index=True, nullable=True, comment="业务主键：故事 business_id")
     episode_number = Column(Integer, nullable=False, comment="集数")
     title = Column(String(255), nullable=False, comment="剧集标题")
     
@@ -93,6 +94,7 @@ class Script(SoftDeleteBusinessMixin, Base):
     
     id = Column(Integer, primary_key=True, index=True)
     episode_id = Column(Integer, ForeignKey("episodes.id"), nullable=False, comment="剧集ID")
+    episode_business_id = Column(String(32), index=True, nullable=True, comment="业务主键：剧集 business_id")
     title = Column(String(255), nullable=False, comment="剧本标题")
     
     # 剧本内容
@@ -137,7 +139,9 @@ class StoryCharacter(SoftDeleteBusinessMixin, Base):
     
     id = Column(Integer, primary_key=True, index=True)
     story_id = Column(Integer, ForeignKey("stories.id"), nullable=False, comment="故事ID")
+    story_business_id = Column(String(32), index=True, nullable=True, comment="业务主键：故事 business_id")
     virtual_ip_id = Column(Integer, ForeignKey("virtual_ips.id"), nullable=False, comment="虚拟IP ID")
+    virtual_ip_business_id = Column(String(32), index=True, nullable=True, comment="业务主键：虚拟IP business_id")
     
     # 角色信息
     character_name = Column(String(100), comment="角色名称")

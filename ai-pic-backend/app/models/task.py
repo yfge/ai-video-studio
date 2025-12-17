@@ -20,6 +20,7 @@ class Task(SoftDeleteBusinessMixin, Base):
     __tablename__ = "tasks"
     
     id = Column(Integer, primary_key=True, index=True)
+    target_business_id = Column(String(32), nullable=True, index=True, comment="业务目标对象 business_id")
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     task_type = Column(Enum(TaskType), nullable=False)

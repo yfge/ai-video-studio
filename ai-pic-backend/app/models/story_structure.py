@@ -65,12 +65,15 @@ class StoryStepOutline(SoftDeleteBusinessMixin, Base):
     story_id = Column(
         Integer, ForeignKey("stories.id", ondelete="CASCADE"), nullable=False
     )
+    story_business_id = Column(String(32), index=True, nullable=True)
     episode_id = Column(
         Integer, ForeignKey("episodes.id", ondelete="SET NULL"), nullable=True
     )
+    episode_business_id = Column(String(32), index=True, nullable=True)
     story_treatment_id = Column(
         BIGINT_PK, ForeignKey("story_treatments.id", ondelete="CASCADE"), nullable=False
     )
+    story_treatment_business_id = Column(String(32), index=True, nullable=True)
     sequence_number = Column(Integer, nullable=False)
     act_label = Column(String(50))
     beat_title = Column(String(255), nullable=False)
@@ -105,14 +108,17 @@ class Scene(SoftDeleteBusinessMixin, Base):
     script_id = Column(
         Integer, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
     )
+    script_business_id = Column(String(32), index=True, nullable=True)
     story_step_outline_id = Column(
         BIGINT_PK,
         ForeignKey("story_step_outlines.id", ondelete="SET NULL"),
         nullable=True,
     )
+    story_step_outline_business_id = Column(String(32), index=True, nullable=True)
     environment_id = Column(
         BIGINT_PK, ForeignKey("environments.id", ondelete="SET NULL"), nullable=True
     )
+    environment_business_id = Column(String(32), index=True, nullable=True)
     scene_number = Column(String(20), nullable=False)
     slug_line = Column(String(255), nullable=False)
     environment_type = Column(String(32), comment="INT/EXT/INT-EXT")
@@ -145,6 +151,7 @@ class SceneBeat(SoftDeleteBusinessMixin, Base):
     scene_id = Column(
         BIGINT_PK, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
     )
+    scene_business_id = Column(String(32), index=True, nullable=True)
     order_index = Column(Integer, nullable=False)
     beat_type = Column(String(32))
     beat_summary = Column(Text)
@@ -171,9 +178,11 @@ class Shot(SoftDeleteBusinessMixin, Base):
     scene_id = Column(
         BIGINT_PK, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
     )
+    scene_business_id = Column(String(32), index=True, nullable=True)
     scene_beat_id = Column(
         BIGINT_PK, ForeignKey("scene_beats.id", ondelete="SET NULL"), nullable=True
     )
+    scene_beat_business_id = Column(String(32), index=True, nullable=True)
     shot_number = Column(String(20), nullable=False)
     shot_type = Column(String(50))
     camera_setup = Column(String(255))
