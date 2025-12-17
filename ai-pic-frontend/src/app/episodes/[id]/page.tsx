@@ -16,7 +16,7 @@ import { MultiModelSelector } from "@/components/MultiModelSelector";
 export default function EpisodeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const episodeId = Number(params.id);
+  const episodeKey = params?.id?.toString() || "";
   const { showAlert } = useAlertModal();
 
   const [episode, setEpisode] = useState<Episode | null>(null);
@@ -61,7 +61,7 @@ export default function EpisodeDetailPage() {
 
   // 剧本生成表单状态
   const [generateForm, setGenerateForm] = useState<ScriptGenerationRequest>({
-    episode_id: episodeId,
+    episode_id: 0,
     format_type: "screenplay",
     language: "zh-CN",
     dialogue_style: "natural",
@@ -108,8 +108,8 @@ export default function EpisodeDetailPage() {
     try {
       setLoading(true);
       const [episodeResponse, scriptsResponse] = await Promise.all([
-        episodeAPI.getEpisode(episodeId),
-        scriptAPI.getEpisodeScripts(episodeId),
+        episodeAPI.getEpisode(episodeKey),
+        scriptAPI.getEpisodeScripts(episodeKey),
       ]);
 
       if (episodeResponse.success && episodeResponse.data) {
@@ -124,7 +124,7 @@ export default function EpisodeDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [episodeId, showAlert]);
+  }, [episodeKey, showAlert]);
 
   const loadOptions = useCallback(async () => {
     try {
@@ -176,8 +176,10 @@ export default function EpisodeDetailPage() {
   }, [loadData, loadOptions]);
 
   useEffect(() => {
-    setGenerateForm((prev) => ({ ...prev, episode_id: episodeId }));
-  }, [episodeId]);
+    if (episode?.id) {
+      setGenerateForm((prev) => ({ ...prev, episode_id: episode.id }));
+    }
+  }, [episode?.id]);
 
   useEffect(() => {
     if (selectedScriptId) return;
@@ -595,7 +597,11 @@ export default function EpisodeDetailPage() {
                   const suffix = selectedScript?.id
                     ? `?scriptId=${selectedScript.id}`
                     : "";
-                  router.push(`/episodes/${episodeId}/storyboard${suffix}`);
+                  if (episode?.business_id) {
+                    router.push(`/episodes/${episode.business_id}/storyboard${suffix}`);
+                  } else if (episode?.id) {
+                    router.push(`/episodes/${episode.id}/storyboard${suffix}`);
+                  }
                 }}
                 className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
               >
@@ -629,7 +635,9 @@ export default function EpisodeDetailPage() {
               </button>
               {selectedScript && (
                 <button
-                  onClick={() => router.push(`/scripts/${selectedScript.id}`)}
+                  onClick={() =>
+                    router.push(`/scripts/${selectedScript.business_id || selectedScript.id}`)
+                  }
                   className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
                 >
                   查看剧本
@@ -1354,7 +1362,9 @@ export default function EpisodeDetailPage() {
 
                     <div className="flex gap-2 ml-4">
                       <button
-                        onClick={() => router.push(`/scripts/${script.id}`)}
+                        onClick={() =>
+                          router.push(`/scripts/${script.business_id || script.id}`)
+                        }
                         className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
                       >
                         查看内容

@@ -263,7 +263,7 @@ const SceneDetails = ({
 export default function ScriptDetailPage() {
   const router = useRouter()
   const { id } = useParams()
-  const scriptId = Number(id)
+  const scriptKey = (id as string) || ''
   const { showAlert } = useAlertModal()
 
   const [activeTab, setActiveTab] = useState<TabId>('overview')
@@ -282,7 +282,7 @@ export default function ScriptDetailPage() {
   const [readOnlyNotified, setReadOnlyNotified] = useState(false)
 
   const refreshStoryboard = useCallback(
-    async (targetId: number) => {
+    async (targetId: number | string) => {
       setStoryboardBusy(true)
       try {
         const response = await scriptAPI.getStoryboard(targetId)
@@ -306,11 +306,12 @@ export default function ScriptDetailPage() {
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true)
-      const scriptRes = await scriptAPI.getScript(scriptId)
+      const scriptRes = await scriptAPI.getScript(scriptKey)
 
       if (scriptRes.success && scriptRes.data) {
         setScript(scriptRes.data)
-        await refreshStoryboard(scriptId)
+        const identifier = scriptRes.data.business_id || scriptKey
+        await refreshStoryboard(identifier)
       } else {
         showAlert({ message: '加载剧本失败', variant: 'error' })
       }
@@ -320,7 +321,7 @@ export default function ScriptDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [refreshStoryboard, scriptId, showAlert])
+  }, [refreshStoryboard, scriptKey, showAlert])
 
   useEffect(() => {
     loadInitialData()
@@ -374,6 +375,7 @@ export default function ScriptDetailPage() {
     if (!Array.isArray(rawScenes)) return []
     return rawScenes.filter(scene => scene && typeof scene === 'object') as StoryboardPlanScene[]
   }, [storyboard?.plan?.scenes])
+  const scriptIdentifier = script?.business_id || scriptKey
   const canEditStructure = useMemo(() => isAdmin(currentUser), [currentUser])
   useEffect(() => {
     if (activeTab === 'scenes' && !canEditStructure && !readOnlyNotified) {
@@ -384,7 +386,7 @@ export default function ScriptDetailPage() {
 
   const handleExport = async (format: string) => {
     try {
-      const response = await scriptAPI.exportScript(scriptId, format)
+      const response = await scriptAPI.exportScript(scriptIdentifier, format)
       if (response.success) {
         showAlert({ message: `剧本已导出为 ${format.toUpperCase()} 格式`, variant: 'success' })
       } else {
@@ -402,7 +404,7 @@ export default function ScriptDetailPage() {
     if (!script) return
     setStoryboardBusy(true)
     try {
-      const preview = await scriptAPI.previewStoryboardPrompt(script.id)
+      const preview = await scriptAPI.previewStoryboardPrompt(scriptIdentifier)
       if (preview.success && preview.data) {
         setPromptPreview(preview.data.prompt)
       } else {
@@ -416,7 +418,7 @@ export default function ScriptDetailPage() {
   type GenerateStoryboardOptions = Parameters<typeof scriptAPI.generateStoryboard>[1]
 
   const pollStoryboardTask = useCallback(
-    async (scriptId: number, taskId: number) => {
+    async (scriptId: number | string, taskId: number) => {
       const maxAttempts = 30
       let attempts = 0
       while (attempts < maxAttempts) {
@@ -473,10 +475,10 @@ export default function ScriptDetailPage() {
     payload.use_plan = true
     setStoryboardBusy(true)
     try {
-      const response = await scriptAPI.generateStoryboardAsync(script.id, payload)
+      const response = await scriptAPI.generateStoryboardAsync(scriptIdentifier, payload)
       if (response.success && response.data) {
         showAlert({ message: '已创建分镜生成任务，正在等待结果...', variant: 'info' })
-        await pollStoryboardTask(script.id, response.data.task_id)
+        await pollStoryboardTask(scriptIdentifier, response.data.task_id)
       } else {
         showAlert({ message: `创建分镜任务失败：${response.error || '未知错误'}`, variant: 'error' })
       }
@@ -528,7 +530,12 @@ export default function ScriptDetailPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex items-center gap-3 text-sm text-gray-500">
-                <button onClick={() => router.push(`/episodes/${script.episode_id}`)} className="text-blue-600 hover:text-blue-800">
+                <button
+                  onClick={() =>
+                    router.push(`/episodes/${script.episode_business_id || script.episode_id}`)
+                  }
+                  className="text-blue-600 hover:text-blue-800"
+                >
                   返回剧集
                 </button>
                 <span>•</span>
@@ -540,7 +547,14 @@ export default function ScriptDetailPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => router.push(`/episodes/${script.episode_id}/storyboard`)} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700">
+              <button
+                onClick={() =>
+                  router.push(
+                    `/episodes/${script.episode_business_id || script.episode_id}/storyboard`,
+                  )
+                }
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+              >
                 打开分镜管理
               </button>
               <div className="relative">
@@ -651,7 +665,7 @@ export default function ScriptDetailPage() {
           <Section title="场景详情" description="查看逐场景的对白、舞台指示与关键信息">
             <div className="space-y-6 p-6">
               <SceneStructurePanel
-                scriptId={scriptId}
+                scriptId={script.id}
                 canEdit={canEditStructure}
                 onStructureLoaded={setStructuredScenes}
               />

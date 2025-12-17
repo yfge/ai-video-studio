@@ -32,7 +32,7 @@ const getEpisodeSceneCount = (episode: Episode | null): number | undefined => {
 export default function StoryDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const storyId = Number(params.id)
+  const storyKey = params?.id?.toString() || ''
   const { showAlert } = useAlertModal()
 
   const [story, setStory] = useState<Story | null>(null)
@@ -59,7 +59,7 @@ export default function StoryDetailPage() {
 
   const buildEpisodePayload = useCallback(
     (): EpisodeGenerationRequest => ({
-      story_id: storyId,
+      story_id: story?.id ?? 0,
       episode_count: genForm.episode_count,
       episode_duration: genForm.episode_duration,
       plot_complexity: genForm.plot_complexity,
@@ -70,15 +70,15 @@ export default function StoryDetailPage() {
       temperature: genForm.temperature,
       focus_characters: focusCharacters.length ? focusCharacters : undefined,
     }),
-    [focusCharacters, genForm, storyId]
+    [focusCharacters, genForm, story?.id]
   )
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       const [storyRes, epsRes] = await Promise.all([
-        storyAPI.getStory(storyId),
-        episodeAPI.getStoryEpisodes(storyId),
+        storyAPI.getStory(storyKey),
+        episodeAPI.getStoryEpisodes(storyKey),
       ])
 
       if (storyRes.success && storyRes.data) setStory(storyRes.data)
@@ -102,7 +102,7 @@ export default function StoryDetailPage() {
       setLoading(false)
       setLoadingScripts(false)
     }
-  }, [showAlert, storyId])
+  }, [showAlert, storyKey])
 
   useEffect(() => {
     void loadData()
@@ -518,7 +518,9 @@ export default function StoryDetailPage() {
                     <div className="flex items-center justify-between">
                       <div className="font-medium text-gray-900">第{ep.episode_number}集 · {ep.title}</div>
                       <button
-                        onClick={() => router.push(`/episodes/${ep.id}`)}
+                        onClick={() =>
+                          router.push(`/episodes/${ep.business_id || ep.id}`)
+                        }
                         className="text-blue-600 hover:text-blue-800 text-sm"
                       >查看</button>
                     </div>
@@ -553,7 +555,16 @@ export default function StoryDetailPage() {
                         <div className="mt-3 text-sm">
                           <div className="text-gray-700 mb-1 flex items-center justify-between">
                             <span>最新剧本：</span>
-                            <button onClick={() => router.push(`/episodes/${ep.id}/storyboard`)} className="text-blue-600 hover:text-blue-800 text-xs">分镜管理</button>
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  `/episodes/${ep.business_id || ep.id}/storyboard`
+                                )
+                              }
+                              className="text-blue-600 hover:text-blue-800 text-xs"
+                            >
+                              分镜管理
+                            </button>
                           </div>
                           <div className="space-y-1">
                           {scripts.slice(0, 2).map((sc) => (

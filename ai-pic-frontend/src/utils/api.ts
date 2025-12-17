@@ -12,6 +12,7 @@ export interface ApiResponse<T = unknown> {
 // 用户相关类型
 export interface User {
   id: number;
+  business_id: string;
   username: string;
   email: string;
   full_name?: string;
@@ -85,6 +86,7 @@ export interface RegisterRequest {
 // 任务相关类型
 export interface Task {
   id: number;
+  business_id: string;
   title: string;
   task_type?: string;
   prompt?: string;
@@ -97,6 +99,7 @@ export interface Task {
   result_file_path?: string;
   error_message?: string;
   user_id: number;
+  target_business_id?: string | null;
 }
 
 export interface CreateTaskRequest {
@@ -123,7 +126,9 @@ export interface ImageItem {
 // 虚拟IP图像相关类型
 export interface VirtualIPImage {
   id: number;
+  business_id: string;
   virtual_ip_id: number;
+  virtual_ip_business_id?: string | null;
   file_path: string;
   oss_url?: string;
   category: string;
@@ -322,6 +327,7 @@ export interface AvailableModelsResponse {
 // 虚拟IP相关类型
 export interface VirtualIP {
   id: number;
+  business_id: string;
   name: string;
   default_avatar_url?: string;
   description?: string;
@@ -408,6 +414,7 @@ export interface VirtualIPAIGenerationDetailedResponse {
 // 剧本相关类型
 export interface StoryCharacter {
   id: number;
+  business_id: string;
   story_id: number;
   virtual_ip_id: number;
   character_name?: string;
@@ -424,6 +431,7 @@ export interface StoryCharacter {
 
 export interface Story {
   id: number;
+  business_id: string;
   title: string;
   genre: string;
   theme?: string;
@@ -453,7 +461,9 @@ export interface Story {
 
 export interface Episode {
   id: number;
+  business_id: string;
   story_id: number;
+  story_business_id?: string | null;
   episode_number: number;
   title: string;
   summary?: string;
@@ -475,7 +485,9 @@ export interface Episode {
 
 export interface Script {
   id: number;
+  business_id: string;
   episode_id: number;
+  episode_business_id?: string | null;
   title: string;
   content?: string;
   scenes?: unknown[];
@@ -686,6 +698,42 @@ class ApiClient {
     if (typeof window !== "undefined") {
       this.token = localStorage.getItem("auth_token");
     }
+  }
+
+  private isBusinessIdentifier(value: number | string): boolean {
+    if (typeof value === "number") return false;
+    const raw = String(value || "").trim();
+    if (!raw) return false;
+    const isDigitsOnly = /^\d+$/.test(raw);
+    return !isDigitsOnly || raw.length >= 16;
+  }
+
+  private storyPath(storyIdOrBiz: number | string, suffix: string = ""): string {
+    const base = this.isBusinessIdentifier(storyIdOrBiz)
+      ? `/api/v1/stories/business/${storyIdOrBiz}`
+      : `/api/v1/stories/${storyIdOrBiz}`;
+    return `${base}${suffix}`;
+  }
+
+  private episodePath(episodeIdOrBiz: number | string, suffix: string = ""): string {
+    const base = this.isBusinessIdentifier(episodeIdOrBiz)
+      ? `/api/v1/episodes/business/${episodeIdOrBiz}`
+      : `/api/v1/episodes/${episodeIdOrBiz}`;
+    return `${base}${suffix}`;
+  }
+
+  private scriptPath(scriptIdOrBiz: number | string, suffix: string = ""): string {
+    const base = this.isBusinessIdentifier(scriptIdOrBiz)
+      ? `/api/v1/scripts/business/${scriptIdOrBiz}`
+      : `/api/v1/scripts/${scriptIdOrBiz}`;
+    return `${base}${suffix}`;
+  }
+
+  private virtualIPPath(ipIdOrBiz: number | string, suffix: string = ""): string {
+    const base = this.isBusinessIdentifier(ipIdOrBiz)
+      ? `/api/v1/virtual-ips/business/${ipIdOrBiz}`
+      : `/api/v1/virtual-ips/${ipIdOrBiz}`;
+    return `${base}${suffix}`;
   }
 
   private async request<T>(
@@ -1127,8 +1175,8 @@ class ApiClient {
     return this.request(endpoint);
   }
 
-  async getVirtualIP(id: number): Promise<ApiResponse<VirtualIP>> {
-    return this.request(`/api/v1/virtual-ips/${id}`);
+  async getVirtualIP(id: number | string): Promise<ApiResponse<VirtualIP>> {
+    return this.request(this.virtualIPPath(id));
   }
 
   async createVirtualIP(
@@ -1141,17 +1189,17 @@ class ApiClient {
   }
 
   async updateVirtualIP(
-    id: number,
+    id: number | string,
     data: UpdateVirtualIPRequest,
   ): Promise<ApiResponse<VirtualIP>> {
-    return this.request(`/api/v1/virtual-ips/${id}`, {
+    return this.request(this.virtualIPPath(id), {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
-  async deleteVirtualIP(id: number): Promise<ApiResponse> {
-    return this.request(`/api/v1/virtual-ips/${id}`, {
+  async deleteVirtualIP(id: number | string): Promise<ApiResponse> {
+    return this.request(this.virtualIPPath(id), {
       method: "DELETE",
     });
   }
@@ -1325,8 +1373,8 @@ class ApiClient {
     return this.request<Story[]>(`/api/v1/stories?${searchParams}`);
   }
 
-  async getStory(id: number) {
-    return this.request<Story>(`/api/v1/stories/${id}`);
+  async getStory(idOrBusinessId: number | string) {
+    return this.request<Story>(this.storyPath(idOrBusinessId));
   }
 
   async generateStory(data: StoryGenerationRequest) {
@@ -1353,22 +1401,22 @@ class ApiClient {
     });
   }
 
-  async updateStory(id: number, data: Partial<Story>) {
-    return this.request<Story>(`/api/v1/stories/${id}`, {
+  async updateStory(idOrBusinessId: number | string, data: Partial<Story>) {
+    return this.request<Story>(this.storyPath(idOrBusinessId), {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
-  async deleteStory(id: number) {
-    return this.request(`/api/v1/stories/${id}`, {
+  async deleteStory(idOrBusinessId: number | string) {
+    return this.request(this.storyPath(idOrBusinessId), {
       method: "DELETE",
     });
   }
 
-  async getStoryCharacters(storyId: number) {
+  async getStoryCharacters(storyId: number | string) {
     return this.request<StoryCharacter[]>(
-      `/api/v1/stories/${storyId}/characters`,
+      this.storyPath(storyId, "/characters"),
     );
   }
 
@@ -1540,6 +1588,7 @@ class ApiClient {
   // 剧集相关方法
   async getEpisodes(params?: {
     story_id?: number;
+    story_business_id?: string;
     skip?: number;
     limit?: number;
     status?: string;
@@ -1547,6 +1596,8 @@ class ApiClient {
     const searchParams = new URLSearchParams();
     if (params?.story_id)
       searchParams.append("story_id", params.story_id.toString());
+    if (params?.story_business_id)
+      searchParams.append("story_business_id", params.story_business_id);
     if (params?.skip) searchParams.append("skip", params.skip.toString());
     if (params?.limit) searchParams.append("limit", params.limit.toString());
     if (params?.status) searchParams.append("status", params.status);
@@ -1554,8 +1605,8 @@ class ApiClient {
     return this.request<Episode[]>(`/api/v1/episodes?${searchParams}`);
   }
 
-  async getEpisode(id: number) {
-    return this.request<Episode>(`/api/v1/episodes/${id}`);
+  async getEpisode(idOrBusinessId: number | string) {
+    return this.request<Episode>(this.episodePath(idOrBusinessId));
   }
 
   async generateEpisodes(data: EpisodeGenerationRequest) {
@@ -1582,25 +1633,28 @@ class ApiClient {
     );
   }
 
-  async updateEpisode(id: number, data: Partial<Episode>) {
-    return this.request<Episode>(`/api/v1/episodes/${id}`, {
+  async updateEpisode(idOrBusinessId: number | string, data: Partial<Episode>) {
+    return this.request<Episode>(this.episodePath(idOrBusinessId), {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
-  async deleteEpisode(id: number) {
-    return this.request(`/api/v1/episodes/${id}`, {
+  async deleteEpisode(idOrBusinessId: number | string) {
+    return this.request(this.episodePath(idOrBusinessId), {
       method: "DELETE",
     });
   }
 
-  async getStoryEpisodes(storyId: number) {
-    return this.request<Episode[]>(`/api/v1/episodes/story/${storyId}`);
+  async getStoryEpisodes(storyIdOrBusinessId: number | string) {
+    const endpoint = this.isBusinessIdentifier(storyIdOrBusinessId)
+      ? `/api/v1/episodes/story/business/${storyIdOrBusinessId}`
+      : `/api/v1/episodes/story/${storyIdOrBusinessId}`;
+    return this.request<Episode[]>(endpoint);
   }
 
-  async regenerateEpisode(id: number) {
-    return this.request<Episode>(`/api/v1/episodes/${id}/regenerate`, {
+  async regenerateEpisode(idOrBusinessId: number | string) {
+    return this.request<Episode>(this.episodePath(idOrBusinessId, "/regenerate"), {
       method: "POST",
     });
   }
@@ -1608,6 +1662,7 @@ class ApiClient {
   // 剧本相关方法
   async getScripts(params?: {
     episode_id?: number;
+    episode_business_id?: string;
     skip?: number;
     limit?: number;
     status?: string;
@@ -1616,6 +1671,8 @@ class ApiClient {
     const searchParams = new URLSearchParams();
     if (params?.episode_id)
       searchParams.append("episode_id", params.episode_id.toString());
+    if (params?.episode_business_id)
+      searchParams.append("episode_business_id", params.episode_business_id);
     if (params?.skip) searchParams.append("skip", params.skip.toString());
     if (params?.limit) searchParams.append("limit", params.limit.toString());
     if (params?.status) searchParams.append("status", params.status);
@@ -1625,8 +1682,8 @@ class ApiClient {
     return this.request<Script[]>(`/api/v1/scripts?${searchParams}`);
   }
 
-  async getScript(id: number) {
-    return this.request<Script>(`/api/v1/scripts/${id}`);
+  async getScript(idOrBusinessId: number | string) {
+    return this.request<Script>(this.scriptPath(idOrBusinessId));
   }
 
   async generateScript(data: ScriptGenerationRequest) {
@@ -1653,25 +1710,28 @@ class ApiClient {
     });
   }
 
-  async updateScript(id: number, data: Partial<Script>) {
-    return this.request<Script>(`/api/v1/scripts/${id}`, {
+  async updateScript(idOrBusinessId: number | string, data: Partial<Script>) {
+    return this.request<Script>(this.scriptPath(idOrBusinessId), {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
-  async deleteScript(id: number) {
-    return this.request(`/api/v1/scripts/${id}`, {
+  async deleteScript(idOrBusinessId: number | string) {
+    return this.request(this.scriptPath(idOrBusinessId), {
       method: "DELETE",
     });
   }
 
-  async getEpisodeScripts(episodeId: number) {
-    return this.request<Script[]>(`/api/v1/scripts/episode/${episodeId}`);
+  async getEpisodeScripts(episodeIdOrBusinessId: number | string) {
+    const endpoint = this.isBusinessIdentifier(episodeIdOrBusinessId)
+      ? `/api/v1/scripts/episode/business/${episodeIdOrBusinessId}`
+      : `/api/v1/scripts/episode/${episodeIdOrBusinessId}`;
+    return this.request<Script[]>(endpoint);
   }
 
-  async regenerateScript(id: number) {
-    return this.request<Script>(`/api/v1/scripts/${id}/regenerate`, {
+  async regenerateScript(idOrBusinessId: number | string) {
+    return this.request<Script>(this.scriptPath(idOrBusinessId, "/regenerate"), {
       method: "POST",
     });
   }
@@ -1688,14 +1748,14 @@ class ApiClient {
     );
   }
 
-  async exportScript(id: number, format: string = "txt") {
-    return this.request(`/api/v1/scripts/${id}/export?format=${format}`, {
+  async exportScript(idOrBusinessId: number | string, format: string = "txt") {
+    return this.request(this.scriptPath(idOrBusinessId, `/export?format=${format}`), {
       method: "POST",
     });
   }
 
   async generateSceneDialogueAudioAsync(
-    scriptId: number,
+    scriptId: number | string,
     payload?: {
       tts_model?: string;
       scene_numbers?: number[];
@@ -1704,7 +1764,7 @@ class ApiClient {
     },
   ) {
     return this.request<{ task_id: number; status: string }>(
-      `/api/v1/scripts/${scriptId}/dialogue-audio/generate-async`,
+      this.scriptPath(scriptId, "/dialogue-audio/generate-async"),
       {
         method: "POST",
         body: JSON.stringify(payload || {}),
@@ -1713,13 +1773,13 @@ class ApiClient {
   }
 
   async generateAudioTimelineAsync(
-    scriptId: number,
+    scriptId: number | string,
     payload?: {
       overwrite?: boolean;
     },
   ) {
     return this.request<{ task_id: number; status: string }>(
-      `/api/v1/scripts/${scriptId}/audio-timeline/generate-async`,
+      this.scriptPath(scriptId, "/audio-timeline/generate-async"),
       {
         method: "POST",
         body: JSON.stringify(payload || {}),
@@ -1728,14 +1788,14 @@ class ApiClient {
   }
 
   async generateStoryboardFromAudioTimelineAsync(
-    scriptId: number,
+    scriptId: number | string,
     payload?: {
       overwrite_existing?: boolean;
       min_pause_seconds?: number;
     },
   ) {
     return this.request<{ task_id: number; status: string }>(
-      `/api/v1/scripts/${scriptId}/storyboard/from-audio-timeline/generate-async`,
+      this.scriptPath(scriptId, "/storyboard/from-audio-timeline/generate-async"),
       {
         method: "POST",
         body: JSON.stringify(payload || {}),
@@ -1744,19 +1804,19 @@ class ApiClient {
   }
 
   // 分镜相关
-  async getStoryboard(scriptId: number) {
+  async getStoryboard(scriptId: number | string) {
     return this.request<StoryboardPayload>(
-      `/api/v1/scripts/${scriptId}/storyboard`,
+      this.scriptPath(scriptId, "/storyboard"),
     );
   }
-  async previewStoryboardPrompt(scriptId: number) {
+  async previewStoryboardPrompt(scriptId: number | string) {
     return this.request<{ prompt: string }>(
-      `/api/v1/scripts/${scriptId}/storyboard/preview`,
+      this.scriptPath(scriptId, "/storyboard/preview"),
       { method: "POST" },
     );
   }
   async generateStoryboard(
-    scriptId: number,
+    scriptId: number | string,
     data?: {
       model?: string;
       temperature?: number;
@@ -1779,12 +1839,12 @@ class ApiClient {
     if (data?.use_plan) params.append("use_plan", "true");
     const qs = params.toString();
     return this.request<StoryboardPayload>(
-      `/api/v1/scripts/${scriptId}/storyboard/generate${qs ? `?${qs}` : ""}`,
+      `${this.scriptPath(scriptId, "/storyboard/generate")}${qs ? `?${qs}` : ""}`,
       { method: "POST" },
     );
   }
   async generateStoryboardAsync(
-    scriptId: number,
+    scriptId: number | string,
     data?: {
       model?: string;
       temperature?: number;
@@ -1807,14 +1867,12 @@ class ApiClient {
     if (data?.use_plan) params.append("use_plan", "true");
     const qs = params.toString();
     return this.request<{ task_id: number; status: string }>(
-      `/api/v1/scripts/${scriptId}/storyboard/generate-async${
-        qs ? `?${qs}` : ""
-      }`,
+      `${this.scriptPath(scriptId, "/storyboard/generate-async")}${qs ? `?${qs}` : ""}`,
       { method: "POST" },
     );
   }
   async generateStoryboardVideo(
-    scriptId: number,
+    scriptId: number | string,
     frames?: number[],
     selections?: Array<{
       frame_index: number;
@@ -1824,7 +1882,7 @@ class ApiClient {
     options?: StoryboardVideoGenerationOptions,
   ) {
     return this.request(
-      `/api/v1/scripts/${scriptId}/storyboard/generate-video`,
+      this.scriptPath(scriptId, "/storyboard/generate-video"),
       {
         method: "POST",
         body: JSON.stringify({
@@ -1836,7 +1894,7 @@ class ApiClient {
     );
   }
   async generateStoryboardImages(
-    scriptId: number,
+    scriptId: number | string,
     payload?: {
       prompt?: string;
       frames?: number[];
@@ -1857,7 +1915,7 @@ class ApiClient {
     const desiredCount = payload?.count ?? (isStartEnd ? 4 : 1);
     const normalizedCount = Math.max(1, Math.min(desiredCount, 4));
     return this.request(
-      `/api/v1/scripts/${scriptId}/storyboard/generate-images`,
+      this.scriptPath(scriptId, "/storyboard/generate-images"),
       {
         method: "POST",
         body: JSON.stringify({
@@ -1878,8 +1936,8 @@ class ApiClient {
       },
     );
   }
-  async updateStoryboard(scriptId: number, frames: StoryboardFrame[]) {
-    return this.request(`/api/v1/scripts/${scriptId}/storyboard/update`, {
+  async updateStoryboard(scriptId: number | string, frames: StoryboardFrame[]) {
+    return this.request(this.scriptPath(scriptId, "/storyboard/update"), {
       method: "POST",
       body: JSON.stringify({ frames }),
     });

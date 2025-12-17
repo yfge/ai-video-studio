@@ -67,7 +67,7 @@ export default function EpisodeStoryboardPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const episodeId = Number(params.id);
+  const episodeKey = params?.id?.toString() || "";
   const { showAlert } = useAlertModal();
 
   const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -301,8 +301,8 @@ export default function EpisodeStoryboardPage() {
     try {
       setLoading(true);
       const [epRes, scRes] = await Promise.all([
-        episodeAPI.getEpisode(episodeId),
-        scriptAPI.getEpisodeScripts(episodeId),
+        episodeAPI.getEpisode(episodeKey),
+        scriptAPI.getEpisodeScripts(episodeKey),
       ]);
       if (epRes.success && epRes.data) setEpisode(epRes.data);
       if (scRes.success && scRes.data) {
@@ -318,7 +318,7 @@ export default function EpisodeStoryboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [episodeId, scriptIdFromQuery]);
+  }, [episodeKey, scriptIdFromQuery]);
 
   useEffect(() => {
     void load();
@@ -1274,7 +1274,9 @@ export default function EpisodeStoryboardPage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">未找到剧集</h2>
           <button
-            onClick={() => router.push(`/episodes/${episodeId}`)}
+            onClick={() =>
+              router.push(`/episodes/${episode?.business_id || episodeKey}`)
+            }
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             返回剧集
@@ -1316,7 +1318,9 @@ export default function EpisodeStoryboardPage() {
               规范化结构已启用
             </span>
             <button
-              onClick={() => router.push(`/episodes/${episodeId}`)}
+              onClick={() =>
+                router.push(`/episodes/${episode?.business_id || episodeKey}`)
+              }
               className="bg-gray-600 text-white px-3 py-2 rounded"
             >
               返回剧集
@@ -1423,7 +1427,9 @@ export default function EpisodeStoryboardPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => router.push(`/episodes/${episodeId}`)}
+                onClick={() =>
+                  router.push(`/episodes/${episode?.business_id || episodeKey}`)
+                }
                 className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
               >
                 返回剧集页

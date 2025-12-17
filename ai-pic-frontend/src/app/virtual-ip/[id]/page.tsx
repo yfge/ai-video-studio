@@ -34,7 +34,7 @@ export default function VirtualIPDetail() {
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null)
 
-  const ipId = Number(params.id)
+  const ipKey = params?.id?.toString() || ''
 
   const buildDefaultVoiceSettings = (enums: VoiceEnums): VoiceConfig => {
     const provider = enums.providers?.[0]?.value
@@ -111,7 +111,7 @@ export default function VirtualIPDetail() {
   const fetchVirtualIP = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await virtualIPAPI.getVirtualIP(ipId)
+      const response = await virtualIPAPI.getVirtualIP(ipKey)
       
       if (response.success && response.data) {
         setVirtualIP(response.data)
@@ -140,13 +140,14 @@ export default function VirtualIPDetail() {
     } finally {
       setLoading(false)
     }
-  }, [ipId, showAlert, voiceEnums, voicePreviewText])
+  }, [ipKey, showAlert, voiceEnums, voicePreviewText])
 
   // 更新虚拟IP
   const handleUpdateIP = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await virtualIPAPI.updateVirtualIP(ipId, {
+      const identifier = virtualIP?.business_id || ipKey
+      const response = await virtualIPAPI.updateVirtualIP(identifier, {
         ...editForm,
         voice_config: voiceSettings
       })
@@ -166,7 +167,8 @@ export default function VirtualIPDetail() {
   // 删除虚拟IP
   const deleteCurrentVirtualIP = async () => {
     try {
-      const response = await virtualIPAPI.deleteVirtualIP(ipId)
+      const identifier = virtualIP?.business_id || ipKey
+      const response = await virtualIPAPI.deleteVirtualIP(identifier)
       if (response.success) {
         showAlert({ message: '删除成功', variant: 'success' })
         router.push('/virtual-ip')
@@ -311,10 +313,10 @@ export default function VirtualIPDetail() {
   }, [fetchVoiceEnums])
 
   useEffect(() => {
-    if (ipId) {
+    if (ipKey) {
       void fetchVirtualIP()
     }
-  }, [fetchVirtualIP, ipId])
+  }, [fetchVirtualIP, ipKey])
 
   useEffect(() => {
     if (voiceSettings.provider) {
@@ -382,7 +384,7 @@ export default function VirtualIPDetail() {
             </div>
             <div className="flex items-center space-x-4">
               <Link
-                href={`/virtual-ip/${ipId}/images`}
+                href={`/virtual-ip/${virtualIP?.business_id || ipKey}/images`}
                 className="text-green-600 hover:text-green-800 px-4 py-2 rounded-md border border-green-600 hover:bg-green-50"
               >
                 管理图像

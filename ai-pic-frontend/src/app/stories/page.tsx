@@ -146,11 +146,11 @@ function StoriesPageContent() {
     }
   };
 
-  const performDeleteStory = async (storyId: number) => {
+  const performDeleteStory = async (storyBusinessId: string) => {
     try {
-      const response = await storyAPI.deleteStory(storyId);
+      const response = await storyAPI.deleteStory(storyBusinessId);
       if (response.success) {
-        setStories(prev => prev.filter(story => story.id !== storyId));
+        setStories(prev => prev.filter(story => story.business_id !== storyBusinessId));
         showAlert({ message: '故事删除成功', variant: 'success' });
       } else {
         showAlert({ message: `删除失败：${response.error || '未知错误'}`, variant: 'error' });
@@ -161,14 +161,14 @@ function StoriesPageContent() {
     }
   };
 
-  const handleDeleteStory = (storyId: number) => {
+  const handleDeleteStory = (storyBusinessId: string) => {
     showAlert({
       title: '确认删除',
       message: '确定要删除这个故事吗？',
       variant: 'warning',
       confirmText: '删除',
       onConfirm: () => {
-        void performDeleteStory(storyId);
+        void performDeleteStory(storyBusinessId);
       },
     });
   };
@@ -571,13 +571,13 @@ function StoriesPageContent() {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => router.push(`/stories/${story.id}`)}
+                    onClick={() => router.push(`/stories/${story.business_id}`)}
                     className="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
                   >
                     查看详情
                   </button>
                   <button
-                    onClick={() => handleDeleteStory(story.id)}
+                    onClick={() => handleDeleteStory(story.business_id)}
                     className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700"
                   >
                     删除

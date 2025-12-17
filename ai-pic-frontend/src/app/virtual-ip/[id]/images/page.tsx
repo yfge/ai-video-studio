@@ -33,10 +33,11 @@ const VIRTUAL_IP_STYLE_SPEC_FIELDS: StyleSpecField[] = [
 export default function VirtualIPImagesPage() {
   const params = useParams();
   const router = useRouter();
-  const virtualIPId = Number(params.id);
+  const virtualIPKey = params?.id?.toString() || '';
   const { showAlert } = useAlertModal();
 
   const [virtualIP, setVirtualIP] = useState<VirtualIP | null>(null);
+  const [virtualIPId, setVirtualIPId] = useState<number | null>(null);
   const [images, setImages] = useState<VirtualIPImage[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -136,30 +137,33 @@ export default function VirtualIPImagesPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [ipResponse, imagesResponse, categoriesResponse] = await Promise.all([
-        virtualIPAPI.getVirtualIP(virtualIPId),
-        virtualIPImageAPI.getImages(virtualIPId),
-        virtualIPImageAPI.getCategories(virtualIPId)
-      ]);
-      
+      const ipResponse = await virtualIPAPI.getVirtualIP(virtualIPKey);
+
       if (ipResponse.success && ipResponse.data) {
         setVirtualIP(ipResponse.data);
-      }
-      
-      // 处理图像数据
-      if (imagesResponse.success && imagesResponse.data) {
-        setImages(imagesResponse.data);
+        setVirtualIPId(ipResponse.data.id);
+
+        const [imagesResponse, categoriesResponse] = await Promise.all([
+          virtualIPImageAPI.getImages(ipResponse.data.id),
+          virtualIPImageAPI.getCategories(ipResponse.data.id),
+        ]);
+
+        if (imagesResponse.success && imagesResponse.data) {
+          setImages(imagesResponse.data);
+        } else {
+          setImages([]);
+        }
+
+        if (categoriesResponse.success && categoriesResponse.data) {
+          setCategories(categoriesResponse.data);
+        } else {
+          setCategories([]);
+        }
       } else {
+        showAlert({ message: '加载虚拟IP详情失败', variant: 'error' });
         setImages([]);
-      }
-      
-      // 处理分类数据
-      if (categoriesResponse.success && categoriesResponse.data) {
-        setCategories(categoriesResponse.data);
-      } else {
         setCategories([]);
       }
-      
     } catch (error) {
       console.error('加载数据失败:', error);
       showAlert({ message: '加载数据失败', variant: 'error' });
@@ -169,13 +173,17 @@ export default function VirtualIPImagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [showAlert, virtualIPId]);
+  }, [showAlert, virtualIPKey]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
  const handleGenerateImage = async () => {
+    if (!virtualIPId) {
+      showAlert({ message: '虚拟IP未加载', variant: 'error' });
+      return;
+    }
     try {
       setGenerating(true);
       const modelToUse =
@@ -243,6 +251,10 @@ export default function VirtualIPImagesPage() {
       showAlert({ message: '请选择文件', variant: 'warning' });
       return;
     }
+    if (!virtualIPId) {
+      showAlert({ message: '虚拟IP未加载', variant: 'error' });
+      return;
+    }
 
     try {
       setUploading(true);
@@ -278,6 +290,10 @@ export default function VirtualIPImagesPage() {
   };
 
   const deleteImageById = async (imageId: number) => {
+    if (!virtualIPId) {
+      showAlert({ message: '虚拟IP未加载', variant: 'error' });
+      return;
+    }
     try {
       const response = await virtualIPImageAPI.deleteImage(virtualIPId, imageId);
       if (response.success) {
@@ -308,6 +324,10 @@ export default function VirtualIPImagesPage() {
   };
 
   const handleSetDefault = async (imageId: number) => {
+    if (!virtualIPId) {
+      showAlert({ message: '虚拟IP未加载', variant: 'error' });
+      return;
+    }
     try {
       const response = await virtualIPImageAPI.setDefaultImage(virtualIPId, imageId);
       
@@ -360,7 +380,10 @@ export default function VirtualIPImagesPage() {
     style_spec?: Record<string, unknown>;
     referenceImages: string[];
   }) => {
-    if (!variantTarget) return;
+    if (!variantTarget || !virtualIPId) {
+      showAlert({ message: '虚拟IP未加载', variant: 'error' });
+      return;
+    }
     const modelFallback =
       payload.model ||
       (variantTarget.ai_model as string | undefined) ||
@@ -451,7 +474,7 @@ export default function VirtualIPImagesPage() {
               <p className="mt-2 text-gray-600">{virtualIP.description}</p>
             </div>
             <button
-              onClick={() => router.push(`/virtual-ip/${virtualIPId}`)}
+              onClick={() => router.push(`/virtual-ip/${virtualIP.business_id}`)}
               className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
             >
               返回详情

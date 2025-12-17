@@ -149,11 +149,11 @@ function VirtualIPListContent() {
   }
 
   // 删除虚拟IP
-  const deleteVirtualIPById = async (id: number) => {
+  const deleteVirtualIPById = async (bizId: string) => {
     try {
-      const response = await virtualIPAPI.deleteVirtualIP(id)
+      const response = await virtualIPAPI.deleteVirtualIP(bizId)
       if (response.success) {
-        setVirtualIPs(prev => prev.filter(ip => ip.id !== id))
+        setVirtualIPs(prev => prev.filter(ip => ip.business_id !== bizId))
       } else {
         showAlert({ message: `删除失败: ${response.error || '未知错误'}`, variant: 'error' })
       }
@@ -163,14 +163,14 @@ function VirtualIPListContent() {
     }
   }
 
-  const handleDeleteIP = (id: number) => {
+  const handleDeleteIP = (bizId: string) => {
     showAlert({
       title: '确认删除虚拟IP',
       message: '确定要删除这个虚拟IP吗？',
       variant: 'warning',
       confirmText: '删除',
       onConfirm: () => {
-        void deleteVirtualIPById(id)
+        void deleteVirtualIPById(bizId)
       },
     })
   }
@@ -275,7 +275,7 @@ function VirtualIPListContent() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {virtualIPs.map((ip) => (
-              <div key={ip.id} className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+              <div key={ip.business_id} className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
@@ -294,17 +294,14 @@ function VirtualIPListContent() {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <Link
-                        href={`/virtual-ip/${ip.id}`}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
+                      <Link href={`/virtual-ip/${ip.business_id}`} className="text-blue-600 hover:text-blue-800">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                       </Link>
                       <button
-                        onClick={() => handleDeleteIP(ip.id)}
+                        onClick={() => handleDeleteIP(ip.business_id)}
                         className="text-red-600 hover:text-red-800"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,7 +333,7 @@ function VirtualIPListContent() {
                       {ip.background_story ? '有背景故事' : '无背景故事'}
                     </span>
                     <Link
-                      href={`/virtual-ip/${ip.id}`}
+                      href={`/virtual-ip/${ip.business_id}`}
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                     >
                       查看详情 →
