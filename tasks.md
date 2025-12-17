@@ -66,6 +66,7 @@
 - [ ] 后端：分辨率与规格建模，按模型白名单收敛 `size` / `width` / `height` / `aspect_ratio`，并在统一模型注册表与日志中落盘；当前虚拟 IP 图生图变体接口已透传 `size` 到统一的 `image_to_image` 调用
 - [x] 前端：虚拟 IP 图像页支持基于已有图像的变体生成（`/api/v1/virtual-ips/{id}/images/{image_id}/variants`），含模型选择与生成数量，变体会保存为新的虚拟 IP 图像资产
 - [x] 前端：虚拟 IP 更新请求类型补齐 `voice_config`，修复 `next build` 类型检查失败
+- [x] 前端：虚拟 IP 手动上传走统一 OSS（修复上传字段与 FormData 头部）
 - [ ] 前端：在文生图/图生图表单中按模型动态限制分辨率选项，完善错误与限制提示（目前图生图弹窗复用文生图已选的 `size`）
 - [ ] 验证：为不同模型+分辨率补齐端到端用例（含 DALL·E 3 官方三种长宽比、DALL·E 2 三种尺寸、Seedream 2K），在 README / TESTING_GUIDE 记录 Ark 凭证、调试与兼容矩阵
 

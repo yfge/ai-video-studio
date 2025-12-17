@@ -763,18 +763,36 @@ class ApiClient {
     // 每次请求前更新token
     this.updateToken();
 
+    const normalizeHeaders = (
+      headers?: HeadersInit,
+    ): Record<string, string> => {
+      if (!headers) return {};
+      if (typeof Headers !== "undefined" && headers instanceof Headers) {
+        return Object.fromEntries(headers.entries());
+      }
+      if (Array.isArray(headers)) {
+        return Object.fromEntries(headers);
+      }
+      return { ...(headers as Record<string, string>) };
+    };
+
+    const isFormData =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
+    const baseHeaders = isFormData ? {} : { "Content-Type": "application/json" };
+    const mergedHeaders = {
+      ...baseHeaders,
+      ...normalizeHeaders(options.headers),
+    };
+
     const config: RequestInit = {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
+      headers: mergedHeaders,
     };
 
     // 添加认证头
     if (this.token) {
       config.headers = {
-        ...config.headers,
+        ...(config.headers as Record<string, string>),
         Authorization: `Bearer ${this.token}`,
       };
     }
@@ -1325,17 +1343,24 @@ class ApiClient {
     data: {
       category: string;
       subcategory?: string;
-      tags?: string[];
+      tags?: string[] | string;
       prompt?: string;
       ai_model?: string;
       is_default?: boolean;
     },
   ): Promise<ApiResponse<VirtualIPImage>> {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("image", file);
     formData.append("category", data.category);
     if (data.subcategory) formData.append("subcategory", data.subcategory);
-    if (data.tags) formData.append("tags", JSON.stringify(data.tags));
+    if (data.tags !== undefined) {
+      const tagValue = Array.isArray(data.tags)
+        ? data.tags.join(",")
+        : data.tags;
+      if (tagValue) {
+        formData.append("tags", tagValue);
+      }
+    }
     if (data.prompt) formData.append("prompt", data.prompt);
     if (data.ai_model) formData.append("ai_model", data.ai_model);
     if (data.is_default !== undefined)
@@ -1343,9 +1368,6 @@ class ApiClient {
 
     return this.request(`/api/v1/virtual-ips/${virtual_ip_id}/images`, {
       method: "POST",
-      headers: {
-        // 不设置 Content-Type，让浏览器自动设置 multipart/form-data
-      },
       body: formData,
     });
   }
@@ -2337,12 +2359,19 @@ export const virtualIPImageAPI = {
     category: string = "portrait",
     tags: string = "",
     isDefault: boolean = false,
-  ) =>
-    apiClient.uploadVirtualIPImage(virtualIPId, file, {
+  ) => {
+    const normalizedTags = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+      .join(",");
+
+    return apiClient.uploadVirtualIPImage(virtualIPId, file, {
       category,
-      tags: tags ? tags.split(",").map((t) => t.trim()) : [],
+      tags: normalizedTags,
       is_default: isDefault,
-    }),
+    });
+  },
 
   // AI生成图像（统一JSON）
   generateImage: async (
