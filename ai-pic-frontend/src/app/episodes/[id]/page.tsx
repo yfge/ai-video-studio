@@ -565,6 +565,31 @@ export default function EpisodeDetailPage() {
     Boolean(item.ossUrl),
   ).length;
 
+  const pipelineSteps = [
+    {
+      key: "dialogue_audio",
+      label: "生成对白音轨",
+      done: normalizedSceneAudioCount > 0,
+    },
+    {
+      key: "audio_timeline",
+      label: "生成时间轴",
+      done: Boolean(selectedAudioTimeline),
+    },
+    {
+      key: "storyboard_slots",
+      label: "生成分镜帧占位",
+      done: Boolean(selectedStoryboard),
+    },
+  ];
+
+  const pillClass = (done: boolean) =>
+    `inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+      done
+        ? "bg-green-50 text-green-700 border border-green-200"
+        : "bg-gray-50 text-gray-600 border border-gray-200"
+    }`;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -625,6 +650,18 @@ export default function EpisodeDetailPage() {
               <p className="text-xs text-gray-500 mt-1">
                 声音优先定时长（scene → audio → beats → timeline → storyboard）
               </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-700">
+                {pipelineSteps.map((step, idx) => (
+                  <div key={step.key} className="flex items-center gap-2">
+                    <span className={pillClass(step.done)}>
+                      {step.done ? "✓" : "·"} {step.label}
+                    </span>
+                    {idx < pipelineSteps.length - 1 && (
+                      <span className="text-gray-400">→</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="flex gap-2">
               <button
