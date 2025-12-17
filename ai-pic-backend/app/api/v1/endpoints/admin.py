@@ -21,6 +21,9 @@ import math
 
 router = APIRouter()
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
 def get_current_admin_user(current_user: User = Depends(get_current_active_user)) -> User:
     """获取当前管理员用户"""
     if not current_user.is_admin and not current_user.is_superuser:
@@ -74,7 +77,7 @@ def get_user(
     current_user: User = Depends(get_current_admin_user)
 ):
     """获取用户详情"""
-    user = db.query(User).filter(User.id == user_id).first()
+    user = _not_deleted(db.query(User), User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     return user

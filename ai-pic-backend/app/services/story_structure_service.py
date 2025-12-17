@@ -21,13 +21,14 @@ from app.schemas.story_structure import (
     ShotCreate,
 )
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted == False)  # noqa: E712
+
 
 def list_treatments_by_story(db: Session, story_id: int) -> List[StoryTreatment]:
     return (
-        db.query(StoryTreatment)
-        .filter(
-            StoryTreatment.story_id == story_id, StoryTreatment.is_deleted == False
-        )  # noqa: E712
+        _not_deleted(db.query(StoryTreatment), StoryTreatment)
+        .filter(StoryTreatment.story_id == story_id)
         .order_by(StoryTreatment.revision_number.desc())
         .all()
     )
@@ -35,10 +36,8 @@ def list_treatments_by_story(db: Session, story_id: int) -> List[StoryTreatment]
 
 def get_treatment(db: Session, treatment_id: int) -> Optional[StoryTreatment]:
     return (
-        db.query(StoryTreatment)
-        .filter(
-            StoryTreatment.id == treatment_id, StoryTreatment.is_deleted == False
-        )  # noqa: E712
+        _not_deleted(db.query(StoryTreatment), StoryTreatment)
+        .filter(StoryTreatment.id == treatment_id)
         .first()
     )
 
@@ -61,8 +60,8 @@ def ensure_auto_treatment(
     - Otherwise create revision 1.
     """
     latest = (
-        db.query(StoryTreatment)
-        .filter(StoryTreatment.story_id == story.id, StoryTreatment.is_deleted == False)  # noqa: E712
+        _not_deleted(db.query(StoryTreatment), StoryTreatment)
+        .filter(StoryTreatment.story_id == story.id)
         .order_by(StoryTreatment.revision_number.desc())
         .first()
     )
@@ -119,7 +118,7 @@ def bulk_create_step_outlines(
 
 def list_scenes_by_script(db: Session, script_id: int) -> List[Scene]:
     return (
-        db.query(Scene)
+        _not_deleted(db.query(Scene), Scene)
         .filter(Scene.script_id == script_id)
         .order_by(Scene.scene_number.asc())
         .all()
@@ -127,7 +126,7 @@ def list_scenes_by_script(db: Session, script_id: int) -> List[Scene]:
 
 
 def get_script_structure(db: Session, script_id: int) -> Optional[List[Dict[str, Any]]]:
-    script = db.query(Script).filter(Script.id == script_id).first()
+    script = _not_deleted(db.query(Script), Script).filter(Script.id == script_id).first()
     if not script:
         return None
 
@@ -137,13 +136,13 @@ def get_script_structure(db: Session, script_id: int) -> Optional[List[Dict[str,
 
     scene_ids = [s.id for s in scenes]
     beats = (
-        db.query(SceneBeat)
+        _not_deleted(db.query(SceneBeat), SceneBeat)
         .filter(SceneBeat.scene_id.in_(scene_ids))
         .order_by(SceneBeat.scene_id.asc(), SceneBeat.order_index.asc())
         .all()
     )
     shots = (
-        db.query(Shot)
+        _not_deleted(db.query(Shot), Shot)
         .filter(Shot.scene_id.in_(scene_ids))
         .order_by(Shot.scene_id.asc(), Shot.shot_number.asc())
         .all()

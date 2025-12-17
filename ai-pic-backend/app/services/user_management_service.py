@@ -30,7 +30,7 @@ class UserManagementService:
         search: Optional[str] = None
     ) -> Tuple[List[User], int]:
         """获取用户列表"""
-        query = self.db.query(User)
+        query = self.db.query(User).filter(User.is_deleted == False)  # noqa: E712
         
         # 状态筛选
         if status_filter == "pending":
@@ -77,7 +77,11 @@ class UserManagementService:
         user_agent: Optional[str] = None
     ) -> User:
         """审批用户"""
-        user = self.db.query(User).filter(User.id == user_id).first()
+        user = (
+            self.db.query(User)
+            .filter(User.id == user_id, User.is_deleted == False)  # noqa: E712
+            .first()
+        )
         if not user:
             raise HTTPException(status_code=404, detail="用户不存在")
         
@@ -135,7 +139,11 @@ class UserManagementService:
         user_agent: Optional[str] = None
     ) -> User:
         """更新用户角色"""
-        user = self.db.query(User).filter(User.id == user_id).first()
+        user = (
+            self.db.query(User)
+            .filter(User.id == user_id, User.is_deleted == False)  # noqa: E712
+            .first()
+        )
         if not user:
             raise HTTPException(status_code=404, detail="用户不存在")
         
@@ -184,7 +192,11 @@ class UserManagementService:
         user_agent: Optional[str] = None
     ) -> User:
         """暂停用户"""
-        user = self.db.query(User).filter(User.id == user_id).first()
+        user = (
+            self.db.query(User)
+            .filter(User.id == user_id, User.is_deleted == False)  # noqa: E712
+            .first()
+        )
         if not user:
             raise HTTPException(status_code=404, detail="用户不存在")
         
