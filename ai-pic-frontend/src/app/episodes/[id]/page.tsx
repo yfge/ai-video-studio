@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { episodeAPI, scriptAPI, storyStructureAPI, taskAPI } from "@/utils/api";
 import type {
@@ -680,84 +680,6 @@ export default function EpisodeDetailPage() {
         ? "bg-green-50 text-green-700 border border-green-200"
         : "bg-gray-50 text-gray-600 border border-gray-200"
     }`;
-
-  const timelineTracks: TimelineTrack[] = (() => {
-    const tracks: TimelineTrack[] = [];
-    const beatsRaw = Array.isArray(selectedAudioTimeline?.["beats"])
-      ? (selectedAudioTimeline?.["beats"] as unknown[])
-      : [];
-    const beatItems = beatsRaw
-      .map((raw, idx) => {
-        const record =
-          raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
-        if (!record) return null;
-        const start = parseMs(record["start_ms"]);
-        const end = parseMs(record["end_ms"]);
-        if (start == null || end == null || end < start) return null;
-        const text =
-          getString(record["dialogue_excerpt"]) ??
-          getString(record["text"]) ??
-          getString(record["beat_summary"]);
-        return {
-          id: `beat-${idx}-${start}`,
-          startMs: start,
-          endMs: end,
-          label: text || `Beat ${idx + 1}`,
-          type: getString(record["beat_type"]) ?? undefined,
-          color: "#2563eb",
-        };
-      })
-      .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
-    if (beatItems.length > 0) {
-      tracks.push({
-        id: "dialogue-beats",
-        label: "对白 beats",
-        color: "#2563eb",
-        items: beatItems,
-      });
-    }
-    const storyboardItems = selectedStoryboardFrames
-      .map((fr, idx) => {
-        const start = parseMs((fr as Record<string, unknown>)["start_ms"]);
-        const end = parseMs((fr as Record<string, unknown>)["end_ms"]);
-        if (start == null || end == null || end < start) return null;
-        const label =
-          getString((fr as Record<string, unknown>)["description"]) ||
-          `Frame ${fr.frame_number ?? idx + 1}`;
-        return {
-          id: `frame-${fr.frame_id || idx}`,
-          startMs: start,
-          endMs: end,
-          label,
-          type: "frame",
-          color: "#a855f7",
-        };
-      })
-      .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
-    if (storyboardItems.length > 0) {
-      tracks.push({
-        id: "storyboard-frames",
-        label: "分镜帧",
-        color: "#a855f7",
-        items: storyboardItems,
-      });
-    }
-    return tracks;
-  })();
-
-  const timelineRange = (() => {
-    if (timelineTracks.length === 0) return null;
-    let min = Number.POSITIVE_INFINITY;
-    let max = Number.NEGATIVE_INFINITY;
-    timelineTracks.forEach((track) => {
-      track.items.forEach((item) => {
-        min = Math.min(min, item.startMs);
-        max = Math.max(max, item.endMs);
-      });
-    });
-    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-    return { startMs: min, endMs: max };
-  })();
 
   if (loading) {
     return (
