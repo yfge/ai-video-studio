@@ -161,129 +161,150 @@ def _backfill(bind):
     def _fill_child(child_table, child_pk, child_fk_col, parent_table, parent_pk, parent_biz_col, child_biz_col):
         rows = bind.execute(
             sa.text(
-                f\"\"\"\n                SELECT c.{child_pk}, p.{parent_biz_col}\n                FROM {child_table} c\n                JOIN {parent_table} p ON c.{child_fk_col} = p.{parent_pk}\n                WHERE c.{child_biz_col} IS NULL\n                \"\"\"\n            )
+                f"""
+                SELECT c.{child_pk}, p.{parent_biz_col}
+                FROM {child_table} c
+                JOIN {parent_table} p ON c.{child_fk_col} = p.{parent_pk}
+                WHERE c.{child_biz_col} IS NULL
+                """
+            )
         ).fetchall()
         for cid, biz in rows:
             if not biz:
                 biz = uuid.uuid4().hex
             bind.execute(
                 sa.text(
-                    f\"UPDATE {child_table} SET {child_biz_col} = :biz WHERE {child_pk} = :cid\"\n                ),
-                {\"biz\": biz, \"cid\": cid},
+                    f"UPDATE {child_table} SET {child_biz_col} = :biz WHERE {child_pk} = :cid"
+                ),
+                {"biz": biz, "cid": cid},
             )
 
     _fill_child(
-        child_table=\"episodes\",
-        child_pk=\"id\",
-        child_fk_col=\"story_id\",
-        parent_table=\"stories\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"story_business_id\",\n    )
+        child_table="episodes",
+        child_pk="id",
+        child_fk_col="story_id",
+        parent_table="stories",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="story_business_id",
+    )
     _fill_child(
-        child_table=\"scripts\",
-        child_pk=\"id\",
-        child_fk_col=\"episode_id\",
-        parent_table=\"episodes\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"episode_business_id\",\n    )
+        child_table="scripts",
+        child_pk="id",
+        child_fk_col="episode_id",
+        parent_table="episodes",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="episode_business_id",
+    )
     _fill_child(
-        child_table=\"story_characters\",
-        child_pk=\"id\",
-        child_fk_col=\"story_id\",
-        parent_table=\"stories\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"story_business_id\",\n    )
+        child_table="story_characters",
+        child_pk="id",
+        child_fk_col="story_id",
+        parent_table="stories",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="story_business_id",
+    )
     _fill_child(
-        child_table=\"story_characters\",
-        child_pk=\"id\",
-        child_fk_col=\"virtual_ip_id\",
-        parent_table=\"virtual_ips\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"virtual_ip_business_id\",\n    )
+        child_table="story_characters",
+        child_pk="id",
+        child_fk_col="virtual_ip_id",
+        parent_table="virtual_ips",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="virtual_ip_business_id",
+    )
     _fill_child(
-        child_table=\"story_step_outlines\",
-        child_pk=\"id\",
-        child_fk_col=\"story_id\",
-        parent_table=\"stories\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"story_business_id\",\n    )
+        child_table="story_step_outlines",
+        child_pk="id",
+        child_fk_col="story_id",
+        parent_table="stories",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="story_business_id",
+    )
     _fill_child(
-        child_table=\"story_step_outlines\",
-        child_pk=\"id\",
-        child_fk_col=\"episode_id\",
-        parent_table=\"episodes\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"episode_business_id\",\n    )
+        child_table="story_step_outlines",
+        child_pk="id",
+        child_fk_col="episode_id",
+        parent_table="episodes",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="episode_business_id",
+    )
     _fill_child(
-        child_table=\"story_step_outlines\",
-        child_pk=\"id\",
-        child_fk_col=\"story_treatment_id\",
-        parent_table=\"story_treatments\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"story_treatment_business_id\",\n    )
+        child_table="story_step_outlines",
+        child_pk="id",
+        child_fk_col="story_treatment_id",
+        parent_table="story_treatments",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="story_treatment_business_id",
+    )
     _fill_child(
-        child_table=\"scenes\",
-        child_pk=\"id\",
-        child_fk_col=\"script_id\",
-        parent_table=\"scripts\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"script_business_id\",\n    )
+        child_table="scenes",
+        child_pk="id",
+        child_fk_col="script_id",
+        parent_table="scripts",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="script_business_id",
+    )
     _fill_child(
-        child_table=\"scenes\",
-        child_pk=\"id\",
-        child_fk_col=\"story_step_outline_id\",
-        parent_table=\"story_step_outlines\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"story_step_outline_business_id\",\n    )
+        child_table="scenes",
+        child_pk="id",
+        child_fk_col="story_step_outline_id",
+        parent_table="story_step_outlines",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="story_step_outline_business_id",
+    )
     _fill_child(
-        child_table=\"scenes\",
-        child_pk=\"id\",
-        child_fk_col=\"environment_id\",
-        parent_table=\"environments\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"environment_business_id\",\n    )
+        child_table="scenes",
+        child_pk="id",
+        child_fk_col="environment_id",
+        parent_table="environments",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="environment_business_id",
+    )
     _fill_child(
-        child_table=\"scene_beats\",
-        child_pk=\"id\",
-        child_fk_col=\"scene_id\",
-        parent_table=\"scenes\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"scene_business_id\",\n    )
+        child_table="scene_beats",
+        child_pk="id",
+        child_fk_col="scene_id",
+        parent_table="scenes",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="scene_business_id",
+    )
     _fill_child(
-        child_table=\"shots\",
-        child_pk=\"id\",
-        child_fk_col=\"scene_id\",
-        parent_table=\"scenes\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"scene_business_id\",\n    )
+        child_table="shots",
+        child_pk="id",
+        child_fk_col="scene_id",
+        parent_table="scenes",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="scene_business_id",
+    )
     _fill_child(
-        child_table=\"shots\",
-        child_pk=\"id\",
-        child_fk_col=\"scene_beat_id\",
-        parent_table=\"scene_beats\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"scene_beat_business_id\",\n    )
+        child_table="shots",
+        child_pk="id",
+        child_fk_col="scene_beat_id",
+        parent_table="scene_beats",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="scene_beat_business_id",
+    )
     _fill_child(
-        child_table=\"virtual_ip_images\",
-        child_pk=\"id\",
-        child_fk_col=\"virtual_ip_id\",
-        parent_table=\"virtual_ips\",
-        parent_pk=\"id\",
-        parent_biz_col=\"business_id\",
-        child_biz_col=\"virtual_ip_business_id\",\n    )
+        child_table="virtual_ip_images",
+        child_pk="id",
+        child_fk_col="virtual_ip_id",
+        parent_table="virtual_ips",
+        parent_pk="id",
+        parent_biz_col="business_id",
+        child_biz_col="virtual_ip_business_id",
+    )
     # tasks.target_business_id intentionally left null (set by callers per task target)
 
 

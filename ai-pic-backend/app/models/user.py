@@ -8,8 +8,8 @@ class User(SoftDeleteBusinessMixin, Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(64), unique=True, index=True, nullable=False)
-    email = Column(String(255), unique=True, index=True, nullable=False)
+    username = Column(String(64), index=True, nullable=False)
+    email = Column(String(255), index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(100), nullable=True)
     
