@@ -32,6 +32,11 @@ from app.schemas.generation import EpisodePlanItem, EpisodeStepOutlineModel
 router = APIRouter()
 
 
+def _not_deleted(query, model):
+    """Filter out soft-deleted rows."""
+    return query.filter(model.is_deleted.is_(False))
+
+
 def _is_episode_payload_valid(episode_data: Dict[str, Any]) -> bool:
     """Ensure minimal episode payload validity before persisting."""
     summary = (episode_data.get("summary") or "").strip()
@@ -194,7 +199,7 @@ async def create_episode(
 ):
     """创建剧集"""
     # 检查故事是否存在
-    story_query = db.query(Story).filter(Story.id == episode.story_id)
+    story_query = _not_deleted(db.query(Story), Story).filter(Story.id == episode.story_id)
     if not current_user.is_admin and not current_user.is_superuser:
         story_query = story_query.filter(Story.user_id == current_user.id)
     story = story_query.first()
@@ -203,7 +208,7 @@ async def create_episode(
 
     # 检查集数是否重复
     existing_episode = (
-        db.query(Episode)
+        _not_deleted(db.query(Episode), Episode)
         .filter(
             Episode.story_id == episode.story_id,
             Episode.episode_number == episode.episode_number,
@@ -229,7 +234,7 @@ async def generate_episodes(
 ):
     """使用AI生成剧集"""
     # 获取故事信息
-    story_query = db.query(Story).filter(Story.id == request.story_id)
+    story_query = _not_deleted(db.query(Story), Story).filter(Story.id == request.story_id)
     if not current_user.is_admin and not current_user.is_superuser:
         story_query = story_query.filter(Story.user_id == current_user.id)
     story = story_query.first()
@@ -722,7 +727,7 @@ async def get_story_episodes(
         raise HTTPException(status_code=404, detail="故事不存在")
 
     episodes = (
-        db.query(Episode)
+        _not_deleted(db.query(Episode), Episode)
         .filter(Episode.story_id == story_id)
         .order_by(Episode.episode_number)
         .all()
@@ -744,21 +749,20 @@ async def regenerate_episode(
     db: Session = Depends(get_db),
 ):
     """重新生成剧集内容"""
-    episode = (
-        db.query(Episode)
+    episode_query = (
+        _not_deleted(db.query(Episode), Episode)
         .join(Story, Episode.story_id == Story.id)
         .filter(Episode.id == episode_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
     )
+    if not (current_user.is_admin or current_user.is_superuser):
+        episode_query = episode_query.filter(Story.user_id == current_user.id)
+    episode = episode_query.first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
 
-    story = db.query(Story).filter(Story.id == episode.story_id).first()
+    story = (
+        _not_deleted(db.query(Story), Story).filter(Story.id == episode.story_id).first()
+    )
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
@@ -816,12 +820,25 @@ async def regenerate_episode(
             episode_data = episodes_data[0]
             scenes, scene_count = _ensure_scenes(episode_data)
 
-            # 更新剧集内容
-            episode.summary = episode_data.get("summary")
-            episode.plot_points = episode_data.get("plot_points")
-            episode.character_arcs = episode_data.get("character_arcs")
-            episode.conflicts = episode_data.get("conflicts")
-            episode.scene_count = scene_count
+            new_episode = Episode(
+                story_id=episode.story_id,
+                story_business_id=getattr(story, "business_id", None),
+                episode_number=episode.episode_number,
+                title=episode_data.get("title") or episode.title,
+                summary=episode_data.get("summary"),
+                plot_points=episode_data.get("plot_points"),
+                character_arcs=episode_data.get("character_arcs"),
+                conflicts=episode_data.get("conflicts"),
+                scene_count=scene_count,
+                duration_minutes=episode.duration_minutes,
+                generation_params=episode.generation_params,
+                status=episode.status,
+                tags=episode.tags,
+                extra_metadata=None,
+                generation_prompt=result.get("prompt"),
+                ai_model=result.get("generation_method"),
+            )
+
             known_keys = {
                 "episode_number",
                 "title",
@@ -841,13 +858,17 @@ async def regenerate_episode(
                     **(extra_meta or {}),
                     "agent_run": agent_run,
                 }
-            episode.extra_metadata = extra_meta or None
-            episode.generation_prompt = result["prompt"]
-            episode.ai_model = result["generation_method"]
+            new_episode.extra_metadata = extra_meta or None
 
+            db.add(new_episode)
             db.commit()
-            db.refresh(episode)
-            return EpisodeResponse.from_orm(episode)
+            db.refresh(new_episode)
+
+            # Soft delete old episode
+            episode.soft_delete(user_id=current_user.id, reason="regenerate superseded")
+            db.commit()
+
+            return EpisodeResponse.from_orm(new_episode)
 
     raise HTTPException(status_code=500, detail="AI生成内容格式错误")
 

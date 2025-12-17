@@ -922,6 +922,10 @@ def _compose_fallback_text(
 router = APIRouter()
 
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
+
 @router.get("/formats")
 async def get_script_formats():
     """获取剧本格式列表"""
@@ -955,7 +959,9 @@ async def create_script(
 ):
     """创建剧本"""
     # 检查剧集是否存在且归属当前用户（或管理员）
-    episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+    episode_query = _not_deleted(db.query(Episode), Episode).join(
+        Story, Episode.story_id == Story.id
+    )
     if not current_user.is_admin and not current_user.is_superuser:
         episode_query = episode_query.filter(Story.user_id == current_user.id)
     episode = episode_query.filter(Episode.id == script.episode_id).first()
@@ -990,7 +996,9 @@ async def generate_script(
 ):
     """使用AI生成剧本"""
     # 获取剧集信息（按用户隔离）
-    episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+    episode_query = _not_deleted(db.query(Episode), Episode).join(
+        Story, Episode.story_id == Story.id
+    )
     if not current_user.is_admin and not current_user.is_superuser:
         episode_query = episode_query.filter(Story.user_id == current_user.id)
     episode = episode_query.filter(Episode.id == request.episode_id).first()
@@ -1383,18 +1391,15 @@ async def generate_storyboard_from_audio_timeline_async(
     db: Session = Depends(get_db),
 ):
     """异步从 episode audio_timeline 生成分镜帧占位（写入 scripts.extra_metadata.storyboard）。"""
-    script = (
-        db.query(Script)
+    script_query = (
+        _not_deleted(db.query(Script), Script)
         .join(Episode, Script.episode_id == Episode.id)
         .join(Story, Episode.story_id == Story.id)
         .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
     )
+    if not (current_user.is_admin or current_user.is_superuser):
+        script_query = script_query.filter(Story.user_id == current_user.id)
+    script = script_query.first()
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
 
@@ -1521,18 +1526,15 @@ async def get_storyboard(
     from app.core.logging import get_logger
 
     logger = get_logger()
-    script = (
-        db.query(Script)
+    script_query = (
+        _not_deleted(db.query(Script), Script)
         .join(Episode, Script.episode_id == Episode.id)
         .join(Story, Episode.story_id == Story.id)
         .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
     )
+    if not (current_user.is_admin or current_user.is_superuser):
+        script_query = script_query.filter(Story.user_id == current_user.id)
+    script = script_query.first()
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
     storyboard = (
@@ -2132,18 +2134,15 @@ async def generate_storyboard_async(
     from app.models.task import Task
 
     # 校验剧本归属，与 generate_storyboard_images 对齐
-    script = (
-        db.query(Script)
+    script_query = (
+        _not_deleted(db.query(Script), Script)
         .join(Episode, Script.episode_id == Episode.id)
         .join(Story, Episode.story_id == Story.id)
         .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
     )
+    if not (current_user.is_admin or current_user.is_superuser):
+        script_query = script_query.filter(Story.user_id == current_user.id)
+    script = script_query.first()
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
 
@@ -2901,18 +2900,15 @@ async def generate_storyboard_images(
     from app.models.task import Task
 
     # 校验剧本归属
-    script = (
-        db.query(Script)
+    script_query = (
+        _not_deleted(db.query(Script), Script)
         .join(Episode, Script.episode_id == Episode.id)
         .join(Story, Episode.story_id == Story.id)
         .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
     )
+    if not (current_user.is_admin or current_user.is_superuser):
+        script_query = script_query.filter(Story.user_id == current_user.id)
+    script = script_query.first()
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
 
@@ -3284,18 +3280,15 @@ async def generate_storyboard_video(
     db: Session = Depends(get_db),
 ):
     # 校验剧本归属
-    script = (
-        db.query(Script)
+    script_query = (
+        _not_deleted(db.query(Script), Script)
         .join(Episode, Script.episode_id == Episode.id)
         .join(Story, Episode.story_id == Story.id)
         .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
     )
+    if not (current_user.is_admin or current_user.is_superuser):
+        script_query = script_query.filter(Story.user_id == current_user.id)
+    script = script_query.first()
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
 
@@ -3510,7 +3503,7 @@ async def delete_script(
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
 
-    db.delete(script)
+    script.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
 
     return {"message": "剧本删除成功"}
@@ -3533,7 +3526,12 @@ async def get_episode_scripts(
 
     # 为避免在 MySQL 中对大文本结果做排序耗尽 sort buffer，
     # 这里不再对结果做 ORDER BY，仅取一批脚本返回，前端默认使用第一条。
-    scripts = db.query(Script).filter(Script.episode_id == episode_id).limit(50).all()
+    scripts = (
+        _not_deleted(db.query(Script), Script)
+        .filter(Script.episode_id == episode_id)
+        .limit(50)
+        .all()
+    )
     return [ScriptResponse.from_orm(script) for script in scripts]
 
 
@@ -3559,11 +3557,19 @@ async def regenerate_script(
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
 
-    episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
+    episode = (
+        _not_deleted(db.query(Episode), Episode)
+        .filter(Episode.id == script.episode_id)
+        .first()
+    )
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
 
-    story = db.query(Story).filter(Story.id == episode.story_id).first()
+    story = (
+        _not_deleted(db.query(Story), Story)
+        .filter(Story.id == episode.story_id)
+        .first()
+    )
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
 
