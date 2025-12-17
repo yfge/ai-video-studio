@@ -2346,6 +2346,7 @@ export const storyStructureAPI = {
   updateEnvironment: apiClient.updateEnvironment.bind(apiClient),
   deleteEnvironment: apiClient.deleteEnvironment.bind(apiClient),
   listEnvironmentImages: apiClient.listEnvironmentImages.bind(apiClient),
+  uploadEnvironmentImage: apiClient.uploadEnvironmentImage.bind(apiClient),
   generateEnvironmentImages:
     apiClient.generateEnvironmentImages.bind(apiClient),
   generateEnvironmentImageVariants:
