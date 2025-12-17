@@ -267,6 +267,28 @@ class EnvironmentResponse(ORMModel):
     updated_at: datetime
 
 
+class EnvironmentSummaryResponse(ORMModel):
+    """Environment list DTO: excludes heavyweight reference_images."""
+
+    id: int
+    name: str
+    category: Optional[str]
+    tags: Optional[list[str]]
+    description: Optional[str]
+    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
+    created_at: datetime
+    updated_at: datetime
+
+
+class EnvironmentImageResponse(BaseModel):
+    url: str
+
+
+class EnvironmentImagesResponse(BaseModel):
+    images: list[EnvironmentImageResponse] = Field(default_factory=list)
+    count: int = 0
+
+
 class SceneWithChildren(SceneResponse):
     beats: List[SceneBeatResponse] = Field(default_factory=list)
     shots: List[ShotResponse] = Field(default_factory=list)
