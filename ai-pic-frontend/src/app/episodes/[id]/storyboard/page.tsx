@@ -236,6 +236,21 @@ export default function EpisodeStoryboardPage() {
   )
     ? (selectedAudioTimeline?.["beats"] as unknown[]).length
     : 0;
+  const sceneAudioRange = useMemo(() => {
+    if (timelineBeatWindow.startMs == null || timelineBeatWindow.endMs == null)
+      return null;
+    const startSec = Math.max(0, timelineBeatWindow.startMs / 1000);
+    const endSec = Math.max(startSec, timelineBeatWindow.endMs / 1000);
+    return { startSec, endSec };
+  }, [timelineBeatWindow.endMs, timelineBeatWindow.startMs]);
+  const sceneAudioUrl = useMemo(() => {
+    if (!selectedEpisodeAudioUrl) return null;
+    if (!sceneAudioRange) return selectedEpisodeAudioUrl;
+    const { startSec, endSec } = sceneAudioRange;
+    return `${selectedEpisodeAudioUrl}#t=${startSec.toFixed(
+      3,
+    )},${endSec.toFixed(3)}`;
+  }, [sceneAudioRange, selectedEpisodeAudioUrl]);
 
   const imageSrc = useCallback(
     (url: string) => {
@@ -418,6 +433,49 @@ export default function EpisodeStoryboardPage() {
   useEffect(() => {
     setSelectedEnvId(selectedNormalizedScene?.environment_id ?? null);
   }, [selectedNormalizedScene?.id, selectedNormalizedScene?.environment_id]);
+
+  const sceneNavItems = useMemo(() => {
+    const items = normalizedScenes.map((scene) => {
+      const parsed = parseInt(scene.scene_number, 10);
+      const num = Number.isFinite(parsed) ? parsed : null;
+      return {
+        id: scene.id,
+        num,
+        label: scene.slug_line || scene.summary || scene.status || "",
+      };
+    });
+    if (items.length > 0) return items;
+    const fallback = new Map<number, string>();
+    (storyboard.frames || []).forEach((fr) => {
+      const raw = fr.scene_number;
+      const num =
+        typeof raw === "string" ? Number.parseInt(raw, 10) : raw || null;
+      if (!num) return;
+      if (!fallback.has(num)) {
+        const desc =
+          (fr as Record<string, unknown>)["description"] ||
+          (fr as Record<string, unknown>)["slug_line"];
+        fallback.set(num, typeof desc === "string" ? desc : "");
+      }
+    });
+    return Array.from(fallback.entries()).map(([num, label]) => ({
+      id: num,
+      num,
+      label,
+    }));
+  }, [normalizedScenes, storyboard.frames]);
+
+  const handleSelectScene = (sceneNumber: number, normalizedId?: number) => {
+    setSceneSelectionInitialized(true);
+    setSelectedScene(sceneNumber);
+    const matched =
+      normalizedId ??
+      normalizedScenes.find((sc) => {
+        const parsed = parseInt(sc.scene_number, 10);
+        return Number.isFinite(parsed) && parsed === sceneNumber;
+      })?.id;
+    setSelectedNormalizedSceneId(matched ?? null);
+  };
 
   const selectedEnv = useMemo(
     () => environments.find((env) => env.id === selectedEnvId) ?? null,
@@ -1662,12 +1720,61 @@ export default function EpisodeStoryboardPage() {
           </div>
         </div>
 
-        {/* 对白时间轴（episode） */}
+        {/* 场景导航 */}
+        <div className="mb-4 rounded-2xl bg-white p-4 shadow">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-gray-900">
+                场景导航
+              </div>
+              <div className="text-xs text-gray-500">
+                点击场景以查看时间轴、分镜帧与对话
+              </div>
+            </div>
+            <div className="text-xs text-gray-500">
+              共 {sceneNavItems.length || "—"} 个场景
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {sceneNavItems.length === 0 ? (
+              <span className="text-xs text-gray-500">
+                暂无规范化场景，生成时间轴/分镜后再试。
+              </span>
+            ) : (
+              sceneNavItems.map((item) => {
+                const isActive =
+                  item.num != null ? selectedScene === item.num : false;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() =>
+                      handleSelectScene(item.num ?? selectedScene, item.id)
+                    }
+                    className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs transition ${
+                      isActive
+                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                        : "border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-200"
+                    }`}
+                  >
+                    场景 {item.num ?? "?"}
+                    {item.label ? (
+                      <span className="ml-1 text-[11px] text-gray-500">
+                        {item.label.slice(0, 28)}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* 对白时间轴（场景） */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="min-w-0">
               <div className="text-sm font-medium text-gray-900">
-                对白时间轴（episode）
+                对白时间轴（场景 {selectedScene}）
               </div>
               <div className="mt-1 text-xs text-gray-600">
                 {!activeScript ? (
@@ -1703,21 +1810,25 @@ export default function EpisodeStoryboardPage() {
                   ），建议同步分镜占位以保持对齐。
                 </div>
               ) : null}
-              {selectedEpisodeAudioUrl ? (
+              {sceneAudioUrl ? (
                 <div className="mt-2">
                   <a
-                    href={selectedEpisodeAudioUrl}
+                    href={sceneAudioUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="text-xs text-blue-600 hover:underline break-all"
                   >
-                    {selectedEpisodeAudioUrl}
+                    {sceneAudioRange
+                      ? `片段 ${sceneAudioRange.startSec.toFixed(
+                          2,
+                        )}s–${sceneAudioRange.endSec.toFixed(2)}s`
+                      : sceneAudioUrl}
                   </a>
                   <audio
                     className="mt-2 w-full"
                     controls
                     preload="none"
-                    src={selectedEpisodeAudioUrl}
+                    src={sceneAudioUrl}
                   />
                 </div>
               ) : null}
@@ -2171,69 +2282,9 @@ export default function EpisodeStoryboardPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {/* 左侧场景列表 */}
-          <div className="md:col-span-1 bg-white rounded-lg shadow p-3">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">
-              场景{" "}
-              {normalizedLoading && (
-                <span className="text-xs text-gray-500 ml-1">加载中...</span>
-              )}
-            </h3>
-            <div className="space-y-1 max-h-[60vh] overflow-auto">
-              {normalizedScenes.length === 0 ? (
-                <div className="text-gray-500 text-sm">暂无规范化场景</div>
-              ) : (
-                [...normalizedScenes]
-                  .sort((a, b) => {
-                    const aNum = parseInt(a.scene_number, 10);
-                    const bNum = parseInt(b.scene_number, 10);
-                    const aVal = Number.isFinite(aNum)
-                      ? aNum
-                      : Number.MAX_SAFE_INTEGER;
-                    const bVal = Number.isFinite(bNum)
-                      ? bNum
-                      : Number.MAX_SAFE_INTEGER;
-                    return aVal - bVal;
-                  })
-                  .map((scene) => {
-                    const parsed = parseInt(scene.scene_number, 10);
-                    const numericScene = Number.isFinite(parsed)
-                      ? parsed
-                      : undefined;
-                    const isActive = numericScene
-                      ? selectedScene === numericScene
-                      : false;
-                    return (
-                      <button
-                        key={scene.id}
-                        onClick={() => {
-                          const fallbackScene = Number.isFinite(parsed)
-                            ? parsed
-                            : 1;
-                          setSceneSelectionInitialized(true);
-                          setSelectedScene(fallbackScene);
-                          setSelectedNormalizedSceneId(scene.id);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded text-sm ${
-                          isActive
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : "hover:bg-gray-50 border border-transparent"
-                        }`}
-                      >
-                        场景 {Number.isFinite(parsed) ? parsed : "?"}
-                        <div className="text-xs text-gray-600 truncate">
-                          {(scene.slug_line ?? "").slice(0, 60)}
-                        </div>
-                      </button>
-                    );
-                  })
-              )}
-            </div>
-          </div>
-
-          {/* 右侧分镜帧列表 */}
-          <div className="md:col-span-4 bg-white rounded-lg shadow p-4">
+        <div className="grid grid-cols-1 gap-4">
+          {/* 分镜帧列表 */}
+          <div className="bg-white rounded-lg shadow p-4">
             <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
               <h3 className="text-base font-medium text-gray-900">
                 分镜帧 - 场景 {selectedScene}
