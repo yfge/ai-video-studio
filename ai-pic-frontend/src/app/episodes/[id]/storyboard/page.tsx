@@ -21,6 +21,7 @@ import type {
   VirtualIP,
   NormalizedScene,
   NormalizedShot,
+  SceneBeat,
 } from "@/utils/api";
 import { useAlertModal } from "@/components/AlertModalProvider";
 import { ImageToImageModal } from "@/components/ImageToImageModal";
@@ -43,6 +44,15 @@ const parseMs = (value: unknown): number | null => {
   }
   if (typeof value === "string" && value.trim()) {
     const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const parseNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number.parseFloat(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
@@ -95,6 +105,9 @@ export default function EpisodeStoryboardPage() {
     [],
   );
   const [normalizedShots, setNormalizedShots] = useState<NormalizedShot[]>([]);
+  const [sceneBeats, setSceneBeats] = useState<Record<number, SceneBeat[]>>({});
+  const [sceneBeatsLoading, setSceneBeatsLoading] = useState(false);
+  const [sceneBeatsError, setSceneBeatsError] = useState<string | null>(null);
   const [selectedNormalizedSceneId, setSelectedNormalizedSceneId] = useState<
     number | null
   >(null);
@@ -447,6 +460,34 @@ export default function EpisodeStoryboardPage() {
   }, [selectedNormalizedSceneId]);
 
   useEffect(() => {
+    const sceneId = selectedNormalizedSceneId;
+    if (!sceneId) {
+      setSceneBeatsError(null);
+      setSceneBeatsLoading(false);
+      return;
+    }
+    setSceneBeatsLoading(true);
+    setSceneBeatsError(null);
+    storyStructureAPI
+      .getNormalizedSceneBeats(sceneId)
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setSceneBeats((prev) => ({ ...prev, [sceneId]: res.data }));
+        } else {
+          setSceneBeats((prev) => ({ ...prev, [sceneId]: [] }));
+          setSceneBeatsError(res.error || "加载场景 beats 失败");
+        }
+      })
+      .catch((error) => {
+        console.error("加载场景 beats 失败:", error);
+        setSceneBeatsError("加载场景 beats 失败");
+      })
+      .finally(() => {
+        setSceneBeatsLoading(false);
+      });
+  }, [selectedNormalizedSceneId]);
+
+  useEffect(() => {
     const map: Record<number, number[]> = {};
     normalizedShots.forEach((shot) => {
       map[shot.id] = (shot.character_ids || []).map((id) => Number(id));
@@ -504,6 +545,216 @@ export default function EpisodeStoryboardPage() {
       return sn === selectedScene;
     });
   }, [storyboard, selectedScene]);
+
+  const sceneBeatsForSelected = useMemo(
+    () =>
+      selectedNormalizedSceneId
+        ? sceneBeats[selectedNormalizedSceneId] ?? []
+        : [],
+    [sceneBeats, selectedNormalizedSceneId],
+  );
+
+  type TimelineBeatInfo = {
+    id?: number | null;
+    type?: string | null;
+    text?: string | null;
+    startMs: number | null;
+    endMs: number | null;
+    durationSeconds: number | null;
+  };
+
+  const timelineBeatsForScene = useMemo<TimelineBeatInfo[]>(() => {
+    if (!selectedAudioTimeline) return [];
+    const raw = Array.isArray(selectedAudioTimeline["beats"])
+      ? (selectedAudioTimeline["beats"] as unknown[])
+      : [];
+    return raw
+      .map((beatRaw) => {
+        const record = asRecord(beatRaw);
+        if (!record) return null;
+        const sceneNumber = parseNumber(record["scene_number"]);
+        const sceneId = parseNumber(record["scene_id"]);
+        const matchesScene =
+          (sceneNumber != null && sceneNumber === selectedScene) ||
+          (sceneId != null &&
+            selectedNormalizedSceneId != null &&
+            sceneId === selectedNormalizedSceneId);
+        if (!matchesScene) return null;
+        const meta =
+          asRecord(record["metadata"]) || asRecord(record["extra_metadata"]);
+        const startMs = parseMs(record["start_ms"] ?? meta?.["start_ms"]);
+        const endMs = parseMs(record["end_ms"] ?? meta?.["end_ms"]);
+        const durationSeconds = (() => {
+          if (startMs !== null && endMs !== null && endMs >= startMs) {
+            return roundSeconds3((endMs - startMs) / 1000);
+          }
+          const rawDuration =
+            record["duration_seconds"] ?? meta?.["duration_seconds"];
+          const parsed = parseNumber(rawDuration);
+          return parsed != null ? roundSeconds3(parsed) : null;
+        })();
+        const text =
+          getString(record["dialogue_excerpt"]) ??
+          getString(record["text"]) ??
+          getString(record["beat_summary"]);
+        const beatType =
+          getString(record["beat_type"]) ?? getString(record["type"]);
+        const beatId = parseNumber(record["beat_id"] ?? record["id"]);
+        return {
+          id: beatId,
+          type: beatType,
+          text,
+          startMs,
+          endMs,
+          durationSeconds,
+        };
+      })
+      .filter((item): item is TimelineBeatInfo => Boolean(item))
+      .sort((a, b) => (a.startMs ?? 0) - (b.startMs ?? 0));
+  }, [selectedAudioTimeline, selectedNormalizedSceneId, selectedScene]);
+
+  const beatTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      dialogue: 0,
+      action: 0,
+      pause: 0,
+      other: 0,
+    };
+    timelineBeatsForScene.forEach((beat) => {
+      const key = (beat.type || "").toLowerCase();
+      if (key === "dialogue" || key === "action" || key === "pause") {
+        counts[key] += 1;
+      } else {
+        counts.other += 1;
+      }
+    });
+    return counts;
+  }, [timelineBeatsForScene]);
+
+  const timelineBeatWindow = useMemo(() => {
+    const startMs = timelineBeatsForScene.reduce<number | null>(
+      (acc, beat) => {
+        if (beat.startMs == null) return acc;
+        return acc == null ? beat.startMs : Math.min(acc, beat.startMs);
+      },
+      null,
+    );
+    const endMs = timelineBeatsForScene.reduce<number | null>(
+      (acc, beat) => {
+        if (beat.endMs == null) return acc;
+        return acc == null ? beat.endMs : Math.max(acc, beat.endMs);
+      },
+      null,
+    );
+    const durationSeconds =
+      startMs != null && endMs != null && endMs >= startMs
+        ? roundSeconds3((endMs - startMs) / 1000)
+        : null;
+    return { startMs, endMs, durationSeconds };
+  }, [timelineBeatsForScene]);
+
+  const frameTimingSummary = useMemo(() => {
+    const items = framesForScene.map((fr) => {
+      const startMs = parseMs(fr.start_ms);
+      const endMs = parseMs(fr.end_ms);
+      const hasWindow =
+        startMs !== null && endMs !== null && endMs >= startMs;
+      const durationSeconds = (() => {
+        if (hasWindow) return roundSeconds3((endMs - startMs) / 1000);
+        const parsed = parseNumber(fr.duration_seconds);
+        return parsed != null ? roundSeconds3(parsed) : null;
+      })();
+      return { frame: fr, startMs, endMs, hasWindow, durationSeconds };
+    });
+    const windowStartMs = items.reduce<number | null>((acc, item) => {
+      if (item.startMs == null) return acc;
+      return acc == null ? item.startMs : Math.min(acc, item.startMs);
+    }, null);
+    const windowEndMs = items.reduce<number | null>((acc, item) => {
+      if (item.endMs == null) return acc;
+      return acc == null ? item.endMs : Math.max(acc, item.endMs);
+    }, null);
+    const totalDurationRaw = items.reduce(
+      (acc, item) => acc + (item.durationSeconds ?? 0),
+      0,
+    );
+    const hasDuration = items.some((item) => item.durationSeconds != null);
+    return {
+      items,
+      windowStartMs,
+      windowEndMs,
+      totalDurationSeconds: hasDuration ? roundSeconds3(totalDurationRaw) : null,
+    };
+  }, [framesForScene]);
+
+  const sceneBeatDurationSeconds = useMemo(() => {
+    if (sceneBeatsForSelected.length === 0) return null;
+    const total = sceneBeatsForSelected.reduce((acc, beat) => {
+      const parsed = parseNumber(beat.duration_seconds);
+      return acc + (parsed ?? 0);
+    }, 0);
+    const hasDuration = sceneBeatsForSelected.some(
+      (beat) => parseNumber(beat.duration_seconds) != null,
+    );
+    return hasDuration ? roundSeconds3(total) : null;
+  }, [sceneBeatsForSelected]);
+
+  const alignmentNotes = useMemo(() => {
+    const notes: string[] = [];
+    if (!selectedAudioTimeline) {
+      notes.push("当前剧集未载入 episode 时间轴，无法校验对白 beats。");
+    }
+    if (sceneBeatsError) notes.push(sceneBeatsError);
+    if (selectedAudioTimeline && timelineBeatsForScene.length === 0) {
+      notes.push(
+        `时间轴内没有场景 ${selectedScene} 的 beats，确认已生成对白音轨和时间轴。`,
+      );
+    }
+    if (framesForScene.length === 0) {
+      notes.push("该场景暂无分镜帧，占位生成后再校验对齐。");
+    }
+    if (
+      timelineBeatsForScene.length > 0 &&
+      framesForScene.length > 0 &&
+      timelineBeatsForScene.length !== framesForScene.length
+    ) {
+      notes.push(
+        `beats 数量 (${timelineBeatsForScene.length}) 与分镜帧数量 (${framesForScene.length}) 不一致。`,
+      );
+    }
+    if (
+      timelineBeatWindow.durationSeconds != null &&
+      frameTimingSummary.totalDurationSeconds != null
+    ) {
+      const diff = Math.abs(
+        timelineBeatWindow.durationSeconds -
+          frameTimingSummary.totalDurationSeconds,
+      );
+      if (diff > 0.5) {
+        notes.push(
+          `分镜总时长与时间轴窗差异 ${diff.toFixed(1)}s（beats=${timelineBeatWindow.durationSeconds.toFixed(1)}s，frames=${frameTimingSummary.totalDurationSeconds.toFixed(1)}s）。`,
+        );
+      }
+    }
+    if (
+      sceneBeatsForSelected.length > 0 &&
+      timelineBeatsForScene.length === 0
+    ) {
+      notes.push(
+        "scene_beats 已落库但时间轴缺少偏移，考虑重新生成对白音轨 + 时间轴。",
+      );
+    }
+    return notes;
+  }, [
+    frameTimingSummary.totalDurationSeconds,
+    framesForScene.length,
+    sceneBeatsError,
+    sceneBeatsForSelected.length,
+    selectedAudioTimeline,
+    selectedScene,
+    timelineBeatWindow.durationSeconds,
+    timelineBeatsForScene.length,
+  ]);
 
   const formatTimestamp = (ts?: string | null) => {
     if (!ts) return "";
@@ -1436,6 +1687,192 @@ export default function EpisodeStoryboardPage() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* 场景时间轴对齐 */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium text-gray-900">
+                场景时间轴对齐（场景 {selectedScene}）
+              </div>
+              <div className="text-xs text-gray-600">
+                对齐对白音轨 beats、scene_beats 与分镜帧时长窗口
+              </div>
+            </div>
+            <div className="text-xs text-gray-500">
+              {sceneBeatsLoading
+                ? "beats 加载中..."
+                : `scene_beats=${sceneBeatsForSelected.length}`}
+            </div>
+          </div>
+          {!selectedAudioTimeline ? (
+            <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700">
+              请先生成 episode 时间轴，再返回此处校验分镜。
+            </div>
+          ) : null}
+          {sceneBeatsError ? (
+            <div className="mt-2 text-xs text-red-600">{sceneBeatsError}</div>
+          ) : null}
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-800">
+            <div className="rounded border border-gray-200 bg-gray-50 p-3">
+              <div className="text-[11px] text-gray-500">
+                时间轴 beats（episode）
+              </div>
+              <div className="text-sm font-semibold">
+                {timelineBeatsForScene.length} 条
+              </div>
+              <div className="mt-1 text-[11px] text-gray-600">
+                对白 {beatTypeCounts.dialogue} / 动作 {beatTypeCounts.action} /
+                停顿 {beatTypeCounts.pause} / 其他 {beatTypeCounts.other}
+              </div>
+              <div className="text-[11px] text-gray-600">
+                {timelineBeatWindow.startMs != null &&
+                timelineBeatWindow.endMs != null
+                  ? `窗口 ${formatMs(timelineBeatWindow.startMs)}–${formatMs(
+                      timelineBeatWindow.endMs,
+                    )}`
+                  : "未提供 start/end_ms"}
+              </div>
+              <div className="text-[11px] text-gray-600">
+                时长 {timelineBeatWindow.durationSeconds ?? "—"}s
+              </div>
+            </div>
+            <div className="rounded border border-gray-200 bg-gray-50 p-3">
+              <div className="text-[11px] text-gray-500">分镜帧（storyboard）</div>
+              <div className="text-sm font-semibold">
+                {framesForScene.length} 帧
+              </div>
+              <div className="mt-1 text-[11px] text-gray-600">
+                总时长 {frameTimingSummary.totalDurationSeconds ?? "—"}s
+              </div>
+              <div className="text-[11px] text-gray-600">
+                {frameTimingSummary.windowStartMs != null &&
+                frameTimingSummary.windowEndMs != null
+                  ? `窗口 ${formatMs(frameTimingSummary.windowStartMs)}–${formatMs(
+                      frameTimingSummary.windowEndMs,
+                    )}`
+                  : "未绑定 start/end_ms"}
+              </div>
+            </div>
+            <div className="rounded border border-gray-200 bg-gray-50 p-3">
+              <div className="text-[11px] text-gray-500">scene_beats（落库）</div>
+              <div className="text-sm font-semibold">
+                {sceneBeatsForSelected.length} 条
+              </div>
+              <div className="mt-1 text-[11px] text-gray-600">
+                {sceneBeatDurationSeconds != null
+                  ? `总时长 ${sceneBeatDurationSeconds}s`
+                  : "等待对白音频回填时长"}
+              </div>
+              <div className="text-[11px] text-gray-600">
+                {selectedNormalizedSceneId
+                  ? `scene_id=${selectedNormalizedSceneId}`
+                  : ""}
+              </div>
+            </div>
+          </div>
+          {alignmentNotes.length > 0 ? (
+            <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-amber-800 text-xs space-y-1">
+              <div className="font-medium text-amber-900">需要关注</div>
+              {alignmentNotes.map((note) => (
+                <div key={note} className="flex items-start gap-1">
+                  <span className="mt-[2px]">•</span>
+                  <span>{note}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-3 rounded border border-green-200 bg-green-50 p-3 text-green-800 text-xs">
+              场景内的 beats 与分镜帧数量、时长基本一致。
+            </div>
+          )}
+          <details className="mt-3 rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+            <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
+              查看场景 {selectedScene} 的时间轴与分镜明细
+            </summary>
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <div className="text-[11px] text-gray-500 mb-1">
+                  时间轴 beats（已偏移）
+                </div>
+                {timelineBeatsForScene.length === 0 ? (
+                  <div className="text-gray-500">暂无时间轴 beats</div>
+                ) : (
+                  <div className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
+                    {timelineBeatsForScene.map((beat, idx) => (
+                      <div
+                        key={`${beat.id || idx}-${idx}`}
+                        className="p-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-500">
+                            #{idx + 1} {beat.type || "—"}
+                          </span>
+                          <span className="text-[11px] text-gray-500">
+                            {beat.durationSeconds != null
+                              ? `${beat.durationSeconds}s`
+                              : "—"}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-gray-600">
+                          {beat.startMs != null && beat.endMs != null
+                            ? `${formatMs(beat.startMs)}–${formatMs(
+                                beat.endMs,
+                              )}`
+                            : "缺少 start/end_ms"}
+                        </div>
+                        {beat.text ? (
+                          <div className="mt-1 text-[11px] text-gray-700 line-clamp-2">
+                            {beat.text}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-[11px] text-gray-500 mb-1">
+                  分镜帧窗口
+                </div>
+                {frameTimingSummary.items.length === 0 ? (
+                  <div className="text-gray-500">暂无分镜帧</div>
+                ) : (
+                  <div className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
+                    {frameTimingSummary.items.map((item, idx) => (
+                      <div key={idx} className="p-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-500">
+                            帧 {item.frame.frame_number ?? idx + 1}
+                          </span>
+                          <span className="text-[11px] text-gray-500">
+                            {item.durationSeconds != null
+                              ? `${item.durationSeconds}s`
+                              : "—"}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-gray-600">
+                          {item.hasWindow &&
+                          item.startMs != null &&
+                          item.endMs != null
+                            ? `${formatMs(item.startMs)}–${formatMs(
+                                item.endMs,
+                              )}`
+                            : "未绑定时间轴窗口"}
+                        </div>
+                        {item.frame.description ? (
+                          <div className="mt-1 text-[11px] text-gray-700 line-clamp-2">
+                            {item.frame.description}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
         </div>
 
         {/* 顶部生成配置 */}

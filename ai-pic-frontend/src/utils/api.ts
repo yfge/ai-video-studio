@@ -635,6 +635,23 @@ export interface NormalizedScene {
   metadata?: Record<string, unknown>;
 }
 
+export interface SceneBeat {
+  id: number;
+  business_id?: string;
+  scene_id: number;
+  scene_business_id?: string | null;
+  order_index: number;
+  beat_type?: string | null;
+  beat_summary?: string | null;
+  characters_involved?: Record<string, unknown> | null;
+  dialogue_excerpt?: string | null;
+  camera_notes?: string | null;
+  duration_seconds?: number | null;
+  metadata?: Record<string, unknown> | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface NormalizedShot {
   id: number;
   shot_number: string;
@@ -1999,14 +2016,9 @@ class ApiClient {
   }
 
   async getNormalizedSceneBeats(sceneId: number) {
-    return this.request<
-      Array<{
-        id: number;
-        order_index: number;
-        beat_type?: string;
-        beat_summary?: string;
-      }>
-    >(`/api/v1/story-structure/scenes/${sceneId}/beats`);
+    return this.request<Array<SceneBeat>>(
+      `/api/v1/story-structure/scenes/${sceneId}/beats`,
+    );
   }
   async createSceneBeat(
     sceneId: number,
