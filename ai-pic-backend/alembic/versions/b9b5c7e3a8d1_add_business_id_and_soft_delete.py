@@ -88,8 +88,8 @@ def _enforce_not_null():
 
 def upgrade():
     bind = op.get_bind()
-    dialect = bind.dialect.name
-    default_expr = sa.text("replace(uuid(), '-', '')") if dialect == "mysql" else None
+    # Avoid dialect-specific SQL defaults; backfill step will populate.
+    default_expr = None
 
     _add_columns_and_indexes(default_expr)
     _backfill_business_ids(bind)
