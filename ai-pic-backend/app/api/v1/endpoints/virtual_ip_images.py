@@ -38,6 +38,10 @@ from app.utils.model_utils import infer_provider_from_model
 router = APIRouter()
 
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
+
 def _resolve_image_url(image: VirtualIPImage) -> Optional[str]:
     if not image:
         return None
@@ -83,7 +87,7 @@ def _get_owned_virtual_ip(
     virtual_ip_id: int,
 ) -> VirtualIP:
     """获取当前用户可访问的虚拟 IP 资产。"""
-    query = db.query(VirtualIP).filter(VirtualIP.id == virtual_ip_id)
+    query = _not_deleted(db.query(VirtualIP), VirtualIP).filter(VirtualIP.id == virtual_ip_id)
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(VirtualIP.user_id == current_user.id)
     vip = query.first()
@@ -143,7 +147,7 @@ async def create_virtual_ip_image(
 
     # 如果设置为默认图像，先取消其他默认图像
     if is_default:
-        db.query(VirtualIPImage).filter(
+        _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
             VirtualIPImage.virtual_ip_id == virtual_ip_id,
             VirtualIPImage.is_default.is_(True),
         ).update({"is_default": False})
@@ -348,7 +352,7 @@ async def generate_virtual_ip_image(
 
     # 如果设置为默认图像，先取消其他默认图像
     if is_default_bool:
-        db.query(VirtualIPImage).filter(
+        _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
             VirtualIPImage.virtual_ip_id == virtual_ip_id,
             VirtualIPImage.is_default.is_(True),
         ).update({"is_default": False})
@@ -523,7 +527,7 @@ async def get_virtual_ip_images(
     # 检查虚拟IP是否存在且归属当前用户（或管理员）
     _get_owned_virtual_ip(db, current_user, virtual_ip_id)
 
-    query = db.query(VirtualIPImage).filter(
+    query = _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
         VirtualIPImage.virtual_ip_id == virtual_ip_id
     )
 
@@ -547,7 +551,7 @@ async def get_virtual_ip_image(
     # 先校验虚拟 IP 归属
     _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = (
-        db.query(VirtualIPImage)
+        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
         .filter(
             VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
         )
@@ -571,7 +575,7 @@ def download_virtual_ip_image(
     # 校验虚拟 IP 归属
     _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = (
-        db.query(VirtualIPImage)
+        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
         .filter(
             VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
         )
@@ -601,7 +605,7 @@ async def update_virtual_ip_image(
     # 校验虚拟 IP 归属
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = (
-        db.query(VirtualIPImage)
+        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
         .filter(
             VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
         )
@@ -613,7 +617,7 @@ async def update_virtual_ip_image(
 
     # 如果设置为默认图像，先取消其他默认图像
     if image_update.is_default:
-        db.query(VirtualIPImage).filter(
+        _not_deleted(db.query(VirtualIPImage), VirtualIPImage).filter(
             VirtualIPImage.virtual_ip_id == virtual_ip_id,
             VirtualIPImage.is_default.is_(True),
             VirtualIPImage.id != image_id,
@@ -643,7 +647,7 @@ async def delete_virtual_ip_image(
     # 校验虚拟 IP 归属
     _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = (
-        db.query(VirtualIPImage)
+        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
         .filter(
             VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
         )
@@ -660,7 +664,7 @@ async def delete_virtual_ip_image(
         except Exception as e:
             print(f"删除文件失败: {e}")
 
-    db.delete(image)
+    image.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
 
     return {"message": "图像删除成功"}
@@ -677,7 +681,7 @@ async def set_default_image(
     # 检查虚拟 IP 归属和图像是否存在
     virtual_ip = _get_owned_virtual_ip(db, current_user, virtual_ip_id)
     image = (
-        db.query(VirtualIPImage)
+        _not_deleted(db.query(VirtualIPImage), VirtualIPImage)
         .filter(
             VirtualIPImage.id == image_id, VirtualIPImage.virtual_ip_id == virtual_ip_id
         )

@@ -13,6 +13,9 @@ from app.core.middleware import get_current_active_user
 
 router = APIRouter()
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
 def save_upload_file(upload_file: UploadFile, user_id: int) -> tuple[str, str, int]:
     """保存上传的文件"""
     # 生成唯一文件名
@@ -84,8 +87,9 @@ def get_images(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取用户的图片列表"""
-    total = db.query(Image).filter(Image.user_id == current_user.id).count()
-    images = db.query(Image).filter(Image.user_id == current_user.id).offset(skip).limit(limit).all()
+    query = _not_deleted(db.query(Image), Image).filter(Image.user_id == current_user.id)
+    total = query.count()
+    images = query.offset(skip).limit(limit).all()
     
     return ImageList(
         images=images,
@@ -101,10 +105,11 @@ def get_image(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取特定图片信息"""
-    image = db.query(Image).filter(
-        Image.id == image_id,
-        Image.user_id == current_user.id
-    ).first()
+    image = (
+        _not_deleted(db.query(Image), Image)
+        .filter(Image.id == image_id, Image.user_id == current_user.id)
+        .first()
+    )
     
     if image is None:
         raise HTTPException(

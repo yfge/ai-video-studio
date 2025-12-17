@@ -8,6 +8,9 @@ from app.core.middleware import get_current_active_user
 
 router = APIRouter()
 
+def _not_deleted(query, model):
+    return query.filter(model.is_deleted.is_(False))
+
 @router.get("/", response_model=List[UserResponse])
 def get_users(
     skip: int = 0,
@@ -22,7 +25,7 @@ def get_users(
             detail="权限不足"
         )
     
-    users = db.query(User).offset(skip).limit(limit).all()
+    users = _not_deleted(db.query(User), User).offset(skip).limit(limit).all()
     return users
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -38,7 +41,7 @@ def get_user(
             detail="权限不足"
         )
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = _not_deleted(db.query(User), User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -61,7 +64,7 @@ def update_user(
             detail="权限不足"
         )
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = _not_deleted(db.query(User), User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -97,14 +100,14 @@ def delete_user(
             detail="权限不足"
         )
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = _not_deleted(db.query(User), User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="用户不存在"
         )
     
-    db.delete(user)
+    user.soft_delete(user_id=current_user.id, reason="admin delete")
     db.commit()
     
     return {"message": "用户已删除"} 
