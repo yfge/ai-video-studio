@@ -926,6 +926,36 @@ def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
 
 
+def _get_script_by_identifier(
+    db: Session,
+    script_id: Optional[int],
+    script_business_id: Optional[str],
+    current_user: User,
+) -> Script:
+    """按主键或 business_id 获取剧本，校验归属与软删状态。"""
+    query = (
+        _not_deleted(db.query(Script), Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Episode.is_deleted.is_(False))
+        .filter(Story.is_deleted.is_(False))
+    )
+    if script_business_id:
+        query = query.filter(Script.business_id == script_business_id)
+    elif script_id:
+        query = query.filter(Script.id == script_id)
+    else:
+        raise HTTPException(status_code=400, detail="script identifier missing")
+
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+
+    script = query.first()
+    if not script:
+        raise HTTPException(status_code=404, detail="剧本不存在")
+    return script
+
+
 @router.get("/formats")
 async def get_script_formats():
     """获取剧本格式列表"""
@@ -3355,6 +3385,7 @@ async def generate_storyboard_video(
 @router.get("/", response_model=List[ScriptResponse])
 async def get_scripts(
     episode_id: Optional[int] = Query(None),
+    episode_business_id: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     status: Optional[str] = Query(None),
@@ -3363,10 +3394,18 @@ async def get_scripts(
     db: Session = Depends(get_db),
 ):
     """获取剧本列表"""
-    query = db.query(Script)
+    query = (
+        _not_deleted(db.query(Script), Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Episode.is_deleted.is_(False))
+        .filter(Story.is_deleted.is_(False))
+    )
 
     if episode_id:
         query = query.filter(Script.episode_id == episode_id)
+    if episode_business_id:
+        query = query.filter(Episode.business_id == episode_business_id)
 
     if status:
         query = query.filter(Script.status == status)
@@ -3375,9 +3414,6 @@ async def get_scripts(
         query = query.filter(Script.format_type == format_type)
 
     # 只允许访问当前用户故事下的剧本
-    query = query.join(Episode, Script.episode_id == Episode.id).join(
-        Story, Episode.story_id == Story.id
-    )
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(Story.user_id == current_user.id)
 
@@ -3388,6 +3424,7 @@ async def get_scripts(
 @router.get("", response_model=List[ScriptResponse], include_in_schema=False)
 async def get_scripts_no_slash(
     episode_id: Optional[int] = Query(None),
+    episode_business_id: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     status: Optional[str] = Query(None),
@@ -3402,6 +3439,7 @@ async def get_scripts_no_slash(
     """
     return await get_scripts(
         episode_id=episode_id,
+        episode_business_id=episode_business_id,
         skip=skip,
         limit=limit,
         status=status,
@@ -3418,21 +3456,18 @@ async def get_script(
     db: Session = Depends(get_db),
 ):
     """获取剧本详情"""
-    script = (
-        db.query(Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
-    )
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
+    script = _get_script_by_identifier(db, script_id, None, current_user)
+    return ScriptResponse.from_orm(script)
 
+
+@router.get("/business/{script_business_id}", response_model=ScriptResponse)
+async def get_script_by_business_id(
+    script_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 获取剧本详情"""
+    script = _get_script_by_identifier(db, None, script_business_id, current_user)
     return ScriptResponse.from_orm(script)
 
 
@@ -3444,26 +3479,43 @@ async def update_script(
     db: Session = Depends(get_db),
 ):
     """更新剧本"""
-    script = (
-        db.query(Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
-    )
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
+    script = _get_script_by_identifier(db, script_id, None, current_user)
 
     # 更新剧本信息
     for field, value in script_update.dict(exclude_unset=True).items():
         setattr(script, field, value)
 
     # 重新计算统计信息
+    if script_update.content:
+        script.word_count = len(script_update.content.split())
+        script.character_count = len(script_update.content)
+        script.page_count = max(1, script.character_count // 2000)
+
+    db.commit()
+    db.refresh(script)
+
+    try:
+        _sync_script_scenes_to_story_structure(db, script)
+    except Exception:
+        logger = get_logger()
+        logger.warning("同步规范化场景失败（update）", exc_info=True)
+
+    return ScriptResponse.from_orm(script)
+
+
+@router.put("/business/{script_business_id}", response_model=ScriptResponse)
+async def update_script_by_business_id(
+    script_business_id: str,
+    script_update: ScriptUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 更新剧本"""
+    script = _get_script_by_identifier(db, None, script_business_id, current_user)
+
+    for field, value in script_update.dict(exclude_unset=True).items():
+        setattr(script, field, value)
+
     if script_update.content:
         script.word_count = len(script_update.content.split())
         script.character_count = len(script_update.content)
@@ -3488,21 +3540,21 @@ async def delete_script(
     db: Session = Depends(get_db),
 ):
     """删除剧本"""
-    script = (
-        db.query(Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
-    )
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
+    script = _get_script_by_identifier(db, script_id, None, current_user)
+    script.soft_delete(user_id=current_user.id, reason="user delete")
+    db.commit()
 
+    return {"message": "剧本删除成功"}
+
+
+@router.delete("/business/{script_business_id}")
+async def delete_script_by_business_id(
+    script_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 删除剧本"""
+    script = _get_script_by_identifier(db, None, script_business_id, current_user)
     script.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
 
@@ -3512,14 +3564,18 @@ async def delete_script(
 @router.get("/episode/{episode_id}", response_model=List[ScriptResponse])
 async def get_episode_scripts(
     episode_id: int,
+    episode_business_id: Optional[str] = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """获取剧集的所有剧本"""
-    # 检查剧集是否存在且归属当前用户
-    episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+    episode_query = _not_deleted(db.query(Episode), Episode).join(
+        Story, Episode.story_id == Story.id
+    )
     if not current_user.is_admin and not current_user.is_superuser:
         episode_query = episode_query.filter(Story.user_id == current_user.id)
+    if episode_business_id:
+        episode_query = episode_query.filter(Episode.business_id == episode_business_id)
     episode = episode_query.filter(Episode.id == episode_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
@@ -3535,50 +3591,44 @@ async def get_episode_scripts(
     return [ScriptResponse.from_orm(script) for script in scripts]
 
 
-@router.post("/{script_id}/regenerate", response_model=ScriptResponse)
-async def regenerate_script(
-    script_id: int,
+@router.get("/episode/business/{episode_business_id}", response_model=List[ScriptResponse])
+async def get_episode_scripts_by_business_id(
+    episode_business_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """重新生成剧本内容"""
-    script = (
-        db.query(Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
+    """按 episode business_id 获取剧本列表"""
+    episode_query = _not_deleted(db.query(Episode), Episode).join(
+        Story, Episode.story_id == Story.id
     )
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-
-    episode = (
-        _not_deleted(db.query(Episode), Episode)
-        .filter(Episode.id == script.episode_id)
-        .first()
-    )
+    if not current_user.is_admin and not current_user.is_superuser:
+        episode_query = episode_query.filter(Story.user_id == current_user.id)
+    episode = episode_query.filter(Episode.business_id == episode_business_id).first()
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
 
-    story = (
-        _not_deleted(db.query(Story), Story)
-        .filter(Story.id == episode.story_id)
-        .first()
+    scripts = (
+        _not_deleted(db.query(Script), Script)
+        .filter(Script.episode_id == episode.id)
+        .limit(50)
+        .all()
     )
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
+    return [ScriptResponse.from_orm(script) for script in scripts]
 
+
+async def _regenerate_script_instance(
+    *,
+    db: Session,
+    script: Script,
+    episode: Episode,
+    story: Story,
+) -> Script:
+    """复用的剧本重新生成逻辑，供业务ID/主键路由调用。"""
     previous_episode_summaries = _collect_previous_episode_summaries(
         db, story.id, episode.episode_number
     )
     character_profiles = _build_character_profiles(story)
 
-    # 构建剧集/故事数据，保持与生成流程一致
     episode_data = _build_episode_data(episode)
     story_data = _build_story_data(
         story,
@@ -3586,14 +3636,12 @@ async def regenerate_script(
         character_profiles=character_profiles,
     )
 
-    # 使用原有的生成参数
     original_params = script.generation_params or {}
     prefer_provider = None
     model_id = original_params.get("model")
     if isinstance(model_id, str) and ":" in model_id:
         prefer_provider, model_id = model_id.split(":", 1)
 
-    # 调用AI服务重新生成剧本
     result = await ai_service.generate_script(
         episode=episode_data,
         story=story_data,
@@ -3622,7 +3670,6 @@ async def regenerate_script(
             "reasoning": result.get("reasoning"),
         }
 
-    # 解析AI生成的内容
     raw_content = result.get("content")
     if isinstance(raw_content, dict):
         ai_content = raw_content
@@ -3648,7 +3695,6 @@ async def regenerate_script(
         default_scenes=episode_data.get("scenes"),
     )
 
-    # 更新剧本内容
     script_content = ai_content.get("content", "")
     scenes = ai_content.get("scenes", [])
     dialogues_raw = ai_content.get("dialogues", [])
@@ -3663,13 +3709,11 @@ async def regenerate_script(
     script.generation_prompt = result.get("prompt")
     script.ai_model = result.get("generation_method")
 
-    # 更新 agent 运行元信息
     if agent_run:
         meta = dict(script.extra_metadata or {})
         meta["agent_run"] = agent_run
         script.extra_metadata = meta
 
-    # 重新计算统计信息
     script.word_count = len(script_content.split()) if script_content else 0
     script.character_count = len(script_content) if script_content else 0
     script.page_count = max(1, script.character_count // 2000)
@@ -3683,7 +3727,51 @@ async def regenerate_script(
         logger = get_logger()
         logger.warning("同步规范化场景失败（regenerate）", exc_info=True)
 
-    return ScriptResponse.from_orm(script)
+    return script
+
+
+@router.post("/{script_id}/regenerate", response_model=ScriptResponse)
+async def regenerate_script(
+    script_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """重新生成剧本内容"""
+    script = _get_script_by_identifier(db, script_id, None, current_user)
+
+    episode = script.episode
+    if not episode or getattr(episode, "is_deleted", False):
+        raise HTTPException(status_code=404, detail="剧集不存在")
+
+    story = episode.story
+    if not story or getattr(story, "is_deleted", False):
+        raise HTTPException(status_code=404, detail="故事不存在")
+
+    regenerated = await _regenerate_script_instance(
+        db=db, script=script, episode=episode, story=story
+    )
+    return ScriptResponse.from_orm(regenerated)
+
+
+@router.post("/business/{script_business_id}/regenerate", response_model=ScriptResponse)
+async def regenerate_script_by_business_id(
+    script_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 重新生成剧本内容"""
+    script = _get_script_by_identifier(db, None, script_business_id, current_user)
+    episode = script.episode
+    if not episode or getattr(episode, "is_deleted", False):
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    story = episode.story
+    if not story or getattr(story, "is_deleted", False):
+        raise HTTPException(status_code=404, detail="故事不存在")
+
+    regenerated = await _regenerate_script_instance(
+        db=db, script=script, episode=episode, story=story
+    )
+    return ScriptResponse.from_orm(regenerated)
 
 
 @router.post("/{script_id}/export")

@@ -41,6 +41,24 @@ def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
 
 
+def _get_story_by_identifier(
+    db: Session, story_id: Optional[int], story_business_id: Optional[str], current_user: User
+) -> Story:
+    query = _not_deleted(db.query(Story), Story)
+    if story_business_id:
+        query = query.filter(Story.business_id == story_business_id)
+    elif story_id:
+        query = query.filter(Story.id == story_id)
+    else:
+        raise HTTPException(status_code=400, detail="story identifier missing")
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+    story = query.first()
+    if not story:
+        raise HTTPException(status_code=404, detail="故事不存在")
+    return story
+
+
 def _build_extra_metadata(ai_content):
     if not isinstance(ai_content, dict):
         return {}
@@ -497,14 +515,19 @@ async def get_story(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """获取故事详情"""
-    query = _not_deleted(db.query(Story), Story).filter(Story.id == story_id)
-    if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(Story.user_id == current_user.id)
-    story = query.first()
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
+    """获取故事详情（支持业务ID）"""
+    story = _get_story_by_identifier(db, story_id, None, current_user)
+    return {"success": True, "data": StoryResponse.from_orm(story)}
 
+
+@router.get("/business/{story_business_id}")
+async def get_story_by_business_id(
+    story_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 获取故事详情"""
+    story = _get_story_by_identifier(db, None, story_business_id, current_user)
     return {"success": True, "data": StoryResponse.from_orm(story)}
 
 
@@ -516,14 +539,28 @@ async def update_story(
     db: Session = Depends(get_db),
 ):
     """更新故事"""
-    query = _not_deleted(db.query(Story), Story).filter(Story.id == story_id)
-    if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(Story.user_id == current_user.id)
-    story = query.first()
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
+    story = _get_story_by_identifier(db, story_id, None, current_user)
 
     # 更新故事信息
+    for field, value in story_update.dict(exclude_unset=True).items():
+        setattr(story, field, value)
+
+    db.commit()
+    db.refresh(story)
+
+    return StoryResponse.from_orm(story)
+
+
+@router.put("/business/{story_business_id}", response_model=StoryResponse)
+async def update_story_by_business_id(
+    story_business_id: str,
+    story_update: StoryUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 更新故事"""
+    story = _get_story_by_identifier(db, None, story_business_id, current_user)
+
     for field, value in story_update.dict(exclude_unset=True).items():
         setattr(story, field, value)
 
@@ -540,14 +577,22 @@ async def delete_story(
     db: Session = Depends(get_db),
 ):
     """删除故事"""
-    query = db.query(Story).filter(Story.id == story_id)
-    if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(Story.user_id == current_user.id)
-    story = query.first()
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
+    story = _get_story_by_identifier(db, story_id, None, current_user)
+    story.soft_delete(user_id=current_user.id, reason="user delete")
+    db.commit()
 
-    db.delete(story)
+    return {"message": "故事删除成功"}
+
+
+@router.delete("/business/{story_business_id}")
+async def delete_story_by_business_id(
+    story_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 删除故事"""
+    story = _get_story_by_identifier(db, None, story_business_id, current_user)
+    story.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
 
     return {"message": "故事删除成功"}
@@ -560,15 +605,30 @@ async def get_story_characters(
     db: Session = Depends(get_db),
 ):
     """获取故事角色列表"""
-    query = db.query(Story).filter(Story.id == story_id)
-    if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(Story.user_id == current_user.id)
-    story = query.first()
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
+    story = _get_story_by_identifier(db, story_id, None, current_user)
 
     characters = (
-        db.query(StoryCharacter).filter(StoryCharacter.story_id == story_id).all()
+        _not_deleted(db.query(StoryCharacter), StoryCharacter)
+        .filter(StoryCharacter.story_id == story.id)
+        .all()
+    )
+    return [StoryCharacterResponse.from_orm(char) for char in characters]
+
+
+@router.get(
+    "/business/{story_business_id}/characters", response_model=List[StoryCharacterResponse]
+)
+async def get_story_characters_by_business_id(
+    story_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 获取故事角色列表"""
+    story = _get_story_by_identifier(db, None, story_business_id, current_user)
+    characters = (
+        _not_deleted(db.query(StoryCharacter), StoryCharacter)
+        .filter(StoryCharacter.story_id == story.id)
+        .all()
     )
     return [StoryCharacterResponse.from_orm(char) for char in characters]
 

@@ -18,6 +18,7 @@
 - [ ] 后端：Phase 1 落地 `business_id`/软删字段与索引，回填现存数据并统一查询默认过滤 `is_deleted=false`
 - [ ] 后端：Phase 2 为子表补充 `*_business_id` 并回填，唯一约束改为含 `is_deleted` 的复合唯一，服务层双写/优先读 `business_id`
 - [ ] 后端：Phase 3 删除/恢复接口改为软删，regenerate 创建新记录并软删旧记录，派生数据重建/软删策略落地
+- [ ] 后端：按 `business_id` 访问的路由/查询参数补全（stories/episodes/scripts/virtual IP 已接入，其余端点待补）
 - [ ] 前端：接口/路由切换到 `business_id`（兼容旧 `id` 只读），regenerate 后跳转到新记录
 - [ ] 验证：pytest 覆盖软删/重建唯一键/regenerate 新记录链路；前端 `npm run lint` + E2E 检查软删后列表/详情/再生成可用
 

@@ -23,10 +23,17 @@ def _not_deleted(query, model):
 def _get_owned_virtual_ip(
     db: Session,
     current_user: User,
-    ip_id: int,
+    ip_id: int | None,
+    ip_business_id: str | None = None,
 ) -> VirtualIP:
-    """获取当前用户可访问的虚拟 IP（非管理员只能访问自己的资产）。"""
-    query = _not_deleted(db.query(VirtualIP), VirtualIP).filter(VirtualIP.id == ip_id)
+    """获取当前用户可访问的虚拟 IP（支持 business_id）。"""
+    query = _not_deleted(db.query(VirtualIP), VirtualIP)
+    if ip_business_id:
+        query = query.filter(VirtualIP.business_id == ip_business_id)
+    elif ip_id is not None:
+        query = query.filter(VirtualIP.id == ip_id)
+    else:
+        raise HTTPException(status_code=400, detail="虚拟IP标识缺失")
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(VirtualIP.user_id == current_user.id)
     ip = query.first()
@@ -38,10 +45,13 @@ def _get_owned_virtual_ip(
 def list_virtual_ips(
     skip: int = 0, 
     limit: int = 20, 
+    business_id: str | None = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     query = _not_deleted(db.query(VirtualIP), VirtualIP)
+    if business_id:
+        query = query.filter(VirtualIP.business_id == business_id)
     # 普通用户只看到自己的虚拟 IP，管理员/超级用户可以查看全部
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(VirtualIP.user_id == current_user.id)
@@ -56,6 +66,7 @@ def list_virtual_ips(
 def list_virtual_ips_no_slash(
     skip: int = 0,
     limit: int = 20,
+    business_id: str | None = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -64,7 +75,13 @@ def list_virtual_ips_no_slash(
 
     内部直接复用 list_virtual_ips 的分页与权限逻辑。
     """
-    return list_virtual_ips(skip=skip, limit=limit, current_user=current_user, db=db)
+    return list_virtual_ips(
+        skip=skip,
+        limit=limit,
+        business_id=business_id,
+        current_user=current_user,
+        db=db,
+    )
 
 @router.post("/")
 def create_virtual_ip(
@@ -106,6 +123,20 @@ def get_virtual_ip(
         "data": VirtualIPResponse.from_orm(ip)
     }
 
+
+@router.get("/business/{ip_business_id}")
+def get_virtual_ip_by_business_id(
+    ip_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 获取虚拟 IP"""
+    ip = _get_owned_virtual_ip(db, current_user, None, ip_business_id)
+    return {
+        "success": True,
+        "data": VirtualIPResponse.from_orm(ip),
+    }
+
 @router.put("/{ip_id}")
 def update_virtual_ip(
     ip_id: int, 
@@ -140,6 +171,42 @@ def update_virtual_ip(
     db.refresh(ip)
     return {"success": True, "data": VirtualIPResponse.from_orm(ip)}
 
+
+@router.put("/business/{ip_business_id}")
+def update_virtual_ip_by_business_id(
+    ip_business_id: str,
+    ip_update: VirtualIPUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 更新虚拟 IP"""
+    ip = _get_owned_virtual_ip(db, current_user, None, ip_business_id)
+
+    updates = ip_update.dict(exclude_unset=True)
+    if "name" in updates and updates["name"] != ip.name:
+        existing_ip = (
+            _not_deleted(db.query(VirtualIP), VirtualIP)
+            .filter(VirtualIP.name == updates["name"])
+            .first()
+        )
+        if existing_ip:
+            raise HTTPException(status_code=400, detail="虚拟IP名称已存在")
+
+    for k, v in updates.items():
+        setattr(ip, k, v)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="虚拟IP名称已存在")
+    except Exception:
+        db.rollback()
+        raise
+
+    db.refresh(ip)
+    return {"success": True, "data": VirtualIPResponse.from_orm(ip)}
+
 @router.delete("/{ip_id}")
 def delete_virtual_ip(
     ip_id: int, 
@@ -147,6 +214,22 @@ def delete_virtual_ip(
     db: Session = Depends(get_db)
 ):
     ip = _get_owned_virtual_ip(db, current_user, ip_id)
+    ip.soft_delete(user_id=current_user.id, reason="user delete")
+    db.commit()
+    return {
+        "success": True,
+        "message": "虚拟IP已删除"
+    }
+
+
+@router.delete("/business/{ip_business_id}")
+def delete_virtual_ip_by_business_id(
+    ip_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 删除虚拟 IP"""
+    ip = _get_owned_virtual_ip(db, current_user, None, ip_business_id)
     ip.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
     return {

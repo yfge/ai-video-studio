@@ -37,6 +37,54 @@ def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
 
 
+def _get_episode_by_identifier(
+    db: Session,
+    episode_id: Optional[int],
+    episode_business_id: Optional[str],
+    current_user: User,
+) -> Episode:
+    """按业务ID或主键获取剧集，自动校验归属与软删状态。"""
+    query = (
+        _not_deleted(db.query(Episode), Episode)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Story.is_deleted.is_(False))
+    )
+    if episode_business_id:
+        query = query.filter(Episode.business_id == episode_business_id)
+    elif episode_id:
+        query = query.filter(Episode.id == episode_id)
+    else:
+        raise HTTPException(status_code=400, detail="episode identifier missing")
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+    episode = query.first()
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    return episode
+
+
+def _get_story_by_identifier(
+    db: Session,
+    story_id: Optional[int],
+    story_business_id: Optional[str],
+    current_user: User,
+) -> Story:
+    """按业务ID或主键获取故事，自动校验归属与软删状态。"""
+    query = _not_deleted(db.query(Story), Story)
+    if story_business_id:
+        query = query.filter(Story.business_id == story_business_id)
+    elif story_id:
+        query = query.filter(Story.id == story_id)
+    else:
+        raise HTTPException(status_code=400, detail="story identifier missing")
+    if not current_user.is_admin and not current_user.is_superuser:
+        query = query.filter(Story.user_id == current_user.id)
+    story = query.first()
+    if not story:
+        raise HTTPException(status_code=404, detail="故事不存在")
+    return story
+
+
 def _is_episode_payload_valid(episode_data: Dict[str, Any]) -> bool:
     """Ensure minimal episode payload validity before persisting."""
     summary = (episode_data.get("summary") or "").strip()
@@ -559,6 +607,7 @@ async def preview_episode_prompt(
 @router.get("/", response_model=List[EpisodeResponse])
 async def get_episodes(
     story_id: Optional[int] = Query(None),
+    story_business_id: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     status: Optional[str] = Query(None),
@@ -566,7 +615,11 @@ async def get_episodes(
     db: Session = Depends(get_db),
 ):
     """获取剧集列表"""
-    query = db.query(Episode).join(Story, Episode.story_id == Story.id)
+    query = (
+        _not_deleted(db.query(Episode), Episode)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Story.is_deleted.is_(False))
+    )
 
     # 普通用户只能查看自己的故事下的剧集
     if not current_user.is_admin and not current_user.is_superuser:
@@ -574,6 +627,8 @@ async def get_episodes(
 
     if story_id:
         query = query.filter(Episode.story_id == story_id)
+    if story_business_id:
+        query = query.filter(Story.business_id == story_business_id)
 
     if status:
         query = query.filter(Episode.status == status)
@@ -590,6 +645,7 @@ async def get_episodes(
 @router.get("", response_model=List[EpisodeResponse], include_in_schema=False)
 async def get_episodes_no_slash(
     story_id: Optional[int] = Query(None),
+    story_business_id: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     status: Optional[str] = Query(None),
@@ -603,6 +659,7 @@ async def get_episodes_no_slash(
     """
     return await get_episodes(
         story_id=story_id,
+        story_business_id=story_business_id,
         skip=skip,
         limit=limit,
         status=status,
@@ -618,20 +675,18 @@ async def get_episode(
     db: Session = Depends(get_db),
 ):
     """获取剧集详情"""
-    episode = (
-        db.query(Episode)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Episode.id == episode_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
-    )
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
+    episode = _get_episode_by_identifier(db, episode_id, None, current_user)
+    return EpisodeResponse.from_orm(episode)
 
+
+@router.get("/business/{episode_business_id}", response_model=EpisodeResponse)
+async def get_episode_by_business_id(
+    episode_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 获取剧集详情"""
+    episode = _get_episode_by_identifier(db, None, episode_business_id, current_user)
     return EpisodeResponse.from_orm(episode)
 
 
@@ -643,19 +698,7 @@ async def update_episode(
     db: Session = Depends(get_db),
 ):
     """更新剧集"""
-    episode = (
-        db.query(Episode)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Episode.id == episode_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
-    )
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
+    episode = _get_episode_by_identifier(db, episode_id, None, current_user)
 
     # 如果更新集数，检查是否重复
     if (
@@ -684,6 +727,42 @@ async def update_episode(
     return EpisodeResponse.from_orm(episode)
 
 
+@router.put("/business/{episode_business_id}", response_model=EpisodeResponse)
+async def update_episode_by_business_id(
+    episode_business_id: str,
+    episode_update: EpisodeUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 更新剧集"""
+    episode = _get_episode_by_identifier(db, None, episode_business_id, current_user)
+
+    if (
+        episode_update.episode_number
+        and episode_update.episode_number != episode.episode_number
+    ):
+        existing_episode = (
+            db.query(Episode)
+            .filter(
+                Episode.story_id == episode.story_id,
+                Episode.episode_number == episode_update.episode_number,
+                Episode.id != episode.id,
+                Episode.is_deleted.is_(False),
+            )
+            .first()
+        )
+        if existing_episode:
+            raise HTTPException(status_code=400, detail="该集数已存在")
+
+    for field, value in episode_update.dict(exclude_unset=True).items():
+        setattr(episode, field, value)
+
+    db.commit()
+    db.refresh(episode)
+
+    return EpisodeResponse.from_orm(episode)
+
+
 @router.delete("/{episode_id}")
 async def delete_episode(
     episode_id: int,
@@ -691,21 +770,22 @@ async def delete_episode(
     db: Session = Depends(get_db),
 ):
     """删除剧集"""
-    episode = (
-        db.query(Episode)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Episode.id == episode_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
-    )
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
+    episode = _get_episode_by_identifier(db, episode_id, None, current_user)
+    episode.soft_delete(user_id=current_user.id, reason="user delete")
+    db.commit()
 
-    db.delete(episode)
+    return {"message": "剧集删除成功"}
+
+
+@router.delete("/business/{episode_business_id}")
+async def delete_episode_by_business_id(
+    episode_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 删除剧集"""
+    episode = _get_episode_by_identifier(db, None, episode_business_id, current_user)
+    episode.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
 
     return {"message": "剧集删除成功"}
@@ -714,21 +794,16 @@ async def delete_episode(
 @router.get("/story/{story_id}")
 async def get_story_episodes(
     story_id: int,
+    story_business_id: Optional[str] = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """获取故事的所有剧集"""
-    # 检查故事是否存在
-    story_query = db.query(Story).filter(Story.id == story_id)
-    if not current_user.is_admin and not current_user.is_superuser:
-        story_query = story_query.filter(Story.user_id == current_user.id)
-    story = story_query.first()
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
+    story = _get_story_by_identifier(db, story_id, story_business_id, current_user)
 
     episodes = (
         _not_deleted(db.query(Episode), Episode)
-        .filter(Episode.story_id == story_id)
+        .filter(Episode.story_id == story.id)
         .order_by(Episode.episode_number)
         .all()
     )
@@ -742,31 +817,38 @@ async def get_story_episodes(
     }
 
 
-@router.post("/{episode_id}/regenerate", response_model=EpisodeResponse)
-async def regenerate_episode(
-    episode_id: int,
+@router.get("/story/business/{story_business_id}")
+async def get_story_episodes_by_business_id(
+    story_business_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """重新生成剧集内容"""
-    episode_query = (
+    """按 story business_id 获取剧集列表"""
+    story = _get_story_by_identifier(db, None, story_business_id, current_user)
+    episodes = (
         _not_deleted(db.query(Episode), Episode)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Episode.id == episode_id)
+        .filter(Episode.story_id == story.id)
+        .order_by(Episode.episode_number)
+        .all()
     )
-    if not (current_user.is_admin or current_user.is_superuser):
-        episode_query = episode_query.filter(Story.user_id == current_user.id)
-    episode = episode_query.first()
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
+    return {
+        "success": True,
+        "data": (
+            [EpisodeResponse.from_orm(episode) for episode in episodes]
+            if episodes
+            else []
+        ),
+    }
 
-    story = (
-        _not_deleted(db.query(Story), Story).filter(Story.id == episode.story_id).first()
-    )
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
 
-    # 构建故事数据
+async def _regenerate_episode_instance(
+    *,
+    db: Session,
+    episode: Episode,
+    story: Story,
+    current_user: User,
+) -> Episode:
+    """共享的剧集重新生成逻辑，供业务ID/主键路由复用。"""
     story_data = {
         "title": story.title,
         "genre": story.genre,
@@ -781,10 +863,8 @@ async def regenerate_episode(
         "setting_location": story.setting_location,
     }
 
-    # 使用原有的生成参数
     original_params = episode.generation_params or {}
 
-    # 调用AI服务重新生成单集内容
     result = await ai_service.generate_episodes(
         story=story_data,
         episode_count=1,
@@ -810,7 +890,6 @@ async def regenerate_episode(
             "reasoning": result.get("reasoning"),
         }
 
-    # 解析AI生成的内容
     ai_content = (
         result.get("normalized") if isinstance(result, dict) else None
     ) or extract_json_block(result.get("content") if isinstance(result, dict) else None)
@@ -864,13 +943,44 @@ async def regenerate_episode(
             db.commit()
             db.refresh(new_episode)
 
-            # Soft delete old episode
-            episode.soft_delete(user_id=current_user.id, reason="regenerate superseded")
+            episode.soft_delete(
+                user_id=current_user.id, reason="regenerate superseded"
+            )
             db.commit()
 
-            return EpisodeResponse.from_orm(new_episode)
+            return new_episode
 
     raise HTTPException(status_code=500, detail="AI生成内容格式错误")
+
+
+@router.post("/{episode_id}/regenerate", response_model=EpisodeResponse)
+async def regenerate_episode(
+    episode_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """重新生成剧集内容"""
+    episode = _get_episode_by_identifier(db, episode_id, None, current_user)
+    story = _get_story_by_identifier(db, episode.story_id, None, current_user)
+    regenerated = await _regenerate_episode_instance(
+        db=db, episode=episode, story=story, current_user=current_user
+    )
+    return EpisodeResponse.from_orm(regenerated)
+
+
+@router.post("/business/{episode_business_id}/regenerate", response_model=EpisodeResponse)
+async def regenerate_episode_by_business_id(
+    episode_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按 business_id 重新生成剧集内容"""
+    episode = _get_episode_by_identifier(db, None, episode_business_id, current_user)
+    story = _get_story_by_identifier(db, episode.story_id, None, current_user)
+    regenerated = await _regenerate_episode_instance(
+        db=db, episode=episode, story=story, current_user=current_user
+    )
+    return EpisodeResponse.from_orm(regenerated)
 
 
 def _process_episode_generation_task(task_id: int, request_dict: dict, user_id: int):
