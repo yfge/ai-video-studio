@@ -3,6 +3,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
 from app.core.database import Base
+from app.models.base import SoftDeleteBusinessMixin
 
 class TaskStatus(str, enum.Enum):
     PENDING = "pending"
@@ -15,7 +16,7 @@ class TaskType(str, enum.Enum):
     IMAGE_EDIT = "image_edit"
     IMAGE_ENHANCEMENT = "image_enhancement"
 
-class Task(Base):
+class Task(SoftDeleteBusinessMixin, Base):
     __tablename__ = "tasks"
     
     id = Column(Integer, primary_key=True, index=True)

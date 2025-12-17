@@ -14,11 +14,12 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+from app.models.base import SoftDeleteBusinessMixin
 
 BIGINT_PK = BigInteger().with_variant(Integer, "sqlite")
 
 
-class StoryTreatment(Base):
+class StoryTreatment(SoftDeleteBusinessMixin, Base):
     """Normalized story-wide treatment/revision metadata.
 
     Mirrors alembic/versions/a1b2c3d4e5f6_add_story_structure_tables.py
@@ -55,7 +56,7 @@ class StoryTreatment(Base):
     approved_by_user = relationship("User", foreign_keys=[approved_by])
 
 
-class StoryStepOutline(Base):
+class StoryStepOutline(SoftDeleteBusinessMixin, Base):
     """Beat-level outline scoped to a treatment (optionally an episode)."""
 
     __tablename__ = "story_step_outlines"
@@ -95,7 +96,7 @@ class StoryStepOutline(Base):
     updated_by_user = relationship("User", foreign_keys=[updated_by])
 
 
-class Scene(Base):
+class Scene(SoftDeleteBusinessMixin, Base):
     """Script-scoped scene record linked optionally to an outline beat."""
 
     __tablename__ = "scenes"
@@ -135,7 +136,7 @@ class Scene(Base):
     environment = relationship("Environment", backref="scenes")
 
 
-class SceneBeat(Base):
+class SceneBeat(SoftDeleteBusinessMixin, Base):
     """Ordered beat rows inside a scene."""
 
     __tablename__ = "scene_beats"
@@ -161,7 +162,7 @@ class SceneBeat(Base):
     scene = relationship("Scene", backref="beats")
 
 
-class Shot(Base):
+class Shot(SoftDeleteBusinessMixin, Base):
     """Shot planning rows optionally linked to a scene beat and storyboard asset."""
 
     __tablename__ = "shots"
@@ -199,7 +200,7 @@ class Shot(Base):
     storyboard_image = relationship("Image", backref="referenced_by_shots")
 
 
-class Environment(Base):
+class Environment(SoftDeleteBusinessMixin, Base):
     """Environment / location asset that can be reused across scenes and storyboards."""
 
     __tablename__ = "environments"

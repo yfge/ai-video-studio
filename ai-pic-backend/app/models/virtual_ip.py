@@ -3,9 +3,10 @@ from sqlalchemy.sql import func
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models.base import SoftDeleteBusinessMixin
 
 
-class VirtualIP(Base):
+class VirtualIP(SoftDeleteBusinessMixin, Base):
     __tablename__ = "virtual_ips"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -37,7 +38,7 @@ class VirtualIP(Base):
     )
 
 
-class VirtualIPImage(Base):
+class VirtualIPImage(SoftDeleteBusinessMixin, Base):
     __tablename__ = "virtual_ip_images"
 
     id = Column(Integer, primary_key=True, index=True)

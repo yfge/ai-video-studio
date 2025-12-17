@@ -2,8 +2,9 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, T
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models.base import SoftDeleteBusinessMixin
 
-class User(Base):
+class User(SoftDeleteBusinessMixin, Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -64,7 +65,7 @@ class User(Base):
                 self.account_locked_until > func.now())
 
 
-class UserAuditLog(Base):
+class UserAuditLog(SoftDeleteBusinessMixin, Base):
     """用户操作审计日志"""
     __tablename__ = "user_audit_logs"
     

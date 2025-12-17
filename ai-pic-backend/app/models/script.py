@@ -2,8 +2,9 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Foreign
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
+from app.models.base import SoftDeleteBusinessMixin
 
-class Story(Base):
+class Story(SoftDeleteBusinessMixin, Base):
     """故事概要模型"""
     __tablename__ = "stories"
     
@@ -49,7 +50,7 @@ class Story(Base):
     episodes = relationship("Episode", back_populates="story", cascade="all, delete-orphan")
     story_characters = relationship("StoryCharacter", back_populates="story", cascade="all, delete-orphan")
 
-class Episode(Base):
+class Episode(SoftDeleteBusinessMixin, Base):
     """剧集模型"""
     __tablename__ = "episodes"
     
@@ -86,7 +87,7 @@ class Episode(Base):
     story = relationship("Story", back_populates="episodes")
     scripts = relationship("Script", back_populates="episode", cascade="all, delete-orphan")
 
-class Script(Base):
+class Script(SoftDeleteBusinessMixin, Base):
     """剧本模型"""
     __tablename__ = "scripts"
     
@@ -130,7 +131,7 @@ class Script(Base):
     # 关系
     episode = relationship("Episode", back_populates="scripts")
 
-class StoryCharacter(Base):
+class StoryCharacter(SoftDeleteBusinessMixin, Base):
     """故事角色关联模型"""
     __tablename__ = "story_characters"
     
@@ -160,7 +161,7 @@ class StoryCharacter(Base):
     story = relationship("Story", back_populates="story_characters")
     virtual_ip = relationship("VirtualIP")
 
-class ScriptTemplate(Base):
+class ScriptTemplate(SoftDeleteBusinessMixin, Base):
     """剧本模板模型"""
     __tablename__ = "script_templates"
     
