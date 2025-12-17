@@ -83,6 +83,14 @@ export default function EpisodeDetailPage() {
       : null;
   const getString = (value: unknown): string | undefined =>
     typeof value === "string" ? value : undefined;
+  const getNumber = (value: unknown): number | undefined => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  };
   const parseMs = (value: unknown): number | null => {
     if (typeof value === "number" && Number.isFinite(value)) return value;
     if (typeof value === "string" && value.trim()) {
@@ -527,7 +535,7 @@ export default function EpisodeDetailPage() {
       ? (selectedAudioTimeline?.["beats"] as unknown[])
       : [];
     const beatItems = beatsRaw
-      .map((raw, idx) => {
+      .map<TimelineTrack["items"][number] | null>((raw, idx) => {
         const record =
           raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
         if (!record) return null;
@@ -547,7 +555,9 @@ export default function EpisodeDetailPage() {
           color: "#2563eb",
         };
       })
-      .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
+      .filter(
+        (item): item is TimelineTrack["items"][number] => Boolean(item),
+      );
     if (beatItems.length > 0) {
       tracks.push({
         id: "dialogue-beats",
@@ -557,15 +567,21 @@ export default function EpisodeDetailPage() {
       });
     }
     const storyboardItems = selectedStoryboardFrames
-      .map((fr, idx) => {
-        const start = parseMs((fr as Record<string, unknown>)["start_ms"]);
-        const end = parseMs((fr as Record<string, unknown>)["end_ms"]);
+      .map<TimelineTrack["items"][number] | null>((fr, idx) => {
+        const record =
+          fr && typeof fr === "object" ? (fr as Record<string, unknown>) : null;
+        if (!record) return null;
+        const start = parseMs(record["start_ms"]);
+        const end = parseMs(record["end_ms"]);
         if (start == null || end == null || end < start) return null;
+        const frameNumber = getNumber(record["frame_number"]);
         const label =
-          getString((fr as Record<string, unknown>)["description"]) ||
-          `Frame ${fr.frame_number ?? idx + 1}`;
+          getString(record["description"]) ||
+          `Frame ${frameNumber ?? idx + 1}`;
+        const rawId = record["frame_id"] ?? record["id"] ?? idx;
+        const id = typeof rawId === "string" ? rawId : String(rawId);
         return {
-          id: `frame-${fr.frame_id || idx}`,
+          id: `frame-${id}`,
           startMs: start,
           endMs: end,
           label,

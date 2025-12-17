@@ -473,7 +473,8 @@ export default function EpisodeStoryboardPage() {
       .getNormalizedSceneBeats(sceneId)
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {
-          setSceneBeats((prev) => ({ ...prev, [sceneId]: res.data }));
+          const beats = res.data as SceneBeat[];
+          setSceneBeats((prev) => ({ ...prev, [sceneId]: beats }));
         } else {
           setSceneBeats((prev) => ({ ...prev, [sceneId]: [] }));
           setSceneBeatsError(res.error || "加载场景 beats 失败");
@@ -570,7 +571,7 @@ export default function EpisodeStoryboardPage() {
       ? (selectedAudioTimeline["beats"] as unknown[])
       : [];
     return raw
-      .map((beatRaw) => {
+      .map<TimelineBeatInfo | null>((beatRaw) => {
         const record = asRecord(beatRaw);
         if (!record) return null;
         const sceneNumber = parseNumber(record["scene_number"]);
@@ -1608,7 +1609,7 @@ export default function EpisodeStoryboardPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">未找到剧集</h2>
           <button
             onClick={() =>
-              router.push(`/episodes/${episode?.business_id || episodeKey}`)
+              router.push(`/episodes/${episodeKey}`)
             }
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
