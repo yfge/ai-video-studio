@@ -2,15 +2,14 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { authAPI, scriptAPI, taskAPI } from '@/utils/api'
+import { authAPI, scriptAPI } from '@/utils/api'
 import type { Script, User } from '@/utils/api'
 import { useAlertModal } from '@/components/AlertModalProvider'
-import { MultiModelSelector } from '@/components/MultiModelSelector'
 import { SceneStructurePanel, type SceneNode } from '@/components/SceneStructurePanel'
 import { isAdmin } from '@/utils/auth'
-import { FrameCard, SceneTag, formatText, type StoryboardFrame } from '@/components/StoryboardFrameCard'
+import { SceneTag, formatText } from '@/components/StoryboardFrameCard'
 
-type TabId = 'overview' | 'scenes' | 'storyboard'
+type TabId = 'overview' | 'scenes'
 
 type ScriptScene = {
   scene_number?: number | string
@@ -37,49 +36,9 @@ type ScriptDirection = {
   type?: string
 } | string
 
-type StoryboardMeta = {
-  version?: number
-  updated_at?: string
-  generation_source?: string
-  generation_method?: string
-  generation_model?: string
-  provider?: string
-  scene_scope?: number[] | null
-}
-
-type StoryboardPlanFrame = {
-  shot_type?: string
-  camera_movement?: string
-  composition?: string
-  intent?: string
-}
-
-type StoryboardPlanScene = {
-  scene_number: number
-  target_frames: number
-  frames: StoryboardPlanFrame[]
-}
-
-type StoryboardPlan = {
-  scenes: StoryboardPlanScene[]
-}
-
-type StoryboardData = {
-  frames: StoryboardFrame[]
-  meta?: StoryboardMeta
-  plan?: StoryboardPlan
-}
-
-type RemoteStoryboard = {
-  frames?: unknown
-  meta?: unknown
-  plan?: unknown
-}
-
 const TABS: Array<{ id: TabId; name: string; description: string }> = [
   { id: 'overview', name: '概览', description: '剧本文本与统计概况' },
   { id: 'scenes', name: '场景详情', description: '逐场景对白与舞台指示' },
-  { id: 'storyboard', name: '分镜工作台', description: '生成控制、规划与镜头列表' },
 ]
 
 const InfoCard = ({
@@ -148,31 +107,6 @@ const normalizeScenes = (scenes: unknown): ScriptScene[] => {
 
 const normalizeDialogues = (items: unknown): ScriptDialogue[] => (Array.isArray(items) ? (items as ScriptDialogue[]) : [])
 const normalizeDirections = (items: unknown): ScriptDirection[] => (Array.isArray(items) ? (items as ScriptDirection[]) : [])
-
-const parseStoryboard = (data: unknown): StoryboardData => {
-  if (!data || typeof data !== 'object') {
-    return { frames: [] }
-  }
-  const raw = data as RemoteStoryboard
-  const frames = Array.isArray(raw.frames) ? (raw.frames as StoryboardFrame[]) : []
-  return {
-    frames,
-    meta: (raw.meta as StoryboardMeta) ?? undefined,
-    plan: (raw.plan as StoryboardPlan) ?? undefined,
-  }
-}
-
-const groupFramesByScene = (frames: StoryboardFrame[]) => {
-  const groups = new Map<number, StoryboardFrame[]>()
-  frames.forEach(frame => {
-    const sceneNo = toSceneNumber(frame.scene_number) ?? 0
-    if (!groups.has(sceneNo)) groups.set(sceneNo, [])
-    groups.get(sceneNo)!.push(frame)
-  })
-  return Array.from(groups.entries())
-    .sort((a, b) => a[0] - b[0])
-    .map(([scene, grouped]) => ({ scene, frames: grouped }))
-}
 
 const SceneDetails = ({
   scene,
@@ -272,36 +206,7 @@ export default function ScriptDetailPage() {
   const [structuredScenes, setStructuredScenes] = useState<SceneNode[]>([])
   const [loading, setLoading] = useState(true)
   const [showExportMenu, setShowExportMenu] = useState(false)
-  const [storyboard, setStoryboard] = useState<StoryboardData | null>(null)
-  const [storyboardBusy, setStoryboardBusy] = useState(false)
-  const [generationForm, setGenerationForm] = useState({ model: '', temperature: 0.7, framesPerScene: 4 })
-  const [promptPreview, setPromptPreview] = useState('')
-  const [selectedScenes, setSelectedScenes] = useState<number[]>([])
-  const [showPlan, setShowPlan] = useState(false)
-  const [focusedScene, setFocusedScene] = useState<number | null>(null)
   const [readOnlyNotified, setReadOnlyNotified] = useState(false)
-
-  const refreshStoryboard = useCallback(
-    async (targetId: number | string) => {
-      setStoryboardBusy(true)
-      try {
-        const response = await scriptAPI.getStoryboard(targetId)
-        if (response.success) {
-          const parsed = parseStoryboard(response.data)
-          setStoryboard(parsed)
-          const scope = parsed.meta?.scene_scope?.filter((value): value is number => typeof value === 'number') || []
-          setSelectedScenes(scope)
-          if (scope.length > 0) {
-            setFocusedScene(scope[0])
-          }
-          setShowPlan(Boolean(parsed.plan?.scenes?.length))
-        }
-      } finally {
-        setStoryboardBusy(false)
-      }
-    },
-    []
-  )
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -310,8 +215,6 @@ export default function ScriptDetailPage() {
 
       if (scriptRes.success && scriptRes.data) {
         setScript(scriptRes.data)
-        const identifier = scriptRes.data.business_id || scriptKey
-        await refreshStoryboard(identifier)
       } else {
         showAlert({ message: '加载剧本失败', variant: 'error' })
       }
@@ -321,7 +224,7 @@ export default function ScriptDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [refreshStoryboard, scriptKey, showAlert])
+  }, [scriptKey, showAlert])
 
   useEffect(() => {
     loadInitialData()
@@ -355,26 +258,9 @@ export default function ScriptDetailPage() {
       description: scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
     }))
   }, [structuredScenes])
-  const structuredSceneLookup = useMemo(() => {
-    const map = new Map<number, SceneNode>()
-    structuredScenes.forEach(scene => {
-      const num = toSceneNumber(scene.scene_number)
-      if (num !== undefined) {
-        map.set(num, scene)
-      }
-    })
-    return map
-  }, [structuredScenes])
   const scenes = structuredSceneViews.length > 0 ? structuredSceneViews : rawScenes
   const dialogues = useMemo(() => normalizeDialogues(script?.dialogues), [script?.dialogues])
   const directions = useMemo(() => normalizeDirections(script?.stage_directions), [script?.stage_directions])
-  const frameGroups = useMemo(() => groupFramesByScene(storyboard?.frames || []), [storyboard?.frames])
-  const unassignedFrames = useMemo(() => (storyboard?.frames || []).filter(frame => !frame.scene_number), [storyboard?.frames])
-  const storyboardPlanScenes = useMemo(() => {
-    const rawScenes = storyboard?.plan?.scenes
-    if (!Array.isArray(rawScenes)) return []
-    return rawScenes.filter(scene => scene && typeof scene === 'object') as StoryboardPlanScene[]
-  }, [storyboard?.plan?.scenes])
   const scriptIdentifier = script?.business_id || scriptKey
   const canEditStructure = useMemo(() => isAdmin(currentUser), [currentUser])
   useEffect(() => {
@@ -400,104 +286,6 @@ export default function ScriptDetailPage() {
     }
   }
 
-  const handlePreviewPrompt = async () => {
-    if (!script) return
-    setStoryboardBusy(true)
-    try {
-      const preview = await scriptAPI.previewStoryboardPrompt(scriptIdentifier)
-      if (preview.success && preview.data) {
-        setPromptPreview(preview.data.prompt)
-      } else {
-        setPromptPreview('未能生成提示词预览')
-      }
-    } finally {
-      setStoryboardBusy(false)
-    }
-  }
-
-  type GenerateStoryboardOptions = Parameters<typeof scriptAPI.generateStoryboard>[1]
-
-  const pollStoryboardTask = useCallback(
-    async (scriptId: number | string, taskId: number) => {
-      const maxAttempts = 30
-      let attempts = 0
-      while (attempts < maxAttempts) {
-        attempts += 1
-        try {
-          // 等待一段时间再轮询任务状态
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          const taskRes = await taskAPI.getTask(String(taskId))
-          if (!taskRes.success || !taskRes.data) {
-            continue
-          }
-          const status = taskRes.data.status
-          if (status === 'completed') {
-            // 任务完成后重新拉取分镜数据
-            const sbRes = await scriptAPI.getStoryboard(scriptId)
-            if (sbRes.success && sbRes.data) {
-              const parsed = parseStoryboard(sbRes.data)
-              setStoryboard(parsed)
-              const scope = parsed.meta?.scene_scope?.filter((value): value is number => typeof value === 'number') || []
-              if (scope.length > 0) {
-                setSelectedScenes(scope)
-                setFocusedScene(scope[0])
-              }
-              setShowPlan(Boolean(parsed.plan?.scenes?.length))
-            }
-            showAlert({ message: '分镜生成完成', variant: 'success' })
-            return
-          }
-          if (status === 'failed') {
-            const msg = taskRes.data.error_message || '分镜生成失败'
-            showAlert({ message: msg, variant: 'error' })
-            return
-          }
-        } catch {
-          // 忽略单次轮询错误，继续尝试
-        }
-      }
-      showAlert({ message: '分镜生成任务仍在执行中，请稍后在任务页查看进度', variant: 'info' })
-    },
-    [showAlert],
-  )
-
-  const runStoryboardGeneration = async (mode: 'all' | 'selected') => {
-    if (!script) return
-    const payload: GenerateStoryboardOptions = {
-      model: generationForm.model || undefined,
-      temperature: generationForm.temperature,
-      frames_per_scene: generationForm.framesPerScene,
-    }
-    if (mode === 'selected' && selectedScenes.length > 0) {
-      payload.scene_numbers = selectedScenes
-    }
-    // 分镜管线默认使用规划 + LangGraph
-    payload.use_plan = true
-    setStoryboardBusy(true)
-    try {
-      const response = await scriptAPI.generateStoryboardAsync(scriptIdentifier, payload)
-      if (response.success && response.data) {
-        showAlert({ message: '已创建分镜生成任务，正在等待结果...', variant: 'info' })
-        await pollStoryboardTask(scriptIdentifier, response.data.task_id)
-      } else {
-        showAlert({ message: `创建分镜任务失败：${response.error || '未知错误'}`, variant: 'error' })
-      }
-    } catch (error) {
-      console.error(error)
-      showAlert({ message: '分镜生成失败', variant: 'error' })
-    } finally {
-      setStoryboardBusy(false)
-    }
-  }
-
-  const toggleSceneSelection = (sceneNumber: number) => {
-    setSelectedScenes(prev => (prev.includes(sceneNumber) ? prev.filter(sn => sn !== sceneNumber) : [...prev, sceneNumber]))
-  }
-
-  const clearSelectedScenes = () => setSelectedScenes([])
-
-  const storyboardMeta = storyboard?.meta
-  const activeScene = focusedScene ? scenes.find(scene => toSceneNumber(scene.scene_number) === focusedScene) || null : null
 
   if (loading) {
     return (
@@ -705,227 +493,7 @@ export default function ScriptDetailPage() {
           </Section>
         )}
 
-        {activeTab === 'storyboard' && (
-          <Section title="分镜工作台" description="生成、查看与规划分镜镜头">
-            <div className="space-y-6 p-6">
-              {structuredScenes.length > 0 && (
-                <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
-                  已载入结构化场景 {structuredScenes.length} 个，已用于分镜分组描述。镜头/节拍编辑需在「场景详情」中完成。
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <InfoCard label="帧总数" value={storyboard?.frames.length || 0} hint="当前分镜帧数量" />
-                <InfoCard label="版本" value={storyboardMeta?.version ?? '—'} hint="最新分镜版本号" />
-                <InfoCard
-                  label="生成方式"
-                  value={storyboardMeta?.generation_method || '—'}
-                  hint={storyboardMeta?.generation_source || '未记录'}
-                  tone={storyboardMeta?.generation_method?.includes('langgraph') ? 'success' : 'default'}
-                />
-                <InfoCard
-                  label="模型/提供商"
-                  value={storyboardMeta?.generation_model || '—'}
-                  hint={storyboardMeta?.provider ? `Provider: ${storyboardMeta.provider}` : '—'}
-                />
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-3">
-                <div className="rounded-lg border border-gray-100 bg-white p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">生成配置</h3>
-                  <div className="mt-3 space-y-4 text-sm text-gray-600">
-                    <div>
-                      <MultiModelSelector
-                        label="模型"
-                        value={generationForm.model ? [generationForm.model] : []}
-                        onChange={ids => setGenerationForm(prev => ({ ...prev, model: ids[0] || '' }))}
-                        modelType="text"
-                        multiple={false}
-                        helperText="留空将使用推荐模型"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium uppercase tracking-wide text-gray-500">创造性温度</label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={1.5}
-                        step={0.1}
-                        value={generationForm.temperature}
-                        onChange={e => setGenerationForm(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
-                        className="mt-2 w-full"
-                      />
-                      <span className="text-xs text-gray-500">{generationForm.temperature.toFixed(1)}</span>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium uppercase tracking-wide text-gray-500">每场景分镜数</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={generationForm.framesPerScene}
-                        onChange={e =>
-                          setGenerationForm(prev => ({
-                            ...prev,
-                            framesPerScene: Number.isNaN(parseInt(e.target.value, 10)) ? 4 : parseInt(e.target.value, 10),
-                          }))
-                        }
-                        className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-gray-100 bg-white p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">场景选择</h3>
-                  <div className="mt-3 flex flex-wrap gap-2 text-sm text-gray-600">
-                    {scenes.map((scene, idx) => {
-                      const sceneNumber = toSceneNumber(scene.scene_number) ?? idx + 1
-                      const active = selectedScenes.includes(sceneNumber)
-                      return (
-                        <button
-                          key={`scene-chip-${sceneNumber}`}
-                          onClick={() => toggleSceneSelection(sceneNumber)}
-                          className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                            active ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-blue-200'
-                          }`}
-                        >
-                          场景 {sceneNumber}
-                        </button>
-                      )
-                    })}
-                    {selectedScenes.length > 0 && (
-                      <button onClick={clearSelectedScenes} className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-500 hover:border-gray-300">
-                        清空
-                      </button>
-                    )}
-                  </div>
-                  {storyboardMeta?.scene_scope && storyboardMeta.scene_scope.length > 0 && (
-                    <p className="mt-3 text-xs text-gray-500">最近一次生成覆盖场景：{storyboardMeta.scene_scope.join(', ')}</p>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-gray-100 bg-white p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">操作</h3>
-                  <div className="mt-3 flex flex-col gap-3">
-                    <button
-                      onClick={handlePreviewPrompt}
-                      className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-medium text-purple-700 hover:bg-purple-100"
-                      disabled={storyboardBusy}
-                    >
-                      提示词预览
-                    </button>
-                    <button
-                      onClick={() => runStoryboardGeneration('selected')}
-                      className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
-                      disabled={storyboardBusy || selectedScenes.length === 0}
-                    >
-                      生成所选场景
-                    </button>
-                    <button
-                      onClick={() => runStoryboardGeneration('all')}
-                      className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                      disabled={storyboardBusy}
-                    >
-                      生成全部场景
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {promptPreview && (
-                <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
-                  <div className="mb-1 text-xs font-semibold uppercase text-purple-600">提示词预览</div>
-                  <pre className="whitespace-pre-wrap text-xs leading-5">{promptPreview}</pre>
-                </div>
-              )}
-
-              {storyboardPlanScenes.length > 0 && (
-                <div className="rounded-lg border border-gray-100 bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-gray-700">分镜规划 ({storyboardPlanScenes.length} 个场景)</h4>
-                    <button onClick={() => setShowPlan(prev => !prev)} className="text-xs text-blue-600 hover:text-blue-800">
-                      {showPlan ? '收起规划' : '展开规划'}
-                    </button>
-                  </div>
-                  {showPlan && (
-                    <div className="mt-3 space-y-3">
-                      {storyboardPlanScenes.map(scene => (
-                        <div key={`plan-${scene.scene_number}`} className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">
-                          <div className="flex items-center justify-between text-sm text-gray-700">
-                            <span className="font-semibold">场景 {scene.scene_number}</span>
-                            <span>目标帧数：{scene.target_frames}</span>
-                          </div>
-                          <ul className="mt-2 space-y-1">
-                            {scene.frames.map((outline, idx) => (
-                              <li key={idx} className="rounded bg-white/80 px-2 py-1">
-                                {(outline.shot_type || '—')} · {(outline.camera_movement || '—')} · {(outline.composition || '—')} · {(outline.intent || '—')}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {storyboardBusy && <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50 p-3 text-sm text-blue-700">分镜处理中...</div>}
-
-              {frameGroups.map(group => {
-                const sceneData = scenes.find(scene => toSceneNumber(scene.scene_number) === group.scene)
-                const structuredMeta = structuredSceneLookup.get(group.scene)
-                return (
-                  <div key={`frame-group-${group.scene}`} className="rounded-xl border border-gray-100 bg-white shadow-sm">
-                    <div className="flex flex-col gap-2 border-b border-gray-100 p-4 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <div className="text-sm font-semibold text-gray-800">
-                          {group.scene ? `场景 ${group.scene}` : '未分配场景'}
-                        </div>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {structuredMeta?.slug_line
-                            ? structuredMeta.slug_line
-                            : sceneData
-                            ? formatText(sceneData.description, '暂无描述', 140)
-                            : '—'}
-                        </p>
-                      </div>
-                      <div className="flex gap-3 text-xs text-gray-500">
-                        <span>帧数：{group.frames.length}</span>
-                        {structuredMeta?.beats?.length ? <span>节拍：{structuredMeta.beats.length}</span> : null}
-                        {structuredMeta?.shots?.length ? <span>镜头：{structuredMeta.shots.length}</span> : null}
-                        {sceneData?.location && <span>地点：{sceneData.location}</span>}
-                        {sceneData?.time && <span>时间：{sceneData.time}</span>}
-                      </div>
-                    </div>
-                    <div className="grid gap-3 p-4 md:grid-cols-2">
-                      {group.frames.map(frame => (
-                        <FrameCard key={`frame-${frame.frame_id || frame.frame_number}`} frame={frame} />
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-
-              {unassignedFrames.length > 0 && (
-                <div className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-600">
-                  <h4 className="font-semibold text-gray-700">未分配场景的分镜（{unassignedFrames.length}）</h4>
-                  <div className="mt-2 space-y-2 text-xs">
-                    {unassignedFrames.map(frame => (
-                      <div key={`frame-unassigned-${frame.frame_id || frame.frame_number}`} className="rounded border border-gray-100 bg-gray-50 p-3">
-                        <div className="font-semibold text-gray-700">分镜 {frame.frame_number}</div>
-                        <p className="mt-1 text-gray-600">{formatText(frame.description)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {storyboard && storyboard.frames.length === 0 && !storyboardBusy && <p className="text-sm text-gray-500">暂无分镜，点击上方按钮生成。</p>}
-            </div>
-          </Section>
-        )}
+        
       </div>
     </div>
   )
