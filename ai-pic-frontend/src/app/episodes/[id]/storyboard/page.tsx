@@ -2022,7 +2022,8 @@ export default function EpisodeStoryboardPage() {
                 {selectedAudioTimeline ? (
                   <div className="mt-1 text-[11px] text-gray-500">
                     时间轴已生成：当前场景预计帧数{" "}
-                    {framesPerSceneFromTimeline ?? "—"}（由 beats 决定）
+                    {framesPerSceneFromTimeline ?? "—"}（按 timeline beats），
+                    当前分镜帧数 {framesForScene.length}
                   </div>
                 ) : null}
               </div>
