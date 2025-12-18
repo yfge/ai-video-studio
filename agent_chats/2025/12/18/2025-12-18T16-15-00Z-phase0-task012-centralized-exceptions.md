@@ -150,4 +150,4 @@ pytest tests/unit/core/test_exceptions.py -v
 
 ## Linked Commits
 
-Will be added after commit is created.
+- ee045fa refactor(backend): create centralized exception hierarchy [phase0]
