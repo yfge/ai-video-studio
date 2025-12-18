@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { ModelSelector } from "@/components/ModelSelector";
+import { ModelUiFields } from "@/components/ModelUiFields";
+import { extractVideoUi } from "@/utils/modelUi";
 import {
   type AIModel,
   type StoryboardVideoGenerationOptions,
@@ -59,80 +61,6 @@ function CandidateSection({
     </div>
   );
 }
-
-type VideoUiOptions = {
-  supportsEndFrame: boolean;
-  supportsCameraFixed: boolean;
-  supportsCameraControl: boolean;
-  supportsWatermark: boolean;
-  resolutionOptions: string[];
-  ratioOptions: string[];
-  durationOptions: number[];
-  defaultResolution: string;
-  defaultRatio: string;
-  defaultWatermark: boolean;
-  cameraControlHint?: string;
-  cameraControlSchema?: unknown;
-};
-
-type ModelUiMetadata = {
-  resolution_options?: string[];
-  ratio_options?: string[];
-  duration_options?: number[];
-  supports_end_frame?: boolean;
-  supports_camera_fixed?: boolean;
-  supports_camera_control?: boolean;
-  supports_watermark?: boolean;
-  default_resolution?: string;
-  default_ratio?: string;
-  default_watermark?: boolean;
-  camera_control_hint?: string;
-  camera_control_schema?: unknown;
-};
-
-type ModelMetadata = {
-  ui?: ModelUiMetadata;
-};
-
-const extractVideoUi = (model?: AIModel): VideoUiOptions => {
-  const ui = ((model?.metadata as ModelMetadata | undefined)?.ui ||
-    {}) as ModelUiMetadata;
-  const resolutionOptions = (ui.resolution_options as string[] | undefined) ?? [
-    "720p",
-    "1080p",
-  ];
-  const ratioOptions = (ui.ratio_options as string[] | undefined) ?? [
-    "16:9",
-    "9:16",
-    "1:1",
-    "4:3",
-  ];
-  const durationOptions = (ui.duration_options as number[] | undefined) ?? [
-    5, 10,
-  ];
-
-  const defaultResolution =
-    (ui.default_resolution as string | undefined) ||
-    resolutionOptions[0] ||
-    "720p";
-  const defaultRatio =
-    (ui.default_ratio as string | undefined) || ratioOptions[0] || "16:9";
-
-  return {
-    supportsEndFrame: Boolean(ui.supports_end_frame ?? true),
-    supportsCameraFixed: Boolean(ui.supports_camera_fixed ?? false),
-    supportsCameraControl: Boolean(ui.supports_camera_control ?? false),
-    supportsWatermark: Boolean(ui.supports_watermark ?? true),
-    resolutionOptions,
-    ratioOptions,
-    durationOptions,
-    defaultResolution,
-    defaultRatio,
-    defaultWatermark: Boolean(ui.default_watermark ?? false),
-    cameraControlHint: ui.camera_control_hint as string | undefined,
-    cameraControlSchema: ui.camera_control_schema,
-  };
-};
 
 interface StoryboardVideoModalProps {
   open: boolean;
@@ -434,85 +362,40 @@ export function StoryboardVideoModal({
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                时长（秒）
-              </label>
-              <input
-                type="number"
-                min={durationMin}
-                max={durationMax}
-                value={duration}
-                onChange={(event) =>
-                  setDuration(parseInt(event.target.value, 10))
+          <div>
+            <ModelUiFields
+              mode="video"
+              model={selectedModel}
+              disabled={submitting}
+              value={{
+                resolution,
+                ratio,
+                duration,
+                watermark,
+                camera_fixed: cameraFixed,
+              }}
+              onChange={(next) => {
+                if (next.resolution !== undefined)
+                  setResolution(next.resolution || defaults.defaultResolution);
+                if (next.ratio !== undefined)
+                  setRatio(next.ratio || defaults.defaultRatio);
+                if (next.duration !== undefined) {
+                  const parsed = Number(next.duration);
+                  setDuration(
+                    Number.isFinite(parsed)
+                      ? parsed
+                      : defaults.durationOptions[0] ?? durationMin,
+                  );
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                支持 {durationMin}~{durationMax} 秒
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                分辨率
-              </label>
-              <select
-                value={resolution}
-                onChange={(event) => setResolution(event.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                {defaults.resolutionOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                宽高比
-              </label>
-              <select
-                value={ratio}
-                onChange={(event) => setRatio(event.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                {defaults.ratioOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
+                if (next.watermark !== undefined)
+                  setWatermark(Boolean(next.watermark));
+                if (next.camera_fixed !== undefined)
+                  setCameraFixed(Boolean(next.camera_fixed));
+              }}
+            />
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            {defaults.supportsWatermark ? (
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={watermark}
-                  onChange={(event) => setWatermark(event.target.checked)}
-                  className="h-4 w-4"
-                />
-                包含水印（--wm）
-              </label>
-            ) : (
-              <div className="text-xs text-gray-500">
-                当前模型不支持水印开关
-              </div>
-            )}
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={cameraFixed}
-                onChange={(event) => setCameraFixed(event.target.checked)}
-                className="h-4 w-4"
-                disabled={!defaults.supportsCameraFixed}
-              />
-              固定摄像头（--cf）
-            </label>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 seed（可选）
@@ -524,6 +407,9 @@ export function StoryboardVideoModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                 placeholder="留空为随机"
               />
+            </div>
+            <div className="md:col-span-2 text-xs text-gray-500 flex items-center">
+              支持 {durationMin}~{durationMax} 秒，分辨率/画幅/水印/固定镜头均随模型动态变化。
             </div>
           </div>
 

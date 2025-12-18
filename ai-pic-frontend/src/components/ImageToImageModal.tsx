@@ -9,6 +9,8 @@ import {
   type StyleSpecField,
 } from "@/components/StyleSpecAdvancedPanel";
 import { useStylePresets } from "@/hooks/useStylePresets";
+import { ModelUiFields } from "@/components/ModelUiFields";
+import { extractImageUi } from "@/utils/modelUi";
 import {
   AIModelType,
   type AIModel,
@@ -20,13 +22,6 @@ import {
 type ReferenceSection = {
   title?: string;
   images: string[];
-};
-
-type ResolutionOption = {
-  value: string;
-  label: string;
-  width?: number;
-  height?: number;
 };
 
 interface ImageToImageModalProps {
@@ -50,7 +45,6 @@ interface ImageToImageModalProps {
   modelType?: string;
   modelFetcher?: () => Promise<ApiResponse<AvailableModelsResponse>>;
   modelCacheKey?: string;
-  resolutionOptions?: ResolutionOption[];
   styleOptions?: { value: string; label: string }[];
   showStylePreset?: boolean;
   styleSpecFields?: StyleSpecField[];
@@ -74,70 +68,6 @@ interface ImageToImageModalProps {
   }) => Promise<void>;
 }
 
-const deriveResolutionOptions = (model?: AIModel): ResolutionOption[] => {
-  if (!model) return [];
-  const ui = ((model.metadata as Record<string, unknown> | undefined)?.ui ||
-    {}) as Record<string, unknown>;
-  const uiSizes =
-    Array.isArray(ui.size_options) && ui.size_options.length > 0
-      ? (ui.size_options as string[])
-      : [];
-  if (uiSizes.length > 0) {
-    return uiSizes.map((value) => ({
-      value,
-      label: value.toUpperCase?.() ? value.toUpperCase() : value,
-    }));
-  }
-  const modelId = model.model_id || model.id || "";
-  const provider = model.provider || modelId.split(":")[0] || "";
-
-  if (provider === "openai") {
-    if (modelId.includes("dall-e-3")) {
-      return [
-        { value: "1024x1024", label: "1024 × 1024", width: 1024, height: 1024 },
-        {
-          value: "1024x1792",
-          label: "1024 × 1792（竖版）",
-          width: 1024,
-          height: 1792,
-        },
-        {
-          value: "1792x1024",
-          label: "1792 × 1024（横版）",
-          width: 1792,
-          height: 1024,
-        },
-      ];
-    }
-    if (modelId.includes("dall-e-2")) {
-      return [
-        { value: "256x256", label: "256 × 256", width: 256, height: 256 },
-        { value: "512x512", label: "512 × 512", width: 512, height: 512 },
-        { value: "1024x1024", label: "1024 × 1024", width: 1024, height: 1024 },
-      ];
-    }
-  }
-
-  if (provider === "volcengine" && modelId.includes("seedream-4.5")) {
-    return [{ value: "2K", label: "2K（Seedream 推荐）" }];
-  }
-
-  return [];
-};
-
-const deriveAspectRatioOptions = (
-  model?: AIModel,
-): { supported: boolean; options: string[] } => {
-  const ui = ((model?.metadata as Record<string, unknown> | undefined)?.ui ||
-    {}) as Record<string, unknown>;
-  const supported = Boolean(ui.supports_aspect_ratio);
-  const options =
-    supported && Array.isArray(ui.aspect_ratio_options)
-      ? (ui.aspect_ratio_options as string[])
-      : [];
-  return { supported, options };
-};
-
 export function ImageToImageModal({
   open,
   title = "图生图",
@@ -160,7 +90,6 @@ export function ImageToImageModal({
   modelType = AIModelType.ImageToImage,
   modelFetcher,
   modelCacheKey,
-  resolutionOptions,
   styleOptions,
   showStylePreset = true,
   styleSpecFields,
@@ -236,45 +165,14 @@ export function ImageToImageModal({
     return availableModels.find((m) => m.model_id === modelIds[0]);
   }, [availableModels, modelIds]);
 
-  const { supported: supportsAspectRatio, options: aspectRatioOptions } =
-    useMemo(() => deriveAspectRatioOptions(selectedModel), [selectedModel]);
-
-  const derivedResolutionOptions = useMemo(() => {
-    if (resolutionOptions && resolutionOptions.length > 0) {
-      return resolutionOptions;
-    }
-    return deriveResolutionOptions(selectedModel);
-  }, [resolutionOptions, selectedModel]);
-
-  useEffect(() => {
-    if (
-      useDimensions ||
-      !supportsAspectRatio ||
-      aspectRatioOptions.length === 0
-    ) {
-      setAspectRatio(undefined);
-      return;
-    }
-    setAspectRatio((prev) => {
-      if (prev && aspectRatioOptions.includes(prev)) return prev;
-      return aspectRatioOptions[0];
-    });
-  }, [aspectRatioOptions, supportsAspectRatio, useDimensions]);
+  const imageUi = useMemo(() => extractImageUi(selectedModel), [selectedModel]);
+  const supportsAspectRatio = imageUi.supportsAspectRatio;
 
   const toggleReference = (url: string) => {
     if (lockSelection) return;
     setSelectedRefs((prev) =>
       prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url],
     );
-  };
-
-  const handleResolutionPreset = (value: string) => {
-    setSize(value);
-    const option = derivedResolutionOptions.find((opt) => opt.value === value);
-    if (option?.width && option.height) {
-      setWidth(option.width);
-      setHeight(option.height);
-    }
   };
 
   const handleSubmit = async () => {
@@ -499,90 +397,34 @@ export function ImageToImageModal({
               />
             ) : null}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                分辨率
-              </label>
-              {useDimensions ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">宽</span>
-                    <input
-                      type="number"
-                      min={64}
-                      max={2048}
-                      value={width}
-                      onChange={(e) =>
-                        setWidth(parseInt(e.target.value, 10) || defaultWidth)
-                      }
-                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">高</span>
-                    <input
-                      type="number"
-                      min={64}
-                      max={2048}
-                      value={height}
-                      onChange={(e) =>
-                        setHeight(parseInt(e.target.value, 10) || defaultHeight)
-                      }
-                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <select
-                  value={size}
-                  onChange={(e) => handleResolutionPreset(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">自动（模型默认）</option>
-                  {derivedResolutionOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {!useDimensions && derivedResolutionOptions.length > 0 ? (
-                <p className="mt-1 text-[11px] text-gray-500">
-                  选项基于当前模型文档（OpenAI / 火山方舟等）。
-                </p>
-              ) : null}
-            </div>
-            {!useDimensions && supportsAspectRatio ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  宽高比
-                </label>
-                <select
-                  value={aspectRatio ?? ""}
-                  onChange={(e) => setAspectRatio(e.target.value || undefined)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  disabled={aspectRatioOptions.length === 0}
-                >
-                  {aspectRatioOptions.length === 0 ? (
-                    <option value="">当前模型未提供宽高比选项</option>
-                  ) : (
-                    <>
-                      <option value="">自动（模型默认）</option>
-                      {aspectRatioOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-                {aspectRatioOptions.length > 0 ? (
-                  <p className="mt-1 text-[11px] text-gray-500">
-                    选项由后端模型元数据返回（支持比例控制的模型才会出现）。
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
+            <ModelUiFields
+              mode="image"
+              model={selectedModel}
+              value={{
+                size,
+                aspect_ratio: aspectRatio || undefined,
+                width,
+                height,
+              }}
+              useDimensions={useDimensions}
+              onChange={(next) => {
+                if (next.size !== undefined) setSize(next.size);
+                if (next.aspect_ratio !== undefined)
+                  setAspectRatio(next.aspect_ratio || undefined);
+                if (next.width !== undefined)
+                  setWidth(
+                    Number.isFinite(next.width) && next.width
+                      ? next.width
+                      : defaultWidth,
+                  );
+                if (next.height !== undefined)
+                  setHeight(
+                    Number.isFinite(next.height) && next.height
+                      ? next.height
+                      : defaultHeight,
+                  );
+              }}
+            />
           </div>
         </div>
 
