@@ -513,12 +513,21 @@ class KelingProvider(BaseProvider):
         try:
             client = await self.get_client()
 
+            # Keling video only supports 5s/10s; clamp to nearest allowed.
+            try:
+                dur_int = int(duration)
+            except (TypeError, ValueError):
+                dur_int = 5
+            allowed_durations = [5, 10]
+            if dur_int not in allowed_durations:
+                dur_int = min(allowed_durations, key=lambda d: abs(d - dur_int))
+
             # Build request payload
             request_data = {
                 "model_name": model,
                 "image": primary_image,
                 "mode": mode,
-                "duration": duration,
+                "duration": dur_int,
             }
 
             # Add optional parameters
