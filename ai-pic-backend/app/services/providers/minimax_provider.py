@@ -162,6 +162,8 @@ class MinimaxProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "768P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": False,
+                        "supports_watermark": True,
                     }
                 },
             ),
@@ -188,6 +190,8 @@ class MinimaxProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "768P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": False,
+                        "supports_watermark": True,
                     }
                 },
             ),
@@ -215,6 +219,8 @@ class MinimaxProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "768P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": False,
+                        "supports_watermark": True,
                     }
                 },
             ),

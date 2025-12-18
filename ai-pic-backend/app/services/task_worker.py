@@ -147,6 +147,7 @@ def storyboard_image_generate_task(
         style=payload.get("style") or "realistic",
         style_preset_id=payload.get("style_preset_id"),
         style_spec=payload.get("style_spec"),
+        aspect_ratio=payload.get("aspect_ratio"),
         reference_images=payload.get("reference_images") or [],
         count=count_int,
         keyframe_mode=(payload.get("keyframe_mode") or "single"),
@@ -178,6 +179,7 @@ def storyboard_video_generate_task(
         "service_tier": payload.get("service_tier"),
         "execution_expires_after": payload.get("execution_expires_after"),
         "return_last_frame": payload.get("return_last_frame"),
+        "camera_control": payload.get("camera_control"),
     }
     _process_storyboard_video_task(
         task_id,

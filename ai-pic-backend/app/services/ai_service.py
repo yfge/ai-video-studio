@@ -1743,6 +1743,7 @@ class AIService:
         background_story: str = None,
         count: int = 1,
         size: str | None = None,
+        aspect_ratio: str | None = None,
     ) -> Optional[Dict[str, Any]]:
         """为虚拟IP生成图像"""
 
@@ -1838,6 +1839,7 @@ class AIService:
                     pure_model,
                     style_preset_id=style_preset_id,
                     style_spec=style_spec,
+                    aspect_ratio=aspect_ratio,
                 )
                 provider_used = "keling"
                 generation_method = "keling_image"
@@ -1875,7 +1877,8 @@ class AIService:
                     n=count or 1,
                     prefer_provider=prefer_provider,
                     # 对火山 Ark Seedream，size 由 VolcengineProvider 映射为 Ark 的 size 字段（例如 \"2K\"）
-                    size=size if prefer_provider == "volcengine" else None,
+                    size=size if prefer_provider == "volcengine" else size,
+                    aspect_ratio=aspect_ratio,
                 )
                 if response.success:
                     images = response.data.get("images", [])
@@ -1915,6 +1918,7 @@ class AIService:
                                 else None
                             ),
                             "style_spec_resolution": style_spec_resolution,
+                            "aspect_ratio": aspect_ratio,
                             "provider": provider_used,
                             "model": model,
                         },
@@ -2463,6 +2467,8 @@ class AIService:
         """Infer video generation UI options from capabilities and provider rules."""
         resolution_options: list[str] = []
         duration_options: list[int] = []
+        supports_watermark = True
+        supports_camera_control = "camera_control" in caps
 
         for cap in caps:
             lower = cap.lower()
@@ -2490,12 +2496,16 @@ class AIService:
             if not duration_options:
                 duration_options = [5, 10]
             supports_end_frame = True
+            supports_camera_control = True
+            supports_watermark = False
         if provider == "volcengine":
             if not resolution_options:
                 resolution_options = ["480p", "720p", "1080p"]
             if not duration_options:
                 duration_options = [2, 12]
             supports_camera_fixed = True
+            supports_camera_control = supports_camera_control or supports_camera_fixed
+            supports_watermark = True
             supports_end_frame = (
                 supports_end_frame or "image_to_video_start_end_frame" in caps
             )
@@ -2508,6 +2518,10 @@ class AIService:
                 duration_options = [6, 10]
             supports_end_frame = supports_end_frame or "first_last_frame" in caps
             supports_camera_fixed = supports_camera_fixed or "camera_control" in caps
+            supports_camera_control = (
+                supports_camera_control or "camera_control" in caps
+            )
+            supports_watermark = True
 
         # Normalize casing
         resolution_options = [r.upper() for r in resolution_options]
@@ -2522,6 +2536,8 @@ class AIService:
             "duration_options": duration_options,
             "supports_end_frame": supports_end_frame,
             "supports_camera_fixed": supports_camera_fixed,
+            "supports_camera_control": supports_camera_control,
+            "supports_watermark": supports_watermark,
             "default_resolution": default_resolution,
             "default_ratio": default_ratio,
             "default_watermark": False,
@@ -2534,6 +2550,7 @@ class AIService:
         """Infer image generation UI options (size / aspect ratios)."""
         size_options: list[str] = []
         aspect_options = ["1:1", "16:9", "9:16", "4:3", "3:4"]
+        supports_aspect_ratio = False
 
         if provider == "openai":
             if "dall-e-3" in model_id:
@@ -2544,10 +2561,14 @@ class AIService:
             size_options = ["2K"]
         elif provider == "keling" and "kling-image" in model_id:
             size_options = ["2k", "1k"]
+            supports_aspect_ratio = True
+        elif provider == "google":
+            supports_aspect_ratio = True
 
         return {
             "size_options": size_options,
             "aspect_ratio_options": aspect_options,
+            "supports_aspect_ratio": supports_aspect_ratio,
             "supports_reference_image": "image_to_image" in caps
             or "image_to_image" in provider
             or provider == "keling",
@@ -2628,6 +2649,7 @@ class AIService:
         *,
         style_preset_id: str | None = None,
         style_spec: Any | None = None,
+        aspect_ratio: str | None = None,
     ) -> Optional[str]:
         """使用可灵AI生成图像"""
         if not self.ai_manager:
@@ -2646,6 +2668,7 @@ class AIService:
                 style_spec=style_spec,
                 model=model,
                 prefer_provider="keling",
+                aspect_ratio=aspect_ratio,
             )
 
             if response.success:

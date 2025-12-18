@@ -677,20 +677,14 @@ export default function EpisodeStoryboardPage() {
   }, [timelineBeatsForScene]);
 
   const timelineBeatWindow = useMemo(() => {
-    const startMs = timelineBeatsForScene.reduce<number | null>(
-      (acc, beat) => {
-        if (beat.startMs == null) return acc;
-        return acc == null ? beat.startMs : Math.min(acc, beat.startMs);
-      },
-      null,
-    );
-    const endMs = timelineBeatsForScene.reduce<number | null>(
-      (acc, beat) => {
-        if (beat.endMs == null) return acc;
-        return acc == null ? beat.endMs : Math.max(acc, beat.endMs);
-      },
-      null,
-    );
+    const startMs = timelineBeatsForScene.reduce<number | null>((acc, beat) => {
+      if (beat.startMs == null) return acc;
+      return acc == null ? beat.startMs : Math.min(acc, beat.startMs);
+    }, null);
+    const endMs = timelineBeatsForScene.reduce<number | null>((acc, beat) => {
+      if (beat.endMs == null) return acc;
+      return acc == null ? beat.endMs : Math.max(acc, beat.endMs);
+    }, null);
     const durationSeconds =
       startMs != null && endMs != null && endMs >= startMs
         ? roundSeconds3((endMs - startMs) / 1000)
@@ -702,8 +696,7 @@ export default function EpisodeStoryboardPage() {
     const items = framesForScene.map((fr) => {
       const startMs = parseMs(fr.start_ms);
       const endMs = parseMs(fr.end_ms);
-      const hasWindow =
-        startMs !== null && endMs !== null && endMs >= startMs;
+      const hasWindow = startMs !== null && endMs !== null && endMs >= startMs;
       const durationSeconds = (() => {
         if (hasWindow) return roundSeconds3((endMs - startMs) / 1000);
         const parsed = parseNumber(fr.duration_seconds);
@@ -728,7 +721,9 @@ export default function EpisodeStoryboardPage() {
       items,
       windowStartMs,
       windowEndMs,
-      totalDurationSeconds: hasDuration ? roundSeconds3(totalDurationRaw) : null,
+      totalDurationSeconds: hasDuration
+        ? roundSeconds3(totalDurationRaw)
+        : null,
     };
   }, [framesForScene]);
 
@@ -869,7 +864,13 @@ export default function EpisodeStoryboardPage() {
       );
       if (diff > 0.5) {
         notes.push(
-          `分镜总时长与时间轴窗差异 ${diff.toFixed(1)}s（beats=${timelineBeatWindow.durationSeconds.toFixed(1)}s，frames=${frameTimingSummary.totalDurationSeconds.toFixed(1)}s）。`,
+          `分镜总时长与时间轴窗差异 ${diff.toFixed(
+            1,
+          )}s（beats=${timelineBeatWindow.durationSeconds.toFixed(
+            1,
+          )}s，frames=${frameTimingSummary.totalDurationSeconds.toFixed(
+            1,
+          )}s）。`,
         );
       }
     }
@@ -1419,6 +1420,7 @@ export default function EpisodeStoryboardPage() {
     model?: string;
     count: number;
     size?: string;
+    aspect_ratio?: string;
     style?: string;
     style_preset_id?: string;
     style_spec?: Record<string, unknown>;
@@ -1468,6 +1470,7 @@ export default function EpisodeStoryboardPage() {
           reference_images: payload.referenceImages,
           count: payload.count,
           keyframe_mode: "start_end",
+          aspect_ratio: payload.aspect_ratio,
         },
       );
       if (response.success) {
@@ -1600,6 +1603,7 @@ export default function EpisodeStoryboardPage() {
     model?: string;
     count: number;
     size?: string;
+    aspect_ratio?: string;
     style?: string;
     style_preset_id?: string;
     style_spec?: Record<string, unknown>;
@@ -1648,6 +1652,7 @@ export default function EpisodeStoryboardPage() {
           start_enabled: imageModalTargets.first,
           end_enabled: imageModalTargets.last,
           prompt: promptWithTarget,
+          aspect_ratio: payload.aspect_ratio,
         },
       );
       if (response.success) {
@@ -1682,9 +1687,7 @@ export default function EpisodeStoryboardPage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">未找到剧集</h2>
           <button
-            onClick={() =>
-              router.push(`/episodes/${episodeKey}`)
-            }
+            onClick={() => router.push(`/episodes/${episodeKey}`)}
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             返回剧集
@@ -1949,7 +1952,9 @@ export default function EpisodeStoryboardPage() {
               </div>
             </div>
             <div className="rounded border border-gray-200 bg-gray-50 p-3">
-              <div className="text-[11px] text-gray-500">分镜帧（storyboard）</div>
+              <div className="text-[11px] text-gray-500">
+                分镜帧（storyboard）
+              </div>
               <div className="text-sm font-semibold">
                 {framesForScene.length} 帧
               </div>
@@ -1959,14 +1964,16 @@ export default function EpisodeStoryboardPage() {
               <div className="text-[11px] text-gray-600">
                 {frameTimingSummary.windowStartMs != null &&
                 frameTimingSummary.windowEndMs != null
-                  ? `窗口 ${formatMs(frameTimingSummary.windowStartMs)}–${formatMs(
-                      frameTimingSummary.windowEndMs,
-                    )}`
+                  ? `窗口 ${formatMs(
+                      frameTimingSummary.windowStartMs,
+                    )}–${formatMs(frameTimingSummary.windowEndMs)}`
                   : "未绑定 start/end_ms"}
               </div>
             </div>
             <div className="rounded border border-gray-200 bg-gray-50 p-3">
-              <div className="text-[11px] text-gray-500">scene_beats（落库）</div>
+              <div className="text-[11px] text-gray-500">
+                scene_beats（落库）
+              </div>
               <div className="text-sm font-semibold">
                 {sceneBeatsForSelected.length} 条
               </div>
@@ -2000,7 +2007,8 @@ export default function EpisodeStoryboardPage() {
           <div className="mt-3">
             {timelineTracks.length === 0 ? (
               <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
-                时间轴暂无可视数据（需要 beats start/end_ms 和分镜帧 start/end_ms）。
+                时间轴暂无可视数据（需要 beats start/end_ms 和分镜帧
+                start/end_ms）。
               </div>
             ) : (
               <Timeline
@@ -2025,10 +2033,7 @@ export default function EpisodeStoryboardPage() {
                 ) : (
                   <div className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
                     {timelineBeatsForScene.map((beat, idx) => (
-                      <div
-                        key={`${beat.id || idx}-${idx}`}
-                        className="p-2"
-                      >
+                      <div key={`${beat.id || idx}-${idx}`} className="p-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] text-gray-500">
                             #{idx + 1} {beat.type || "—"}
@@ -2057,9 +2062,7 @@ export default function EpisodeStoryboardPage() {
                 )}
               </div>
               <div>
-                <div className="text-[11px] text-gray-500 mb-1">
-                  分镜帧窗口
-                </div>
+                <div className="text-[11px] text-gray-500 mb-1">分镜帧窗口</div>
                 {frameTimingSummary.items.length === 0 ? (
                   <div className="text-gray-500">暂无分镜帧</div>
                 ) : (
@@ -2101,11 +2104,11 @@ export default function EpisodeStoryboardPage() {
 
         {/* 顶部生成配置 */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-              <MultiModelSelector
-                label="模型"
-                value={form.model ? [form.model] : []}
-                onChange={(ids) =>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <MultiModelSelector
+              label="模型"
+              value={form.model ? [form.model] : []}
+              onChange={(ids) =>
                 setForm((prev) => ({ ...prev, model: ids[0] || "" }))
               }
               modelType="text"
@@ -2132,36 +2135,36 @@ export default function EpisodeStoryboardPage() {
                 className="w-full"
               />
             </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  每场景分镜数
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={framesPerSceneValue}
-                  disabled={Boolean(selectedAudioTimeline)}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      frames_per_scene: parseInt(e.target.value) || 3,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded"
-                />
-                {selectedAudioTimeline ? (
-                  <div className="mt-1 text-[11px] text-gray-500">
-                    时间轴已生成：当前场景预计帧数{" "}
-                    {framesPerSceneFromTimeline ?? "—"}（按 timeline beats），
-                    当前分镜帧数 {framesForScene.length}
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex items-end">
-                <button
-                  onClick={async () => {
-                    if (!activeScript) return;
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                每场景分镜数
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={framesPerSceneValue}
+                disabled={Boolean(selectedAudioTimeline)}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    frames_per_scene: parseInt(e.target.value) || 3,
+                  }))
+                }
+                className="w-full px-3 py-2 border rounded"
+              />
+              {selectedAudioTimeline ? (
+                <div className="mt-1 text-[11px] text-gray-500">
+                  时间轴已生成：当前场景预计帧数{" "}
+                  {framesPerSceneFromTimeline ?? "—"}（按 timeline beats），
+                  当前分镜帧数 {framesForScene.length}
+                </div>
+              ) : null}
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={async () => {
+                  if (!activeScript) return;
                   setPromptPreview("加载中...");
                   const preview = await scriptAPI.previewStoryboardPrompt(
                     activeScript.id,
@@ -2751,7 +2754,9 @@ export default function EpisodeStoryboardPage() {
                         )}
                       {hasKeyframes && (
                         <div className="mt-2 space-y-3">
-                          <div className="text-xs text-gray-700">关键帧预览：</div>
+                          <div className="text-xs text-gray-700">
+                            关键帧预览：
+                          </div>
                           <div
                             className={`grid gap-3 ${
                               selectedEnd ? "grid-cols-2" : "grid-cols-1"
@@ -2760,14 +2765,19 @@ export default function EpisodeStoryboardPage() {
                             {selectedStart && (
                               <ImagePreviewCard
                                 src={selectedStart as string}
-                                alt={`分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`}
+                                alt={`分镜帧 ${
+                                  fr.frame_number ?? absIndex + 1
+                                }（首帧）`}
                                 aspectClass="aspect-[4/3]"
                                 badges={[{ label: "首帧", tone: "blue" }]}
                                 onPreview={() =>
                                   setPreview({
                                     src: selectedStart as string,
-                                    alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
-                                    description: fr.description || "分镜关键帧（首帧）",
+                                    alt: `分镜帧 ${
+                                      fr.frame_number ?? absIndex + 1
+                                    }（首帧）`,
+                                    description:
+                                      fr.description || "分镜关键帧（首帧）",
                                   })
                                 }
                                 onImg2Img={() =>
@@ -2780,7 +2790,10 @@ export default function EpisodeStoryboardPage() {
                                   {
                                     label: "新标签打开",
                                     onClick: () =>
-                                      window.open(selectedStart as string, "_blank"),
+                                      window.open(
+                                        selectedStart as string,
+                                        "_blank",
+                                      ),
                                   },
                                 ]}
                               />
@@ -2788,14 +2801,19 @@ export default function EpisodeStoryboardPage() {
                             {selectedEnd && (
                               <ImagePreviewCard
                                 src={selectedEnd as string}
-                                alt={`分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`}
+                                alt={`分镜帧 ${
+                                  fr.frame_number ?? absIndex + 1
+                                }（尾帧）`}
                                 aspectClass="aspect-[4/3]"
                                 badges={[{ label: "尾帧", tone: "green" }]}
                                 onPreview={() =>
                                   setPreview({
                                     src: selectedEnd as string,
-                                    alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
-                                    description: fr.description || "分镜关键帧（尾帧）",
+                                    alt: `分镜帧 ${
+                                      fr.frame_number ?? absIndex + 1
+                                    }（尾帧）`,
+                                    description:
+                                      fr.description || "分镜关键帧（尾帧）",
                                   })
                                 }
                                 onImg2Img={() =>
@@ -2808,7 +2826,10 @@ export default function EpisodeStoryboardPage() {
                                   {
                                     label: "新标签打开",
                                     onClick: () =>
-                                      window.open(selectedEnd as string, "_blank"),
+                                      window.open(
+                                        selectedEnd as string,
+                                        "_blank",
+                                      ),
                                   },
                                 ]}
                               />
@@ -2816,7 +2837,9 @@ export default function EpisodeStoryboardPage() {
                           </div>
                           {startCandidates.length > 1 && (
                             <div>
-                              <div className="mb-1 text-[11px] text-gray-500">首帧候选</div>
+                              <div className="mb-1 text-[11px] text-gray-500">
+                                首帧候选
+                              </div>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                 {startCandidates.map((url) => (
                                   <ImagePreviewCard
@@ -2834,7 +2857,8 @@ export default function EpisodeStoryboardPage() {
                                         src: url,
                                         alt: "分镜首帧候选",
                                         description:
-                                          fr.description || "分镜关键帧（首帧）",
+                                          fr.description ||
+                                          "分镜关键帧（首帧）",
                                       })
                                     }
                                     onImg2Img={() =>
@@ -2849,8 +2873,11 @@ export default function EpisodeStoryboardPage() {
                                         tone: "primary",
                                         onClick: () => {
                                           setStoryboard((prev) => {
-                                            const frames = [...(prev.frames || [])];
-                                            const current = frames[absIndex] || {};
+                                            const frames = [
+                                              ...(prev.frames || []),
+                                            ];
+                                            const current =
+                                              frames[absIndex] || {};
                                             frames[absIndex] = {
                                               ...current,
                                               start_image_url: url,
@@ -2869,7 +2896,9 @@ export default function EpisodeStoryboardPage() {
                           )}
                           {endCandidates.length > 1 && (
                             <div>
-                              <div className="mb-1 text-[11px] text-gray-500">尾帧候选</div>
+                              <div className="mb-1 text-[11px] text-gray-500">
+                                尾帧候选
+                              </div>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                 {endCandidates.map((url) => (
                                   <ImagePreviewCard
@@ -2887,7 +2916,8 @@ export default function EpisodeStoryboardPage() {
                                         src: url,
                                         alt: "分镜尾帧候选",
                                         description:
-                                          fr.description || "分镜关键帧（尾帧）",
+                                          fr.description ||
+                                          "分镜关键帧（尾帧）",
                                       })
                                     }
                                     onImg2Img={() =>
@@ -2902,8 +2932,11 @@ export default function EpisodeStoryboardPage() {
                                         tone: "primary",
                                         onClick: () => {
                                           setStoryboard((prev) => {
-                                            const frames = [...(prev.frames || [])];
-                                            const current = frames[absIndex] || {};
+                                            const frames = [
+                                              ...(prev.frames || []),
+                                            ];
+                                            const current =
+                                              frames[absIndex] || {};
                                             frames[absIndex] = {
                                               ...current,
                                               end_image_url: url,

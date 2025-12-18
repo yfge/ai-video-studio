@@ -1,25 +1,11 @@
-import os
 import json
-from typing import List, Optional, Dict, Any
-
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    status,
-    UploadFile,
-    File,
-    Form,
-    Query,
-    Request,
-)
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+import os
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.models.task import Task, TaskType, TaskStatus
+from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.schemas.virtual_ip import (
@@ -34,6 +20,19 @@ from app.services.task_worker import (
     virtual_ip_image_variant_task,
 )
 from app.utils.model_utils import infer_provider_from_model
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -42,7 +41,9 @@ def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
 
 
-def _parse_identifier(identifier: int | str | None) -> tuple[Optional[int], Optional[str]]:
+def _parse_identifier(
+    identifier: int | str | None,
+) -> tuple[Optional[int], Optional[str]]:
     if identifier is None:
         return None, None
     if isinstance(identifier, int):
@@ -235,6 +236,7 @@ def _build_virtual_ip_image_payload(
     model: Optional[str],
     count: Optional[int],
     size: Optional[str],
+    aspect_ratio: Optional[str],
     additional_prompts: Optional[str],
     is_default: Optional[str] | Optional[bool],
     current_user: User,
@@ -291,6 +293,7 @@ def _build_virtual_ip_image_payload(
         "model": selected_model,
         "count": count_int,
         "size": size,
+        "aspect_ratio": aspect_ratio,
         "additional_prompts": additional_prompt_list,
         "is_default": is_default_bool,
     }
@@ -308,6 +311,7 @@ async def generate_virtual_ip_image(
     is_default: Optional[str] = Form(None),
     count: Optional[int] = Form(None),
     size: Optional[str] = Form(None),
+    aspect_ratio: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -331,6 +335,7 @@ async def generate_virtual_ip_image(
     raw_model = payload.get("model", model)
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
+    aspect_ratio_value = payload.get("aspect_ratio", aspect_ratio)
     additional_prompts_value = (
         payload.get("additional_prompts", additional_prompts) or ""
     )
@@ -397,6 +402,7 @@ async def generate_virtual_ip_image(
         background_story=getattr(virtual_ip, "background_story", None),
         count=count_int,
         size=size_value,
+        aspect_ratio=aspect_ratio_value,
     )
 
     if not result:
@@ -436,6 +442,10 @@ async def generate_virtual_ip_image(
         generation_params["style_spec"] = result.get("style_spec")
     if result.get("style_spec_resolution") is not None:
         generation_params["style_spec_resolution"] = result.get("style_spec_resolution")
+    if size_value is not None:
+        generation_params["size"] = size_value
+    if aspect_ratio_value is not None:
+        generation_params["aspect_ratio"] = aspect_ratio_value
 
     image_data = VirtualIPImageCreate(
         virtual_ip_id=virtual_ip_id_int,
@@ -486,6 +496,7 @@ async def generate_virtual_ip_image_async(
     is_default: Optional[str] = Form(None),
     count: Optional[int] = Form(None),
     size: Optional[str] = Form(None),
+    aspect_ratio: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -508,6 +519,7 @@ async def generate_virtual_ip_image_async(
     raw_model = payload_body.get("model", model)
     count_value = payload_body.get("count", count)
     size_value = payload_body.get("size", size)
+    aspect_ratio_value = payload_body.get("aspect_ratio", aspect_ratio)
     additional_prompts_value = (
         payload_body.get("additional_prompts", additional_prompts) or ""
     )
@@ -526,6 +538,7 @@ async def generate_virtual_ip_image_async(
         model=selected_model,
         count=count_value,
         size=size_value,
+        aspect_ratio=aspect_ratio_value,
         additional_prompts=additional_prompts_value,
         is_default=is_default_value,
         current_user=current_user,
@@ -720,6 +733,7 @@ async def generate_virtual_ip_image_variant(
     model_id: Optional[str] = Form(None),
     count: Optional[int] = Form(1),
     size: Optional[str] = Form(None),
+    aspect_ratio: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -742,6 +756,7 @@ async def generate_virtual_ip_image_variant(
     raw_model = payload.get("model", model)
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
+    aspect_ratio_value = payload.get("aspect_ratio", aspect_ratio)
     style_hint = payload.get("style") or "realistic"
     style_preset_id = payload.get("style_preset_id")
     style_spec = payload.get("style_spec")
@@ -798,6 +813,7 @@ async def generate_virtual_ip_image_variant(
             prefer_provider=prefer_provider,
             count=count_int,
             size=size_value,
+            aspect_ratio=aspect_ratio_value,
             style=style_hint,
             style_preset_id=style_preset_id,
             style_spec=style_spec,
@@ -821,6 +837,10 @@ async def generate_virtual_ip_image_variant(
             generation_params["style_spec_resolution"] = response.metadata.get(
                 "style_spec_resolution"
             )
+    if size_value is not None:
+        generation_params["size"] = size_value
+    if aspect_ratio_value is not None:
+        generation_params["aspect_ratio"] = aspect_ratio_value
 
     created_images: list[VirtualIPImage] = []
 
@@ -914,6 +934,7 @@ async def generate_virtual_ip_image_variant_async(
     model_id: Optional[str] = Form(None),
     count: Optional[int] = Form(1),
     size: Optional[str] = Form(None),
+    aspect_ratio: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -936,6 +957,7 @@ async def generate_virtual_ip_image_variant_async(
     raw_model = payload_body.get("model", model)
     count_value = payload_body.get("count", count)
     size_value = payload_body.get("size", size)
+    aspect_ratio_value = payload_body.get("aspect_ratio", aspect_ratio)
     reference_images_value = payload_body.get("reference_images") or []
     style_hint = payload_body.get("style") or "realistic"
     style_preset_id = payload_body.get("style_preset_id")
@@ -971,6 +993,7 @@ async def generate_virtual_ip_image_variant_async(
         "model": selected_model,
         "count": count_int,
         "size": size_value,
+        "aspect_ratio": aspect_ratio_value,
         "style": style_hint,
         "style_preset_id": style_preset_id,
         "style_spec": style_spec,
@@ -1038,6 +1061,7 @@ def _process_virtual_ip_image_task(
                 background_story=None,
                 count=int(payload.get("count") or 1),
                 size=payload.get("size"),
+                aspect_ratio=payload.get("aspect_ratio"),
             )
             if not result:
                 raise RuntimeError("AI图像生成失败")
@@ -1080,6 +1104,10 @@ def _process_virtual_ip_image_task(
                 generation_params["style_spec_resolution"] = result.get(
                     "style_spec_resolution"
                 )
+            if payload.get("size") is not None:
+                generation_params["size"] = payload.get("size")
+            if payload.get("aspect_ratio") is not None:
+                generation_params["aspect_ratio"] = payload.get("aspect_ratio")
 
             image_data = VirtualIPImageCreate(
                 virtual_ip_id=virtual_ip.id,
@@ -1193,6 +1221,7 @@ def _process_virtual_ip_image_variant_task(
             )
             count_int = int(payload.get("count") or 1)
             size_value = payload.get("size")
+            aspect_ratio_value = payload.get("aspect_ratio")
             style_hint = payload.get("style") or "realistic"
             style_preset_id = payload.get("style_preset_id")
             style_spec = payload.get("style_spec")
@@ -1216,6 +1245,7 @@ def _process_virtual_ip_image_variant_task(
                 prefer_provider=prefer_provider,
                 count=count_int,
                 size=size_value,
+                aspect_ratio=aspect_ratio_value,
                 style=style_hint,
                 style_preset_id=style_preset_id,
                 style_spec=style_spec,
@@ -1242,6 +1272,10 @@ def _process_virtual_ip_image_variant_task(
                     generation_params["style_spec_resolution"] = response.metadata.get(
                         "style_spec_resolution"
                     )
+            if size_value is not None:
+                generation_params["size"] = size_value
+            if aspect_ratio_value is not None:
+                generation_params["aspect_ratio"] = aspect_ratio_value
 
             created_images: list[VirtualIPImage] = []
             for idx, variant_url in enumerate(images):

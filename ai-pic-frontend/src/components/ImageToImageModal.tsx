@@ -1,18 +1,21 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import Image from "next/image";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { MultiModelSelector } from '@/components/MultiModelSelector';
-import { StyleSpecAdvancedPanel, type StyleSpecField } from '@/components/StyleSpecAdvancedPanel';
-import { useStylePresets } from '@/hooks/useStylePresets';
+import { MultiModelSelector } from "@/components/MultiModelSelector";
+import {
+  StyleSpecAdvancedPanel,
+  type StyleSpecField,
+} from "@/components/StyleSpecAdvancedPanel";
+import { useStylePresets } from "@/hooks/useStylePresets";
 import {
   AIModelType,
   type AIModel,
   type ApiResponse,
   type AvailableModelsResponse,
   type StyleSpec,
-} from '@/utils/api';
+} from "@/utils/api";
 
 type ReferenceSection = {
   title?: string;
@@ -37,6 +40,7 @@ interface ImageToImageModalProps {
   defaultModel?: string;
   defaultCount?: number;
   defaultSize?: string;
+  defaultAspectRatio?: string;
   defaultStyle?: string;
   defaultStylePresetId?: string;
   defaultWidth?: number;
@@ -60,6 +64,7 @@ interface ImageToImageModalProps {
     model?: string;
     count: number;
     size?: string;
+    aspect_ratio?: string;
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
@@ -71,46 +76,82 @@ interface ImageToImageModalProps {
 
 const deriveResolutionOptions = (model?: AIModel): ResolutionOption[] => {
   if (!model) return [];
-  const modelId = model.model_id || model.id || '';
-  const provider = model.provider || modelId.split(':')[0] || '';
+  const ui = ((model.metadata as Record<string, unknown> | undefined)?.ui ||
+    {}) as Record<string, unknown>;
+  const uiSizes =
+    Array.isArray(ui.size_options) && ui.size_options.length > 0
+      ? (ui.size_options as string[])
+      : [];
+  if (uiSizes.length > 0) {
+    return uiSizes.map((value) => ({
+      value,
+      label: value.toUpperCase?.() ? value.toUpperCase() : value,
+    }));
+  }
+  const modelId = model.model_id || model.id || "";
+  const provider = model.provider || modelId.split(":")[0] || "";
 
-  if (provider === 'openai') {
-    if (modelId.includes('dall-e-3')) {
+  if (provider === "openai") {
+    if (modelId.includes("dall-e-3")) {
       return [
-        { value: '1024x1024', label: '1024 × 1024', width: 1024, height: 1024 },
-        { value: '1024x1792', label: '1024 × 1792（竖版）', width: 1024, height: 1792 },
-        { value: '1792x1024', label: '1792 × 1024（横版）', width: 1792, height: 1024 },
+        { value: "1024x1024", label: "1024 × 1024", width: 1024, height: 1024 },
+        {
+          value: "1024x1792",
+          label: "1024 × 1792（竖版）",
+          width: 1024,
+          height: 1792,
+        },
+        {
+          value: "1792x1024",
+          label: "1792 × 1024（横版）",
+          width: 1792,
+          height: 1024,
+        },
       ];
     }
-    if (modelId.includes('dall-e-2')) {
+    if (modelId.includes("dall-e-2")) {
       return [
-        { value: '256x256', label: '256 × 256', width: 256, height: 256 },
-        { value: '512x512', label: '512 × 512', width: 512, height: 512 },
-        { value: '1024x1024', label: '1024 × 1024', width: 1024, height: 1024 },
+        { value: "256x256", label: "256 × 256", width: 256, height: 256 },
+        { value: "512x512", label: "512 × 512", width: 512, height: 512 },
+        { value: "1024x1024", label: "1024 × 1024", width: 1024, height: 1024 },
       ];
     }
   }
 
-  if (provider === 'volcengine' && modelId.includes('seedream-4.5')) {
-    return [{ value: '2K', label: '2K（Seedream 推荐）' }];
+  if (provider === "volcengine" && modelId.includes("seedream-4.5")) {
+    return [{ value: "2K", label: "2K（Seedream 推荐）" }];
   }
 
   return [];
 };
 
+const deriveAspectRatioOptions = (
+  model?: AIModel,
+): { supported: boolean; options: string[] } => {
+  const ui = ((model?.metadata as Record<string, unknown> | undefined)?.ui ||
+    {}) as Record<string, unknown>;
+  const supported = Boolean(ui.supports_aspect_ratio);
+  const options =
+    supported && Array.isArray(ui.aspect_ratio_options)
+      ? (ui.aspect_ratio_options as string[])
+      : [];
+  return { supported, options };
+};
+
 export function ImageToImageModal({
   open,
-  title = '图生图',
+  title = "图生图",
   description,
   referenceSections = [],
   defaultSelected = [],
   lockSelection = false,
-  defaultPrompt = '',
-  defaultModel = '',
+  defaultPrompt = "",
+  defaultModel = "",
   defaultCount = 1,
-  defaultSize = '',
-  defaultStyle = 'realistic',
-  defaultStylePresetId = '',
+  defaultSize = "",
+  defaultAspectRatio = "",
+  defaultStyle = "realistic",
+  defaultStylePresetId = "",
   defaultStyleSpec,
   defaultWidth = 1024,
   defaultHeight = 1024,
@@ -130,12 +171,17 @@ export function ImageToImageModal({
   onSubmit,
 }: ImageToImageModalProps) {
   const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
-  const [loadedDefaultModel, setLoadedDefaultModel] = useState<string>('');
+  const [loadedDefaultModel, setLoadedDefaultModel] = useState<string>("");
   const [selectedRefs, setSelectedRefs] = useState<string[]>(defaultSelected);
   const [prompt, setPrompt] = useState(defaultPrompt);
-  const [modelIds, setModelIds] = useState<string[]>(defaultModel ? [defaultModel] : []);
+  const [modelIds, setModelIds] = useState<string[]>(
+    defaultModel ? [defaultModel] : [],
+  );
   const [count, setCount] = useState(defaultCount);
   const [size, setSize] = useState(defaultSize);
+  const [aspectRatio, setAspectRatio] = useState<string | undefined>(
+    defaultAspectRatio || undefined,
+  );
   const [style, setStyle] = useState(defaultStyle);
   const [stylePresetId, setStylePresetId] = useState(defaultStylePresetId);
   const [styleSpec, setStyleSpec] = useState<StyleSpec>(defaultStyleSpec ?? {});
@@ -143,10 +189,12 @@ export function ImageToImageModal({
   const [height, setHeight] = useState(defaultHeight);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const { presets: stylePresets } = useStylePresets({ enabled: showStylePreset });
+  const { presets: stylePresets } = useStylePresets({
+    enabled: showStylePreset,
+  });
   const selectedStylePreset = useMemo(() => {
     if (!stylePresetId) return undefined;
-    return stylePresets.find(p => p.preset_id === stylePresetId);
+    return stylePresets.find((p) => p.preset_id === stylePresetId);
   }, [stylePresets, stylePresetId]);
 
   useEffect(() => {
@@ -156,6 +204,7 @@ export function ImageToImageModal({
     setModelIds(defaultModel ? [defaultModel] : []);
     setCount(defaultCount);
     setSize(defaultSize);
+    setAspectRatio(defaultAspectRatio || undefined);
     setStyle(defaultStyle);
     setStylePresetId(defaultStylePresetId);
     setStyleSpec(defaultStyleSpec ?? {});
@@ -173,6 +222,7 @@ export function ImageToImageModal({
     defaultStyleSpec,
     defaultWidth,
     defaultHeight,
+    defaultAspectRatio,
   ]);
 
   useEffect(() => {
@@ -183,8 +233,11 @@ export function ImageToImageModal({
 
   const selectedModel = useMemo(() => {
     if (!modelIds[0]) return undefined;
-    return availableModels.find(m => m.model_id === modelIds[0]);
+    return availableModels.find((m) => m.model_id === modelIds[0]);
   }, [availableModels, modelIds]);
+
+  const { supported: supportsAspectRatio, options: aspectRatioOptions } =
+    useMemo(() => deriveAspectRatioOptions(selectedModel), [selectedModel]);
 
   const derivedResolutionOptions = useMemo(() => {
     if (resolutionOptions && resolutionOptions.length > 0) {
@@ -193,16 +246,31 @@ export function ImageToImageModal({
     return deriveResolutionOptions(selectedModel);
   }, [resolutionOptions, selectedModel]);
 
+  useEffect(() => {
+    if (
+      useDimensions ||
+      !supportsAspectRatio ||
+      aspectRatioOptions.length === 0
+    ) {
+      setAspectRatio(undefined);
+      return;
+    }
+    setAspectRatio((prev) => {
+      if (prev && aspectRatioOptions.includes(prev)) return prev;
+      return aspectRatioOptions[0];
+    });
+  }, [aspectRatioOptions, supportsAspectRatio, useDimensions]);
+
   const toggleReference = (url: string) => {
     if (lockSelection) return;
-    setSelectedRefs(prev =>
-      prev.includes(url) ? prev.filter(item => item !== url) : [...prev, url],
+    setSelectedRefs((prev) =>
+      prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url],
     );
   };
 
   const handleResolutionPreset = (value: string) => {
     setSize(value);
-    const option = derivedResolutionOptions.find(opt => opt.value === value);
+    const option = derivedResolutionOptions.find((opt) => opt.value === value);
     if (option?.width && option.height) {
       setWidth(option.width);
       setHeight(option.height);
@@ -216,9 +284,14 @@ export function ImageToImageModal({
       model: modelIds[0],
       count: Math.max(minCount, Math.min(maxCount, count || minCount)),
       size: useDimensions ? undefined : size || undefined,
+      aspect_ratio:
+        !useDimensions && supportsAspectRatio
+          ? aspectRatio || undefined
+          : undefined,
       style: style || undefined,
       style_preset_id: stylePresetId || undefined,
-      style_spec: styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
+      style_spec:
+        styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
       width: useDimensions ? width || defaultWidth : undefined,
       height: useDimensions ? height || defaultHeight : undefined,
       referenceImages: refs,
@@ -256,13 +329,13 @@ export function ImageToImageModal({
                   </div>
                 ) : null}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {section.images.map(url => {
+                  {section.images.map((url) => {
                     const selected = selectedRefs.includes(url);
                     return (
                       <div
                         key={url}
                         className={`relative overflow-hidden rounded border ${
-                          selected ? 'ring-2 ring-blue-500' : 'border-gray-200'
+                          selected ? "ring-2 ring-blue-500" : "border-gray-200"
                         }`}
                       >
                         <button
@@ -273,7 +346,7 @@ export function ImageToImageModal({
                           <div className="relative h-28 w-full">
                             <Image
                               src={url}
-                              alt={section.title || '参考图'}
+                              alt={section.title || "参考图"}
                               fill
                               sizes="100%"
                               className="object-cover"
@@ -310,7 +383,7 @@ export function ImageToImageModal({
               </label>
               <textarea
                 value={prompt}
-                onChange={e => setPrompt(e.target.value)}
+                onChange={(e) => setPrompt(e.target.value)}
                 rows={4}
                 className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="描述想要的变体效果，例如背面照、全身照、不同光线等"
@@ -322,7 +395,7 @@ export function ImageToImageModal({
               </label>
               <MultiModelSelector
                 value={modelIds}
-                onChange={ids => setModelIds(ids.slice(0, 1))}
+                onChange={(ids) => setModelIds(ids.slice(0, 1))}
                 modelType={modelType}
                 cacheKey={modelCacheKey || `image-to-image:${modelType}`}
                 multiple={false}
@@ -342,7 +415,7 @@ export function ImageToImageModal({
               />
               {selectedModel?.capabilities?.length ? (
                 <p className="mt-1 text-xs text-gray-500">
-                  能力：{selectedModel.capabilities.join(', ')}
+                  能力：{selectedModel.capabilities.join(", ")}
                 </p>
               ) : null}
             </div>
@@ -358,7 +431,9 @@ export function ImageToImageModal({
                   min={minCount}
                   max={maxCount}
                   value={count}
-                  onChange={e => setCount(parseInt(e.target.value, 10) || minCount)}
+                  onChange={(e) =>
+                    setCount(parseInt(e.target.value, 10) || minCount)
+                  }
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <p className="mt-1 text-[11px] text-gray-500">
@@ -371,18 +446,18 @@ export function ImageToImageModal({
                 </label>
                 <select
                   value={style}
-                  onChange={e => setStyle(e.target.value)}
+                  onChange={(e) => setStyle(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   {(styleOptions && styleOptions.length > 0
                     ? styleOptions
                     : [
-                        { value: 'realistic', label: '写实' },
-                        { value: 'anime', label: '二次元' },
-                        { value: 'cinematic', label: '电影感' },
-                        { value: 'sketch', label: '素描' },
+                        { value: "realistic", label: "写实" },
+                        { value: "anime", label: "二次元" },
+                        { value: "cinematic", label: "电影感" },
+                        { value: "sketch", label: "素描" },
                       ]
-                  ).map(opt => (
+                  ).map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
@@ -398,11 +473,11 @@ export function ImageToImageModal({
                 </label>
                 <select
                   value={stylePresetId}
-                  onChange={e => setStylePresetId(e.target.value)}
+                  onChange={(e) => setStylePresetId(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">（不使用预设）</option>
-                  {stylePresets.map(preset => (
+                  {stylePresets.map((preset) => (
                     <option key={preset.preset_id} value={preset.preset_id}>
                       {preset.label || preset.preset_id}
                     </option>
@@ -437,7 +512,9 @@ export function ImageToImageModal({
                       min={64}
                       max={2048}
                       value={width}
-                      onChange={e => setWidth(parseInt(e.target.value, 10) || defaultWidth)}
+                      onChange={(e) =>
+                        setWidth(parseInt(e.target.value, 10) || defaultWidth)
+                      }
                       className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -448,7 +525,9 @@ export function ImageToImageModal({
                       min={64}
                       max={2048}
                       value={height}
-                      onChange={e => setHeight(parseInt(e.target.value, 10) || defaultHeight)}
+                      onChange={(e) =>
+                        setHeight(parseInt(e.target.value, 10) || defaultHeight)
+                      }
                       className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -456,11 +535,11 @@ export function ImageToImageModal({
               ) : (
                 <select
                   value={size}
-                  onChange={e => handleResolutionPreset(e.target.value)}
+                  onChange={(e) => handleResolutionPreset(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">自动（模型默认）</option>
-                  {derivedResolutionOptions.map(opt => (
+                  {derivedResolutionOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
@@ -473,10 +552,43 @@ export function ImageToImageModal({
                 </p>
               ) : null}
             </div>
+            {!useDimensions && supportsAspectRatio ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  宽高比
+                </label>
+                <select
+                  value={aspectRatio ?? ""}
+                  onChange={(e) => setAspectRatio(e.target.value || undefined)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  disabled={aspectRatioOptions.length === 0}
+                >
+                  {aspectRatioOptions.length === 0 ? (
+                    <option value="">当前模型未提供宽高比选项</option>
+                  ) : (
+                    <>
+                      <option value="">自动（模型默认）</option>
+                      {aspectRatioOptions.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
+                {aspectRatioOptions.length > 0 ? (
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    选项由后端模型元数据返回（支持比例控制的模型才会出现）。
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {extraContent ? <div className="mt-4 border-t pt-4">{extraContent}</div> : null}
+        {extraContent ? (
+          <div className="mt-4 border-t pt-4">{extraContent}</div>
+        ) : null}
 
         <div className="mt-4 flex justify-end gap-2">
           <button
@@ -490,10 +602,13 @@ export function ImageToImageModal({
           <button
             type="button"
             onClick={() => void handleSubmit()}
-            disabled={submitting || (referenceSections.length > 0 && selectedRefs.length === 0)}
+            disabled={
+              submitting ||
+              (referenceSections.length > 0 && selectedRefs.length === 0)
+            }
             className="px-4 py-2 text-sm font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {submitting ? '提交中...' : '提交图生图任务'}
+            {submitting ? "提交中..." : "提交图生图任务"}
           </button>
         </div>
       </div>
@@ -507,8 +622,14 @@ export function ImageToImageModal({
             >
               关闭
             </button>
-            <div className="relative w-full" style={{ paddingBottom: '60%' }}>
-              <Image src={previewImage} alt="参考图预览" fill className="object-contain" unoptimized />
+            <div className="relative w-full" style={{ paddingBottom: "60%" }}>
+              <Image
+                src={previewImage}
+                alt="参考图预览"
+                fill
+                className="object-contain"
+                unoptimized
+              />
             </div>
           </div>
         </div>

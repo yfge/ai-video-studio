@@ -92,6 +92,9 @@ class KelingProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "1080P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": True,
+                        "supports_watermark": False,
+                        "camera_control_hint": "按可灵 image2video camera_control JSON 传参，例如轨迹/速度。",
                     }
                 },
             ),
@@ -111,6 +114,9 @@ class KelingProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "1080P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": True,
+                        "supports_watermark": False,
+                        "camera_control_hint": "按可灵 image2video camera_control JSON 传参，例如轨迹/速度。",
                     }
                 },
             ),
@@ -136,6 +142,9 @@ class KelingProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "1080P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": True,
+                        "supports_watermark": False,
+                        "camera_control_hint": "按可灵 image2video camera_control JSON 传参，例如轨迹/速度。",
                     }
                 },
             ),
@@ -155,6 +164,9 @@ class KelingProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "1080P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": True,
+                        "supports_watermark": False,
+                        "camera_control_hint": "按可灵 image2video camera_control JSON 传参，例如轨迹/速度。",
                     }
                 },
             ),
@@ -175,6 +187,8 @@ class KelingProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": False,
+                        "supports_watermark": False,
                     }
                 },
             ),
@@ -194,6 +208,8 @@ class KelingProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": False,
+                        "supports_watermark": False,
                     }
                 },
             ),
@@ -213,6 +229,8 @@ class KelingProvider(BaseProvider):
                         "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
+                        "supports_camera_control": False,
+                        "supports_watermark": False,
                     }
                 },
             ),
@@ -234,6 +252,7 @@ class KelingProvider(BaseProvider):
                     "ui": {
                         "size_options": ["2k", "1k"],
                         "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                        "supports_aspect_ratio": True,
                         "supports_reference_image": True,
                     }
                 },
@@ -249,6 +268,7 @@ class KelingProvider(BaseProvider):
                     "ui": {
                         "size_options": ["1k"],
                         "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                        "supports_aspect_ratio": True,
                         "supports_reference_image": True,
                     }
                 },

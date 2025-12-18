@@ -2326,6 +2326,7 @@ def _process_storyboard_image_task(
     style: str = "realistic",
     style_preset_id: str | None = None,
     style_spec: dict[str, Any] | None = None,
+    aspect_ratio: str | None = None,
     reference_images: Optional[List[str]] = None,
     count: int = 1,
     keyframe_mode: str = "single",
@@ -2464,6 +2465,7 @@ def _process_storyboard_image_task(
                         style=style,
                         style_preset_id=style_preset_id,
                         style_spec=style_spec,
+                        aspect_ratio=aspect_ratio,
                     )
                 else:
                     resp = await ai_service.ai_manager.generate_image(
@@ -2476,6 +2478,7 @@ def _process_storyboard_image_task(
                         style_preset_id=style_preset_id,
                         style_spec=style_spec,
                         n=count_int,
+                        aspect_ratio=aspect_ratio,
                     )
                 if resp.success:
                     data = resp.data if isinstance(resp.data, dict) else {}
@@ -2895,6 +2898,9 @@ class StoryboardImageRequest(BaseModel):
     style_spec: Optional[StyleSpec] = Field(
         default=None, description="风格 schema（允许只传部分字段）"
     )
+    aspect_ratio: Optional[str] = Field(
+        default=None, description="宽高比（例如 16:9/9:16），部分模型支持"
+    )
     count: int = Field(
         default=1,
         ge=1,
@@ -2965,6 +2971,7 @@ async def generate_storyboard_images(
                 "style": body.style,
                 "style_preset_id": body.style_preset_id,
                 "style_spec": style_spec_payload,
+                "aspect_ratio": body.aspect_ratio,
                 "count": body.count,
                 "keyframe_mode": body.keyframe_mode,
                 "reference_images": body.reference_images or [],
@@ -2989,6 +2996,7 @@ async def generate_storyboard_images(
         "style": body.style,
         "style_preset_id": body.style_preset_id,
         "style_spec": style_spec_payload,
+        "aspect_ratio": body.aspect_ratio,
         "count": body.count,
         "keyframe_mode": body.keyframe_mode,
         "reference_images": body.reference_images or [],
@@ -3089,6 +3097,7 @@ def _process_storyboard_video_task(
                     watermark=opts.get("watermark"),
                     seed=opts.get("seed"),
                     camera_fixed=opts.get("camera_fixed"),
+                    camera_control=opts.get("camera_control"),
                     service_tier=opts.get("service_tier"),
                     execution_expires_after=opts.get("execution_expires_after"),
                     return_last_frame=return_last_frame,
@@ -3300,6 +3309,10 @@ class StoryboardVideoRequest(BaseModel):
     return_last_frame: Optional[bool] = Field(
         default=True, description="可选：是否返回 last_frame_url（默认开启）"
     )
+    camera_control: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="可选：摄像机运动控制参数（仅部分模型支持）",
+    )
 
 
 @router.post("/{script_id}/storyboard/generate-video")
@@ -3349,6 +3362,7 @@ async def generate_storyboard_video(
                 "service_tier": body.service_tier,
                 "execution_expires_after": body.execution_expires_after,
                 "return_last_frame": body.return_last_frame,
+                "camera_control": body.camera_control,
             },
             ensure_ascii=False,
         ),
@@ -3377,6 +3391,7 @@ async def generate_storyboard_video(
         "service_tier": body.service_tier,
         "execution_expires_after": body.execution_expires_after,
         "return_last_frame": body.return_last_frame,
+        "camera_control": body.camera_control,
     }
     storyboard_video_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
@@ -3591,7 +3606,9 @@ async def get_episode_scripts(
     return [ScriptResponse.from_orm(script) for script in scripts]
 
 
-@router.get("/episode/business/{episode_business_id}", response_model=List[ScriptResponse])
+@router.get(
+    "/episode/business/{episode_business_id}", response_model=List[ScriptResponse]
+)
 async def get_episode_scripts_by_business_id(
     episode_business_id: str,
     current_user: User = Depends(get_current_active_user),

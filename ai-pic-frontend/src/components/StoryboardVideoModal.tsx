@@ -63,12 +63,16 @@ function CandidateSection({
 type VideoUiOptions = {
   supportsEndFrame: boolean;
   supportsCameraFixed: boolean;
+  supportsCameraControl: boolean;
+  supportsWatermark: boolean;
   resolutionOptions: string[];
   ratioOptions: string[];
   durationOptions: number[];
   defaultResolution: string;
   defaultRatio: string;
   defaultWatermark: boolean;
+  cameraControlHint?: string;
+  cameraControlSchema?: unknown;
 };
 
 type ModelUiMetadata = {
@@ -77,9 +81,13 @@ type ModelUiMetadata = {
   duration_options?: number[];
   supports_end_frame?: boolean;
   supports_camera_fixed?: boolean;
+  supports_camera_control?: boolean;
+  supports_watermark?: boolean;
   default_resolution?: string;
   default_ratio?: string;
   default_watermark?: boolean;
+  camera_control_hint?: string;
+  camera_control_schema?: unknown;
 };
 
 type ModelMetadata = {
@@ -113,12 +121,16 @@ const extractVideoUi = (model?: AIModel): VideoUiOptions => {
   return {
     supportsEndFrame: Boolean(ui.supports_end_frame ?? true),
     supportsCameraFixed: Boolean(ui.supports_camera_fixed ?? false),
+    supportsCameraControl: Boolean(ui.supports_camera_control ?? false),
+    supportsWatermark: Boolean(ui.supports_watermark ?? true),
     resolutionOptions,
     ratioOptions,
     durationOptions,
     defaultResolution,
     defaultRatio,
     defaultWatermark: Boolean(ui.default_watermark ?? false),
+    cameraControlHint: ui.camera_control_hint as string | undefined,
+    cameraControlSchema: ui.camera_control_schema,
   };
 };
 
@@ -164,6 +176,7 @@ export function StoryboardVideoModal({
   const [ratio, setRatio] = useState<string>("16:9");
   const [watermark, setWatermark] = useState<boolean>(false);
   const [seedInput, setSeedInput] = useState<string>("");
+  const [cameraControlText, setCameraControlText] = useState<string>("");
   const [cameraFixed, setCameraFixed] = useState<boolean>(false);
   const [startSelected, setStartSelected] = useState<string>("");
   const [endSelected, setEndSelected] = useState<string>("");
@@ -190,6 +203,7 @@ export function StoryboardVideoModal({
     setStartSelected(defaultStart || startList[0] || "");
     setEndSelected(defaultEnd || endList[0] || "");
     setSeedInput("");
+    setCameraControlText("");
     setCameraFixed(false);
     setModelId("");
   }, [
@@ -233,6 +247,24 @@ export function StoryboardVideoModal({
     [defaults.durationOptions],
   );
 
+  const cameraControlState = useMemo(() => {
+    if (!defaults.supportsCameraControl) {
+      return {
+        value: undefined as Record<string, unknown> | undefined,
+        error: "",
+      };
+    }
+    const text = cameraControlText.trim();
+    if (!text) {
+      return { value: undefined, error: "" };
+    }
+    try {
+      return { value: JSON.parse(text), error: "" };
+    } catch {
+      return { value: undefined, error: "摄像机控制需为有效 JSON" };
+    }
+  }, [cameraControlText, defaults.supportsCameraControl]);
+
   useEffect(() => {
     if (!open) return;
     setResolution((prev) =>
@@ -249,7 +281,9 @@ export function StoryboardVideoModal({
         : defaults.durationOptions[0] ?? durationMin;
       return Math.max(durationMin, Math.min(durationMax, val));
     });
-    setWatermark(defaults.defaultWatermark);
+    setWatermark(
+      defaults.supportsWatermark ? defaults.defaultWatermark : false,
+    );
     if (!defaults.supportsEndFrame) setEndSelected("");
     if (defaults.supportsEndFrame && !endSelected) {
       setEndSelected(defaultEnd || endList[0] || "");
@@ -257,10 +291,23 @@ export function StoryboardVideoModal({
     if (!defaults.supportsCameraFixed) {
       setCameraFixed(false);
     }
+    if (!defaults.supportsCameraControl) {
+      setCameraControlText("");
+    } else if (defaults.cameraControlSchema && !cameraControlText.trim()) {
+      try {
+        setCameraControlText(
+          JSON.stringify(defaults.cameraControlSchema, null, 2),
+        );
+      } catch {
+        setCameraControlText("");
+      }
+    }
   }, [
     defaults.defaultRatio,
     defaults.defaultResolution,
     defaults.defaultWatermark,
+    defaults.supportsWatermark,
+    defaults.supportsCameraControl,
     defaults.ratioOptions,
     defaults.resolutionOptions,
     defaults.supportsCameraFixed,
@@ -272,6 +319,8 @@ export function StoryboardVideoModal({
     open,
     durationMin,
     durationMax,
+    defaults.cameraControlSchema,
+    cameraControlText,
   ]);
 
   if (!open) return null;
@@ -292,6 +341,8 @@ export function StoryboardVideoModal({
 
   const seed = seedInput.trim() ? Number(seedInput) : undefined;
   const seedOk = seedInput.trim() === "" || Number.isFinite(seed);
+  const cameraControlError = cameraControlState.error;
+  const cameraControlValue = cameraControlState.value;
 
   const disabledReason = !startOk
     ? "请选择首帧"
@@ -301,6 +352,8 @@ export function StoryboardVideoModal({
     ? "请选择模型"
     : !seedOk
     ? "seed 必须为整数"
+    : cameraControlError
+    ? cameraControlError
     : "";
 
   const submitDisabled = Boolean(disabledReason) || submitting;
@@ -435,15 +488,21 @@ export function StoryboardVideoModal({
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={watermark}
-                onChange={(event) => setWatermark(event.target.checked)}
-                className="h-4 w-4"
-              />
-              包含水印（--wm）
-            </label>
+            {defaults.supportsWatermark ? (
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={watermark}
+                  onChange={(event) => setWatermark(event.target.checked)}
+                  className="h-4 w-4"
+                />
+                包含水印（--wm）
+              </label>
+            ) : (
+              <div className="text-xs text-gray-500">
+                当前模型不支持水印开关
+              </div>
+            )}
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input
                 type="checkbox"
@@ -467,6 +526,32 @@ export function StoryboardVideoModal({
               />
             </div>
           </div>
+
+          {defaults.supportsCameraControl ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                摄像机控制（可选，JSON）
+              </label>
+              <textarea
+                value={cameraControlText}
+                onChange={(event) => setCameraControlText(event.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                placeholder={
+                  defaults.cameraControlHint ||
+                  "按模型文档传入 camera_control 对象，例如路径/速度控制。"
+                }
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                仅在模型支持 camera_control 时生效，格式需为合法 JSON。
+              </p>
+              {cameraControlError ? (
+                <p className="mt-1 text-xs text-red-600">
+                  {cameraControlError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-5 flex items-center justify-between gap-3">
@@ -488,10 +573,15 @@ export function StoryboardVideoModal({
                   fps: 24,
                   resolution,
                   ratio,
-                  watermark,
+                  watermark: defaults.supportsWatermark ? watermark : undefined,
                   seed: seedInput.trim() ? Number(seedInput) : undefined,
                   camera_fixed: defaults.supportsCameraFixed
                     ? cameraFixed
+                    : undefined,
+                  camera_control: defaults.supportsCameraControl
+                    ? (cameraControlValue as
+                        | Record<string, unknown>
+                        | undefined)
                     : undefined,
                 };
                 await onSubmit({

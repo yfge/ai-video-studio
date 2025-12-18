@@ -6,8 +6,8 @@ Google AI / Gemini 文本与图像生成提供商
 - 图像生成（文/图生图）：https://ai.google.dev/gemini-api/docs/image-generation
 """
 
-import json
 import base64
+import json
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -32,7 +32,9 @@ class GoogleProvider(BaseProvider):
         super().__init__(config)
         # aiplatform.googleapis.com 或代理网关，通过 base_url 支持自定义
         # 统一去掉末尾 /，避免后续拼接路径出现 //
-        self.base_url = (config.base_url or "https://generativelanguage.googleapis.com").rstrip("/")
+        self.base_url = (
+            config.base_url or "https://generativelanguage.googleapis.com"
+        ).rstrip("/")
         # publishers/google/models/{model_id}:{method}
         self.default_model = config.default_model or "gemini-3-pro-preview"
         # text 模型只需要 API key
@@ -88,6 +90,14 @@ class GoogleProvider(BaseProvider):
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpeg"],
                 capabilities=["text_to_image", "image_to_image"],
+                metadata={
+                    "ui": {
+                        "size_options": [],
+                        "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                        "supports_aspect_ratio": True,
+                        "supports_reference_image": True,
+                    }
+                },
             ),
             ModelInfo(
                 model_id="gemini-2.5-flash-image",
@@ -96,6 +106,14 @@ class GoogleProvider(BaseProvider):
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpeg"],
                 capabilities=["text_to_image", "image_to_image"],
+                metadata={
+                    "ui": {
+                        "size_options": [],
+                        "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                        "supports_aspect_ratio": True,
+                        "supports_reference_image": True,
+                    }
+                },
             ),
             ModelInfo(
                 model_id="gemini-3-pro-image-preview",
@@ -104,10 +122,20 @@ class GoogleProvider(BaseProvider):
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpeg"],
                 capabilities=["text_to_image", "image_to_image"],
+                metadata={
+                    "ui": {
+                        "size_options": [],
+                        "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                        "supports_aspect_ratio": True,
+                        "supports_reference_image": True,
+                    }
+                },
             ),
         ]
 
-    def _supports_type(self, model: ModelInfo, model_type: Optional[AIModelType]) -> bool:
+    def _supports_type(
+        self, model: ModelInfo, model_type: Optional[AIModelType]
+    ) -> bool:
         if not model_type:
             return True
         if model.model_type == model_type:
@@ -129,7 +157,11 @@ class GoogleProvider(BaseProvider):
         return raw.split("/")[-1]
 
     def _supported_methods(self, item: Dict[str, Any]) -> List[str]:
-        methods = item.get("supportedGenerationMethods") or item.get("supported_generation_methods") or []
+        methods = (
+            item.get("supportedGenerationMethods")
+            or item.get("supported_generation_methods")
+            or []
+        )
         return [m.lower() for m in methods if isinstance(m, str)]
 
     def _infer_model_type(self, item: Dict[str, Any]) -> AIModelType:
@@ -168,7 +200,10 @@ class GoogleProvider(BaseProvider):
             caps = self._infer_capabilities(item)
             if model_type and not (
                 mtype == model_type
-                or (model_type == AIModelType.IMAGE_TO_IMAGE and "image_to_image" in caps)
+                or (
+                    model_type == AIModelType.IMAGE_TO_IMAGE
+                    and "image_to_image" in caps
+                )
             ):
                 continue
             models.append(
@@ -268,7 +303,7 @@ class GoogleProvider(BaseProvider):
     def _prefer_http_for_download(self, url: str) -> str:
         """下载参考图时优先使用 http，规避 HTTPS 证书校验失败。"""
         if isinstance(url, str) and url.lower().startswith("https://"):
-            return "http://" + url[len("https://"):]
+            return "http://" + url[len("https://") :]
         return url
 
     async def _fetch_inline_image(self, image_url: str) -> Dict[str, str]:
@@ -305,7 +340,9 @@ class GoogleProvider(BaseProvider):
         # 默认优先使用正式的图片模型，其次回退到实验模型
         # 清理模型 ID，去掉可能的 provider 前缀
         model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
-        endpoint = f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
+        endpoint = (
+            f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
+        )
 
         client = await self.get_client()
         if client is None:
@@ -393,7 +430,9 @@ class GoogleProvider(BaseProvider):
 
         # 清理模型 ID，去掉可能的 provider 前缀
         model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
-        endpoint = f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
+        endpoint = (
+            f"{self.base_url.rstrip('/')}/v1beta/models/{model_id}:generateContent"
+        )
 
         client = await self.get_client()
         if client is None:
@@ -627,7 +666,9 @@ class GoogleProvider(BaseProvider):
         try:
             if stream:
                 try:
-                    full_text, usage_meta = await self._stream_generate_content(client, endpoint, body)
+                    full_text, usage_meta = await self._stream_generate_content(
+                        client, endpoint, body
+                    )
                     if full_text:
                         return AIResponse(
                             success=True,
@@ -637,17 +678,37 @@ class GoogleProvider(BaseProvider):
                             task_type=AITaskType.STORY_GENERATION,
                             model_type=AIModelType.TEXT_GENERATION,
                             usage={
-                                "prompt_tokens": usage_meta.get("promptTokenCount") if usage_meta else None,
-                                "completion_tokens": usage_meta.get("candidatesTokenCount") if usage_meta else None,
-                                "total_tokens": usage_meta.get("totalTokenCount") if usage_meta else None,
+                                "prompt_tokens": (
+                                    usage_meta.get("promptTokenCount")
+                                    if usage_meta
+                                    else None
+                                ),
+                                "completion_tokens": (
+                                    usage_meta.get("candidatesTokenCount")
+                                    if usage_meta
+                                    else None
+                                ),
+                                "total_tokens": (
+                                    usage_meta.get("totalTokenCount")
+                                    if usage_meta
+                                    else None
+                                ),
                             },
                             metadata={"raw": usage_meta, "stream": True},
                         )
-                    logger.warning("Google stream returned empty content; falling back to non-stream.")
+                    logger.warning(
+                        "Google stream returned empty content; falling back to non-stream."
+                    )
                 except Exception as stream_err:  # noqa: BLE001
-                    logger.warning("Google stream failed, falling back to non-stream: %s", stream_err, exc_info=True)
+                    logger.warning(
+                        "Google stream failed, falling back to non-stream: %s",
+                        stream_err,
+                        exc_info=True,
+                    )
 
-            resp = await client.post(endpoint.replace("&alt=sse", "") if stream else endpoint, json=body)
+            resp = await client.post(
+                endpoint.replace("&alt=sse", "") if stream else endpoint, json=body
+            )
             resp.raise_for_status()
             data = resp.json()
 

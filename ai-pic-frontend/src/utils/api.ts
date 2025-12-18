@@ -204,6 +204,7 @@ export interface AIImageGenerationRequest {
   is_default: boolean;
   count?: number;
   size?: string;
+  aspect_ratio?: string;
 }
 
 export interface ImageToImageRequestPayload {
@@ -216,6 +217,7 @@ export interface ImageToImageRequestPayload {
   style_spec?: StyleSpec;
   count?: number;
   size?: string;
+  aspect_ratio?: string;
   reference_images?: string[];
 }
 
@@ -232,6 +234,7 @@ export interface StoryboardVideoGenerationOptions {
   service_tier?: string;
   execution_expires_after?: number;
   return_last_frame?: boolean;
+  camera_control?: Record<string, unknown>;
 }
 
 export interface AIModel {
@@ -1555,6 +1558,7 @@ class ApiClient {
       model?: string;
       count?: number;
       size?: string;
+      aspect_ratio?: string;
       style?: string;
       style_preset_id?: string;
       style_spec?: StyleSpec;
@@ -1623,6 +1627,7 @@ class ApiClient {
       model?: string;
       count?: number;
       size?: string;
+      aspect_ratio?: string;
       style?: string;
       style_preset_id?: string;
       style_spec?: StyleSpec;
@@ -2008,6 +2013,7 @@ class ApiClient {
       model?: string;
       width?: number;
       height?: number;
+      aspect_ratio?: string;
       style?: string;
       style_preset_id?: string;
       style_spec?: StyleSpec;
@@ -2031,6 +2037,7 @@ class ApiClient {
           model: payload?.model,
           width: payload?.width ?? 1024,
           height: payload?.height ?? 1024,
+          aspect_ratio: payload?.aspect_ratio,
           style: payload?.style ?? "realistic",
           style_preset_id: payload?.style_preset_id,
           style_spec: payload?.style_spec,
@@ -2462,6 +2469,7 @@ export const virtualIPImageAPI = {
           is_default: request.is_default,
           count: request.count ?? 1,
           size: request.size,
+          aspect_ratio: request.aspect_ratio,
         }),
       },
     );
@@ -2486,6 +2494,7 @@ export const virtualIPImageAPI = {
           is_default: request.is_default,
           count: request.count ?? 1,
           size: request.size,
+          aspect_ratio: request.aspect_ratio,
         }),
       },
     );
@@ -2521,6 +2530,7 @@ export const virtualIPImageAPI = {
       | "model"
       | "count"
       | "size"
+      | "aspect_ratio"
       | "style"
       | "style_preset_id"
       | "style_spec"
@@ -2535,6 +2545,7 @@ export const virtualIPImageAPI = {
           model: payload.model,
           count: payload.count ?? 1,
           size: payload.size,
+          aspect_ratio: payload.aspect_ratio,
           style: payload.style,
           style_preset_id: payload.style_preset_id,
           style_spec: payload.style_spec,
@@ -2553,6 +2564,7 @@ export const virtualIPImageAPI = {
       | "model"
       | "count"
       | "size"
+      | "aspect_ratio"
       | "reference_images"
       | "style"
       | "style_preset_id"
@@ -2568,6 +2580,7 @@ export const virtualIPImageAPI = {
           model: payload.model,
           count: payload.count ?? 1,
           size: payload.size,
+          aspect_ratio: payload.aspect_ratio,
           reference_images: payload.reference_images,
           style: payload.style,
           style_preset_id: payload.style_preset_id,

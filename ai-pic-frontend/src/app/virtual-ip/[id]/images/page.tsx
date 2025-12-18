@@ -78,6 +78,7 @@ export default function VirtualIPImagesPage() {
     additional_prompts: "",
     is_default: false,
     count: 1,
+    aspect_ratio: undefined,
   });
   const { presets: stylePresets } = useStylePresets();
   const selectedStylePreset = useMemo(() => {
@@ -117,6 +118,7 @@ export default function VirtualIPImagesPage() {
     selectedModel?.metadata as Record<string, unknown> | undefined
   )?.ui || {}) as Record<string, unknown>;
 
+  const supportsAspectRatio = Boolean(imageUi.supports_aspect_ratio);
   const uiSizes = (imageUi.size_options as string[] | undefined)?.map(
     (value) => ({
       value,
@@ -146,6 +148,29 @@ export default function VirtualIPImagesPage() {
         selectedModel.model_id === "seedream-4.5"
       ? [{ value: "2K", label: "2K（Seedream 推荐）" }]
       : [];
+
+  const aspectRatioOptions = useMemo(
+    () =>
+      supportsAspectRatio &&
+      Array.isArray(imageUi.aspect_ratio_options) &&
+      (imageUi.aspect_ratio_options as string[]).length > 0
+        ? (imageUi.aspect_ratio_options as string[])
+        : [],
+    [imageUi.aspect_ratio_options, supportsAspectRatio],
+  );
+  const aspectRatioKey = aspectRatioOptions.join("|");
+
+  useEffect(() => {
+    setGenerateForm((prev) => {
+      if (!supportsAspectRatio || aspectRatioOptions.length === 0) {
+        return prev.aspect_ratio ? { ...prev, aspect_ratio: undefined } : prev;
+      }
+      if (prev.aspect_ratio && aspectRatioOptions.includes(prev.aspect_ratio)) {
+        return prev;
+      }
+      return { ...prev, aspect_ratio: aspectRatioOptions[0] };
+    });
+  }, [aspectRatioKey, aspectRatioOptions, supportsAspectRatio]);
 
   // 上传表单状态
   const [uploadForm, setUploadForm] = useState({
@@ -242,6 +267,9 @@ export default function VirtualIPImagesPage() {
           is_default: false,
           count: 1,
           size: undefined,
+          aspect_ratio: supportsAspectRatio
+            ? aspectRatioOptions[0] || undefined
+            : undefined,
         });
         showAlert({
           title: "已创建图像生成任务",
@@ -413,6 +441,7 @@ export default function VirtualIPImagesPage() {
     model?: string;
     count: number;
     size?: string;
+    aspect_ratio?: string;
     style?: string;
     style_preset_id?: string;
     style_spec?: Record<string, unknown>;
@@ -439,6 +468,7 @@ export default function VirtualIPImagesPage() {
           model: modelFallback || undefined,
           count: payload.count,
           size: payload.size || generateForm.size,
+          aspect_ratio: payload.aspect_ratio || generateForm.aspect_ratio,
           reference_images: payload.referenceImages,
           style: payload.style || generateForm.style,
           style_preset_id:
@@ -722,6 +752,43 @@ export default function VirtualIPImagesPage() {
                   </p>
                 )}
               </div>
+              {supportsAspectRatio ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    宽高比（部分模型可选）
+                  </label>
+                  <select
+                    value={generateForm.aspect_ratio ?? ""}
+                    onChange={(e) =>
+                      setGenerateForm((prev) => ({
+                        ...prev,
+                        aspect_ratio: e.target.value || undefined,
+                      }))
+                    }
+                    disabled={aspectRatioOptions.length === 0}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    {aspectRatioOptions.length === 0 ? (
+                      <option value="">当前模型未提供宽高比选项</option>
+                    ) : (
+                      <>
+                        <option value="">自动（模型默认）</option>
+                        {aspectRatioOptions.map((ratio) => (
+                          <option key={ratio} value={ratio}>
+                            {ratio}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {aspectRatioOptions.length > 0 ? (
+                    <p className="mt-1 text-xs text-gray-500">
+                      选项由后端模型元数据返回（兼容支持 aspect_ratio
+                      的提供商）。
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   额外提示词（可选，用逗号分隔）
@@ -1040,6 +1107,7 @@ export default function VirtualIPImagesPage() {
           }
           defaultCount={1}
           defaultSize={generateForm.size || ""}
+          defaultAspectRatio={generateForm.aspect_ratio || ""}
           defaultStylePresetId={generateForm.style_preset_id || ""}
           defaultStyleSpec={generateForm.style_spec || {}}
           styleSpecFields={VIRTUAL_IP_STYLE_SPEC_FIELDS}

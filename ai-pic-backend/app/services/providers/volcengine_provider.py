@@ -129,6 +129,8 @@ class VolcengineProvider(BaseProvider):
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
                         "default_watermark": False,
+                        "supports_watermark": True,
+                        "supports_camera_control": False,
                     }
                 },
             ),
@@ -152,6 +154,8 @@ class VolcengineProvider(BaseProvider):
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
                         "default_watermark": False,
+                        "supports_watermark": True,
+                        "supports_camera_control": False,
                     }
                 },
             ),
@@ -176,6 +180,8 @@ class VolcengineProvider(BaseProvider):
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
                         "default_watermark": False,
+                        "supports_watermark": True,
+                        "supports_camera_control": False,
                     }
                 },
             ),
@@ -202,6 +208,8 @@ class VolcengineProvider(BaseProvider):
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
                         "default_watermark": False,
+                        "supports_watermark": True,
+                        "supports_camera_control": False,
                     }
                 },
             ),
@@ -226,6 +234,8 @@ class VolcengineProvider(BaseProvider):
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
                         "default_watermark": False,
+                        "supports_watermark": True,
+                        "supports_camera_control": False,
                     }
                 },
             ),
@@ -259,6 +269,8 @@ class VolcengineProvider(BaseProvider):
                         "default_resolution": "720P",
                         "default_ratio": "16:9",
                         "default_watermark": False,
+                        "supports_watermark": True,
+                        "supports_camera_control": False,
                     }
                 },
             ),
