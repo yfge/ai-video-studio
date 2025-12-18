@@ -17,7 +17,7 @@ function EnvironmentDetailContent() {
   const params = useParams()
   const router = useRouter()
   const { showAlert } = useAlertModal()
-  const envId = Number(params?.id)
+  const envKey = params?.id?.toString() || ''
 
   const [env, setEnv] = useState<Environment | null>(null)
   const [images, setImages] = useState<EnvironmentImage[]>([])
@@ -46,12 +46,12 @@ function EnvironmentDetailContent() {
   )
 
   const load = useCallback(async () => {
-    if (!envId) return
+    if (!envKey) return
     try {
       setLoading(true)
       const [envRes, imgRes] = await Promise.all([
-        storyStructureAPI.getEnvironment(envId),
-        storyStructureAPI.listEnvironmentImages(envId),
+        storyStructureAPI.getEnvironment(envKey),
+        storyStructureAPI.listEnvironmentImages(envKey),
       ])
       if (envRes.success && envRes.data) {
         setEnv(envRes.data)
@@ -69,20 +69,20 @@ function EnvironmentDetailContent() {
     } finally {
       setLoading(false)
     }
-  }, [envId, showAlert])
+  }, [envKey, showAlert])
 
   useEffect(() => {
     void load()
   }, [load])
 
   const handleUpload = async () => {
-    if (!selectedFile || !envId) {
+    if (!selectedFile || !envKey) {
       showAlert({ message: '请选择图片文件', variant: 'warning' })
       return
     }
     try {
       setUploading(true)
-      const res = await storyStructureAPI.uploadEnvironmentImage(envId, selectedFile)
+      const res = await storyStructureAPI.uploadEnvironmentImage(envKey, selectedFile)
       if (res.success && res.data) {
         const uploaded = res.data
         setImages(prev => [{ url: uploaded.url }, ...prev])
@@ -100,14 +100,14 @@ function EnvironmentDetailContent() {
   }
 
   const handleDeleteImage = async (url: string) => {
-    if (!envId) return
+    if (!envKey) return
     showAlert({
       title: '确认删除',
       message: '确定要删除该参考图吗？',
       variant: 'warning',
       confirmText: '删除',
       onConfirm: async () => {
-        const res = await storyStructureAPI.deleteEnvironmentImage(envId, url)
+        const res = await storyStructureAPI.deleteEnvironmentImage(envKey, url)
         if (res.success && res.data) {
           setImages(res.data.images ?? [])
           showAlert({ message: '删除成功', variant: 'success' })
@@ -119,10 +119,10 @@ function EnvironmentDetailContent() {
   }
 
   const handleGenerate = async () => {
-    if (!envId) return
+    if (!envKey) return
     try {
       setGenerating(true)
-      const res = await storyStructureAPI.generateEnvironmentImagesAsync(envId, {
+      const res = await storyStructureAPI.generateEnvironmentImagesAsync(envKey, {
         prompt: prompt || undefined,
       })
       if (res.success) {
@@ -158,10 +158,10 @@ function EnvironmentDetailContent() {
     style_spec?: Record<string, unknown>
     referenceImages: string[]
   }) => {
-    if (!envId || !variantTarget) return
+    if (!envKey || !variantTarget) return
     try {
       setVariantSubmitting(true)
-      const res = await storyStructureAPI.generateEnvironmentImageVariantsAsync(envId, {
+      const res = await storyStructureAPI.generateEnvironmentImageVariantsAsync(envKey, {
         base_image: variantTarget.url,
         prompt: payload.prompt,
         model: payload.model,

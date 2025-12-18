@@ -597,6 +597,7 @@ export interface StoryboardPayload {
 // 环境资产
 export interface Environment {
   id: number;
+  business_id?: string;
   name: string;
   category?: string | null;
   tags?: string[] | null;
@@ -1476,9 +1477,10 @@ class ApiClient {
   }
 
   async getEnvironment(
-    id: number,
+    id: number | string,
   ): Promise<ApiResponse<Environment>> {
-    return this.request(`/api/v1/story-structure/environments/${id}`);
+    const envKey = encodeURIComponent(String(id));
+    return this.request(`/api/v1/story-structure/environments/${envKey}`);
   }
 
   async createEnvironment(
@@ -1491,35 +1493,39 @@ class ApiClient {
   }
 
   async updateEnvironment(
-    id: number,
+    id: number | string,
     payload: Partial<EnvironmentCreate>,
   ): Promise<ApiResponse<Environment>> {
-    return this.request(`/api/v1/story-structure/environments/${id}`, {
+    const envKey = encodeURIComponent(String(id));
+    return this.request(`/api/v1/story-structure/environments/${envKey}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
   }
 
-  async deleteEnvironment(id: number): Promise<ApiResponse> {
-    return this.request(`/api/v1/story-structure/environments/${id}`, {
+  async deleteEnvironment(id: number | string): Promise<ApiResponse> {
+    const envKey = encodeURIComponent(String(id));
+    return this.request(`/api/v1/story-structure/environments/${envKey}`, {
       method: "DELETE",
     });
   }
 
   async listEnvironmentImages(
-    envId: number,
+    envId: number | string,
   ): Promise<ApiResponse<EnvironmentImagesResponse>> {
-    return this.request(`/api/v1/story-structure/environments/${envId}/images`);
+    const envKey = encodeURIComponent(String(envId));
+    return this.request(`/api/v1/story-structure/environments/${envKey}/images`);
   }
 
   async uploadEnvironmentImage(
-    envId: number,
+    envId: number | string,
     file: File,
   ): Promise<ApiResponse<{ url: string }>> {
+    const envKey = encodeURIComponent(String(envId));
     const formData = new FormData();
     formData.append("image", file);
     return this.request(
-      `/api/v1/story-structure/environments/${envId}/images/upload`,
+      `/api/v1/story-structure/environments/${envKey}/images/upload`,
       {
         method: "POST",
         body: formData,
@@ -1528,7 +1534,7 @@ class ApiClient {
   }
 
   async generateEnvironmentImages(
-    envId: number,
+    envId: number | string,
     payload: {
       prompt?: string;
       model?: string;
@@ -1539,8 +1545,9 @@ class ApiClient {
       style_spec?: StyleSpec;
     },
   ): Promise<ApiResponse<{ images: string[]; count: number }>> {
+    const envKey = encodeURIComponent(String(envId));
     return this.request(
-      `/api/v1/story-structure/environments/${envId}/images/generate`,
+      `/api/v1/story-structure/environments/${envKey}/images/generate`,
       {
         method: "POST",
         body: JSON.stringify(payload),
@@ -1549,7 +1556,7 @@ class ApiClient {
   }
 
   async generateEnvironmentImageVariants(
-    envId: number,
+    envId: number | string,
     payload: {
       base_image?: string;
       prompt?: string;
@@ -1561,8 +1568,9 @@ class ApiClient {
       style_spec?: StyleSpec;
     },
   ): Promise<ApiResponse<{ images: string[]; count: number }>> {
+    const envKey = encodeURIComponent(String(envId));
     return this.request(
-      `/api/v1/story-structure/environments/${envId}/images/variants`,
+      `/api/v1/story-structure/environments/${envKey}/images/variants`,
       {
         method: "POST",
         body: JSON.stringify(payload),
@@ -1571,7 +1579,7 @@ class ApiClient {
   }
 
   async generateEnvironmentImagesAsync(
-    envId: number,
+    envId: number | string,
     payload: {
       prompt?: string;
       model?: string;
@@ -1582,8 +1590,9 @@ class ApiClient {
       style_spec?: StyleSpec;
     },
   ): Promise<ApiResponse<{ task_id: number; status: string }>> {
+    const envKey = encodeURIComponent(String(envId));
     return this.request(
-      `/api/v1/story-structure/environments/${envId}/images/generate-async`,
+      `/api/v1/story-structure/environments/${envKey}/images/generate-async`,
       {
         method: "POST",
         body: JSON.stringify(payload),
@@ -1592,7 +1601,7 @@ class ApiClient {
   }
 
   async generateEnvironmentImageVariantsAsync(
-    envId: number,
+    envId: number | string,
     payload: {
       base_image?: string;
       prompt?: string;
@@ -1605,8 +1614,9 @@ class ApiClient {
       reference_images?: string[];
     },
   ): Promise<ApiResponse<{ task_id: number; status: string }>> {
+    const envKey = encodeURIComponent(String(envId));
     return this.request(
-      `/api/v1/story-structure/environments/${envId}/images/variants-async`,
+      `/api/v1/story-structure/environments/${envKey}/images/variants-async`,
       {
         method: "POST",
         body: JSON.stringify(payload),
@@ -1615,12 +1625,13 @@ class ApiClient {
   }
 
   async deleteEnvironmentImage(
-    envId: number,
+    envId: number | string,
     imageUrl: string,
   ): Promise<ApiResponse<EnvironmentImagesResponse>> {
+    const envKey = encodeURIComponent(String(envId));
     const params = new URLSearchParams({ image_url: imageUrl });
     return this.request(
-      `/api/v1/story-structure/environments/${envId}/images?${params.toString()}`,
+      `/api/v1/story-structure/environments/${envKey}/images?${params.toString()}`,
       {
         method: "DELETE",
       },

@@ -419,14 +419,45 @@ def delete_shot(db: Session, shot_id: int) -> bool:
 # Environment CRUD
 
 def list_environments(db: Session, owner_id: int | None = None) -> List[Environment]:
-    query = db.query(Environment)
+    query = _not_deleted(db.query(Environment), Environment)
     if owner_id is not None:
         query = query.filter(Environment.user_id == owner_id)
     return query.order_by(Environment.id.asc()).all()
 
 
 def get_environment(db: Session, env_id: int) -> Optional[Environment]:
-    return db.query(Environment).filter(Environment.id == env_id).first()
+    return _not_deleted(db.query(Environment), Environment).filter(Environment.id == env_id).first()
+
+
+def get_environment_by_business_id(
+    db: Session, business_id: str
+) -> Optional[Environment]:
+    return (
+        _not_deleted(db.query(Environment), Environment)
+        .filter(Environment.business_id == business_id)
+        .first()
+    )
+
+
+def resolve_environment(
+    db: Session, env_identifier: int | str | None
+) -> Optional[Environment]:
+    if env_identifier is None:
+        return None
+    env: Optional[Environment] = None
+    # prefer numeric id if provided
+    if isinstance(env_identifier, int):
+        env = get_environment(db, env_identifier)
+    else:
+        try:
+            env_int = int(str(env_identifier))
+        except Exception:
+            env_int = None
+        if env_int is not None:
+            env = get_environment(db, env_int)
+        if not env:
+            env = get_environment_by_business_id(db, str(env_identifier))
+    return env
 
 
 def create_environment(db: Session, payload: Dict[str, Any]) -> Environment:
@@ -437,8 +468,10 @@ def create_environment(db: Session, payload: Dict[str, Any]) -> Environment:
     return env
 
 
-def update_environment(db: Session, env_id: int, payload: Dict[str, Any]) -> Optional[Environment]:
-    env = get_environment(db, env_id)
+def update_environment(
+    db: Session, env_id: int | str, payload: Dict[str, Any]
+) -> Optional[Environment]:
+    env = resolve_environment(db, env_id)
     if not env:
         return None
     for k, v in payload.items():
@@ -448,8 +481,8 @@ def update_environment(db: Session, env_id: int, payload: Dict[str, Any]) -> Opt
     return env
 
 
-def delete_environment(db: Session, env_id: int) -> bool:
-    env = get_environment(db, env_id)
+def delete_environment(db: Session, env_id: int | str) -> bool:
+    env = resolve_environment(db, env_id)
     if not env:
         return False
     db.delete(env)

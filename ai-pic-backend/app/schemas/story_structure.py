@@ -257,6 +257,7 @@ class EnvironmentUpdate(BaseModel):
 
 class EnvironmentResponse(ORMModel):
     id: int
+    business_id: str
     name: str
     category: Optional[str]
     tags: Optional[list[str]]
@@ -271,6 +272,7 @@ class EnvironmentSummaryResponse(ORMModel):
     """Environment list DTO: excludes heavyweight reference_images."""
 
     id: int
+    business_id: str
     name: str
     category: Optional[str]
     tags: Optional[list[str]]

@@ -283,11 +283,11 @@ async def list_environments(
 
 @router.get("/environments/{env_id}", response_model=EnvironmentResponse)
 async def get_environment(
-    env_id: int,
+    env_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if env and not (
         current_user.is_admin
         or current_user.is_superuser
@@ -313,12 +313,12 @@ async def create_environment(
 
 @router.put("/environments/{env_id}", response_model=EnvironmentResponse)
 async def update_environment(
-    env_id: int,
+    env_id: str,
     body: EnvironmentUpdate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if not env or not (
         current_user.is_admin
         or current_user.is_superuser
@@ -333,11 +333,11 @@ async def update_environment(
 
 @router.delete("/environments/{env_id}", status_code=204)
 async def delete_environment(
-    env_id: int,
+    env_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if not env or not (
         current_user.is_admin
         or current_user.is_superuser
@@ -467,11 +467,11 @@ def _compose_environment_prompt(env, extra: Optional[str] = None) -> str:
     "/environments/{env_id}/images", response_model=EnvironmentImagesResponse
 )
 async def list_environment_images(
-    env_id: int,
+    env_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if env and not (
         current_user.is_admin
         or current_user.is_superuser
@@ -495,12 +495,12 @@ async def list_environment_images(
 
 @router.delete("/environments/{env_id}/images")
 async def delete_environment_image(
-    env_id: int,
+    env_id: str,
     image_url: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if env and not (
         current_user.is_admin
         or current_user.is_superuser
@@ -530,13 +530,13 @@ async def delete_environment_image(
     response_model=EnvironmentImageResponse,
 )
 async def upload_environment_image(
-    env_id: int,
+    env_id: str,
     image: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """上传环境参考图，使用统一持久化与 OSS 上传策略。"""
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if env and not (
         current_user.is_admin
         or current_user.is_superuser
@@ -595,7 +595,7 @@ async def upload_environment_image(
 
 @router.post("/environments/{env_id}/images/generate")
 async def generate_environment_images(
-    env_id: int,
+    env_id: str,
     request: Request,
     prompt: Optional[str] = Query(
         None, description="生成提示词，不填则用环境描述/名称"
@@ -606,7 +606,7 @@ async def generate_environment_images(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if env and not (
         current_user.is_admin
         or current_user.is_superuser
@@ -706,7 +706,7 @@ async def generate_environment_images(
 
 @router.post("/environments/{env_id}/images/generate-async")
 async def generate_environment_images_async(
-    env_id: int,
+    env_id: str,
     request: Request,
     prompt: Optional[str] = Query(
         None, description="生成提示词，不填则用环境描述/名称"
@@ -718,7 +718,7 @@ async def generate_environment_images_async(
     db: Session = Depends(get_db),
 ):
     """异步环境文生图：创建 Task 并委托 Celery 处理。"""
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if env and not (
         current_user.is_admin
         or current_user.is_superuser
@@ -753,7 +753,7 @@ async def generate_environment_images_async(
     count_int = max(1, min(count_int, 4))
 
     payload = {
-        "env_id": env_id,
+        "env_id": env.id,
         "extra_prompt": extra_prompt,
         "model": selected_model_raw,
         "count": count_int,
@@ -882,7 +882,7 @@ def _process_environment_image_task(
 
 @router.post("/environments/{env_id}/images/variants")
 async def generate_environment_image_variants(
-    env_id: int,
+    env_id: str,
     request: Request,
     base_image: Optional[str] = Query(None, description="基准图 URL 或相对路径"),
     prompt: Optional[str] = Query(None, description="变体提示词"),
@@ -892,7 +892,7 @@ async def generate_environment_image_variants(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if env and not (
         current_user.is_admin
         or current_user.is_superuser
@@ -1024,7 +1024,7 @@ async def generate_environment_image_variants(
 
 @router.post("/environments/{env_id}/images/variants-async")
 async def generate_environment_image_variants_async(
-    env_id: int,
+    env_id: str,
     request: Request,
     base_image: Optional[str] = Query(None, description="基准图 URL 或相对路径"),
     prompt: Optional[str] = Query(None, description="变体提示词"),
@@ -1035,7 +1035,7 @@ async def generate_environment_image_variants_async(
     db: Session = Depends(get_db),
 ):
     """异步环境图生图：创建 Task 并委托 Celery 处理。"""
-    env = svc.get_environment(db, env_id)
+    env = svc.resolve_environment(db, env_id)
     if env and not (
         current_user.is_admin
         or current_user.is_superuser
