@@ -457,7 +457,11 @@ def _compose_environment_prompt(env, extra: Optional[str] = None) -> str:
         f"Environment focus: {category_hint}；保持真实光影和透视，色彩和风格统一。"
     )
     if extra:
-        parts.append(extra)
+        extra_clean = extra.strip()
+        desc_clean = (env.description or "").strip()
+        # 避免重复附加与描述完全相同的补充提示
+        if extra_clean and extra_clean.lower() != desc_clean.lower():
+            parts.append(extra_clean)
     if not parts:
         return "Environment scene with clear spatial layout and lighting cues"
     return " | ".join(parts)
