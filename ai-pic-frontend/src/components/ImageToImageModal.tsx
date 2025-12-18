@@ -141,6 +141,7 @@ export function ImageToImageModal({
   const [styleSpec, setStyleSpec] = useState<StyleSpec>(defaultStyleSpec ?? {});
   const [width, setWidth] = useState(defaultWidth);
   const [height, setHeight] = useState(defaultHeight);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const { presets: stylePresets } = useStylePresets({ enabled: showStylePreset });
   const selectedStylePreset = useMemo(() => {
@@ -258,30 +259,41 @@ export function ImageToImageModal({
                   {section.images.map(url => {
                     const selected = selectedRefs.includes(url);
                     return (
-                      <button
+                      <div
                         key={url}
-                        type="button"
-                        onClick={() => toggleReference(url)}
                         className={`relative overflow-hidden rounded border ${
                           selected ? 'ring-2 ring-blue-500' : 'border-gray-200'
                         }`}
                       >
-                        <div className="relative h-28 w-full">
-                          <Image
-                            src={url}
-                            alt={section.title || '参考图'}
-                            fill
-                            sizes="100%"
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                        {selected && (
-                          <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white text-xs">
-                            已选
+                        <button
+                          type="button"
+                          onClick={() => toggleReference(url)}
+                          className="relative block w-full"
+                        >
+                          <div className="relative h-28 w-full">
+                            <Image
+                              src={url}
+                              alt={section.title || '参考图'}
+                              fill
+                              sizes="100%"
+                              className="object-cover"
+                              unoptimized
+                            />
                           </div>
-                        )}
-                      </button>
+                          {selected && (
+                            <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center text-white text-xs">
+                              已选
+                            </div>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewImage(url)}
+                          className="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-[11px] text-white hover:bg-black/80"
+                        >
+                          预览
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -485,6 +497,22 @@ export function ImageToImageModal({
           </button>
         </div>
       </div>
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="relative max-h-[90vh] max-w-5xl w-full">
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              className="absolute right-3 top-3 z-10 rounded bg-black/70 px-3 py-1 text-sm text-white hover:bg-black/90"
+            >
+              关闭
+            </button>
+            <div className="relative w-full" style={{ paddingBottom: '60%' }}>
+              <Image src={previewImage} alt="参考图预览" fill className="object-contain" unoptimized />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

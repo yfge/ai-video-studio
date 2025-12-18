@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -30,6 +29,7 @@ import { ImagePreviewModal } from "@/components/ImagePreviewModal";
 import { StoryboardVideoModal } from "@/components/StoryboardVideoModal";
 import type { StyleSpecField } from "@/components/StyleSpecAdvancedPanel";
 import { Timeline, type TimelineTrack } from "@/components/Timeline/Timeline";
+import { ImagePreviewCard } from "@/components/ImagePreviewCard";
 
 const STORYBOARD_STYLE_SPEC_FIELDS: StyleSpecField[] = [
   { key: "shot_storyboard_style", label: "镜头与分镜风格" },
@@ -1538,7 +1538,10 @@ export default function EpisodeStoryboardPage() {
     }
   };
 
-  const openImageModalForFrame = async (absIndex: number) => {
+  const openImageModalForFrame = async (
+    absIndex: number,
+    opts?: { presetReference?: string; target?: "start" | "end" | "both" },
+  ) => {
     if (!activeScript) return;
     if (!selectedNormalizedSceneId) {
       showAlert({
@@ -1554,13 +1557,20 @@ export default function EpisodeStoryboardPage() {
     setImageModalOpen(true);
     setImageModalFrameIndex(absIndex);
     setImageModalLoading(true);
+    const normalizedPreset = opts?.presetReference
+      ? imageSrc(opts.presetReference)
+      : "";
     const defaultPrompt =
       frames[absIndex].ai_prompt ||
       frames[absIndex].description ||
       "结合选中的环境/角色参考图，生成风格一致的分镜图像。";
     setImageModalPrompt(defaultPrompt);
-    setImageModalSelected([]);
-    setImageModalTargets({ first: true, last: true });
+    setImageModalSelected(normalizedPreset ? [normalizedPreset] : []);
+    const target = opts?.target;
+    setImageModalTargets({
+      first: target !== "end",
+      last: target !== "start",
+    });
 
     try {
       const { envImages, charGroups } = await fetchReferenceImagesForScene();
@@ -1568,9 +1578,13 @@ export default function EpisodeStoryboardPage() {
       setImageModalCharImages(charGroups);
 
       const defaultSelected: string[] = [];
-      defaultSelected.push(...envImages);
+      if (normalizedPreset) defaultSelected.push(normalizedPreset);
+      envImages.forEach((img) => {
+        if (!defaultSelected.includes(img)) defaultSelected.push(img);
+      });
       charGroups.forEach((group) => {
-        if (group.images[0]) defaultSelected.push(group.images[0]);
+        const img = group.images[0];
+        if (img && !defaultSelected.includes(img)) defaultSelected.push(img);
       });
       setImageModalSelected(defaultSelected);
     } catch (error) {
@@ -2736,54 +2750,107 @@ export default function EpisodeStoryboardPage() {
                           </div>
                         )}
                       {hasKeyframes && (
-                        <div className="mt-2">
-                          <div className="text-xs text-gray-700 mb-1">
-                            关键帧预览：
-                          </div>
+                        <div className="mt-2 space-y-3">
+                          <div className="text-xs text-gray-700">关键帧预览：</div>
                           <div
-                            className={`grid gap-2 ${
+                            className={`grid gap-3 ${
                               selectedEnd ? "grid-cols-2" : "grid-cols-1"
                             }`}
                           >
                             {selectedStart && (
-                              <div>
-                                <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
-                                  <Image
-                                    src={selectedStart as string}
-                                    alt="start keyframe"
-                                    fill
-                                    sizes="(min-width:1024px) 50vw, 100vw"
-                                    className="object-contain p-2 cursor-zoom-in"
-                                    unoptimized
-                                    onClick={() =>
+                              <ImagePreviewCard
+                                src={selectedStart as string}
+                                alt={`分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`}
+                                aspectClass="aspect-[4/3]"
+                                badges={[{ label: "首帧", tone: "blue" }]}
+                                onPreview={() =>
+                                  setPreview({
+                                    src: selectedStart as string,
+                                    alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（首帧）`,
+                                    description: fr.description || "分镜关键帧（首帧）",
+                                  })
+                                }
+                                onImg2Img={() =>
+                                  void openImageModalForFrame(absIndex, {
+                                    presetReference: selectedStart as string,
+                                    target: "start",
+                                  })
+                                }
+                                actions={[
+                                  {
+                                    label: "新标签打开",
+                                    onClick: () =>
+                                      window.open(selectedStart as string, "_blank"),
+                                  },
+                                ]}
+                              />
+                            )}
+                            {selectedEnd && (
+                              <ImagePreviewCard
+                                src={selectedEnd as string}
+                                alt={`分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`}
+                                aspectClass="aspect-[4/3]"
+                                badges={[{ label: "尾帧", tone: "green" }]}
+                                onPreview={() =>
+                                  setPreview({
+                                    src: selectedEnd as string,
+                                    alt: `分镜帧 ${fr.frame_number ?? absIndex + 1}（尾帧）`,
+                                    description: fr.description || "分镜关键帧（尾帧）",
+                                  })
+                                }
+                                onImg2Img={() =>
+                                  void openImageModalForFrame(absIndex, {
+                                    presetReference: selectedEnd as string,
+                                    target: "end",
+                                  })
+                                }
+                                actions={[
+                                  {
+                                    label: "新标签打开",
+                                    onClick: () =>
+                                      window.open(selectedEnd as string, "_blank"),
+                                  },
+                                ]}
+                              />
+                            )}
+                          </div>
+                          {startCandidates.length > 1 && (
+                            <div>
+                              <div className="mb-1 text-[11px] text-gray-500">首帧候选</div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {startCandidates.map((url) => (
+                                  <ImagePreviewCard
+                                    key={url}
+                                    src={url}
+                                    alt="start keyframe candidate"
+                                    aspectClass="aspect-square"
+                                    badges={
+                                      selectedStart === url
+                                        ? [{ label: "当前", tone: "blue" }]
+                                        : undefined
+                                    }
+                                    onPreview={() =>
                                       setPreview({
-                                        src: selectedStart as string,
-                                        alt: `分镜帧 ${
-                                          fr.frame_number ?? absIndex + 1
-                                        }（首帧）`,
+                                        src: url,
+                                        alt: "分镜首帧候选",
                                         description:
-                                          fr.description ||
-                                          "分镜关键帧（首帧）",
+                                          fr.description || "分镜关键帧（首帧）",
                                       })
                                     }
-                                  />
-                                  <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                                    首
-                                  </div>
-                                </div>
-                                {startCandidates.length > 1 && (
-                                  <div className="mt-2 grid grid-cols-4 gap-2">
-                                    {startCandidates.map((url) => (
-                                      <button
-                                        type="button"
-                                        key={url}
-                                        onClick={() => {
+                                    onImg2Img={() =>
+                                      void openImageModalForFrame(absIndex, {
+                                        presetReference: url,
+                                        target: "start",
+                                      })
+                                    }
+                                    actions={[
+                                      {
+                                        label: "设为首帧",
+                                        tone: "primary",
+                                        onClick: () => {
                                           setStoryboard((prev) => {
-                                            const frames = [
-                                              ...(prev.frames || []),
-                                            ];
-                                            const current =
-                                              frames[absIndex] || {};
+                                            const frames = [...(prev.frames || [])];
+                                            const current = frames[absIndex] || {};
                                             frames[absIndex] = {
                                               ...current,
                                               start_image_url: url,
@@ -2791,150 +2858,67 @@ export default function EpisodeStoryboardPage() {
                                             };
                                             return { ...prev, frames };
                                           });
-                                        }}
-                                        className={`relative h-16 overflow-hidden rounded border bg-gray-50 ${
-                                          selectedStart === url
-                                            ? "ring-2 ring-purple-500"
-                                            : ""
-                                        }`}
-                                      >
-                                        <Image
-                                          src={url}
-                                          alt="start keyframe candidate"
-                                          fill
-                                          sizes="(min-width:1024px) 25vw, 50vw"
-                                          className="object-contain p-1"
-                                          unoptimized
-                                        />
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
+                                        },
+                                      },
+                                    ]}
+                                    showActionsOnHover={false}
+                                  />
+                                ))}
                               </div>
-                            )}
-                            {selectedEnd && (
-                              <div>
-                                <div className="relative h-40 overflow-hidden rounded border bg-gray-50">
-                                  <Image
-                                    src={selectedEnd as string}
-                                    alt="end keyframe"
-                                    fill
-                                    sizes="(min-width:1024px) 50vw, 100vw"
-                                    className="object-contain p-2 cursor-zoom-in"
-                                    unoptimized
-                                    onClick={() =>
+                            </div>
+                          )}
+                          {endCandidates.length > 1 && (
+                            <div>
+                              <div className="mb-1 text-[11px] text-gray-500">尾帧候选</div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {endCandidates.map((url) => (
+                                  <ImagePreviewCard
+                                    key={url}
+                                    src={url}
+                                    alt="end keyframe candidate"
+                                    aspectClass="aspect-square"
+                                    badges={
+                                      selectedEnd === url
+                                        ? [{ label: "当前", tone: "green" }]
+                                        : undefined
+                                    }
+                                    onPreview={() =>
                                       setPreview({
-                                        src: selectedEnd as string,
-                                        alt: `分镜帧 ${
-                                          fr.frame_number ?? absIndex + 1
-                                        }（尾帧）`,
+                                        src: url,
+                                        alt: "分镜尾帧候选",
                                         description:
-                                          fr.description ||
-                                          "分镜关键帧（尾帧）",
+                                          fr.description || "分镜关键帧（尾帧）",
                                       })
                                     }
-                                  />
-                                  <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                                    尾
-                                  </div>
-                                </div>
-                                {endCandidates.length > 1 && (
-                                  <div className="mt-2 grid grid-cols-4 gap-2">
-                                    {endCandidates.map((url) => (
-                                      <button
-                                        type="button"
-                                        key={url}
-                                        onClick={() => {
+                                    onImg2Img={() =>
+                                      void openImageModalForFrame(absIndex, {
+                                        presetReference: url,
+                                        target: "end",
+                                      })
+                                    }
+                                    actions={[
+                                      {
+                                        label: "设为尾帧",
+                                        tone: "primary",
+                                        onClick: () => {
                                           setStoryboard((prev) => {
-                                            const frames = [
-                                              ...(prev.frames || []),
-                                            ];
-                                            const current =
-                                              frames[absIndex] || {};
+                                            const frames = [...(prev.frames || [])];
+                                            const current = frames[absIndex] || {};
                                             frames[absIndex] = {
                                               ...current,
                                               end_image_url: url,
                                             };
                                             return { ...prev, frames };
                                           });
-                                        }}
-                                        className={`relative h-16 overflow-hidden rounded border bg-gray-50 ${
-                                          selectedEnd === url
-                                            ? "ring-2 ring-purple-500"
-                                            : ""
-                                        }`}
-                                      >
-                                        <Image
-                                          src={url}
-                                          alt="end keyframe candidate"
-                                          fill
-                                          sizes="(min-width:1024px) 25vw, 50vw"
-                                          className="object-contain p-1"
-                                          unoptimized
-                                        />
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
+                                        },
+                                      },
+                                    ]}
+                                    showActionsOnHover={false}
+                                  />
+                                ))}
                               </div>
-                            )}
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                            {selectedStart && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setPreview({
-                                      src: selectedStart as string,
-                                      alt: `分镜帧 ${
-                                        fr.frame_number ?? absIndex + 1
-                                      }（首帧）`,
-                                      description:
-                                        fr.description || "分镜关键帧（首帧）",
-                                    })
-                                  }
-                                  className="text-green-700 hover:text-green-900"
-                                >
-                                  查看首帧
-                                </button>
-                                <a
-                                  href={selectedStart as string}
-                                  target="_blank"
-                                  className="text-blue-600 hover:text-blue-800"
-                                >
-                                  新标签打开首帧
-                                </a>
-                              </>
-                            )}
-                            {selectedEnd && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setPreview({
-                                      src: selectedEnd as string,
-                                      alt: `分镜帧 ${
-                                        fr.frame_number ?? absIndex + 1
-                                      }（尾帧）`,
-                                      description:
-                                        fr.description || "分镜关键帧（尾帧）",
-                                    })
-                                  }
-                                  className="text-green-700 hover:text-green-900"
-                                >
-                                  查看尾帧
-                                </button>
-                                <a
-                                  href={selectedEnd as string}
-                                  target="_blank"
-                                  className="text-blue-600 hover:text-blue-800"
-                                >
-                                  新标签打开尾帧
-                                </a>
-                              </>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       )}
 

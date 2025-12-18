@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -15,6 +14,7 @@ import {
 import { useAlertModal } from '@/components/AlertModalProvider';
 import { useAvailableModels } from '@/hooks/useAvailableModels';
 import { ImageToImageModal } from '@/components/ImageToImageModal';
+import { ImagePreviewCard } from '@/components/ImagePreviewCard';
 import { MultiModelSelector } from '@/components/MultiModelSelector';
 import { ImagePreviewModal } from '@/components/ImagePreviewModal';
 import { useStylePresets } from '@/hooks/useStylePresets';
@@ -812,45 +812,39 @@ export default function VirtualIPImagesPage() {
               (image.metadata as { generation_method?: string } | null | undefined)?.generation_method,
             )
 
-            const handleError = (event: React.SyntheticEvent<HTMLImageElement>) => {
-              if (fallbackSrc && event.currentTarget.src !== fallbackSrc) {
-                event.currentTarget.src = fallbackSrc
-              }
-            }
-
             return (
               <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div
-                  className="relative aspect-[4/5] bg-gray-50 cursor-zoom-in"
-                  onClick={() => {
-                    if (!primarySrc) return
+                <ImagePreviewCard
+                  src={primarySrc}
+                  fallbackSrc={fallbackSrc}
+                  alt={`${virtualIP.name} - ${image.category}`}
+                  aspectClass="aspect-[4/5]"
+                  showActionsOnHover
+                  badges={[
+                    ...(image.is_default ? [{ label: '默认', tone: 'green' as const }] : []),
+                    ...(isAiGenerated ? [{ label: 'AI生成', tone: 'blue' as const }] : []),
+                  ]}
+                  onPreview={() =>
                     setPreview({
                       src: primarySrc,
                       alt: `${virtualIP.name} - ${image.category}`,
                       description: `${image.category} ｜ ${new Date(image.created_at).toLocaleString()}`,
                     })
-                  }}
-                >
-                  <Image
-                    src={primarySrc}
-                    alt={`${virtualIP.name} - ${image.category}`}
-                    fill
-                    sizes="(min-width:1280px) 25vw, (min-width:768px) 33vw, 50vw"
-                    className="object-contain p-2"
-                    unoptimized
-                    onError={handleError}
-                  />
-                  {image.is_default && (
-                    <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
-                      默认
-                    </div>
-                  )}
-                  {isAiGenerated && (
-                    <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs">
-                      AI生成
-                    </div>
-                  )}
-                </div>
+                  }
+                  onImg2Img={() => handleOpenVariant(image)}
+                  onDelete={() => handleDeleteImage(image.id)}
+                  actions={
+                    image.is_default
+                      ? []
+                      : [
+                          {
+                            label: '设默认',
+                            onClick: () => handleSetDefault(image.id),
+                            tone: 'primary',
+                          },
+                        ]
+                  }
+                />
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-900">{image.category}</span>
@@ -896,28 +890,6 @@ export default function VirtualIPImagesPage() {
                       </details>
                     )
                   })()}
-                  <div className="flex gap-2">
-                    {!image.is_default && (
-                      <button
-                        onClick={() => handleSetDefault(image.id)}
-                        className="flex-1 bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                      >
-                        设默认
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleOpenVariant(image)}
-                      className="flex-1 bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
-                    >
-                      图生图
-                    </button>
-                    <button
-                      onClick={() => handleDeleteImage(image.id)}
-                      className="flex-1 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                    >
-                      删除
-                    </button>
-                  </div>
                 </div>
               </div>
             )

@@ -1,12 +1,12 @@
 'use client'
 
-import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import AuthGuard from '@/components/AuthGuard'
 import Navigation from '@/components/Navigation'
 import { useAlertModal } from '@/components/AlertModalProvider'
 import { ImageToImageModal } from '@/components/ImageToImageModal'
+import { ImagePreviewCard } from '@/components/ImagePreviewCard'
 import { storyStructureAPI, AIModelType, type Environment } from '@/utils/api'
 
 interface EnvironmentImage {
@@ -257,34 +257,14 @@ function EnvironmentDetailContent() {
                 {images.map(img => {
                   const src = imageSrc(img.url)
                   return (
-                    <div key={img.url} className="relative rounded border bg-gray-50 overflow-hidden">
-                      {src ? (
-                        <Image
-                          src={src}
-                          alt={env.name}
-                          width={300}
-                          height={300}
-                          className="object-cover w-full h-full"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="h-32 flex items-center justify-center text-gray-400 text-sm">无效图片</div>
-                      )}
-                      <div className="absolute inset-0 flex items-start justify-end gap-2 p-2">
-                        <button
-                          onClick={() => openVariant(img)}
-                          className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
-                        >
-                          图生图
-                        </button>
-                        <button
-                          onClick={() => handleDeleteImage(img.url)}
-                          className="rounded bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
-                        >
-                          删除
-                        </button>
-                      </div>
-                    </div>
+                    <ImagePreviewCard
+                      key={img.url}
+                      src={src}
+                      alt={env.name}
+                      showActionsOnHover
+                      onImg2Img={() => openVariant(img)}
+                      onDelete={() => handleDeleteImage(img.url)}
+                    />
                   )
                 })}
               </div>
