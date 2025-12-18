@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import AuthGuard from "@/components/AuthGuard";
-import Navigation from "@/components/Navigation";
-import { useAlertModal } from "@/components/AlertModalProvider";
-import { ImageToImageModal } from "@/components/ImageToImageModal";
-import { ImagePreviewCard } from "@/components/ImagePreviewCard";
+import { AuthGuard, ImagePreviewCard } from "@/components/shared";
+import { Navigation } from "@/components/layouts";
+import { useAlertModal, ImageToImageModal } from "@/components/shared/modals";
 import { storyStructureAPI, AIModelType, type Environment } from "@/utils/api";
 
 interface EnvironmentImage {

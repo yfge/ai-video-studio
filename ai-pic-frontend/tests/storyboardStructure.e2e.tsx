@@ -3,7 +3,7 @@ import assert from 'node:assert'
 import React from 'react'
 import { render, cleanup } from '@testing-library/react'
 import { JSDOM } from 'jsdom'
-import { FrameCard } from '../src/components/StoryboardFrameCard'
+import { FrameCard } from '../src/components/features/StoryboardFrameCard'
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>')
 ;(globalThis as any).window = dom.window

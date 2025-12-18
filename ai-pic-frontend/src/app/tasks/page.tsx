@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { scriptAPI, storyStructureAPI, taskAPI, virtualIPImageAPI, type Environment, type Task as APITask } from '@/utils/api'
-import { useAlertModal } from '@/components/AlertModalProvider'
-import Navigation from '@/components/Navigation'
+import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
+import { Navigation } from '@/components/layouts'
 
 type PersistedStyleInfo = {
   source: string

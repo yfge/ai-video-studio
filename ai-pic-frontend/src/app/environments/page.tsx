@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import AuthGuard from '@/components/AuthGuard'
-import Navigation from '@/components/Navigation'
+import { AuthGuard, CreationOverlay } from '@/components/shared'
+import { Navigation } from '@/components/layouts'
 import { storyStructureAPI, type Environment, type EnvironmentCreate } from '@/utils/api'
-import { useAlertModal } from '@/components/AlertModalProvider'
-import { CreationOverlay } from '@/components/CreationOverlay'
+import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
 
 function EnvironmentsPageContent() {
   const router = useRouter()

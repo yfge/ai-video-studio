@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { isAuthenticated } from '../utils/auth'
+import { isAuthenticated } from '@/utils/auth'
 
 interface AuthGuardProps {
   children: React.ReactNode

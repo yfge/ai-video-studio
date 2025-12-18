@@ -11,17 +11,19 @@ import {
   type VirtualIP,
   type VirtualIPImage,
 } from "@/utils/api";
-import { useAlertModal } from "@/components/AlertModalProvider";
-import { useAvailableModels } from "@/hooks/useAvailableModels";
-import { ImageToImageModal } from "@/components/ImageToImageModal";
-import { ImagePreviewCard } from "@/components/ImagePreviewCard";
-import { MultiModelSelector } from "@/components/MultiModelSelector";
-import { ImagePreviewModal } from "@/components/ImagePreviewModal";
-import { useStylePresets } from "@/hooks/useStylePresets";
 import {
+  useAlertModal,
+  ImageToImageModal,
+  ImagePreviewModal,
+} from "@/components/shared/modals";
+import { useAvailableModels } from "@/hooks/useAvailableModels";
+import {
+  ImagePreviewCard,
+  MultiModelSelector,
   StyleSpecAdvancedPanel,
   type StyleSpecField,
-} from "@/components/StyleSpecAdvancedPanel";
+} from "@/components/shared";
+import { useStylePresets } from "@/hooks/useStylePresets";
 
 const VIRTUAL_IP_STYLE_SPEC_FIELDS: StyleSpecField[] = [
   { key: "style_universe", label: "世界观 / 画风体系" },

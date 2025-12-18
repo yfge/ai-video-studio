@@ -22,14 +22,18 @@ import type {
   NormalizedShot,
   SceneBeat,
 } from "@/utils/api";
-import { useAlertModal } from "@/components/AlertModalProvider";
-import { ImageToImageModal } from "@/components/ImageToImageModal";
-import { MultiModelSelector } from "@/components/MultiModelSelector";
-import { ImagePreviewModal } from "@/components/ImagePreviewModal";
-import { StoryboardVideoModal } from "@/components/StoryboardVideoModal";
-import type { StyleSpecField } from "@/components/StyleSpecAdvancedPanel";
-import { Timeline, type TimelineTrack } from "@/components/Timeline/Timeline";
-import { ImagePreviewCard } from "@/components/ImagePreviewCard";
+import {
+  useAlertModal,
+  ImageToImageModal,
+  ImagePreviewModal,
+  StoryboardVideoModal,
+} from "@/components/shared/modals";
+import {
+  MultiModelSelector,
+  ImagePreviewCard,
+  type StyleSpecField,
+} from "@/components/shared";
+import { Timeline, type TimelineTrack } from "@/components/features";
 
 const STORYBOARD_STYLE_SPEC_FIELDS: StyleSpecField[] = [
   { key: "shot_storyboard_style", label: "镜头与分镜风格" },

@@ -4,10 +4,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { authAPI, scriptAPI, storyStructureAPI } from '@/utils/api'
 import type { NormalizedScene, NormalizedShot, SceneBeat, Script, User } from '@/utils/api'
-import { useAlertModal } from '@/components/AlertModalProvider'
-import { SceneStructurePanel, type SceneNode } from '@/components/SceneStructurePanel'
+import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
+import { SceneStructurePanel, type SceneNode } from '@/components/features'
 import { isAdmin } from '@/utils/auth'
-import { SceneTag, formatText } from '@/components/StoryboardFrameCard'
+import { SceneTag, formatText } from '@/components/features/StoryboardFrameCard'
 
 type TabId = 'overview' | 'scenes'
 

@@ -1,6 +1,6 @@
 'use client'
 
-import Navigation from '@/components/Navigation'
+import { Navigation } from '@/components/layouts'
 
 export default function Home() {
   return (

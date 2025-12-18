@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { authAPI } from '../../utils/api'
 import { useRouter } from 'next/navigation'
-import Navigation from '@/components/Navigation'
+import { Navigation } from '@/components/layouts'
 
 export default function Login() {
   const [formData, setFormData] = useState({

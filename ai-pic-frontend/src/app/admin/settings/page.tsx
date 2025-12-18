@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import AdminLayout from '../../../components/AdminLayout'
+import { AdminLayout } from '@/components/layouts'
 
 // 简单的图标组件
 const CogIcon = ({ className = '' }) => (

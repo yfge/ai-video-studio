@@ -10,9 +10,9 @@ import type {
   ScriptGenerationRequest,
   Task,
 } from "@/utils/api";
-import { useAlertModal } from "@/components/AlertModalProvider";
-import { MultiModelSelector } from "@/components/MultiModelSelector";
-import { Timeline, type TimelineTrack } from "@/components/Timeline/Timeline";
+import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
+import { MultiModelSelector } from "@/components/shared";
+import { Timeline, type TimelineTrack } from "@/components/features";
 
 export default function EpisodeDetailPage() {
   const params = useParams();

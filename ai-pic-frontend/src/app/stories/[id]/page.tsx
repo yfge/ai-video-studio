@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { storyAPI, episodeAPI, scriptAPI, virtualIPAPI } from '@/utils/api'
 import type { Story, Episode, Script, VirtualIP, EpisodeGenerationRequest } from '@/utils/api'
-import { useAlertModal } from '@/components/AlertModalProvider'
-import { MultiModelSelector } from '@/components/MultiModelSelector'
+import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
+import { MultiModelSelector } from '@/components/shared'
 
 type EpisodeScene = Record<string, unknown>
 

@@ -3,13 +3,13 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { MultiModelSelector } from "@/components/MultiModelSelector";
+import { MultiModelSelector } from "@/components/shared/MultiModelSelector";
 import {
   StyleSpecAdvancedPanel,
   type StyleSpecField,
-} from "@/components/StyleSpecAdvancedPanel";
+} from "@/components/shared/StyleSpecAdvancedPanel";
 import { useStylePresets } from "@/hooks/useStylePresets";
-import { ModelUiFields } from "@/components/ModelUiFields";
+import { ModelUiFields } from "@/components/shared/ModelUiFields";
 import { extractImageUi } from "@/utils/modelUi";
 import {
   AIModelType,

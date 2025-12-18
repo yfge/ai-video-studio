@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiClient, virtualIPAPI, voiceAPI, VirtualIP, VoiceConfig, VoiceEnums, VoiceList, VoiceItem } from '@/utils/api'
-import { useAlertModal } from '@/components/AlertModalProvider'
+import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
 
 export default function VirtualIPDetail() {
   const params = useParams()

@@ -3,8 +3,8 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
-import { ModelSelector } from "@/components/ModelSelector";
-import { ModelUiFields } from "@/components/ModelUiFields";
+import { ModelSelector } from "@/components/shared/ModelSelector";
+import { ModelUiFields } from "@/components/shared/ModelUiFields";
 import { extractVideoUi } from "@/utils/modelUi";
 import {
   type AIModel,

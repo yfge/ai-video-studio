@@ -4,11 +4,9 @@ import Image from 'next/image'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { virtualIPAPI, VirtualIP } from '@/utils/api'
-import AuthGuard from '@/components/AuthGuard'
-import Navigation from '@/components/Navigation'
-import SmartInputField from '@/components/SmartInputField'
-import { useAlertModal } from '@/components/AlertModalProvider'
-import { CreationOverlay } from '@/components/CreationOverlay'
+import { AuthGuard, SmartInputField, CreationOverlay } from '@/components/shared'
+import { Navigation } from '@/components/layouts'
+import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
 
 function VirtualIPListContent() {
   const { showAlert } = useAlertModal()

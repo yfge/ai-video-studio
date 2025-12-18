@@ -2,9 +2,8 @@
 
 import React, { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import AdminLayout from '../../../components/AdminLayout'
-import UserDetailsModal from '../../../components/UserDetailsModal'
-import UserApprovalModal from '../../../components/UserApprovalModal'
+import { AdminLayout } from '@/components/layouts'
+import { UserDetailsModal, UserApprovalModal } from '@/components/shared/modals'
 import { adminAPI, AdminUser, UserListResponse } from '../../../utils/api'
 import { getUserStatus, getUserStatusColor, getUserRole, getUserRoleColor, formatRelativeTime } from '../../../utils/auth'
 

@@ -5,11 +5,9 @@ import { useRouter } from 'next/navigation';
 import { storyAPI, virtualIPAPI } from '@/utils/api';
 import type { Story, VirtualIP, StoryGenerationRequest } from '@/utils/api';
 import { AIModelType } from '@/utils/api';
-import Navigation from '@/components/Navigation';
-import AuthGuard from '@/components/AuthGuard';
-import { useAlertModal } from '@/components/AlertModalProvider';
-import { MultiModelSelector } from '@/components/MultiModelSelector';
-import { CreationOverlay } from '@/components/CreationOverlay';
+import { Navigation } from '@/components/layouts';
+import { AuthGuard, MultiModelSelector, CreationOverlay } from '@/components/shared';
+import { useAlertModal } from '@/components/shared/modals/AlertModalProvider';
 
 function StoriesPageContent() {
   const router = useRouter();

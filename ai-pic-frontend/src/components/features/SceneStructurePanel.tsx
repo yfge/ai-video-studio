@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { apiClient } from '@/utils/api'
-import { useAlertModal } from './AlertModalProvider'
+import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
 
 export type SceneNode = {
   id: number

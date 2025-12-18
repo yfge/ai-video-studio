@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import AdminLayout from '../../../components/AdminLayout'
+import { AdminLayout } from '@/components/layouts'
 import { adminAPI, UserStatsResponse } from '../../../utils/api'
 
 // 简单的图标组件

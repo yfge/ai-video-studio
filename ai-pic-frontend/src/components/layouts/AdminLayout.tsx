@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { authAPI, adminAPI, User, UserStatsResponse } from '../utils/api'
-import { isAdmin, hasPendingApprovals } from '../utils/auth'
+import { authAPI, adminAPI, User, UserStatsResponse } from '@/utils/api'
+import { isAdmin, hasPendingApprovals } from '@/utils/auth'
 
 interface AdminLayoutProps {
   children: React.ReactNode
