@@ -467,7 +467,7 @@ class KelingProvider(BaseProvider):
         image_tail: Optional[str] = None,  # Last frame image (URL or base64)
         end_image_url: Optional[str] = None,  # Alias for last frame
         model: str = "kling-v2-1",
-        mode: str = "std",  # std or pro
+        mode: str = "pro",
         duration: int = 5,  # 5 or 10 seconds
         resolution: Optional[str] = None,  # e.g., 720P/1080P
         ratio: Optional[str] = None,  # e.g., 16:9, 9:16
@@ -523,10 +523,13 @@ class KelingProvider(BaseProvider):
                 dur_int = min(allowed_durations, key=lambda d: abs(d - dur_int))
 
             # Build request payload
+            mode_used = str(mode or "").strip().lower()
+            if mode_used != "pro":
+                mode_used = "pro"
             request_data = {
                 "model_name": model,
                 "image": primary_image,
-                "mode": mode,
+                "mode": mode_used,
                 "duration": dur_int,
             }
 
@@ -614,7 +617,7 @@ class KelingProvider(BaseProvider):
                     metadata={
                         "task_id": task_id,
                         "duration": dur_int,
-                        "mode": mode,
+                        "mode": mode_used,
                         "prompt": prompt,
                     },
                 )
@@ -643,7 +646,7 @@ class KelingProvider(BaseProvider):
         image_list: List[str],  # 2-4 images (URL or base64)
         prompt: Optional[str] = None,
         negative_prompt: Optional[str] = None,
-        mode: str = "std",
+        mode: str = "pro",
         duration: int = 5,
         aspect_ratio: Optional[str] = None,
         **kwargs,
@@ -680,7 +683,7 @@ class KelingProvider(BaseProvider):
             request_data = {
                 "model_name": "kling-v1-6",  # Only supported by v1-6
                 "image_list": image_list,
-                "mode": mode,
+                "mode": "pro",
                 "duration": duration,
             }
 
@@ -724,7 +727,7 @@ class KelingProvider(BaseProvider):
                     metadata={
                         "task_id": task_id,
                         "duration": duration,
-                        "mode": mode,
+                        "mode": "pro",
                         "image_count": len(image_list),
                     },
                 )

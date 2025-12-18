@@ -58,7 +58,7 @@ curl --location --request POST 'https://api-beijing.klingai.com/v1/videos/image2
 | voice_list | array | 可选 | 无 | **生成视频时所引用的音色的列表**<br>- 一次视频生成任务至多引用2个音色<br>- 当 `voice_list` 参数不为空且 `prompt` 参数中引用音色ID时，视频生成任务按"有指定音色"计量计费<br><br>示例：<br>```json<br>"voice_list":[<br>  {"voice_id":"voice_id_1"},<br>  {"voice_id":"voice_id_2"}<br>]<br>``` |
 | sound | string | 可选 | off | **生成视频时是否同时生成声音**<br>枚举值：`on`, `off`<br>仅V2.6及后续版本模型支持当前参数 |
 | cfg_scale | float | 可选 | 0.5 | **生成视频的自由度**<br>值越大，模型自由度越小，与用户输入的提示词相关性越强<br>取值范围：[0, 1]<br>kling-v2.x模型不支持当前参数 |
-| mode | string | 可选 | std | **生成视频的模式**<br>枚举值：`std`, `pro`<br>- `std`：标准模式，基础模式，性价比高<br>- `pro`：专家模式（高品质），高表现模式，生成视频质量更佳 |
+| mode | string | 可选 | std | **生成视频的模式**<br>枚举值：`std`, `pro`<br>- `std`：标准模式，基础模式，性价比高<br>- `pro`：专家模式（高品质），高表现模式，生成视频质量更佳<br><br>**实测注意（2025-12-18）**：当前在 `https://api-beijing.klingai.com` 上，`mode=std` 或省略 `mode` 会返回 `400`（`code=1201 mode value 'std' is invalid`），因此本项目后端已默认强制使用 `pro`。 |
 | duration | string | 可选 | 5 | **生成视频时长**，单位：秒<br>枚举值：`5`, `10` |
 | static_mask | string | 可选 | 无 | **静态笔刷涂抹区域**（用户通过运动笔刷涂抹的 mask 图片）<br>- "运动笔刷"能力包含"动态笔刷 `dynamic_masks`"和"静态笔刷 `static_mask`"两种<br>- 支持传入图片Base64编码或图片URL（确保可访问，格式要求同 `image` 字段）<br>- 图片格式支持 `.jpg` / `.jpeg` / `.png`<br>- 图片长宽比必须与输入图片相同（即 `image` 字段），否则任务失败<br>- `static_mask` 和 `dynamic_masks.mask` 这两张图片的分辨率必须一致，否则任务失败 |
 | dynamic_masks | array | 可选 | 无 | **动态笔刷配置列表**<br>可配置多组（最多6组），每组包含"涂抹区域 mask"与"运动轨迹 trajectories"序列 |
