@@ -252,7 +252,7 @@ class AIService:
                     name="keling",
                     api_key=settings.KELING_API_KEY,
                     api_secret=settings.KELING_SECRET_KEY,
-                    base_url="https://klingai.com/api/v1",
+                    base_url="https://api-beijing.klingai.com",
                     timeout=120.0,
                 )
                 provider_weights["keling"] = ProviderWeight(
@@ -1962,9 +1962,9 @@ class AIService:
         import base64
         import os
         import uuid
+        from urllib.parse import unquote
 
         import aiofiles
-        from urllib.parse import unquote
 
         try:
             # 生成唯一文件名
@@ -1989,7 +1989,9 @@ class AIService:
                     await f.write(image_bytes)
             else:
                 # 处理URL（之前的逻辑）
-                normalized_url = unquote(image_data) if "%25" in image_data else image_data
+                normalized_url = (
+                    unquote(image_data) if "%25" in image_data else image_data
+                )
                 self.logger.info(f"下载图像URL: {normalized_url[:100]}...")
                 async with httpx.AsyncClient(follow_redirects=True) as client:
                     response = await client.get(normalized_url, timeout=60.0)

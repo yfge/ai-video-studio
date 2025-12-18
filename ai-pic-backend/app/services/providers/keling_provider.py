@@ -10,20 +10,35 @@ Updated to align with official Keling AI API documentation:
 - Updated endpoints for image and video generation
 """
 
+from typing import Any, Dict, List, Optional
+
 import httpx
-import json
-import asyncio
-from typing import List, Optional, Dict, Any
-from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
+
 from ..keling_auth import KelingAuthManager
+from .base import (
+    AIModelType,
+    AIResponse,
+    AITaskType,
+    BaseProvider,
+    ModelInfo,
+    ProviderConfig,
+)
 from .polling_utils import TaskPoller, keling_status_mapper
-from .retry_utils import async_retry_with_auth_refresh
+
 
 class KelingProvider(BaseProvider):
     """可灵服务提供商 - Updated with JWT authentication"""
 
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
+
+        def _normalize_base_url(raw: Optional[str]) -> str:
+            """Strip trailing version segments to avoid double /v1 when building URLs."""
+            base = (raw or "https://api-beijing.klingai.com").strip()
+            base = base.rstrip("/")
+            if base.endswith("/v1"):
+                base = base[: -len("/v1")]
+            return base
 
         # Validate required credentials
         if not config.api_key:
@@ -32,24 +47,24 @@ class KelingProvider(BaseProvider):
             raise ValueError("Keling Provider requires api_secret (SecretKey)")
 
         # New official base URL
-        self.base_url = config.base_url or "https://api-beijing.klingai.com"
+        self.base_url = _normalize_base_url(config.base_url)
 
         # Initialize JWT authentication manager
         self.auth_manager = KelingAuthManager(
             access_key=config.api_key,
             secret_key=config.api_secret,
             token_ttl=1800,  # 30 minutes
-            refresh_buffer=300  # Refresh 5 minutes before expiry
+            refresh_buffer=300,  # Refresh 5 minutes before expiry
         )
-    
+
     @property
     def supported_model_types(self) -> List[AIModelType]:
         return [
             AIModelType.TEXT_TO_VIDEO,
             AIModelType.IMAGE_TO_VIDEO,
-            AIModelType.TEXT_TO_IMAGE
+            AIModelType.TEXT_TO_IMAGE,
         ]
-    
+
     @property
     def available_models(self) -> List[ModelInfo]:
         """Updated model list with V2 series support"""
@@ -61,7 +76,13 @@ class KelingProvider(BaseProvider):
                 description="最新V2.6版本，支持声音控制，1080p高清输出",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "sound_control", "1080p", "30fps", "professional_mode"]
+                capabilities=[
+                    "image_to_video",
+                    "sound_control",
+                    "1080p",
+                    "30fps",
+                    "professional_mode",
+                ],
             ),
             ModelInfo(
                 model_id="kling-v2-5-turbo",
@@ -69,7 +90,7 @@ class KelingProvider(BaseProvider):
                 description="V2.5快速版本，生成速度更快",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "fast_generation", "1080p", "30fps"]
+                capabilities=["image_to_video", "fast_generation", "1080p", "30fps"],
             ),
             ModelInfo(
                 model_id="kling-v2-1-master",
@@ -77,7 +98,13 @@ class KelingProvider(BaseProvider):
                 description="V2.1专业版，支持更多高级特性",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "master_quality", "1080p", "30fps", "advanced_controls"]
+                capabilities=[
+                    "image_to_video",
+                    "master_quality",
+                    "1080p",
+                    "30fps",
+                    "advanced_controls",
+                ],
             ),
             ModelInfo(
                 model_id="kling-v2-1",
@@ -85,9 +112,8 @@ class KelingProvider(BaseProvider):
                 description="V2.1标准版，平衡质量与速度",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "1080p", "30fps"]
+                capabilities=["image_to_video", "1080p", "30fps"],
             ),
-
             # V1 Series Models - Legacy but still supported
             ModelInfo(
                 model_id="kling-v1-6",
@@ -95,7 +121,7 @@ class KelingProvider(BaseProvider):
                 description="V1.6版本，支持多图生成视频",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "multi_image", "720p", "24fps"]
+                capabilities=["image_to_video", "multi_image", "720p", "24fps"],
             ),
             ModelInfo(
                 model_id="kling-v1-5",
@@ -103,7 +129,7 @@ class KelingProvider(BaseProvider):
                 description="V1.5版本，稳定可靠",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "720p", "24fps"]
+                capabilities=["image_to_video", "720p", "24fps"],
             ),
             ModelInfo(
                 model_id="kling-v1",
@@ -111,9 +137,8 @@ class KelingProvider(BaseProvider):
                 description="V1基础版本",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "720p", "24fps"]
+                capabilities=["image_to_video", "720p", "24fps"],
             ),
-
             # Image Generation Models
             ModelInfo(
                 model_id="kling-image-v2",
@@ -121,7 +146,13 @@ class KelingProvider(BaseProvider):
                 description="V2图像生成模型，支持2K分辨率和人物参考",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpg"],
-                capabilities=["text_to_image", "image_to_image", "2k_resolution", "character_reference", "face_reference"]
+                capabilities=[
+                    "text_to_image",
+                    "image_to_image",
+                    "2k_resolution",
+                    "character_reference",
+                    "face_reference",
+                ],
             ),
             ModelInfo(
                 model_id="kling-image-v1",
@@ -129,17 +160,17 @@ class KelingProvider(BaseProvider):
                 description="V1图像生成模型，支持1K分辨率",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpg"],
-                capabilities=["text_to_image", "image_to_image", "1k_resolution"]
-            )
+                capabilities=["text_to_image", "image_to_image", "1k_resolution"],
+            ),
         ]
-    
+
     def _get_auth_headers(self) -> Dict[str, str]:
         """Get authentication headers with JWT token"""
         auth_header = self.auth_manager.get_auth_header()
         return {
             **auth_header,
             "Content-Type": "application/json",
-            "User-Agent": "ai-video-studio/2.0"
+            "User-Agent": "ai-video-studio/2.0",
         }
 
     async def _initialize_client(self):
@@ -147,10 +178,12 @@ class KelingProvider(BaseProvider):
         # Note: Headers will be updated dynamically per request to use fresh JWT tokens
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(300.0),  # Video generation requires longer timeout
-            headers=self._get_auth_headers()
+            headers=self._get_auth_headers(),
         )
-    
-    async def generate_text(self, prompt: str, model: str = None, **kwargs) -> AIResponse:
+
+    async def generate_text(
+        self, prompt: str, model: str = None, **kwargs
+    ) -> AIResponse:
         """可灵不支持文本生成"""
         return AIResponse(
             success=False,
@@ -158,9 +191,9 @@ class KelingProvider(BaseProvider):
             provider=self.name,
             model=model or "unknown",
             task_type=AITaskType.STORY_GENERATION,
-            model_type=AIModelType.TEXT_GENERATION
+            model_type=AIModelType.TEXT_GENERATION,
         )
-    
+
     async def generate_image(
         self,
         prompt: str,
@@ -173,7 +206,7 @@ class KelingProvider(BaseProvider):
         resolution: str = "1k",  # 1k or 2k
         n: int = 1,  # Number of images to generate
         aspect_ratio: Optional[str] = None,  # e.g., "16:9", "1:1", "9:16"
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """
         Generate images using Keling AI (new API endpoint).
@@ -200,11 +233,7 @@ class KelingProvider(BaseProvider):
             client = await self.get_client()
 
             # Build request payload according to API spec
-            request_data = {
-                "model_name": model,
-                "prompt": prompt,
-                "n": n
-            }
+            request_data = {"model_name": model, "prompt": prompt, "n": n}
 
             # Add optional parameters
             if negative_prompt:
@@ -227,7 +256,7 @@ class KelingProvider(BaseProvider):
             response = await client.post(
                 f"{self.base_url}/v1/images/generations",
                 json=request_data,
-                headers=self._get_auth_headers()  # Fresh JWT token
+                headers=self._get_auth_headers(),  # Fresh JWT token
             )
             response.raise_for_status()
             data = response.json()
@@ -240,7 +269,7 @@ class KelingProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.PORTRAIT_GENERATION,
-                    model_type=AIModelType.TEXT_TO_IMAGE
+                    model_type=AIModelType.TEXT_TO_IMAGE,
                 )
 
             # Poll task status using TaskPoller
@@ -259,8 +288,8 @@ class KelingProvider(BaseProvider):
                         "resolution": resolution,
                         "aspect_ratio": aspect_ratio,
                         "prompt": prompt,
-                        "n": n
-                    }
+                        "n": n,
+                    },
                 )
             else:
                 return AIResponse(
@@ -269,7 +298,7 @@ class KelingProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.PORTRAIT_GENERATION,
-                    model_type=AIModelType.TEXT_TO_IMAGE
+                    model_type=AIModelType.TEXT_TO_IMAGE,
                 )
 
         except Exception as e:
@@ -279,7 +308,7 @@ class KelingProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.TEXT_TO_IMAGE
+                model_type=AIModelType.TEXT_TO_IMAGE,
             )
 
     async def _poll_image_task(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -293,7 +322,7 @@ class KelingProvider(BaseProvider):
         async def poll_fn() -> Dict[str, Any]:
             response = await client.get(
                 f"{self.base_url}/v1/images/generations/{task_id}",
-                headers=self._get_auth_headers()
+                headers=self._get_auth_headers(),
             )
             response.raise_for_status()
             return response.json().get("data", {})
@@ -311,23 +340,27 @@ class KelingProvider(BaseProvider):
             max_attempts=60,  # 5 minutes with 5s interval
             initial_delay=5.0,
             task_id=task_id,
-            task_type="image"
+            task_type="image",
         )
 
         return await poller.poll()
-    
+
     async def generate_video(
         self,
         prompt: Optional[str] = None,
         image: Optional[str] = None,  # First frame image (URL or base64)
+        image_url: Optional[
+            str
+        ] = None,  # Alias for first frame to match AIServiceManager
         image_tail: Optional[str] = None,  # Last frame image (URL or base64)
+        end_image_url: Optional[str] = None,  # Alias for last frame
         model: str = "kling-v2-1",
         mode: str = "std",  # std or pro
         duration: int = 5,  # 5 or 10 seconds
         negative_prompt: Optional[str] = None,
         cfg_scale: Optional[float] = None,  # 0.0-1.0, not supported by V2-x models
         camera_control: Optional[Dict[str, Any]] = None,  # Camera movement config
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """
         Generate video from image using Keling AI (new API endpoint).
@@ -350,14 +383,17 @@ class KelingProvider(BaseProvider):
         Returns:
             AIResponse with generated video URL
         """
-        if not image:
+        primary_image = image or image_url
+        tail_image = image_tail or end_image_url
+
+        if not primary_image:
             return AIResponse(
                 success=False,
                 error="image parameter is required for video generation",
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.IMAGE_TO_VIDEO
+                model_type=AIModelType.IMAGE_TO_VIDEO,
             )
 
         try:
@@ -366,14 +402,14 @@ class KelingProvider(BaseProvider):
             # Build request payload
             request_data = {
                 "model_name": model,
-                "image": image,
+                "image": primary_image,
                 "mode": mode,
-                "duration": duration
+                "duration": duration,
             }
 
             # Add optional parameters
-            if image_tail:
-                request_data["image_tail"] = image_tail
+            if tail_image:
+                request_data["image_tail"] = tail_image
             if prompt:
                 request_data["prompt"] = prompt
             if negative_prompt:
@@ -393,7 +429,7 @@ class KelingProvider(BaseProvider):
             response = await client.post(
                 f"{self.base_url}/v1/videos/image2video",
                 json=request_data,
-                headers=self._get_auth_headers()
+                headers=self._get_auth_headers(),
             )
             response.raise_for_status()
             data = response.json()
@@ -406,7 +442,7 @@ class KelingProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
                 )
 
             # Poll task status
@@ -415,10 +451,7 @@ class KelingProvider(BaseProvider):
             if result and "video_url" in result:
                 return AIResponse(
                     success=True,
-                    data={
-                        "video_url": result["video_url"],
-                        "duration": duration
-                    },
+                    data={"video_url": result["video_url"], "duration": duration},
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.VIDEO_GENERATION,
@@ -427,8 +460,8 @@ class KelingProvider(BaseProvider):
                         "task_id": task_id,
                         "duration": duration,
                         "mode": mode,
-                        "prompt": prompt
-                    }
+                        "prompt": prompt,
+                    },
                 )
             else:
                 return AIResponse(
@@ -437,7 +470,7 @@ class KelingProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
                 )
 
         except Exception as e:
@@ -447,7 +480,7 @@ class KelingProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.IMAGE_TO_VIDEO
+                model_type=AIModelType.IMAGE_TO_VIDEO,
             )
 
     async def generate_video_from_multiple_images(
@@ -458,7 +491,7 @@ class KelingProvider(BaseProvider):
         mode: str = "std",
         duration: int = 5,
         aspect_ratio: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """
         Generate video from multiple images (kling-v1-6 only).
@@ -483,7 +516,7 @@ class KelingProvider(BaseProvider):
                 provider=self.name,
                 model="kling-v1-6",
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.IMAGE_TO_VIDEO
+                model_type=AIModelType.IMAGE_TO_VIDEO,
             )
 
         try:
@@ -493,7 +526,7 @@ class KelingProvider(BaseProvider):
                 "model_name": "kling-v1-6",  # Only supported by v1-6
                 "image_list": image_list,
                 "mode": mode,
-                "duration": duration
+                "duration": duration,
             }
 
             if prompt:
@@ -506,7 +539,7 @@ class KelingProvider(BaseProvider):
             response = await client.post(
                 f"{self.base_url}/v1/videos/multi-image2video",
                 json=request_data,
-                headers=self._get_auth_headers()
+                headers=self._get_auth_headers(),
             )
             response.raise_for_status()
             data = response.json()
@@ -519,7 +552,7 @@ class KelingProvider(BaseProvider):
                     provider=self.name,
                     model="kling-v1-6",
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
                 )
 
             # Poll task status (uses same endpoint as image2video)
@@ -537,8 +570,8 @@ class KelingProvider(BaseProvider):
                         "task_id": task_id,
                         "duration": duration,
                         "mode": mode,
-                        "image_count": len(image_list)
-                    }
+                        "image_count": len(image_list),
+                    },
                 )
             else:
                 return AIResponse(
@@ -547,7 +580,7 @@ class KelingProvider(BaseProvider):
                     provider=self.name,
                     model="kling-v1-6",
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
                 )
 
         except Exception as e:
@@ -557,7 +590,7 @@ class KelingProvider(BaseProvider):
                 provider=self.name,
                 model="kling-v1-6",
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.IMAGE_TO_VIDEO
+                model_type=AIModelType.IMAGE_TO_VIDEO,
             )
 
     async def _poll_video_task(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -571,7 +604,7 @@ class KelingProvider(BaseProvider):
         async def poll_fn() -> Dict[str, Any]:
             response = await client.get(
                 f"{self.base_url}/v1/videos/image2video/{task_id}",
-                headers=self._get_auth_headers()
+                headers=self._get_auth_headers(),
             )
             response.raise_for_status()
             return response.json().get("data", {})
@@ -591,12 +624,14 @@ class KelingProvider(BaseProvider):
             max_attempts=120,  # 20 minutes with 10s interval
             initial_delay=10.0,
             task_id=task_id,
-            task_type="video"
+            task_type="video",
         )
 
         return await poller.poll()
-    
-    async def get_task_status(self, task_id: str, task_type: str = "video") -> AIResponse:
+
+    async def get_task_status(
+        self, task_id: str, task_type: str = "video"
+    ) -> AIResponse:
         """
         Get task status for a given task ID (public method).
 
@@ -626,9 +661,17 @@ class KelingProvider(BaseProvider):
                 data=data,
                 provider=self.name,
                 model="task_status",
-                task_type=AITaskType.VIDEO_GENERATION if task_type == "video" else AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.IMAGE_TO_VIDEO if task_type == "video" else AIModelType.TEXT_TO_IMAGE,
-                metadata={"task_id": task_id, "task_type": task_type}
+                task_type=(
+                    AITaskType.VIDEO_GENERATION
+                    if task_type == "video"
+                    else AITaskType.PORTRAIT_GENERATION
+                ),
+                model_type=(
+                    AIModelType.IMAGE_TO_VIDEO
+                    if task_type == "video"
+                    else AIModelType.TEXT_TO_IMAGE
+                ),
+                metadata={"task_id": task_id, "task_type": task_type},
             )
 
         except Exception as e:
@@ -638,5 +681,5 @@ class KelingProvider(BaseProvider):
                 provider=self.name,
                 model="task_status",
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.TEXT_TO_VIDEO
+                model_type=AIModelType.TEXT_TO_VIDEO,
             )
