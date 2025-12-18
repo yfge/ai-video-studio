@@ -469,6 +469,8 @@ class KelingProvider(BaseProvider):
         model: str = "kling-v2-1",
         mode: str = "std",  # std or pro
         duration: int = 5,  # 5 or 10 seconds
+        resolution: Optional[str] = None,  # e.g., 720P/1080P
+        ratio: Optional[str] = None,  # e.g., 16:9, 9:16
         negative_prompt: Optional[str] = None,
         cfg_scale: Optional[float] = None,  # 0.0-1.0, not supported by V2-x models
         camera_control: Optional[Dict[str, Any]] = None,  # Camera movement config
@@ -531,6 +533,19 @@ class KelingProvider(BaseProvider):
                 request_data["cfg_scale"] = cfg_scale
             if camera_control:
                 request_data["camera_control"] = camera_control
+            # Newer API variants expect resolution/aspect ratio; pass through when provided.
+            resolved_resolution = (
+                resolution
+                or kwargs.get("resolution")
+                or kwargs.get("rs")
+                or kwargs.get("output_resolution")
+            )
+            if resolved_resolution:
+                request_data["resolution"] = str(resolved_resolution).upper()
+
+            resolved_ratio = ratio or kwargs.get("ratio") or kwargs.get("aspect_ratio")
+            if resolved_ratio:
+                request_data["aspect_ratio"] = str(resolved_ratio)
 
             # Add any additional parameters from kwargs
             for key in ["dynamic_masks", "static_mask", "voice_list", "sound"]:
