@@ -485,12 +485,7 @@ async def list_environment_images(
     for url in images:
         if isinstance(url, str):
             normalized.append(EnvironmentImageResponse(url=url))
-    return {
-        "success": True,
-        "data": EnvironmentImagesResponse(
-            images=normalized, count=len(normalized)
-        ),
-    }
+    return EnvironmentImagesResponse(images=normalized, count=len(normalized))
 
 
 @router.delete("/environments/{env_id}/images")
