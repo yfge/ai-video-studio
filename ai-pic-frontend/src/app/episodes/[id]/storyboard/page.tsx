@@ -116,6 +116,9 @@ export default function EpisodeStoryboardPage() {
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [envLoading, setEnvLoading] = useState(false);
   const [selectedEnvId, setSelectedEnvId] = useState<number | null>(null);
+  const [envImageCache, setEnvImageCache] = useState<Record<number, string[]>>(
+    {},
+  );
   const [characters, setCharacters] = useState<VirtualIP[]>([]);
   const [shotAssignments, setShotAssignments] = useState<
     Record<number, number[]>
@@ -566,6 +569,29 @@ export default function EpisodeStoryboardPage() {
       mounted = false;
     };
   }, [showAlert]);
+
+  useEffect(() => {
+    const envId = selectedEnvId;
+    if (!envId) return;
+    // 已有缓存则不重复请求
+    if (envImageCache[envId]) return;
+    let cancelled = false;
+    (async () => {
+      const res = await storyStructureAPI.listEnvironmentImages(envId);
+      if (cancelled) return;
+      if (res.success && res.data) {
+        const urls =
+          res.data.images
+            ?.map((img) => img.url)
+            .filter(Boolean)
+            .map((url) => imageSrc(url)) ?? [];
+        setEnvImageCache((prev) => ({ ...prev, [envId]: urls }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [envImageCache, imageSrc, selectedEnvId]);
 
   useEffect(() => {
     let mounted = true;
@@ -1231,15 +1257,14 @@ export default function EpisodeStoryboardPage() {
     }
 
     const envImages: string[] = [];
-    if (
-      selectedEnv?.reference_images &&
-      selectedEnv.reference_images.length > 0
-    ) {
-      selectedEnv.reference_images.filter(Boolean).forEach((url) => {
-        const absolute = imageSrc(url as string);
-        if (absolute) envImages.push(absolute);
-      });
-    }
+    const cachedEnvImages =
+      (selectedEnvId ? envImageCache[selectedEnvId] : null) ||
+      selectedEnv?.reference_images ||
+      [];
+    cachedEnvImages.filter(Boolean).forEach((url) => {
+      const absolute = imageSrc(url as string);
+      if (absolute) envImages.push(absolute);
+    });
 
     const sceneCharacterIds = new Set<number>();
     normalizedShots.forEach((shot) => {
@@ -1276,7 +1301,9 @@ export default function EpisodeStoryboardPage() {
   }, [
     characters,
     imageSrc,
+    envImageCache,
     normalizedShots,
+    selectedEnvId,
     selectedEnv?.reference_images,
     selectedNormalizedSceneId,
     shotAssignments,
@@ -2376,7 +2403,10 @@ export default function EpisodeStoryboardPage() {
                       {selectedEnv && (
                         <div className="text-[11px] text-gray-500 mt-1">
                           标签：{selectedEnv.tags?.join(", ") || "无"} · 参考图{" "}
-                          {selectedEnv.reference_images?.length || 0} 张
+                          {selectedEnvId && envImageCache[selectedEnvId]
+                            ? envImageCache[selectedEnvId].length
+                            : selectedEnv.reference_images?.length || 0}{" "}
+                          张
                         </div>
                       )}
                     </div>
