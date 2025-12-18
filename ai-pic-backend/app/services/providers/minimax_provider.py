@@ -1,7 +1,12 @@
 """
 MiniMax服务提供商
 
-支持文本生成和语音相关功能
+支持文本生成、语音合成和视频生成功能
+
+Updated to support video generation via:
+- POST /v1/video_generation (create task)
+- GET /v1/query/video_generation (query status)
+- GET /v1/files/retrieve (get video file)
 """
 
 from __future__ import annotations
@@ -20,6 +25,7 @@ from .base import (
     ModelInfo,
     ProviderConfig,
 )
+from .polling_utils import TaskPoller, minimax_status_mapper
 
 
 class MinimaxProvider(BaseProvider):
@@ -38,7 +44,12 @@ class MinimaxProvider(BaseProvider):
 
     @property
     def supported_model_types(self) -> List[AIModelType]:
-        return [AIModelType.TEXT_GENERATION, AIModelType.TEXT_TO_SPEECH]
+        return [
+            AIModelType.TEXT_GENERATION,
+            AIModelType.TEXT_TO_SPEECH,
+            AIModelType.IMAGE_TO_VIDEO,
+            AIModelType.TEXT_TO_VIDEO
+        ]
 
     @property
     def available_models(self) -> List[ModelInfo]:
@@ -126,6 +137,55 @@ class MinimaxProvider(BaseProvider):
                 model_type=AIModelType.TEXT_TO_SPEECH,
                 supported_formats=["mp3", "wav", "pcm", "flac"],
                 capabilities=["text_to_speech", "multiple_voices"],
+            ),
+            # 视频生成模型
+            ModelInfo(
+                model_id="MiniMax-Hailuo-2.3",
+                name="MiniMax Hailuo 2.3",
+                description="海螺视频生成2.3版本，支持768P/1080P，6s/10s时长",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "768p", "1080p", "6s", "10s", "camera_control"],
+            ),
+            ModelInfo(
+                model_id="MiniMax-Hailuo-2.3-Fast",
+                name="MiniMax Hailuo 2.3 Fast",
+                description="海螺视频生成2.3快速版，生成速度更快",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "768p", "1080p", "6s", "10s", "fast_generation"],
+            ),
+            ModelInfo(
+                model_id="MiniMax-Hailuo-02",
+                name="MiniMax Hailuo 0.2",
+                description="海螺视频生成0.2版本，支持512P/768P/1080P多种分辨率",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "512p", "768p", "1080p", "6s", "10s", "first_last_frame"],
+            ),
+            ModelInfo(
+                model_id="I2V-01-Director",
+                name="MiniMax I2V-01-Director",
+                description="专业级图生视频模型，支持精细控制",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "720p", "director_mode", "camera_control"],
+            ),
+            ModelInfo(
+                model_id="I2V-01-live",
+                name="MiniMax I2V-01-Live",
+                description="实时图生视频模型，生成速度快",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "720p", "fast_generation"],
+            ),
+            ModelInfo(
+                model_id="I2V-01",
+                name="MiniMax I2V-01",
+                description="标准图生视频模型",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "720p"],
             ),
         ]
 
@@ -332,3 +392,184 @@ class MinimaxProvider(BaseProvider):
                 task_type=AITaskType.VOICE_GENERATION,
                 model_type=AIModelType.TEXT_TO_SPEECH,
             )
+
+    async def generate_video(
+        self,
+        first_frame_image: str,
+        prompt: Optional[str] = None,
+        last_frame_image: Optional[str] = None,
+        model: str = "MiniMax-Hailuo-2.3",
+        duration: int = 6,  # 6 or 10 seconds
+        resolution: str = "768P",  # 512P, 720P, 768P, or 1080P
+        prompt_optimizer: bool = True,
+        fast_pretreatment: bool = False,
+        aigc_watermark: bool = False,
+        **kwargs
+    ) -> AIResponse:
+        """
+        Generate video from image(s) using MiniMax video generation API.
+
+        Endpoint: POST /v1/video_generation
+        Polling: GET /v1/query/video_generation
+
+        Args:
+            first_frame_image: First frame image (URL or base64 data URL)
+            prompt: Text description (max 2000 chars), supports camera control directives
+            last_frame_image: Last frame image (optional, for first-last frame generation)
+            model: Video generation model name
+            duration: Video duration in seconds (6 or 10)
+            resolution: Video resolution (512P/720P/768P/1080P, depends on model)
+            prompt_optimizer: Auto-optimize prompt (default True)
+            fast_pretreatment: Faster prompt optimization (Hailuo 2.3/02 only)
+            aigc_watermark: Add watermark to generated video
+
+        Returns:
+            AIResponse with video URL or error
+        """
+        try:
+            # Build request payload
+            payload = {
+                "model": model,
+                "first_frame_image": first_frame_image,
+                "duration": duration,
+                "resolution": resolution,
+                "prompt_optimizer": prompt_optimizer,
+                "aigc_watermark": aigc_watermark
+            }
+
+            if prompt:
+                payload["prompt"] = prompt
+            if last_frame_image:
+                payload["last_frame_image"] = last_frame_image
+            if fast_pretreatment and model in ["MiniMax-Hailuo-2.3", "MiniMax-Hailuo-2.3-Fast", "MiniMax-Hailuo-02"]:
+                payload["fast_pretreatment"] = fast_pretreatment
+
+            # Create video generation task
+            response_data = await self.client.post_json("/video_generation", payload)
+
+            task_id = response_data.get("task_id")
+            if not task_id:
+                return AIResponse(
+                    success=False,
+                    error="No task_id in response",
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                )
+
+            # Poll task status
+            result = await self._poll_video_task(task_id)
+
+            if result and "video_url" in result:
+                return AIResponse(
+                    success=True,
+                    data={
+                        "video_url": result["video_url"],
+                        "file_id": result.get("file_id"),
+                        "duration": duration,
+                        "width": result.get("video_width"),
+                        "height": result.get("video_height")
+                    },
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
+                    metadata={
+                        "task_id": task_id,
+                        "resolution": resolution,
+                        "duration": duration
+                    }
+                )
+            else:
+                return AIResponse(
+                    success=False,
+                    error="Video generation task failed or timed out",
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                )
+
+        except MinimaxAPIError as err:
+            return AIResponse(
+                success=False,
+                error=self.format_error(err),
+                provider=self.name,
+                model=model,
+                task_type=AITaskType.VIDEO_GENERATION,
+                model_type=AIModelType.IMAGE_TO_VIDEO
+            )
+
+    async def _poll_video_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Poll video generation task status.
+
+        Endpoint: GET /v1/query/video_generation?task_id={task_id}
+        """
+        async def poll_fn() -> Dict[str, Any]:
+            return await self.client.get_json(
+                "/query/video_generation",
+                params={"task_id": task_id}
+            )
+
+        async def extract_result(data: Dict[str, Any]) -> Dict[str, Any]:
+            """Extract video info and download URL from response"""
+            file_id = data.get("file_id")
+            if not file_id:
+                return {}
+
+            # Retrieve video file information
+            file_info = await self._retrieve_video_file(file_id)
+            if file_info:
+                return {
+                    "video_url": file_info.get("download_url"),
+                    "file_id": file_id,
+                    "video_width": data.get("video_width"),
+                    "video_height": data.get("video_height")
+                }
+            return {}
+
+        poller = TaskPoller(
+            poll_fn=poll_fn,
+            status_mapper=minimax_status_mapper,
+            result_extractor=extract_result,
+            max_attempts=120,  # 20 minutes with 10s interval
+            initial_delay=10.0,
+            task_id=task_id,
+            task_type="video"
+        )
+
+        return await poller.poll()
+
+    async def _retrieve_video_file(self, file_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve video file information including download URL.
+
+        Endpoint: GET /v1/files/retrieve?file_id={file_id}
+
+        Args:
+            file_id: File ID from successful video generation task
+
+        Returns:
+            File information dict with download_url, or None on error
+        """
+        try:
+            response_data = await self.client.get_json(
+                "/files/retrieve",
+                params={"file_id": file_id}
+            )
+
+            file_obj = response_data.get("file", {})
+            return {
+                "file_id": file_obj.get("file_id"),
+                "download_url": file_obj.get("download_url"),
+                "filename": file_obj.get("filename"),
+                "bytes": file_obj.get("bytes"),
+                "created_at": file_obj.get("created_at")
+            }
+
+        except MinimaxAPIError as err:
+            # Log error but don't crash
+            print(f"Error retrieving video file {file_id}: {err}")
+            return None

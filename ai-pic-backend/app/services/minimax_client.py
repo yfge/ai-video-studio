@@ -111,6 +111,35 @@ class MinimaxClient:
         self._raise_for_status(body)
         return body
 
+    async def get_json(
+        self, path: str, params: Optional[Dict[str, Any]] = None, **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Send GET request to MiniMax API and return JSON response.
+
+        Used for querying task status and retrieving file information.
+
+        Args:
+            path: API endpoint path (relative to base_url)
+            params: Query parameters (optional)
+            **kwargs: Additional arguments passed to httpx.get()
+
+        Returns:
+            JSON response as dictionary
+
+        Raises:
+            httpx.HTTPStatusError: If HTTP request fails
+            MinimaxAPIError: If API returns error status code
+        """
+        client = await self.get_client()
+        response = await client.get(
+            self._build_url(path), params=params, **kwargs
+        )
+        response.raise_for_status()
+        body = response.json()
+        self._raise_for_status(body)
+        return body
+
     async def close(self) -> None:
         if self._client and not getattr(self._client, "is_closed", False):
             await self._client.aclose()

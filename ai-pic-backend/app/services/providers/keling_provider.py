@@ -2,6 +2,12 @@
 可灵(Kling)服务提供商
 
 专注于视频生成和图像相关功能
+
+Updated to align with official Keling AI API documentation:
+- JWT authentication (HS256) with automatic token refresh
+- New base URL: https://api-beijing.klingai.com
+- V2 series models support (kling-v2-6, kling-v2-5-turbo, etc.)
+- Updated endpoints for image and video generation
 """
 
 import httpx
@@ -9,13 +15,32 @@ import json
 import asyncio
 from typing import List, Optional, Dict, Any
 from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
+from ..keling_auth import KelingAuthManager
+from .polling_utils import TaskPoller, keling_status_mapper
+from .retry_utils import async_retry_with_auth_refresh
 
 class KelingProvider(BaseProvider):
-    """可灵服务提供商"""
-    
+    """可灵服务提供商 - Updated with JWT authentication"""
+
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
-        self.base_url = config.base_url or "https://klingai.com/api/v1"
+
+        # Validate required credentials
+        if not config.api_key:
+            raise ValueError("Keling Provider requires api_key (AccessKey)")
+        if not config.api_secret:
+            raise ValueError("Keling Provider requires api_secret (SecretKey)")
+
+        # New official base URL
+        self.base_url = config.base_url or "https://api-beijing.klingai.com"
+
+        # Initialize JWT authentication manager
+        self.auth_manager = KelingAuthManager(
+            access_key=config.api_key,
+            secret_key=config.api_secret,
+            token_ttl=1800,  # 30 minutes
+            refresh_buffer=300  # Refresh 5 minutes before expiry
+        )
     
     @property
     def supported_model_types(self) -> List[AIModelType]:
@@ -27,50 +52,102 @@ class KelingProvider(BaseProvider):
     
     @property
     def available_models(self) -> List[ModelInfo]:
+        """Updated model list with V2 series support"""
         return [
+            # V2 Series Models - Latest generation
             ModelInfo(
-                model_id="kling-v1",
-                name="可灵视频生成 V1",
-                description="专业的AI视频生成模型",
-                model_type=AIModelType.TEXT_TO_VIDEO,
-                supported_formats=["mp4"],
-                capabilities=["text_to_video", "high_quality", "smooth_motion"]
-            ),
-            ModelInfo(
-                model_id="kling-video-pro",
-                name="可灵视频专业版",
-                description="高质量视频生成，支持更长时长",
-                model_type=AIModelType.TEXT_TO_VIDEO,
-                supported_formats=["mp4"],
-                capabilities=["text_to_video", "long_duration", "4k_quality"]
-            ),
-            ModelInfo(
-                model_id="kling-image2video",
-                name="可灵图生视频",
-                description="基于图像生成视频",
+                model_id="kling-v2-6",
+                name="可灵 V2.6",
+                description="最新V2.6版本，支持声音控制，1080p高清输出",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "motion_control", "style_preservation"]
+                capabilities=["image_to_video", "sound_control", "1080p", "30fps", "professional_mode"]
             ),
             ModelInfo(
-                model_id="kling-image",
-                name="可灵图像生成",
-                description="高质量图像生成模型",
+                model_id="kling-v2-5-turbo",
+                name="可灵 V2.5 Turbo",
+                description="V2.5快速版本，生成速度更快",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "fast_generation", "1080p", "30fps"]
+            ),
+            ModelInfo(
+                model_id="kling-v2-1-master",
+                name="可灵 V2.1 Master",
+                description="V2.1专业版，支持更多高级特性",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "master_quality", "1080p", "30fps", "advanced_controls"]
+            ),
+            ModelInfo(
+                model_id="kling-v2-1",
+                name="可灵 V2.1",
+                description="V2.1标准版，平衡质量与速度",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "1080p", "30fps"]
+            ),
+
+            # V1 Series Models - Legacy but still supported
+            ModelInfo(
+                model_id="kling-v1-6",
+                name="可灵 V1.6",
+                description="V1.6版本，支持多图生成视频",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "multi_image", "720p", "24fps"]
+            ),
+            ModelInfo(
+                model_id="kling-v1-5",
+                name="可灵 V1.5",
+                description="V1.5版本，稳定可靠",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "720p", "24fps"]
+            ),
+            ModelInfo(
+                model_id="kling-v1",
+                name="可灵 V1",
+                description="V1基础版本",
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+                supported_formats=["mp4"],
+                capabilities=["image_to_video", "720p", "24fps"]
+            ),
+
+            # Image Generation Models
+            ModelInfo(
+                model_id="kling-image-v2",
+                name="可灵图像生成 V2",
+                description="V2图像生成模型，支持2K分辨率和人物参考",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpg"],
-                capabilities=["text_to_image", "style_control", "high_resolution"]
+                capabilities=["text_to_image", "image_to_image", "2k_resolution", "character_reference", "face_reference"]
+            ),
+            ModelInfo(
+                model_id="kling-image-v1",
+                name="可灵图像生成 V1",
+                description="V1图像生成模型，支持1K分辨率",
+                model_type=AIModelType.TEXT_TO_IMAGE,
+                supported_formats=["png", "jpg"],
+                capabilities=["text_to_image", "image_to_image", "1k_resolution"]
             )
         ]
     
+    def _get_auth_headers(self) -> Dict[str, str]:
+        """Get authentication headers with JWT token"""
+        auth_header = self.auth_manager.get_auth_header()
+        return {
+            **auth_header,
+            "Content-Type": "application/json",
+            "User-Agent": "ai-video-studio/2.0"
+        }
+
     async def _initialize_client(self):
-        """初始化HTTP客户端"""
+        """Initialize HTTP client with JWT authentication"""
+        # Note: Headers will be updated dynamically per request to use fresh JWT tokens
         self._client = httpx.AsyncClient(
-            timeout=httpx.Timeout(300.0),  # 视频生成需要更长超时
-            headers={
-                "Authorization": f"Bearer {self.config.api_key}",
-                "Content-Type": "application/json",
-                "User-Agent": "ai-video-studio/1.0"
-            }
+            timeout=httpx.Timeout(300.0),  # Video generation requires longer timeout
+            headers=self._get_auth_headers()
         )
     
     async def generate_text(self, prompt: str, model: str = None, **kwargs) -> AIResponse:
@@ -85,257 +162,284 @@ class KelingProvider(BaseProvider):
         )
     
     async def generate_image(
-        self, 
-        prompt: str, 
-        model: str = "kling-image",
-        width: int = 1024,
-        height: int = 1024,
-        style: str = "realistic",
+        self,
+        prompt: str,
+        model: str = "kling-image-v2",
+        negative_prompt: Optional[str] = None,
+        image: Optional[str] = None,  # Reference image URL or base64
+        image_reference: Optional[str] = None,  # character/face reference mode
+        image_fidelity: Optional[float] = None,  # 0.5-1.0
+        human_fidelity: Optional[float] = None,  # 0.5-1.0
+        resolution: str = "1k",  # 1k or 2k
+        n: int = 1,  # Number of images to generate
+        aspect_ratio: Optional[str] = None,  # e.g., "16:9", "1:1", "9:16"
         **kwargs
     ) -> AIResponse:
-        """使用可灵生成图像"""
-        max_retries = 3
-        retry_delay = 2
-        
-        for attempt in range(max_retries):
-            try:
-                client = await self.get_client()
-                
-                # 可灵AI图像生成API调用
-                request_data = {
-                    "prompt": prompt,
-                    "width": width,
-                    "height": height,
-                    "model": model or "kling-image",
-                    "style": style,
-                    "num_outputs": 1,
-                    "quality": "hd"
-                }
-                
-                # 添加其他参数
-                request_data.update(kwargs)
-                
-                response = await client.post(
-                    f"{self.base_url}/images/generate",
-                    json=request_data
-                )
-                
-                # 处理不同状态码的响应
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # 检查可灵AI特有的响应格式
-                    if data.get("status") == 500 and "Service busy" in data.get("message", ""):
-                        # 服务繁忙，重试
-                        if attempt < max_retries - 1:
-                            await asyncio.sleep(retry_delay * (attempt + 1))
-                            continue
-                        else:
-                            return AIResponse(
-                                success=False,
-                                error=f"可灵AI服务繁忙，已重试{max_retries}次",
-                                provider=self.name,
-                                model=model,
-                                task_type=AITaskType.PORTRAIT_GENERATION,
-                                model_type=AIModelType.TEXT_TO_IMAGE
-                            )
-                    
-                    # 检查是否成功
-                    if data.get("result") == 1 or data.get("status") == 200:
-                        # 检查是否返回了任务ID（异步任务）
-                        if "task_id" in data or "data" in data and data["data"] and "task_id" in data["data"]:
-                            task_id = data.get("task_id") or data["data"].get("task_id")
-                            # 轮询任务状态
-                            result = await self._poll_task_status(task_id, "image")
-                            if result and "images" in result:
-                                images = result["images"]
-                                if isinstance(images, list) and images:
-                                    return AIResponse(
-                                        success=True,
-                                        data={"images": images},
-                                        provider=self.name,
-                                        model=model,
-                                        task_type=AITaskType.PORTRAIT_GENERATION,
-                                        model_type=AIModelType.TEXT_TO_IMAGE,
-                                        metadata={
-                                            "task_id": task_id,
-                                            "width": width,
-                                            "height": height,
-                                            "style": style,
-                                            "prompt": prompt
-                                        }
-                                    )
-                        
-                        # 检查是否直接返回了图像（同步）
-                        elif "images" in data or ("data" in data and data["data"] and "images" in data["data"]):
-                            images = data.get("images") or data["data"].get("images", [])
-                            if isinstance(images, list) and images:
-                                return AIResponse(
-                                    success=True,
-                                    data={"images": images},
-                                    provider=self.name,
-                                    model=model,
-                                    task_type=AITaskType.PORTRAIT_GENERATION,
-                                    model_type=AIModelType.TEXT_TO_IMAGE,
-                                    metadata={
-                                        "width": width,
-                                        "height": height,
-                                        "style": style,
-                                        "prompt": prompt,
-                                        "direct_response": True
-                                    }
-                                )
-                
-                # 处理错误响应
-                error_message = "可灵AI图像生成失败"
-                try:
-                    if response.status_code == 200:
-                        error_data = response.json()
-                        error_message = error_data.get("message") or error_data.get("error", {}).get("detail", error_message)
-                    else:
-                        error_message = f"HTTP {response.status_code}: {response.text[:200]}"
-                except:
-                    error_message = f"HTTP {response.status_code}: 响应解析失败"
-                
-                # 如果不是服务繁忙错误，不重试
-                if "Service busy" not in error_message:
-                    return AIResponse(
-                        success=False,
-                        error=error_message,
-                        provider=self.name,
-                        model=model,
-                        task_type=AITaskType.PORTRAIT_GENERATION,
-                        model_type=AIModelType.TEXT_TO_IMAGE
-                    )
-                
-                # 服务繁忙，继续重试
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay * (attempt + 1))
-                    continue
-                else:
-                    return AIResponse(
-                        success=False,
-                        error=f"可灵AI服务持续繁忙，已重试{max_retries}次",
-                        provider=self.name,
-                        model=model,
-                        task_type=AITaskType.PORTRAIT_GENERATION,
-                        model_type=AIModelType.TEXT_TO_IMAGE
-                    )
-                    
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay * (attempt + 1))
-                    continue
-                else:
-                    return AIResponse(
-                        success=False,
-                        error=self.format_error(e),
-                        provider=self.name,
-                        model=model,
-                        task_type=AITaskType.PORTRAIT_GENERATION,
-                        model_type=AIModelType.TEXT_TO_IMAGE
-                    )
-        
-        return AIResponse(
-            success=False,
-            error="所有重试都已失败",
-            provider=self.name,
-            model=model,
-            task_type=AITaskType.PORTRAIT_GENERATION,
-            model_type=AIModelType.TEXT_TO_IMAGE
-        )
-    
-    async def generate_video(
-        self, 
-        prompt: str = None,
-        image_url: str = None, 
-        model: str = "kling-v1",
-        duration: int = 5,
-        fps: int = 24,
-        resolution: str = "1280x720",
-        **kwargs
-    ) -> AIResponse:
-        """使用可灵生成视频"""
+        """
+        Generate images using Keling AI (new API endpoint).
+
+        Endpoint: POST /v1/images/generations
+        Polling: GET /v1/images/generations/{task_id}
+
+        Args:
+            prompt: Text prompt for image generation
+            model: Model name (kling-image-v2 or kling-image-v1)
+            negative_prompt: Negative prompt to avoid certain elements
+            image: Reference image (URL or base64 data URL)
+            image_reference: Reference mode ("character" or "face")
+            image_fidelity: Image similarity (0.5-1.0)
+            human_fidelity: Human feature fidelity (0.5-1.0)
+            resolution: Output resolution ("1k" or "2k")
+            n: Number of images to generate (1-4)
+            aspect_ratio: Aspect ratio like "16:9", "1:1", etc.
+
+        Returns:
+            AIResponse with generated images
+        """
         try:
             client = await self.get_client()
-            
-            # 根据输入类型选择端点
-            if image_url and not prompt:
-                # 图生视频
-                endpoint = f"{self.base_url}/videos/image2video"
-                request_data = {
-                    "model": "kling-image2video",
-                    "image_url": image_url,
-                    "duration": duration,
-                    "fps": fps,
-                    "resolution": resolution,
-                    **kwargs
-                }
-                task_type = AITaskType.VIDEO_GENERATION
-                model_type = AIModelType.IMAGE_TO_VIDEO
-            elif prompt:
-                # 文生视频
-                endpoint = f"{self.base_url}/videos/generations"
-                request_data = {
-                    "model": model,
-                    "prompt": prompt,
-                    "duration": duration,
-                    "fps": fps,
-                    "resolution": resolution,
-                    **kwargs
-                }
-                task_type = AITaskType.VIDEO_GENERATION
-                model_type = AIModelType.TEXT_TO_VIDEO
+
+            # Build request payload according to API spec
+            request_data = {
+                "model_name": model,
+                "prompt": prompt,
+                "n": n
+            }
+
+            # Add optional parameters
+            if negative_prompt:
+                request_data["negative_prompt"] = negative_prompt
+            if image:
+                request_data["image"] = image
+            if image_reference:
+                request_data["image_reference"] = image_reference
+            if image_fidelity is not None:
+                request_data["image_fidelity"] = image_fidelity
+            if human_fidelity is not None:
+                request_data["human_fidelity"] = human_fidelity
+            if aspect_ratio:
+                request_data["aspect_ratio"] = aspect_ratio
+
+            # Resolution is part of model capabilities, not a request param
+            # but we keep it for metadata
+
+            # Create image generation task
+            response = await client.post(
+                f"{self.base_url}/v1/images/generations",
+                json=request_data,
+                headers=self._get_auth_headers()  # Fresh JWT token
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            task_id = data.get("data", {}).get("task_id")
+            if not task_id:
+                return AIResponse(
+                    success=False,
+                    error="No task_id in response",
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.PORTRAIT_GENERATION,
+                    model_type=AIModelType.TEXT_TO_IMAGE
+                )
+
+            # Poll task status using TaskPoller
+            result = await self._poll_image_task(task_id)
+
+            if result and "images" in result:
+                return AIResponse(
+                    success=True,
+                    data={"images": result["images"]},
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.PORTRAIT_GENERATION,
+                    model_type=AIModelType.TEXT_TO_IMAGE,
+                    metadata={
+                        "task_id": task_id,
+                        "resolution": resolution,
+                        "aspect_ratio": aspect_ratio,
+                        "prompt": prompt,
+                        "n": n
+                    }
+                )
             else:
                 return AIResponse(
                     success=False,
-                    error="必须提供prompt或image_url",
+                    error="Image generation task failed or timed out",
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.PORTRAIT_GENERATION,
+                    model_type=AIModelType.TEXT_TO_IMAGE
+                )
+
+        except Exception as e:
+            return AIResponse(
+                success=False,
+                error=self.format_error(e),
+                provider=self.name,
+                model=model,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE
+            )
+
+    async def _poll_image_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Poll image generation task status.
+
+        Endpoint: GET /v1/images/generations/{task_id}
+        """
+        client = await self.get_client()
+
+        async def poll_fn() -> Dict[str, Any]:
+            response = await client.get(
+                f"{self.base_url}/v1/images/generations/{task_id}",
+                headers=self._get_auth_headers()
+            )
+            response.raise_for_status()
+            return response.json().get("data", {})
+
+        def extract_result(data: Dict[str, Any]) -> Dict[str, Any]:
+            """Extract images from response"""
+            task_result = data.get("task_result", {})
+            images = task_result.get("images", [])
+            return {"images": images}
+
+        poller = TaskPoller(
+            poll_fn=poll_fn,
+            status_mapper=keling_status_mapper,
+            result_extractor=extract_result,
+            max_attempts=60,  # 5 minutes with 5s interval
+            initial_delay=5.0,
+            task_id=task_id,
+            task_type="image"
+        )
+
+        return await poller.poll()
+    
+    async def generate_video(
+        self,
+        prompt: Optional[str] = None,
+        image: Optional[str] = None,  # First frame image (URL or base64)
+        image_tail: Optional[str] = None,  # Last frame image (URL or base64)
+        model: str = "kling-v2-1",
+        mode: str = "std",  # std or pro
+        duration: int = 5,  # 5 or 10 seconds
+        negative_prompt: Optional[str] = None,
+        cfg_scale: Optional[float] = None,  # 0.0-1.0, not supported by V2-x models
+        camera_control: Optional[Dict[str, Any]] = None,  # Camera movement config
+        **kwargs
+    ) -> AIResponse:
+        """
+        Generate video from image using Keling AI (new API endpoint).
+
+        Endpoint: POST /v1/videos/image2video
+        Polling: GET /v1/videos/image2video/{task_id}
+
+        Args:
+            prompt: Text description for video generation
+            image: First frame image (required, URL or base64)
+            image_tail: Last frame image (optional, for first-last frame mode)
+            model: Model name (kling-v2-6, kling-v2-5-turbo, kling-v2-1-master, kling-v2-1, etc.)
+            mode: Generation mode ("std" standard or "pro" professional)
+            duration: Video duration in seconds (5 or 10)
+            negative_prompt: Negative prompt to avoid certain elements
+            cfg_scale: Prompt relevance (0.0-1.0), V1 models only
+            camera_control: Camera movement configuration (mutually exclusive with motion_brush)
+            **kwargs: Additional parameters (dynamic_masks, static_mask, voice_list, sound, etc.)
+
+        Returns:
+            AIResponse with generated video URL
+        """
+        if not image:
+            return AIResponse(
+                success=False,
+                error="image parameter is required for video generation",
+                provider=self.name,
+                model=model,
+                task_type=AITaskType.VIDEO_GENERATION,
+                model_type=AIModelType.IMAGE_TO_VIDEO
+            )
+
+        try:
+            client = await self.get_client()
+
+            # Build request payload
+            request_data = {
+                "model_name": model,
+                "image": image,
+                "mode": mode,
+                "duration": duration
+            }
+
+            # Add optional parameters
+            if image_tail:
+                request_data["image_tail"] = image_tail
+            if prompt:
+                request_data["prompt"] = prompt
+            if negative_prompt:
+                request_data["negative_prompt"] = negative_prompt
+            if cfg_scale is not None and not model.startswith("kling-v2"):
+                # cfg_scale only supported by V1 models
+                request_data["cfg_scale"] = cfg_scale
+            if camera_control:
+                request_data["camera_control"] = camera_control
+
+            # Add any additional parameters from kwargs
+            for key in ["dynamic_masks", "static_mask", "voice_list", "sound"]:
+                if key in kwargs:
+                    request_data[key] = kwargs[key]
+
+            # Create video generation task
+            response = await client.post(
+                f"{self.base_url}/v1/videos/image2video",
+                json=request_data,
+                headers=self._get_auth_headers()
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            task_id = data.get("data", {}).get("task_id")
+            if not task_id:
+                return AIResponse(
+                    success=False,
+                    error="No task_id in response",
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.TEXT_TO_VIDEO
+                    model_type=AIModelType.IMAGE_TO_VIDEO
                 )
-            
-            response = await client.post(endpoint, json=request_data)
-            response.raise_for_status()
-            
-            data = response.json()
-            task_id = data.get("task_id")
-            
-            if task_id:
-                # 轮询任务状态
-                result = await self._poll_task_status(task_id, "video")
-                if result:
-                    return AIResponse(
-                        success=True,
-                        data={
-                            "video_url": result.get("video_url"),
-                            "thumbnail_url": result.get("thumbnail_url"),
-                            "duration": duration
-                        },
-                        provider=self.name,
-                        model=model,
-                        task_type=task_type,
-                        model_type=model_type,
-                        metadata={
-                            "task_id": task_id,
-                            "duration": duration,
-                            "fps": fps,
-                            "resolution": resolution,
-                            "input_image": image_url,
-                            "input_prompt": prompt
-                        }
-                    )
-            
-            return AIResponse(
-                success=False,
-                error="视频生成任务失败",
-                provider=self.name,
-                model=model,
-                task_type=task_type,
-                model_type=model_type
-            )
-            
+
+            # Poll task status
+            result = await self._poll_video_task(task_id)
+
+            if result and "video_url" in result:
+                return AIResponse(
+                    success=True,
+                    data={
+                        "video_url": result["video_url"],
+                        "duration": duration
+                    },
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
+                    metadata={
+                        "task_id": task_id,
+                        "duration": duration,
+                        "mode": mode,
+                        "prompt": prompt
+                    }
+                )
+            else:
+                return AIResponse(
+                    success=False,
+                    error="Video generation task failed or timed out",
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                )
+
         except Exception as e:
             return AIResponse(
                 success=False,
@@ -343,63 +447,190 @@ class KelingProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.TEXT_TO_VIDEO
+                model_type=AIModelType.IMAGE_TO_VIDEO
             )
-    
-    async def _poll_task_status(
-        self, 
-        task_id: str, 
-        task_type: str,
-        max_attempts: int = 60,
-        delay: int = 5
-    ) -> Optional[Dict[str, Any]]:
-        """轮询任务状态"""
-        client = await self.get_client()
-        
-        for attempt in range(max_attempts):
-            try:
-                response = await client.get(f"{self.base_url}/tasks/{task_id}")
-                response.raise_for_status()
-                
-                data = response.json()
-                status = data.get("status")
-                
-                if status == "completed":
-                    return data.get("result")
-                elif status == "failed":
-                    return None
-                elif status in ["pending", "running"]:
-                    await asyncio.sleep(delay)
-                    continue
-                else:
-                    return None
-                    
-            except Exception as e:
-                print(f"轮询任务状态失败 (尝试 {attempt + 1}): {e}")
-                await asyncio.sleep(delay)
-        
-        return None
-    
-    async def get_task_status(self, task_id: str) -> AIResponse:
-        """获取任务状态（公开方法）"""
+
+    async def generate_video_from_multiple_images(
+        self,
+        image_list: List[str],  # 2-4 images (URL or base64)
+        prompt: Optional[str] = None,
+        negative_prompt: Optional[str] = None,
+        mode: str = "std",
+        duration: int = 5,
+        aspect_ratio: Optional[str] = None,
+        **kwargs
+    ) -> AIResponse:
+        """
+        Generate video from multiple images (kling-v1-6 only).
+
+        Endpoint: POST /v1/videos/multi-image2video
+
+        Args:
+            image_list: List of 2-4 images (URLs or base64)
+            prompt: Text description
+            negative_prompt: Negative prompt
+            mode: Generation mode ("std" or "pro")
+            duration: Video duration (5 or 10 seconds)
+            aspect_ratio: Aspect ratio (e.g., "16:9", "1:1")
+
+        Returns:
+            AIResponse with generated video URL
+        """
+        if not image_list or len(image_list) < 2 or len(image_list) > 4:
+            return AIResponse(
+                success=False,
+                error="image_list must contain 2-4 images",
+                provider=self.name,
+                model="kling-v1-6",
+                task_type=AITaskType.VIDEO_GENERATION,
+                model_type=AIModelType.IMAGE_TO_VIDEO
+            )
+
         try:
             client = await self.get_client()
-            
-            response = await client.get(f"{self.base_url}/tasks/{task_id}")
+
+            request_data = {
+                "model_name": "kling-v1-6",  # Only supported by v1-6
+                "image_list": image_list,
+                "mode": mode,
+                "duration": duration
+            }
+
+            if prompt:
+                request_data["prompt"] = prompt
+            if negative_prompt:
+                request_data["negative_prompt"] = negative_prompt
+            if aspect_ratio:
+                request_data["aspect_ratio"] = aspect_ratio
+
+            response = await client.post(
+                f"{self.base_url}/v1/videos/multi-image2video",
+                json=request_data,
+                headers=self._get_auth_headers()
+            )
             response.raise_for_status()
-            
             data = response.json()
-            
+
+            task_id = data.get("data", {}).get("task_id")
+            if not task_id:
+                return AIResponse(
+                    success=False,
+                    error="No task_id in response",
+                    provider=self.name,
+                    model="kling-v1-6",
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                )
+
+            # Poll task status (uses same endpoint as image2video)
+            result = await self._poll_video_task(task_id)
+
+            if result and "video_url" in result:
+                return AIResponse(
+                    success=True,
+                    data={"video_url": result["video_url"], "duration": duration},
+                    provider=self.name,
+                    model="kling-v1-6",
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
+                    metadata={
+                        "task_id": task_id,
+                        "duration": duration,
+                        "mode": mode,
+                        "image_count": len(image_list)
+                    }
+                )
+            else:
+                return AIResponse(
+                    success=False,
+                    error="Multi-image video generation failed or timed out",
+                    provider=self.name,
+                    model="kling-v1-6",
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO
+                )
+
+        except Exception as e:
+            return AIResponse(
+                success=False,
+                error=self.format_error(e),
+                provider=self.name,
+                model="kling-v1-6",
+                task_type=AITaskType.VIDEO_GENERATION,
+                model_type=AIModelType.IMAGE_TO_VIDEO
+            )
+
+    async def _poll_video_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Poll video generation task status.
+
+        Endpoint: GET /v1/videos/image2video/{task_id}
+        """
+        client = await self.get_client()
+
+        async def poll_fn() -> Dict[str, Any]:
+            response = await client.get(
+                f"{self.base_url}/v1/videos/image2video/{task_id}",
+                headers=self._get_auth_headers()
+            )
+            response.raise_for_status()
+            return response.json().get("data", {})
+
+        def extract_result(data: Dict[str, Any]) -> Dict[str, Any]:
+            """Extract video URL from response"""
+            task_result = data.get("task_result", {})
+            videos = task_result.get("videos", [])
+            if videos and len(videos) > 0:
+                return {"video_url": videos[0].get("url")}
+            return {}
+
+        poller = TaskPoller(
+            poll_fn=poll_fn,
+            status_mapper=keling_status_mapper,
+            result_extractor=extract_result,
+            max_attempts=120,  # 20 minutes with 10s interval
+            initial_delay=10.0,
+            task_id=task_id,
+            task_type="video"
+        )
+
+        return await poller.poll()
+    
+    async def get_task_status(self, task_id: str, task_type: str = "video") -> AIResponse:
+        """
+        Get task status for a given task ID (public method).
+
+        Args:
+            task_id: Task ID to query
+            task_type: Type of task ("image" or "video")
+
+        Returns:
+            AIResponse with task status information
+        """
+        try:
+            client = await self.get_client()
+
+            # Use appropriate endpoint based on task type
+            if task_type == "image":
+                endpoint = f"{self.base_url}/v1/images/generations/{task_id}"
+            else:  # video
+                endpoint = f"{self.base_url}/v1/videos/image2video/{task_id}"
+
+            response = await client.get(endpoint, headers=self._get_auth_headers())
+            response.raise_for_status()
+
+            data = response.json().get("data", {})
+
             return AIResponse(
                 success=True,
                 data=data,
                 provider=self.name,
                 model="task_status",
-                task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.TEXT_TO_VIDEO,
-                metadata={"task_id": task_id}
+                task_type=AITaskType.VIDEO_GENERATION if task_type == "video" else AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.IMAGE_TO_VIDEO if task_type == "video" else AIModelType.TEXT_TO_IMAGE,
+                metadata={"task_id": task_id, "task_type": task_type}
             )
-            
+
         except Exception as e:
             return AIResponse(
                 success=False,
