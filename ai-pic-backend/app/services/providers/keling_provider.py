@@ -63,6 +63,7 @@ class KelingProvider(BaseProvider):
             AIModelType.TEXT_TO_VIDEO,
             AIModelType.IMAGE_TO_VIDEO,
             AIModelType.TEXT_TO_IMAGE,
+            AIModelType.IMAGE_TO_IMAGE,
         ]
 
     @property
