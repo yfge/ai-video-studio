@@ -1961,8 +1961,8 @@ class AIService:
 
     async def _download_image(
         self, image_data: str, ip_name: str, category: str
-    ) -> Optional[str]:
-        """处理图像数据（URL或base64）并保存到本地"""
+    ) -> str:
+        """处理图像数据（URL或base64）并保存到本地，失败抛异常并保留原因。"""
         import base64
         import os
         import uuid
@@ -1970,47 +1970,60 @@ class AIService:
 
         import aiofiles
 
-        try:
-            # 生成唯一文件名
-            file_extension = ".png"  # OpenAI DALL-E默认返回PNG
-            unique_filename = f"{uuid.uuid4().hex}{file_extension}"
+        # 生成唯一文件名
+        file_extension = ".png"  # OpenAI DALL-E默认返回PNG
+        unique_filename = f"{uuid.uuid4().hex}{file_extension}"
 
-            # 确保目录存在
-            upload_dir = settings.UPLOAD_DIR
-            os.makedirs(upload_dir, exist_ok=True)
+        # 确保目录存在
+        upload_dir = settings.UPLOAD_DIR
+        os.makedirs(upload_dir, exist_ok=True)
 
-            local_file_path = os.path.join(upload_dir, unique_filename)
+        local_file_path = os.path.join(upload_dir, unique_filename)
 
-            # 判断是base64数据还是URL
-            if image_data.startswith("data:image"):
-                # 处理base64数据
-                self.logger.info("处理base64图像数据")
-                base64_data = image_data.split(",")[1]  # 移除data:image/png;base64,前缀
-                image_bytes = base64.b64decode(base64_data)
+        # 判断是base64数据还是URL
+        if image_data.startswith("data:image"):
+            # 处理base64数据
+            self.logger.info("处理base64图像数据")
+            base64_data = image_data.split(",")[1]  # 移除data:image/png;base64,前缀
+            image_bytes = base64.b64decode(base64_data)
 
-                # 直接保存base64数据
-                async with aiofiles.open(local_file_path, "wb") as f:
-                    await f.write(image_bytes)
-            else:
-                # 处理URL（之前的逻辑）
-                normalized_url = (
-                    unquote(image_data) if "%25" in image_data else image_data
+            # 直接保存base64数据
+            async with aiofiles.open(local_file_path, "wb") as f:
+                await f.write(image_bytes)
+            self.logger.info("base64 图像已保存到: %s", local_file_path)
+            return local_file_path
+
+        # 处理URL，增加重试并输出具体错误
+        normalized_url = unquote(image_data) if "%25" in image_data else image_data
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                self.logger.info(
+                    "下载图像URL (attempt %s): %s...",
+                    attempt + 1,
+                    normalized_url[:100],
                 )
-                self.logger.info(f"下载图像URL: {normalized_url[:100]}...")
                 async with httpx.AsyncClient(follow_redirects=True) as client:
                     response = await client.get(normalized_url, timeout=60.0)
                     response.raise_for_status()
 
-                    # 保存到本地文件
-                    async with aiofiles.open(local_file_path, "wb") as f:
-                        await f.write(response.content)
+                async with aiofiles.open(local_file_path, "wb") as f:
+                    await f.write(response.content)
 
-            self.logger.info(f"图像已保存到: {local_file_path}")
-            return local_file_path
+                self.logger.info("图像已保存到: %s", local_file_path)
+                return local_file_path
+            except Exception as exc:  # pragma: no cover - network failures
+                last_error = exc
+                self.logger.warning(
+                    "图像下载失败 attempt=%s url=%s err=%s",
+                    attempt + 1,
+                    normalized_url,
+                    exc,
+                )
+                if attempt < 2:
+                    await asyncio.sleep(1.5 * (attempt + 1))
 
-        except Exception as e:
-            self.logger.error(f"图像处理失败: {e}")
-            return None
+        raise RuntimeError(f"图像处理失败: {last_error}")
 
     async def _upload_local_image_to_oss(
         self,
@@ -2122,8 +2135,6 @@ class AIService:
     ) -> Dict[str, Any]:
         """下载/保存生成图像，并在配置 OSS 时上传，返回路径与元数据。"""
         local_file_path = await self._download_image(image_data, ip_name, category)
-        if not local_file_path:
-            raise RuntimeError("图像下载失败")
 
         return await self._persist_local_image(
             local_file_path,
