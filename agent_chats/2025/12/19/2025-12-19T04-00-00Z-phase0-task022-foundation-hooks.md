@@ -327,4 +327,4 @@ export function UserPage() {
 
 ## Linked Commits
 
-- (pending commit)
+- 5902415 feat(frontend): add foundation hooks for state management [phase0]
