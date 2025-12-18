@@ -32,6 +32,69 @@ The codebase must remain production-grade, auditable, and reproducible. Every me
 - **Docs**: Update README / guides when behaviour changes. Architecture decisions belong under `docs/` (create if missing) and should be cross-linked from agent chats.
 - **Tasks.md is canonical**: Maintain the live task board in `tasks.md` (use `[ ]` for未完成、`[x]`为已完成). Merge/append所有任务到该文件，禁止再用旧的 `task.md`。
 
+## Code Architecture & Quality Standards (CRITICAL)
+
+**Context**: Analysis shows AI-generated code in this project initially produced large, monolithic files (avg 380-435 lines/file) compared to human-written codebases like ai-shifu (avg 119-186 lines/file). This section enforces modular, maintainable architecture.
+
+### File Size Limits (Strict)
+
+- **Python files**: MUST NOT exceed 300 lines (excluding docstrings/comments). Target: 150-250 lines.
+- **TypeScript/TSX files**: MUST NOT exceed 250 lines. Target: 100-200 lines.
+- **When a file approaches the limit**: IMMEDIATELY refactor before adding new code.
+- **Exception**: Only with explicit user approval and documented rationale in commit message.
+
+### Single Responsibility Principle (Mandatory)
+
+- **One file, one purpose**: Each module should have a single, well-defined responsibility.
+- **API endpoints**: Keep route handlers thin (< 50 lines). Extract business logic to services.
+- **React components**: Separate presentation from logic. Use custom hooks for complex state.
+- **Service modules**: One service class per domain concept (e.g., `virtual_ip_service.py`, not `services.py`).
+
+### Code Reuse & DRY (Do Not Repeat Yourself)
+
+- **Detect duplication proactively**: Before writing similar code a third time, extract to shared utility.
+- **Common patterns**:
+  - Backend: Shared validation logic → `app/core/validators/`
+  - Backend: Common DB queries → repository pattern in services
+  - Frontend: Repeated UI patterns → `src/components/ui/` or `src/components/shared/`
+  - Frontend: Business logic → `src/lib/` or custom hooks in `src/hooks/`
+- **Prefer composition over inheritance**: Use mixins, utility functions, and HOCs.
+
+### Mandatory Refactoring Triggers
+
+Refactor IMMEDIATELY (before continuing with new features) when ANY of these occur:
+
+1. **File exceeds size limit** (see above)
+2. **Function exceeds 50 lines**: Extract sub-functions or split responsibilities
+3. **Duplicate code in 3+ places**: Create shared utility
+4. **Nested conditionals > 3 levels**: Refactor to early returns or strategy pattern
+5. **God object detected**: Split into multiple focused modules
+6. **Import cycles**: Restructure dependencies
+
+### Modular Architecture Best Practices
+
+- **Vertical slicing**: Group by feature/domain, not by technical layer alone
+  - Good: `services/virtual_ip/`, `services/story/`, `services/gallery/`
+  - Bad: `services/business_logic.py` with all domains mixed
+- **Explicit interfaces**: Use Pydantic schemas, TypeScript interfaces for contracts
+- **Dependency direction**: High-level modules must not depend on low-level details
+- **No circular dependencies**: Enforce with linters; restructure if detected
+
+### Reference Standard: ai-shifu Codebase
+
+- **ai-shifu metrics**: Backend 186 lines/file (183 files), Frontend 119 lines/file (258 files)
+- **Target alignment**: Match or exceed ai-shifu's modularity. When in doubt, split files.
+- **Learning**: Study ai-shifu's structure for inspiration on how to decompose features.
+
+### Enforcement
+
+- **Pre-commit hooks**: Add linters to flag files exceeding size limits (TODO: implement)
+- **Code review mindset**: Every new file must justify its size and scope
+- **Agent self-audit**: Before marking work complete, review all touched files for compliance
+- **Ledger requirement**: Document refactoring decisions in `agent_chats` with `[refactor]` tag
+
+**Remember**: Small, focused files are easier to test, review, reuse, and maintain. Over-sized files are technical debt. Proactive refactoring is not optional—it's a core responsibility.
+
 ## Agent Collaboration Ledger (`agent_chats/`)
 
 We operate with the same rigor as the reference repositories (`talkReplay`, `orion`, `ai-shifu`, `talkreplay.com`). Follow these rules exactly:
