@@ -231,4 +231,4 @@ export function CustomModal({ isOpen, onClose, title, children }) {
 
 ## Linked Commits
 
-- (pending commit)
+- 685329c feat(frontend): add reusable base Modal component [phase0]
