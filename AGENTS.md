@@ -95,6 +95,388 @@ Refactor IMMEDIATELY (before continuing with new features) when ANY of these occ
 
 **Remember**: Small, focused files are easier to test, review, reuse, and maintain. Over-sized files are technical debt. Proactive refactoring is not optional—it's a core responsibility.
 
+## Backend-Specific Architecture Standards (CRITICAL)
+
+**Current State**: Analysis identified critical violations requiring immediate attention in future work.
+
+### API Endpoint Organization
+
+**CRITICAL Violations Identified:**
+- `scripts.py`: 4,168 lines with 68 functions (14x limit) - handles scripts, episodes, storyboards, dialogue, video generation
+- `episodes.py`: 1,605 lines
+- `virtual_ip_images.py`: 1,364 lines
+- `story_structure.py`: 1,318 lines
+
+**Mandatory Pattern - Thin Controllers:**
+- **Route handlers MUST NOT exceed 50 lines**
+- **One route file per resource**: Split by domain (scripts → script_crud.py, script_generation.py, script_export.py)
+- **Extract business logic to services**: No DB queries, AI calls, or complex logic in endpoints
+- **Use dependency injection**: Pass services via FastAPI `Depends()`
+- **Standard structure per endpoint**:
+  ```python
+  @router.post("/resource")
+  async def create_resource(
+      data: ResourceCreate,
+      service: ResourceService = Depends(get_resource_service)
+  ):
+      """Docstring with examples."""
+      return await service.create(data)
+  ```
+
+**Refactoring Priority (for future work):**
+1. Split `scripts.py` into 8-10 focused endpoint files
+2. Extract business logic from endpoints into dedicated services
+3. Create shared validators for common patterns
+
+### Service Layer Organization
+
+**CRITICAL Violations Identified:**
+- `ai_service.py`: 2,910 lines (God object)
+- `ai_service_manager.py`: 1,301 lines
+- `dialogue_audio_service.py`: 1,261 lines
+- `voice_catalog.py`: 1,171 lines
+
+**Mandatory Service Patterns:**
+- **One service per domain entity**: `ScriptService`, `EpisodeService`, `StoryboardService` (not `AIService` for everything)
+- **Service file limit**: 250 lines (stricter than general 300-line limit)
+- **Repository pattern for data access**: Create `repositories/` for DB query encapsulation
+  ```python
+  # Good structure:
+  services/
+    script/
+      script_service.py       (< 250 lines)
+      script_generator.py     (< 250 lines)
+      script_validator.py     (< 250 lines)
+    episode/
+      episode_service.py      (< 250 lines)
+      episode_processor.py    (< 250 lines)
+  ```
+- **Separation of concerns**:
+  - Business logic → services
+  - Data access → repositories
+  - External API calls → providers
+  - Validation → validators (in `core/validators/`)
+  - Transformations → utils
+
+### Provider Pattern Consistency (8 AI Providers)
+
+Current providers: OpenAI, Google, DeepSeek, MiniMax, Keling, Jimeng, VolcEngine (1,409 lines!), Aliyun OSS
+
+**Mandatory Standards:**
+- **All providers MUST extend `BaseProvider`**
+- **Consistent error handling**: Use shared `ProviderError` hierarchy
+- **Shared retry logic**: Extract to `core/retry_utils.py` (max 150 lines)
+- **Shared auth patterns**: Abstract credential management
+- **Consistent logging**: Use structured logging with provider name tag
+- **Polling utilities**: Share async job polling logic in `core/polling_utils.py`
+- **Provider file limit**: 400 lines (complex integrations allowed slightly larger, but must justify)
+
+**Pattern to follow**:
+```python
+class ConcreteProvider(BaseProvider):
+    def __init__(self): pass  # Auth setup
+    async def generate(self): pass  # Main operation
+    async def _handle_error(self): pass  # Error mapping
+    async def _poll_job(self): pass  # Use shared polling utility
+```
+
+**Code Reuse Targets:**
+- Auth header construction (duplicated 8x)
+- Request/response logging (duplicated 8x)
+- Retry with exponential backoff (duplicated 8x)
+- URL normalization (`_abs_url` patterns duplicated)
+
+### Model & Schema Organization
+
+**Current State**: 17 files, well-organized but could improve
+
+**Standards**:
+- **One model per file** (already followed, good!)
+- **Schema files mirror model files**: `models/script.py` → `schemas/script.py`
+- **Schema file limit**: 300 lines. If exceeded, split into `script_base.py`, `script_create.py`, `script_response.py`
+- **Use schema inheritance**: Create `BaseSchema` with common fields (id, created_at, updated_at)
+- **No business logic in models**: Models are data structures only
+
+### Database & Repository Pattern
+
+**Current Issue**: DB queries scattered across endpoints and services (212+ direct SQLAlchemy calls)
+
+**Mandatory Pattern** (for new code):
+- **Create `repositories/` directory**: One repository per model
+- **Encapsulate all DB access**: No `session.query()` outside repositories
+- **Repository interface**:
+  ```python
+  class ScriptRepository:
+      def __init__(self, session: Session): pass
+      async def get_by_id(self, id: int): pass
+      async def list_by_user(self, user_id: int): pass
+      async def create(self, data: dict): pass
+      async def update(self, id: int, data: dict): pass
+      async def soft_delete(self, id: int): pass
+  ```
+- **Services use repositories**: Services never touch SQLAlchemy directly
+- **Transaction management**: Repositories handle commits/rollbacks
+
+### Error Handling
+
+**Current Issue**: 212 `HTTPException` raises scattered across code, no consistency
+
+**Mandatory Standards**:
+- **Centralized exception classes**: Create `core/exceptions.py` with domain exceptions
+  ```python
+  class ScriptNotFoundError(DomainError): pass
+  class GenerationFailedError(DomainError): pass
+  ```
+- **Exception middleware**: Convert domain exceptions to HTTP responses in middleware
+- **No direct HTTPException**: Endpoints raise domain exceptions, middleware converts
+- **Structured error responses**: Use Pydantic schema for error format
+
+## Frontend-Specific Architecture Standards (CRITICAL)
+
+**Current State**: Next.js 15 App Router with significant violations requiring immediate attention in future work.
+
+### Page Component Size Limits
+
+**CRITICAL Violations Identified:**
+- `storyboard/page.tsx`: 3,279 lines with 100+ state variables (13x limit!)
+- `episodes/[id]/page.tsx`: 1,580 lines
+- `virtual-ip/[id]/images/page.tsx`: 1,143 lines
+- `scripts/[id]/page.tsx`: 705 lines
+
+**Mandatory Pattern - Container/Presentation Split:**
+- **Page components MUST NOT exceed 200 lines**
+- **Extract feature logic to custom hooks**: `useStoryboard()`, `useEpisodeManager()`
+- **Split into sub-components**: One component per logical section
+- **Page responsibility**: Routing, layout, data fetching coordination ONLY
+
+**Example Refactoring** (for storyboard page):
+```typescript
+// storyboard/page.tsx (< 200 lines)
+export default function StoryboardPage() {
+  return (
+    <StoryboardProvider>
+      <StoryboardLayout>
+        <StoryboardTimeline />
+        <StoryboardFrameGrid />
+        <StoryboardModals />
+      </StoryboardLayout>
+    </StoryboardProvider>
+  )
+}
+
+// hooks/useStoryboard.ts (< 250 lines)
+export function useStoryboard() {
+  // State management logic
+}
+
+// components/storyboard/Timeline.tsx (< 200 lines)
+// components/storyboard/FrameGrid.tsx (< 200 lines)
+// components/storyboard/Modals.tsx (< 150 lines)
+```
+
+### Component Organization
+
+**Current Issue**: 21 components at root of `components/`, no organization
+
+**Mandatory Structure:**
+```
+src/
+  components/
+    ui/                 (Reusable primitives)
+      Button.tsx
+      Modal.tsx
+      Card.tsx
+    shared/             (Shared business components)
+      ImageSelector.tsx
+      ModelPicker.tsx
+    features/           (Feature-specific components)
+      storyboard/
+        Timeline.tsx
+        FrameGrid.tsx
+      virtual-ip/
+        ImageGallery.tsx
+        GenerationPanel.tsx
+    layouts/            (Layout components)
+      AdminLayout.tsx
+      DashboardLayout.tsx
+```
+
+**Rules:**
+- **ui/**: Pure presentational, no business logic, < 150 lines
+- **shared/**: Reusable across features, < 200 lines
+- **features/**: Feature-specific, colocated with domain logic, < 250 lines
+- **One component per file**: No multiple exports unless tightly coupled (e.g., Item and ItemList)
+
+### Custom Hooks
+
+**Current Issue**: Only 3 hooks, massive opportunity for extraction
+
+**Mandatory Patterns:**
+- **Extract repeated useState patterns**: If 3+ components use similar state, create hook
+- **API call hooks**: `useScript()`, `useEpisode()`, `useVirtualIP()`
+- **Form hooks**: `useScriptForm()`, `useGenerationForm()`
+- **Modal hooks**: `useModal()` for open/close/data state
+- **Hook file limit**: 200 lines per hook file
+
+**Common hooks to create:**
+- `useApi()`: Wraps fetch with error handling
+- `useAsyncTask()`: Manages loading/error/data state
+- `usePolling()`: Polls backend for task status
+- `useToast()`: Centralized toast notifications
+- `useConfirm()`: Confirmation dialogs
+
+### API Client Organization
+
+**CRITICAL Violation:**
+- `utils/api.ts`: 2,627 lines with 100+ interface definitions (10x limit!)
+
+**Mandatory Refactoring Pattern:**
+```
+utils/
+  api/
+    client.ts           (HTTP client, < 150 lines)
+    types/              (Split by domain)
+      script.types.ts   (< 200 lines)
+      episode.types.ts  (< 200 lines)
+      virtual-ip.types.ts (< 200 lines)
+    endpoints/          (API functions by domain)
+      scripts.ts        (< 250 lines)
+      episodes.ts       (< 250 lines)
+      virtual-ip.ts     (< 250 lines)
+```
+
+**Standards:**
+- **Type definitions separate from API calls**
+- **One file per domain resource**
+- **Shared error handling**: Centralized in `client.ts`
+- **Auth token management**: In client, not scattered
+
+### State Management
+
+**Current Pattern**: Local state with direct API calls (100+ useState in storyboard page)
+
+**Standards for Complex Features:**
+- **Use React Context for shared state**: Modal state, alerts, user context
+- **Consider React Query for server state**: Caching, revalidation, background updates
+- **Local state for UI only**: Form inputs, modal open/close, UI toggles
+- **Props drilling limit**: If passing props > 2 levels deep, use Context
+
+**When to use what:**
+- Simple forms: Local `useState`
+- Multi-step forms: `useReducer` or form library (React Hook Form)
+- Shared UI state (modals, alerts): Context
+- Server data: React Query or SWR
+- Complex feature state: Custom hook + Context
+
+### Modal Component Pattern
+
+**Current Issue**: 5 similar modal components with duplicated structure (UserDetailsModal, UserApprovalModal, etc.)
+
+**Mandatory Pattern:**
+```typescript
+// components/ui/Modal.tsx (base modal, < 100 lines)
+export function Modal({ isOpen, onClose, title, children }) { }
+
+// components/shared/modals.tsx (specialized modals)
+export function UserDetailsModal() {
+  return <Modal title="User Details">{/* content */}</Modal>
+}
+```
+
+**Rules:**
+- **Extract common modal wrapper**: Header, footer, close button, backdrop
+- **Modal content < 150 lines**: If exceeded, split content into separate components
+- **Consistent modal API**: All modals use same open/close/data pattern
+
+## Testing Standards (Mandatory)
+
+**Current State**: 75 backend test files, 0 frontend tests
+
+### Backend Testing
+
+**Directory Structure** (mirrors source):
+```
+tests/
+  unit/               (Isolated unit tests)
+    services/         (Mirror app/services/)
+    models/           (Mirror app/models/)
+    utils/            (Mirror app/utils/)
+  integration/        (Multi-service tests)
+    api/              (Mirror app/api/)
+  e2e/                (End-to-end flows)
+```
+
+**Standards:**
+- **Test file naming**: `test_<module_name>.py` (e.g., `test_script_service.py`)
+- **One test file per source file**: Maintain 1:1 mapping
+- **Use pytest markers**: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.e2e`, `@pytest.mark.slow`
+- **Coverage target**: 80% (enforced in pytest.ini)
+- **Test structure**: Arrange/Act/Assert with clear comments
+
+### Frontend Testing (TODO - Not Implemented)
+
+**Mandatory Setup** (for future implementation):
+- **Install testing library**: `@testing-library/react`, `@testing-library/jest-dom`
+- **Test structure**: `src/__tests__/` mirroring `src/` structure
+- **Component tests**: Render + interaction + assertions
+- **Hook tests**: Use `@testing-library/react-hooks`
+- **Coverage target**: 70% for new code
+
+## Documentation Standards
+
+**Current State**: 8 markdown files in `docs/`, no API docs, no component docs
+
+**Mandatory Requirements:**
+
+### API Documentation
+- **Add OpenAPI/Swagger**: Generate from Pydantic schemas (`/docs` endpoint)
+- **Endpoint docstrings**: Include request/response examples
+- **Schema descriptions**: Add `description` field to all Pydantic models
+
+### Component Documentation
+- **JSDoc for public components**: Document props, usage, examples
+- **Storybook** (future): Component library with live examples
+- **README per feature directory**: Explain architecture decisions
+
+### Architecture Documentation
+- **ADR (Architecture Decision Records)**: Document major decisions in `docs/adr/`
+- **Update existing docs**: When changing behavior referenced in docs
+
+## Code Review Checklist (For Agents)
+
+Before marking work complete and creating ledger entry, verify:
+
+### Size Compliance
+- [ ] No Python file exceeds 300 lines
+- [ ] No TypeScript/TSX file exceeds 250 lines
+- [ ] No service file exceeds 250 lines
+- [ ] No API endpoint file has routes > 50 lines each
+- [ ] No page component exceeds 200 lines
+
+### Structure Compliance
+- [ ] Single responsibility: Each file has one clear purpose
+- [ ] No code duplication: Repeated code (3+ occurrences) extracted to shared utility
+- [ ] Proper layering: API → Service → Repository → Model
+- [ ] No circular dependencies
+
+### Testing Compliance
+- [ ] Test file exists for new source file (backend)
+- [ ] Tests pass: `pytest` for backend, `npm run lint` for frontend
+- [ ] Coverage maintained or improved
+
+### Documentation Compliance
+- [ ] Docstrings added for new public functions/classes
+- [ ] Type hints added (Python) or TypeScript types defined
+- [ ] Updated relevant markdown docs if behavior changed
+
+### Ledger Compliance
+- [ ] Agent chat ledger entry created in `agent_chats/YYYY/MM/DD/`
+- [ ] Frontmatter complete with all required fields
+- [ ] All sections present: User Prompt, Goals, Changes, Validation, Next Steps, Linked Commits
+- [ ] If refactoring, tagged with `[refactor]`
+
+**If ANY checklist item fails, do NOT mark work complete. Fix violations first.**
+
 ## Agent Collaboration Ledger (`agent_chats/`)
 
 We operate with the same rigor as the reference repositories (`talkReplay`, `orion`, `ai-shifu`, `talkreplay.com`). Follow these rules exactly:
