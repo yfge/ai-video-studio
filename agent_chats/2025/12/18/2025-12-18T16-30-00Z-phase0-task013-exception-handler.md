@@ -167,4 +167,4 @@ async def get_user(user_id: int, service: UserService = Depends()):
 
 ## Linked Commits
 
-Will be added after commit is created.
+- 8057ecc refactor(backend): add domain exception handler [phase0]
