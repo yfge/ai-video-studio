@@ -1964,6 +1964,7 @@ class AIService:
         import uuid
 
         import aiofiles
+        from urllib.parse import unquote
 
         try:
             # 生成唯一文件名
@@ -1988,9 +1989,10 @@ class AIService:
                     await f.write(image_bytes)
             else:
                 # 处理URL（之前的逻辑）
-                self.logger.info(f"下载图像URL: {image_data[:100]}...")
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(image_data, timeout=60.0)
+                normalized_url = unquote(image_data) if "%25" in image_data else image_data
+                self.logger.info(f"下载图像URL: {normalized_url[:100]}...")
+                async with httpx.AsyncClient(follow_redirects=True) as client:
+                    response = await client.get(normalized_url, timeout=60.0)
                     response.raise_for_status()
 
                     # 保存到本地文件
