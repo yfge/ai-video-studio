@@ -3121,6 +3121,7 @@ def _process_storyboard_video_task(
             selection = selection_by_index.get(idx) or {}
             raw_start_url = selection.get("start_image_url")
             raw_end_url = selection.get("end_image_url")
+            end_explicit_none = "end_image_url" in selection and not raw_end_url
 
             if not raw_start_url:
                 raw_start_url = (
@@ -3139,7 +3140,13 @@ def _process_storyboard_video_task(
                     )
                     or ""
                 )
-            if not raw_end_url:
+
+            use_end_frame = opts.get("use_end_frame")
+            use_end_frame = True if use_end_frame is None else bool(use_end_frame)
+
+            if not use_end_frame or end_explicit_none:
+                raw_end_url = ""
+            elif not raw_end_url:
                 raw_end_url = (
                     fr.get("end_image_url")
                     or (
@@ -3313,6 +3320,10 @@ class StoryboardVideoRequest(BaseModel):
         default=None,
         description="可选：摄像机运动控制参数（仅部分模型支持）",
     )
+    use_end_frame: Optional[bool] = Field(
+        default=None,
+        description="可选：是否使用尾帧。为 False 时强制只用首帧，不再回落到分镜中已有的尾帧。",
+    )
 
 
 @router.post("/{script_id}/storyboard/generate-video")
@@ -3363,6 +3374,7 @@ async def generate_storyboard_video(
                 "execution_expires_after": body.execution_expires_after,
                 "return_last_frame": body.return_last_frame,
                 "camera_control": body.camera_control,
+                "use_end_frame": body.use_end_frame,
             },
             ensure_ascii=False,
         ),
@@ -3392,6 +3404,7 @@ async def generate_storyboard_video(
         "execution_expires_after": body.execution_expires_after,
         "return_last_frame": body.return_last_frame,
         "camera_control": body.camera_control,
+        "use_end_frame": body.use_end_frame,
     }
     storyboard_video_generate_task.delay(t.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}

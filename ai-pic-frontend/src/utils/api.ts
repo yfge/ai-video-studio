@@ -235,6 +235,7 @@ export interface StoryboardVideoGenerationOptions {
   execution_expires_after?: number;
   return_last_frame?: boolean;
   camera_control?: Record<string, unknown>;
+  use_end_frame?: boolean;
 }
 
 export interface AIModel {

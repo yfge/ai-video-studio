@@ -440,7 +440,8 @@ export function StoryboardVideoModal({
               />
             </div>
             <div className="md:col-span-2 text-xs text-gray-500 flex items-center">
-              支持 {durationMin}~{durationMax} 秒，分辨率/画幅/水印/固定镜头均随模型动态变化。
+              支持 {durationMin}~{durationMax}{" "}
+              秒，分辨率/画幅/水印/固定镜头均随模型动态变化。
             </div>
           </div>
 
@@ -500,13 +501,16 @@ export function StoryboardVideoModal({
                         | Record<string, unknown>
                         | undefined)
                     : undefined,
+                  use_end_frame: defaults.supportsEndFrame
+                    ? useEndFrame
+                    : false,
                 };
                 await onSubmit({
                   start_image_url: startSelected,
                   end_image_url:
                     defaults.supportsEndFrame && useEndFrame
-                    ? endSelected || undefined
-                    : undefined,
+                      ? endSelected || undefined
+                      : undefined,
                   options,
                 });
               }}
