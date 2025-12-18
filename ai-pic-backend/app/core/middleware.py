@@ -1,15 +1,22 @@
 """中间件模块
 
-提供用户认证、权限控制、请求日志等中间件
+提供用户认证、权限控制、请求日志、异常处理等中间件
 """
 from datetime import datetime
 from typing import Optional, Callable
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status, Depends, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from starlette.middleware.base import BaseHTTPMiddleware
+import logging
+
 from app.core.database import get_db
 from app.core.security import verify_token
+from app.core.exceptions import DomainError
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -146,6 +153,48 @@ def record_user_login(user: User, db: Session, success: bool = True):
         if user.failed_login_attempts >= 5:
             from datetime import timedelta
             user.account_locked_until = datetime.utcnow() + timedelta(hours=1)
-    
+
     db.commit()
     db.refresh(user)
+
+
+async def domain_exception_handler(request: Request, exc: DomainError) -> JSONResponse:
+    """
+    Exception handler for domain exceptions.
+
+    This handler catches all DomainError exceptions raised in the application
+    and converts them to structured JSON HTTP responses. It enables clean
+    separation between business logic (which raises domain exceptions) and
+    HTTP layer (which returns HTTP responses).
+
+    Args:
+        request: Incoming HTTP request
+        exc: Domain exception that was raised
+
+    Returns:
+        JSONResponse with structured error format
+
+    Features:
+        - Automatic conversion of domain exceptions to HTTP responses
+        - Structured error response format (error, message, context)
+        - Logging of all domain errors for monitoring
+        - Preserves status codes and error codes from domain exceptions
+    """
+    # Log the domain error with context
+    logger.warning(
+        f"Domain error occurred: {exc.error_code} - {exc.message}",
+        extra={
+            "error_code": exc.error_code,
+            "error_message": exc.message,  # Use 'error_message' to avoid conflict with log record 'message'
+            "error_context": exc.context,
+            "status_code": exc.status_code,
+            "path": request.url.path,
+            "method": request.method,
+        },
+    )
+
+    # Convert domain exception to JSON response
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_dict(),
+    )

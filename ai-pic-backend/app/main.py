@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logging import LoggingMiddleware, setup_logging
+from app.core.middleware import domain_exception_handler
+from app.core.exceptions import DomainError
 
 # Set up structured logging once at import time so all application instances
 # share the same configuration.
@@ -35,8 +37,14 @@ def create_app() -> FastAPI:
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
     )
 
-    # Middlewares
+    # Exception handlers (must be registered before middlewares)
+    app.add_exception_handler(DomainError, domain_exception_handler)
+
+    # Middlewares (order matters: first added = outermost layer)
+    # Request logging
     app.add_middleware(LoggingMiddleware)
+
+    # CORS and security
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.ALLOWED_HOSTS,
