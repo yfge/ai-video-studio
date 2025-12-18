@@ -562,12 +562,31 @@ class KelingProvider(BaseProvider):
                     request_data[key] = kwargs[key]
 
             # Create video generation task
-            response = await client.post(
-                f"{self.base_url}/v1/videos/image2video",
-                json=request_data,
-                headers=self._get_auth_headers(),
-            )
-            response.raise_for_status()
+            try:
+                response = await client.post(
+                    f"{self.base_url}/v1/videos/image2video",
+                    json=request_data,
+                    headers=self._get_auth_headers(),
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                detail: str = ""
+                try:
+                    payload = exc.response.json()
+                    code = payload.get("code")
+                    msg = payload.get("message") or payload.get("msg")
+                    detail = f"code={code}, message={msg}"
+                except Exception:
+                    detail = exc.response.text or str(exc)
+                return AIResponse(
+                    success=False,
+                    error=f"Keling image2video HTTP {exc.response.status_code}: {detail}",
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.VIDEO_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
+                )
+
             data = response.json()
 
             task_id = data.get("data", {}).get("task_id")
@@ -587,14 +606,14 @@ class KelingProvider(BaseProvider):
             if result and "video_url" in result:
                 return AIResponse(
                     success=True,
-                    data={"video_url": result["video_url"], "duration": duration},
+                    data={"video_url": result["video_url"], "duration": dur_int},
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.VIDEO_GENERATION,
                     model_type=AIModelType.IMAGE_TO_VIDEO,
                     metadata={
                         "task_id": task_id,
-                        "duration": duration,
+                        "duration": dur_int,
                         "mode": mode,
                         "prompt": prompt,
                     },
