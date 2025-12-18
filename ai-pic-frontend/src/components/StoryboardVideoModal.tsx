@@ -108,6 +108,7 @@ export function StoryboardVideoModal({
   const [cameraFixed, setCameraFixed] = useState<boolean>(false);
   const [startSelected, setStartSelected] = useState<string>("");
   const [endSelected, setEndSelected] = useState<string>("");
+  const [useEndFrame, setUseEndFrame] = useState<boolean>(true);
 
   const startList = useMemo(() => {
     const raw = [...(startCandidates || [])].filter(Boolean);
@@ -134,6 +135,7 @@ export function StoryboardVideoModal({
     setCameraControlText("");
     setCameraFixed(false);
     setModelId("");
+    setUseEndFrame(true);
   }, [
     defaultDuration,
     defaultEnd,
@@ -212,8 +214,10 @@ export function StoryboardVideoModal({
     setWatermark(
       defaults.supportsWatermark ? defaults.defaultWatermark : false,
     );
-    if (!defaults.supportsEndFrame) setEndSelected("");
-    if (defaults.supportsEndFrame && !endSelected) {
+    if (!defaults.supportsEndFrame) {
+      setUseEndFrame(false);
+      setEndSelected("");
+    } else if (useEndFrame && !endSelected) {
       setEndSelected(defaultEnd || endList[0] || "");
     }
     if (!defaults.supportsCameraFixed) {
@@ -249,12 +253,15 @@ export function StoryboardVideoModal({
     durationMax,
     defaults.cameraControlSchema,
     cameraControlText,
+    useEndFrame,
   ]);
 
   if (!open) return null;
 
   const promptOk = prompt.trim().length > 0;
   const startOk = Boolean(startSelected);
+  const endOk =
+    !defaults.supportsEndFrame || !useEndFrame || Boolean(endSelected);
   const modelOk = Boolean(modelId);
 
   const durationClamped = Math.max(
@@ -278,6 +285,8 @@ export function StoryboardVideoModal({
     ? "请输入提示词"
     : !modelOk
     ? "请选择模型"
+    : !endOk
+    ? "请选择尾帧或关闭尾帧"
     : !seedOk
     ? "seed 必须为整数"
     : cameraControlError
@@ -318,14 +327,36 @@ export function StoryboardVideoModal({
               title="选择尾帧"
               candidates={endList}
               selected={endSelected}
-              disabled={!defaults.supportsEndFrame}
+              disabled={!defaults.supportsEndFrame || !useEndFrame}
               onSelect={setEndSelected}
             />
             {!defaults.supportsEndFrame ? (
               <p className="mt-2 text-xs text-gray-500">
                 当前模型不支持“首尾帧”输入，将仅使用首帧生成视频。
               </p>
-            ) : null}
+            ) : (
+              <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={useEndFrame}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setUseEndFrame(checked);
+                    if (!checked) {
+                      setEndSelected("");
+                    } else if (!endSelected) {
+                      setEndSelected(defaultEnd || endList[0] || "");
+                    }
+                  }}
+                  disabled={endList.length === 0}
+                />
+                使用尾帧（可选）
+                <span className="text-xs text-gray-500">
+                  {endList.length === 0 ? "当前无尾帧候选" : "可留空仅用首帧"}
+                </span>
+              </label>
+            )}
           </div>
         </div>
 
@@ -472,7 +503,8 @@ export function StoryboardVideoModal({
                 };
                 await onSubmit({
                   start_image_url: startSelected,
-                  end_image_url: defaults.supportsEndFrame
+                  end_image_url:
+                    defaults.supportsEndFrame && useEndFrame
                     ? endSelected || undefined
                     : undefined,
                   options,
