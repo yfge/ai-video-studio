@@ -83,6 +83,17 @@ class KelingProvider(BaseProvider):
                     "30fps",
                     "professional_mode",
                 ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["1080P", "720P"],
+                        "duration_options": [5, 10],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "1080P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="kling-v2-5-turbo",
@@ -91,6 +102,17 @@ class KelingProvider(BaseProvider):
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
                 capabilities=["image_to_video", "fast_generation", "1080p", "30fps"],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["1080P", "720P"],
+                        "duration_options": [5, 10],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "1080P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="kling-v2-1-master",
@@ -105,6 +127,17 @@ class KelingProvider(BaseProvider):
                     "30fps",
                     "advanced_controls",
                 ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["1080P", "720P"],
+                        "duration_options": [5, 10],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "1080P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="kling-v2-1",
@@ -113,6 +146,17 @@ class KelingProvider(BaseProvider):
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
                 capabilities=["image_to_video", "1080p", "30fps"],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["1080P", "720P"],
+                        "duration_options": [5, 10],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "1080P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             # V1 Series Models - Legacy but still supported
             ModelInfo(
@@ -122,6 +166,17 @@ class KelingProvider(BaseProvider):
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
                 capabilities=["image_to_video", "multi_image", "720p", "24fps"],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["720P"],
+                        "duration_options": [5, 10],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="kling-v1-5",
@@ -130,6 +185,17 @@ class KelingProvider(BaseProvider):
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
                 capabilities=["image_to_video", "720p", "24fps"],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["720P"],
+                        "duration_options": [5, 10],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="kling-v1",
@@ -138,6 +204,17 @@ class KelingProvider(BaseProvider):
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
                 capabilities=["image_to_video", "720p", "24fps"],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["720P"],
+                        "duration_options": [5, 10],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             # Image Generation Models
             ModelInfo(
@@ -153,6 +230,13 @@ class KelingProvider(BaseProvider):
                     "character_reference",
                     "face_reference",
                 ],
+                metadata={
+                    "ui": {
+                        "size_options": ["2k", "1k"],
+                        "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                        "supports_reference_image": True,
+                    }
+                },
             ),
             ModelInfo(
                 model_id="kling-image-v1",
@@ -161,6 +245,13 @@ class KelingProvider(BaseProvider):
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpg"],
                 capabilities=["text_to_image", "image_to_image", "1k_resolution"],
+                metadata={
+                    "ui": {
+                        "size_options": ["1k"],
+                        "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                        "supports_reference_image": True,
+                    }
+                },
             ),
         ]
 

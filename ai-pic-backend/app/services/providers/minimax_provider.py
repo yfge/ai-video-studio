@@ -48,7 +48,7 @@ class MinimaxProvider(BaseProvider):
             AIModelType.TEXT_GENERATION,
             AIModelType.TEXT_TO_SPEECH,
             AIModelType.IMAGE_TO_VIDEO,
-            AIModelType.TEXT_TO_VIDEO
+            AIModelType.TEXT_TO_VIDEO,
         ]
 
     @property
@@ -145,7 +145,25 @@ class MinimaxProvider(BaseProvider):
                 description="海螺视频生成2.3版本，支持768P/1080P，6s/10s时长",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "768p", "1080p", "6s", "10s", "camera_control"],
+                capabilities=[
+                    "image_to_video",
+                    "768p",
+                    "1080p",
+                    "6s",
+                    "10s",
+                    "camera_control",
+                ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["768P", "1080P"],
+                        "duration_options": [6, 10],
+                        "supports_end_frame": False,
+                        "supports_camera_fixed": True,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "768P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="MiniMax-Hailuo-2.3-Fast",
@@ -153,7 +171,25 @@ class MinimaxProvider(BaseProvider):
                 description="海螺视频生成2.3快速版，生成速度更快",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "768p", "1080p", "6s", "10s", "fast_generation"],
+                capabilities=[
+                    "image_to_video",
+                    "768p",
+                    "1080p",
+                    "6s",
+                    "10s",
+                    "fast_generation",
+                ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["768P", "1080P"],
+                        "duration_options": [6, 10],
+                        "supports_end_frame": False,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "768P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="MiniMax-Hailuo-02",
@@ -161,7 +197,26 @@ class MinimaxProvider(BaseProvider):
                 description="海螺视频生成0.2版本，支持512P/768P/1080P多种分辨率",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "512p", "768p", "1080p", "6s", "10s", "first_last_frame"],
+                capabilities=[
+                    "image_to_video",
+                    "512p",
+                    "768p",
+                    "1080p",
+                    "6s",
+                    "10s",
+                    "first_last_frame",
+                ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["512P", "768P", "1080P"],
+                        "duration_options": [6, 10],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "768P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="I2V-01-Director",
@@ -169,7 +224,23 @@ class MinimaxProvider(BaseProvider):
                 description="专业级图生视频模型，支持精细控制",
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
-                capabilities=["image_to_video", "720p", "director_mode", "camera_control"],
+                capabilities=[
+                    "image_to_video",
+                    "720p",
+                    "director_mode",
+                    "camera_control",
+                ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["720P"],
+                        "duration_options": [6, 10],
+                        "supports_end_frame": False,
+                        "supports_camera_fixed": True,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="I2V-01-live",
@@ -178,6 +249,17 @@ class MinimaxProvider(BaseProvider):
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
                 capabilities=["image_to_video", "720p", "fast_generation"],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["720P"],
+                        "duration_options": [6, 10],
+                        "supports_end_frame": False,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
             ModelInfo(
                 model_id="I2V-01",
@@ -186,6 +268,17 @@ class MinimaxProvider(BaseProvider):
                 model_type=AIModelType.IMAGE_TO_VIDEO,
                 supported_formats=["mp4"],
                 capabilities=["image_to_video", "720p"],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["720P"],
+                        "duration_options": [6, 10],
+                        "supports_end_frame": False,
+                        "supports_camera_fixed": False,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                    }
+                },
             ),
         ]
 
@@ -404,7 +497,7 @@ class MinimaxProvider(BaseProvider):
         prompt_optimizer: bool = True,
         fast_pretreatment: bool = False,
         aigc_watermark: bool = False,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """
         Generate video from image(s) using MiniMax video generation API.
@@ -434,14 +527,18 @@ class MinimaxProvider(BaseProvider):
                 "duration": duration,
                 "resolution": resolution,
                 "prompt_optimizer": prompt_optimizer,
-                "aigc_watermark": aigc_watermark
+                "aigc_watermark": aigc_watermark,
             }
 
             if prompt:
                 payload["prompt"] = prompt
             if last_frame_image:
                 payload["last_frame_image"] = last_frame_image
-            if fast_pretreatment and model in ["MiniMax-Hailuo-2.3", "MiniMax-Hailuo-2.3-Fast", "MiniMax-Hailuo-02"]:
+            if fast_pretreatment and model in [
+                "MiniMax-Hailuo-2.3",
+                "MiniMax-Hailuo-2.3-Fast",
+                "MiniMax-Hailuo-02",
+            ]:
                 payload["fast_pretreatment"] = fast_pretreatment
 
             # Create video generation task
@@ -455,7 +552,7 @@ class MinimaxProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
                 )
 
             # Poll task status
@@ -469,7 +566,7 @@ class MinimaxProvider(BaseProvider):
                         "file_id": result.get("file_id"),
                         "duration": duration,
                         "width": result.get("video_width"),
-                        "height": result.get("video_height")
+                        "height": result.get("video_height"),
                     },
                     provider=self.name,
                     model=model,
@@ -478,8 +575,8 @@ class MinimaxProvider(BaseProvider):
                     metadata={
                         "task_id": task_id,
                         "resolution": resolution,
-                        "duration": duration
-                    }
+                        "duration": duration,
+                    },
                 )
             else:
                 return AIResponse(
@@ -488,7 +585,7 @@ class MinimaxProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
+                    model_type=AIModelType.IMAGE_TO_VIDEO,
                 )
 
         except MinimaxAPIError as err:
@@ -498,7 +595,7 @@ class MinimaxProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.IMAGE_TO_VIDEO
+                model_type=AIModelType.IMAGE_TO_VIDEO,
             )
 
     async def _poll_video_task(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -507,10 +604,10 @@ class MinimaxProvider(BaseProvider):
 
         Endpoint: GET /v1/query/video_generation?task_id={task_id}
         """
+
         async def poll_fn() -> Dict[str, Any]:
             return await self.client.get_json(
-                "/query/video_generation",
-                params={"task_id": task_id}
+                "/query/video_generation", params={"task_id": task_id}
             )
 
         async def extract_result(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -526,7 +623,7 @@ class MinimaxProvider(BaseProvider):
                     "video_url": file_info.get("download_url"),
                     "file_id": file_id,
                     "video_width": data.get("video_width"),
-                    "video_height": data.get("video_height")
+                    "video_height": data.get("video_height"),
                 }
             return {}
 
@@ -537,7 +634,7 @@ class MinimaxProvider(BaseProvider):
             max_attempts=120,  # 20 minutes with 10s interval
             initial_delay=10.0,
             task_id=task_id,
-            task_type="video"
+            task_type="video",
         )
 
         return await poller.poll()
@@ -556,8 +653,7 @@ class MinimaxProvider(BaseProvider):
         """
         try:
             response_data = await self.client.get_json(
-                "/files/retrieve",
-                params={"file_id": file_id}
+                "/files/retrieve", params={"file_id": file_id}
             )
 
             file_obj = response_data.get("file", {})
@@ -566,7 +662,7 @@ class MinimaxProvider(BaseProvider):
                 "download_url": file_obj.get("download_url"),
                 "filename": file_obj.get("filename"),
                 "bytes": file_obj.get("bytes"),
-                "created_at": file_obj.get("created_at")
+                "created_at": file_obj.get("created_at"),
             }
 
         except MinimaxAPIError as err:

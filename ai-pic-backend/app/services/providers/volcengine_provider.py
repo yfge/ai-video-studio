@@ -4,23 +4,33 @@
 支持文本生成、图像生成和视频生成等功能
 """
 
-import httpx
 import asyncio
 import json
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
+
+import httpx
 from app.core.logging import get_logger
-from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
+
+from .base import (
+    AIModelType,
+    AIResponse,
+    AITaskType,
+    BaseProvider,
+    ModelInfo,
+    ProviderConfig,
+)
 
 logger = get_logger(__name__)
 
+
 class VolcengineProvider(BaseProvider):
     """火山引擎服务提供商"""
-    
+
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
         self.base_url = config.base_url or "https://ark.cn-beijing.volces.com/api/v3"
-        self.region = config.region if hasattr(config, 'region') else "cn-beijing"
-    
+        self.region = config.region if hasattr(config, "region") else "cn-beijing"
+
     @property
     def supported_model_types(self) -> List[AIModelType]:
         return [
@@ -29,9 +39,9 @@ class VolcengineProvider(BaseProvider):
             AIModelType.IMAGE_TO_IMAGE,
             AIModelType.IMAGE_TO_VIDEO,
             AIModelType.TEXT_TO_VIDEO,
-            AIModelType.TEXT_TO_SPEECH
+            AIModelType.TEXT_TO_SPEECH,
         ]
-    
+
     @property
     def available_models(self) -> List[ModelInfo]:
         return [
@@ -42,7 +52,7 @@ class VolcengineProvider(BaseProvider):
                 description="轻量级文本生成模型，快速响应",
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=4096,
-                capabilities=["text_generation", "conversation", "fast_response"]
+                capabilities=["text_generation", "conversation", "fast_response"],
             ),
             ModelInfo(
                 model_id="doubao-pro-4k",
@@ -50,7 +60,12 @@ class VolcengineProvider(BaseProvider):
                 description="专业级文本生成模型，高质量输出",
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=4096,
-                capabilities=["text_generation", "analysis", "reasoning", "high_quality"]
+                capabilities=[
+                    "text_generation",
+                    "analysis",
+                    "reasoning",
+                    "high_quality",
+                ],
             ),
             ModelInfo(
                 model_id="doubao-pro-32k",
@@ -58,7 +73,7 @@ class VolcengineProvider(BaseProvider):
                 description="支持长文本处理的专业版模型",
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=32768,
-                capabilities=["text_generation", "long_context", "document_analysis"]
+                capabilities=["text_generation", "long_context", "document_analysis"],
             ),
             ModelInfo(
                 model_id="seedream-4.5",
@@ -66,7 +81,14 @@ class VolcengineProvider(BaseProvider):
                 description="方舟大模型服务平台的图片生成模型",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpg"],
-                capabilities=["text_to_image", "image_to_image", "high_resolution"]
+                capabilities=["text_to_image", "image_to_image", "high_resolution"],
+                metadata={
+                    "ui": {
+                        "size_options": ["2K"],
+                        "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                        "supports_reference_image": True,
+                    }
+                },
             ),
             # 图像生成模型
             ModelInfo(
@@ -75,7 +97,7 @@ class VolcengineProvider(BaseProvider):
                 description="高质量图像生成模型",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpg"],
-                capabilities=["text_to_image", "style_control", "high_resolution"]
+                capabilities=["text_to_image", "style_control", "high_resolution"],
             ),
             ModelInfo(
                 model_id="volcengine-visual-pro",
@@ -83,7 +105,7 @@ class VolcengineProvider(BaseProvider):
                 description="专业版图像生成，支持更多风格",
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpg"],
-                capabilities=["text_to_image", "multiple_styles", "ultra_quality"]
+                capabilities=["text_to_image", "multiple_styles", "ultra_quality"],
             ),
             # Seedream 图生视频（内部走 Ark Video Generation / Seedance）
             ModelInfo(
@@ -97,6 +119,18 @@ class VolcengineProvider(BaseProvider):
                     "image_to_video_start_frame",
                     "image_to_video_start_end_frame",
                 ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["480P", "720P", "1080P"],
+                        "duration_options": [2, 12],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": True,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                        "default_watermark": False,
+                    }
+                },
             ),
             ModelInfo(
                 model_id="seedream-i2v-fast",
@@ -108,6 +142,18 @@ class VolcengineProvider(BaseProvider):
                     "image_to_video",
                     "image_to_video_start_frame",
                 ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["480P", "720P", "1080P"],
+                        "duration_options": [2, 12],
+                        "supports_end_frame": False,
+                        "supports_camera_fixed": True,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                        "default_watermark": False,
+                    }
+                },
             ),
             ModelInfo(
                 model_id="seedream-i2v-lite",
@@ -120,6 +166,18 @@ class VolcengineProvider(BaseProvider):
                     "image_to_video_start_frame",
                     "image_to_video_start_end_frame",
                 ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["480P", "720P", "1080P"],
+                        "duration_options": [2, 12],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": True,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                        "default_watermark": False,
+                    }
+                },
             ),
             # 视频生成模型（Volcengine Ark / Seedance）
             ModelInfo(
@@ -134,6 +192,18 @@ class VolcengineProvider(BaseProvider):
                     "image_to_video_start_frame",
                     "image_to_video_start_end_frame",
                 ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["480P", "720P", "1080P"],
+                        "duration_options": [2, 12],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": True,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                        "default_watermark": False,
+                    }
+                },
             ),
             ModelInfo(
                 model_id="doubao-seedance-1-0-pro-fast-251015",
@@ -146,6 +216,18 @@ class VolcengineProvider(BaseProvider):
                     "image_to_video",
                     "image_to_video_start_frame",
                 ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["480P", "720P", "1080P"],
+                        "duration_options": [2, 12],
+                        "supports_end_frame": False,
+                        "supports_camera_fixed": True,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                        "default_watermark": False,
+                    }
+                },
             ),
             ModelInfo(
                 model_id="doubao-seedance-1-0-lite-t2v-250428",
@@ -167,6 +249,18 @@ class VolcengineProvider(BaseProvider):
                     "image_to_video_start_frame",
                     "image_to_video_start_end_frame",
                 ],
+                metadata={
+                    "ui": {
+                        "resolution_options": ["480P", "720P", "1080P"],
+                        "duration_options": [2, 12],
+                        "supports_end_frame": True,
+                        "supports_camera_fixed": True,
+                        "ratio_options": ["16:9", "9:16", "1:1", "4:3"],
+                        "default_resolution": "720P",
+                        "default_ratio": "16:9",
+                        "default_watermark": False,
+                    }
+                },
             ),
             # 语音合成模型
             ModelInfo(
@@ -175,8 +269,8 @@ class VolcengineProvider(BaseProvider):
                 description="高质量语音合成服务",
                 model_type=AIModelType.TEXT_TO_SPEECH,
                 supported_formats=["mp3", "wav"],
-                capabilities=["text_to_speech", "emotion_control", "voice_cloning"]
-            )
+                capabilities=["text_to_speech", "emotion_control", "voice_cloning"],
+            ),
         ]
 
     def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
@@ -200,7 +294,10 @@ class VolcengineProvider(BaseProvider):
         lid = model_id.lower()
         tokens.append(lid)
 
-        if any(tag in tokens for tag in ["image", "visual", "seedream", "picture", "painting"]):
+        if any(
+            tag in tokens
+            for tag in ["image", "visual", "seedream", "picture", "painting"]
+        ):
             return AIModelType.TEXT_TO_IMAGE
         if any(tag in tokens for tag in ["video", "vid", "movie"]):
             return AIModelType.TEXT_TO_VIDEO
@@ -277,7 +374,9 @@ class VolcengineProvider(BaseProvider):
                     ModelInfo(
                         model_id=mid,
                         name=item.get("name") or item.get("model_name") or mid,
-                        description=item.get("description") or item.get("desc") or f"Volcengine model {mid}",
+                        description=item.get("description")
+                        or item.get("desc")
+                        or f"Volcengine model {mid}",
                         model_type=mtype,
                         capabilities=self._infer_capabilities(mtype, item),
                     )
@@ -285,22 +384,19 @@ class VolcengineProvider(BaseProvider):
             return models or fallback
         except Exception:
             return fallback
-    
+
     async def _initialize_client(self):
         """初始化HTTP客户端"""
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
-        
+
         # 如果有region信息，添加到头部
         if self.region:
             headers["X-Region"] = self.region
-        
-        self._client = httpx.AsyncClient(
-            timeout=self.config.timeout,
-            headers=headers
-        )
+
+        self._client = httpx.AsyncClient(timeout=self.config.timeout, headers=headers)
 
     async def _stream_chat_completion(self, payload: Dict[str, Any], model: str):
         """使用火山方舟流式接口拼接响应。"""
@@ -342,26 +438,26 @@ class VolcengineProvider(BaseProvider):
                     finish_reason = choice.get("finish_reason") or finish_reason
 
         return "".join(content_parts).strip(), usage, finish_reason
-    
+
     async def generate_text(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         model: str = "doubao-pro-4k",
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         top_p: float = 0.95,
         system_prompt: str = None,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """使用豆包生成文本"""
         try:
             client = await self.get_client()
-            
+
             messages = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
-            
+
             request_data = {
                 "model": model,
                 "messages": messages,
@@ -373,12 +469,14 @@ class VolcengineProvider(BaseProvider):
                 request_data["max_tokens"] = max_tokens
 
             stream = bool(request_data.pop("stream", True))
-            
+
             if stream:
                 try:
-                    streamed_content, usage, finish_reason = await self._stream_chat_completion(
-                        {**request_data, "stream": True},
-                        model,
+                    streamed_content, usage, finish_reason = (
+                        await self._stream_chat_completion(
+                            {**request_data, "stream": True},
+                            model,
+                        )
                     )
                     if streamed_content:
                         return AIResponse(
@@ -392,20 +490,25 @@ class VolcengineProvider(BaseProvider):
                             metadata={
                                 "finish_reason": finish_reason,
                                 "stream": True,
-                            }
+                            },
                         )
-                    logger.warning("Volcengine stream returned empty content; falling back to non-stream.")
+                    logger.warning(
+                        "Volcengine stream returned empty content; falling back to non-stream."
+                    )
                 except Exception as stream_err:  # noqa: BLE001
-                    logger.warning("Volcengine stream failed, falling back to non-stream: %s", stream_err, exc_info=True)
+                    logger.warning(
+                        "Volcengine stream failed, falling back to non-stream: %s",
+                        stream_err,
+                        exc_info=True,
+                    )
 
             response = await client.post(
-                f"{self.base_url}/chat/completions",
-                json=request_data
+                f"{self.base_url}/chat/completions", json=request_data
             )
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             if data.get("error"):
                 return AIResponse(
                     success=False,
@@ -413,11 +516,11 @@ class VolcengineProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.STORY_GENERATION,
-                    model_type=AIModelType.TEXT_GENERATION
+                    model_type=AIModelType.TEXT_GENERATION,
                 )
-            
+
             content = data["choices"][0]["message"]["content"]
-            
+
             return AIResponse(
                 success=True,
                 data=content,
@@ -429,11 +532,13 @@ class VolcengineProvider(BaseProvider):
                 metadata={
                     "finish_reason": data["choices"][0].get("finish_reason"),
                     "prompt_tokens": data.get("usage", {}).get("prompt_tokens", 0),
-                    "completion_tokens": data.get("usage", {}).get("completion_tokens", 0),
-                    "total_tokens": data.get("usage", {}).get("total_tokens", 0)
-                }
+                    "completion_tokens": data.get("usage", {}).get(
+                        "completion_tokens", 0
+                    ),
+                    "total_tokens": data.get("usage", {}).get("total_tokens", 0),
+                },
             )
-            
+
         except Exception as e:
             return AIResponse(
                 success=False,
@@ -441,12 +546,12 @@ class VolcengineProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.STORY_GENERATION,
-                model_type=AIModelType.TEXT_GENERATION
+                model_type=AIModelType.TEXT_GENERATION,
             )
-    
+
     async def generate_image(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         model: str = "volcengine-visual-v1",
         width: int = 1024,
         height: int = 1024,
@@ -454,7 +559,7 @@ class VolcengineProvider(BaseProvider):
         cfg_scale: float = 7.5,
         style: str = "realistic",
         seed: int = -1,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """使用火山引擎生成图像（对齐方舟 Seedream 图片生成 API）"""
         last_error: Exception | None = None
@@ -493,11 +598,10 @@ class VolcengineProvider(BaseProvider):
                         request_data[key] = kwargs[key]
 
                 response = await client.post(
-                    f"{self.base_url}/images/generations",
-                    json=request_data
+                    f"{self.base_url}/images/generations", json=request_data
                 )
                 response.raise_for_status()
-                
+
                 data = response.json()
 
                 # Ark 错误响应通常包含 error 节点，优先检查并直接返回
@@ -508,13 +612,17 @@ class VolcengineProvider(BaseProvider):
                         provider=self.name,
                         model=model,
                         task_type=AITaskType.PORTRAIT_GENERATION,
-                        model_type=AIModelType.TEXT_TO_IMAGE
+                        model_type=AIModelType.TEXT_TO_IMAGE,
                     )
 
                 # 同步返回：data 数组中包含 url / size 等字段
                 if "data" in data:
                     images = data.get("data") or []
-                    image_urls = [img.get("url") for img in images if isinstance(img, dict) and img.get("url")]
+                    image_urls = [
+                        img.get("url")
+                        for img in images
+                        if isinstance(img, dict) and img.get("url")
+                    ]
                     if image_urls:
                         return AIResponse(
                             success=True,
@@ -538,9 +646,9 @@ class VolcengineProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.PORTRAIT_GENERATION,
-                    model_type=AIModelType.TEXT_TO_IMAGE
+                    model_type=AIModelType.TEXT_TO_IMAGE,
                 )
-                
+
             except Exception as e:
                 last_error = e
                 if "handler is closed" in str(e).lower() and attempt == 0:
@@ -555,7 +663,7 @@ class VolcengineProvider(BaseProvider):
             provider=self.name,
             model=model,
             task_type=AITaskType.PORTRAIT_GENERATION,
-            model_type=AIModelType.TEXT_TO_IMAGE
+            model_type=AIModelType.TEXT_TO_IMAGE,
         )
 
     async def image_to_image(
@@ -622,8 +730,12 @@ class VolcengineProvider(BaseProvider):
                     for url in urls:
                         try:
                             download_url = url
-                            if isinstance(download_url, str) and download_url.lower().startswith("https://"):
-                                download_url = "http://" + download_url[len("https://"):]
+                            if isinstance(
+                                download_url, str
+                            ) and download_url.lower().startswith("https://"):
+                                download_url = (
+                                    "http://" + download_url[len("https://") :]
+                                )
                             img_resp = await client.get(download_url)
                             img_resp.raise_for_status()
                         except Exception as e:
@@ -673,7 +785,11 @@ class VolcengineProvider(BaseProvider):
                 request_data: Dict[str, Any] = {
                     "model": ark_model,
                     "prompt": prompt or "",
-                    "image": image_payloads[0] if len(image_payloads) == 1 else image_payloads,
+                    "image": (
+                        image_payloads[0]
+                        if len(image_payloads) == 1
+                        else image_payloads
+                    ),
                     "size": effective_size,
                     "response_format": "url",
                     "watermark": kwargs.pop("watermark", False),
@@ -758,7 +874,7 @@ class VolcengineProvider(BaseProvider):
             task_type=AITaskType.SCENE_GENERATION,
             model_type=AIModelType.IMAGE_TO_IMAGE,
         )
-    
+
     async def generate_video(
         self,
         prompt: str | None = None,
@@ -824,7 +940,10 @@ class VolcengineProvider(BaseProvider):
                 flags.append(f"--rs {rs}")
 
             rt = (ratio or "").strip()
-            if rt and not (_contains_flag(base_prompt, "--rt") or _contains_flag(base_prompt, "--ratio")):
+            if rt and not (
+                _contains_flag(base_prompt, "--rt")
+                or _contains_flag(base_prompt, "--ratio")
+            ):
                 flags.append(f"--rt {rt}")
 
             # duration: 2~12 秒（参考文档）
@@ -899,15 +1018,16 @@ class VolcengineProvider(BaseProvider):
                     provider=self.name,
                     model=ark_model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
-                    if image_url
-                    else AIModelType.TEXT_TO_VIDEO,
+                    model_type=(
+                        AIModelType.IMAGE_TO_VIDEO
+                        if image_url
+                        else AIModelType.TEXT_TO_VIDEO
+                    ),
                 )
 
             task_id = (
-                (create_data.get("id") if isinstance(create_data, dict) else None)
-                or (create_data.get("task_id") if isinstance(create_data, dict) else None)
-            )
+                create_data.get("id") if isinstance(create_data, dict) else None
+            ) or (create_data.get("task_id") if isinstance(create_data, dict) else None)
             if not task_id and isinstance(create_data, dict):
                 nested = create_data.get("data")
                 if isinstance(nested, dict):
@@ -920,9 +1040,11 @@ class VolcengineProvider(BaseProvider):
                     provider=self.name,
                     model=ark_model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
-                    if image_url
-                    else AIModelType.TEXT_TO_VIDEO,
+                    model_type=(
+                        AIModelType.IMAGE_TO_VIDEO
+                        if image_url
+                        else AIModelType.TEXT_TO_VIDEO
+                    ),
                     metadata={"raw": create_data},
                 )
 
@@ -938,9 +1060,11 @@ class VolcengineProvider(BaseProvider):
                     provider=self.name,
                     model=ark_model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
-                    if image_url
-                    else AIModelType.TEXT_TO_VIDEO,
+                    model_type=(
+                        AIModelType.IMAGE_TO_VIDEO
+                        if image_url
+                        else AIModelType.TEXT_TO_VIDEO
+                    ),
                     metadata={"task_id": task_id},
                 )
 
@@ -970,9 +1094,11 @@ class VolcengineProvider(BaseProvider):
                     provider=self.name,
                     model=ark_model,
                     task_type=AITaskType.VIDEO_GENERATION,
-                    model_type=AIModelType.IMAGE_TO_VIDEO
-                    if image_url
-                    else AIModelType.TEXT_TO_VIDEO,
+                    model_type=(
+                        AIModelType.IMAGE_TO_VIDEO
+                        if image_url
+                        else AIModelType.TEXT_TO_VIDEO
+                    ),
                     metadata={"task_id": task_id, "raw": result},
                 )
 
@@ -987,9 +1113,11 @@ class VolcengineProvider(BaseProvider):
                 provider=self.name,
                 model=ark_model,
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.IMAGE_TO_VIDEO
-                if image_url
-                else AIModelType.TEXT_TO_VIDEO,
+                model_type=(
+                    AIModelType.IMAGE_TO_VIDEO
+                    if image_url
+                    else AIModelType.TEXT_TO_VIDEO
+                ),
                 metadata={
                     "task_id": task_id,
                     "prompt": final_prompt,
@@ -1011,14 +1139,16 @@ class VolcengineProvider(BaseProvider):
                 provider=self.name,
                 model=(model or "doubao-seedance-1-0-pro-250528"),
                 task_type=AITaskType.VIDEO_GENERATION,
-                model_type=AIModelType.IMAGE_TO_VIDEO
-                if image_url
-                else AIModelType.TEXT_TO_VIDEO,
+                model_type=(
+                    AIModelType.IMAGE_TO_VIDEO
+                    if image_url
+                    else AIModelType.TEXT_TO_VIDEO
+                ),
             )
-    
+
     async def text_to_speech(
-        self, 
-        text: str, 
+        self,
+        text: str,
         model: str = "volcengine-tts-v1",
         voice_type: str = "BV001_streaming",
         speed: float = 1.0,
@@ -1026,45 +1156,42 @@ class VolcengineProvider(BaseProvider):
         pitch: float = 1.0,
         emotion: str = "neutral",
         format: str = "mp3",
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """火山引擎文本转语音"""
         try:
             client = await self.get_client()
-            
+
             request_data = {
                 "app": {
                     "appid": "your_app_id",  # 需要在配置中提供
                     "token": self.config.api_key,
-                    "cluster": "volcano_tts"
+                    "cluster": "volcano_tts",
                 },
-                "user": {
-                    "uid": "user_001"
-                },
+                "user": {"uid": "user_001"},
                 "audio": {
                     "voice_type": voice_type,
                     "encoding": format,
                     "speed_ratio": speed,
                     "volume_ratio": volume,
                     "pitch_ratio": pitch,
-                    "emotion": emotion
+                    "emotion": emotion,
                 },
                 "request": {
                     "reqid": f"tts_{asyncio.get_event_loop().time()}",
                     "text": text,
                     "text_type": "plain",
-                    "operation": "submit"
-                }
+                    "operation": "submit",
+                },
             }
-            
+
             response = await client.post(
-                f"{self.base_url}/tts/submit",
-                json=request_data
+                f"{self.base_url}/tts/submit", json=request_data
             )
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             if data.get("code") == 0:
                 # 异步任务，需要轮询结果
                 task_id = data.get("task_id")
@@ -1075,7 +1202,7 @@ class VolcengineProvider(BaseProvider):
                             success=True,
                             data={
                                 "audio_url": result.get("audio_url"),
-                                "duration": result.get("duration")
+                                "duration": result.get("duration"),
                             },
                             provider=self.name,
                             model=model,
@@ -1088,8 +1215,8 @@ class VolcengineProvider(BaseProvider):
                                 "pitch": pitch,
                                 "emotion": emotion,
                                 "format": format,
-                                "text_length": len(text)
-                            }
+                                "text_length": len(text),
+                            },
                         )
             else:
                 error_msg = data.get("message", "Unknown error")
@@ -1099,18 +1226,18 @@ class VolcengineProvider(BaseProvider):
                     provider=self.name,
                     model=model,
                     task_type=AITaskType.VOICE_GENERATION,
-                    model_type=AIModelType.TEXT_TO_SPEECH
+                    model_type=AIModelType.TEXT_TO_SPEECH,
                 )
-            
+
             return AIResponse(
                 success=False,
                 error="语音生成任务失败",
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.VOICE_GENERATION,
-                model_type=AIModelType.TEXT_TO_SPEECH
+                model_type=AIModelType.TEXT_TO_SPEECH,
             )
-            
+
         except Exception as e:
             return AIResponse(
                 success=False,
@@ -1118,15 +1245,15 @@ class VolcengineProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.VOICE_GENERATION,
-                model_type=AIModelType.TEXT_TO_SPEECH
+                model_type=AIModelType.TEXT_TO_SPEECH,
             )
-    
+
     async def _poll_task_status(
-        self, 
+        self,
         task_id: str,
         task_type: str | None = None,
         max_attempts: int = 60,
-        delay: int = 3
+        delay: int = 3,
     ) -> Optional[Dict[str, Any]]:
         """轮询火山方舟内容生成任务状态（Video Generation API）"""
         client = await self.get_client()
@@ -1160,29 +1287,26 @@ class VolcengineProvider(BaseProvider):
                 await asyncio.sleep(delay)
 
         return None
-    
+
     async def _poll_tts_status(
-        self, 
-        task_id: str,
-        max_attempts: int = 30,
-        delay: int = 2
+        self, task_id: str, max_attempts: int = 30, delay: int = 2
     ) -> Optional[Dict[str, Any]]:
         """轮询TTS任务状态"""
         client = await self.get_client()
-        
+
         for attempt in range(max_attempts):
             try:
                 response = await client.get(f"{self.base_url}/tts/query/{task_id}")
                 response.raise_for_status()
-                
+
                 data = response.json()
-                
+
                 if data.get("code") == 0:
                     audio_info = data.get("data", {})
                     if audio_info.get("status") == "success":
                         return {
                             "audio_url": audio_info.get("audio_url"),
-                            "duration": audio_info.get("duration")
+                            "duration": audio_info.get("duration"),
                         }
                     elif audio_info.get("status") == "failed":
                         return None
@@ -1191,37 +1315,77 @@ class VolcengineProvider(BaseProvider):
                         continue
                 else:
                     return None
-                    
+
             except Exception as e:
                 print(f"轮询火山引擎TTS状态失败 (尝试 {attempt + 1}): {e}")
                 await asyncio.sleep(delay)
-        
+
         return None
-    
+
     async def get_voice_types(self) -> AIResponse:
         """获取可用的声音类型列表"""
         try:
             # 火山引擎预定义的声音类型
             voice_types = [
-                {"voice_type": "BV001_streaming", "name": "通用女声", "gender": "female", "language": "zh"},
-                {"voice_type": "BV002_streaming", "name": "通用男声", "gender": "male", "language": "zh"},
-                {"voice_type": "BV003_streaming", "name": "温暖女声", "gender": "female", "style": "warm"},
-                {"voice_type": "BV004_streaming", "name": "阳光男声", "gender": "male", "style": "energetic"},
-                {"voice_type": "BV005_streaming", "name": "知性女声", "gender": "female", "style": "intellectual"},
-                {"voice_type": "BV006_streaming", "name": "成熟男声", "gender": "male", "style": "mature"},
-                {"voice_type": "BV007_streaming", "name": "甜美女声", "gender": "female", "style": "sweet"},
-                {"voice_type": "BV008_streaming", "name": "磁性男声", "gender": "male", "style": "magnetic"}
+                {
+                    "voice_type": "BV001_streaming",
+                    "name": "通用女声",
+                    "gender": "female",
+                    "language": "zh",
+                },
+                {
+                    "voice_type": "BV002_streaming",
+                    "name": "通用男声",
+                    "gender": "male",
+                    "language": "zh",
+                },
+                {
+                    "voice_type": "BV003_streaming",
+                    "name": "温暖女声",
+                    "gender": "female",
+                    "style": "warm",
+                },
+                {
+                    "voice_type": "BV004_streaming",
+                    "name": "阳光男声",
+                    "gender": "male",
+                    "style": "energetic",
+                },
+                {
+                    "voice_type": "BV005_streaming",
+                    "name": "知性女声",
+                    "gender": "female",
+                    "style": "intellectual",
+                },
+                {
+                    "voice_type": "BV006_streaming",
+                    "name": "成熟男声",
+                    "gender": "male",
+                    "style": "mature",
+                },
+                {
+                    "voice_type": "BV007_streaming",
+                    "name": "甜美女声",
+                    "gender": "female",
+                    "style": "sweet",
+                },
+                {
+                    "voice_type": "BV008_streaming",
+                    "name": "磁性男声",
+                    "gender": "male",
+                    "style": "magnetic",
+                },
             ]
-            
+
             return AIResponse(
                 success=True,
                 data=voice_types,
                 provider=self.name,
                 model="voice_types",
                 task_type=AITaskType.VOICE_GENERATION,
-                model_type=AIModelType.TEXT_TO_SPEECH
+                model_type=AIModelType.TEXT_TO_SPEECH,
             )
-            
+
         except Exception as e:
             return AIResponse(
                 success=False,
@@ -1229,5 +1393,5 @@ class VolcengineProvider(BaseProvider):
                 provider=self.name,
                 model="voice_types",
                 task_type=AITaskType.VOICE_GENERATION,
-                model_type=AIModelType.TEXT_TO_SPEECH
+                model_type=AIModelType.TEXT_TO_SPEECH,
             )

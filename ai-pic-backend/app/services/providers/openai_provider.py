@@ -243,6 +243,13 @@ class OpenAIProvider(BaseProvider):
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 supported_formats=["png", "jpeg"],
                 capabilities=["text_to_image", "high_resolution", "detailed"],
+                metadata={
+                    "ui": {
+                        "size_options": ["1024x1024", "1024x1792", "1792x1024"],
+                        "aspect_ratio_options": ["1:1", "16:9", "9:16"],
+                        "supports_reference_image": False,
+                    }
+                },
             ),
             ModelInfo(
                 model_id="dall-e-2",
@@ -256,6 +263,13 @@ class OpenAIProvider(BaseProvider):
                     "inpainting",
                     "image_to_image",
                 ],
+                metadata={
+                    "ui": {
+                        "size_options": ["256x256", "512x512", "1024x1024"],
+                        "aspect_ratio_options": ["1:1"],
+                        "supports_reference_image": True,
+                    }
+                },
             ),
         ]
 

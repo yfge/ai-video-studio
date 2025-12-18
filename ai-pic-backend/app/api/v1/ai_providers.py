@@ -4,15 +4,15 @@ AI服务提供商管理接口
 提供多种AI服务提供商的统一接口，包括文本生成、图像生成、视频生成和语音合成等功能
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
 
 from app.core.middleware import get_current_active_user
 from app.models.user import User
+from app.schemas.style import StyleSpec
 from app.services.ai_service import ai_service
 from app.services.storage.oss_service import oss_service
-from app.schemas.style import StyleSpec
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -399,6 +399,7 @@ async def get_available_models(
                 "provider": m["provider"],
                 "type": m.get("type"),
                 "capabilities": m.get("capabilities", []),
+                "metadata": m.get("metadata", {}),
             }
             for m in models
         ]

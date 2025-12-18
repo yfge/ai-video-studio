@@ -5,26 +5,27 @@ AI服务管理器
 """
 
 import random
-from time import monotonic
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
+from time import monotonic
+from typing import Any, Dict, List, Optional
+
+from app.core.logging import get_logger
 
 from .providers.base import (
-    BaseProvider,
-    AIResponse,
     AIModelType,
+    AIResponse,
     AITaskType,
+    BaseProvider,
     ProviderConfig,
 )
-from .providers.openai_provider import OpenAIProvider
-from .providers.keling_provider import KelingProvider
-from .providers.jimeng_provider import JimengProvider
-from .providers.minimax_provider import MinimaxProvider
 from .providers.deepseek_provider import DeepSeekProvider
-from .providers.volcengine_provider import VolcengineProvider
 from .providers.google_provider import GoogleProvider
-from app.core.logging import get_logger
+from .providers.jimeng_provider import JimengProvider
+from .providers.keling_provider import KelingProvider
+from .providers.minimax_provider import MinimaxProvider
+from .providers.openai_provider import OpenAIProvider
+from .providers.volcengine_provider import VolcengineProvider
 
 
 class ProviderPriority(Enum):
@@ -131,6 +132,7 @@ class AIServiceManager:
 
         try:
             from io import BytesIO
+
             from PIL import Image, ImageOps
 
             img = Image.open(BytesIO(raw))
@@ -395,9 +397,11 @@ class AIServiceManager:
                 if model_type:
                     caps = [str(c).lower() for c in mi.capabilities or []]
                     supports_capability = (
-                        model_type == AIModelType.IMAGE_TO_IMAGE and "image_to_image" in caps
+                        model_type == AIModelType.IMAGE_TO_IMAGE
+                        and "image_to_image" in caps
                     ) or (
-                        model_type == AIModelType.IMAGE_TO_VIDEO and "image_to_video" in caps
+                        model_type == AIModelType.IMAGE_TO_VIDEO
+                        and "image_to_video" in caps
                     )
                     if not supports_capability and mi.model_type != model_type:
                         continue
@@ -408,6 +412,7 @@ class AIServiceManager:
                         "name": mi.name,
                         "type": mi.model_type.value,
                         "capabilities": mi.capabilities,
+                        "metadata": getattr(mi, "metadata", {}) or {},
                     }
                 )
 
@@ -802,6 +807,7 @@ class AIServiceManager:
 
             if urls:
                 import base64
+
                 import httpx
 
                 # Google/Gemini 代理往往限制请求体大小，提前压缩参考图以避免 413

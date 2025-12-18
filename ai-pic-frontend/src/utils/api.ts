@@ -241,6 +241,7 @@ export interface AIModel {
   provider: string;
   type: string;
   capabilities: string[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface VoiceOption {
@@ -726,28 +727,40 @@ class ApiClient {
     return !isDigitsOnly || raw.length >= 16;
   }
 
-  private storyPath(storyIdOrBiz: number | string, suffix: string = ""): string {
+  private storyPath(
+    storyIdOrBiz: number | string,
+    suffix: string = "",
+  ): string {
     const base = this.isBusinessIdentifier(storyIdOrBiz)
       ? `/api/v1/stories/business/${storyIdOrBiz}`
       : `/api/v1/stories/${storyIdOrBiz}`;
     return `${base}${suffix}`;
   }
 
-  private episodePath(episodeIdOrBiz: number | string, suffix: string = ""): string {
+  private episodePath(
+    episodeIdOrBiz: number | string,
+    suffix: string = "",
+  ): string {
     const base = this.isBusinessIdentifier(episodeIdOrBiz)
       ? `/api/v1/episodes/business/${episodeIdOrBiz}`
       : `/api/v1/episodes/${episodeIdOrBiz}`;
     return `${base}${suffix}`;
   }
 
-  private scriptPath(scriptIdOrBiz: number | string, suffix: string = ""): string {
+  private scriptPath(
+    scriptIdOrBiz: number | string,
+    suffix: string = "",
+  ): string {
     const base = this.isBusinessIdentifier(scriptIdOrBiz)
       ? `/api/v1/scripts/business/${scriptIdOrBiz}`
       : `/api/v1/scripts/${scriptIdOrBiz}`;
     return `${base}${suffix}`;
   }
 
-  private virtualIPPath(ipIdOrBiz: number | string, suffix: string = ""): string {
+  private virtualIPPath(
+    ipIdOrBiz: number | string,
+    suffix: string = "",
+  ): string {
     const base = this.isBusinessIdentifier(ipIdOrBiz)
       ? `/api/v1/virtual-ips/business/${ipIdOrBiz}`
       : `/api/v1/virtual-ips/${ipIdOrBiz}`;
@@ -779,7 +792,9 @@ class ApiClient {
 
     const isFormData =
       typeof FormData !== "undefined" && options.body instanceof FormData;
-    const baseHeaders = isFormData ? {} : { "Content-Type": "application/json" };
+    const baseHeaders = isFormData
+      ? {}
+      : { "Content-Type": "application/json" };
     const mergedHeaders = {
       ...baseHeaders,
       ...normalizeHeaders(options.headers),
@@ -1476,9 +1491,7 @@ class ApiClient {
     return this.request("/api/v1/story-structure/environments");
   }
 
-  async getEnvironment(
-    id: number | string,
-  ): Promise<ApiResponse<Environment>> {
+  async getEnvironment(id: number | string): Promise<ApiResponse<Environment>> {
     const envKey = encodeURIComponent(String(id));
     return this.request(`/api/v1/story-structure/environments/${envKey}`);
   }
@@ -1514,7 +1527,9 @@ class ApiClient {
     envId: number | string,
   ): Promise<ApiResponse<EnvironmentImagesResponse>> {
     const envKey = encodeURIComponent(String(envId));
-    return this.request(`/api/v1/story-structure/environments/${envKey}/images`);
+    return this.request(
+      `/api/v1/story-structure/environments/${envKey}/images`,
+    );
   }
 
   async uploadEnvironmentImage(
@@ -1730,9 +1745,12 @@ class ApiClient {
   }
 
   async regenerateEpisode(idOrBusinessId: number | string) {
-    return this.request<Episode>(this.episodePath(idOrBusinessId, "/regenerate"), {
-      method: "POST",
-    });
+    return this.request<Episode>(
+      this.episodePath(idOrBusinessId, "/regenerate"),
+      {
+        method: "POST",
+      },
+    );
   }
 
   // 剧本相关方法
@@ -1807,9 +1825,12 @@ class ApiClient {
   }
 
   async regenerateScript(idOrBusinessId: number | string) {
-    return this.request<Script>(this.scriptPath(idOrBusinessId, "/regenerate"), {
-      method: "POST",
-    });
+    return this.request<Script>(
+      this.scriptPath(idOrBusinessId, "/regenerate"),
+      {
+        method: "POST",
+      },
+    );
   }
 
   async getScriptFormats() {
@@ -1825,9 +1846,12 @@ class ApiClient {
   }
 
   async exportScript(idOrBusinessId: number | string, format: string = "txt") {
-    return this.request(this.scriptPath(idOrBusinessId, `/export?format=${format}`), {
-      method: "POST",
-    });
+    return this.request(
+      this.scriptPath(idOrBusinessId, `/export?format=${format}`),
+      {
+        method: "POST",
+      },
+    );
   }
 
   async generateSceneDialogueAudioAsync(
@@ -1871,7 +1895,10 @@ class ApiClient {
     },
   ) {
     return this.request<{ task_id: number; status: string }>(
-      this.scriptPath(scriptId, "/storyboard/from-audio-timeline/generate-async"),
+      this.scriptPath(
+        scriptId,
+        "/storyboard/from-audio-timeline/generate-async",
+      ),
       {
         method: "POST",
         body: JSON.stringify(payload || {}),
@@ -1915,7 +1942,9 @@ class ApiClient {
     if (data?.use_plan) params.append("use_plan", "true");
     const qs = params.toString();
     return this.request<StoryboardPayload>(
-      `${this.scriptPath(scriptId, "/storyboard/generate")}${qs ? `?${qs}` : ""}`,
+      `${this.scriptPath(scriptId, "/storyboard/generate")}${
+        qs ? `?${qs}` : ""
+      }`,
       { method: "POST" },
     );
   }
@@ -1943,7 +1972,9 @@ class ApiClient {
     if (data?.use_plan) params.append("use_plan", "true");
     const qs = params.toString();
     return this.request<{ task_id: number; status: string }>(
-      `${this.scriptPath(scriptId, "/storyboard/generate-async")}${qs ? `?${qs}` : ""}`,
+      `${this.scriptPath(scriptId, "/storyboard/generate-async")}${
+        qs ? `?${qs}` : ""
+      }`,
       { method: "POST" },
     );
   }
