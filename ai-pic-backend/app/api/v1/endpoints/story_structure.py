@@ -6,19 +6,10 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from sqlalchemy.orm import Session
-
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.story_structure import Environment
-from app.services import story_structure_service as svc
-from app.services.ai_service import ai_service
-from app.services.storage import oss_service
-from app.services.task_worker import (
-    environment_image_generate_task,
-    environment_image_variant_task,
-)
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.story_structure import (
@@ -44,9 +35,16 @@ from app.schemas.story_structure import (
     StoryTreatmentCreate,
     StoryTreatmentResponse,
 )
-from app.core.config import settings
-from app.utils.model_utils import parse_model_and_provider, normalize_openai_image_style
-
+from app.services import story_structure_service as svc
+from app.services.ai_service import ai_service
+from app.services.storage import oss_service
+from app.services.task_worker import (
+    environment_image_generate_task,
+    environment_image_variant_task,
+)
+from app.utils.model_utils import normalize_openai_image_style, parse_model_and_provider
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -430,6 +428,8 @@ async def _download_and_attach(db: Session, env, image_urls: List[str]) -> List[
     db.query(Environment).filter(Environment.id == env.id).update(
         {"reference_images": env.reference_images}
     )
+    # 提交持久化结果，确保后续 GET /environments/{id}/images 能看到新增引用图
+    db.commit()
     return saved
 
 
@@ -463,9 +463,7 @@ def _compose_environment_prompt(env, extra: Optional[str] = None) -> str:
     return " | ".join(parts)
 
 
-@router.get(
-    "/environments/{env_id}/images", response_model=EnvironmentImagesResponse
-)
+@router.get("/environments/{env_id}/images", response_model=EnvironmentImagesResponse)
 async def list_environment_images(
     env_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -520,6 +518,7 @@ async def delete_environment_image(
         ),
     }
 
+
 @router.post(
     "/environments/{env_id}/images/upload",
     response_model=EnvironmentImageResponse,
@@ -568,9 +567,7 @@ async def upload_environment_image(
             require_upload=bool(oss_service),
         )
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"环境图像保存失败: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"环境图像保存失败: {exc}") from exc
 
     final_url = stored.get("oss_url") or stored.get("relative_path")
     if not final_url:
@@ -676,9 +673,7 @@ async def generate_environment_images(
     try:
         saved = await _download_and_attach(db, env, images)
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"环境图像保存失败: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"环境图像保存失败: {exc}") from exc
     response_meta = getattr(response, "metadata", None)
     if not isinstance(response_meta, dict):
         response_meta = {}
@@ -994,9 +989,7 @@ async def generate_environment_image_variants(
     try:
         saved = await _download_and_attach(db, env, images)
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"环境图像保存失败: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"环境图像保存失败: {exc}") from exc
     response_meta = getattr(response, "metadata", None)
     if not isinstance(response_meta, dict):
         response_meta = {}
