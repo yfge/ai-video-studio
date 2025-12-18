@@ -783,7 +783,7 @@ def _process_environment_image_task(
             task.status = TaskStatus.PROCESSING
             db.commit()
 
-        env = svc.get_environment(db, payload["env_id"])
+        env = svc.resolve_environment(db, payload["env_id"])
         if not env:
             raise RuntimeError("environment not found")
 
@@ -1105,7 +1105,7 @@ def _process_environment_image_variant_task(
             task.status = TaskStatus.PROCESSING
             db.commit()
 
-        env = svc.get_environment(db, payload["env_id"])
+        env = svc.resolve_environment(db, payload["env_id"])
         if not env:
             raise RuntimeError("environment not found")
 
