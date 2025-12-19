@@ -87,4 +87,4 @@ Continue with phase 3 endpoint refactoring (from context continuation).
 
 ## Linked Commits
 
-- TBD (commit will be created after this ledger entry)
+- dd6d98a refactor(backend): split story_structure.py into modular package [phase3.3]

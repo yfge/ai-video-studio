@@ -74,4 +74,4 @@ Continue with Phase 4 provider refactoring (from context continuation).
 
 ## Linked Commits
 
-- (pending commit)
+- 846baec refactor(backend): split openai_provider.py into modular package [phase4.3]
