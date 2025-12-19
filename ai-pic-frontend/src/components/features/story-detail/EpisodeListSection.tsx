@@ -10,7 +10,7 @@ interface EpisodeListSectionProps {
   loadingScripts: boolean;
   onNavigateToEpisode: (businessIdOrId: string | number) => void;
   onNavigateToStoryboard: (businessIdOrId: string | number) => void;
-  onNavigateToScript: (scriptId: number) => void;
+  onNavigateToScript: (scriptIdOrBiz: string | number) => void;
 }
 
 const normalizeEpisodeNumber = (value: unknown, fallback: number) => {
@@ -116,7 +116,7 @@ interface EpisodeCardProps {
   loadingScripts: boolean;
   onNavigateToEpisode: (businessIdOrId: string | number) => void;
   onNavigateToStoryboard: (businessIdOrId: string | number) => void;
-  onNavigateToScript: (scriptId: number) => void;
+  onNavigateToScript: (scriptIdOrBiz: string | number) => void;
 }
 
 function EpisodeCard({
@@ -267,7 +267,7 @@ function ScriptsPreview({
   scripts: Script[];
   episode: Episode;
   onNavigateToStoryboard: (businessIdOrId: string | number) => void;
-  onNavigateToScript: (scriptId: number) => void;
+  onNavigateToScript: (scriptIdOrBiz: string | number) => void;
 }) {
   return (
     <div className="mt-3 text-sm">
@@ -285,7 +285,7 @@ function ScriptsPreview({
           <div key={sc.id} className="flex items-center justify-between">
             <div className="truncate mr-2">{sc.title}</div>
             <button
-              onClick={() => onNavigateToScript(sc.id)}
+              onClick={() => onNavigateToScript(sc.business_id || sc.id)}
               className="text-blue-600 hover:text-blue-800 text-xs"
             >
               查看

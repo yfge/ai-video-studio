@@ -96,7 +96,6 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
   const [loading, setLoading] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [focusedScene, setFocusedScene] = useState<number | null>(null);
-  const [readOnlyNotified, setReadOnlyNotified] = useState(false);
 
   // Load initial data
   const loadInitialData = useCallback(async () => {
@@ -224,14 +223,6 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
   const sceneShots = selectedNormalizedScene ? sceneShotsMap[selectedNormalizedScene.id] : undefined;
   const scriptIdentifier = script?.business_id || scriptKey;
   const canEditStructure = useMemo(() => isAdmin(currentUser), [currentUser]);
-
-  // Notify read-only
-  useEffect(() => {
-    if (activeTab === "scenes" && !canEditStructure && !readOnlyNotified) {
-      showAlert({ message: "场景结构为只读模式，需要管理员权限编辑。", variant: "warning" });
-      setReadOnlyNotified(true);
-    }
-  }, [activeTab, canEditStructure, readOnlyNotified, showAlert]);
 
   // Load scene structure
   const loadSceneStructure = useCallback(

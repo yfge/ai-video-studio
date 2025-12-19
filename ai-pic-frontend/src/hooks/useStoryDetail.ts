@@ -196,7 +196,8 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
     router.push(`/episodes/${businessIdOrId}`);
   const navigateToStoryboard = (businessIdOrId: string | number) =>
     router.push(`/episodes/${businessIdOrId}/storyboard`);
-  const navigateToScript = (scriptId: number) => router.push(`/scripts/${scriptId}`);
+  const navigateToScript = (scriptIdOrBiz: string | number) =>
+    router.push(`/scripts/${scriptIdOrBiz}`);
 
   return {
     // Core state
