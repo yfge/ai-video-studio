@@ -35,7 +35,11 @@ class VideoGenerationTask(SoftDeleteBusinessMixin, Base):
     result = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
     status = Column(
-        Enum(VideoGenerationTaskStatus),
+        Enum(
+            VideoGenerationTaskStatus,
+            name="video_generation_task_status",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         default=VideoGenerationTaskStatus.PENDING,
         nullable=False,
     )
