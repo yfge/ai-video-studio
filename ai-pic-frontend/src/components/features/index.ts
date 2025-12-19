@@ -28,3 +28,8 @@ export {
   ScriptOverviewTab,
   ScriptScenesTab,
 } from './script'
+export {
+  VirtualIPDetailHeader,
+  VirtualIPInfoSection,
+  VoiceSettingsPanel,
+} from './virtual-ip-detail'
