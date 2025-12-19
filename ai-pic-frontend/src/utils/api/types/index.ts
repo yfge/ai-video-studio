@@ -1,15 +1,42 @@
 /**
- * API Types
+ * API Types Index
  *
- * Re-exports all types from api.ts (temporary during Phase 0).
- * In Phase 2, types will be moved here and organized into logical modules.
- *
- * TODO (Phase 2):
- * - Move all types from api.ts to this directory
- * - Organize into modules: user.ts, story.ts, virtual-ip.ts, etc.
- * - Each module exports its domain types
- * - This index.ts becomes a barrel export
+ * Barrel export for all API type definitions.
+ * Types are organized by domain into logical modules.
  */
 
-// Temporary: Re-export from parent api.ts (../../api.ts from here)
-export * from '../../api'
+// Common types (API response, pagination)
+export * from './common.types';
+
+// User and authentication types
+export * from './user.types';
+
+// Task management types
+export * from './task.types';
+
+// Image and gallery types
+export * from './image.types';
+
+// Style configuration types
+export * from './style.types';
+
+// Voice and TTS types
+export * from './voice.types';
+
+// AI model types
+export * from './ai-model.types';
+
+// Virtual IP (character) types
+export * from './virtual-ip.types';
+
+// Story and episode types
+export * from './story.types';
+
+// Script types
+export * from './script.types';
+
+// Video and storyboard types
+export * from './video.types';
+
+// Environment asset types
+export * from './environment.types';
