@@ -85,7 +85,7 @@ def normalize_submission_options(options: Optional[Dict[str, Any]]) -> Dict[str,
         True if return_last_frame is None else bool(return_last_frame)
     )
     use_end_frame = opts.get("use_end_frame")
-    opts["use_end_frame"] = True if use_end_frame is None else bool(use_end_frame)
+    opts["use_end_frame"] = False if use_end_frame is None else bool(use_end_frame)
     opts["fps"] = coerce_int(opts.get("fps"), 24)
     opts["resolution"] = str(opts.get("resolution") or "720p")
     return opts
