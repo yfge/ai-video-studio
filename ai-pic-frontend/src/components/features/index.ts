@@ -22,3 +22,9 @@ export {
   CategoryFilter,
   ImageGrid,
 } from './virtual-ip-images'
+export {
+  ScriptHeader,
+  WorkflowSteps,
+  ScriptOverviewTab,
+  ScriptScenesTab,
+} from './script'
