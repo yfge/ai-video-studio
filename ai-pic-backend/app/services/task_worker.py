@@ -102,9 +102,9 @@ def environment_image_generate_task(
     task_id: int, payload: Dict[str, Any], user_id: int
 ) -> None:
     """异步环境文生图任务入口。"""
-    from app.api.v1.endpoints.story_structure import _process_environment_image_task
+    from app.api.v1.endpoints.story_structure import process_environment_image_task
 
-    _process_environment_image_task(task_id, payload, user_id)
+    process_environment_image_task(task_id, payload, user_id)
 
 
 @celery_app.task(name="tasks.environment_image_variant")
@@ -113,10 +113,10 @@ def environment_image_variant_task(
 ) -> None:
     """异步环境图生图任务入口。"""
     from app.api.v1.endpoints.story_structure import (
-        _process_environment_image_variant_task,
+        process_environment_image_variant_task,
     )
 
-    _process_environment_image_variant_task(task_id, payload, user_id)
+    process_environment_image_variant_task(task_id, payload, user_id)
 
 
 @celery_app.task(name="tasks.storyboard_image_generate")

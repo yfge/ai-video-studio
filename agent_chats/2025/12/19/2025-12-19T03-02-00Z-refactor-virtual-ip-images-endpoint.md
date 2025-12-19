@@ -72,4 +72,4 @@ Continue with phase 3 endpoint refactoring (from context continuation).
 
 ## Linked Commits
 
-- TBD (commit will be created after this ledger entry)
+- 767ae70 refactor(backend): split virtual_ip_images.py into modular package [phase3.2]
