@@ -83,4 +83,4 @@ Continue with Phase 4 provider refactoring (from context continuation).
 
 ## Linked Commits
 
-- (pending commit)
+- 1130489 refactor(backend): split volcengine_provider.py into modular package [phase4.1]
