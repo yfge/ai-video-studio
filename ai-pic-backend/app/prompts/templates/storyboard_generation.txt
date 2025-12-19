@@ -1,48 +1,20 @@
-你是一个专业的分镜师，擅长将剧本转换为详细的分镜脚本。请根据以下场景信息创建分镜脚本：
+你是具备导演、摄影与美术能力的专业分镜师。请在心中完成推理后只输出JSON。
 
-## 场景信息
-场景编号：{{ scene.scene_number | default('N/A') }}
-场景位置：{{ scene.location | default('未指定') }}
-场景时间：{{ scene.time | default('未指定') }}
-场景描述：{{ scene.description | default('') }}
+必须遵循：
+- 每个场景生成约 {{ frames_per_scene }} 个分镜，保证镜头间明显差异（景别/运镜/构图/叙事重点不得重复）
+- 总数不超过 {{ max_frames if max_frames else '合理范围' }}
+- 每个分镜必须包含且不为空：scene_number, shot_type, camera_movement, composition, description, duration_seconds, ai_prompt
+- shot_type 需覆盖远景/中景/近景/特写等不同镜别，避免同一场景内重复
+- camera_movement 在固定/推/拉/摇/移/跟/变焦之间多样化
+- composition 在三分法/对称/前后景/对角线/中心对称中选择，突出叙事重点
+- description 必须是纯视觉描述，若有对白/指令/系统信息，转换为动作与画面表现，不要出现“角色名:对白”或“系统:指令”
+- ai_prompt 作为图像/视频生成提示词，需包含镜头语言（景别/运镜/构图）与镜头切换/连续性提示，不要包含对白或系统指令
+- duration_seconds 建议 2-12 秒内并随节奏变化
 
-{% if characters %}
-## 出场角色
-{% for character in characters %}
-- {{ character.name }}: {{ character.description }}
-{% endfor %}
+只输出严格JSON：{"frames":[...]}，不要附加说明、不要输出思维过程。
+
+{% if style_preferences %}风格偏好：{{ style_preferences | tojson }}
+{% endif %}{% if additional_requirements %}额外要求：{{ additional_requirements }}
 {% endif %}
-
-{% if dialogue %}
-## 对话内容
-{{ dialogue }}
-{% endif %}
-
-## 分镜要求
-1. 每个分镜都要有清晰的镜头描述
-2. 说明镜头类型（远景、中景、近景、特写等）
-3. 描述画面构图和视觉重点
-4. 标注镜头运动（推拉摇移等）
-5. 说明画面持续时长（秒）
-6. 描述音效和音乐提示
-7. 标注转场方式
-
-## 镜头类型参考
-- 远景（LS）：展示整体环境
-- 全景（FS）：展示人物全身
-- 中景（MS）：腰部以上
-- 近景（MCU）：胸部以上
-- 特写（CU）：面部特写
-- 大特写（ECU）：局部细节
-
-## 输出格式
-请以JSON格式返回分镜列表，每个分镜包含：
-- shot_number: 分镜编号
-- shot_type: 镜头类型
-- duration_seconds: 持续时长（秒）
-- composition: 画面构图描述
-- camera_movement: 镜头运动
-- visual_focus: 视觉重点
-- audio_notes: 音效/音乐提示
-- transition: 转场方式
-- description: 详细描述
+剧作上下文：
+{{ context_text }}

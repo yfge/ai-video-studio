@@ -1,0 +1,2 @@
+{{ base_prompt }}
+{% if reference_notes %}参考图像：{% for ref in reference_notes %}{% if ref.type == "frame" %}帧参考图{% elif ref.type == "user" %}用户提供的参考图{% elif ref.type == "character" %}{{ ref.name }} 的参考图{% elif ref.type == "environment" %}环境参考图{% else %}参考图{% endif %}{% if not loop.last %} | {% endif %}{% endfor %}{% endif %}

@@ -112,6 +112,12 @@ class StoryboardFrame(BaseModel):
     end_image_urls: Optional[List[str]] = Field(
         None, description="分镜尾帧关键帧URL列表（生成后回填）"
     )
+    start_keyframe_prompt: Optional[str] = Field(
+        None, description="分镜首帧关键帧提示词（生成时填充）"
+    )
+    end_keyframe_prompt: Optional[str] = Field(
+        None, description="分镜尾帧关键帧提示词（生成时填充）"
+    )
     video_url: Optional[str] = Field(None, description="生成的视频URL（生成后回填）")
     video_url_original: Optional[str] = Field(
         None, description="生成视频的原始URL（未上传OSS时的路径）"

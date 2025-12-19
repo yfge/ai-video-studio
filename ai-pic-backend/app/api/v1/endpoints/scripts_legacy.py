@@ -16,7 +16,7 @@ from app.models.story_structure import Environment, Scene, SceneBeat, Shot
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
-from app.prompts.manager import PromptManager
+from app.prompts.manager import PromptManager, prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import (
     StoryboardModel,
@@ -37,6 +37,10 @@ from app.services.dialogue_audio_service import (
     generate_episode_audio_timeline,
     generate_scene_dialogue_audio,
     generate_storyboard_from_episode_audio_timeline,
+)
+from app.services.storyboard.storyboard_prompt_utils import (
+    apply_storyboard_prompt_optimizations,
+    render_keyframe_prompt,
 )
 from app.services.storage.oss_service import oss_service
 from app.services.task_worker import (
@@ -817,13 +821,6 @@ def _enforce_storyboard_variety(frames: List[Dict[str, Any]]) -> List[Dict[str, 
             frame["duration_seconds"] = max(
                 2, min(12, (frame.get("duration_seconds") or 3) + ((count % 3) - 1))
             )
-            prompt_parts = [
-                frame["description"],
-                f"景别:{frame['shot_type']}",
-                f"运镜:{frame['camera_movement']}",
-                f"构图:{frame['composition']}",
-            ]
-            frame["ai_prompt"] = "；".join(prompt_parts)[:500]
     return frames
 
 
@@ -914,9 +911,7 @@ def _compose_fallback_text(
     details.append("内容:" + _trim_local(base_text, 140))
 
     description = "；".join(details)[:200] if details else _trim_local(base_text, 200)
-    prompt_parts = details + [f"镜头语言:{shot}/{movement}/{composition}"]
-    ai_prompt = "；".join(prompt_parts)[:500]
-    return description, ai_prompt
+    return description, description
 
 
 router = APIRouter()
@@ -1605,10 +1600,16 @@ async def preview_storyboard_prompt(
     script = db.query(Script).filter(Script.id == script_id).first()
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
-    # 简化版提示词
-    prompt = (
-        "你是专业分镜师，基于剧本的场景生成分镜列表。每个分镜包含："
-        "frame_number, scene_number, shot_type, camera_movement, composition, description, duration_seconds, ai_prompt。"
+    context_text = _trim_local(script.content or "", 400)
+    prompt = prompt_manager.render_prompt(
+        PromptTemplate.STORYBOARD_GENERATION.value,
+        {
+            "frames_per_scene": 7,
+            "max_frames": None,
+            "context_text": context_text,
+            "style_preferences": [],
+            "additional_requirements": None,
+        },
     )
     return {"success": True, "data": {"prompt": prompt}}
 
@@ -2094,22 +2095,15 @@ async def generate_storyboard(
                     ]
                 except Exception:
                     pass
-            base_desc = (fr.get("description") or "").strip()
-            prompt_parts = [base_desc]
-            if scene_no:
-                prompt_parts.append(f"场景 {scene_no}")
-            prompt_parts.append(f"景别: {fr.get('shot_type')}")
-            prompt_parts.append(f"运镜: {fr.get('camera_movement')}")
-            prompt_parts.append(f"构图: {fr.get('composition')}")
             if chars:
-                prompt_parts.append(f"人物: {', '.join(chars[:5])}")
-            fr["ai_prompt"] = "；".join([p for p in prompt_parts if p])[:500]
+                fr["characters"] = chars[:5]
     except Exception:
         pass
 
     merge_targets = scene_order if selected_scenes else None
     merged_frames = _merge_frames(existing_frames, frames_list, merge_targets)
     diversified_frames = _enforce_storyboard_variety(merged_frames)
+    apply_storyboard_prompt_optimizations(diversified_frames)
 
     frames_serialized = [_serialize_frame(fr) for fr in diversified_frames]
     try:
@@ -2572,31 +2566,37 @@ def _process_storyboard_image_task(
                 print(warn, flush=True)
                 continue
             fr = frames[idx]
-            prompt = fr.get("ai_prompt") or fr.get("description") or ""
+            base_prompt = fr.get("ai_prompt") or fr.get("description") or ""
             override_clean = (prompt_override or "").strip()
             if override_clean:
-                prompt = override_clean
-            if not prompt:
-                prompt = (
-                    f"Generate an image for storyboard frame {idx + 1} (scene {fr.get('scene_number') or ''}) "
-                    "consistent with references and overall story style."
+                base_prompt = override_clean
+            if not base_prompt:
+                base_prompt = prompt_manager.render_prompt(
+                    PromptTemplate.STORYBOARD_IMAGE_FALLBACK.value,
+                    {
+                        "frame_index": idx + 1,
+                        "scene_number": fr.get("scene_number"),
+                    },
                 )
-            frame_log = f"[SBIMG] generating frame | idx={idx} scene={fr.get('scene_number')} prompt_len={len(prompt)}"
+            frame_log = (
+                f"[SBIMG] generating frame | idx={idx} scene={fr.get('scene_number')} "
+                f"prompt_len={len(base_prompt)}"
+            )
             logger.info(frame_log)
             print(frame_log, flush=True)
 
             scene_no = _to_int(fr.get("scene_number"))
-            char_refs: List[str] = []
+            reference_notes: List[Dict[str, Any]] = []
 
             # 1) 已存在于分镜帧上的参考图（用户手动/前序管线写入）
             frame_refs = _normalize_reference_images(fr.get("reference_images") or [])
             if frame_refs:
-                char_refs.append("帧参考图")
+                reference_notes.append({"type": "frame"})
 
             # 2) 前端调用时附带的额外参考图（单次请求作用域）
             payload_refs = _normalize_reference_images(reference_images or [])
             if payload_refs:
-                char_refs.append("用户提供的参考图")
+                reference_notes.append({"type": "user"})
 
             # 3) 角色锚点参考图（默认/最新的虚拟 IP 图像）
             char_anchor_refs: List[str] = []
@@ -2608,7 +2608,7 @@ def _process_storyboard_image_task(
                         img_url = char_image_map.get(cid)
                         if img_url:
                             # 参考图 URL 通过 ref_images 传给 image_to_image，提示词只保留语义描述，避免在日志中泄露具体地址
-                            char_refs.append(f"{name} 的参考图")
+                            reference_notes.append({"type": "character", "name": name})
                             char_anchor_refs.append(_abs_url(img_url))
 
             # 4) 场景环境参考图
@@ -2616,7 +2616,7 @@ def _process_storyboard_image_task(
                 env_images_by_scene.get(scene_no or -1, []) or []
             )
             if env_refs:
-                char_refs.append("环境参考图")
+                reference_notes.append({"type": "environment"})
 
             # 参考图顺序：优先使用用户附带的参考图作为 base_image，
             # 然后是帧已有参考图、角色锚点和环境参考图
@@ -2636,15 +2636,29 @@ def _process_storyboard_image_task(
             logger.info(refs_log)
             print(refs_log, flush=True)
 
-            if char_refs:
-                prompt = prompt + "\n参考图像：" + " | ".join(char_refs)
+            prompt = prompt_manager.render_prompt(
+                PromptTemplate.STORYBOARD_IMAGE_PROMPT.value,
+                {
+                    "base_prompt": base_prompt,
+                    "reference_notes": reference_notes,
+                },
+            )
             if ref_images:
                 fr["reference_images"] = ref_images
 
             if keyframe_mode == "start_end":
                 # 首尾关键帧：生成 start/end 两张，并保持 image_url 指向首帧用于兼容旧 UI
-                start_prompt = f"{prompt}\n\n（关键帧：首帧）请生成该镜头开始瞬间的画面，保持构图与风格一致。"
-                end_prompt = f"{prompt}\n\n（关键帧：尾帧）请生成该镜头结束瞬间的画面，体现动作完成后的状态，保持构图与风格一致。"
+                use_precomputed = not override_clean and not reference_notes
+                start_prompt = (
+                    fr.get("start_keyframe_prompt")
+                    if use_precomputed and fr.get("start_keyframe_prompt")
+                    else render_keyframe_prompt(prompt, "start")
+                )
+                end_prompt = (
+                    fr.get("end_keyframe_prompt")
+                    if use_precomputed and fr.get("end_keyframe_prompt")
+                    else render_keyframe_prompt(prompt, "end")
+                )
 
                 start_result = None
                 if start_enabled:

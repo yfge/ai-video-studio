@@ -1,0 +1,21 @@
+name: storyboard_keyframe
+description: "分镜关键帧提示词模板"
+category: storyboard
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-19"
+updated_at: "2025-12-19"
+
+variables:
+  base_prompt:
+    type: string
+    required: true
+    description: "基础分镜提示词"
+  role:
+    type: string
+    required: true
+    description: "关键帧角色：start/end"
+
+usage_examples:
+  - base_prompt: "夜色下的仓库，景别: 中景，运镜: 推"
+    role: "start"

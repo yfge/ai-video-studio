@@ -1397,21 +1397,16 @@ class AIService:
         # LangGraph 未可用或结果不合法时，回退至原有 AI 管理器直连管线
         if self.ai_manager:
             try:
-                # 构造更强提示词，包含故事/剧集上下文与场景角色信息
                 context_text = _build_storyboard_context(script)
-                prompt = (
-                    "你是具备导演、摄影与美术能力的专业分镜师。请采用 ReAct 思考流程：先在内心推理每个场景应该呈现的节奏与视觉差异，再输出最终JSON。\n"
-                    "必须遵循：\n"
-                    f"- 每个场景生成约 {frames_per_scene} 个分镜，保证镜头间明显差异（景别/运镜/构图/叙事重点不得重复）\n"
-                    f"- 总数不超过 {max_frames if max_frames else '合理范围'}\n"
-                    "- 每个分镜必须包含且不为空：scene_number, shot_type, camera_movement, composition, description, duration_seconds, ai_prompt\n"
-                    "- shot_type 需覆盖远景/中景/近景/特写等不同镜别，避免同一场景内重复\n"
-                    "- camera_movement 应在固定/推/拉/摇/移/跟/变焦等之间切换，体现叙事意图\n"
-                    "- composition 要在三分法/对称/前后景/对角线/中心对称等方案中选择，突出叙事重点\n"
-                    "- description 要结合人物/动作/情绪/光线，避免模糊词语；ai_prompt 需补充画面细节与风格关键词，与 description 保持互补\n"
-                    '- 仅输出严格JSON：{"frames":[...]}，禁止额外文本或思维过程\n\n'
-                    "请在内部完成推理后再给出JSON结果，保证每条记录独特且自洽。\n"
-                    f"剧作上下文：\n{context_text}\n"
+                prompt_variables = {
+                    "frames_per_scene": frames_per_scene,
+                    "max_frames": max_frames,
+                    "context_text": context_text,
+                    "style_preferences": style_preferences or [],
+                    "additional_requirements": additional_requirements,
+                }
+                prompt = prompt_manager.render_prompt(
+                    PromptTemplate.STORYBOARD_GENERATION.value, prompt_variables
                 )
                 schema = StoryboardModel.model_json_schema()
                 response = await self.ai_manager.generate_text(
@@ -1420,7 +1415,9 @@ class AIService:
                     model=model,
                     prefer_provider=prefer_provider,
                     json_schema={"name": "storyboard", "schema": schema},
-                    system_prompt="返回内容必须是严格的JSON，符合给定的Schema。",
+                    system_prompt=prompt_manager.render_prompt(
+                        PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
+                    ),
                 )
                 if response.success:
                     content_text = (
@@ -1436,12 +1433,14 @@ class AIService:
                             normalized = None
                     if not normalized:
                         retry = await self.ai_manager.generate_text(
-                            prompt=prompt + "\n\n只返回JSON，不要任何多余文本。",
+                            prompt=prompt,
                             temperature=temperature,
                             model=model,
                             prefer_provider=prefer_provider,
                             json_schema={"name": "storyboard", "schema": schema},
-                            system_prompt="返回内容必须是严格的JSON，符合给定的Schema。",
+                            system_prompt=prompt_manager.render_prompt(
+                                PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
+                            ),
                         )
                         if retry.success:
                             content_text = (
@@ -1490,14 +1489,14 @@ class AIService:
                 "scenes_count": len(scenes),
                 "selected_scenes": target_scenes,
             }
-            prompt = (
-                "你是专业分镜导演。请采用 ReAct 风格在心中完成推理，最终只输出JSON。\n"
-                "步骤：首先构思每个场景的节奏与冲突，再给出多样化的镜头规划。\n"
-                '必须返回严格JSON：{"scenes":[{"scene_number":int,"target_frames":int,"frames":[{"shot_type":str,"camera_movement":str,"composition":str,"intent":str}...]}...]}。\n'
-                "要求：shot_type 覆盖远景/中景/近景/特写；camera_movement 在固定/推/拉/摇/移/跟/变焦中多样化；composition 在三分法/对称/前后景/对角线/中心对称中选择；intent 需说明情绪或叙事作用。\n"
-                f"每个选定场景 target_frames={frames_per_scene}，不足也尽量给足，禁止镜头意图重复。\n"
-                f"上下文（截断）：{json.dumps(context, ensure_ascii=False)[:1200]}\n"
-                f"剧本（截断）：{json.dumps(script, ensure_ascii=False)[:2500]}"
+            prompt = prompt_manager.render_prompt(
+                PromptTemplate.STORYBOARD_PLAN.value,
+                {
+                    "frames_per_scene": frames_per_scene,
+                    "selected_scenes": target_scenes,
+                    "context_json": json.dumps(context, ensure_ascii=False)[:1200],
+                    "script_json": json.dumps(script, ensure_ascii=False)[:2500],
+                },
             )
             schema = StoryboardPlanModel.model_json_schema()
             response = await self.ai_manager.generate_text(
@@ -1506,7 +1505,9 @@ class AIService:
                 model=model,
                 prefer_provider=prefer_provider,
                 json_schema={"name": "storyboard_plan", "schema": schema},
-                system_prompt="只返回严格JSON，符合给定的Schema",
+                system_prompt=prompt_manager.render_prompt(
+                    PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
+                ),
             )
             if response.success:
                 content_text = (
@@ -1555,14 +1556,17 @@ class AIService:
                     else None
                 ),
             }
-            prompt = (
-                "你是专业分镜师。请先在心中分析规划中每条镜头的差异化表达，再生成最终分镜帧列表。\n"
-                '必须返回严格JSON：{"frames":[{scene_number, shot_type, camera_movement, composition, description, duration_seconds, ai_prompt, reference_images}...]}。\n'
-                "字段要求与取值范围同前，且 description、shot_type、camera_movement、composition 在同一场景内要有明显差异；duration_seconds 取 2–12 之间并根据节奏适度变化。\n"
-                "ai_prompt 需要补充画面细节、光线、情绪、材质等元素，避免与 description 完全重复。\n"
-                f"规划（仅此场景）：{json.dumps(scene_plan.dict(), ensure_ascii=False)}\n"
-                f"上下文（截断）：{json.dumps(script_brief, ensure_ascii=False)[:1500]}\n"
-                f"若有 max_frames 限制，总数不超过 {max_frames if max_frames else '合理范围'}。"
+            prompt = prompt_manager.render_prompt(
+                PromptTemplate.STORYBOARD_SCENE.value,
+                {
+                    "scene_plan_json": json.dumps(
+                        scene_plan.dict(), ensure_ascii=False
+                    ),
+                    "script_brief_json": json.dumps(
+                        script_brief, ensure_ascii=False
+                    )[:1500],
+                    "max_frames": max_frames,
+                },
             )
             schema = StoryboardModel.model_json_schema()
             response = await self.ai_manager.generate_text(
@@ -1571,7 +1575,9 @@ class AIService:
                 model=model,
                 prefer_provider=prefer_provider,
                 json_schema={"name": "storyboard", "schema": schema},
-                system_prompt="只返回严格JSON，符合Schema。",
+                system_prompt=prompt_manager.render_prompt(
+                    PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
+                ),
             )
             if response.success:
                 content_text = (

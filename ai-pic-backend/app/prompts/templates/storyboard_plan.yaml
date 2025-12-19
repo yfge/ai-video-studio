@@ -1,0 +1,31 @@
+name: storyboard_plan
+description: "分镜规划提示词模板"
+category: storyboard
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-19"
+updated_at: "2025-12-19"
+
+variables:
+  frames_per_scene:
+    type: number
+    required: true
+    description: "每个场景的目标分镜数"
+  selected_scenes:
+    type: list
+    required: false
+    description: "选定场景编号列表"
+  context_json:
+    type: string
+    required: true
+    description: "上下文 JSON 字符串"
+  script_json:
+    type: string
+    required: true
+    description: "剧本 JSON 字符串"
+
+usage_examples:
+  - frames_per_scene: 5
+    selected_scenes: [1, 2]
+    context_json: "{\"story\":{...}}"
+    script_json: "{\"scenes\":[...]}"

@@ -1,0 +1,1 @@
+请生成分镜画面（第{{ frame_index }}帧{% if scene_number %}，场景{{ scene_number }}{% endif %}），保持故事风格一致，并与参考图像保持一致。

@@ -1,34 +1,36 @@
 name: storyboard_generation
 description: "分镜生成提示词模板"
 category: storyboard
-version: "1.0"
+version: "2.0"
 author: "AI Video Studio"
 created_at: "2025-12-10"
-updated_at: "2025-12-10"
+updated_at: "2025-12-19"
 
 variables:
-  scene:
-    type: dict
+  frames_per_scene:
+    type: number
     required: true
-    description: "场景信息（scene_number/location/time/description等）"
-
-  characters:
+    description: "每个场景的分镜数量"
+  max_frames:
+    type: number
+    required: false
+    description: "最大分镜数量"
+  context_text:
+    type: string
+    required: true
+    description: "剧本上下文摘要"
+  style_preferences:
     type: list
     required: false
-    description: "出场角色列表"
-
-  dialogue:
+    description: "风格偏好"
+  additional_requirements:
     type: string
     required: false
-    description: "相关对白或旁白"
+    description: "额外要求"
 
 usage_examples:
-  - scene:
-      scene_number: 3
-      location: "旧仓库"
-      time: "夜"
-      description: "主角潜入仓库寻找线索"
-    characters:
-      - name: "阿强"
-        description: "冷静的侦探"
-    dialogue: "阿强：就是这里，真相近在眼前。"
+  - frames_per_scene: 3
+    max_frames: 18
+    context_text: "场景1: 夜色下的旧仓库..."
+    style_preferences: ["写实", "电影感"]
+    additional_requirements: "突出光影对比"

@@ -1,0 +1,44 @@
+name: storyboard_shot
+description: "单帧分镜提示词模板"
+category: storyboard
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-19"
+updated_at: "2025-12-19"
+
+variables:
+  description:
+    type: string
+    required: true
+    description: "画面描述"
+  shot_type:
+    type: string
+    required: false
+    description: "景别"
+  camera_movement:
+    type: string
+    required: false
+    description: "运镜"
+  composition:
+    type: string
+    required: false
+    description: "构图"
+  characters:
+    type: list
+    required: false
+    description: "角色列表"
+  transition:
+    type: dict
+    required: false
+    description: "镜头切换信息"
+
+usage_examples:
+  - description: "夜色中角色奔跑"
+    shot_type: "中景"
+    camera_movement: "跟"
+    composition: "三分法"
+    characters: ["主角"]
+    transition:
+      kind: "shot_change"
+      from_shot: "远景"
+      to_shot: "中景"

@@ -46,6 +46,11 @@ class PromptTemplate(Enum):
     # 分镜相关
     STORYBOARD_GENERATION = "storyboard_generation"  # 分镜生成
     STORYBOARD_SHOT = "storyboard_shot"  # 单个分镜画面
+    STORYBOARD_PLAN = "storyboard_plan"  # 分镜规划
+    STORYBOARD_SCENE = "storyboard_scene"  # 分镜规划场景展开
+    STORYBOARD_KEYFRAME = "storyboard_keyframe"  # 分镜关键帧提示
+    STORYBOARD_IMAGE_PROMPT = "storyboard_image_prompt"  # 分镜图像提示组装
+    STORYBOARD_IMAGE_FALLBACK = "storyboard_image_fallback"  # 分镜图像缺省提示
 
     # 图像相关
     IMAGE_GENERATION = "image_generation"
@@ -131,6 +136,11 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.SCENE_DESCRIPTION: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_GENERATION: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_SHOT: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_PLAN: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_SCENE: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_KEYFRAME: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_IMAGE_PROMPT: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_IMAGE_FALLBACK: PromptCategory.SCRIPT,
 
     PromptTemplate.IMAGE_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.PORTRAIT_GENERATION: PromptCategory.IMAGE,

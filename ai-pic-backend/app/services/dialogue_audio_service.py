@@ -16,6 +16,9 @@ from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene, SceneBeat
 from app.services.ai_service import ai_service
 from app.services.storage.oss_service import oss_service
+from app.services.storyboard.storyboard_prompt_utils import (
+    apply_storyboard_prompt_optimizations,
+)
 from app.services.voice_binding_service import (
     ensure_derived_character_voice_binding,
     ensure_virtual_ip_voice_config,
@@ -1213,6 +1216,7 @@ def generate_storyboard_from_episode_audio_timeline(
         audio_timeline=audio_timeline,
         min_pause_duration_ms=min_pause_duration_ms,
     )
+    apply_storyboard_prompt_optimizations(frames)
     if not frames:
         raise RuntimeError("no_frames_generated_from_audio_timeline")
 

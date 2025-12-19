@@ -15,6 +15,9 @@ from sqlalchemy.orm import Session
 
 from app.models.script import Episode, Script
 from app.models.story_structure import Scene, SceneBeat
+from app.services.storyboard.storyboard_prompt_utils import (
+    apply_storyboard_prompt_optimizations,
+)
 
 
 def utc_now_iso() -> str:
@@ -285,6 +288,7 @@ def generate_storyboard_from_episode_audio_timeline(
         audio_timeline=audio_timeline,
         min_pause_duration_ms=min_pause_duration_ms,
     )
+    apply_storyboard_prompt_optimizations(frames)
     if not frames:
         raise RuntimeError("no_frames_generated_from_audio_timeline")
 

@@ -1,0 +1,26 @@
+name: storyboard_scene
+description: "分镜规划场景展开提示词模板"
+category: storyboard
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-19"
+updated_at: "2025-12-19"
+
+variables:
+  scene_plan_json:
+    type: string
+    required: true
+    description: "场景规划 JSON 字符串"
+  script_brief_json:
+    type: string
+    required: true
+    description: "剧本概要 JSON 字符串"
+  max_frames:
+    type: number
+    required: false
+    description: "场景最大分镜数"
+
+usage_examples:
+  - scene_plan_json: "{\"scene_number\":1,...}"
+    script_brief_json: "{\"story\":{...}}"
+    max_frames: 8
