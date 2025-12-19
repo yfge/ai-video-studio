@@ -111,9 +111,11 @@ def resolve_frame_urls(
     selection: Dict[str, Any],
     use_end_frame: bool,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    selection_has_start = "start_image_url" in selection
+    selection_has_end = "end_image_url" in selection
     raw_start_url = selection.get("start_image_url")
     raw_end_url = selection.get("end_image_url")
-    end_explicit_none = "end_image_url" in selection and not raw_end_url
+    end_explicit_none = selection_has_end and not raw_end_url
 
     if not raw_start_url:
         raw_start_url = (
@@ -133,7 +135,7 @@ def resolve_frame_urls(
             or ""
         )
 
-    if not use_end_frame or end_explicit_none:
+    if not use_end_frame or end_explicit_none or (selection_has_start and not selection_has_end):
         raw_end_url = ""
     elif not raw_end_url:
         raw_end_url = (
