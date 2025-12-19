@@ -52,7 +52,9 @@ def mock_ai_service(monkeypatch):
     """mock AI 服务，避免真实外部依赖。"""
     from app.services import ai_service as ai_module
     from app.api.v1.endpoints import stories as stories_ep
-    from app.api.v1.endpoints import episodes as episodes_ep
+    from app.api.v1.endpoints.episodes import generation as episodes_generation
+    from app.api.v1.endpoints.episodes import regenerate as episodes_regenerate
+    from app.api.v1.endpoints.episodes import async_tasks as episodes_async
     from app.api.v1.endpoints import scripts as scripts_ep
 
     uploads_dir = Path(settings.UPLOAD_DIR)
@@ -221,7 +223,10 @@ def mock_ai_service(monkeypatch):
     monkeypatch.setattr(ai_module, "ai_service", mock_service)
     # 覆盖各业务端点模块中缓存的 ai_service 引用，确保所有生成路径都使用 mock
     monkeypatch.setattr(stories_ep, "ai_service", mock_service)
-    monkeypatch.setattr(episodes_ep, "ai_service", mock_service)
+    # Episode submodules that use ai_service
+    monkeypatch.setattr(episodes_generation, "ai_service", mock_service)
+    monkeypatch.setattr(episodes_regenerate, "ai_service", mock_service)
+    monkeypatch.setattr(episodes_async, "ai_service", mock_service)
     monkeypatch.setattr(scripts_ep, "ai_service", mock_service)
 
     try:

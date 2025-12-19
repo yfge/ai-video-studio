@@ -4,7 +4,7 @@ import pytest
 
 from app.models.script import Story
 from app.models.story_structure import StoryStepOutline
-from app.api.v1.endpoints import episodes as episodes_ep
+from app.api.v1.endpoints.episodes import generation as episodes_generation
 from app.services import ai_service as ai_service_module
 
 
@@ -67,7 +67,7 @@ def test_episode_generation_persists_validated_outlines(
 
     stub_service = _StubAIService()
     monkeypatch.setattr(ai_service_module, "ai_service", stub_service)
-    monkeypatch.setattr(episodes_ep, "ai_service", stub_service)
+    monkeypatch.setattr(episodes_generation, "ai_service", stub_service)
 
     payload = {
         "story_id": story.id,
@@ -123,7 +123,7 @@ def test_episode_generation_falls_back_to_outline_when_content_invalid(
 
     stub_service = _StubAIService()
     monkeypatch.setattr(ai_service_module, "ai_service", stub_service)
-    monkeypatch.setattr(episodes_ep, "ai_service", stub_service)
+    monkeypatch.setattr(episodes_generation, "ai_service", stub_service)
 
     payload = {
         "story_id": story.id,

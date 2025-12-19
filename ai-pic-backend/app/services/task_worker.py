@@ -30,9 +30,9 @@ def episode_generate_task(
     task_id: int, request_dict: Dict[str, Any], user_id: int
 ) -> None:
     """异步剧集生成任务入口。"""
-    from app.api.v1.endpoints.episodes import _process_episode_generation_task
+    from app.api.v1.endpoints.episodes import process_episode_generation_task
 
-    _process_episode_generation_task(task_id, request_dict, user_id)
+    process_episode_generation_task(task_id, request_dict, user_id)
 
 
 @celery_app.task(name="tasks.script_generate")

@@ -1,4 +1,4 @@
-from app.api.v1.endpoints.episodes import _ensure_scenes
+from app.api.v1.endpoints.episodes import ensure_scenes
 
 
 def test_ensure_scenes_filters_empty_scene_objects():
@@ -13,7 +13,7 @@ def test_ensure_scenes_filters_empty_scene_objects():
         "scenes": [{}, {}, {}, {}, {}, {}],
     }
 
-    scenes, scene_count = _ensure_scenes(ep_data)
+    scenes, scene_count = ensure_scenes(ep_data)
 
     assert scene_count == 6
     assert len(scenes) == 6
