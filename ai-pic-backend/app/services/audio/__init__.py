@@ -6,6 +6,7 @@ Provides services for AI-powered audio generation including:
 - Audio persistence and OSS upload
 - Dialogue processing and planning
 - Audio timeline generation
+- Voice catalog and configuration constants
 """
 
 from app.services.audio.speech_service import (
@@ -38,6 +39,20 @@ from app.services.audio.timeline_processor import (
     build_storyboard_frames_from_audio_timeline,
     generate_storyboard_from_episode_audio_timeline,
 )
+from app.services.audio.voice_catalog import SYSTEM_VOICE_CATALOG
+from app.services.audio.voice_constants import (
+    DEFAULT_MINIMAX_VOICE_ID,
+    VOICE_TYPE_OPTIONS,
+    TTS_MODEL_OPTIONS,
+    EMOTION_OPTIONS,
+    LANGUAGE_BOOST_OPTIONS,
+    OUTPUT_FORMAT_OPTIONS,
+    AUDIO_FORMAT_OPTIONS,
+    SAMPLE_RATE_OPTIONS,
+    BITRATE_OPTIONS,
+    CHANNEL_OPTIONS,
+    MUSIC_MODEL_OPTIONS,
+)
 
 __all__ = [
     # Speech service
@@ -66,4 +81,17 @@ __all__ = [
     "build_episode_timeline_beats",
     "build_storyboard_frames_from_audio_timeline",
     "generate_storyboard_from_episode_audio_timeline",
+    # Voice catalog and constants
+    "SYSTEM_VOICE_CATALOG",
+    "DEFAULT_MINIMAX_VOICE_ID",
+    "VOICE_TYPE_OPTIONS",
+    "TTS_MODEL_OPTIONS",
+    "EMOTION_OPTIONS",
+    "LANGUAGE_BOOST_OPTIONS",
+    "OUTPUT_FORMAT_OPTIONS",
+    "AUDIO_FORMAT_OPTIONS",
+    "SAMPLE_RATE_OPTIONS",
+    "BITRATE_OPTIONS",
+    "CHANNEL_OPTIONS",
+    "MUSIC_MODEL_OPTIONS",
 ]

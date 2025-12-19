@@ -142,4 +142,4 @@ Benefits:
 
 ## Linked Commits
 
-- Pending commit for this work
+- `8bea6b4` - Phase 2.2.1: Split dialogue_audio_service.py into focused modules
