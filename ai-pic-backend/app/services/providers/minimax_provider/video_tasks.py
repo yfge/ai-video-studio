@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Callable, Dict, Optional
 
+from app.core.logging import get_logger
 from app.services.minimax_client import MinimaxAPIError, MinimaxClient
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.providers.polling_utils import TaskStatus, minimax_status_mapper
 
 from .video import _retrieve_video_file
+
+logger = get_logger(__name__)
 
 
 def _coerce_duration(value: Any) -> int:
@@ -141,6 +145,12 @@ async def fetch_video_task_status(
 ) -> AIResponse:
     try:
         data = await client.get_json("/query/video_generation", params={"task_id": task_id})
+        logger.info(
+            "Video task status http response: provider=%s task_id=%s body=%s",
+            provider_name,
+            task_id,
+            json.dumps(data, ensure_ascii=False),
+        )
         status = minimax_status_mapper(data)
         video_url = None
         file_id = data.get("file_id")

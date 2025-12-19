@@ -4,8 +4,11 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import httpx
 
+from app.core.logging import get_logger
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.providers.polling_utils import TaskStatus, keling_status_mapper
+
+logger = get_logger(__name__)
 
 
 def _coerce_duration(value: Any) -> int:
@@ -324,6 +327,13 @@ async def fetch_video_task_status(
         response = await client.get(
             f"{base_url}/v1/videos/image2video/{task_id}",
             headers=get_auth_headers(),
+        )
+        logger.info(
+            "Video task status http response: provider=%s task_id=%s status=%s body=%s",
+            provider_name,
+            task_id,
+            response.status_code,
+            response.text,
         )
         response.raise_for_status()
 
