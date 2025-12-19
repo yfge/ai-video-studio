@@ -39,3 +39,11 @@ export {
   StoryCard,
   StoryGenerateForm,
 } from './stories'
+export {
+  StoryDetailHeader,
+  StorySummarySection,
+  CharactersSection,
+  AdditionalInfoSection,
+  EpisodeGeneratePanel,
+  EpisodeListSection,
+} from './story-detail'
