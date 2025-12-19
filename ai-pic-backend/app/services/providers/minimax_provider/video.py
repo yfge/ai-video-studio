@@ -167,7 +167,7 @@ async def _poll_video_task(
         poll_fn=poll_fn,
         status_mapper=minimax_status_mapper,
         result_extractor=extract_result,
-        max_attempts=120,  # 20 minutes with 10s interval
+        max_attempts=180,  # 30 minutes with 10s interval
         initial_delay=10.0,
         task_id=task_id,
         task_type="video",

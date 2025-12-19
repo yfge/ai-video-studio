@@ -262,11 +262,12 @@ async def generate_video(
                 metadata={"raw": create_data},
             )
 
+        poll_attempts = 600 if image_url else 120  # 30 min i2v, 6 min t2v
         result = await poll_task_status(
             client,
             base_url,
             str(task_id),
-            max_attempts=120,
+            max_attempts=poll_attempts,
             delay=3,
         )
         if not result:
