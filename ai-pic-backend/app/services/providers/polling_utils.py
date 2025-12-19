@@ -206,7 +206,13 @@ def keling_status_mapper(response: Dict[str, Any]) -> TaskStatus:
 
     Keling statuses: submitted, processing, succeed, failed
     """
-    status_str = response.get("status", "").lower()
+    status_str = (
+        response.get("task_status")
+        or response.get("status")
+        or response.get("taskStatus")
+        or ""
+    )
+    status_str = status_str.lower()
 
     status_map = {
         "submitted": TaskStatus.PENDING,
