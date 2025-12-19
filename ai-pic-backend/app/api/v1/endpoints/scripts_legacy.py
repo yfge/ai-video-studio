@@ -3015,254 +3015,29 @@ def _process_storyboard_video_task(
     options: dict[str, Any] | None = None,
 ):
     from app.core.database import SessionLocal
-    from app.core.logging import get_logger
     from app.models.task import Task, TaskStatus
+    from app.services.video.video_task_entrypoints import submit_storyboard_video_tasks
 
-    logger = get_logger("storyboard_video_task")
-    db = SessionLocal()
     try:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.PROCESSING
-            db.commit()
-
-        script = db.query(Script).filter(Script.id == script_id).first()
-        if not script:
-            raise RuntimeError("剧本不存在")
-        sb = (
-            (script.extra_metadata or {}).get("storyboard")
-            if script.extra_metadata
-            else None
+        submit_storyboard_video_tasks(
+            task_id=task_id,
+            script_id=script_id,
+            frame_indexes=frame_indexes,
+            selections=selections,
+            options=options,
         )
-        if not sb or not sb.get("frames"):
-            raise RuntimeError("未找到分镜数据")
-
-        if not ai_service.ai_manager:
-            raise RuntimeError("AI管理器未初始化，无法生成视频")
-
-        # 拷贝一份帧列表，避免直接在 SQLAlchemy 追踪的 JSON 结构上就地修改
-        import copy as _copy  # 局部导入避免循环依赖
-
-        frames_src = list((sb or {}).get("frames") or [])
-        frames: List[Dict[str, Any]] = [
-            _copy.deepcopy(fr) if isinstance(fr, dict) else fr for fr in frames_src
-        ]
-        target_indexes = frame_indexes or list(range(len(frames)))
-
-        import anyio
-
-        def _coerce_duration(value: Any) -> int:
-            try:
-                dur = float(value)
-            except (TypeError, ValueError):
-                return 5
-            if dur <= 0:
-                return 5
-            # Seedance 目前支持 2~12 秒（参考 docs/api/volcengine-video.md）
-            dur_int = int(round(dur))
-            return max(2, min(dur_int, 12))
-
-        selection_by_index: dict[int, dict[str, Any]] = {}
-        for item in selections or []:
-            if not isinstance(item, dict):
-                continue
-            raw_idx = item.get("frame_index")
-            try:
-                idx_int = int(raw_idx)
-            except (TypeError, ValueError):
-                continue
-            selection_by_index[idx_int] = item
-
-        opts = options or {}
-        return_last_frame = opts.get("return_last_frame")
-        if return_last_frame is None:
-            return_last_frame = True
-
-        async def _gen_video(
-            image_url: str,
-            prompt: Optional[str],
-            duration: int,
-            end_image_url: Optional[str] = None,
-        ) -> dict:
-            try:
-                result = await ai_service.generate_video(
-                    prompt=prompt,
-                    image_url=image_url,
-                    end_image_url=end_image_url,
-                    model=opts.get("model"),
-                    duration=duration,
-                    fps=int(opts.get("fps") or 24),
-                    resolution=str(opts.get("resolution") or "720p"),
-                    ratio=opts.get("ratio"),
-                    watermark=opts.get("watermark"),
-                    seed=opts.get("seed"),
-                    camera_fixed=opts.get("camera_fixed"),
-                    camera_control=opts.get("camera_control"),
-                    service_tier=opts.get("service_tier"),
-                    execution_expires_after=opts.get("execution_expires_after"),
-                    return_last_frame=return_last_frame,
-                )
-                return result or {"success": False, "error": "视频生成失败（空响应）"}
-            except Exception as e:
-                logger.exception("视频生成失败: %s", e)
-                return {"success": False, "error": str(e)}
-
-        generated_count = 0
-        skipped_no_start = 0
-        last_error: str | None = None
-
-        for idx in target_indexes:
-            if idx < 0 or idx >= len(frames):
-                continue
-            fr = frames[idx]
-            if not isinstance(fr, dict):
-                continue
-
-            selection = selection_by_index.get(idx) or {}
-            raw_start_url = selection.get("start_image_url")
-            raw_end_url = selection.get("end_image_url")
-            end_explicit_none = "end_image_url" in selection and not raw_end_url
-
-            if not raw_start_url:
-                raw_start_url = (
-                    fr.get("start_image_url")
-                    or fr.get("image_url")
-                    or (
-                        (fr.get("start_image_urls") or [None])[0]
-                        if isinstance(fr.get("start_image_urls"), list)
-                        else None
-                    )
-                    or fr.get("end_image_url")
-                    or (
-                        (fr.get("end_image_urls") or [None])[0]
-                        if isinstance(fr.get("end_image_urls"), list)
-                        else None
-                    )
-                    or ""
-                )
-
-            use_end_frame = opts.get("use_end_frame")
-            use_end_frame = True if use_end_frame is None else bool(use_end_frame)
-
-            if not use_end_frame or end_explicit_none:
-                raw_end_url = ""
-            elif not raw_end_url:
-                raw_end_url = (
-                    fr.get("end_image_url")
-                    or (
-                        (fr.get("end_image_urls") or [None])[0]
-                        if isinstance(fr.get("end_image_urls"), list)
-                        else None
-                    )
-                    or ""
-                )
-
-            if not raw_start_url:
-                skipped_no_start += 1
-                continue
-
-            start_url = _abs_url(str(raw_start_url))
-            end_url = _abs_url(str(raw_end_url)) if raw_end_url else None
-
-            prompt_value = (
-                fr.get("ai_prompt") or fr.get("description") or ""
-            ).strip() or None
-            prompt_override = (
-                (opts.get("prompt") or "").strip() if opts.get("prompt") else None
-            )
-            if prompt_override:
-                prompt_value = prompt_override
-
-            duration_int = _coerce_duration(
-                opts.get("duration")
-                if opts.get("duration") is not None
-                else fr.get("duration_seconds")
-            )
-
-            video = anyio.run(
-                _gen_video,
-                start_url,
-                prompt_value,
-                duration_int,
-                end_url,
-            )
-            if not isinstance(video, dict) or not video.get("video_url"):
-                if isinstance(video, dict) and video.get("error"):
-                    last_error = str(video.get("error"))
-                else:
-                    last_error = "视频生成失败：未返回 video_url"
-                continue
-
-            fr["video_url"] = video.get("video_url")
-            fr["video_url_original"] = video.get("original_video_url")
-            fr["video_thumbnail_url"] = video.get("thumbnail_url")
-            fr["video_thumbnail_url_original"] = video.get("original_thumbnail_url")
-            fr["video_last_frame_url"] = video.get("last_frame_url")
-            fr["video_last_frame_url_original"] = video.get("original_last_frame_url")
-
-            def _merge_urls(existing: Any, new_val: str | None) -> list[str]:
-                merged: list[str] = []
-                if isinstance(existing, list):
-                    for u in existing:
-                        if isinstance(u, str) and u and u not in merged:
-                            merged.append(u)
-                if new_val and new_val not in merged:
-                    merged.append(new_val)
-                return merged
-
-            fr["video_urls"] = _merge_urls(fr.get("video_urls"), video.get("video_url"))
-            fr["video_thumbnail_urls"] = _merge_urls(
-                fr.get("video_thumbnail_urls"), video.get("thumbnail_url")
-            )
-            fr["video_last_frame_urls"] = _merge_urls(
-                fr.get("video_last_frame_urls"), video.get("last_frame_url")
-            )
-
-            fr["video_generation"] = {
-                "duration": video.get("duration"),
-                "provider": video.get("provider_used"),
-                "model": video.get("model_used"),
-                "method": video.get("generation_method"),
-                "prompt": prompt_value,
-                "resolution": opts.get("resolution"),
-                "ratio": opts.get("ratio"),
-                "start_image_url": raw_start_url,
-                "end_image_url": raw_end_url or None,
-                "thumbnail_url": video.get("thumbnail_url"),
-                "last_frame_url": video.get("last_frame_url"),
-            }
-            generated_count += 1
-
-        if generated_count == 0:
-            if skipped_no_start > 0 and not last_error:
-                raise RuntimeError("未生成任何视频：未找到可用首帧关键帧 URL")
-            raise RuntimeError(f"未生成任何视频：{last_error or '未知错误'}")
-
-        # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
-        extra_raw = script.extra_metadata or {}
-        extra = dict(extra_raw)
-        storyboard_payload = dict(sb or {})
-        storyboard_payload["frames"] = frames
-        extra["storyboard"] = storyboard_payload
-        db.query(Script).filter(Script.id == script_id).update(
-            {Script.extra_metadata: extra},
-            synchronize_session=False,
-        )
-        db.commit()
-
-        if task:
-            task.status = TaskStatus.COMPLETED
-            db.commit()
     except Exception as e:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.FAILED
-            task.error_message = str(e)
-            db.commit()
+        db = SessionLocal()
+        try:
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if task:
+                task.status = TaskStatus.FAILED
+                task.error_message = str(e)
+                db.commit()
+        finally:
+            db.close()
         # 让 Celery 任务也呈现失败，便于从 worker 日志快速定位
         raise
-    finally:
-        db.close()
 
 
 class StoryboardVideoSelection(BaseModel):

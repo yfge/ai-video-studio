@@ -53,6 +53,22 @@ services:
       - ai-video-backend
       - ai-video-redis
 
+  ai-video-celery-beat:
+    container_name: ai-video-celery-beat
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend.dev
+    env_file:
+      - .env
+    working_dir: /app/ai-pic-backend
+    command: ["celery", "-A", "app.core.celery_app.celery_app", "beat", "-l", "info"]
+    volumes:
+      - ../ai-pic-backend:/app/ai-pic-backend
+      - ../ai-pic-backend/uploads:/app/ai-pic-backend/uploads
+    depends_on:
+      - ai-video-backend
+      - ai-video-redis
+
   ai-video-frontend:
     container_name: ai-video-frontend
     build:

@@ -28,6 +28,7 @@ from .models import get_available_models
 from . import text as text_module
 from . import tts as tts_module
 from . import video as video_module
+from . import video_tasks as video_tasks_module
 
 
 class MinimaxProvider(BaseProvider):
@@ -173,4 +174,56 @@ class MinimaxProvider(BaseProvider):
             aigc_watermark=aigc_watermark,
             format_error=self.format_error,
             **kwargs,
+        )
+
+    async def submit_video_task(
+        self,
+        prompt: Optional[str] = None,
+        image_url: Optional[str] = None,
+        end_image_url: Optional[str] = None,
+        first_frame_image: Optional[str] = None,
+        last_frame_image: Optional[str] = None,
+        model: str = "MiniMax-Hailuo-2.3",
+        duration: int = 6,
+        resolution: str = "768P",
+        prompt_optimizer: bool = True,
+        fast_pretreatment: bool = False,
+        aigc_watermark: bool = False,
+        **kwargs,
+    ) -> AIResponse:
+        """Submit async video generation task to MiniMax."""
+        primary_image = first_frame_image or image_url
+        tail_image = last_frame_image or end_image_url
+        if not primary_image:
+            return AIResponse(
+                success=False,
+                error="first_frame_image is required for MiniMax video",
+                provider=self.name,
+                model=model,
+                task_type=AITaskType.VIDEO_GENERATION,
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+            )
+        return await video_tasks_module.submit_video_task(
+            client=self.client,
+            provider_name=self.name,
+            first_frame_image=primary_image,
+            prompt=prompt,
+            last_frame_image=tail_image,
+            model=model,
+            duration=duration,
+            resolution=resolution,
+            prompt_optimizer=prompt_optimizer,
+            fast_pretreatment=fast_pretreatment,
+            aigc_watermark=aigc_watermark,
+            format_error=self.format_error,
+            **kwargs,
+        )
+
+    async def fetch_video_task_status(self, task_id: str) -> AIResponse:
+        """Fetch async video task status from MiniMax."""
+        return await video_tasks_module.fetch_video_task_status(
+            client=self.client,
+            provider_name=self.name,
+            task_id=task_id,
+            format_error=self.format_error,
         )

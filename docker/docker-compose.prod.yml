@@ -46,6 +46,20 @@ services:
       - ai-video-redis
     restart: always
 
+  ai-video-celery-beat:
+    container_name: ai-video-celery-beat
+    image: "registry.cn-beijing.aliyuncs.com/geyunfei/ai-video-backend:${IMAGE_TAG:-latest}"
+    env_file:
+      - .env
+    working_dir: /app/ai-pic-backend
+    command: ["celery", "-A", "app.core.celery_app.celery_app", "beat", "-l", "info"]
+    volumes:
+      - uploads_data:/app/ai-pic-backend/uploads
+    depends_on:
+      - ai-video-backend
+      - ai-video-redis
+    restart: always
+
   ai-video-frontend:
     container_name: ai-video-frontend
     image: "registry.cn-beijing.aliyuncs.com/geyunfei/ai-video-frontend:${IMAGE_TAG:-latest}"

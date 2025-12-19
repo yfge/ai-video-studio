@@ -27,6 +27,7 @@ from . import image as image_module
 from . import text as text_module
 from . import tts as tts_module
 from . import video as video_module
+from . import video_tasks as video_tasks_module
 
 
 class VolcengineProvider(BaseProvider):
@@ -240,6 +241,59 @@ class VolcengineProvider(BaseProvider):
             return_last_frame=return_last_frame,
             format_error=self.format_error,
             **kwargs,
+        )
+
+    async def submit_video_task(
+        self,
+        prompt: Optional[str] = None,
+        image_url: Optional[str] = None,
+        model: Optional[str] = None,
+        duration: int = 5,
+        fps: int = 24,
+        resolution: str = "720p",
+        end_image_url: Optional[str] = None,
+        ratio: Optional[str] = None,
+        watermark: Optional[bool] = None,
+        seed: Optional[int] = None,
+        camera_fixed: Optional[bool] = None,
+        service_tier: Optional[str] = None,
+        execution_expires_after: Optional[int] = None,
+        return_last_frame: Optional[bool] = None,
+        **kwargs,
+    ) -> AIResponse:
+        """Submit async video generation task to Volcengine."""
+        client = await self.get_client()
+        return await video_tasks_module.submit_video_task(
+            client=client,
+            base_url=self.base_url,
+            provider_name=self.name,
+            prompt=prompt,
+            image_url=image_url,
+            model=model,
+            duration=duration,
+            fps=fps,
+            resolution=resolution,
+            end_image_url=end_image_url,
+            ratio=ratio,
+            watermark=watermark,
+            seed=seed,
+            camera_fixed=camera_fixed,
+            service_tier=service_tier,
+            execution_expires_after=execution_expires_after,
+            return_last_frame=return_last_frame,
+            format_error=self.format_error,
+            **kwargs,
+        )
+
+    async def fetch_video_task_status(self, task_id: str) -> AIResponse:
+        """Fetch async video task status from Volcengine."""
+        client = await self.get_client()
+        return await video_tasks_module.fetch_video_task_status(
+            client=client,
+            base_url=self.base_url,
+            provider_name=self.name,
+            task_id=task_id,
+            format_error=self.format_error,
         )
 
     async def text_to_speech(

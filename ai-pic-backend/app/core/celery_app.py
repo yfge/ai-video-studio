@@ -4,6 +4,8 @@ Celery 应用配置
 用于统一处理后台任务（故事/剧集/剧本生成等），由独立 worker 进程运行。
 """
 
+from datetime import timedelta
+
 from celery import Celery
 
 from app.core.config import settings
@@ -28,6 +30,13 @@ celery_app.conf.update(
     enable_utc=True,
     task_acks_late=True,
     worker_max_tasks_per_child=100,
+    beat_schedule={
+        "poll-video-generation-tasks": {
+            "task": "tasks.video_generation_poll",
+            "schedule": timedelta(seconds=30),
+            "args": (50,),
+        },
+    },
 )
 
 # 确保在 Celery 应用初始化后注册所有任务

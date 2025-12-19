@@ -28,6 +28,7 @@ from ..base import (
 from .models import get_available_models
 from . import image as image_module
 from . import video as video_module
+from . import video_tasks as video_tasks_module
 
 
 class KelingProvider(BaseProvider):
@@ -177,6 +178,59 @@ class KelingProvider(BaseProvider):
             camera_control=camera_control,
             format_error=self.format_error,
             **kwargs,
+        )
+
+    async def submit_video_task(
+        self,
+        prompt: Optional[str] = None,
+        image: Optional[str] = None,
+        image_url: Optional[str] = None,
+        image_tail: Optional[str] = None,
+        end_image_url: Optional[str] = None,
+        model: str = "kling-v2-1",
+        mode: str = "pro",
+        duration: int = 5,
+        resolution: Optional[str] = None,
+        ratio: Optional[str] = None,
+        negative_prompt: Optional[str] = None,
+        cfg_scale: Optional[float] = None,
+        camera_control: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> AIResponse:
+        """Submit async video generation task to Keling."""
+        client = await self.get_client()
+        return await video_tasks_module.submit_video_task(
+            client=client,
+            base_url=self.base_url,
+            provider_name=self.name,
+            get_auth_headers=self._get_auth_headers,
+            prompt=prompt,
+            image=image,
+            image_url=image_url,
+            image_tail=image_tail,
+            end_image_url=end_image_url,
+            model=model,
+            mode=mode,
+            duration=duration,
+            resolution=resolution,
+            ratio=ratio,
+            negative_prompt=negative_prompt,
+            cfg_scale=cfg_scale,
+            camera_control=camera_control,
+            format_error=self.format_error,
+            **kwargs,
+        )
+
+    async def fetch_video_task_status(self, task_id: str) -> AIResponse:
+        """Fetch async video task status from Keling."""
+        client = await self.get_client()
+        return await video_tasks_module.fetch_video_task_status(
+            client=client,
+            base_url=self.base_url,
+            provider_name=self.name,
+            get_auth_headers=self._get_auth_headers,
+            task_id=task_id,
+            format_error=self.format_error,
         )
 
     async def generate_video_from_multiple_images(

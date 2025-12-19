@@ -198,3 +198,11 @@ def storyboard_generate_task(
     from app.api.v1.endpoints.scripts import _process_storyboard_generation_task
 
     _process_storyboard_generation_task(task_id, payload, user_id)
+
+
+@celery_app.task(name="tasks.video_generation_poll")
+def video_generation_poll_task(limit: int = 50) -> int:
+    """集中轮询视频生成任务状态。"""
+    from app.services.video.video_task_entrypoints import poll_pending_video_tasks
+
+    return poll_pending_video_tasks(limit=limit)
