@@ -80,9 +80,9 @@ def virtual_ip_image_generate_task(
     task_id: int, payload: Dict[str, Any], user_id: int
 ) -> None:
     """异步虚拟 IP 文生图任务入口。"""
-    from app.api.v1.endpoints.virtual_ip_images import _process_virtual_ip_image_task
+    from app.api.v1.endpoints.virtual_ip_images import process_virtual_ip_image_task
 
-    _process_virtual_ip_image_task(task_id, payload, user_id)
+    process_virtual_ip_image_task(task_id, payload, user_id)
 
 
 @celery_app.task(name="tasks.virtual_ip_image_variant")
@@ -91,10 +91,10 @@ def virtual_ip_image_variant_task(
 ) -> None:
     """异步虚拟 IP 图生图任务入口。"""
     from app.api.v1.endpoints.virtual_ip_images import (
-        _process_virtual_ip_image_variant_task,
+        process_virtual_ip_image_variant_task,
     )
 
-    _process_virtual_ip_image_variant_task(task_id, payload, user_id)
+    process_virtual_ip_image_variant_task(task_id, payload, user_id)
 
 
 @celery_app.task(name="tasks.environment_image_generate")

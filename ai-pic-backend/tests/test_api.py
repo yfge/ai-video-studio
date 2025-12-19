@@ -169,7 +169,7 @@ class TestVirtualIPAPI:
         }
 
         # 为本测试用例注入最小的 ai_service mock，避免真实外部调用
-        from app.api.v1.endpoints import virtual_ip_images as vip_images_module
+        from app.api.v1.endpoints.virtual_ip_images import variants as vip_images_module
 
         class _DummyResp:
             def __init__(self) -> None:
@@ -178,6 +178,7 @@ class TestVirtualIPAPI:
                 self.provider = "mock-provider"
                 self.model = "mock-model"
                 self.usage = {}
+                self.metadata = {}
 
         class _DummyAIManager:
             def __init__(self) -> None:
