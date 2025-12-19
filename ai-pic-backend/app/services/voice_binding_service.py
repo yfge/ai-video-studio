@@ -382,15 +382,23 @@ def _count_story_episodes_with_character(
     if not episodes:
         return 0
     ep_ids = [e.id for e in episodes]
+    from sqlalchemy import func
+
+    latest_subq = (
+        db.query(
+            Script.episode_id.label("episode_id"),
+            func.max(Script.id).label("latest_id"),
+        )
+        .filter(Script.episode_id.in_(ep_ids))
+        .group_by(Script.episode_id)
+        .subquery()
+    )
     scripts = (
         db.query(Script)
-        .filter(Script.episode_id.in_(ep_ids))
-        .order_by(Script.episode_id.asc(), Script.id.desc())
+        .join(latest_subq, Script.id == latest_subq.c.latest_id)
         .all()
     )
-    latest_by_episode: dict[int, Any] = {}
-    for sc in scripts:
-        latest_by_episode.setdefault(sc.episode_id, sc)
+    latest_by_episode = {sc.episode_id: sc for sc in scripts}
 
     count = 0
     for sc in latest_by_episode.values():
