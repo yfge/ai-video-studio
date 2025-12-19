@@ -69,4 +69,4 @@ Continue with Phase 4 provider refactoring (from context continuation).
 
 ## Linked Commits
 
-- (pending commit)
+- ae6d280 refactor(backend): split keling_provider.py into modular package [phase4.2]
