@@ -149,25 +149,30 @@ class VideoTaskSubmissionService:
         duration: int,
         opts: Dict[str, Any],
     ):
-        return anyio.run(
-            self.dispatcher.submit_video_task,
-            prompt=prompt,
-            image_url=start_url,
-            end_image_url=end_url,
-            model=opts.get("model"),
-            prefer_provider=None,
-            duration=duration,
-            fps=opts["fps"],
-            resolution=opts["resolution"],
-            ratio=opts.get("ratio"),
-            watermark=opts.get("watermark"),
-            seed=opts.get("seed"),
-            camera_fixed=opts.get("camera_fixed"),
-            camera_control=opts.get("camera_control"),
-            service_tier=opts.get("service_tier"),
-            execution_expires_after=opts.get("execution_expires_after"),
-            return_last_frame=opts.get("return_last_frame"),
-        )
+        payload = {
+            "prompt": prompt,
+            "image_url": start_url,
+            "end_image_url": end_url,
+            "model": opts.get("model"),
+            "prefer_provider": None,
+            "duration": duration,
+            "fps": opts["fps"],
+            "resolution": opts["resolution"],
+            "ratio": opts.get("ratio"),
+            "watermark": opts.get("watermark"),
+            "seed": opts.get("seed"),
+            "camera_fixed": opts.get("camera_fixed"),
+            "camera_control": opts.get("camera_control"),
+            "service_tier": opts.get("service_tier"),
+            "execution_expires_after": opts.get("execution_expires_after"),
+            "return_last_frame": opts.get("return_last_frame"),
+        }
+        return anyio.run(self._submit_provider_task_async, payload)
+
+    async def _submit_provider_task_async(
+        self, payload: Dict[str, Any]
+    ) -> Any:
+        return await self.dispatcher.submit_video_task(**payload)
 
     def _create_task_record(
         self,
