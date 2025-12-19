@@ -63,9 +63,10 @@ export interface AIImageGenerationRequest {
   style: string;
   style_preset_id?: string;
   style_spec?: StyleSpec;
-  category?: string;
-  model_id?: string;
-  additional_prompts?: string[];
+  category: string;
+  model: string;
+  additional_prompts: string;
+  is_default: boolean;
   count?: number;
   size?: string;
   aspect_ratio?: string;
@@ -73,13 +74,15 @@ export interface AIImageGenerationRequest {
 
 // Image to image request payload
 export interface ImageToImageRequestPayload {
-  source_image_url: string;
+  image_url: string;
   prompt?: string;
-  model_id?: string;
+  model?: string;
+  prefer_provider?: string;
   style?: string;
   style_preset_id?: string;
   style_spec?: StyleSpec;
-  preserve_style?: boolean;
-  aspect_ratio?: string;
   count?: number;
+  size?: string;
+  aspect_ratio?: string;
+  reference_images?: string[];
 }
