@@ -13,7 +13,7 @@ import { VIRTUAL_IP_STYLE_SPEC_FIELDS } from "@/hooks/useVirtualIPImages";
 interface StylePreset {
   preset_id: string;
   label?: string;
-  description?: string;
+  description?: string | null;
 }
 
 interface ImageGenerationFormProps {
@@ -47,11 +47,11 @@ export function ImageGenerationForm({
 }: ImageGenerationFormProps) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h3 className="text-lg font-semibold mb-4">AI Image Generation</h3>
+      <h3 className="text-lg font-semibold mb-4">AI 图片生成</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <MultiModelSelector
-            label="AI Model"
+            label="AI 模型"
             value={generateForm.model ? [generateForm.model] : []}
             onChange={(ids) =>
               setGenerateForm((prev) => ({ ...prev, model: ids[0] || "" }))
@@ -62,7 +62,7 @@ export function ImageGenerationForm({
             allowAuto={false}
             multiple={false}
             autoSelectDefault
-            helperText="Select model for image generation"
+            helperText="选择用于图片生成的模型"
             className="space-y-1"
             onModelsLoaded={(_, defaultModel) => {
               if (!generateForm.model && defaultModel) {
@@ -71,12 +71,12 @@ export function ImageGenerationForm({
             }}
           />
           <p className="text-xs text-gray-500 mt-1">
-            {selectedModel?.capabilities?.join(", ") || "Loading model capabilities..."}
+            {selectedModel?.capabilities?.join(", ") || "加载模型能力中..."}
           </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Generation Style
+            生成风格
           </label>
           <select
             value={generateForm.style}
@@ -85,14 +85,14 @@ export function ImageGenerationForm({
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="realistic">Realistic</option>
-            <option value="anime">Anime</option>
-            <option value="cartoon">Cartoon</option>
+            <option value="realistic">写实</option>
+            <option value="anime">二次元</option>
+            <option value="cartoon">卡通</option>
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Style Preset
+            风格预设
           </label>
           <select
             value={generateForm.style_preset_id || ""}
@@ -101,7 +101,7 @@ export function ImageGenerationForm({
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">(No preset)</option>
+            <option value="">（不使用预设）</option>
             {stylePresets.map((preset) => (
               <option key={preset.preset_id} value={preset.preset_id}>
                 {preset.label || preset.preset_id}
@@ -121,7 +121,7 @@ export function ImageGenerationForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Image Category
+            图片类别
           </label>
           <select
             value={generateForm.category}
@@ -130,16 +130,16 @@ export function ImageGenerationForm({
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="portrait">Portrait</option>
-            <option value="full_body">Full Body</option>
-            <option value="scene">Scene</option>
-            <option value="action">Action</option>
-            <option value="emotion">Emotion</option>
+            <option value="portrait">肖像</option>
+            <option value="full_body">全身</option>
+            <option value="scene">场景</option>
+            <option value="action">动作</option>
+            <option value="emotion">情绪</option>
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Generation Count
+            生成数量
           </label>
           <select
             value={generateForm.count ?? 1}
@@ -151,18 +151,18 @@ export function ImageGenerationForm({
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value={1}>1 image</option>
-            <option value={2}>2 images</option>
-            <option value={3}>3 images</option>
-            <option value={4}>4 images</option>
+            <option value={1}>1 张</option>
+            <option value={2}>2 张</option>
+            <option value={3}>3 张</option>
+            <option value={4}>4 张</option>
           </select>
           <p className="mt-1 text-xs text-gray-500">
-            Some models return multiple candidate images per call.
+            部分模型一次会返回多张候选图片。
           </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Resolution (optional)
+            分辨率（可选）
           </label>
           <select
             value={generateForm.size ?? ""}
@@ -176,10 +176,10 @@ export function ImageGenerationForm({
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
           >
             {resolutionOptions.length === 0 ? (
-              <option value="">Model uses default resolution</option>
+              <option value="">模型使用默认分辨率</option>
             ) : (
               <>
-                <option value="">Auto (model default)</option>
+                <option value="">自动（模型默认）</option>
                 {resolutionOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -192,7 +192,7 @@ export function ImageGenerationForm({
         {supportsAspectRatio && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Aspect Ratio (optional)
+              宽高比（可选）
             </label>
             <select
               value={generateForm.aspect_ratio ?? ""}
@@ -206,10 +206,10 @@ export function ImageGenerationForm({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
             >
               {aspectRatioOptions.length === 0 ? (
-                <option value="">Model does not support aspect ratio</option>
+                <option value="">模型不支持宽高比</option>
               ) : (
                 <>
-                  <option value="">Auto (model default)</option>
+                  <option value="">自动（模型默认）</option>
                   {aspectRatioOptions.map((ratio) => (
                     <option key={ratio} value={ratio}>
                       {ratio}
@@ -222,7 +222,7 @@ export function ImageGenerationForm({
         )}
         <div className="md:col-span-3">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Additional Prompts (optional, comma-separated)
+            补充提示词（可选，逗号分隔）
           </label>
           <input
             type="text"
@@ -233,7 +233,7 @@ export function ImageGenerationForm({
                 additional_prompts: e.target.value,
               }))
             }
-            placeholder="e.g., smiling, sunny, outdoor"
+            placeholder="例如：微笑、晴天、户外"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -246,11 +246,11 @@ export function ImageGenerationForm({
                 setGenerateForm((prev) => ({
                   ...prev,
                   is_default: e.target.checked,
-                }))
-              }
-              className="mr-2"
-            />
-            <span className="text-sm text-gray-700">Set as default image</span>
+              }))
+            }
+            className="mr-2"
+          />
+            <span className="text-sm text-gray-700">设为默认图片</span>
           </label>
         </div>
       </div>
@@ -260,13 +260,13 @@ export function ImageGenerationForm({
           disabled={generating}
           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
         >
-          {generating ? "Submitting..." : "Submit Generation Task"}
+          {generating ? "提交中..." : "提交生成任务"}
         </button>
         <button
           onClick={onCancel}
           className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
         >
-          Cancel
+          取消
         </button>
       </div>
     </div>

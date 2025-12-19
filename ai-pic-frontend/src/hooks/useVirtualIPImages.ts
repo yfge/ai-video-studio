@@ -7,6 +7,7 @@ import {
   virtualIPAPI,
   virtualIPImageAPI,
   type AIImageGenerationRequest,
+  type StyleSpec,
   type VirtualIP,
   type VirtualIPImage,
 } from "@/utils/api";
@@ -36,7 +37,9 @@ export interface UploadFormState {
   is_default: boolean;
 }
 
-export const VIRTUAL_IP_STYLE_SPEC_FIELDS = [
+type StyleSpecKey = keyof StyleSpec;
+
+export const VIRTUAL_IP_STYLE_SPEC_FIELDS: Array<{ key: StyleSpecKey; label: string }> = [
   { key: "style_universe", label: "世界观 / 画风体系" },
   { key: "character_proportion", label: "人物比例" },
   { key: "character_face_style", label: "五官与人物风格" },
@@ -153,8 +156,8 @@ export function useVirtualIPImages({
       if (selectedModel.model_id === "dall-e-3") {
         return [
           { value: "1024x1024", label: "1024 x 1024" },
-          { value: "1024x1792", label: "1024 x 1792 (portrait)" },
-          { value: "1792x1024", label: "1792 x 1024 (landscape)" },
+          { value: "1024x1792", label: "1024 x 1792（竖版）" },
+          { value: "1792x1024", label: "1792 x 1024（横版）" },
         ];
       }
       if (selectedModel.model_id === "dall-e-2") {
@@ -166,7 +169,7 @@ export function useVirtualIPImages({
       }
     }
     if (selectedModel?.provider === "volcengine" && selectedModel.model_id === "seedream-4.5") {
-      return [{ value: "2K", label: "2K (Seedream recommended)" }];
+      return [{ value: "2K", label: "2K（Seedream 推荐）" }];
     }
     return [];
   }, [selectedModel, uiSizes]);
@@ -208,13 +211,13 @@ export function useVirtualIPImages({
         setImages(imagesResponse.success && imagesResponse.data ? imagesResponse.data : []);
         setCategories(categoriesResponse.success && categoriesResponse.data ? categoriesResponse.data : []);
       } else {
-        showAlert({ message: "Failed to load virtual IP", variant: "error" });
+        showAlert({ message: "加载虚拟IP失败", variant: "error" });
         setImages([]);
         setCategories([]);
       }
     } catch (error) {
       console.error("Failed to load data:", error);
-      showAlert({ message: "Failed to load data", variant: "error" });
+      showAlert({ message: "加载数据失败", variant: "error" });
       setImages([]);
       setCategories([]);
     } finally {
@@ -234,7 +237,7 @@ export function useVirtualIPImages({
   // Event handlers
   const handleGenerateImage = async () => {
     if (!virtualIPId) {
-      showAlert({ message: "Virtual IP not loaded", variant: "error" });
+      showAlert({ message: "虚拟IP尚未加载", variant: "error" });
       return;
     }
     try {
@@ -243,7 +246,7 @@ export function useVirtualIPImages({
         generateForm.model || recommendedModel || (availableModels.length > 0 ? availableModels[0].model_id : "");
 
       if (!modelToUse) {
-        showAlert({ message: "Model list not loaded, please try again", variant: "warning" });
+        showAlert({ message: "模型列表未加载，请重试", variant: "warning" });
         return;
       }
 
@@ -271,19 +274,19 @@ export function useVirtualIPImages({
           aspect_ratio: supportsAspectRatio ? aspectRatioOptions[0] || undefined : undefined,
         });
         showAlert({
-          title: "Image generation task created",
-          message: "Task is running in the background. Go to task management page?",
+          title: "图片生成任务已创建",
+          message: "任务已在后台运行，是否前往任务管理页？",
           variant: "success",
-          confirmText: "Go to tasks",
+          confirmText: "前往任务",
           onConfirm: () => router.push("/tasks"),
         });
       } else {
-        throw new Error(response.error || "AI image generation failed");
+        throw new Error(response.error || "AI 图片生成失败");
       }
     } catch (error) {
       console.error("AI image generation failed:", error);
       showAlert({
-        message: `AI image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        message: `AI 图片生成失败：${error instanceof Error ? error.message : "未知错误"}`,
         variant: "error",
       });
     } finally {
@@ -293,11 +296,11 @@ export function useVirtualIPImages({
 
   const handleUploadImage = async () => {
     if (!uploadForm.file) {
-      showAlert({ message: "Please select a file", variant: "warning" });
+      showAlert({ message: "请选择文件", variant: "warning" });
       return;
     }
     if (!virtualIPId) {
-      showAlert({ message: "Virtual IP not loaded", variant: "error" });
+      showAlert({ message: "虚拟IP尚未加载", variant: "error" });
       return;
     }
 
@@ -314,14 +317,14 @@ export function useVirtualIPImages({
       if (response.success && response.data) {
         setImages((prev) => [response.data as VirtualIPImage, ...prev]);
         setUploadForm({ file: null, category: "portrait", tags: "", is_default: false });
-        showAlert({ message: "Image uploaded successfully!", variant: "success" });
+        showAlert({ message: "图片上传成功！", variant: "success" });
       } else {
-        throw new Error(response.error || "Image upload failed");
+        throw new Error(response.error || "图片上传失败");
       }
     } catch (error) {
       console.error("Image upload failed:", error);
       showAlert({
-        message: `Image upload failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        message: `图片上传失败：${error instanceof Error ? error.message : "未知错误"}`,
         variant: "error",
       });
     } finally {
@@ -331,27 +334,27 @@ export function useVirtualIPImages({
 
   const handleDeleteImage = (imageId: number) => {
     showAlert({
-      title: "Confirm delete image",
-      message: "Are you sure you want to delete this image?",
+      title: "确认删除图片",
+      message: "确定删除这张图片吗？",
       variant: "warning",
-      confirmText: "Delete",
+      confirmText: "删除",
       onConfirm: async () => {
         if (!virtualIPId) {
-          showAlert({ message: "Virtual IP not loaded", variant: "error" });
+          showAlert({ message: "虚拟IP尚未加载", variant: "error" });
           return;
         }
         try {
           const response = await virtualIPImageAPI.deleteImage(virtualIPId, imageId);
           if (response.success) {
             setImages((prev) => prev.filter((img) => img.id !== imageId));
-            showAlert({ message: "Image deleted successfully", variant: "success" });
+            showAlert({ message: "图片删除成功", variant: "success" });
           } else {
-            throw new Error(response.error || "Delete image failed");
+            throw new Error(response.error || "删除图片失败");
           }
         } catch (error) {
           console.error("Delete image failed:", error);
           showAlert({
-            message: `Delete image failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            message: `删除图片失败：${error instanceof Error ? error.message : "未知错误"}`,
             variant: "error",
           });
         }
@@ -361,21 +364,21 @@ export function useVirtualIPImages({
 
   const handleSetDefault = async (imageId: number) => {
     if (!virtualIPId) {
-      showAlert({ message: "Virtual IP not loaded", variant: "error" });
+      showAlert({ message: "虚拟IP尚未加载", variant: "error" });
       return;
     }
     try {
       const response = await virtualIPImageAPI.setDefaultImage(virtualIPId, imageId);
       if (response.success) {
         setImages((prev) => prev.map((img) => ({ ...img, is_default: img.id === imageId })));
-        showAlert({ message: "Default image set successfully", variant: "success" });
+        showAlert({ message: "已设置为默认图片", variant: "success" });
       } else {
-        throw new Error(response.error || "Set default image failed");
+        throw new Error(response.error || "设置默认图片失败");
       }
     } catch (error) {
       console.error("Set default image failed:", error);
       showAlert({
-        message: `Set default image failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        message: `设置默认图片失败：${error instanceof Error ? error.message : "未知错误"}`,
         variant: "error",
       });
     }
@@ -383,14 +386,14 @@ export function useVirtualIPImages({
 
   const handleOpenVariant = (image: VirtualIPImage) => {
     setVariantTarget(image);
-    setVariantPrompt("Generate different angle/pose for this character, such as back view or full body");
+    setVariantPrompt("为该角色生成不同角度/姿态，例如背面或全身照");
     setVariantModalOpen(true);
   };
 
   const variantReferenceSections = useMemo(() => {
     if (!variantTarget) return [];
     const url = resolveImageUrl(variantTarget);
-    return url ? [{ title: "Reference", images: [url] }] : [];
+    return url ? [{ title: "参考图", images: [url] }] : [];
   }, [variantTarget]);
 
   const handleSubmitVariant = async (payload: {
@@ -405,7 +408,7 @@ export function useVirtualIPImages({
     referenceImages: string[];
   }) => {
     if (!variantTarget || !virtualIPId) {
-      showAlert({ message: "Virtual IP not loaded", variant: "error" });
+      showAlert({ message: "虚拟IP尚未加载", variant: "error" });
       return;
     }
     const modelFallback =
@@ -429,13 +432,13 @@ export function useVirtualIPImages({
         style_spec: payload.style_spec,
       });
       if (!res.success || !res.data) {
-        throw new Error(res.error || "Image-to-image generation failed");
+        throw new Error(res.error || "图生图生成失败");
       }
       showAlert({
-        title: "Image-to-image task created",
-        message: "Task is running in the background. Go to task management page?",
+        title: "图生图任务已创建",
+        message: "任务已在后台运行，是否前往任务管理页？",
         variant: "success",
-        confirmText: "Go to tasks",
+        confirmText: "前往任务",
         onConfirm: () => router.push("/tasks"),
       });
       setVariantTarget(null);
@@ -444,7 +447,7 @@ export function useVirtualIPImages({
     } catch (error) {
       console.error("Image-to-image generation failed:", error);
       showAlert({
-        message: `Image-to-image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        message: `图生图生成失败：${error instanceof Error ? error.message : "未知错误"}`,
         variant: "error",
       });
     } finally {

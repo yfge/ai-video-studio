@@ -24,7 +24,7 @@ export function ImagePageHeader({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              {virtualIP.name} - Image Management
+              {virtualIP.name} - 图片管理
             </h1>
             <p className="mt-2 text-gray-600">{virtualIP.description}</p>
           </div>
@@ -32,7 +32,7 @@ export function ImagePageHeader({
             onClick={onBack}
             className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
           >
-            Back to Details
+            返回详情
           </button>
         </div>
       </div>
@@ -43,19 +43,19 @@ export function ImagePageHeader({
           onClick={onShowGenerateForm}
           className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
         >
-          <span>AI Generate Image</span>
+          <span>AI 生成图片</span>
         </button>
         <button
           onClick={onShowUploadForm}
           className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
         >
-          <span>Upload Image</span>
+          <span>上传图片</span>
         </button>
         <button
           onClick={onViewTasks}
           className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
         >
-          <span>View Tasks</span>
+          <span>查看任务</span>
         </button>
       </div>
     </>

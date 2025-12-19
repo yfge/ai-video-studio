@@ -3,6 +3,7 @@
 import type { VirtualIP, VirtualIPImage } from "@/utils/api";
 import { ImagePreviewCard } from "@/components/shared";
 import { resolveImageUrl } from "@/hooks/useVirtualIPImages";
+import { getCategoryLabel } from "./categoryLabel";
 
 interface ImageGridProps {
   images: VirtualIPImage[];
@@ -26,9 +27,9 @@ export function ImageGrid({
   if (images.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-gray-400 text-6xl mb-4">Image</div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No Images</h3>
-        <p className="text-gray-600">Start uploading or generating images!</p>
+        <div className="text-gray-400 text-6xl mb-4">图片</div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">暂无图片</h3>
+        <p className="text-gray-600">开始上传或生成图片吧！</p>
       </div>
     );
   }
@@ -50,12 +51,12 @@ export function ImageGrid({
             <ImagePreviewCard
               src={primarySrc}
               fallbackSrc={fallbackSrc}
-              alt={`${virtualIP.name} - ${image.category}`}
+              alt={`${virtualIP.name} - ${getCategoryLabel(image.category)}`}
               aspectClass="aspect-[4/5]"
               showActionsOnHover
               badges={[
-                ...(image.is_default ? [{ label: "Default", tone: "green" as const }] : []),
-                ...(isAiGenerated ? [{ label: "AI Generated", tone: "blue" as const }] : []),
+                ...(image.is_default ? [{ label: "默认", tone: "green" as const }] : []),
+                ...(isAiGenerated ? [{ label: "AI生成", tone: "blue" as const }] : []),
               ]}
               onPreview={() => onPreview(image)}
               onImg2Img={() => onImg2Img(image)}
@@ -65,7 +66,7 @@ export function ImageGrid({
                   ? []
                   : [
                       {
-                        label: "Set Default",
+                        label: "设为默认",
                         onClick: () => onSetDefault(image.id),
                         tone: "primary",
                       },
@@ -74,7 +75,9 @@ export function ImageGrid({
             />
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-900">{image.category}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {getCategoryLabel(image.category)}
+                </span>
                 <span className="text-xs text-gray-500">
                   {new Date(image.created_at).toLocaleDateString()}
                 </span>
@@ -106,7 +109,7 @@ export function ImageGrid({
 }
 
 interface StyleDetailsSectionProps {
-  generationParams: Record<string, unknown> | null;
+  generationParams?: Record<string, unknown> | null;
 }
 
 function StyleDetailsSection({ generationParams }: StyleDetailsSectionProps) {
@@ -122,11 +125,11 @@ function StyleDetailsSection({ generationParams }: StyleDetailsSectionProps) {
   return (
     <details className="mb-3 rounded border border-gray-200 bg-gray-50 p-2 text-[11px] text-gray-700">
       <summary className="cursor-pointer select-none text-xs font-medium text-gray-700">
-        Style Details
+        风格详情
       </summary>
-      <div className="mt-2 break-all">preset: {presetId || "—"}</div>
-      <div className="mt-1 break-all">spec: {JSON.stringify(spec ?? null)}</div>
-      <div className="mt-1 break-all">resolution: {JSON.stringify(resolution ?? null)}</div>
+      <div className="mt-2 break-all">预设：{presetId || "—"}</div>
+      <div className="mt-1 break-all">规格：{JSON.stringify(spec ?? null)}</div>
+      <div className="mt-1 break-all">分辨率：{JSON.stringify(resolution ?? null)}</div>
     </details>
   );
 }

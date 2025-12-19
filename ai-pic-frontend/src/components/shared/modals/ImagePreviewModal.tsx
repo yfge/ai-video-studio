@@ -52,7 +52,7 @@ export function ImagePreviewModal({ open, src, alt, onClose, description }: Imag
           <div className="relative w-full" style={{ aspectRatio: '3 / 2' }}>
             <Image
               src={src}
-              alt={alt || 'Image preview'}
+              alt={alt || '图片预览'}
               fill
               className="object-contain"
               sizes="100vw"

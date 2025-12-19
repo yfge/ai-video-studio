@@ -50,7 +50,7 @@ export default function ScriptDetailPage() {
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <div className="text-center">
           <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">加载中...</p>
         </div>
       </div>
     );
@@ -60,12 +60,12 @@ export default function ScriptDetailPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <div className="text-center">
-          <h2 className="mb-4 text-2xl font-bold text-gray-900">Script Not Found</h2>
+          <h2 className="mb-4 text-2xl font-bold text-gray-900">未找到剧本</h2>
           <button
             onClick={() => router.push("/stories")}
             className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
-            Back to Stories
+            返回故事列表
           </button>
         </div>
       </div>

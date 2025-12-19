@@ -26,14 +26,14 @@ export function ScriptHeader({
         <div>
           <div className="flex items-center gap-3 text-sm text-gray-500">
             <button onClick={onNavigateToEpisode} className="text-blue-600 hover:text-blue-800">
-              Back to Episode
+              返回剧集
             </button>
             <span>•</span>
-            <span>Script #{script.id}</span>
+            <span>剧本 #{script.id}</span>
           </div>
           <h1 className="mt-2 text-3xl font-bold text-gray-900">{script.title}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {script.format_type?.toUpperCase() || "Script"} · {script.language?.toUpperCase()} · Version{" "}
+            {script.format_type?.toUpperCase() || "剧本"} · {script.language?.toUpperCase()} · 版本{" "}
             {script.version || "1.0"}
           </p>
         </div>
@@ -42,14 +42,14 @@ export function ScriptHeader({
             onClick={onNavigateToStoryboard}
             className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
           >
-            Open Storyboard
+            打开分镜
           </button>
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
-              Export Script
+              导出剧本
             </button>
             {showExportMenu && (
               <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-md border border-gray-100 bg-white shadow-lg">
@@ -57,19 +57,19 @@ export function ScriptHeader({
                   onClick={() => onExport("txt")}
                   className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
-                  Export as TXT
+                  导出 TXT
                 </button>
                 <button
                   onClick={() => onExport("pdf")}
                   className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
-                  Export as PDF
+                  导出 PDF
                 </button>
                 <button
                   onClick={() => onExport("docx")}
                   className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
-                  Export as DOCX
+                  导出 DOCX
                 </button>
               </div>
             )}
@@ -78,33 +78,33 @@ export function ScriptHeader({
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <InfoCard label="Words" value={script.word_count || 0} hint="Word Count" />
-        <InfoCard label="Characters" value={script.character_count || 0} hint="Character Count" />
-        <InfoCard label="Pages" value={script.page_count || 0} hint="Estimated Pages" />
+        <InfoCard label="字数" value={script.word_count || 0} hint="字数统计" />
+        <InfoCard label="字符数" value={script.character_count || 0} hint="字符统计" />
+        <InfoCard label="页数" value={script.page_count || 0} hint="预计页数" />
         <InfoCard
-          label="Status"
+          label="状态"
           value={
             script.status === "published"
-              ? "Published"
+              ? "已发布"
               : script.status === "approved"
-              ? "Approved"
-              : "Draft"
+              ? "已审核"
+              : "草稿"
           }
           tone={
             script.status === "published" ? "success" : script.status === "approved" ? "warning" : "default"
           }
           hint={
             script.status === "draft"
-              ? "Can be edited"
+              ? "可编辑"
               : script.status === "approved"
-              ? "Awaiting publish"
-              : "No changes needed"
+              ? "待发布"
+              : "无需修改"
           }
         />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-4 text-sm text-gray-500 md:grid-cols-2">
-        <div>Created: {formatDate(script.created_at)}</div>
-        <div>Updated: {formatDate(script.updated_at)}</div>
+        <div>创建时间：{formatDate(script.created_at)}</div>
+        <div>更新时间：{formatDate(script.updated_at)}</div>
       </div>
     </header>
   );

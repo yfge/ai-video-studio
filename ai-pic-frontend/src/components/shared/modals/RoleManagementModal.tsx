@@ -44,7 +44,7 @@ const ROLES = [
     icon: UserIcon,
     color: 'text-gray-600 bg-gray-100',
     permissions: [
-      '创建和管理Virtual IP',
+      '创建和管理虚拟IP',
       '生成AI图片和视频',
       '创建故事和剧本',
       '查看个人数据统计'

@@ -75,7 +75,7 @@ export function ImagePreviewCard({
       >
         <Image
           src={currentSrc}
-          alt={alt || 'image'}
+          alt={alt || '图片'}
           fill
           sizes="100%"
           className="object-cover"
@@ -135,7 +135,7 @@ export function ImagePreviewCard({
             <div className="relative w-full" style={{ paddingBottom: '60%' }}>
               <Image
                 src={currentSrc}
-                alt={alt || 'preview'}
+                alt={alt || '预览图'}
                 fill
                 className="object-contain"
                 unoptimized

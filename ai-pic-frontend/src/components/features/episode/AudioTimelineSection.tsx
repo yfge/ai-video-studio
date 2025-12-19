@@ -263,15 +263,15 @@ export function AudioTimelineSection({
         </div>
         <div className="text-xs text-gray-600">
           <div className="mb-1">
-            时间轴（episode）：{" "}
+            时间轴（剧集）：{" "}
             {selectedAudioTimeline ? (
-              <span>beats={selectedTimelineBeatCount} • version={String(selectedEpisodeAudioVersion ?? "—")}</span>
+              <span>节拍={selectedTimelineBeatCount} • 版本={String(selectedEpisodeAudioVersion ?? "—")}</span>
             ) : (
               <span className="text-gray-400">未生成</span>
             )}
           </div>
           <div className="mb-1">
-            Episode 音频：{" "}
+            剧集音频：{" "}
             {selectedEpisodeAudioUrl ? (
               <div className="mt-1">
                 <a href={selectedEpisodeAudioUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">
@@ -284,9 +284,9 @@ export function AudioTimelineSection({
             )}
           </div>
           <div>
-            分镜占位（script）：{" "}
+            分镜占位（剧本）：{" "}
             {selectedStoryboard ? (
-              <span>frames={selectedStoryboardFrames.length} • source={selectedStoryboardSource || "—"}</span>
+              <span>帧数={selectedStoryboardFrames.length} • 来源={selectedStoryboardSource || "—"}</span>
             ) : (
               <span className="text-gray-400">—</span>
             )}
@@ -297,7 +297,7 @@ export function AudioTimelineSection({
       {/* Scene dialogue audio details */}
       <details open={normalizedSceneAudioCount > 0} className="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
         <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
-          场景对白音轨（scene）{normalizedScenes.length > 0 ? `：${normalizedSceneAudioCount}/${normalizedScenes.length} 已生成` : ""}
+          场景对白音轨（场景级）{normalizedScenes.length > 0 ? `：${normalizedSceneAudioCount}/${normalizedScenes.length} 已生成` : ""}
         </summary>
         <div className="mt-2 text-[11px] text-gray-600">每个场景一条混音音轨，来源于 scene.metadata.dialogue_audio.oss_url</div>
         {!normalizedScenesLoading && !normalizedScenesError && normalizedScenes.length === 0 && (
@@ -312,12 +312,12 @@ export function AudioTimelineSection({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-xs font-medium text-gray-900 truncate">
-                      Scene {item.scene.scene_number}: {item.scene.slug_line}
+                      场景 {item.scene.scene_number}: {item.scene.slug_line}
                     </div>
                     <div className="mt-0.5 text-[11px] text-gray-500">
-                      id={item.scene.id}
-                      {item.version != null ? ` • version=${String(item.version)}` : ""}
-                      {item.durationSeconds != null ? ` • duration=${String(item.durationSeconds)}s` : ""}
+                      ID={item.scene.id}
+                      {item.version != null ? ` • 版本=${String(item.version)}` : ""}
+                      {item.durationSeconds != null ? ` • 时长=${String(item.durationSeconds)}秒` : ""}
                     </div>
                   </div>
                   {item.ossUrl ? (

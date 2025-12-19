@@ -1,5 +1,7 @@
 "use client";
 
+import { getCategoryLabel } from "./categoryLabel";
+
 interface CategoryFilterProps {
   categories: string[];
   selectedCategory: string;
@@ -22,7 +24,7 @@ export function CategoryFilter({
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
           }`}
         >
-          All
+          全部
         </button>
         {categories.map((category) => (
           <button
@@ -34,7 +36,7 @@ export function CategoryFilter({
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >
-            {category}
+            {getCategoryLabel(category)}
           </button>
         ))}
       </div>

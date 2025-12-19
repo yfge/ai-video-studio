@@ -2060,7 +2060,7 @@ export default function EpisodeStoryboardPage() {
                   时间轴 beats（已偏移）
                 </div>
                 {timelineBeatsForScene.length === 0 ? (
-                  <div className="text-gray-500">暂无时间轴 beats</div>
+                  <div className="text-gray-500">暂无时间轴节拍</div>
                 ) : (
                   <div className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
                     {timelineBeatsForScene.map((beat, idx) => (
@@ -2268,12 +2268,12 @@ export default function EpisodeStoryboardPage() {
                 <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
                   上次图像生成风格信息
                 </summary>
-                <div className="mt-2 break-all">preset: {presetId || "—"}</div>
+                <div className="mt-2 break-all">预设：{presetId || "—"}</div>
                 <div className="mt-1 break-all">
-                  spec: {JSON.stringify(spec ?? null)}
+                  规格：{JSON.stringify(spec ?? null)}
                 </div>
                 <div className="mt-1 break-all">
-                  resolution: {JSON.stringify(resolution ?? null)}
+                  分辨率：{JSON.stringify(resolution ?? null)}
                 </div>
               </details>
             );
@@ -2879,7 +2879,7 @@ export default function EpisodeStoryboardPage() {
                                   <ImagePreviewCard
                                     key={url}
                                     src={url}
-                                    alt="start keyframe candidate"
+                                    alt="首帧候选图"
                                     aspectClass="aspect-square"
                                     badges={
                                       selectedStart === url
@@ -2938,7 +2938,7 @@ export default function EpisodeStoryboardPage() {
                                   <ImagePreviewCard
                                     key={url}
                                     src={url}
-                                    alt="end keyframe candidate"
+                                    alt="尾帧候选图"
                                     aspectClass="aspect-square"
                                     badges={
                                       selectedEnd === url

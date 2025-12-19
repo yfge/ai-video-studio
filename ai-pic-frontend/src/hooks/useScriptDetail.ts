@@ -38,8 +38,8 @@ export type ScriptDirection =
   | string;
 
 export const TABS: Array<{ id: TabId; name: string; description: string }> = [
-  { id: "overview", name: "Overview", description: "Script text and statistics" },
-  { id: "scenes", name: "Scenes", description: "Per-scene dialogues and directions" },
+  { id: "overview", name: "概览", description: "剧本文本与统计" },
+  { id: "scenes", name: "场景", description: "按场景查看对白与指令" },
 ];
 
 export const formatDate = (value?: string): string => {
@@ -106,11 +106,11 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
       if (scriptRes.success && scriptRes.data) {
         setScript(scriptRes.data);
       } else {
-        showAlert({ message: "Failed to load script", variant: "error" });
+        showAlert({ message: "加载剧本失败", variant: "error" });
       }
     } catch (error) {
       console.error(error);
-      showAlert({ message: "Failed to load data", variant: "error" });
+      showAlert({ message: "加载数据失败", variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -139,7 +139,7 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load structured scenes", error);
-          setStructureError("Failed to load structured scenes");
+          setStructureError("加载结构化场景失败");
         }
       } finally {
         if (!cancelled) setStructureLoading(false);
@@ -195,7 +195,7 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
       scene_number: toSceneNumber(scene.scene_number) ?? idx + 1,
       location: scene.location,
       time: scene.time_of_day,
-      description: scene.slug_line || scene.status || `Scene ${scene.scene_number}`,
+      description: scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
     }));
   }, [structuredScenes]);
 
@@ -228,7 +228,7 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
   // Notify read-only
   useEffect(() => {
     if (activeTab === "scenes" && !canEditStructure && !readOnlyNotified) {
-      showAlert({ message: "Scene structure is read-only. Admin required to edit.", variant: "warning" });
+      showAlert({ message: "场景结构为只读模式，需要管理员权限编辑。", variant: "warning" });
       setReadOnlyNotified(true);
     }
   }, [activeTab, canEditStructure, readOnlyNotified, showAlert]);
@@ -274,13 +274,13 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
     try {
       const response = await scriptAPI.exportScript(scriptIdentifier, format);
       if (response.success) {
-        showAlert({ message: `Script exported as ${format.toUpperCase()}`, variant: "success" });
+        showAlert({ message: `剧本已导出为 ${format.toUpperCase()}`, variant: "success" });
       } else {
-        showAlert({ message: "Export failed", variant: "error" });
+        showAlert({ message: "导出失败", variant: "error" });
       }
     } catch (error) {
       console.error(error);
-      showAlert({ message: "Export failed", variant: "error" });
+      showAlert({ message: "导出失败", variant: "error" });
     } finally {
       setShowExportMenu(false);
     }

@@ -381,12 +381,12 @@ export default function Tasks() {
                         <div className="flex flex-wrap items-center gap-4">
                           <span className="font-medium">任务ID：{task.id}</span>
                           {task.result_file_path ? (
-                            <span className="break-all">result: {task.result_file_path}</span>
+                            <span className="break-all">结果：{task.result_file_path}</span>
                           ) : null}
                         </div>
 
                         <div>
-                          <div className="font-medium text-gray-800">parameters</div>
+                          <div className="font-medium text-gray-800">参数</div>
                           <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-white p-2 border border-gray-200">
                             {renderJson(task.parameters)}
                           </pre>
@@ -400,8 +400,8 @@ export default function Tasks() {
                           return (
                             <div>
                               <div className="font-medium text-gray-800">请求风格</div>
-                              <div className="mt-1 break-all">preset: {String(presetId || '—')}</div>
-                              <div className="mt-1 break-all">spec: {renderJson(spec)}</div>
+                              <div className="mt-1 break-all">预设：{String(presetId || '—')}</div>
+                              <div className="mt-1 break-all">规格：{renderJson(spec)}</div>
                             </div>
                           )
                         })()}
@@ -415,13 +415,13 @@ export default function Tasks() {
                           ) : persistedStyle[task.id] ? (
                             <>
                               <div className="mt-1 break-all">
-                                source: {persistedStyle[task.id]?.source}
+                                来源：{persistedStyle[task.id]?.source}
                               </div>
                               <div className="mt-1 break-all">
-                                spec: {renderJson(persistedStyle[task.id]?.style_spec)}
+                                规格：{renderJson(persistedStyle[task.id]?.style_spec)}
                               </div>
                               <div className="mt-1 break-all">
-                                resolution: {renderJson(persistedStyle[task.id]?.style_spec_resolution)}
+                                分辨率：{renderJson(persistedStyle[task.id]?.style_spec_resolution)}
                               </div>
                             </>
                           ) : (

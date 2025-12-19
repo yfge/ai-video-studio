@@ -55,9 +55,9 @@ export default function VirtualIPDetail() {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Virtual IP Not Found</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">未找到虚拟IP</h2>
           <Link href="/virtual-ip" className="text-blue-600 hover:text-blue-800">
-            Back to Virtual IP List
+            返回虚拟IP列表
           </Link>
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function VirtualIPDetail() {
 
           {virtualIP.background_story && (
             <div className="p-8 border-b">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Background Story</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">背景故事</h3>
               {editing ? (
                 <textarea
                   value={editForm.background_story}
@@ -124,12 +124,12 @@ export default function VirtualIPDetail() {
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
               <div>
-                <span className="font-medium">Created:</span>{" "}
+                <span className="font-medium">创建时间：</span>{" "}
                 {new Date(virtualIP.created_at).toLocaleString()}
               </div>
               {virtualIP.updated_at && (
                 <div>
-                  <span className="font-medium">Updated:</span>{" "}
+                  <span className="font-medium">更新时间：</span>{" "}
                   {new Date(virtualIP.updated_at).toLocaleString()}
                 </div>
               )}

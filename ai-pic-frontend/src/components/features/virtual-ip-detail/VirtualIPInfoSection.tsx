@@ -54,7 +54,7 @@ export function VirtualIPInfoSection({
           {editing ? (
             <form onSubmit={onSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
                 <input
                   type="text"
                   required
@@ -65,7 +65,7 @@ export function VirtualIPInfoSection({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
                 <textarea
                   value={editForm.description}
                   onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -75,7 +75,7 @@ export function VirtualIPInfoSection({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">标签</label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {editForm.tags.map((tag) => (
                     <span
@@ -96,7 +96,7 @@ export function VirtualIPInfoSection({
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Enter tag"
+                    placeholder="输入标签"
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -116,7 +116,7 @@ export function VirtualIPInfoSection({
                     }}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
                   >
-                    Add
+                    添加
                   </button>
                 </div>
               </div>
@@ -127,13 +127,13 @@ export function VirtualIPInfoSection({
                   onClick={onCancel}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
                 >
-                  Cancel
+                  取消
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
-                  Save
+                  保存
                 </button>
               </div>
             </form>

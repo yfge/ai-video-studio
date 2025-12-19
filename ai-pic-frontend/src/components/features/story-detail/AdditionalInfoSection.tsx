@@ -37,19 +37,19 @@ export function AdditionalInfoSection({ story }: AdditionalInfoSectionProps) {
           <div className="text-sm text-gray-700 whitespace-pre-wrap mt-1 space-y-1">
             {plotStructure.act1 && (
               <div>
-                <span className="font-medium">Act 1：</span>
+                <span className="font-medium">第一幕：</span>
                 {plotStructure.act1}
               </div>
             )}
             {plotStructure.act2 && (
               <div>
-                <span className="font-medium">Act 2：</span>
+                <span className="font-medium">第二幕：</span>
                 {plotStructure.act2}
               </div>
             )}
             {plotStructure.act3 && (
               <div>
-                <span className="font-medium">Act 3：</span>
+                <span className="font-medium">第三幕：</span>
                 {plotStructure.act3}
               </div>
             )}

@@ -75,7 +75,7 @@ export default function VirtualIPImagesPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">加载中...</p>
         </div>
       </div>
     );
@@ -85,12 +85,12 @@ export default function VirtualIPImagesPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Virtual IP Not Found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">未找到虚拟IP</h2>
           <button
             onClick={() => router.push("/virtual-ip")}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
-            Back to List
+            返回列表
           </button>
         </div>
       </div>
@@ -158,8 +158,8 @@ export default function VirtualIPImagesPage() {
           onClose={() => {
             setVariantModalOpen(false);
           }}
-          title="Image-to-Image Variant"
-          description="Reference image and prompt will be submitted to the image-to-image task. You can adjust model, resolution, and generation count."
+          title="图生图变体"
+          description="将参考图与提示词提交到图生图任务，可调整模型、分辨率与生成数量。"
           referenceSections={variantReferenceSections}
           defaultSelected={variantReferenceSections.flatMap((section) => section.images)}
           lockSelection

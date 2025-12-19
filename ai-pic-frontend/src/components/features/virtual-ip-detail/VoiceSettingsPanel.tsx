@@ -37,17 +37,17 @@ export function VoiceSettingsPanel({
     <div className="p-8 border-b space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Voice Settings</h3>
+          <h3 className="text-lg font-semibold text-gray-900">配音设置</h3>
           <p className="text-sm text-gray-500">
-            Bind voice to character by provider → model → voice
+            按“服务商 → 模型 → 声音”绑定角色配音
           </p>
         </div>
-        {!voiceEnums && <span className="text-sm text-gray-500">Loading voice options...</span>}
+        {!voiceEnums && <span className="text-sm text-gray-500">正在加载声音选项...</span>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">服务商</label>
           <select
             value={voiceSettings.provider || ""}
             onChange={(e) => {
@@ -73,7 +73,7 @@ export function VoiceSettingsPanel({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Voice Model</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">语音模型</label>
           <select
             value={voiceSettings.model || ""}
             onChange={(e) =>
@@ -91,7 +91,7 @@ export function VoiceSettingsPanel({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Voice Type</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">声音类型</label>
           <select
             value={voiceTypeFilter}
             onChange={(e) => setVoiceTypeFilter(e.target.value)}
@@ -108,8 +108,8 @@ export function VoiceSettingsPanel({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
-            Voice
-            {voiceLoading && <span className="text-xs text-gray-500">Loading...</span>}
+            声音
+            {voiceLoading && <span className="text-xs text-gray-500">加载中...</span>}
           </label>
           <select
             value={voiceSettings.voice_id || ""}
@@ -119,7 +119,7 @@ export function VoiceSettingsPanel({
             disabled={!editing || voiceLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">Select voice</option>
+            <option value="">选择声音</option>
             {voiceOptions.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
@@ -127,19 +127,19 @@ export function VoiceSettingsPanel({
             ))}
           </select>
           <p className="mt-1 text-xs text-gray-500">
-            From {voiceSettings.provider || "default"} / {voiceSettings.model || "not selected"}
+            来源：{voiceSettings.provider || "默认"} / {voiceSettings.model || "未选择"}
           </p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">Preview Text</label>
+        <label className="block text-sm font-medium text-gray-700">试听文本</label>
         <textarea
           value={voicePreviewText}
           onChange={(e) => setVoicePreviewText(e.target.value)}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Enter text to preview"
+          placeholder="输入用于试听的文本"
         />
         <div className="flex items-center gap-3">
           <button
@@ -148,16 +148,16 @@ export function VoiceSettingsPanel({
             disabled={previewLoading}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-60"
           >
-            {previewLoading ? "Generating..." : "Preview"}
+            {previewLoading ? "生成中..." : "试听"}
           </button>
           {previewAudioUrl && (
             <audio controls src={previewAudioUrl} className="w-full max-w-md">
-              Your browser does not support audio playback.
+              你的浏览器不支持音频播放。
             </audio>
           )}
         </div>
         <p className="text-sm text-gray-500">
-          After saving, this voice will be bound to the current character.
+          保存后将把该声音绑定到当前角色。
         </p>
       </div>
     </div>

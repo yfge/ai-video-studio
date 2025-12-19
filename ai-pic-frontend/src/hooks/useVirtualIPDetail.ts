@@ -92,7 +92,7 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
       if (res.success && res.data) {
         setVoiceEnums(res.data);
         if (!voicePreviewText) {
-          setVoicePreviewText("Hello, I am your virtual character, nice to meet you.");
+          setVoicePreviewText("你好，我是你的虚拟角色，很高兴认识你。");
         }
         const defaults = buildDefaultVoiceSettings(res.data);
         setVoiceSettings((prev) => mergeVoiceSettings(prev, defaults));
@@ -138,15 +138,15 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
           return mergeVoiceSettings(prev, defaults, incomingVoice);
         });
         if (!voicePreviewText) {
-          setVoicePreviewText(`Hello, I am ${response.data.name}, nice to meet you.`);
+          setVoicePreviewText(`你好，我是${response.data.name}，很高兴认识你。`);
         }
       } else {
         console.error("Failed to fetch virtual IP:", response.error);
-        showAlert({ message: "Failed to fetch virtual IP", variant: "error" });
+        showAlert({ message: "获取虚拟IP失败", variant: "error" });
       }
     } catch (error) {
       console.error("Error fetching virtual IP:", error);
-      showAlert({ message: "Failed to fetch virtual IP", variant: "error" });
+      showAlert({ message: "获取虚拟IP失败", variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -164,36 +164,36 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
       if (response.success && response.data) {
         setVirtualIP(response.data);
         setEditing(false);
-        showAlert({ message: "Update successful", variant: "success" });
+        showAlert({ message: "更新成功", variant: "success" });
       } else {
-        showAlert({ message: `Update failed: ${response.error || "Unknown error"}`, variant: "error" });
+        showAlert({ message: `更新失败：${response.error || "未知错误"}`, variant: "error" });
       }
     } catch (error) {
       console.error("Error updating virtual IP:", error);
-      showAlert({ message: "Update failed, please try again", variant: "error" });
+      showAlert({ message: "更新失败，请稍后重试", variant: "error" });
     }
   };
 
   // Delete virtual IP
   const handleDeleteIP = () => {
     showAlert({
-      title: "Confirm delete virtual IP",
-      message: "Are you sure you want to delete this virtual IP? This action cannot be undone!",
+      title: "确认删除虚拟IP",
+      message: "确定删除该虚拟IP吗？此操作不可恢复！",
       variant: "warning",
-      confirmText: "Delete",
+      confirmText: "删除",
       onConfirm: async () => {
         try {
           const identifier = virtualIP?.business_id || ipKey;
           const response = await virtualIPAPI.deleteVirtualIP(identifier);
           if (response.success) {
-            showAlert({ message: "Delete successful", variant: "success" });
+            showAlert({ message: "删除成功", variant: "success" });
             router.push("/virtual-ip");
           } else {
-            showAlert({ message: `Delete failed: ${response.error || "Unknown error"}`, variant: "error" });
+            showAlert({ message: `删除失败：${response.error || "未知错误"}`, variant: "error" });
           }
         } catch (error) {
           console.error("Error deleting virtual IP:", error);
-          showAlert({ message: "Delete failed, please try again", variant: "error" });
+          showAlert({ message: "删除失败，请稍后重试", variant: "error" });
         }
       },
     });
@@ -257,11 +257,11 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
     const fallbackProvider = voiceSettings.provider || voiceEnums?.providers?.[0]?.value;
 
     if (!fallbackProvider) {
-      showAlert({ message: "Please select a voice provider first", variant: "error" });
+      showAlert({ message: "请先选择服务商", variant: "error" });
       return;
     }
     if (!fallbackModel) {
-      showAlert({ message: "Please select a voice model first", variant: "error" });
+      showAlert({ message: "请先选择语音模型", variant: "error" });
       return;
     }
 
@@ -278,7 +278,7 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
       }));
     }
 
-    const text = voicePreviewText || `Hello, I am ${virtualIP?.name || "character"}, nice to meet you.`;
+    const text = voicePreviewText || `你好，我是${virtualIP?.name || "角色"}，很高兴认识你。`;
     setPreviewLoading(true);
     try {
       const res = await voiceAPI.preview({
@@ -297,13 +297,13 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
           }
           setPreviewAudioUrl(audioUrl);
         }
-        showAlert({ message: "Preview generated", variant: "success" });
+        showAlert({ message: "试听已生成", variant: "success" });
       } else {
-        showAlert({ message: `Preview failed: ${res.error || "Unknown error"}`, variant: "error" });
+        showAlert({ message: `试听失败：${res.error || "未知错误"}`, variant: "error" });
       }
     } catch (error) {
       console.error("Preview failed", error);
-      showAlert({ message: "Preview failed, please try again", variant: "error" });
+      showAlert({ message: "试听失败，请稍后重试", variant: "error" });
     } finally {
       setPreviewLoading(false);
     }
