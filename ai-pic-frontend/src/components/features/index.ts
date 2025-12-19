@@ -15,3 +15,10 @@ export {
   ScriptGenerationForm,
   ScriptList,
 } from './episode'
+export {
+  ImagePageHeader,
+  ImageGenerationForm,
+  ImageUploadForm,
+  CategoryFilter,
+  ImageGrid,
+} from './virtual-ip-images'
