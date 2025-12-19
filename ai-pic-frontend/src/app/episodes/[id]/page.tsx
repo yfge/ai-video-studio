@@ -246,7 +246,9 @@ export default function EpisodeDetailPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <EpisodeHeader
           episode={episode}
-          onNavigateToStory={() => router.push(`/stories/${episode.story_id}`)}
+          onNavigateToStory={() =>
+            router.push(`/stories/${episode.story_business_id || episode.story_id}`)
+          }
           onNavigateToStoryboard={() => {
             const suffix = selectedScript?.id ? `?scriptId=${selectedScript.id}` : "";
             const id = episode?.business_id || episode?.id;
