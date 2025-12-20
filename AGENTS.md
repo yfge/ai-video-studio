@@ -520,7 +520,7 @@ We operate with the same rigor as the reference repositories (`talkReplay`, `ori
 8. Keep `agent_chats/` clean: no unstaged edits, no binary files, redact secrets, prefer ASCII.
 
 The helper `scripts/check_agent_chats.py` (wired into pre-commit) enforces naming, frontmatter, and section requirements. The hook fails when code changes lack a matching ledger entry or when ledger files are malformed.
-- 在提交前执行 `./build_prod_images.sh`，确保生产镜像可构建；构建失败需先修复后再提交。
+- 在提交前执行 `./docker/build_prod_images.sh`，确保生产镜像可构建；构建失败需先修复后再提交。
 
 ## Pre-Commit Gates & Quality Bar
 
