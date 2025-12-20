@@ -33,6 +33,7 @@ export {
   VirtualIPInfoSection,
   VoiceSettingsPanel,
 } from './virtual-ip-detail'
+export { VirtualIPListSection, VirtualIPCreateModal } from './virtual-ip'
 export {
   StoriesHeader,
   StoriesFilter,
