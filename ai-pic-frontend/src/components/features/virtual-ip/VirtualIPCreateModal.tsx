@@ -1,12 +1,13 @@
 'use client'
 
-import type { Dispatch, FormEvent, SetStateAction } from 'react'
+import { useCallback, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { VoiceConfig } from '@/utils/api'
 import { CreationOverlay, SmartInputField } from '@/components/shared'
+import { useVoiceConfigOptions } from '@/hooks/useVoiceConfigOptions'
 import type { VirtualIPCreateFormState } from '@/utils/virtual-ip/types'
 import { VirtualIPAIIntroSection } from './VirtualIPAIIntroSection'
 import { VirtualIPTagsField } from './VirtualIPTagsField'
-import { VirtualIPVoiceConfigSection } from './VirtualIPVoiceConfigSection'
+import { VirtualIPVoiceSettingsForm } from './VirtualIPVoiceSettingsForm'
 
 interface VirtualIPCreateModalProps {
   open: boolean
@@ -45,12 +46,21 @@ export function VirtualIPCreateModal({
     setFormState((prev) => ({ ...prev, [key]: value }))
   }
 
-  const updateVoiceConfig = (patch: Partial<VoiceConfig>) => {
-    setFormState((prev) => ({
-      ...prev,
-      voice_config: { ...(prev.voice_config || {}), ...patch },
-    }))
-  }
+  const setVoiceConfig = useCallback(
+    (next: SetStateAction<VoiceConfig>) => {
+      setFormState((prev) => ({
+        ...prev,
+        voice_config: typeof next === 'function' ? next(prev.voice_config) : next,
+      }))
+    },
+    [setFormState],
+  )
+
+  const { voiceEnums, voiceOptions, voiceLoading, voiceTypeFilter, setVoiceTypeFilter } =
+    useVoiceConfigOptions({
+      voiceConfig: formState.voice_config,
+      setVoiceConfig,
+    })
 
   return (
     <CreationOverlay
@@ -140,7 +150,15 @@ export function VirtualIPCreateModal({
           <p className="mt-1 text-xs text-gray-500">用于后续图像生成风格参考，不填写则留空。</p>
         </div>
 
-        <VirtualIPVoiceConfigSection value={formState.voice_config} onChange={updateVoiceConfig} />
+        <VirtualIPVoiceSettingsForm
+          voiceEnums={voiceEnums}
+          voiceTypeFilter={voiceTypeFilter}
+          setVoiceTypeFilter={setVoiceTypeFilter}
+          voiceSettings={formState.voice_config}
+          setVoiceSettings={setVoiceConfig}
+          voiceLoading={voiceLoading}
+          voiceOptions={voiceOptions}
+        />
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">状态设置</label>
