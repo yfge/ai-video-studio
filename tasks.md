@@ -4,8 +4,8 @@
 
 ## 状态概览
 
-- ✅ 稳定/收尾：叙事结构与数据模型对齐（待补迁移验证与权限收口）、对白音轨与声音驱动时间轴（已验证）
-- ⏳ 进行中：虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动
+- ✅ 稳定/收尾：叙事结构与数据模型对齐（迁移验证/权限收口待补）、对白音轨与声音驱动时间轴（已验证）
+- ⏳ 进行中：全局软删除 + business_id 落地、任务队列与 Agent 执行落库、虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
 
 ## Feature: 全局软删除 + business_id
@@ -15,17 +15,20 @@
 ### 进度（功能→后端→前端→验证）
 
 - [x] 功能/需求：完成全局软删 + business_id 设计稿，落于 `docs/soft-delete-business-id.md`
-- [ ] 后端：Phase 1 落地 `business_id`/软删字段与索引，回填现存数据并统一查询默认过滤 `is_deleted=false`
-- [ ] 后端：Phase 2 为子表补充 `*_business_id` 并回填，唯一约束改为含 `is_deleted` 的复合唯一，服务层双写/优先读 `business_id`
-- [ ] 后端：Phase 3 删除/恢复接口改为软删，regenerate 创建新记录并软删旧记录，派生数据重建/软删策略落地
+- [x] 后端：Phase 1 已新增 `business_id`/软删字段与索引并回填（核心表已覆盖）
+- [ ] 后端：Phase 1 统一查询默认过滤 `is_deleted=false`（stories/episodes/virtual IP 已接入，其余端点待补）
+- [x] 后端：Phase 2 已为子表补充 `*_business_id` 并回填（story_structure/virtual_ip_images/tasks 等）
+- [ ] 后端：Phase 2 唯一约束改为含 `is_deleted` 的复合唯一，服务层双写/优先读 `business_id`（目前 business_id 索引为非唯一）
+- [ ] 后端：Phase 3 删除/恢复接口改为软删，regenerate 创建新记录并软删旧记录（episodes 已完成，scripts_legacy 仍为原地更新）
 - [ ] 后端：按 `business_id` 访问的路由/查询参数补全（stories/episodes/scripts/virtual IP 已接入，其余端点待补）
-- [ ] 前端：接口/路由切换到 `business_id`（兼容旧 `id` 只读），regenerate 后跳转到新记录
+- [x] 前端：stories/episodes/scripts/virtual IP 等核心页面已优先使用 `business_id` 路由（兼容旧 `id` 只读）
+- [ ] 前端：其余资源与深链路补齐 `business_id` 兜底，regenerate 后跳转到新记录
 - [ ] 验证：pytest 覆盖软删/重建唯一键/regenerate 新记录链路；前端 `npm run lint` + E2E 检查软删后列表/详情/再生成可用
 
 ### 下一步
 
-- 先完成 Phase 1 Alembic 与 mixin 接入，编写回填与校验脚本；随后推进 Phase 2 关联双写/改造
-- 设计 regenerate 子表重建/软删策略（scenes/scene_beats/shots 等）并在后端实现，前端同步切换 business_id 路由
+- 补齐 `is_deleted=false` 默认过滤与 `business_id` 双写/优先读，复核并恢复唯一约束策略（含 `is_deleted` 复合唯一）
+- 将 scripts regenerate 改为“新记录 + 旧记录软删”，并补齐派生数据重建/软删策略（scenes/scene_beats/shots 等），前端继续切换 business_id 路由
 
 ## Feature: 叙事结构与数据模型对齐
 
@@ -42,7 +45,7 @@
 
 ### 进度（功能→后端→前端→验证）
 
-- [x] 功能/需求：梳理 Story → Episode → Script 现状与工业级 Treatment / Step Outline / Scene / Shot 差异，已产出对比文档 `docs/story-structure-gap-analysis.md` 与 Discovery 议程 `docs/story-structure-discovery-session.md`
+- [x] 功能/需求：梳理 Story → Episode → Script 现状与工业级 Treatment / Step Outline / Scene / Shot 差异，已产出对比文档 `docs/story-structure-gap-analysis.md` 与接口说明 `docs/story-structure-api.md`
 - [x] 后端：完成 `story_treatments`、`story_step_outlines`、`scenes`、`scene_beats`、`shots` ER 与字段设计及迁移脚本（含回填路径 `alembic upgrade c4a1cbf0d7c2`）
 - [x] 前端：剧本详情页已调整为新场景/镜头层级的展示与编辑
 - [x] 验证：补齐单元/集成测试与迁移回归用例
@@ -63,18 +66,20 @@
 - [x] 功能/需求：接入 Seedream 4.5 文生图（`doubao-seedream-4-5-251128`），通过 `/api/v1/virtual-ips/{id}/images/generate` 完成端到端验证（含 Docker）；官方示例为 `POST /api/v3/images/generations` 且 `size: "2K"`，像素需 ≥ 3,686,400
 - [ ] 功能/需求：图生图能力完善，梳理 Seedream/其他提供商的单图生图、多图生图参数，对齐 `/api/v1/ai/generate/image-to-image`，覆盖背面照/全身照等变体
 - [x] 后端：虚拟 IP 文案注入提示词，聚合 `description` / `background_story` / `biography` / `style_prompt`，确保生成提示词携带完整角色设定
-- [ ] 后端：分辨率与规格建模，按模型白名单收敛 `size` / `width` / `height` / `aspect_ratio`，并在统一模型注册表与日志中落盘；当前虚拟 IP 图生图变体接口已透传 `size` 到统一的 `image_to_image` 调用
+- [x] 后端：模型注册表已提供 `size_options` / `aspect_ratio_options`（OpenAI/Seedream 等）
+- [ ] 后端：分辨率与规格校验/落盘完善（`size` / `width` / `height` / `aspect_ratio`），统一记录实际下发规格
 - [x] 前端：虚拟 IP 图像页支持基于已有图像的变体生成（`/api/v1/virtual-ips/{id}/images/{image_id}/variants`），含模型选择与生成数量，变体会保存为新的虚拟 IP 图像资产
 - [x] 前端：虚拟 IP 更新请求类型补齐 `voice_config`，修复 `next build` 类型检查失败
 - [x] 前端：虚拟 IP 手动上传走统一 OSS（修复上传字段与 FormData 头部）
-- [ ] 前端：在文生图/图生图表单中按模型动态限制分辨率选项，完善错误与限制提示（目前图生图弹窗复用文生图已选的 `size`）
+- [x] 前端：文生图表单按模型动态限制分辨率选项（含 Seedream/DALL·E 白名单）
+- [ ] 前端：图生图弹窗补齐分辨率/比例限制与错误提示（当前复用文生图已选 `size`）
 - [ ] 验证：为不同模型+分辨率补齐端到端用例（含 DALL·E 3 官方三种长宽比、DALL·E 2 三种尺寸、Seedream 2K），在 README / TESTING_GUIDE 记录 Ark 凭证、调试与兼容矩阵
 
 ### 下一步
 
 - 按提供商梳理多图生图参数与约束（Seedream 4.5 / DALL·E / SDXL / 可灵 / 即梦 / DeepSeek），补齐 UI 文案与错误提示
 - 固化分辨率白名单：DALL·E 3 仅 `1024x1024` / `1024x1792` / `1792x1024`；DALL·E 2 仅 `256/512/1024` 方图；Seedream 4.5 归一化 `size: 2K` 并校验像素下限；SDXL/其他按官方推荐收敛
-- 后端在 `generate_image` / `image_to_image` 中按模型映射规范化参数并记录实际下发规格，前端表单按模型展示受限尺寸
+- 后端在 `generate_image` / `image_to_image` 中按模型映射规范化参数并记录实际下发规格，前端补齐图生图弹窗的尺寸/比例限制
 - 增补模型×分辨率测试与 Ark 调试说明，校验文档覆盖背面照/全身照等变体
 
 ## Feature: 任务队列与 Agent 执行落库（高优）
@@ -84,10 +89,10 @@
 ### 进度（功能→后端→前端→验证）
 
 - [ ] 功能/需求：统一 Story/Episode/Script/图像等任务到 Task 队列，使用 Celery Worker 处理，Agent 每次执行结果在 Task 与目标实体（Story/Episode/Script）上都可追踪
-- [ ] 后端：补全 `TaskType` 枚举（如 `story_generation` / `episode_generation` / `script_generation` / `image_generation`），提炼 `task_runner` / `task_worker`，以 Celery 任务消费 Task 表并调用 `AIService` / LangGraph Agents，更新 `Task.status` / `result_file_path` / `error_message`
+- [ ] 后端：补全 `TaskType` 枚举（如 `story_generation` / `episode_generation` / `script_generation` / `image_generation`），提炼 `task_runner` / `task_worker`，以 Celery 任务消费 Task 表并调用 `AIService` / LangGraph Agents，更新 `Task.status` / `result_file_path` / `error_message`（当前 story/episode/script 仍用 `image_generation`）
 - [ ] 后端：在 Task 的 `parameters.agent_run` 中落库 agent 输入/输出（prompt、normalized 结构、provider/model、usage、reasoning），保证每次 LangGraph 执行有完整轨迹
 - [x] 后端：在 Story/Episode/Script 的 `extra_metadata.agent_run` 中写入 LangGraph/AI 管理器的运行信息，覆盖同步与 `/generate-async` 路径
-- [ ] 后端：为虚拟 IP 图像、环境图像、分镜图像等长耗时图像生成操作提供标准 Task 创建 + Celery 异步处理路径（与现有 `/api/v1/tasks` 结构对齐）
+- [x] 后端：为虚拟 IP 图像、环境图像、分镜图像等长耗时图像生成操作提供标准 Task 创建 + Celery 异步处理路径（与现有 `/api/v1/tasks` 结构对齐）
 - [x] 后端：新增 `app/core/celery_app.py` 与 `app/services/task_worker.py`，并在 `docker/docker-compose.prod.yml` 中增加 `ai-video-celery-worker` 服务（与 backend 共用镜像与配置）
 - [x] 后端：修复 OpenAI `response_format=json_schema` 在 `script_dialogues` 场景的 schema 校验 400（完善 item schema + 非 strict schema 自动回退 `json_object`）
 - [ ] 前端：在任务管理页 `/tasks` 中支持按 `task_type` 过滤，并在任务详情中展示 `parameters.agent_run` 的关键信息（provider/model/usage/reasoning）
@@ -95,9 +100,9 @@
 
 ### 下一步
 
-- 先在后端实现 Celery 应用与通用 `process_task` 处理逻辑，并将 `/stories/episodes/scripts/*/generate-async` 与虚拟 IP 图像生成统一改造为创建 Task → `process_task.delay(task_id)` 调用链
-- 为 `StoryLangGraphAgent` / `EpisodeLangGraphAgent` / `ScriptLangGraphAgent` 增加标准化返回结构（明确 `normalized`、`provider_used`、`model_used`、`usage`、`reasoning` 字段），在 `AIService` 层集中写入实体与 Task 的 `agent_run`
-- 更新生产 `docker-compose.prod.yml`，增加 `celery_worker` service，并在部署文档中标记任务队列为核心组件；通过 `/tasks` + 诊断 API 验证任务与 Agent 执行轨迹可见
+- 补全 `TaskType` 与统一 `process_task` 执行入口，改造 `/stories/episodes/scripts/*/generate-async` 使用正确的 task_type 并走 Celery worker
+- 在 Task `parameters.agent_run` 落库 LangGraph 轨迹，并在 `/tasks` UI 展示关键信息（provider/model/usage/reasoning）
+- 补测试与 `TESTING_GUIDE.md`：记录 Celery 本地运行/调试流程与任务链路验证路径
 
 ## Feature: 场景/环境资产与分镜联动
 
@@ -107,7 +112,7 @@
 
 - [x] 功能/需求：定义环境/场景资产与分镜/角色绑定（environments 表、角色锚点），现支持分镜页绑定环境与镜头绑定角色
 - [x] 后端：已落地 environments 表与 `scenes.environment_id` / `shots.character_ids` 迁移；环境文生图/图生图已上线用于手动生成参考图
-- [ ] 后端：生成链路未闭环——需要在分镜帧结构中携带 `environment_id` 并在生成调用中同时带人物/环境参考图，统一映射到多提供商 API
+- [ ] 后端：`generate_storyboard_images` 已聚合 `scene.environment_id` + `shot.character_ids` 并注入 `image_to_image`；仍需在分镜帧结构中持久化 `environment_id/character_ids` 并复用到视频生成路径
 - [x] 前端：提供环境资产管理页（上传/生成/变体/删除参考图），在 `/stories/[id]` 分镜/剧集界面支持环境选择与标签筛选
 - [ ] 验证：待补端到端用例，验证选择环境+角色后分镜帧能稳定生成对应图像；在 `TESTING_GUIDE.md` 记录并为环境表/关联补迁移回归用例
 
@@ -405,30 +410,16 @@
 
 > 场景： http://localhost:8089/episodes/8/storyboard，目标是让分镜生成/编辑对齐规范化场景/镜头，并能携带角色与环境参考图完成闭环。
 
-### 里程碑 0：现状梳理与阻断收集
+### 当前进展
 
-- [ ] 功能/需求：梳理当前分镜生成入口、规范化场景/镜头数据与环境/角色资产的绑定现状，列出阻断清单。
-- [ ] 后端：盘点 `/scripts/{id}/storyboard` / `generate_storyboard*` 返回体与 story_structure 模型的缺口（环境/角色/镜头 id），确认是否存在版本或 JSON 兼容分支。
-- [ ] 前端：在 storyboard 页面确认哪些 UI 依赖未打通（镜头角色选择、环境选择、参考图载入、生成按钮状态），记录具体交互缺口。
-- [ ] 验证：用 episode 8 复现“生成分镜→生成图像/视频→保存”路径，截图/日志记录当前失败点。
+- [x] 后端：规范化结构已落地（`scenes.environment_id` / `shots.character_ids`），剧本生成/更新时同步 `story_structure.scenes`（best effort）
+- [x] 后端：`generate_storyboard_images` 已聚合环境/角色参考图进行图生图生成
+- [x] 前端：storyboard 页面读取 normalized scenes/shots，支持环境选择与镜头角色绑定
 
-### 里程碑 1：数据与上下文对齐
+### 待补（功能→后端→前端→验证）
 
-- [ ] 功能/需求：确定生成/更新分镜的上下文字段清单（场景摘要、beat/shot 描述、角色、环境、提示词模板版本），并对外暴露；**剧本生成时即抽象出场景列表写入 `story_structure.scenes`，必要时生成 beats/shots 占位，保证新剧本可直接用于分镜。**
-- [ ] 后端：`ai_service.generate_storyboard` / plan / update 路径统一携带 normalized scene/shot id、environment_id、character_ids，并将 `scene_scope`、`shot_scope`、context_text 反写 meta；剧本生成落地时同步 scenes→story_structure.scenes（含 beats/shots 占位）；确保 partial regenerate merge 策略。
-- [ ] 前端：storyboard 页面请求参数与展示层对齐新字段（场景/镜头 id、上下文提示词预览、scope 提示），阻断未选择规范化场景/镜头的生成操作；确认加载的场景列表来自 story_structure 而非文本解析。
-- [ ] 验证：补充/更新 storyboard prompt 单测覆盖上下文注入；本地调用 `/scripts/{id}/storyboard/preview` 确认字段生效；生成新剧本后直接打开分镜页，确认场景列表、beats/shots 占位已自动可用。
-
-### 里程碑 2：参考图锚点与生成闭环
-
-- [ ] 功能/需求：规定“角色图片 + 环境图片 + 分镜提示词”作为生成锚点，首尾帧/单帧/整场景皆可调用。
-- [ ] 后端：`generate_storyboard_images` 支持 environment + character 参考图的自动聚合，写回帧级 metadata（reference_images、environment_id、character_ids、asset_id）；视频生成入口复用同一锚点。
-- [ ] 前端：在分镜列表提供参考图选择/默认选中逻辑、首尾帧快速生成按钮，将选中的 env/role 透传给生成接口并在 UI 标记锚点；保存/刷新后保持选择状态。
-- [ ] 验证：在 http://localhost:8089/episodes/8/storyboard 走一遍“选环境+镜头角色→生成首尾帧图像→查看回填 meta→触发视频生成”流程并记录结果。
-
-### 里程碑 3：版本化与可见性
-
-- [ ] 功能/需求：明确分镜版本号、来源（生成/手工）、模型/模板标签的展示与回滚需求。
-- [ ] 后端：在 storyboard meta 中记录 version、updated_at、generation_method/source/model、scene_scope、template_version；提供回滚或只读快照接口（若可行）。
-- [ ] 前端：在顶部信息区突出版本/来源/模板信息，支持选择特定版本查看，保存/生成后显示版本号递增。
-- [ ] 验证：手工/自动生成后检查 meta 落盘与 UI 展示一致，补充 README/TESTING_GUIDE 对应字段说明。
+- [ ] 功能/需求：明确分镜生成/更新的上下文字段清单（场景摘要、beat/shot 描述、角色、环境、模板版本），并对外暴露
+- [ ] 后端：`generate_storyboard` / plan / update 路径写入 normalized scene/shot id、`environment_id`、`character_ids`，并回填 `scene_scope`/`shot_scope`/`context_text`
+- [ ] 后端：将 `environment_id/character_ids` 持久化到 storyboard frames/meta，作为图像/视频生成的默认锚点
+- [ ] 前端：阻断未选择规范化场景/镜头的生成操作，并展示上下文提示词预览
+- [ ] 验证：在 http://localhost:8089/episodes/8/storyboard 走通“选环境+镜头角色→生成首尾帧→回填 meta→触发视频生成”路径并记录结果

@@ -424,7 +424,18 @@ tests/
 
 ## Documentation Standards
 
-**Current State**: 8 markdown files in `docs/`, no API docs, no component docs
+**Current State**: `docs/` is the authoritative home for design/testing/provider notes; keep `docs/README.md` current.
+
+### Docs Index (Authoritative)
+- `docs/README.md` — canonical index for all docs (update on add/remove).
+- `docs/TESTING_GUIDE.md` — required browser E2E validation steps.
+- `docs/story-structure-api.md` — normalized story-structure endpoints.
+- `docs/storyboard-normalized-toggle.md` — storyboard normalized integration notes.
+- `docs/story-structure-gap-analysis.md` — historical gap analysis (pre-normalization).
+- `docs/dialogue-audio-timeline-spec.md` — dialogue audio + timeline spec.
+- `docs/timeline-rendering-pipeline.md` — timeline/rendering pipeline design.
+- `docs/soft-delete-business-id.md` — soft delete + business_id design.
+- `docs/api/` — provider API references (Volcengine, Keling, Minimax, etc.).
 
 **Mandatory Requirements:**
 

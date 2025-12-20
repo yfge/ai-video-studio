@@ -1,19 +1,29 @@
-# Storyboard Normalized Toggle (Frontend)
+# Storyboard Normalized Integration (Frontend)
 
-An experimental toggle was added to the storyboard page to read normalized narrative structure (scenes and shots) from new backend endpoints without breaking the existing JSON-based storyboard flow.
+The storyboard page always loads normalized scenes/shots when available. The old toggle has been removed; if normalized data is missing, the page falls back to legacy storyboard JSON.
 
 Page: `ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx`
 
 Behavior
-- Default: OFF (existing behavior). When ON, the left scene list switches to normalized scenes and a compact shot summary appears above the storyboard frames.
-- Selecting a normalized scene sets the visible storyboard scene via `scene_number`, keeping current frames UX unchanged.
-
-Env flag
-- `NEXT_PUBLIC_USE_NORMALIZED_BY_DEFAULT`: set to `true` to enable the toggle by default (otherwise OFF).
+- Fetches normalized scenes for the active script via `storyStructureAPI.getNormalizedScenes`.
+- Scene navigation prefers normalized scenes; if none exist, it falls back to scene numbers in storyboard frames.
+- Selecting a normalized scene loads:
+  - shots via `storyStructureAPI.getNormalizedSceneShots`
+  - beats via `storyStructureAPI.getNormalizedSceneBeats` (timeline summary + frame timing hints)
+- Environment binding:
+  - selection is driven by `scene.environment_id`
+  - saving uses `storyStructureAPI.updateScene`
+- Shot character binding:
+  - saving uses `storyStructureAPI.updateSceneShot` with `character_ids`
 
 Endpoints used
 - `/api/v1/story-structure/scripts/{script_id}/scenes`
 - `/api/v1/story-structure/scenes/{scene_id}/shots`
+- `/api/v1/story-structure/scenes/{scene_id}/beats`
+- `/api/v1/story-structure/scenes/{scene_id}` (update)
+- `/api/v1/story-structure/shots/{shot_id}` (update)
+- `/api/v1/story-structure/environments`
+- `/api/v1/story-structure/environments/{env_id}/images`
 
 Client helpers
-- Implemented in `ai-pic-frontend/src/utils/api.ts` under `storyStructureAPI`.
+- `ai-pic-frontend/src/utils/api.ts` (`storyStructureAPI`)

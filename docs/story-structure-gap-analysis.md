@@ -1,8 +1,11 @@
 # Story → Episode → Script Data Model vs. Industry Narrative Structure
 
+## Status (Historical Baseline)
+This document captures the pre-normalization gap analysis. Normalized tables now live in `ai-pic-backend/app/models/story_structure.py` and are exposed via `/api/v1/story-structure` (see `docs/story-structure-api.md`). Legacy JSON fields remain for compatibility; "gap" statements below describe the state at the time of analysis.
+
 ## Context
-- Source task: `task.md` → Feature “叙事结构与数据模型对齐” → 需求澄清。
-- Current backend reference: `ai-pic-backend/app/models/script.py` (SQLAlchemy models) and corresponding Pydantic schemas in `ai-pic-backend/app/schemas/script.py`.
+- Source task: `tasks.md` → Feature “叙事结构与数据模型对齐” → 需求澄清。
+- Current backend reference: `ai-pic-backend/app/models/script.py` (legacy JSON), `ai-pic-backend/app/models/story_structure.py` (normalized tables), and corresponding schemas in `ai-pic-backend/app/schemas/`.
 
 ## Current Implementation Snapshot
 ### Story (`stories`)
@@ -27,7 +30,7 @@
 - Versioning & AI: `status`, `version`, `generation_prompt`, `ai_model`, `generation_params`.
 - Storyboard metadata: `storyboard_plan` (JSON), `storyboard_version`, `storyboard_updated_at`.
 
-**Key observation**: Scene-level, beat-level, and shot-level information is stored inside generic JSON arrays without schema guarantees. There are no dedicated tables for Treatments, Step Outlines, Scenes, or Shots.
+**Key observation (at the time)**: Scene-level, beat-level, and shot-level information lived inside generic JSON arrays without schema guarantees. Dedicated tables for Treatments, Step Outlines, Scenes, and Shots have since been added, while legacy JSON fields remain for compatibility.
 
 ## Industry Narrative Structure (Treatment → Step Outline → Scene → Shot)
 | Layer | Expected Scope | Core Required Fields |
@@ -40,7 +43,9 @@
 Industrial workflows typically attach approval/version history at each level so editorial, production, and storyboard teams can collaborate asynchronously.
 
 ## Gap Analysis
-### Missing or Underspecified Structures
+Note: the gaps below reflect the pre-normalization state.
+
+### Missing or Underspecified Structures (Historical)
 - **Treatment**: No dedicated table; closest existing fields are `Story.premise`/`synopsis`. Lacks version tracking, per-act sections, creative notes, and review history.
 - **Step Outline**: `Episode.plot_points` (JSON) vaguely covers beats, but lacks ordering guarantees, role metadata, or linkage to scenes.
 - **Scene**: `Script.scenes` (JSON) has no schema enforcing slug metadata (INT/EXT, location, time), blocking downstream formatting and scheduling integration.
@@ -236,7 +241,7 @@ erDiagram
    - Keep legacy endpoints operational via compatibility serializers until frontend completes alignment.
 4. **Data Contract & Documentation**  
    - Publish schema docs (this file + ER diagram) and update API docs.  
-   - Outline version negotiation strategy (query param vs. new endpoint group) to answer pending questions in `task.md`.
+   - Outline version negotiation strategy (query param vs. new endpoint group) to answer pending questions in `tasks.md`.
 
 ## Open Questions to Resolve
 - Do we require multiple treatments per story (version history) or single active record with revisions table?
