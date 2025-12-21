@@ -1,4 +1,5 @@
 'use client'
+
 import { useCallback, useEffect, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { VoiceConfig } from '@/utils/api'
 import { CreationOverlay, SmartInputField } from '@/components/shared'
@@ -10,6 +11,7 @@ import { VirtualIPAIIntroSection } from './VirtualIPAIIntroSection'
 import { VirtualIPTagsField } from './VirtualIPTagsField'
 import { VirtualIPVoicePreviewSection } from './VirtualIPVoicePreviewSection'
 import { VirtualIPVoiceSettingsForm } from './VirtualIPVoiceSettingsForm'
+
 interface VirtualIPCreateModalProps {
   open: boolean
   onClose: () => void
@@ -25,11 +27,6 @@ interface VirtualIPCreateModalProps {
   removeTag: (tag: string) => void
 }
 
-const parseReferenceImages = (value: string) =>
-  value
-    .split(/[\n,]/)
-    .map((item) => item.trim())
-    .filter(Boolean)
 export function VirtualIPCreateModal({
   open,
   onClose,
@@ -171,18 +168,6 @@ export function VirtualIPCreateModal({
           rows={4}
           showAIAssist={false}
         />
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">风格参考图（可选）</label>
-          <textarea
-            value={formState.style_reference_images.join('\n')}
-            onChange={(e) => updateField('style_reference_images', parseReferenceImages(e.target.value))}
-            rows={3}
-            placeholder="粘贴参考图 URL，每行一条或用逗号分隔"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <p className="mt-1 text-xs text-gray-500">用于后续图像生成风格参考，不填写则留空。</p>
-        </div>
 
         <VirtualIPVoiceSettingsForm
           voiceEnums={voiceEnums}

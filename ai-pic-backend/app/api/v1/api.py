@@ -12,7 +12,7 @@ api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 # 虚拟IP相关路由
-api_router.include_router(virtual_ip.router, prefix="/virtual-ips", tags=["virtual-ips"])
+api_router.include_router(virtual_ip.router, tags=["virtual-ips"])
 api_router.include_router(virtual_ip_images.router, prefix="/virtual-ips", tags=["virtual-ip-images"])
 api_router.include_router(virtual_ip_voice_samples.router, prefix="/virtual-ips", tags=["virtual-ips"])
 

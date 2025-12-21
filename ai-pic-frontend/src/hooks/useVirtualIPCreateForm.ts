@@ -61,7 +61,6 @@ export function useVirtualIPCreateForm({ showAlert, onCreated }: UseVirtualIPCre
         return
       }
 
-      const styleReferences = normalizeArray(formState.style_reference_images)
       const payload = {
         name: normalizeText(formState.name),
         description: normalizeOptionalText(formState.description),
@@ -69,7 +68,6 @@ export function useVirtualIPCreateForm({ showAlert, onCreated }: UseVirtualIPCre
         background_story: normalizeOptionalText(formState.background_story),
         biography: normalizeOptionalText(formState.biography),
         style_prompt: normalizeOptionalText(formState.style_prompt),
-        style_reference_images: styleReferences.length > 0 ? styleReferences : undefined,
         voice_config: normalizeVoiceConfig(formState.voice_config),
         is_active: formState.is_active,
         is_public: formState.is_public,
@@ -131,7 +129,8 @@ export function useVirtualIPCreateForm({ showAlert, onCreated }: UseVirtualIPCre
       Boolean(formState.description.trim()) ||
       Boolean(formState.background_story.trim()) ||
       Boolean(formState.biography.trim()) ||
-      Boolean(formState.style_prompt.trim())
+      Boolean(formState.style_prompt.trim()) ||
+      formState.tags.length > 0
 
     const doGenerate = async () => {
       setAiGenerating(true)
@@ -141,6 +140,7 @@ export function useVirtualIPCreateForm({ showAlert, onCreated }: UseVirtualIPCre
         if (formState.description.trim()) basicParts.push(`角色描述：${formState.description.trim()}`)
         if (formState.background_story.trim()) basicParts.push(`背景故事：${formState.background_story.trim()}`)
         if (formState.biography.trim()) basicParts.push(`人物小传：${formState.biography.trim()}`)
+        if (formState.tags.length > 0) basicParts.push(`标签：${formState.tags.join('、')}`)
         const basicInfo = basicParts.join('\n').trim() || undefined
 
         const resp = await virtualIPAPI.generateAIContent({
@@ -154,12 +154,14 @@ export function useVirtualIPCreateForm({ showAlert, onCreated }: UseVirtualIPCre
           return
         }
         const data = resp.data
+        const nextTags = Array.isArray(data.tags) ? normalizeArray(data.tags) : []
         setFormState((prev) => ({
           ...prev,
           description: data.description || '',
           background_story: data.background_story || '',
           biography: data.biography || '',
           style_prompt: data.style_prompt || '',
+          tags: nextTags.length > 0 ? nextTags : prev.tags,
         }))
       } catch (err) {
         console.error('AI一键生成失败:', err)
@@ -176,7 +178,7 @@ export function useVirtualIPCreateForm({ showAlert, onCreated }: UseVirtualIPCre
 
     showAlert({
       title: '确认覆盖已填写内容',
-      message: 'AI一键生成将覆盖当前已填写的描述/背景故事/小传/风格提示词，是否继续？',
+      message: 'AI一键生成将覆盖当前已填写的描述/背景故事/小传/风格提示词/标签，是否继续？',
       variant: 'warning',
       confirmText: '继续生成',
       onConfirm: () => {

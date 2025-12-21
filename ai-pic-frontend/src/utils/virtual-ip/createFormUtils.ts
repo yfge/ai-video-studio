@@ -8,7 +8,6 @@ export const createEmptyForm = (): VirtualIPCreateFormState => ({
   background_story: '',
   biography: '',
   style_prompt: '',
-  style_reference_images: [],
   voice_config: {},
   is_active: true,
   is_public: false,

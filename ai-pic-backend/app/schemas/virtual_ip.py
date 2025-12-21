@@ -104,6 +104,7 @@ class VirtualIPAIGenerationResponse(BaseModel):
     background_story: str
     biography: str
     style_prompt: str
+    tags: Optional[List[str]] = []
 
 
 class AIGenerationDetails(BaseModel):
@@ -124,6 +125,7 @@ class VirtualIPAIGenerationDetailedResponse(BaseModel):
     background_story: str
     biography: str
     style_prompt: str
+    tags: Optional[List[str]] = []
     generation_details: AIGenerationDetails
 
 

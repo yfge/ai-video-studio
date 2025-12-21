@@ -397,6 +397,7 @@ export interface VirtualIPAIGenerationResponse {
   background_story: string;
   biography: string;
   style_prompt: string;
+  tags?: string[];
 }
 
 export interface AIGenerationDetails {
@@ -413,6 +414,7 @@ export interface VirtualIPAIGenerationDetailedResponse {
   background_story: string;
   biography: string;
   style_prompt: string;
+  tags?: string[];
   generation_details: AIGenerationDetails;
 }
 

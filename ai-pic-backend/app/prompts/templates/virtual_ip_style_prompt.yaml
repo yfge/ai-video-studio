@@ -1,5 +1,5 @@
 name: virtual_ip_style_prompt
-description: "虚拟IP绘画风格提示词生成（英文 prompt）"
+description: "虚拟IP绘画风格提示词生成（中文 prompt）"
 category: character
 version: "1.0"
 author: "AI Video Studio"
@@ -37,4 +37,3 @@ usage_examples:
     image_category: "portrait"
 
 output_format: "TEXT"
-

@@ -35,7 +35,7 @@ def test_virtual_ip_style_prompt_template_renders():
         },
     )
 
-    assert "只输出英文提示词" in prompt
+    assert "只输出中文提示词" in prompt
     assert "虚拟 ip" not in prompt.lower()
 
 
