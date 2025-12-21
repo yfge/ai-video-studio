@@ -31,9 +31,11 @@ summary: "Refactored environment creation UI and added model-parameterized refer
 - `npm run lint`
 - `./docker/build_prod_images.sh` (首次 120s 超时，随后重跑完成)
 - MCP Chrome: `http://localhost:3000/login` → `ERR_CONNECTION_REFUSED`
+- Backend: `docker restart ai-video-backend` 后 `http://localhost:8000/health` 返回 200
+- MCP Chrome: `http://localhost:8089/login` 登录 `geyunfei/Gyf@845261` → 环境资产 → 创建环境资产（启用生成并选择模型参数）→ 提示“创建成功，已提交参考图生成任务”
 
 ## Next Steps
-- 启动前端服务后在环境创建页实际走一次“创建 + 生成参考图”流程
+- 如需确认生成结果，可进入新环境详情页刷新查看任务产出图
 
 ## Linked Commits
-- pending
+- a3a7d01
