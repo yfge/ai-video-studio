@@ -11,5 +11,6 @@ Usage:
 """
 
 from app.repositories.base import BaseRepository
+from app.repositories.virtual_ip_repository import VirtualIPRepository
 
-__all__ = ["BaseRepository"]
+__all__ = ["BaseRepository", "VirtualIPRepository"]

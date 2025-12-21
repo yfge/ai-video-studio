@@ -58,6 +58,7 @@ function VirtualIPListContent() {
         open={showCreateForm}
         onClose={handleCloseCreateForm}
         onSubmit={handleCreateIP}
+        showAlert={showAlert}
         aiBrief={aiBrief}
         setAiBrief={setAiBrief}
         aiGenerating={aiGenerating}

@@ -1,18 +1,20 @@
 'use client'
-
-import { useCallback, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { useCallback, useEffect, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { VoiceConfig } from '@/utils/api'
 import { CreationOverlay, SmartInputField } from '@/components/shared'
+import type { AlertOptions } from '@/components/shared/modals/AlertModalProvider'
 import { useVoiceConfigOptions } from '@/hooks/useVoiceConfigOptions'
+import { useVoicePreview } from '@/hooks/useVoicePreview'
 import type { VirtualIPCreateFormState } from '@/utils/virtual-ip/types'
 import { VirtualIPAIIntroSection } from './VirtualIPAIIntroSection'
 import { VirtualIPTagsField } from './VirtualIPTagsField'
+import { VirtualIPVoicePreviewSection } from './VirtualIPVoicePreviewSection'
 import { VirtualIPVoiceSettingsForm } from './VirtualIPVoiceSettingsForm'
-
 interface VirtualIPCreateModalProps {
   open: boolean
   onClose: () => void
-  onSubmit: (event: FormEvent) => void
+  onSubmit: (event: FormEvent, previewSourceUrl?: string, previewText?: string) => void
+  showAlert: (options: AlertOptions) => void
   aiBrief: string
   setAiBrief: (value: string) => void
   aiGenerating: boolean
@@ -28,11 +30,11 @@ const parseReferenceImages = (value: string) =>
     .split(/[\n,]/)
     .map((item) => item.trim())
     .filter(Boolean)
-
 export function VirtualIPCreateModal({
   open,
   onClose,
   onSubmit,
+  showAlert,
   aiBrief,
   setAiBrief,
   aiGenerating,
@@ -62,6 +64,38 @@ export function VirtualIPCreateModal({
       setVoiceConfig,
     })
 
+  const defaultPreviewText = formState.name
+    ? `你好，我是${formState.name}，很高兴认识你。`
+    : '你好，我是你的虚拟角色，很高兴认识你。'
+  const {
+    previewText,
+    setPreviewText,
+    previewLoading,
+    previewAudioUrl,
+    previewSourceUrl,
+    handlePreviewVoice,
+    resetPreview,
+  } = useVoicePreview({
+    voiceConfig: formState.voice_config,
+    setVoiceConfig,
+    voiceEnums,
+    voiceOptions,
+    defaultText: defaultPreviewText,
+    showAlert,
+  })
+
+  useEffect(() => {
+    if (!open) {
+      resetPreview()
+    }
+  }, [open, resetPreview])
+
+  const canPreview = Boolean(formState.voice_config.provider || voiceEnums?.providers?.length)
+
+  const handleSubmit = (event: FormEvent) => {
+    onSubmit(event, previewSourceUrl || undefined, previewText)
+  }
+
   return (
     <CreationOverlay
       open={open}
@@ -74,7 +108,7 @@ export function VirtualIPCreateModal({
         </svg>
       }
     >
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <SmartInputField
           label="名称 *"
           value={formState.name}
@@ -158,6 +192,15 @@ export function VirtualIPCreateModal({
           setVoiceSettings={setVoiceConfig}
           voiceLoading={voiceLoading}
           voiceOptions={voiceOptions}
+        />
+
+        <VirtualIPVoicePreviewSection
+          previewText={previewText}
+          setPreviewText={setPreviewText}
+          previewLoading={previewLoading}
+          previewAudioUrl={previewAudioUrl}
+          onPreview={handlePreviewVoice}
+          canPreview={canPreview}
         />
 
         <div>

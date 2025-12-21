@@ -11,6 +11,7 @@ import {
   normalizeVoiceConfig,
 } from '@/utils/virtual-ip/createFormUtils'
 import type { VirtualIPCreateFormState } from '@/utils/virtual-ip/types'
+import { saveVirtualIPVoiceSample } from '@/utils/virtual-ip/voiceSampleApi'
 
 interface UseVirtualIPCreateFormOptions {
   showAlert: (options: AlertOptions) => void
@@ -52,7 +53,7 @@ export function useVirtualIPCreateForm({ showAlert, onCreated }: UseVirtualIPCre
   }, [])
 
   const handleCreateIP = useCallback(
-    async (e: FormEvent) => {
+    async (e: FormEvent, previewSourceUrl?: string, previewText?: string) => {
       e.preventDefault()
 
       if (!formState.name.trim()) {
@@ -80,6 +81,25 @@ export function useVirtualIPCreateForm({ showAlert, onCreated }: UseVirtualIPCre
           onCreated(response.data)
           setShowCreateForm(false)
           resetForm()
+          if (previewSourceUrl) {
+            const normalizedPreviewText = previewText ? normalizeOptionalText(previewText) : undefined
+            try {
+              const previewResponse = await saveVirtualIPVoiceSample({
+                businessId: response.data.business_id,
+                sourceUrl: previewSourceUrl,
+                previewText: normalizedPreviewText,
+              })
+              if (!previewResponse.success) {
+                showAlert({
+                  message: `试听保存失败：${previewResponse.error || '未知错误'}`,
+                  variant: 'warning',
+                })
+              }
+            } catch (previewError) {
+              console.error('试听保存失败:', previewError)
+              showAlert({ message: '试听保存失败，请稍后重试', variant: 'warning' })
+            }
+          }
         } else {
           showAlert({ message: `创建失败: ${response.error || '未知错误'}`, variant: 'error' })
         }

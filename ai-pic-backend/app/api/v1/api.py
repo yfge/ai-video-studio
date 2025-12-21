@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, virtual_ip, virtual_ip_images, stories, episodes, scripts, migrations, prompts, diagnostic, admin, tasks, styles
+from app.api.v1.endpoints import auth, virtual_ip, virtual_ip_images, virtual_ip_voice_samples, stories, episodes, scripts, migrations, prompts, diagnostic, admin, tasks, styles
 from app.api.v1.endpoints import story_structure
 from app.api.v1 import ai_providers, voice
 
@@ -14,6 +14,7 @@ api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 # 虚拟IP相关路由
 api_router.include_router(virtual_ip.router, prefix="/virtual-ips", tags=["virtual-ips"])
 api_router.include_router(virtual_ip_images.router, prefix="/virtual-ips", tags=["virtual-ip-images"])
+api_router.include_router(virtual_ip_voice_samples.router, prefix="/virtual-ips", tags=["virtual-ips"])
 
 # 剧本相关路由
 api_router.include_router(stories.router, prefix="/stories", tags=["stories"])
