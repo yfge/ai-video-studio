@@ -33,9 +33,11 @@ summary: "Refactored environment creation UI and added model-parameterized refer
 - MCP Chrome: `http://localhost:3000/login` → `ERR_CONNECTION_REFUSED`
 - Backend: `docker restart ai-video-backend` 后 `http://localhost:8000/health` 返回 200
 - MCP Chrome: `http://localhost:8089/login` 登录 `geyunfei/Gyf@845261` → 环境资产 → 创建环境资产（启用生成并选择模型参数）→ 提示“创建成功，已提交参考图生成任务”
+- MCP Chrome: `http://localhost:8089/tasks` 查看“环境文生图 - 环境aab17f172446462a97e738772337d272”任务失败，错误为 OSS 持久化阶段下载 OpenAI 图像 403（签名无效）
 
 ## Next Steps
 - 如需确认生成结果，可进入新环境详情页刷新查看任务产出图
+- 修复图像持久化 403 后重试环境参考图生成任务
 
 ## Linked Commits
 - a3a7d01
