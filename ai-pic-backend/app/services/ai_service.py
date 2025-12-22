@@ -1975,6 +1975,7 @@ class AIService:
         from urllib.parse import unquote
 
         import aiofiles
+        from app.utils.url_utils import normalize_presigned_url
 
         # 生成唯一文件名
         file_extension = ".png"  # OpenAI DALL-E默认返回PNG
@@ -2001,6 +2002,7 @@ class AIService:
 
         # 处理URL，增加重试并输出具体错误
         normalized_url = unquote(image_data) if "%25" in image_data else image_data
+        normalized_url = normalize_presigned_url(normalized_url)
         last_error: Exception | None = None
         for attempt in range(3):
             try:

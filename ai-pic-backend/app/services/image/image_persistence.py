@@ -19,6 +19,7 @@ import httpx
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.services.storage import oss_service
+from app.utils.url_utils import normalize_presigned_url
 
 
 logger = get_logger()
@@ -63,6 +64,7 @@ async def download_image(
 
     # Handle URL with retry
     normalized_url = unquote(image_data) if "%25" in image_data else image_data
+    normalized_url = normalize_presigned_url(normalized_url)
     last_error: Exception | None = None
 
     for attempt in range(3):
