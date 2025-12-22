@@ -26,9 +26,20 @@ def _normalize_size(size_value: Optional[str]) -> str:
         return "1024x1024"
     if sv in {"2k", "2048", "2048x2048"}:
         return "2048x2048"
+    if sv in {"4k", "4096", "4096x4096"}:
+        return "4096x4096"
     if "x" in sv:
         return sv
     return "1024x1024"
+
+
+def _default_seedream_size(model_id: Optional[str]) -> Optional[str]:
+    if not model_id:
+        return None
+    normalized = model_id.strip().lower()
+    if "seedream-4-5" in normalized or "seedream-4.5" in normalized:
+        return "2K"
+    return None
 
 
 def _build_image_payload(
@@ -88,7 +99,8 @@ async def generate_image(
         else:
             ark_model = model.strip()
 
-    effective_size = _normalize_size(size)
+    size_value = size or _default_seedream_size(ark_model)
+    effective_size = _normalize_size(size_value)
     count_int = max(1, min(n or 1, 4))
 
     request_data: Dict[str, Any] = {
@@ -218,7 +230,8 @@ async def image_to_image(
         else:
             ark_model = model.strip()
 
-    effective_size = _normalize_size(size)
+    size_value = size or _default_seedream_size(ark_model)
+    effective_size = _normalize_size(size_value)
     max_images = max(1, min(count or 1, 4))
 
     # Build image payloads

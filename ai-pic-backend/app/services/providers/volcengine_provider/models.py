@@ -45,9 +45,9 @@ def get_available_models() -> List[ModelInfo]:
             capabilities=["text_generation", "long_context", "document_analysis"],
         ),
         ModelInfo(
-            model_id="seedream-4.5",
+            model_id="doubao-seedream-4-5-251128",
             name="Seedream 4.5",
-            description="方舟大模型服务平台的图片生成模型",
+            description="方舟大模型服务平台的图片生成模型（Seedream 4.5）",
             model_type=AIModelType.TEXT_TO_IMAGE,
             supported_formats=["png", "jpg"],
             capabilities=["text_to_image", "image_to_image", "high_resolution"],
@@ -276,19 +276,18 @@ def infer_model_type(model_id: str, item: Dict[str, Any]) -> AIModelType:
         tokens.append(abilities.lower())
     elif isinstance(abilities, list):
         tokens.extend([str(a).lower() for a in abilities])
-    lid = model_id.lower()
-    tokens.append(lid)
+    tokens.append(model_id.lower())
 
-    if any(
-        tag in tokens
-        for tag in ["image", "visual", "seedream", "picture", "painting"]
-    ):
+    def _has_any(keywords: List[str]) -> bool:
+        return any(keyword in token for token in tokens for keyword in keywords)
+
+    if _has_any(["image", "visual", "seedream", "picture", "painting"]):
         return AIModelType.TEXT_TO_IMAGE
-    if any(tag in tokens for tag in ["video", "vid", "movie"]):
+    if _has_any(["video", "vid", "movie"]):
         return AIModelType.TEXT_TO_VIDEO
-    if any(tag in tokens for tag in ["tts", "speech", "voice", "audio"]):
+    if _has_any(["tts", "speech", "voice", "audio"]):
         return AIModelType.TEXT_TO_SPEECH
-    if any(tag in tokens for tag in ["stt", "asr"]):
+    if _has_any(["stt", "asr"]):
         return AIModelType.SPEECH_TO_TEXT
     return AIModelType.TEXT_GENERATION
 

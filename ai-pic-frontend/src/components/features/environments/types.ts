@@ -6,6 +6,10 @@ export type EnvironmentFormState = {
   reference_images: string[]
 }
 
+export type EnvironmentImage = {
+  url: string
+}
+
 export type GenerationFormState = {
   enabled: boolean
   prompt: string

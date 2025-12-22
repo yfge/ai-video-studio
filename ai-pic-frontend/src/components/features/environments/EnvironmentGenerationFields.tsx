@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { MultiModelSelector } from '@/components/shared'
 import { AIModelType, type AIModel } from '@/utils/api'
 import { extractImageUi } from '@/utils/modelUi'
@@ -9,11 +9,17 @@ import type { GenerationFormState } from './types'
 interface EnvironmentGenerationFieldsProps {
   generation: GenerationFormState
   setGeneration: Dispatch<SetStateAction<GenerationFormState>>
+  showToggle?: boolean
+  toggleLabel?: string
+  withDivider?: boolean
 }
 
 export function EnvironmentGenerationFields({
   generation,
   setGeneration,
+  showToggle = true,
+  toggleLabel = '创建后自动生成参考图（可选模型参数）',
+  withDivider = true,
 }: EnvironmentGenerationFieldsProps) {
   const [availableModels, setAvailableModels] = useState<AIModel[]>([])
   const selectedModel = useMemo(
@@ -21,24 +27,32 @@ export function EnvironmentGenerationFields({
     [availableModels, generation.model],
   )
   const imageUi = useMemo(() => extractImageUi(selectedModel), [selectedModel])
+  const showFields = showToggle ? generation.enabled : true
 
   const updateField = <K extends keyof GenerationFormState>(key: K, value: GenerationFormState[K]) => {
     setGeneration(prev => ({ ...prev, [key]: value }))
   }
 
-  return (
-    <div className="border-t pt-4 space-y-4">
-      <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input
-          type="checkbox"
-          checked={generation.enabled}
-          onChange={e => updateField('enabled', e.target.checked)}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-        />
-        创建后自动生成参考图（可选模型参数）
-      </label>
+  useEffect(() => {
+    if (!imageUi.defaultSize || generation.size) return
+    setGeneration(prev => (prev.size ? prev : { ...prev, size: imageUi.defaultSize || '' }))
+  }, [generation.size, imageUi.defaultSize, setGeneration])
 
-      {generation.enabled && (
+  return (
+    <div className={`${withDivider ? 'border-t pt-4' : ''} space-y-4`}>
+      {showToggle && (
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={generation.enabled}
+            onChange={e => updateField('enabled', e.target.checked)}
+            className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+          />
+          {toggleLabel}
+        </label>
+      )}
+
+      {showFields && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">补充提示词（可选）</label>
