@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from ..base import AIModelType, ModelInfo
+from ..image_param_utils import GOOGLE_ASPECT_RATIOS, GOOGLE_IMAGE_SIZES
 
 
 def get_available_models(default_model: str) -> List[ModelInfo]:
@@ -54,7 +55,7 @@ def get_available_models(default_model: str) -> List[ModelInfo]:
             metadata={
                 "ui": {
                     "size_options": [],
-                    "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                    "aspect_ratio_options": GOOGLE_ASPECT_RATIOS,
                     "supports_aspect_ratio": True,
                     "supports_reference_image": True,
                 }
@@ -70,7 +71,7 @@ def get_available_models(default_model: str) -> List[ModelInfo]:
             metadata={
                 "ui": {
                     "size_options": [],
-                    "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                    "aspect_ratio_options": GOOGLE_ASPECT_RATIOS,
                     "supports_aspect_ratio": True,
                     "supports_reference_image": True,
                 }
@@ -85,8 +86,8 @@ def get_available_models(default_model: str) -> List[ModelInfo]:
             capabilities=["text_to_image", "image_to_image"],
             metadata={
                 "ui": {
-                    "size_options": [],
-                    "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                    "size_options": GOOGLE_IMAGE_SIZES,
+                    "aspect_ratio_options": GOOGLE_ASPECT_RATIOS,
                     "supports_aspect_ratio": True,
                     "supports_reference_image": True,
                 }

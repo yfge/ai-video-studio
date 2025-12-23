@@ -62,7 +62,7 @@ async def generate_image(
     aspect_ratio = kwargs.get("aspect_ratio")
     image_size = kwargs.get("image_size") or kwargs.get("size")
     try:
-        image_size, aspect_ratio, _ = normalize_image_params(
+        image_size, aspect_ratio, rules = normalize_image_params(
             provider_name, model_id, image_size, aspect_ratio
         )
     except ValueError as exc:
@@ -74,6 +74,9 @@ async def generate_image(
             task_type=AITaskType.PORTRAIT_GENERATION,
             model_type=AIModelType.TEXT_TO_IMAGE,
         )
+    if image_size and not rules.size_options:
+        image_size = None
+
     image_config: Dict[str, Any] = {}
     if aspect_ratio:
         image_config["aspectRatio"] = aspect_ratio
@@ -208,7 +211,7 @@ async def image_to_image(
         aspect_ratio = kwargs.get("aspect_ratio")
         image_size = kwargs.get("image_size") or kwargs.get("size")
         try:
-            image_size, aspect_ratio, _ = normalize_image_params(
+            image_size, aspect_ratio, rules = normalize_image_params(
                 provider_name, model_id, image_size, aspect_ratio
             )
         except ValueError as exc:
@@ -220,6 +223,9 @@ async def image_to_image(
                 task_type=AITaskType.SCENE_GENERATION,
                 model_type=AIModelType.IMAGE_TO_IMAGE,
             )
+        if image_size and not rules.size_options:
+            image_size = None
+
         image_config: Dict[str, Any] = {}
         if aspect_ratio:
             image_config["aspectRatio"] = aspect_ratio

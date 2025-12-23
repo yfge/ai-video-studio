@@ -10,6 +10,19 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 DEFAULT_ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4"]
+GOOGLE_ASPECT_RATIOS = [
+    "1:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "21:9",
+]
+GOOGLE_IMAGE_SIZES = ["1K", "2K", "4K"]
 
 
 @dataclass(frozen=True)
@@ -25,6 +38,7 @@ def compute_image_ui(provider: str, model_id: str) -> ImageUiRules:
     provider_key = (provider or "").lower()
     mid = (model_id or "").lower()
     size_options: List[str] = []
+    aspect_ratio_options: List[str] = []
     supports_aspect_ratio = False
 
     if provider_key == "openai":
@@ -39,12 +53,14 @@ def compute_image_ui(provider: str, model_id: str) -> ImageUiRules:
         supports_aspect_ratio = True
     elif provider_key == "google":
         supports_aspect_ratio = True
+        aspect_ratio_options = GOOGLE_ASPECT_RATIOS
+        if "gemini-3-pro" in mid:
+            size_options = GOOGLE_IMAGE_SIZES
     elif provider_key == "jimeng":
         size_options = ["1024x1024"]
 
-    aspect_ratio_options = (
-        DEFAULT_ASPECT_RATIOS if supports_aspect_ratio else []
-    )
+    if supports_aspect_ratio and not aspect_ratio_options:
+        aspect_ratio_options = DEFAULT_ASPECT_RATIOS
 
     return ImageUiRules(
         size_options=size_options,

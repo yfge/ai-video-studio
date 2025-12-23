@@ -23,6 +23,7 @@ from ..base import (
     ModelInfo,
     ProviderConfig,
 )
+from ..image_param_utils import compute_image_ui as compute_image_ui_rules
 from .models import (
     dedupe,
     fallback_models,
@@ -92,6 +93,36 @@ class GoogleProvider(BaseProvider):
             payload = resp.json()
             server_models = payload.get("models") or []
             models = from_payload(server_models, model_type, self.supported_model_types)
+            for model in models:
+                if model.model_type not in (
+                    AIModelType.TEXT_TO_IMAGE,
+                    AIModelType.IMAGE_TO_IMAGE,
+                ):
+                    continue
+                if model.metadata:
+                    continue
+                rules = compute_image_ui_rules(self.name, model.model_id)
+                if not (rules.size_options or rules.supports_aspect_ratio):
+                    continue
+                supports_reference_image = (
+                    "image_to_image" in (model.capabilities or [])
+                    or model.model_type == AIModelType.IMAGE_TO_IMAGE
+                )
+                ui_meta = {
+                    "size_options": rules.size_options,
+                    "aspect_ratio_options": rules.aspect_ratio_options,
+                    "supports_aspect_ratio": rules.supports_aspect_ratio,
+                    "default_size": rules.default_size,
+                    "default_aspect_ratio": rules.default_aspect_ratio,
+                    "supports_reference_image": supports_reference_image,
+                }
+                model.metadata = {
+                    "ui": {
+                        key: value
+                        for key, value in ui_meta.items()
+                        if value is not None
+                    }
+                }
             return dedupe(models) or fallback
         except Exception as exc:
             logger.debug("GoogleProvider list models exception: %s", exc)
