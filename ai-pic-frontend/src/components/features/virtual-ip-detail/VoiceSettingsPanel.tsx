@@ -34,7 +34,7 @@ export function VoiceSettingsPanel({
   onPreviewVoice,
 }: VoiceSettingsPanelProps) {
   return (
-    <div className="p-8 border-b space-y-6">
+    <div className="p-6 sm:p-8 border-b border-gray-100 space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">配音设置</h3>

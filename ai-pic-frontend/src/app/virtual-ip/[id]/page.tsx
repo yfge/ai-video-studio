@@ -76,8 +76,8 @@ export default function VirtualIPDetail() {
         onDelete={handleDeleteIP}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-        <div className="bg-white shadow rounded-lg overflow-hidden max-w-4xl mx-auto">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-2xl overflow-hidden">
           <VirtualIPInfoSection
             virtualIP={virtualIP}
             editing={editing}
@@ -123,8 +123,8 @@ export default function VirtualIPDetail() {
             onPreviewVoice={handlePreviewVoice}
           />
 
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
+          <div className="p-6 sm:p-8 bg-gray-50/60">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
               <div>
                 <span className="font-medium">创建者：</span>{" "}
                 {resolveCreatorLabel(virtualIP.creator)}

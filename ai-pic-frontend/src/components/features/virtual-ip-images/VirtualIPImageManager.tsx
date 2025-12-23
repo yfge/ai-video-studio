@@ -76,9 +76,9 @@ export function VirtualIPImageManager({
 
   if (!activeVirtualIP && loading) {
     return (
-      <section id="ip-images" className="mt-10">
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="p-8 flex items-center justify-center gap-3 text-gray-600">
+      <section id="ip-images" className="scroll-mt-24">
+        <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-2xl overflow-hidden">
+          <div className="p-6 sm:p-8 flex items-center justify-center gap-3 text-gray-600">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
             <span>加载图片管理中...</span>
           </div>
@@ -92,11 +92,12 @@ export function VirtualIPImageManager({
   }
 
   return (
-    <section id="ip-images" className="mt-10">
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+    <section id="ip-images" className="scroll-mt-24">
+      <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-2xl overflow-hidden">
         <div className="p-6 sm:p-8">
           <ImagePageHeader
             virtualIP={activeVirtualIP}
+            showVirtualIPInfo={false}
             onShowGenerateForm={() => setShowGenerateForm(true)}
             onShowUploadForm={() => setShowGenerateForm(false)}
             onViewTasks={() => router.push("/tasks")}

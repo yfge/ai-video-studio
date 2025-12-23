@@ -26,7 +26,7 @@ export function VirtualIPInfoSection({
   removeTag,
 }: VirtualIPInfoSectionProps) {
   return (
-    <div className="p-8 border-b">
+    <div className="p-6 sm:p-8 border-b border-gray-100">
       <div className="flex items-start space-x-6">
         <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
           {virtualIP.default_avatar_url ? (
