@@ -31,4 +31,4 @@ On the virtual IP detail page, place the save action on the same row as the edit
 - Re-run MCP validation once the local web app is reachable (no 502).
 
 ## Linked Commits
-- (pending)
+- 0897446 refactor(frontend): align virtual ip save action
