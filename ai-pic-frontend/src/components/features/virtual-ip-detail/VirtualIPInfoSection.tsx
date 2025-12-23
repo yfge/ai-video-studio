@@ -11,9 +11,9 @@ interface VirtualIPInfoSectionProps {
   editForm: EditFormState;
   setEditForm: React.Dispatch<React.SetStateAction<EditFormState>>;
   onSubmit: (e: React.FormEvent) => void;
-  onCancel: () => void;
   addTag: (tag: string) => void;
   removeTag: (tag: string) => void;
+  formId?: string;
 }
 
 export function VirtualIPInfoSection({
@@ -22,9 +22,9 @@ export function VirtualIPInfoSection({
   editForm,
   setEditForm,
   onSubmit,
-  onCancel,
   addTag,
   removeTag,
+  formId,
 }: VirtualIPInfoSectionProps) {
   return (
     <div className="p-6 sm:p-8 border-b border-gray-100">
@@ -53,7 +53,7 @@ export function VirtualIPInfoSection({
 
         <div className="flex-1">
           {editing ? (
-            <form onSubmit={onSubmit} className="space-y-4">
+            <form id={formId} onSubmit={onSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
                 <input
@@ -120,22 +120,6 @@ export function VirtualIPInfoSection({
                     添加
                   </button>
                 </div>
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  保存
-                </button>
               </div>
             </form>
           ) : (

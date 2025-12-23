@@ -19,6 +19,7 @@ export default function VirtualIPDetail() {
   const router = useRouter();
   const { showAlert } = useAlertModal();
   const ipKey = params?.id?.toString() || "";
+  const editFormId = "virtual-ip-edit-form";
 
   const state = useVirtualIPDetail({ ipKey, showAlert, router });
 
@@ -75,6 +76,8 @@ export default function VirtualIPDetail() {
         businessId={virtualIP.business_id}
         editing={editing}
         setEditing={setEditing}
+        editFormId={editFormId}
+        onCancel={() => setEditing(false)}
         onDelete={handleDeleteIP}
       />
 
@@ -86,9 +89,9 @@ export default function VirtualIPDetail() {
             editForm={editForm}
             setEditForm={setEditForm}
             onSubmit={handleUpdateIP}
-            onCancel={() => setEditing(false)}
             addTag={addTag}
             removeTag={removeTag}
+            formId={editFormId}
           />
 
           {(editing || virtualIP.background_story) && (

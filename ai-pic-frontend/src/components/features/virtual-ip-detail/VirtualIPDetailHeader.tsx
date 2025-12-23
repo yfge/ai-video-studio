@@ -8,6 +8,8 @@ interface VirtualIPDetailHeaderProps {
   editing: boolean;
   setEditing: (editing: boolean) => void;
   onDelete: () => void;
+  editFormId?: string;
+  onCancel?: () => void;
 }
 
 export function VirtualIPDetailHeader({
@@ -16,6 +18,8 @@ export function VirtualIPDetailHeader({
   editing,
   setEditing,
   onDelete,
+  editFormId,
+  onCancel,
 }: VirtualIPDetailHeaderProps) {
   return (
     <header className="bg-white shadow-sm border-b">
@@ -41,12 +45,30 @@ export function VirtualIPDetailHeader({
             >
               图片管理
             </Link>
-            <button
-              onClick={() => setEditing(!editing)}
-              className="text-blue-600 hover:text-blue-800 px-4 py-2 rounded-md border border-blue-600 hover:bg-blue-50"
-            >
-              {editing ? "取消编辑" : "编辑"}
-            </button>
+            {editing ? (
+              <>
+                <button
+                  type="submit"
+                  form={editFormId}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                >
+                  保存
+                </button>
+                <button
+                  onClick={() => (onCancel ? onCancel() : setEditing(false))}
+                  className="text-blue-600 hover:text-blue-800 px-4 py-2 rounded-md border border-blue-600 hover:bg-blue-50"
+                >
+                  取消
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setEditing(true)}
+                className="text-blue-600 hover:text-blue-800 px-4 py-2 rounded-md border border-blue-600 hover:bg-blue-50"
+              >
+                编辑
+              </button>
+            )}
             <button
               onClick={onDelete}
               className="text-red-600 hover:text-red-800 px-4 py-2 rounded-md border border-red-600 hover:bg-red-50"
