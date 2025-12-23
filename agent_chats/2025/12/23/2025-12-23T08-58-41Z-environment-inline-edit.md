@@ -30,4 +30,4 @@ Add inline edit controls for environment metadata (category/tags/description) in
 - None.
 
 ## Linked Commits
-- (pending)
+- 54fce87 feat(frontend): add environment inline editing
