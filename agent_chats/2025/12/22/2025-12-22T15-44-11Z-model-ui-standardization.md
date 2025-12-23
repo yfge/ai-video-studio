@@ -67,4 +67,4 @@ summary: "Standardized image model UI metadata and split virtual IP image hooks"
 - Spot-check image-to-image and virtual IP image generation flows with the new UI metadata.
 
 ## Linked Commits
-- TBD
+- d5e09eb
