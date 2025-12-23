@@ -23,6 +23,13 @@ export function EnvironmentDetailView() {
   const [images, setImages] = useState<EnvironmentImage[]>([])
   const [loading, setLoading] = useState(true)
   const [variantTarget, setVariantTarget] = useState<EnvironmentImage | null>(null)
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [savingMeta, setSavingMeta] = useState(false)
+  const [metaForm, setMetaForm] = useState({
+    category: '',
+    tags: [] as string[],
+    description: '',
+  })
 
   const apiBase = useMemo(
     () => (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, ''),
@@ -71,6 +78,15 @@ export function EnvironmentDetailView() {
     void load()
   }, [load])
 
+  useEffect(() => {
+    if (!env || editingMeta) return
+    setMetaForm({
+      category: env.category || '',
+      tags: env.tags || [],
+      description: env.description || '',
+    })
+  }, [env, editingMeta])
+
   const handleDeleteImage = useCallback(
     (url: string) => {
       if (!envKey) return
@@ -92,6 +108,53 @@ export function EnvironmentDetailView() {
     },
     [envKey, showAlert],
   )
+
+  const handleAddTag = useCallback((tag: string) => {
+    const trimmed = tag.trim()
+    if (!trimmed) return
+    setMetaForm((prev) =>
+      prev.tags.includes(trimmed) ? prev : { ...prev, tags: [...prev.tags, trimmed] }
+    )
+  }, [])
+
+  const handleRemoveTag = useCallback((tag: string) => {
+    setMetaForm((prev) => ({ ...prev, tags: prev.tags.filter((item) => item !== tag) }))
+  }, [])
+
+  const handleCancelMeta = useCallback(() => {
+    if (env) {
+      setMetaForm({
+        category: env.category || '',
+        tags: env.tags || [],
+        description: env.description || '',
+      })
+    }
+    setEditingMeta(false)
+  }, [env])
+
+  const handleSaveMeta = useCallback(async () => {
+    if (!envKey) return
+    try {
+      setSavingMeta(true)
+      const res = await storyStructureAPI.updateEnvironment(envKey, {
+        category: metaForm.category,
+        tags: metaForm.tags,
+        description: metaForm.description,
+      })
+      if (res.success && res.data) {
+        setEnv(res.data)
+        setEditingMeta(false)
+        showAlert({ message: '环境信息已更新', variant: 'success' })
+      } else {
+        showAlert({ message: res.error || '更新失败', variant: 'error' })
+      }
+    } catch (error) {
+      console.error(error)
+      showAlert({ message: '更新失败', variant: 'error' })
+    } finally {
+      setSavingMeta(false)
+    }
+  }, [envKey, metaForm.category, metaForm.description, metaForm.tags, showAlert])
 
   const handleImageUploaded = useCallback((url: string) => {
     setImages((prev) => [{ url }, ...prev])
@@ -123,7 +186,19 @@ export function EnvironmentDetailView() {
     <div className="min-h-screen bg-gray-50">
       <Navigation title="环境详情" />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <EnvironmentHeader env={env} onBack={() => router.push('/environments')} />
+        <EnvironmentHeader
+          env={env}
+          onBack={() => router.push('/environments')}
+          editing={editingMeta}
+          saving={savingMeta}
+          form={metaForm}
+          setForm={setMetaForm}
+          onEdit={() => setEditingMeta(true)}
+          onCancel={handleCancelMeta}
+          onSave={handleSaveMeta}
+          addTag={handleAddTag}
+          removeTag={handleRemoveTag}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <EnvironmentImagesPanel
