@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
-import { Navigation } from '@/components/layouts'
 import { useAlertModal } from '@/components/shared/modals'
 import { storyStructureAPI, type Environment } from '@/utils/api'
 
+import { EnvironmentDetailHeader } from './EnvironmentDetailHeader'
 import { EnvironmentHeader } from './EnvironmentHeader'
 import { EnvironmentImagesPanel } from './EnvironmentImagesPanel'
 import { EnvironmentSidePanel } from './EnvironmentSidePanel'
@@ -184,21 +184,24 @@ export function EnvironmentDetailView() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation title="环境详情" />
+      <EnvironmentDetailHeader
+        editing={editingMeta}
+        saving={savingMeta}
+        onEdit={() => setEditingMeta(true)}
+        onCancel={handleCancelMeta}
+        onSave={handleSaveMeta}
+      />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <EnvironmentHeader
-          env={env}
-          onBack={() => router.push('/environments')}
-          editing={editingMeta}
-          saving={savingMeta}
-          form={metaForm}
-          setForm={setMetaForm}
-          onEdit={() => setEditingMeta(true)}
-          onCancel={handleCancelMeta}
-          onSave={handleSaveMeta}
-          addTag={handleAddTag}
-          removeTag={handleRemoveTag}
-        />
+        <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-2xl overflow-hidden">
+          <EnvironmentHeader
+            env={env}
+            editing={editingMeta}
+            form={metaForm}
+            setForm={setMetaForm}
+            addTag={handleAddTag}
+            removeTag={handleRemoveTag}
+          />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <EnvironmentImagesPanel
