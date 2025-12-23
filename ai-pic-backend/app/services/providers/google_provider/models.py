@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from ..base import AIModelType, ModelInfo
 from ..image_param_utils import GOOGLE_ASPECT_RATIOS, GOOGLE_IMAGE_SIZES
+from .models_video import get_video_models
 
 
 def get_available_models(default_model: str) -> List[ModelInfo]:
@@ -93,6 +94,7 @@ def get_available_models(default_model: str) -> List[ModelInfo]:
                 }
             },
         ),
+        *get_video_models(),
     ]
 
 
@@ -104,6 +106,8 @@ def supports_type(model: ModelInfo, model_type: Optional[AIModelType]) -> bool:
         return True
     caps = [c.lower() for c in (model.capabilities or [])]
     if model_type == AIModelType.IMAGE_TO_IMAGE and "image_to_image" in caps:
+        return True
+    if model_type == AIModelType.IMAGE_TO_VIDEO and "image_to_video" in caps:
         return True
     return False
 

@@ -12,7 +12,13 @@ import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
 from ..image_param_utils import normalize_image_params
-from .helpers import clean_model_id, fetch_inline_image, parse_images
+from .helpers import (
+    clean_model_id,
+    inline_parts_from_data_urls,
+    inline_parts_from_urls,
+    normalize_response_modalities,
+    parse_images,
+)
 
 
 async def generate_image(
@@ -53,11 +59,29 @@ async def generate_image(
             model_type=AIModelType.TEXT_TO_IMAGE,
         )
 
-    body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}]}
+    parts: List[Dict[str, Any]] = []
+    if prompt:
+        parts.append({"text": prompt})
+    base64_images: List[str] = kwargs.pop("base64_images", []) or []
+    reference_images_raw = kwargs.pop("reference_images", None)
+    if reference_images_raw is None:
+        reference_images_raw = kwargs.pop("extra_images", None)
+    reference_images: List[str] = []
+    if isinstance(reference_images_raw, str):
+        reference_images = [reference_images_raw]
+    elif isinstance(reference_images_raw, list):
+        reference_images = [
+            u for u in reference_images_raw if isinstance(u, str) and u
+        ]
+    if base64_images:
+        parts.extend(inline_parts_from_data_urls(base64_images))
+    elif reference_images:
+        parts.extend(await inline_parts_from_urls(reference_images, config_timeout))
+    body = {"contents": [{"role": "user", "parts": parts}]}
 
     # Build image config from kwargs
-    aspect_ratio = kwargs.get("aspect_ratio")
-    image_size = kwargs.get("image_size") or kwargs.get("size")
+    aspect_ratio = kwargs.get("aspect_ratio") or kwargs.get("aspectRatio")
+    image_size = kwargs.get("image_size") or kwargs.get("imageSize") or kwargs.get("size")
     try:
         image_size, aspect_ratio, rules = normalize_image_params(
             provider_name, model_id, image_size, aspect_ratio
@@ -80,9 +104,10 @@ async def generate_image(
     if image_size:
         image_config["imageSize"] = image_size
 
-    generation_config: Dict[str, Any] = {
-        "responseModalities": ["TEXT", "IMAGE"]
-    }
+    response_modalities = normalize_response_modalities(
+        kwargs.get("response_modalities") or kwargs.get("responseModalities")
+    )
+    generation_config: Dict[str, Any] = {"responseModalities": response_modalities}
     if image_config:
         generation_config["imageConfig"] = image_config
     body["generationConfig"] = generation_config
@@ -164,46 +189,49 @@ async def image_to_image(
         # Prefer preloaded base64_images (data:image/...;base64,...),
         # to support multiple reference images and avoid redundant downloads.
         base64_images: List[str] = kwargs.pop("base64_images", []) or []
+        extra_images_raw = kwargs.pop("extra_images", None)
+        if extra_images_raw is None:
+            extra_images_raw = kwargs.pop("reference_images", None)
+        extra_images: List[str] = []
+        if isinstance(extra_images_raw, str):
+            extra_images = [extra_images_raw]
+        elif isinstance(extra_images_raw, list):
+            extra_images = [u for u in extra_images_raw if isinstance(u, str) and u]
+
         parts: List[Dict[str, Any]] = []
         if prompt:
             parts.append({"text": prompt})
 
         if base64_images:
-            # Support up to 14 reference images
-            for data_url in base64_images[:14]:
-                if not isinstance(data_url, str) or not data_url:
-                    continue
-                mime_type = "image/png"
-                b64_data = data_url
-                if data_url.startswith("data:"):
-                    # Format: data:image/png;base64,AAAA...
-                    try:
-                        header, b64_data = data_url.split(",", 1)
-                        header = header[5:]  # Remove "data:"
-                        if ";" in header:
-                            mime_type = header.split(";", 1)[0] or "image/png"
-                        elif header:
-                            mime_type = header
-                    except ValueError:
-                        # Fall back to original string
-                        b64_data = data_url
-                parts.append(
-                    {
-                        "inlineData": {
-                            "mimeType": mime_type,
-                            "data": b64_data,
-                        }
-                    }
-                )
+            parts.extend(inline_parts_from_data_urls(base64_images))
         else:
-            # Fallback: download from URL if not preloaded
-            inline_image = await fetch_inline_image(image_url, config_timeout)
-            parts.append({"inlineData": inline_image})
+            urls_raw = [image_url] + extra_images
+            urls: List[str] = []
+            seen = set()
+            for url in urls_raw:
+                if not isinstance(url, str) or not url:
+                    continue
+                if url in seen:
+                    continue
+                seen.add(url)
+                urls.append(url)
+            if not urls:
+                return AIResponse(
+                    success=False,
+                    error="缺少参考图像",
+                    provider=provider_name,
+                    model=model_id,
+                    task_type=AITaskType.SCENE_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_IMAGE,
+                )
+            parts.extend(await inline_parts_from_urls(urls, config_timeout))
 
         body: Dict[str, Any] = {"contents": [{"role": "user", "parts": parts}]}
 
-        aspect_ratio = kwargs.get("aspect_ratio")
-        image_size = kwargs.get("image_size") or kwargs.get("size")
+        aspect_ratio = kwargs.get("aspect_ratio") or kwargs.get("aspectRatio")
+        image_size = (
+            kwargs.get("image_size") or kwargs.get("imageSize") or kwargs.get("size")
+        )
         try:
             image_size, aspect_ratio, rules = normalize_image_params(
                 provider_name, model_id, image_size, aspect_ratio
@@ -226,8 +254,12 @@ async def image_to_image(
         if image_size:
             image_config["imageSize"] = image_size
 
+        response_modalities = normalize_response_modalities(
+            kwargs.get("response_modalities")
+            or kwargs.get("responseModalities")
+        )
         generation_config: Dict[str, Any] = {
-            "responseModalities": ["TEXT", "IMAGE"]
+            "responseModalities": response_modalities
         }
         if image_config:
             generation_config["imageConfig"] = image_config

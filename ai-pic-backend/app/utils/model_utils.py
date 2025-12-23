@@ -14,7 +14,7 @@ def infer_provider_from_model(model_id: str) -> Optional[str]:
         return "jimeng"
     if mid.startswith(("dall-e", "dalle", "gpt-image-1")):
         return "openai"
-    if mid.startswith("gemini"):
+    if mid.startswith(("gemini", "veo")):
         return "google"
     return None
 

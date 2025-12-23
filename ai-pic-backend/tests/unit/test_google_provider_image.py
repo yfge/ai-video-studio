@@ -53,7 +53,12 @@ async def test_generate_image_success(monkeypatch):
         return dummy_client
     monkeypatch.setattr(provider, "get_client", _fake_client)
 
-    resp = await provider.generate_image(prompt="sunset over mountains", model="gemini-2.0-flash-exp")
+    resp = await provider.generate_image(
+        prompt="sunset over mountains",
+        model="gemini-2.0-flash-exp",
+        response_modalities=["IMAGE"],
+        aspect_ratio="16:9",
+    )
 
     assert resp.success is True
     assert resp.model_type == AIModelType.TEXT_TO_IMAGE
@@ -63,7 +68,8 @@ async def test_generate_image_success(monkeypatch):
     # 验证 responseModalities 字段已正确设置
     assert "generationConfig" in dummy_client.last_request["json"]
     assert "responseModalities" in dummy_client.last_request["json"]["generationConfig"]
-    assert dummy_client.last_request["json"]["generationConfig"]["responseModalities"] == ["TEXT", "IMAGE"]
+    assert dummy_client.last_request["json"]["generationConfig"]["responseModalities"] == ["IMAGE"]
+    assert dummy_client.last_request["json"]["generationConfig"]["imageConfig"]["aspectRatio"] == "16:9"
 
 
 @pytest.mark.asyncio
@@ -124,15 +130,13 @@ async def test_image_to_image_uses_reference(monkeypatch):
     )
     async def _fake_client():
         return dummy_client
-    async def _fake_inline(url):
-        return {"mimeType": "image/png", "data": "REFIMG"}
     monkeypatch.setattr(provider, "get_client", _fake_client)
-    monkeypatch.setattr(provider, "_fetch_inline_image", _fake_inline)
 
     resp = await provider.image_to_image(
         image_url="http://example.com/img.png",
         prompt="make it dramatic",
         model="gemini-2.0-flash-exp",
+        base64_images=["data:image/png;base64,REFIMG"],
     )
 
     assert resp.success is True

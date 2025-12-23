@@ -244,3 +244,16 @@ def minimax_status_mapper(response: Dict[str, Any]) -> TaskStatus:
     }
 
     return status_map.get(status_str, TaskStatus.PENDING)
+
+
+def google_operation_status_mapper(response: Dict[str, Any]) -> TaskStatus:
+    """
+    Map Google long-running operation status to TaskStatus.
+
+    Google operations: done=false (running), done=true with error (failed).
+    """
+    if response.get("done") is True:
+        if response.get("error"):
+            return TaskStatus.FAILED
+        return TaskStatus.SUCCESS
+    return TaskStatus.PROCESSING

@@ -2229,10 +2229,11 @@ class AIService:
                 thumbnail_oss_result = None
                 last_frame_oss_result = None
 
-                if original_video_url and oss_service:
+                video_download_url = response.data.get("download_url") or original_video_url
+                if video_download_url and oss_service:
                     try:
                         video_oss_result = await oss_service.upload_from_url(
-                            url=original_video_url,
+                            url=video_download_url,
                             file_type="video",
                             prefix="ai-generated/videos",
                             metadata={

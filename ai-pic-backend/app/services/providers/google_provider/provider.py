@@ -1,11 +1,12 @@
 """
 Google AI / Gemini service provider.
 
-Supports Gemini text generation and image generation (text-to-image, image-to-image).
+Supports Gemini text/image generation and Veo video generation.
 
 Documentation:
 - Text generation: docs/api/google-text-api.md
 - Image generation: https://ai.google.dev/gemini-api/docs/image-generation
+- Video generation: https://ai.google.dev/gemini-api/docs/video
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from .models import (
 )
 from . import image as image_module
 from . import text as text_module
+from . import video as video_module
 
 logger = get_logger(__name__)
 
@@ -53,6 +55,8 @@ class GoogleProvider(BaseProvider):
             AIModelType.TEXT_GENERATION,
             AIModelType.TEXT_TO_IMAGE,
             AIModelType.IMAGE_TO_IMAGE,
+            AIModelType.TEXT_TO_VIDEO,
+            AIModelType.IMAGE_TO_VIDEO,
         ]
 
     @property
@@ -206,6 +210,28 @@ class GoogleProvider(BaseProvider):
             config_timeout=self.config.timeout,
             image_url=image_url,
             prompt=prompt,
+            model=model,
+            format_error=self.format_error,
+            **kwargs,
+        )
+
+    async def generate_video(
+        self,
+        prompt: str = None,
+        image_url: str = None,
+        model: str = None,
+        **kwargs: Any,
+    ) -> AIResponse:
+        """Generate videos using Veo (text-to-video / image-to-video)."""
+        client = await self.get_client()
+        return await video_module.generate_video(
+            client=client,
+            base_url=self.base_url,
+            provider_name=self.name,
+            api_key=self.config.api_key,
+            config_timeout=self.config.timeout,
+            prompt=prompt,
+            image_url=image_url,
             model=model,
             format_error=self.format_error,
             **kwargs,

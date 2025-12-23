@@ -116,10 +116,11 @@ class VideoGenerationService:
         original_video_url = response.data.get("video_url")
         original_thumbnail_url = response.data.get("thumbnail_url")
         original_last_frame_url = response.data.get("last_frame_url")
+        video_download_url = response.data.get("download_url") or original_video_url
 
         # Upload assets to OSS
         video_oss_result = await self._upload_video_to_oss(
-            original_video_url, prompt, duration, fps, resolution,
+            video_download_url, prompt, duration, fps, resolution,
             end_image_url, response.provider, response.model
         )
         thumbnail_oss_result = await self._upload_thumbnail_to_oss(
