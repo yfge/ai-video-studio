@@ -4,7 +4,8 @@ import type { VirtualIP } from "@/utils/api";
 
 interface ImagePageHeaderProps {
   virtualIP: VirtualIP;
-  onBack: () => void;
+  onBack?: () => void;
+  backLabel?: string;
   onShowGenerateForm: () => void;
   onShowUploadForm: () => void;
   onViewTasks: () => void;
@@ -13,6 +14,7 @@ interface ImagePageHeaderProps {
 export function ImagePageHeader({
   virtualIP,
   onBack,
+  backLabel,
   onShowGenerateForm,
   onShowUploadForm,
   onViewTasks,
@@ -28,12 +30,14 @@ export function ImagePageHeader({
             </h1>
             <p className="mt-2 text-gray-600">{virtualIP.description}</p>
           </div>
-          <button
-            onClick={onBack}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-          >
-            返回详情
-          </button>
+          {onBack ? (
+            <button
+              onClick={onBack}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+            >
+              {backLabel || "返回详情"}
+            </button>
+          ) : null}
         </div>
       </div>
 

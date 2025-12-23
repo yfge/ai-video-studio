@@ -6,6 +6,7 @@ import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
   VirtualIPDetailHeader,
   VirtualIPInfoSection,
+  VirtualIPImageManager,
   VoiceSettingsPanel,
 } from "@/components/features";
 import { useVirtualIPDetail } from "@/hooks/useVirtualIPDetail";
@@ -75,8 +76,8 @@ export default function VirtualIPDetail() {
         onDelete={handleDeleteIP}
       />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+        <div className="bg-white shadow rounded-lg overflow-hidden max-w-4xl mx-auto">
           <VirtualIPInfoSection
             virtualIP={virtualIP}
             editing={editing}
@@ -141,6 +142,8 @@ export default function VirtualIPDetail() {
             </div>
           </div>
         </div>
+
+        <VirtualIPImageManager virtualIPKey={ipKey} virtualIP={virtualIP} />
       </main>
     </div>
   );

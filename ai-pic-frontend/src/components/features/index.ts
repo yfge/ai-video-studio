@@ -21,6 +21,7 @@ export {
   ImageUploadForm,
   CategoryFilter,
   ImageGrid,
+  VirtualIPImageManager,
 } from './virtual-ip-images'
 export {
   ScriptHeader,

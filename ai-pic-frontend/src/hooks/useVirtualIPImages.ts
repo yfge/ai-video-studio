@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import type { VirtualIP } from "@/utils/api";
+
 import { useVirtualIPImageActions } from "./virtual-ip/useVirtualIPImageActions";
 import { useVirtualIPImageData } from "./virtual-ip/useVirtualIPImageData";
 import { useVirtualIPImageGeneration } from "./virtual-ip/useVirtualIPImageGeneration";
@@ -13,6 +15,8 @@ export type { ImageGenerationFormState, UploadFormState } from "./virtual-ip/vir
 
 export interface UseVirtualIPImagesOptions {
   virtualIPKey: string;
+  virtualIP?: VirtualIP | null;
+  skipVirtualIPFetch?: boolean;
   showAlert: (opts: {
     message: string;
     variant: "success" | "error" | "warning" | "info";
@@ -25,10 +29,12 @@ export interface UseVirtualIPImagesOptions {
 
 export function useVirtualIPImages({
   virtualIPKey,
+  virtualIP,
+  skipVirtualIPFetch = false,
   showAlert,
   router,
 }: UseVirtualIPImagesOptions) {
-  const data = useVirtualIPImageData({ virtualIPKey, showAlert });
+  const data = useVirtualIPImageData({ virtualIPKey, virtualIP, skipVirtualIPFetch, showAlert });
   const generation = useVirtualIPImageGeneration({
     virtualIPId: data.virtualIPId,
     showAlert,

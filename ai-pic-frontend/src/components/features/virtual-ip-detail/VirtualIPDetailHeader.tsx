@@ -36,10 +36,10 @@ export function VirtualIPDetailHeader({
           </div>
           <div className="flex items-center space-x-4">
             <Link
-              href={`/virtual-ip/${businessId || ipKey}/images`}
+              href={`/virtual-ip/${businessId || ipKey}#ip-images`}
               className="text-green-600 hover:text-green-800 px-4 py-2 rounded-md border border-green-600 hover:bg-green-50"
             >
-              管理图片
+              图片管理
             </Link>
             <button
               onClick={() => setEditing(!editing)}
