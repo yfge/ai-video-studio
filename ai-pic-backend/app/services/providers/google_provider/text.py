@@ -97,12 +97,9 @@ async def generate_text(
     model_id = model or default_model
     stream = bool(kwargs.pop("stream", True))
     method = "streamGenerateContent" if stream else "generateContent"
-    endpoint = (
-        f"{base_url.rstrip('/')}/v1/publishers/google/models/{model_id}:{method}"
-        f"?key={api_key}"
-    )
+    endpoint = f"{base_url.rstrip('/')}/v1beta/models/{model_id}:{method}"
     if stream:
-        endpoint = f"{endpoint}&alt=sse"
+        endpoint = f"{endpoint}?alt=sse"
 
     # Build request body
     contents: List[Dict[str, Any]] = [

@@ -53,10 +53,7 @@ async def generate_image(
             model_type=AIModelType.TEXT_TO_IMAGE,
         )
 
-    body = {
-        "model": model_id,
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-    }
+    body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}]}
 
     # Build image config from kwargs
     aspect_ratio = kwargs.get("aspect_ratio")
@@ -203,10 +200,7 @@ async def image_to_image(
             inline_image = await fetch_inline_image(image_url, config_timeout)
             parts.append({"inlineData": inline_image})
 
-        body: Dict[str, Any] = {
-            "model": model_id,
-            "contents": [{"role": "user", "parts": parts}],
-        }
+        body: Dict[str, Any] = {"contents": [{"role": "user", "parts": parts}]}
 
         aspect_ratio = kwargs.get("aspect_ratio")
         image_size = kwargs.get("image_size") or kwargs.get("size")
