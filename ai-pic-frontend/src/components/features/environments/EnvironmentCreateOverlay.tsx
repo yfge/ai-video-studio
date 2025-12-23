@@ -75,6 +75,7 @@ export function EnvironmentCreateOverlay({
           model: generation.model || undefined,
           count: generation.count,
           size: generation.size || undefined,
+          aspect_ratio: generation.aspect_ratio || undefined,
           style: generation.style || undefined,
         })
         if (genRes.success) {

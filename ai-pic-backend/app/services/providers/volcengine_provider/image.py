@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
+from ..image_param_utils import normalize_image_params
 
 if TYPE_CHECKING:
     pass
@@ -31,15 +32,6 @@ def _normalize_size(size_value: Optional[str]) -> str:
     if "x" in sv:
         return sv
     return "1024x1024"
-
-
-def _default_seedream_size(model_id: Optional[str]) -> Optional[str]:
-    if not model_id:
-        return None
-    normalized = model_id.strip().lower()
-    if "seedream-4-5" in normalized or "seedream-4.5" in normalized:
-        return "2K"
-    return None
 
 
 def _build_image_payload(
@@ -99,7 +91,19 @@ async def generate_image(
         else:
             ark_model = model.strip()
 
-    size_value = size or _default_seedream_size(ark_model)
+    try:
+        size_value, _, _ = normalize_image_params(
+            provider_name, ark_model, size, None
+        )
+    except ValueError as exc:
+        return AIResponse(
+            success=False,
+            error=str(exc),
+            provider=provider_name,
+            model=ark_model,
+            task_type=AITaskType.PORTRAIT_GENERATION,
+            model_type=AIModelType.TEXT_TO_IMAGE,
+        )
     effective_size = _normalize_size(size_value)
     count_int = max(1, min(n or 1, 4))
 
@@ -230,7 +234,19 @@ async def image_to_image(
         else:
             ark_model = model.strip()
 
-    size_value = size or _default_seedream_size(ark_model)
+    try:
+        size_value, _, _ = normalize_image_params(
+            provider_name, ark_model, size, None
+        )
+    except ValueError as exc:
+        return AIResponse(
+            success=False,
+            error=str(exc),
+            provider=provider_name,
+            model=ark_model,
+            task_type=AITaskType.SCENE_GENERATION,
+            model_type=AIModelType.IMAGE_TO_IMAGE,
+        )
     effective_size = _normalize_size(size_value)
     max_images = max(1, min(count or 1, 4))
 

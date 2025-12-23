@@ -28,6 +28,7 @@ from .helpers import (
     download_and_attach,
     infer_provider_from_model,
     normalize_reference_images,
+    resolve_image_aspect_ratio,
     resolve_environment_url,
 )
 
@@ -43,6 +44,9 @@ async def generate_environment_image_variants(
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
     size: Optional[str] = Query(None, description="分辨率/尺寸"),
+    aspect_ratio: Optional[str] = Query(
+        None, description="画幅比例，如 16:9、1:1"
+    ),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -95,6 +99,7 @@ async def generate_environment_image_variants(
     )
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
+    aspect_ratio_value = payload.get("aspect_ratio", aspect_ratio)
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):
@@ -115,6 +120,9 @@ async def generate_environment_image_variants(
         reference_images_iter, backend_base
     )
 
+    aspect_ratio_value = resolve_image_aspect_ratio(
+        prefer_provider, model_value, aspect_ratio_value
+    )
     try:
         response = await ai_service.ai_manager.image_to_image(
             image_url=image_url,
@@ -123,6 +131,7 @@ async def generate_environment_image_variants(
             prefer_provider=prefer_provider,
             count=count_int,
             size=size_value,
+            aspect_ratio=aspect_ratio_value,
             style=style_hint,
             style_preset_id=style_preset_id,
             style_spec=style_spec,
@@ -175,6 +184,9 @@ async def generate_environment_image_variants_async(
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
     size: Optional[str] = Query(None, description="分辨率/尺寸"),
+    aspect_ratio: Optional[str] = Query(
+        None, description="画幅比例，如 16:9、1:1"
+    ),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -207,6 +219,7 @@ async def generate_environment_image_variants_async(
     model_raw = (body.get("model") or model or "").strip() or None
     count_value = body.get("count", count)
     size_value = body.get("size", size)
+    aspect_ratio_value = body.get("aspect_ratio", aspect_ratio)
     style_hint = body.get("style") or "realistic"
     style_preset_id = body.get("style_preset_id")
     style_spec = body.get("style_spec")
@@ -224,6 +237,7 @@ async def generate_environment_image_variants_async(
         "model": model_raw,
         "count": count_int,
         "size": size_value,
+        "aspect_ratio": aspect_ratio_value,
         "style": style_hint,
         "style_preset_id": style_preset_id,
         "style_spec": style_spec,

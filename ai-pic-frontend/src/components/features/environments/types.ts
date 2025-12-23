@@ -16,6 +16,7 @@ export type GenerationFormState = {
   model: string
   count: number
   size: string
+  aspect_ratio: string
   style: string
 }
 
@@ -33,5 +34,6 @@ export const EMPTY_GENERATION: GenerationFormState = {
   model: '',
   count: 1,
   size: '',
+  aspect_ratio: '',
   style: 'realistic',
 }

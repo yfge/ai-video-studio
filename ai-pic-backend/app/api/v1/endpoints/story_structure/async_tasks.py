@@ -20,6 +20,7 @@ from .helpers import (
     download_and_attach,
     infer_provider_from_model,
     normalize_reference_images,
+    resolve_image_aspect_ratio,
     resolve_environment_url,
     sanitize_environment_style,
     strip_provider_prefix,
@@ -53,6 +54,7 @@ def process_environment_image_task(
             )
             count_int = int(payload.get("count") or 1)
             size_value = payload.get("size")
+            aspect_ratio_value = payload.get("aspect_ratio")
             style_hint, style_preset_id, style_spec = sanitize_environment_style(
                 payload.get("style"),
                 payload.get("style_preset_id"),
@@ -68,13 +70,19 @@ def process_environment_image_task(
             else:
                 style_hint_local = style_hint
 
+            aspect_ratio_value = resolve_image_aspect_ratio(
+                prefer_provider_local,
+                strip_provider_prefix(selected_model),
+                aspect_ratio_value,
+            )
             final_prompt = compose_environment_prompt(env, payload.get("extra_prompt"))
 
             response = await ai_service.ai_manager.generate_image(
                 prompt=final_prompt,
                 model=strip_provider_prefix(selected_model),
                 n=max(1, min(count_int, 4)),
-                size=size_value if prefer_provider_local == "volcengine" else None,
+                size=size_value,
+                aspect_ratio=aspect_ratio_value,
                 prefer_provider=prefer_provider_local,
                 style=style_hint_local,
                 style_preset_id=style_preset_id,
@@ -178,11 +186,15 @@ def process_environment_image_variant_task(
             )
             count_int = int(payload.get("count") or 1)
             size_value = payload.get("size")
+            aspect_ratio_value = payload.get("aspect_ratio")
 
             # Extract reference images and convert to absolute URLs
             reference_images = payload.get("reference_images") or []
             extra_images = normalize_reference_images(reference_images, backend_base)
 
+            aspect_ratio_value = resolve_image_aspect_ratio(
+                prefer_provider, model_value, aspect_ratio_value
+            )
             response = await ai_service.ai_manager.image_to_image(
                 image_url=image_url,
                 prompt=prompt_value,
@@ -190,6 +202,7 @@ def process_environment_image_variant_task(
                 prefer_provider=prefer_provider,
                 count=max(1, min(count_int, 4)),
                 size=size_value,
+                aspect_ratio=aspect_ratio_value,
                 style=style_hint_local,
                 style_preset_id=style_preset_id,
                 style_spec=style_spec,

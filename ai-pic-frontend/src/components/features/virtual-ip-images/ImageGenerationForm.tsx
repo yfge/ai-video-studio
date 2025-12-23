@@ -3,6 +3,7 @@
 import type { AIModel } from "@/utils/api";
 import { AIModelType, aiAPI } from "@/utils/api";
 import {
+  ModelUiFields,
   MultiModelSelector,
   StyleSpecAdvancedPanel,
   type StyleSpecField,
@@ -23,9 +24,9 @@ interface ImageGenerationFormProps {
   stylePresets: StylePreset[];
   selectedStylePreset: StylePreset | undefined;
   selectedModel: AIModel | undefined;
-  supportsAspectRatio: boolean;
-  resolutionOptions: { value: string; label: string }[];
-  aspectRatioOptions: string[];
+  supportsAspectRatio?: boolean;
+  resolutionOptions?: { value: string; label: string }[];
+  aspectRatioOptions?: string[];
   generating: boolean;
   onGenerate: () => void;
   onCancel: () => void;
@@ -38,9 +39,6 @@ export function ImageGenerationForm({
   stylePresets,
   selectedStylePreset,
   selectedModel,
-  supportsAspectRatio,
-  resolutionOptions,
-  aspectRatioOptions,
   generating,
   onGenerate,
   onCancel,
@@ -161,65 +159,29 @@ export function ImageGenerationForm({
           </p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            分辨率（可选）
-          </label>
-          <select
-            value={generateForm.size ?? ""}
-            onChange={(e) =>
-              setGenerateForm((prev) => ({
-                ...prev,
-                size: e.target.value || undefined,
-              }))
-            }
-            disabled={!resolutionOptions.length}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
-          >
-            {resolutionOptions.length === 0 ? (
-              <option value="">模型使用默认分辨率</option>
-            ) : (
-              <>
-                <option value="">自动（模型默认）</option>
-                {resolutionOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
-        </div>
-        {supportsAspectRatio && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              宽高比（可选）
-            </label>
-            <select
-              value={generateForm.aspect_ratio ?? ""}
-              onChange={(e) =>
+          <ModelUiFields
+            mode="image"
+            model={selectedModel}
+            value={{
+              size: generateForm.size,
+              aspect_ratio: generateForm.aspect_ratio,
+            }}
+            onChange={(next) => {
+              if (next.size !== undefined) {
                 setGenerateForm((prev) => ({
                   ...prev,
-                  aspect_ratio: e.target.value || undefined,
-                }))
+                  size: next.size || undefined,
+                }));
               }
-              disabled={aspectRatioOptions.length === 0}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
-            >
-              {aspectRatioOptions.length === 0 ? (
-                <option value="">模型不支持宽高比</option>
-              ) : (
-                <>
-                  <option value="">自动（模型默认）</option>
-                  {aspectRatioOptions.map((ratio) => (
-                    <option key={ratio} value={ratio}>
-                      {ratio}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-          </div>
-        )}
+              if (next.aspect_ratio !== undefined) {
+                setGenerateForm((prev) => ({
+                  ...prev,
+                  aspect_ratio: next.aspect_ratio || undefined,
+                }));
+              }
+            }}
+          />
+        </div>
         <div className="md:col-span-3">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             补充提示词（可选，逗号分隔）

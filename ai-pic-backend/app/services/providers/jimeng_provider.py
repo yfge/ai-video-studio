@@ -17,6 +17,7 @@ from .base import (
     ModelInfo,
     ProviderConfig,
 )
+from .image_param_utils import normalize_image_params, size_to_dimensions
 
 
 class JimengProvider(BaseProvider):
@@ -137,6 +138,25 @@ class JimengProvider(BaseProvider):
     ) -> AIResponse:
         """使用即梦生成图像"""
         try:
+            size_value = kwargs.pop("size", None)
+            try:
+                normalized_size, _, _ = normalize_image_params(
+                    self.name, model, size_value, None
+                )
+            except ValueError as exc:
+                return AIResponse(
+                    success=False,
+                    error=str(exc),
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.PORTRAIT_GENERATION,
+                    model_type=AIModelType.TEXT_TO_IMAGE,
+                )
+            if normalized_size:
+                dims = size_to_dimensions(normalized_size)
+                if dims:
+                    width, height = dims
+
             client = await self.get_client()
 
             request_data = {

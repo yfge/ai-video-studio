@@ -17,6 +17,7 @@ from ..base import (
     ModelInfo,
     ProviderConfig,
 )
+from ..image_param_utils import compute_image_ui as compute_image_ui_rules
 from .models import (
     fallback_models,
     get_available_models,
@@ -61,6 +62,7 @@ class OpenAIProvider(BaseProvider):
         Infer types from model IDs and return the latest list.
         """
         fallback = self._fallback_models(model_type)
+        fallback_lookup = {model.model_id: model for model in fallback}
         try:
             client = await self.get_client()
             if client is None:
@@ -79,13 +81,43 @@ class OpenAIProvider(BaseProvider):
                 mtype = infer_model_type(mid)
                 if model_type and mtype != model_type:
                     continue
+                caps = infer_capabilities(mid)
+                metadata = {}
+                fallback_model = fallback_lookup.get(mid)
+                if fallback_model:
+                    metadata = dict(getattr(fallback_model, "metadata", {}) or {})
+                if not metadata and mtype in (
+                    AIModelType.TEXT_TO_IMAGE,
+                    AIModelType.IMAGE_TO_IMAGE,
+                ):
+                    rules = compute_image_ui_rules(self.name, mid)
+                    if rules.size_options or rules.supports_aspect_ratio:
+                        supports_reference_image = (
+                            "image_to_image" in caps or "dall-e-2" in mid.lower()
+                        )
+                        ui_meta = {
+                            "size_options": rules.size_options,
+                            "aspect_ratio_options": rules.aspect_ratio_options,
+                            "supports_aspect_ratio": rules.supports_aspect_ratio,
+                            "default_size": rules.default_size,
+                            "default_aspect_ratio": rules.default_aspect_ratio,
+                            "supports_reference_image": supports_reference_image,
+                        }
+                        metadata = {
+                            "ui": {
+                                key: value
+                                for key, value in ui_meta.items()
+                                if value is not None
+                            }
+                        }
                 models.append(
                     ModelInfo(
                         model_id=mid,
                         name=item.get("name") or mid,
                         description=item.get("description") or f"OpenAI model {mid}",
                         model_type=mtype,
-                        capabilities=infer_capabilities(mid),
+                        capabilities=caps,
+                        metadata=metadata,
                     )
                 )
             return models or fallback

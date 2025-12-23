@@ -13,6 +13,7 @@ import httpx
 from app.core.logging import get_logger
 
 from ..base import AIModelType, AIResponse, AITaskType
+from ..image_param_utils import normalize_image_params
 
 if TYPE_CHECKING:
     pass
@@ -35,8 +36,28 @@ async def generate_image(
 ) -> AIResponse:
     """Generate images using DALL-E."""
     try:
+        try:
+            normalized_size, _, _ = normalize_image_params(
+                provider_name, model, size, None
+            )
+        except ValueError as exc:
+            return AIResponse(
+                success=False,
+                error=str(exc),
+                provider=provider_name,
+                model=model,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+            )
+        size_value = normalized_size or size
+
         # DALL-E 3 parameters
-        request_data = {"model": model, "prompt": prompt, "n": n, "size": size}
+        request_data = {
+            "model": model,
+            "prompt": prompt,
+            "n": n,
+            "size": size_value,
+        }
 
         # DALL-E 3 specific parameters
         if model == "dall-e-3":
@@ -63,7 +84,7 @@ async def generate_image(
             task_type=AITaskType.PORTRAIT_GENERATION,
             model_type=AIModelType.TEXT_TO_IMAGE,
             metadata={
-                "size": size,
+                "size": size_value,
                 "quality": quality,
                 "style": style,
                 "count": len(images),
@@ -214,7 +235,22 @@ async def image_to_image(
 
         files = {"image": ("image.png", image_bytes, content_type or "image/png")}
 
-        data = {"n": n, "size": size}
+        try:
+            normalized_size, _, _ = normalize_image_params(
+                provider_name, model, size, None
+            )
+        except ValueError as exc:
+            return AIResponse(
+                success=False,
+                error=str(exc),
+                provider=provider_name,
+                model=model,
+                task_type=AITaskType.SCENE_GENERATION,
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+            )
+        size_value = normalized_size or size
+
+        data = {"n": n, "size": size_value}
 
         if prompt:
             data["prompt"] = prompt
@@ -244,7 +280,7 @@ async def image_to_image(
             model_type=AIModelType.IMAGE_TO_IMAGE,
             metadata={
                 "original_image": image_url,
-                "size": size,
+                "size": size_value,
                 "count": len(images),
             },
         )

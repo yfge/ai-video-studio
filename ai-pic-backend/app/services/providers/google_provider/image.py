@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
+from ..image_param_utils import normalize_image_params
 from .helpers import clean_model_id, fetch_inline_image, parse_images
 
 
@@ -60,6 +61,19 @@ async def generate_image(
     # Build image config from kwargs
     aspect_ratio = kwargs.get("aspect_ratio")
     image_size = kwargs.get("image_size") or kwargs.get("size")
+    try:
+        image_size, aspect_ratio, _ = normalize_image_params(
+            provider_name, model_id, image_size, aspect_ratio
+        )
+    except ValueError as exc:
+        return AIResponse(
+            success=False,
+            error=str(exc),
+            provider=provider_name,
+            model=model_id,
+            task_type=AITaskType.PORTRAIT_GENERATION,
+            model_type=AIModelType.TEXT_TO_IMAGE,
+        )
     image_config: Dict[str, Any] = {}
     if aspect_ratio:
         image_config["aspectRatio"] = aspect_ratio
@@ -193,6 +207,19 @@ async def image_to_image(
 
         aspect_ratio = kwargs.get("aspect_ratio")
         image_size = kwargs.get("image_size") or kwargs.get("size")
+        try:
+            image_size, aspect_ratio, _ = normalize_image_params(
+                provider_name, model_id, image_size, aspect_ratio
+            )
+        except ValueError as exc:
+            return AIResponse(
+                success=False,
+                error=str(exc),
+                provider=provider_name,
+                model=model_id,
+                task_type=AITaskType.SCENE_GENERATION,
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+            )
         image_config: Dict[str, Any] = {}
         if aspect_ratio:
             image_config["aspectRatio"] = aspect_ratio

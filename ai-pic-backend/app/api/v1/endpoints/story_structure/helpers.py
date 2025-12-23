@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from app.core.config import settings
 from app.models.story_structure import Environment
 from app.services.ai_service import ai_service
+from app.services.providers.image_param_utils import compute_image_ui
 from app.services.storage import oss_service
 from sqlalchemy.orm import Session
 
@@ -85,6 +86,24 @@ def strip_provider_prefix(model: Optional[str]) -> Optional[str]:
     if not model:
         return None
     return model.split(":", 1)[1] if ":" in model else model
+
+
+def resolve_image_aspect_ratio(
+    provider: Optional[str],
+    model: Optional[str],
+    aspect_ratio: Optional[str],
+) -> Optional[str]:
+    """Return aspect ratio only when the provider/model supports it."""
+    if not provider or not model or not aspect_ratio:
+        return None
+    ratio_value = aspect_ratio.strip() if isinstance(aspect_ratio, str) else ""
+    if not ratio_value:
+        return None
+    try:
+        rules = compute_image_ui(provider, model)
+    except Exception:
+        return None
+    return ratio_value if rules.supports_aspect_ratio else None
 
 
 def compose_environment_prompt(env, extra: Optional[str] = None) -> str:

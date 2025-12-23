@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { MultiModelSelector } from '@/components/shared'
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { ModelUiFields, MultiModelSelector } from '@/components/shared'
 import { AIModelType, type AIModel } from '@/utils/api'
-import { extractImageUi } from '@/utils/modelUi'
 import type { GenerationFormState } from './types'
 
 interface EnvironmentGenerationFieldsProps {
@@ -26,17 +25,11 @@ export function EnvironmentGenerationFields({
     () => availableModels.find(model => model.model_id === generation.model),
     [availableModels, generation.model],
   )
-  const imageUi = useMemo(() => extractImageUi(selectedModel), [selectedModel])
   const showFields = showToggle ? generation.enabled : true
 
   const updateField = <K extends keyof GenerationFormState>(key: K, value: GenerationFormState[K]) => {
     setGeneration(prev => ({ ...prev, [key]: value }))
   }
-
-  useEffect(() => {
-    if (!imageUi.defaultSize || generation.size) return
-    setGeneration(prev => (prev.size ? prev : { ...prev, size: imageUi.defaultSize || '' }))
-  }, [generation.size, imageUi.defaultSize, setGeneration])
 
   return (
     <div className={`${withDivider ? 'border-t pt-4' : ''} space-y-4`}>
@@ -78,8 +71,11 @@ export function EnvironmentGenerationFields({
               className="space-y-1"
               onModelsLoaded={(models, defaultModel) => {
                 setAvailableModels(models)
-                if (!defaultModel) return
-                setGeneration(prev => (prev.model ? prev : { ...prev, model: defaultModel }))
+                setGeneration(prev => {
+                  if (prev.model) return prev
+                  const nextModel = defaultModel || models[0]?.model_id || ''
+                  return nextModel ? { ...prev, model: nextModel } : prev
+                })
               }}
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -111,27 +107,21 @@ export function EnvironmentGenerationFields({
               <option value={4}>4 张</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">分辨率（可选）</label>
-            <select
-              value={generation.size}
-              onChange={e => updateField('size', e.target.value)}
-              disabled={!imageUi.sizeOptions.length}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
-            >
-              {imageUi.sizeOptions.length === 0 ? (
-                <option value="">模型使用默认分辨率</option>
-              ) : (
-                <>
-                  <option value="">自动（模型默认）</option>
-                  {imageUi.sizeOptions.map(option => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
+          <div className="md:col-span-2">
+            <ModelUiFields
+              mode="image"
+              model={selectedModel}
+              value={{
+                size: generation.size,
+                aspect_ratio: generation.aspect_ratio || undefined,
+              }}
+              onChange={next => {
+                if (next.size !== undefined) updateField('size', next.size || '')
+                if (next.aspect_ratio !== undefined) {
+                  updateField('aspect_ratio', next.aspect_ratio || '')
+                }
+              }}
+            />
           </div>
         </div>
       )}

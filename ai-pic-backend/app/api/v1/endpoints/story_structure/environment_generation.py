@@ -27,6 +27,7 @@ from .helpers import (
     compose_environment_prompt,
     download_and_attach,
     infer_provider_from_model,
+    resolve_image_aspect_ratio,
     sanitize_environment_style,
     strip_provider_prefix,
 )
@@ -44,6 +45,9 @@ async def generate_environment_images(
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
     size: Optional[str] = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
+    aspect_ratio: Optional[str] = Query(
+        None, description="画幅比例，如 16:9、1:1"
+    ),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -74,6 +78,7 @@ async def generate_environment_images(
     )
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
+    aspect_ratio_value = payload.get("aspect_ratio", aspect_ratio)
     style_hint, style_preset_id, style_spec = sanitize_environment_style(
         payload.get("style"),
         payload.get("style_preset_id"),
@@ -92,6 +97,9 @@ async def generate_environment_images(
     if (prefer_provider or "").lower() == "openai":
         style_hint = normalize_openai_image_style(style_hint)
 
+    aspect_ratio_value = resolve_image_aspect_ratio(
+        prefer_provider, strip_provider_prefix(selected_model), aspect_ratio_value
+    )
     final_prompt = compose_environment_prompt(env, extra_prompt)
 
     try:
@@ -99,7 +107,8 @@ async def generate_environment_images(
             prompt=final_prompt,
             model=strip_provider_prefix(selected_model),
             n=count_int,
-            size=size_value if prefer_provider == "volcengine" else None,
+            size=size_value,
+            aspect_ratio=aspect_ratio_value,
             prefer_provider=prefer_provider,
             style=style_hint,
             style_preset_id=style_preset_id,
@@ -153,6 +162,9 @@ async def generate_environment_images_async(
     model: Optional[str] = Query(None, description="模型，形如 provider:model_id"),
     count: int = Query(1, ge=1, le=4, description="生成数量"),
     size: Optional[str] = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
+    aspect_ratio: Optional[str] = Query(
+        None, description="画幅比例，如 16:9、1:1"
+    ),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -180,6 +192,7 @@ async def generate_environment_images_async(
     selected_model_raw = (body.get("model") or model or "").strip() or None
     count_value = body.get("count", count)
     size_value = body.get("size", size)
+    aspect_ratio_value = body.get("aspect_ratio", aspect_ratio)
     style_hint, style_preset_id, style_spec = sanitize_environment_style(
         body.get("style"),
         body.get("style_preset_id"),
@@ -197,6 +210,7 @@ async def generate_environment_images_async(
         "model": selected_model_raw,
         "count": count_int,
         "size": size_value,
+        "aspect_ratio": aspect_ratio_value,
         "style": style_hint,
         "style_preset_id": style_preset_id,
         "style_spec": style_spec,

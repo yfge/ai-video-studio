@@ -1585,6 +1585,7 @@ class ApiClient {
       model?: string;
       count?: number;
       size?: string;
+      aspect_ratio?: string;
       style?: string;
       style_preset_id?: string;
       style_spec?: StyleSpec;
@@ -1607,6 +1608,7 @@ class ApiClient {
       model?: string;
       count?: number;
       size?: string;
+      aspect_ratio?: string;
       style?: string;
       style_preset_id?: string;
       style_spec?: StyleSpec;

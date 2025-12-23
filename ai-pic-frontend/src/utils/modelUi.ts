@@ -39,6 +39,8 @@ type ModelUiMetadata = {
   size_options?: string[];
   aspect_ratio_options?: string[];
   supports_aspect_ratio?: boolean;
+  default_size?: string;
+  default_aspect_ratio?: string;
 };
 
 type ModelMetadata = {
@@ -93,11 +95,13 @@ export const extractImageUi = (model?: AIModel): ImageUiOptions => {
   const aspectRatioOptions =
     (ui.aspect_ratio_options as string[] | undefined)?.filter(Boolean) ?? [];
   const supportsAspectRatio = Boolean(ui.supports_aspect_ratio);
-  const defaultSize = sizeOptions[0];
+  const defaultSize =
+    (ui.default_size as string | undefined) || sizeOptions[0];
   const defaultAspectRatio =
-    supportsAspectRatio && aspectRatioOptions.length > 0
+    (ui.default_aspect_ratio as string | undefined) ||
+    (supportsAspectRatio && aspectRatioOptions.length > 0
       ? aspectRatioOptions[0]
-      : undefined;
+      : undefined);
 
   return {
     sizeOptions,

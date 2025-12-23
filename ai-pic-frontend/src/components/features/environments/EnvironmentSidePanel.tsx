@@ -53,13 +53,14 @@ export function EnvironmentSidePanel({ envKey, onImageUploaded }: EnvironmentSid
     }
     try {
       setGenerating(true)
-      const res = await storyStructureAPI.generateEnvironmentImagesAsync(envKey, {
-        prompt: generation.prompt || undefined,
-        model: generation.model || undefined,
-        count: generation.count,
-        size: generation.size || undefined,
-        style: generation.style || undefined,
-      })
+        const res = await storyStructureAPI.generateEnvironmentImagesAsync(envKey, {
+          prompt: generation.prompt || undefined,
+          model: generation.model || undefined,
+          count: generation.count,
+          size: generation.size || undefined,
+          aspect_ratio: generation.aspect_ratio || undefined,
+          style: generation.style || undefined,
+        })
       if (res.success) {
         showAlert({
           title: '已创建环境图生成任务',

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
+from ..image_param_utils import normalize_image_params, normalize_keling_resolution
 from ..polling_utils import TaskPoller, keling_status_mapper
 
 if TYPE_CHECKING:
@@ -100,8 +101,29 @@ async def generate_image(
         AIResponse with generated images
     """
     try:
+        size_value = kwargs.get("size") or resolution
+        try:
+            normalized_size, aspect_ratio, _ = normalize_image_params(
+                provider_name, model, size_value, aspect_ratio
+            )
+        except ValueError as exc:
+            return AIResponse(
+                success=False,
+                error=str(exc),
+                provider=provider_name,
+                model=model,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+            )
+        resolution_value = normalize_keling_resolution(normalized_size) or resolution
+
         # Build request payload according to API spec
-        request_data = {"model_name": model, "prompt": prompt, "n": n}
+        request_data = {
+            "model_name": model,
+            "prompt": prompt,
+            "n": n,
+            "resolution": resolution_value,
+        }
 
         # Add optional parameters
         if negative_prompt:
@@ -150,7 +172,7 @@ async def generate_image(
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 metadata={
                     "task_id": task_id,
-                    "resolution": resolution,
+                    "resolution": resolution_value,
                     "aspect_ratio": aspect_ratio,
                     "prompt": prompt,
                     "n": n,

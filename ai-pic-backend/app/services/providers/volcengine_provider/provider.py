@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
+from app.services.video.video_ui_utils import compute_video_ui
+
 from ..base import (
     AIModelType,
     AIResponse,
@@ -17,6 +19,7 @@ from ..base import (
     ModelInfo,
     ProviderConfig,
 )
+from ..image_param_utils import compute_image_ui as compute_image_ui_rules
 from .models import (
     fallback_models,
     get_available_models,
@@ -65,6 +68,7 @@ class VolcengineProvider(BaseProvider):
         fallback to static list on failure.
         """
         fallback = self._fallback_models(model_type)
+        fallback_lookup = {model.model_id: model for model in fallback}
         client = await self.get_client()
         if client is None:
             return fallback
@@ -86,6 +90,43 @@ class VolcengineProvider(BaseProvider):
                     continue
                 if model_type and mtype != model_type:
                     continue
+                caps = infer_capabilities(mtype, item)
+                metadata = {}
+                fallback_model = fallback_lookup.get(mid)
+                if fallback_model:
+                    metadata = dict(getattr(fallback_model, "metadata", {}) or {})
+                if not metadata and mtype in (
+                    AIModelType.TEXT_TO_IMAGE,
+                    AIModelType.IMAGE_TO_IMAGE,
+                ):
+                    rules = compute_image_ui_rules(self.name, mid)
+                    if rules.size_options or rules.supports_aspect_ratio:
+                        supports_reference_image = (
+                            "image_to_image" in caps
+                            or mtype == AIModelType.IMAGE_TO_IMAGE
+                        )
+                        ui_meta = {
+                            "size_options": rules.size_options,
+                            "aspect_ratio_options": rules.aspect_ratio_options,
+                            "supports_aspect_ratio": rules.supports_aspect_ratio,
+                            "default_size": rules.default_size,
+                            "default_aspect_ratio": rules.default_aspect_ratio,
+                            "supports_reference_image": supports_reference_image,
+                        }
+                        metadata = {
+                            "ui": {
+                                key: value
+                                for key, value in ui_meta.items()
+                                if value is not None
+                            }
+                        }
+                if not metadata and mtype in (
+                    AIModelType.TEXT_TO_VIDEO,
+                    AIModelType.IMAGE_TO_VIDEO,
+                ):
+                    ui_meta = compute_video_ui(self.name, mid, caps)
+                    if ui_meta:
+                        metadata = {"ui": ui_meta}
                 models.append(
                     ModelInfo(
                         model_id=mid,
@@ -94,7 +135,8 @@ class VolcengineProvider(BaseProvider):
                         or item.get("desc")
                         or f"Volcengine model {mid}",
                         model_type=mtype,
-                        capabilities=infer_capabilities(mtype, item),
+                        capabilities=caps,
+                        metadata=metadata,
                     )
                 )
             return models or fallback
