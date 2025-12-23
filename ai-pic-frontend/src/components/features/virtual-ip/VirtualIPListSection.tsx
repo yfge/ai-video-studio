@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import type { VirtualIP } from '@/utils/api'
+import { resolveCreatorLabel } from '@/utils/creator'
 
 interface VirtualIPListSectionProps {
   loading: boolean
@@ -128,6 +129,7 @@ export function VirtualIPListSection({
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{ip.name}</h3>
+                      <p className="text-sm text-gray-500">创建者：{resolveCreatorLabel(ip.creator)}</p>
                       <p className="text-sm text-gray-500">创建于 {new Date(ip.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>

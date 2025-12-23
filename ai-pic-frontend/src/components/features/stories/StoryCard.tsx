@@ -1,6 +1,7 @@
 "use client";
 
 import type { Story } from "@/utils/api";
+import { resolveCreatorLabel } from "@/utils/creator";
 import { GENRES } from "@/hooks/useStories";
 
 interface StoryCardProps {
@@ -61,9 +62,12 @@ export function StoryCard({ story, onViewDetails, onDelete }: StoryCardProps) {
           {story.synopsis || story.premise || "暂无概要"}
         </p>
 
-        <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-          <span>时长: {story.duration_minutes || "--"}分钟</span>
-          <span>{new Date(story.created_at).toLocaleDateString()}</span>
+        <div className="text-sm text-gray-500 mb-4 space-y-1">
+          <div className="flex items-center justify-between">
+            <span>时长: {story.duration_minutes || "--"}分钟</span>
+            <span>{new Date(story.created_at).toLocaleDateString()}</span>
+          </div>
+          <div className="text-xs">创建者：{resolveCreatorLabel(story.creator)}</div>
         </div>
 
         <div className="flex gap-2">

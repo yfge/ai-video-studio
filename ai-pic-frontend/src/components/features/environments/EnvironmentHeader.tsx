@@ -1,4 +1,5 @@
 import type { Environment } from '@/utils/api'
+import { resolveCreatorLabel } from '@/utils/creator'
 
 interface EnvironmentHeaderProps {
   env: Environment
@@ -11,7 +12,7 @@ export function EnvironmentHeader({ env, onBack }: EnvironmentHeaderProps) {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{env.name}</h1>
         <p className="text-sm text-gray-500 mt-1">
-          类别：{env.category || '未指定'} · 创建于{' '}
+          类别：{env.category || '未指定'} · 创建者：{resolveCreatorLabel(env.creator)} · 创建于{' '}
           {new Date(env.created_at).toLocaleString()}
         </p>
         {env.tags && env.tags.length > 0 && (

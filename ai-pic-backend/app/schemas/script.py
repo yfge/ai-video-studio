@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
+from app.schemas.user import UserSummary
+
 # 故事概要相关schemas
 class StoryCharacterBase(BaseModel):
     virtual_ip_id: int
@@ -93,6 +95,7 @@ class StoryResponse(StoryBase):
     generation_prompt: Optional[str] = None
     ai_model: Optional[str] = None
     generation_params: Optional[Dict[str, Any]] = None
+    creator: Optional[UserSummary] = Field(None, validation_alias="owner")
     created_at: datetime
     updated_at: datetime
     

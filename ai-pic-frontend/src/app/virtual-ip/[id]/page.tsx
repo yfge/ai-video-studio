@@ -9,6 +9,7 @@ import {
   VoiceSettingsPanel,
 } from "@/components/features";
 import { useVirtualIPDetail } from "@/hooks/useVirtualIPDetail";
+import { resolveCreatorLabel } from "@/utils/creator";
 
 export default function VirtualIPDetail() {
   const params = useParams();
@@ -123,6 +124,10 @@ export default function VirtualIPDetail() {
 
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
+              <div>
+                <span className="font-medium">创建者：</span>{" "}
+                {resolveCreatorLabel(virtualIP.creator)}
+              </div>
               <div>
                 <span className="font-medium">创建时间：</span>{" "}
                 {new Date(virtualIP.created_at).toLocaleString()}

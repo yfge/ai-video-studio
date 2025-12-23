@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+from app.schemas.user import UserSummary
 
 class VirtualIPImageBase(BaseModel):
     category: str
@@ -71,6 +72,7 @@ class VirtualIPResponse(VirtualIPBase):
     id: int
     business_id: str
     default_avatar_url: Optional[str]
+    creator: Optional[UserSummary] = Field(None, validation_alias="owner")
     created_at: datetime
     updated_at: Optional[datetime] = None
     images: Optional[List[VirtualIPImageResponse]] = []

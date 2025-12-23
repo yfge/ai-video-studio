@@ -62,6 +62,15 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
+
+class UserSummary(BaseModel):
+    id: int
+    username: str
+    full_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class UserAdminResponse(UserResponse):
     """管理员查看用户详细信息"""
     approved_at: Optional[datetime] = None

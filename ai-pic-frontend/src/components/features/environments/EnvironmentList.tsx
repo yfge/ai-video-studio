@@ -1,6 +1,7 @@
 'use client'
 
 import type { Environment } from '@/utils/api'
+import { resolveCreatorLabel } from '@/utils/creator'
 
 interface EnvironmentListProps {
   loading: boolean
@@ -33,6 +34,9 @@ export function EnvironmentList({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {list.map(env => (
             <div key={env.id} className="border rounded p-4 hover:shadow-sm space-y-3">
+              <div className="text-xs text-gray-500">
+                创建者：{resolveCreatorLabel(env.creator)}
+              </div>
               <div className="flex items-center justify-between mb-2">
                 <div className="font-semibold text-gray-900">{env.name}</div>
                 <div className="flex gap-2">

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Story } from "@/utils/api";
+import { resolveCreatorLabel } from "@/utils/creator";
 
 interface StoryDetailHeaderProps {
   story: Story;
@@ -23,7 +24,8 @@ export function StoryDetailHeader({ story, onBack }: StoryDetailHeaderProps) {
               </span>
             )}
             <span className="text-gray-500">
-              创建于 {new Date(story.created_at).toLocaleString()}
+              创建者：{resolveCreatorLabel(story.creator)} · 创建于{" "}
+              {new Date(story.created_at).toLocaleString()}
             </span>
           </div>
         </div>

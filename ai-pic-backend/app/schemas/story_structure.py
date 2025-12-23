@@ -5,6 +5,8 @@ from typing import Optional, List, Any
 
 from pydantic import BaseModel, Field
 
+from app.schemas.user import UserSummary
+
 
 class ORMModel(BaseModel):
     class Config:
@@ -264,6 +266,7 @@ class EnvironmentResponse(ORMModel):
     description: Optional[str]
     reference_images: Optional[list[str]]
     metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
+    creator: Optional[UserSummary] = Field(None, validation_alias="owner")
     created_at: datetime
     updated_at: datetime
 
@@ -278,6 +281,7 @@ class EnvironmentSummaryResponse(ORMModel):
     tags: Optional[list[str]]
     description: Optional[str]
     metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
+    creator: Optional[UserSummary] = Field(None, validation_alias="owner")
     created_at: datetime
     updated_at: datetime
 
