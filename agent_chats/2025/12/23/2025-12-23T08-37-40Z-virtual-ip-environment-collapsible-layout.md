@@ -46,4 +46,4 @@ summary: "Show editable extra virtual IP info with collapsible text and restyle 
 - None.
 
 ## Linked Commits
-- (pending)
+- 7c27e68 feat(frontend): add collapsible detail sections
