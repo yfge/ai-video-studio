@@ -5,11 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
   VirtualIPDetailHeader,
+  VirtualIPAdditionalInfoSection,
   VirtualIPInfoSection,
   VirtualIPImageManager,
   VoiceSettingsPanel,
 } from "@/components/features";
 import { useVirtualIPDetail } from "@/hooks/useVirtualIPDetail";
+import { CollapsibleText } from "@/components/ui";
 import { resolveCreatorLabel } from "@/utils/creator";
 
 export default function VirtualIPDetail() {
@@ -89,8 +91,8 @@ export default function VirtualIPDetail() {
             removeTag={removeTag}
           />
 
-          {virtualIP.background_story && (
-            <div className="p-8 border-b">
+          {(editing || virtualIP.background_story) && (
+            <div className="p-6 sm:p-8 border-b border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">背景故事</h3>
               {editing ? (
                 <textarea
@@ -101,11 +103,22 @@ export default function VirtualIPDetail() {
                 />
               ) : (
                 <div className="prose max-w-none">
-                  <p className="text-gray-700 whitespace-pre-wrap">{virtualIP.background_story}</p>
+                  {virtualIP.background_story ? (
+                    <CollapsibleText text={virtualIP.background_story} collapsedLines={4} />
+                  ) : (
+                    <p className="text-sm text-gray-400">未填写</p>
+                  )}
                 </div>
               )}
             </div>
           )}
+
+          <VirtualIPAdditionalInfoSection
+            virtualIP={virtualIP}
+            editing={editing}
+            editForm={editForm}
+            setEditForm={setEditForm}
+          />
 
           <VoiceSettingsPanel
             editing={editing}

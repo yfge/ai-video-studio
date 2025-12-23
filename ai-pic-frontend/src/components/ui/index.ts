@@ -5,3 +5,4 @@
  */
 
 export { Modal, type ModalProps } from './Modal'
+export { CollapsibleText } from './CollapsibleText'

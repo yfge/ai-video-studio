@@ -29,6 +29,11 @@ export interface EditFormState {
   description: string;
   tags: string[];
   background_story: string;
+  biography: string;
+  style_prompt: string;
+  style_reference_images: string[];
+  is_active: boolean;
+  is_public: boolean;
 }
 
 const buildDefaultVoiceSettings = (enums: VoiceEnums): VoiceConfig => {
@@ -68,6 +73,11 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
     description: "",
     tags: [],
     background_story: "",
+    biography: "",
+    style_prompt: "",
+    style_reference_images: [],
+    is_active: true,
+    is_public: false,
   });
 
   // Voice state
@@ -131,6 +141,11 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
           description: response.data.description || "",
           tags: response.data.tags || [],
           background_story: response.data.background_story || "",
+          biography: response.data.biography || "",
+          style_prompt: response.data.style_prompt || "",
+          style_reference_images: response.data.style_reference_images || [],
+          is_active: response.data.is_active ?? true,
+          is_public: response.data.is_public ?? false,
         });
         const incomingVoice = response.data.voice_config;
         setVoiceSettings((prev) => {

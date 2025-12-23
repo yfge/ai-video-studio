@@ -31,6 +31,7 @@ export {
 } from './script'
 export {
   VirtualIPDetailHeader,
+  VirtualIPAdditionalInfoSection,
   VirtualIPInfoSection,
   VoiceSettingsPanel,
 } from './virtual-ip-detail'

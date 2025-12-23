@@ -79,7 +79,7 @@ export function EnvironmentSidePanel({ envKey, onImageUploaded }: EnvironmentSid
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 space-y-4">
+    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 space-y-5">
       <div>
         <h3 className="text-lg font-semibold text-gray-900">上传参考图</h3>
         <p className="text-sm text-gray-500">支持常见图片格式，自动走 OSS 持久化。</p>
@@ -98,7 +98,7 @@ export function EnvironmentSidePanel({ envKey, onImageUploaded }: EnvironmentSid
         </button>
       </div>
 
-      <div className="border-t pt-3 space-y-3">
+      <div className="border-t border-gray-100 pt-4 space-y-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">AI 生成参考图</h3>
           <p className="text-sm text-gray-500">可选提示词，不填则按环境描述生成。</p>

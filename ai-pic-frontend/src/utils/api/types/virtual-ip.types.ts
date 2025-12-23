@@ -7,48 +7,46 @@ export interface VirtualIP {
   id: number;
   business_id: string;
   name: string;
-  gender?: string | null;
-  personality?: string | null;
-  background_story?: string | null;
-  avatar_url?: string | null;
+  description?: string | null;
   tags: string[];
-  metadata?: Record<string, unknown>;
-  voice_provider?: string | null;
-  voice_id?: string | null;
-  voice_type?: string | null;
+  background_story?: string | null;
+  biography?: string | null;
+  style_prompt?: string | null;
+  style_reference_images?: string[] | null;
   voice_config?: Record<string, unknown> | null;
+  is_active: boolean;
+  is_public: boolean;
+  default_avatar_url?: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string | null;
 }
 
 // Create virtual IP request
 export interface CreateVirtualIPRequest {
   name: string;
-  gender?: string;
-  personality?: string;
-  background_story?: string;
-  avatar_url?: string;
   tags?: string[];
-  metadata?: Record<string, unknown>;
-  voice_provider?: string;
-  voice_id?: string;
-  voice_type?: string;
+  description?: string;
+  background_story?: string;
+  biography?: string;
+  style_prompt?: string;
+  style_reference_images?: string[];
   voice_config?: Record<string, unknown>;
+  is_active?: boolean;
+  is_public?: boolean;
 }
 
 // Update virtual IP request
 export interface UpdateVirtualIPRequest {
   name?: string;
-  gender?: string;
-  personality?: string;
-  background_story?: string;
-  avatar_url?: string;
   tags?: string[];
-  metadata?: Record<string, unknown>;
-  voice_provider?: string;
-  voice_id?: string;
-  voice_type?: string;
+  description?: string;
+  background_story?: string;
+  biography?: string;
+  style_prompt?: string;
+  style_reference_images?: string[];
   voice_config?: Record<string, unknown>;
+  is_active?: boolean;
+  is_public?: boolean;
 }
 
 // AI-generated virtual IP creation request

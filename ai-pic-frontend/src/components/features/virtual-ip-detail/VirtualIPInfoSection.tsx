@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { CollapsibleText } from "@/components/ui";
 import type { VirtualIP } from "@/utils/api";
 import type { EditFormState } from "@/hooks/useVirtualIPDetail";
 
@@ -140,7 +141,13 @@ export function VirtualIPInfoSection({
           ) : (
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-2">{virtualIP.name}</h2>
-              {virtualIP.description && <p className="text-gray-600 mb-4">{virtualIP.description}</p>}
+              {virtualIP.description ? (
+                <div className="mb-4">
+                  <CollapsibleText text={virtualIP.description} collapsedLines={2} />
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 mb-4">暂无描述</p>
+              )}
               {virtualIP.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {virtualIP.tags.map((tag) => (
