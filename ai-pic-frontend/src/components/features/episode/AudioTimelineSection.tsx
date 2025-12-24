@@ -49,6 +49,9 @@ interface AudioTimelineSectionProps {
   onGenerateSceneDialogueAudio: () => void;
   onGenerateAudioTimeline: () => void;
   onGenerateStoryboardFromAudioTimeline: () => void;
+  onGenerateTimelinePipeline?: () => void;
+  pipelineBusy?: boolean;
+  pipelineTaskId?: number | null;
   onNavigateToTasks: () => void;
   onNavigateToScript: () => void;
 }
@@ -85,6 +88,9 @@ export function AudioTimelineSection({
   onGenerateSceneDialogueAudio,
   onGenerateAudioTimeline,
   onGenerateStoryboardFromAudioTimeline,
+  onGenerateTimelinePipeline,
+  pipelineBusy,
+  pipelineTaskId,
   onNavigateToTasks,
   onNavigateToScript,
 }: AudioTimelineSectionProps) {
@@ -347,13 +353,23 @@ export function AudioTimelineSection({
       </details>
 
       <div className="flex flex-wrap gap-2 mb-3 mt-4">
-        <button onClick={onGenerateSceneDialogueAudio} disabled={sceneAudioBusy || !selectedScriptId} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50">
+        {onGenerateTimelinePipeline && (
+          <button
+            onClick={onGenerateTimelinePipeline}
+            disabled={pipelineBusy || sceneAudioBusy || timelineBusy || storyboardBusy || !selectedScriptId}
+            className="bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 text-white px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 font-medium"
+          >
+            {pipelineBusy ? "生成中..." : "一键生成全部"}
+          </button>
+        )}
+        <span className="text-gray-300 self-center">|</span>
+        <button onClick={onGenerateSceneDialogueAudio} disabled={sceneAudioBusy || pipelineBusy || !selectedScriptId} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50">
           {sceneAudioBusy ? "生成中..." : "生成对白音轨"}
         </button>
-        <button onClick={onGenerateAudioTimeline} disabled={timelineBusy || !selectedScriptId} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        <button onClick={onGenerateAudioTimeline} disabled={timelineBusy || pipelineBusy || !selectedScriptId} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
           {timelineBusy ? "生成中..." : "生成时间轴"}
         </button>
-        <button onClick={onGenerateStoryboardFromAudioTimeline} disabled={storyboardBusy || !selectedScriptId} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50">
+        <button onClick={onGenerateStoryboardFromAudioTimeline} disabled={storyboardBusy || pipelineBusy || !selectedScriptId} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50">
           {storyboardBusy ? "生成中..." : "生成分镜帧占位"}
         </button>
       </div>
@@ -404,7 +420,15 @@ export function AudioTimelineSection({
         </label>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+        {pipelineTaskId && (
+          <div className="border rounded p-3 bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
+            <div className="text-sm font-medium text-gray-900">一键流水线</div>
+            <div className="text-xs text-gray-600 mt-1">
+              task_id: {pipelineTaskId} • 进行中...
+            </div>
+          </div>
+        )}
         <div className="border rounded p-3 bg-gray-50">
           <div className="text-sm font-medium text-gray-900">对白音轨任务</div>
           <div className="text-xs text-gray-600 mt-1">

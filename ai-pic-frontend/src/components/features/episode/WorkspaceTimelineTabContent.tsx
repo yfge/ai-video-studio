@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Episode, NormalizedScene, Script, Task } from "@/utils/api";
 import { scriptAPI } from "@/utils/api";
@@ -99,6 +99,8 @@ export function WorkspaceTimelineTabContent({
   showAlert,
 }: WorkspaceTimelineTabContentProps) {
   const router = useRouter();
+  const [pipelineBusy, setPipelineBusy] = useState(false);
+  const [pipelineTaskId, setPipelineTaskId] = useState<number | null>(null);
 
   const handleGenerateSceneDialogueAudio = useCallback(async () => {
     if (!selectedScriptId) {
@@ -173,6 +175,49 @@ export function WorkspaceTimelineTabContent({
     }
   }, [selectedScriptId, overwriteStoryboard, minPauseSeconds, setStoryboardBusy, setStoryboardTaskId, showAlert]);
 
+  const handleGenerateTimelinePipeline = useCallback(async () => {
+    if (!selectedScriptId) {
+      showAlert({ message: "请先选择一个剧本", variant: "warning" });
+      return;
+    }
+    try {
+      setPipelineBusy(true);
+      const res = await scriptAPI.generateTimelinePipelineAsync(selectedScriptId, {
+        tts_model: undefined,
+        timing_model: timingModel || undefined,
+        overwrite_audio: overwriteSceneAudio,
+        overwrite_timeline: overwriteTimeline,
+        overwrite_storyboard: overwriteStoryboard,
+        min_pause_seconds: minPauseSeconds,
+      });
+      if (res.success && res.data) {
+        setPipelineTaskId(res.data.task_id);
+        showAlert({
+          message: `一键流水线任务已创建（task_id=${res.data.task_id}）`,
+          variant: "info",
+        });
+      } else {
+        showAlert({
+          message: `创建一键流水线任务失败：${res.error || "未知错误"}`,
+          variant: "error",
+        });
+      }
+    } catch (error) {
+      console.error("创建一键流水线任务失败:", error);
+      showAlert({ message: "创建一键流水线任务失败", variant: "error" });
+    } finally {
+      setPipelineBusy(false);
+    }
+  }, [
+    selectedScriptId,
+    timingModel,
+    overwriteSceneAudio,
+    overwriteTimeline,
+    overwriteStoryboard,
+    minPauseSeconds,
+    showAlert,
+  ]);
+
   const handleNavigateToTasks = useCallback(() => {
     router.push("/tasks");
   }, [router]);
@@ -226,6 +271,9 @@ export function WorkspaceTimelineTabContent({
       onGenerateSceneDialogueAudio={handleGenerateSceneDialogueAudio}
       onGenerateAudioTimeline={handleGenerateAudioTimeline}
       onGenerateStoryboardFromAudioTimeline={handleGenerateStoryboardFromAudioTimeline}
+      onGenerateTimelinePipeline={handleGenerateTimelinePipeline}
+      pipelineBusy={pipelineBusy}
+      pipelineTaskId={pipelineTaskId}
       onNavigateToTasks={handleNavigateToTasks}
       onNavigateToScript={handleNavigateToScript}
     />

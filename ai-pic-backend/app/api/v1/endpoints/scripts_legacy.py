@@ -51,6 +51,7 @@ from app.services.task_worker import (
     storyboard_generate_task,
     storyboard_image_generate_task,
     storyboard_video_generate_task,
+    timeline_pipeline_generate_task,
 )
 from app.utils.json_utils import extract_json_block
 from app.utils.model_utils import infer_provider_from_model
@@ -3958,5 +3959,194 @@ def _process_script_audio_timeline_task(
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
             _update_task_progress(db, task, f"时间轴生成失败：{e}")
+    finally:
+        db.close()
+
+
+class TimelinePipelineGenerateRequest(BaseModel):
+    """一键生成时间轴流水线请求参数。"""
+
+    tts_model: str | None = Field(None, description="TTS 模型（默认 speech-2.6-hd）")
+    timing_model: str | None = Field(
+        None, description="时间轴计算 LLM 模型（默认使用系统默认模型）"
+    )
+    overwrite_audio: bool = Field(False, description="是否覆盖已有 scene 音频")
+    overwrite_timeline: bool = Field(False, description="是否覆盖已有时间轴")
+    overwrite_storyboard: bool = Field(False, description="是否覆盖已有分镜帧占位")
+    min_pause_seconds: float = Field(1.5, description="分镜帧占位最小停顿秒数")
+
+
+@router.post("/{script_id}/timeline-pipeline/generate-async")
+async def generate_timeline_pipeline_async(
+    script_id: int,
+    body: TimelinePipelineGenerateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """一键生成时间轴流水线（对白音轨 → 时间轴 → 分镜帧占位）。"""
+    script = (
+        db.query(Script)
+        .join(Episode, Script.episode_id == Episode.id)
+        .join(Story, Episode.story_id == Story.id)
+        .filter(Script.id == script_id)
+        .filter(
+            True
+            if current_user.is_admin or current_user.is_superuser
+            else Story.user_id == current_user.id
+        )
+        .first()
+    )
+    if not script:
+        raise HTTPException(status_code=404, detail="剧本不存在")
+
+    story = script.episode.story if script.episode else None
+    episode = script.episode if script.episode else None
+
+    params = body.model_dump()
+    params["script_id"] = script_id
+    t = Task(
+        title=_friendly_task_title("一键时间轴流水线", script, episode, story),
+        description="一键生成对白音轨、时间轴、分镜帧占位",
+        task_type="image_generation",
+        prompt=f"Timeline pipeline for script {script_id}",
+        parameters=json.dumps(params, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    timeline_pipeline_generate_task.delay(t.id, params, current_user.id)
+    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
+
+
+def _process_timeline_pipeline_task(
+    task_id: int, payload: dict, user_id: int
+) -> None:
+    """后台处理一键时间轴流水线任务（对白音轨 → 时间轴 → 分镜帧占位）。"""
+    import anyio
+
+    from app.core.database import SessionLocal
+    from app.models.user import User
+
+    db = SessionLocal()
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+
+        script_id = int(payload.get("script_id"))
+        overwrite_audio = bool(payload.get("overwrite_audio"))
+        overwrite_timeline = bool(payload.get("overwrite_timeline"))
+        overwrite_storyboard = bool(payload.get("overwrite_storyboard"))
+        tts_model = payload.get("tts_model") or "speech-2.6-hd"
+        timing_model = payload.get("timing_model")
+        min_pause_seconds = float(payload.get("min_pause_seconds") or 1.5)
+        min_pause_ms = max(0, int(round(min_pause_seconds * 1000)))
+
+        async def _run() -> None:
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                raise RuntimeError("user_not_found")
+
+            script = (
+                db.query(Script)
+                .join(Episode, Script.episode_id == Episode.id)
+                .join(Story, Episode.story_id == Story.id)
+                .filter(Script.id == script_id)
+                .filter(
+                    True
+                    if user.is_admin or user.is_superuser
+                    else Story.user_id == user.id
+                )
+                .first()
+            )
+            if not script:
+                raise RuntimeError("script_not_found")
+            episode = script.episode
+            if not episode:
+                raise RuntimeError("episode_not_found")
+            story = episode.story
+            if not story:
+                raise RuntimeError("story_not_found")
+
+            # Step 1: Generate dialogue audio for all scenes
+            _update_task_progress(db, task, "步骤 1/3：生成对白音轨…")
+            scenes = story_structure_svc.list_scenes_by_script(db, script_id)
+            scenes = sorted(scenes, key=_scene_number_sort_key)
+            if not scenes:
+                raise RuntimeError("no_scenes_found")
+
+            total = len(scenes)
+            skipped = 0
+            for idx, scene in enumerate(scenes, start=1):
+                if not overwrite_audio and _scene_has_dialogue_audio(scene, script_id):
+                    beat_count = (
+                        db.query(SceneBeat)
+                        .filter(SceneBeat.scene_id == scene.id)
+                        .count()
+                    )
+                    if beat_count > 0:
+                        skipped += 1
+                        _update_task_progress(
+                            db,
+                            task,
+                            f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
+                        )
+                        continue
+
+                _update_task_progress(
+                    db,
+                    task,
+                    f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
+                )
+                await generate_scene_dialogue_audio(
+                    db,
+                    story=story,
+                    episode=episode,
+                    script=script,
+                    scene=scene,
+                    tts_model=str(tts_model),
+                    overwrite_beats=True,
+                    timing_model=timing_model,
+                )
+
+            # Step 2: Generate episode audio timeline
+            _update_task_progress(db, task, "步骤 2/3：生成时间轴…")
+            if not overwrite_timeline and _episode_has_audio_timeline(
+                episode, script_id
+            ):
+                _update_task_progress(db, task, "步骤 2/3：时间轴已存在，跳过")
+            else:
+                await generate_episode_audio_timeline(
+                    db,
+                    story=story,
+                    episode=episode,
+                    script=script,
+                )
+
+            # Step 3: Generate storyboard frame slots from timeline
+            _update_task_progress(db, task, "步骤 3/3：生成分镜帧占位…")
+            generate_storyboard_from_episode_audio_timeline(
+                db,
+                script=script,
+                episode=episode,
+                overwrite_existing=overwrite_storyboard,
+                min_pause_duration_ms=min_pause_ms,
+            )
+
+        anyio.run(_run)
+
+        if task:
+            task.status = TaskStatus.COMPLETED
+            task.result_file_path = f"script:{script_id}:timeline_pipeline"
+            _update_task_progress(db, task, "一键时间轴流水线完成")
+    except Exception as e:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            _update_task_progress(db, task, f"流水线失败：{e}")
     finally:
         db.close()

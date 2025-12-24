@@ -224,6 +224,29 @@ export async function generateStoryboardFromAudioTimelineAsync(
 }
 
 /**
+ * Generate timeline pipeline (dialogue audio -> timeline -> storyboard) asynchronously.
+ */
+export async function generateTimelinePipelineAsync(
+  scriptId: number | string,
+  payload?: {
+    tts_model?: string;
+    timing_model?: string;
+    overwrite_audio?: boolean;
+    overwrite_timeline?: boolean;
+    overwrite_storyboard?: boolean;
+    min_pause_seconds?: number;
+  }
+): Promise<ApiResponse<{ task_id: number; status: string }>> {
+  return httpClient<{ task_id: number; status: string }>(
+    scriptPath(scriptId, '/timeline-pipeline/generate-async'),
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    }
+  );
+}
+
+/**
  * Get storyboard for a script.
  */
 export async function getStoryboard(
@@ -404,6 +427,7 @@ export const scriptAPI = {
   generateSceneDialogueAudioAsync,
   generateAudioTimelineAsync,
   generateStoryboardFromAudioTimelineAsync,
+  generateTimelinePipelineAsync,
   getStoryboard,
   previewStoryboardPrompt,
   generateStoryboard,
