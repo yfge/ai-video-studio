@@ -314,11 +314,15 @@ export function AudioTimelineSection({
             className="px-2 py-1 border border-gray-300 rounded min-w-[180px]"
           >
             <option value="">自动（默认模型）</option>
-            {availableModels.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name || model.id}
-              </option>
-            ))}
+            {availableModels.map((model) => {
+              // Use provider:model_id format for backend routing
+              const fullModelId = model.model_id || `${model.provider}:${model.id}`;
+              return (
+                <option key={fullModelId} value={fullModelId}>
+                  {model.name || model.id}
+                </option>
+              );
+            })}
           </select>
         </label>
       </div>
