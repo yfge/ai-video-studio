@@ -216,15 +216,57 @@ Added explicit dialogue requirements (lines 113-124):
 - `REACT: Episode duration accepted` - When validation passes
 - `REACT: Episode generation complete` - Summary with total attempts
 
+### Phase 7: Chrome Browser E2E Validation (2025-12-25)
+
+**Test Scenario:** Full pipeline verification using Chrome DevTools MCP
+
+**Test Steps:**
+1. Logged in with test account (geyunfei / Gyf@845261)
+2. Navigated to Episode 56 page (http://localhost:8089/episodes/56)
+3. Selected Script 38 (id=38) from dropdown
+4. Verified timeline display and audio playback
+
+**Verification Results:**
+| Component | Value | Status |
+|-----------|-------|--------|
+| Episode Plan | 3 分钟 (180s) | Baseline |
+| Timeline Window | 00:00.000 - 03:30.853 | Displayed |
+| Timeline Duration | **210.9s** (117.2% of target) | Within tolerance |
+| Timeline Beats | 15 | Complete |
+| Timeline Version | 4 | Latest |
+| Scene Audio Total | 206.6s | All 5 scenes |
+| Episode Audio | Playing correctly | Functional |
+
+**Scene Audio Breakdown:**
+- Scene 1 (INT. 老拐的汽车): 24.229s
+- Scene 2 (EXT. 城市边缘夜市): 24.666s
+- Scene 3 (EXT. 夜市大排档区): 48.42s
+- Scene 4 (EXT. 夜市僻静角落): 52.646s
+- Scene 5 (EXT. 夜市后巷): 56.647s
+
+**Scripts Comparison in UI:**
+| Script | Word Count | Character Count | Timeline |
+|--------|------------|-----------------|----------|
+| Script 35 (id=35) | 221 | 3,173 | 91.6s (baseline) |
+| Script 36 (id=36) | 78 | 971 | 36.4s (failed) |
+| Script 38 (id=38) | 42 | 2,129 | **210.9s** (enhanced) |
+
+**Conclusion:**
+- Global duration alignment verified end-to-end in browser
+- Audio playback functional
+- Timeline visualization correct
+- Duration constraints working as designed (117.2% of 180s target)
+
 ## Next Steps
 
 1. ~~Phase 4: Full end-to-end testing with real episode generation~~ (Completed)
 2. ~~Phase 5: Enhanced dialogue prompt testing~~ (Completed - 2.3x improvement verified)
 3. ~~Generate timeline for Script 38 to verify actual audio duration~~ (Completed - 210.9s)
 4. ~~Phase 6: REACT rejection mechanism~~ (Completed - implemented)
-5. Test REACT mechanism with new episode generation
-6. Fix Volcengine API configuration (model endpoints need updating)
-7. Consider adding database column for `estimated_duration_seconds` on Scene model
+5. ~~Phase 7: Chrome E2E validation~~ (Completed - audio/timeline verified)
+6. Test REACT mechanism with new episode generation
+7. Fix Volcengine API configuration (model endpoints need updating)
+8. Consider adding database column for `estimated_duration_seconds` on Scene model
 
 ## Linked Commits
 
