@@ -41,6 +41,7 @@ class PromptTemplate(Enum):
     DIALOGUE_WRITING = "dialogue_writing"
     SCRIPT_SCENES = "script_scenes"
     SCRIPT_DIALOGUES = "script_dialogues"
+    SCRIPT_REVIEW = "script_review"  # 剧本审核（对白/舞台指示分类校正）
     SCENE_DESCRIPTION = "scene_description"  # 场景描述
 
     # 分镜相关
@@ -137,6 +138,7 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.DIALOGUE_WRITING: PromptCategory.SCRIPT,
     PromptTemplate.SCRIPT_SCENES: PromptCategory.SCRIPT,
     PromptTemplate.SCRIPT_DIALOGUES: PromptCategory.SCRIPT,
+    PromptTemplate.SCRIPT_REVIEW: PromptCategory.SCRIPT,
     PromptTemplate.SCENE_DESCRIPTION: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_GENERATION: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_SHOT: PromptCategory.SCRIPT,

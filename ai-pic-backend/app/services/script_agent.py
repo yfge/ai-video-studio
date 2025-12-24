@@ -24,6 +24,7 @@ class ScriptLangGraphAgent:
     LangGraph-based pipeline to generate scripts with separate agents:
     - scene_plan: produce structured scenes list
     - dialogue: expand scenes with dialogues and stage directions
+    - review: check and fix misclassified dialogues/stage_directions
     - assemble: merge + validate ScriptModel
     """
 
@@ -210,6 +211,151 @@ class ScriptLangGraphAgent:
                 "model_used": state.get("model_used") or resp.model,
             }
 
+        async def review_classification(state: Dict[str, Any]) -> Dict[str, Any]:
+            """Review and fix misclassified dialogues/stage_directions."""
+            dialogues = state.get("dialogues") or []
+            stage_dir = state.get("stage_directions") or []
+            scenes = state.get("scenes") or []
+
+            # Extract character names from story for context
+            characters = []
+            if story.get("characters"):
+                for char in story["characters"]:
+                    if isinstance(char, dict):
+                        characters.append(char.get("name", ""))
+                    elif isinstance(char, str):
+                        characters.append(char)
+
+            prompt = prompt_manager.render_prompt(
+                PromptTemplate.SCRIPT_REVIEW.value,
+                {
+                    "dialogues": dialogues,
+                    "stage_directions": stage_dir,
+                    "characters": characters,
+                },
+            )
+            resp = await self.service.ai_manager.generate_text(
+                prompt=prompt,
+                temperature=0.3,  # Low temperature for accurate review
+                model=model,
+                prefer_provider=prefer_provider,
+                json_schema={
+                    "name": "script_review",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "dialogues": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "scene_number": {
+                                            "anyOf": [
+                                                {"type": "integer"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "character": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "content": {"type": "string"},
+                                        "emotion": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                    },
+                                },
+                            },
+                            "stage_directions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "scene_number": {
+                                            "anyOf": [
+                                                {"type": "integer"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "timing": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                        "content": {"type": "string"},
+                                        "type": {
+                                            "anyOf": [
+                                                {"type": "string"},
+                                                {"type": "null"},
+                                            ]
+                                        },
+                                    },
+                                },
+                            },
+                            "corrections": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "original_type": {"type": "string"},
+                                        "corrected_type": {"type": "string"},
+                                        "content": {"type": "string"},
+                                        "reason": {"type": "string"},
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                system_prompt="你是专业的剧本审核专家，请严格按 JSON 返回修正后的对白和舞台指示。",
+            )
+            if not resp.success:
+                # If review fails, keep original data
+                self.logger.warning("Review classification failed, keeping original")
+                reasoning = state.get("reasoning", []) + ["review_skipped"]
+                return {
+                    **state,
+                    "reasoning": reasoning,
+                }
+
+            content = resp.data if isinstance(resp.data, str) else str(resp.data)
+            parsed = extract_json_block(content)
+            if not parsed or not isinstance(parsed, dict):
+                self.logger.warning("Review returned invalid JSON, keeping original")
+                reasoning = state.get("reasoning", []) + ["review_invalid_json"]
+                return {
+                    **state,
+                    "reasoning": reasoning,
+                }
+
+            reviewed_dialogues = parsed.get("dialogues") or dialogues
+            reviewed_stage_dir = parsed.get("stage_directions") or stage_dir
+            corrections = parsed.get("corrections") or []
+
+            if corrections:
+                self.logger.info(
+                    f"Review made {len(corrections)} corrections: "
+                    f"{[c.get('content', '')[:30] for c in corrections]}"
+                )
+
+            reasoning = state.get("reasoning", []) + [
+                f"review_ok({len(corrections)} corrections)"
+            ]
+            return {
+                "scenes": scenes,
+                "dialogues": reviewed_dialogues,
+                "stage_directions": reviewed_stage_dir,
+                "reasoning": reasoning,
+                "provider": state.get("provider"),
+                "model_used": state.get("model_used"),
+            }
+
         def assemble(state: Dict[str, Any]) -> Dict[str, Any]:
             scenes = state.get("scenes") or []
             dialogues = state.get("dialogues") or []
@@ -244,9 +390,11 @@ class ScriptLangGraphAgent:
 
         graph.add_node("scene_plan", plan_scenes)
         graph.add_node("dialogue", write_dialogues)
+        graph.add_node("review", review_classification)
         graph.add_node("assemble", assemble)
         graph.add_edge("scene_plan", "dialogue")
-        graph.add_edge("dialogue", "assemble")
+        graph.add_edge("dialogue", "review")
+        graph.add_edge("review", "assemble")
         graph.add_edge("assemble", END)
         graph.set_entry_point("scene_plan")
 
