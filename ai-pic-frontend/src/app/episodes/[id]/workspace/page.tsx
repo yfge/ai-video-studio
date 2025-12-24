@@ -7,6 +7,7 @@ import {
   EpisodeWorkspaceHeader,
   WorkspaceScriptTabContent,
   WorkspaceTimelineTabContent,
+  WorkspaceStoryboardTabContent,
   type WorkflowStatus,
 } from "@/components/features/episode";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
@@ -265,58 +266,18 @@ export default function EpisodeWorkspacePage() {
             />
           )}
           {activeTab === "storyboard" && (
-            <StoryboardTabContent
+            <WorkspaceStoryboardTabContent
               episodeKey={episodeKey}
+              scripts={scripts}
+              selectedScriptId={selectedScriptId}
+              selectedScript={selectedScript}
+              onSelectScript={setSelectedScriptId}
               hasStoryboard={workflowStatus.storyboard === "ready"}
-              onGoToStoryboard={handleGenerateStoryboard}
+              showAlert={showAlert}
             />
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// Storyboard tab content - keeping as placeholder until storyboard page is refactored
-interface StoryboardTabContentProps {
-  episodeKey: string;
-  hasStoryboard: boolean;
-  onGoToStoryboard: () => void;
-}
-
-function StoryboardTabContent({
-  hasStoryboard,
-  onGoToStoryboard,
-}: StoryboardTabContentProps) {
-  if (!hasStoryboard) {
-    return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">暂无分镜</h3>
-        <p className="text-gray-500 mb-4">请先生成分镜帧占位</p>
-        <button
-          onClick={onGoToStoryboard}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
-        >
-          前往分镜管理
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900">分镜内容</h3>
-        <button
-          onClick={onGoToStoryboard}
-          className="text-purple-600 hover:text-purple-700 text-sm"
-        >
-          进入分镜管理 →
-        </button>
-      </div>
-      <p className="text-gray-500 text-sm">
-        分镜已生成。点击上方按钮管理分镜帧、生成图像和视频。
-      </p>
     </div>
   );
 }
