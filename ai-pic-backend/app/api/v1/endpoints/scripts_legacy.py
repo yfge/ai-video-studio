@@ -3442,8 +3442,13 @@ async def _regenerate_script_instance(
     script: Script,
     episode: Episode,
     story: Story,
+    override_model: Optional[str] = None,
 ) -> Script:
-    """复用的剧本重新生成逻辑，供业务ID/主键路由调用。"""
+    """复用的剧本重新生成逻辑，供业务ID/主键路由调用。
+
+    Args:
+        override_model: 可选，覆盖原有模型设置，格式为 "provider:model_id" 或 "model_id"
+    """
     previous_episode_summaries = _collect_previous_episode_summaries(
         db, story.id, episode.episode_number
     )
@@ -3458,7 +3463,8 @@ async def _regenerate_script_instance(
 
     original_params = script.generation_params or {}
     prefer_provider = None
-    model_id = original_params.get("model")
+    # 如果提供了 override_model，使用它；否则使用原有模型
+    model_id = override_model if override_model else original_params.get("model")
     if isinstance(model_id, str) and ":" in model_id:
         prefer_provider, model_id = model_id.split(":", 1)
 
@@ -3550,13 +3556,23 @@ async def _regenerate_script_instance(
     return script
 
 
+class ScriptRegenerateRequest(BaseModel):
+    """剧本重新生成请求参数"""
+    model: Optional[str] = Field(None, description="模型ID，格式为 provider:model_id")
+
+
 @router.post("/{script_id}/regenerate", response_model=ScriptResponse)
 async def regenerate_script(
     script_id: int,
+    request: Optional[ScriptRegenerateRequest] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """重新生成剧本内容"""
+    """重新生成剧本内容
+
+    可选参数:
+    - model: 指定使用的模型，格式为 "provider:model_id"，不传则使用原有模型
+    """
     script = _get_script_by_identifier(db, script_id, None, current_user)
 
     episode = script.episode
@@ -3567,8 +3583,9 @@ async def regenerate_script(
     if not story or getattr(story, "is_deleted", False):
         raise HTTPException(status_code=404, detail="故事不存在")
 
+    override_model = request.model if request else None
     regenerated = await _regenerate_script_instance(
-        db=db, script=script, episode=episode, story=story
+        db=db, script=script, episode=episode, story=story, override_model=override_model
     )
     return ScriptResponse.from_orm(regenerated)
 
@@ -3576,10 +3593,15 @@ async def regenerate_script(
 @router.post("/business/{script_business_id}/regenerate", response_model=ScriptResponse)
 async def regenerate_script_by_business_id(
     script_business_id: str,
+    request: Optional[ScriptRegenerateRequest] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """按 business_id 重新生成剧本内容"""
+    """按 business_id 重新生成剧本内容
+
+    可选参数:
+    - model: 指定使用的模型，格式为 "provider:model_id"，不传则使用原有模型
+    """
     script = _get_script_by_identifier(db, None, script_business_id, current_user)
     episode = script.episode
     if not episode or getattr(episode, "is_deleted", False):
@@ -3588,8 +3610,9 @@ async def regenerate_script_by_business_id(
     if not story or getattr(story, "is_deleted", False):
         raise HTTPException(status_code=404, detail="故事不存在")
 
+    override_model = request.model if request else None
     regenerated = await _regenerate_script_instance(
-        db=db, script=script, episode=episode, story=story
+        db=db, script=script, episode=episode, story=story, override_model=override_model
     )
     return ScriptResponse.from_orm(regenerated)
 

@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import {
   EpisodeWorkspaceHeader,
+  WorkspaceOverviewTabContent,
   WorkspaceScriptTabContent,
   WorkspaceTimelineTabContent,
   WorkspaceStoryboardTabContent,
@@ -14,7 +15,7 @@ import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
 import { scriptAPI } from "@/utils/api";
 
-type TabKey = "script" | "timeline" | "storyboard";
+type TabKey = "overview" | "script" | "timeline" | "storyboard";
 
 export default function EpisodeWorkspacePage() {
   const params = useParams();
@@ -23,8 +24,8 @@ export default function EpisodeWorkspacePage() {
   const episodeKey = params?.id?.toString() || "";
   const { showAlert } = useAlertModal();
 
-  // Get initial tab from URL or default to "script"
-  const initialTab = (searchParams.get("tab") as TabKey) || "script";
+  // Get initial tab from URL or default to "overview"
+  const initialTab = (searchParams.get("tab") as TabKey) || "overview";
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
   // Use the full episode detail hook for all state
@@ -154,15 +155,18 @@ export default function EpisodeWorkspacePage() {
   // State for script regeneration
   const [regenerating, setRegenerating] = useState(false);
 
-  // Handle script regeneration
-  const handleRegenerateScript = useCallback(async () => {
+  // Handle script regeneration with optional model override
+  const handleRegenerateScript = useCallback(async (model?: string) => {
     if (!mainScript?.id) {
       showAlert({ message: "没有可重新生成的剧本", variant: "warning" });
       return;
     }
     try {
       setRegenerating(true);
-      const res = await scriptAPI.regenerateScript(mainScript.id);
+      const res = await scriptAPI.regenerateScript(
+        mainScript.id,
+        model ? { model } : undefined
+      );
       if (res.success && res.data) {
         // Update the script in the list
         setScripts((prev) =>
@@ -216,6 +220,9 @@ export default function EpisodeWorkspacePage() {
 
         {/* Tab Content */}
         <div className="mt-6">
+          {activeTab === "overview" && episode && (
+            <WorkspaceOverviewTabContent episode={episode} />
+          )}
           {activeTab === "script" && (
             <WorkspaceScriptTabContent
               script={mainScript}

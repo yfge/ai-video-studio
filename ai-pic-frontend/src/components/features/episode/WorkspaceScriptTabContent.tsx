@@ -7,6 +7,7 @@ import { ScriptOverviewTab, ScriptScenesTab, ScriptGenerationForm } from "@/comp
 import type { SceneNode } from "@/components/features";
 import { isAdmin } from "@/utils/auth";
 import type { User } from "@/utils/api";
+import { ModelSelector } from "@/components/shared/ModelSelector";
 
 type ScriptScene = {
   scene_number?: number | string;
@@ -76,7 +77,7 @@ interface WorkspaceScriptTabContentProps {
   generating: boolean;
   onGenerate: () => void;
   // Regeneration
-  onRegenerateScript?: () => void;
+  onRegenerateScript?: (model?: string) => void;
   regenerating?: boolean;
 }
 
@@ -105,6 +106,9 @@ export function WorkspaceScriptTabContent({
   const [structureError, setStructureError] = useState<string | null>(null);
   const [showStructureEditor, setShowStructureEditor] = useState(false);
   const [focusedScene, setFocusedScene] = useState<number | null>(null);
+  // Regeneration modal state
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [regenerateModel, setRegenerateModel] = useState<string>("");
 
   // Load normalized scenes
   useEffect(() => {
@@ -297,7 +301,7 @@ export function WorkspaceScriptTabContent({
         {/* Action buttons */}
         {onRegenerateScript && (
           <button
-            onClick={onRegenerateScript}
+            onClick={() => setShowRegenerateModal(true)}
             disabled={regenerating}
             className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
               regenerating
@@ -324,6 +328,49 @@ export function WorkspaceScriptTabContent({
           </button>
         )}
       </div>
+
+      {/* Regeneration Modal */}
+      {showRegenerateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">重新生成剧本</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              重新生成将使用AI创建新的剧本内容，并应用最新的分类优化。
+            </p>
+            <ModelSelector
+              value={regenerateModel}
+              onChange={setRegenerateModel}
+              label="选择模型"
+              helperText="留空使用原有模型设置"
+              allowAuto={true}
+              autoLabel="使用原有模型"
+              modelType="text"
+            />
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowRegenerateModal(false);
+                  setRegenerateModel("");
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  setShowRegenerateModal(false);
+                  onRegenerateScript(regenerateModel || undefined);
+                  setRegenerateModel("");
+                }}
+                disabled={regenerating}
+                className="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 disabled:bg-gray-300"
+              >
+                确认重新生成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeSubTab === "overview" && (
         <ScriptOverviewTab

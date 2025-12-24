@@ -1834,11 +1834,13 @@ class ApiClient {
     return this.request<Script[]>(endpoint);
   }
 
-  async regenerateScript(idOrBusinessId: number | string) {
+  async regenerateScript(idOrBusinessId: number | string, options?: { model?: string }) {
     return this.request<Script>(
       this.scriptPath(idOrBusinessId, "/regenerate"),
       {
         method: "POST",
+        body: options ? JSON.stringify(options) : undefined,
+        headers: options ? { "Content-Type": "application/json" } : undefined,
       },
     );
   }
