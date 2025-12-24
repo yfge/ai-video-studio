@@ -1917,6 +1917,26 @@ class ApiClient {
     );
   }
 
+  async generateTimelinePipelineAsync(
+    scriptId: number | string,
+    payload?: {
+      tts_model?: string;
+      timing_model?: string;
+      overwrite_audio?: boolean;
+      overwrite_timeline?: boolean;
+      overwrite_storyboard?: boolean;
+      min_pause_seconds?: number;
+    },
+  ) {
+    return this.request<{ task_id: number; status: string }>(
+      this.scriptPath(scriptId, "/timeline-pipeline/generate-async"),
+      {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      },
+    );
+  }
+
   // 分镜相关
   async getStoryboard(scriptId: number | string) {
     return this.request<StoryboardPayload>(
@@ -2379,6 +2399,8 @@ export const scriptAPI = {
     apiClient.generateAudioTimelineAsync.bind(apiClient),
   generateStoryboardFromAudioTimelineAsync:
     apiClient.generateStoryboardFromAudioTimelineAsync.bind(apiClient),
+  generateTimelinePipelineAsync:
+    apiClient.generateTimelinePipelineAsync.bind(apiClient),
   // Storyboard
   getStoryboard: apiClient.getStoryboard.bind(apiClient),
   previewStoryboardPrompt: apiClient.previewStoryboardPrompt.bind(apiClient),
