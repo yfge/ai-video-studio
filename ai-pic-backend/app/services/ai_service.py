@@ -849,6 +849,60 @@ class AIService:
             "usage": {},
         }
 
+    def _extract_dialogues_from_summary(
+        self,
+        summary: str,
+        scene_number: int,
+        fallback_characters: List[str],
+    ) -> List[Dict[str, Any]]:
+        """从场景 summary 中提取角色对白（角色名：'对白内容'）。
+
+        场景 summary 应包含类似：
+          老拐：'撑住，我们快到了。' 阿盖儿：'外面……好亮……'
+        的格式。如果无法提取到对白，返回空列表。
+        """
+        import re
+
+        dialogues: List[Dict[str, Any]] = []
+
+        # 匹配模式：2-4字符角色名 + 冒号 + 引号对白
+        # 要求角色名前面是句子边界（句号/逗号/空格/开头）
+        patterns = [
+            r"(?:^|[。，；\s])([^\s：:。，；]{2,4})[：:]\s*'([^']+)'",  # 中文单引号
+            r'(?:^|[。，；\s])([^\s：:。，；]{2,4})[：:]\s*"([^"]+)"',  # 中文双引号
+            r"(?:^|[。，；\s])([^\s：:。，；]{2,4})[：:]\s*'([^']+)'",  # 英文单引号
+            r'(?:^|[。，；\s])([^\s：:。，；]{2,4})[：:]\s*"([^"]+)"',  # 英文双引号
+        ]
+
+        seen_contents: set = set()  # 去重
+        known_chars = set(fallback_characters) if fallback_characters else set()
+
+        for pattern in patterns:
+            for match in re.finditer(pattern, summary):
+                character = match.group(1).strip()
+                content = match.group(2).strip()
+                if not content:
+                    continue
+                # 跳过重复对白
+                if content in seen_contents:
+                    continue
+                seen_contents.add(content)
+                # 优先使用已知角色名
+                resolved_char = character
+                for known in known_chars:
+                    if known in character or character in known:
+                        resolved_char = known
+                        break
+                dialogues.append(
+                    {
+                        "scene_number": scene_number,
+                        "character": resolved_char,
+                        "content": content,
+                    }
+                )
+
+        return dialogues
+
     async def _generate_mock_script(
         self,
         episode: Dict[str, Any],
@@ -860,7 +914,11 @@ class AIService:
         additional_requirements: Optional[str],
         style_preferences: Optional[List[str]],
     ) -> Dict[str, Any]:
-        """生成模拟剧本内容，保证无外部模型时的回退体验"""
+        """生成模拟剧本内容，保证无外部模型时的回退体验。
+
+        注意：此方法会尝试从场景 summary 中提取真实对白，
+        而不是生成假的描述性对白。如果无法提取，返回空对白列表。
+        """
         await asyncio.sleep(1)
 
         # 优先使用已生成的场景，保持与剧集一致；否则退回 plot_points
@@ -932,13 +990,11 @@ class AIService:
                 }
             )
 
-            dialogues.append(
-                {
-                    "scene_number": idx,
-                    "character": focus_characters[0] if focus_characters else "旁白",
-                    "content": f"（{dialogue_style}）我们正在面对：{description}",
-                }
+            # 从场景 summary 中提取真实对白，而不是生成假的描述性对白
+            extracted_dialogues = self._extract_dialogues_from_summary(
+                description, idx, focus_characters
             )
+            dialogues.extend(extracted_dialogues)
 
             stage_directions.append(
                 {
