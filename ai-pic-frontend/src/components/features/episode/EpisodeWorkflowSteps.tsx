@@ -2,7 +2,7 @@
 
 export type WorkflowStepStatus = "pending" | "ready" | "generating";
 
-interface WorkflowStep {
+export interface WorkflowStep {
   key: string;
   label: string;
   description: string;

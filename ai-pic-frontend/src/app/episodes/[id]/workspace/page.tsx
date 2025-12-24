@@ -5,8 +5,10 @@ import { useCallback, useMemo, useState } from "react";
 
 import {
   EpisodeWorkspaceHeader,
+  WorkspaceScriptTabContent,
+  WorkspaceTimelineTabContent,
   type WorkflowStatus,
-} from "@/components/features/episode/EpisodeWorkspaceHeader";
+} from "@/components/features/episode";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
 
@@ -23,27 +25,63 @@ export default function EpisodeWorkspacePage() {
   const initialTab = (searchParams.get("tab") as TabKey) || "script";
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
-  // Use the existing episode detail hook
-  const { episode, scripts, loading } = useEpisodeDetail({ episodeKey, showAlert });
+  // Use the full episode detail hook for all state
+  const state = useEpisodeDetail({ episodeKey, showAlert });
+  const {
+    episode,
+    scripts,
+    loading,
+    selectedScript,
+    selectedScriptId,
+    setSelectedScriptId,
+    normalizedScenes,
+    normalizedScenesLoading,
+    normalizedScenesError,
+    episodeMeta,
+    selectedAudioTimeline,
+    selectedStoryboard,
+    overwriteSceneAudio,
+    setOverwriteSceneAudio,
+    overwriteTimeline,
+    setOverwriteTimeline,
+    overwriteStoryboard,
+    setOverwriteStoryboard,
+    minPauseSeconds,
+    setMinPauseSeconds,
+    timingModel,
+    setTimingModel,
+    sceneAudioBusy,
+    setSceneAudioBusy,
+    timelineBusy,
+    setTimelineBusy,
+    storyboardBusy,
+    setStoryboardBusy,
+    sceneAudioTaskId,
+    setSceneAudioTaskId,
+    timelineTaskId,
+    setTimelineTaskId,
+    storyboardTaskId,
+    setStoryboardTaskId,
+    sceneAudioTask,
+    timelineTask,
+    storyboardTask,
+  } = state;
 
   // Get the first/main script
-  const mainScript = scripts?.[0] ?? null;
+  const mainScript = selectedScript ?? scripts?.[0] ?? null;
 
   // Calculate workflow status based on data
   const workflowStatus: WorkflowStatus = useMemo(() => {
     const hasScript = scripts && scripts.length > 0;
-    const episodeMeta = episode?.metadata as Record<string, unknown> | undefined;
-    const extraMeta = episodeMeta?.extra_metadata as Record<string, unknown> | undefined;
-    const hasTimeline = Boolean(extraMeta?.audio_timeline);
-    const scriptMeta = mainScript?.metadata as Record<string, unknown> | undefined;
-    const hasStoryboard = Boolean(scriptMeta?.storyboard);
+    const hasTimeline = Boolean(selectedAudioTimeline);
+    const hasStoryboard = Boolean(selectedStoryboard);
 
     return {
       script: hasScript ? "ready" : "pending",
       timeline: hasTimeline ? "ready" : "pending",
       storyboard: hasStoryboard ? "ready" : "pending",
     };
-  }, [episode, scripts, mainScript]);
+  }, [scripts, selectedAudioTimeline, selectedStoryboard]);
 
   // Update URL when tab changes
   const handleTabChange = useCallback(
@@ -115,17 +153,51 @@ export default function EpisodeWorkspacePage() {
         {/* Tab Content */}
         <div className="mt-6">
           {activeTab === "script" && (
-            <ScriptTabContent
-              episodeKey={episodeKey}
+            <WorkspaceScriptTabContent
               script={mainScript}
               onGenerateScript={handleGenerateScript}
             />
           )}
-          {activeTab === "timeline" && (
-            <TimelineTabContent
+          {activeTab === "timeline" && episode && (
+            <WorkspaceTimelineTabContent
               episodeKey={episodeKey}
-              hasTimeline={workflowStatus.timeline === "ready"}
-              onGenerateTimeline={handleGenerateTimeline}
+              episode={episode}
+              scripts={scripts}
+              selectedScriptId={selectedScriptId}
+              selectedScript={selectedScript}
+              onSelectScript={setSelectedScriptId}
+              episodeMeta={episodeMeta}
+              selectedAudioTimeline={selectedAudioTimeline}
+              selectedStoryboard={selectedStoryboard}
+              normalizedScenes={normalizedScenes}
+              normalizedScenesLoading={normalizedScenesLoading}
+              normalizedScenesError={normalizedScenesError}
+              sceneAudioTaskId={sceneAudioTaskId}
+              timelineTaskId={timelineTaskId}
+              storyboardTaskId={storyboardTaskId}
+              sceneAudioTask={sceneAudioTask}
+              timelineTask={timelineTask}
+              storyboardTask={storyboardTask}
+              sceneAudioBusy={sceneAudioBusy}
+              timelineBusy={timelineBusy}
+              storyboardBusy={storyboardBusy}
+              setSceneAudioBusy={setSceneAudioBusy}
+              setTimelineBusy={setTimelineBusy}
+              setStoryboardBusy={setStoryboardBusy}
+              setSceneAudioTaskId={setSceneAudioTaskId}
+              setTimelineTaskId={setTimelineTaskId}
+              setStoryboardTaskId={setStoryboardTaskId}
+              overwriteSceneAudio={overwriteSceneAudio}
+              setOverwriteSceneAudio={setOverwriteSceneAudio}
+              overwriteTimeline={overwriteTimeline}
+              setOverwriteTimeline={setOverwriteTimeline}
+              overwriteStoryboard={overwriteStoryboard}
+              setOverwriteStoryboard={setOverwriteStoryboard}
+              minPauseSeconds={minPauseSeconds}
+              setMinPauseSeconds={setMinPauseSeconds}
+              timingModel={timingModel}
+              setTimingModel={setTimingModel}
+              showAlert={showAlert}
             />
           )}
           {activeTab === "storyboard" && (
@@ -141,98 +213,7 @@ export default function EpisodeWorkspacePage() {
   );
 }
 
-// Placeholder components for tab content
-// These will be enhanced in Phase 4
-
-interface ScriptTabContentProps {
-  episodeKey: string;
-  script: unknown;
-  onGenerateScript: () => void;
-}
-
-function ScriptTabContent({ script, onGenerateScript }: ScriptTabContentProps) {
-  const router = useRouter();
-
-  if (!script) {
-    return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">暂无剧本</h3>
-        <p className="text-gray-500 mb-4">请先生成剧本以继续工作流</p>
-        <button
-          onClick={onGenerateScript}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          生成剧本
-        </button>
-      </div>
-    );
-  }
-
-  const scriptData = script as { business_id?: string };
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900">剧本内容</h3>
-        <button
-          onClick={() => router.push(`/scripts/${scriptData.business_id}`)}
-          className="text-blue-600 hover:text-blue-700 text-sm"
-        >
-          查看完整剧本 →
-        </button>
-      </div>
-      <p className="text-gray-500 text-sm">
-        剧本已生成。点击上方按钮查看完整内容和场景详情。
-      </p>
-    </div>
-  );
-}
-
-interface TimelineTabContentProps {
-  episodeKey: string;
-  hasTimeline: boolean;
-  onGenerateTimeline: () => void;
-}
-
-function TimelineTabContent({
-  episodeKey,
-  hasTimeline,
-  onGenerateTimeline,
-}: TimelineTabContentProps) {
-  const router = useRouter();
-
-  if (!hasTimeline) {
-    return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">暂无时间轴</h3>
-        <p className="text-gray-500 mb-4">请先生成对白音轨和时间轴数据</p>
-        <button
-          onClick={onGenerateTimeline}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
-        >
-          生成时间轴
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900">时间轴数据</h3>
-        <button
-          onClick={() => router.push(`/episodes/${episodeKey}`)}
-          className="text-indigo-600 hover:text-indigo-700 text-sm"
-        >
-          查看完整时间轴 →
-        </button>
-      </div>
-      <p className="text-gray-500 text-sm">
-        时间轴已生成。点击上方按钮查看对白音轨和时间分布详情。
-      </p>
-    </div>
-  );
-}
-
+// Storyboard tab content - keeping as placeholder until storyboard page is refactored
 interface StoryboardTabContentProps {
   episodeKey: string;
   hasStoryboard: boolean;

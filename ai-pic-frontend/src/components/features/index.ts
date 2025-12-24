@@ -14,6 +14,13 @@ export {
   AudioTimelineSection,
   ScriptGenerationForm,
   ScriptList,
+  EpisodeWorkspaceHeader,
+  EpisodeWorkflowSteps,
+  WorkspaceScriptTabContent,
+  WorkspaceTimelineTabContent,
+  type WorkflowStatus,
+  type WorkflowStepStatus,
+  type WorkflowStep,
 } from './episode'
 export {
   ImagePageHeader,
