@@ -105,7 +105,11 @@ prompt: |
   - conflicts 至少 1 条，明确冲突类型与强度；scene_count 与场景对应。
   - scenes 需包含 scene_number/slug_line/location/time_of_day/summary；若有 beats 尽量顺序对应；无 beats 时按合理节奏拆分。
   - 保持 {{ pacing }} 节奏与 {{ plot_complexity }} 复杂度。
-  {% if episode_duration %}- 单集目标时长：{{ episode_duration }} 分钟{% endif %}
+  {% if episode_duration %}- **关键时长要求**：单集目标时长 {{ episode_duration }} 分钟（{{ episode_duration * 60 }} 秒）
+  - 每个场景必须标注 estimated_duration_seconds（预估时长，单位秒）
+  - 所有场景的 estimated_duration_seconds 之和应接近目标时长（允许±15%误差）
+  - 如果时长不足，请增加场景数量或丰富对白内容
+  - 时长分配建议：开场15-20%、中段60-70%、高潮和结尾15-25%{% endif %}
   {% if style_preferences %}- 风格偏好：{{ style_preferences | join(', ') }}{% endif %}
   {% if additional_requirements %}- 额外要求：{{ additional_requirements }}{% endif %}
 
@@ -121,13 +125,15 @@ prompt: |
         "character_arcs": {"主角": "本集发展"},
         "conflicts": [{"description": "...", "intensity": "medium"}],
         "scene_count": 6,
+        "total_estimated_duration_seconds": {{ (episode_duration or 3) * 60 }},
         "scenes": [
           {
             "scene_number": 1,
             "slug_line": "INT. 地点 - TIME",
             "location": "主要地点",
             "time_of_day": "day",
-            "summary": "对应拆分后的场景摘要"
+            "summary": "对应拆分后的场景摘要",
+            "estimated_duration_seconds": 30
           }
         ]
       }

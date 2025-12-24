@@ -1,0 +1,124 @@
+name: episode_enrich
+description: "当剧集预估时长不足时，丰富剧集内容以满足目标时长"
+category: episode
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2025-12-24"
+updated_at: "2025-12-24"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息对象"
+  episode:
+    type: dict
+    required: true
+    description: "当前剧集信息（需要丰富的版本）"
+  target_duration_seconds:
+    type: number
+    required: true
+    description: "目标时长（秒）"
+  current_duration_seconds:
+    type: number
+    required: true
+    description: "当前预估时长（秒）"
+  duration_gap_seconds:
+    type: number
+    required: true
+    description: "时长缺口（秒）"
+
+output_format: "JSON"
+expected_fields:
+  - episodes
+    - episode_number
+    - title
+    - summary
+    - plot_points
+    - character_arcs
+    - conflicts
+    - scene_count
+    - total_estimated_duration_seconds
+    - scenes
+
+prompt: |
+  你是剧集内容丰富专家。当前剧集的预估时长不足，需要丰富内容以满足目标时长。
+
+  ## 故事信息
+  标题：{{ story.title }}
+  类型：{{ story.genre }}
+  {% if story.theme %}主题：{{ story.theme }}{% endif %}
+  {% if story.synopsis %}概要：{{ story.synopsis }}{% endif %}
+
+  ## 当前剧集
+  集数：第{{ episode.episode_number }}集
+  标题：{{ episode.title }}
+  概要：{{ episode.summary }}
+  当前场景数：{{ episode.scenes | length if episode.scenes else 0 }}
+
+  ## 当前场景列表
+  {% if episode.scenes %}
+  {% for scene in episode.scenes %}
+  - 场景{{ scene.scene_number }}: {{ scene.slug_line or scene.summary }}
+    预估时长: {{ scene.estimated_duration_seconds or 30 }}秒
+  {% endfor %}
+  {% endif %}
+
+  ## 时长分析
+  - 目标时长：{{ target_duration_seconds }} 秒（{{ (target_duration_seconds / 60) | round(1) }} 分钟）
+  - 当前预估时长：{{ current_duration_seconds }} 秒（{{ (current_duration_seconds / 60) | round(1) }} 分钟）
+  - 时长缺口：{{ duration_gap_seconds }} 秒（{{ (duration_gap_seconds / 60) | round(1) }} 分钟）
+  - 需要增加内容量：约 {{ ((duration_gap_seconds / current_duration_seconds) * 100) | round(0) }}%
+
+  ## 丰富策略
+  请选择一种或多种策略来丰富内容：
+  1. **增加新场景**：根据情节需要，在合适位置插入新场景
+  2. **扩展现有场景**：为关键场景增加对白、动作、环境描写
+  3. **增加过渡场景**：添加场景之间的过渡，如角色移动、时间流逝
+  4. **深化角色互动**：增加角色间的对话或冲突
+  5. **增加情感铺垫**：在高潮前增加情感积累的场景
+
+  ## 丰富要求
+  - 保持原有故事线和情节连贯性
+  - 新增内容必须服务于主线故事，不能偏离主题
+  - 每个场景必须标注 estimated_duration_seconds
+  - 所有场景的 estimated_duration_seconds 之和必须达到或略超过目标时长
+  - 增加的内容要有意义，避免水分和重复
+
+  ## 输出格式
+  仅返回 JSON，包含丰富后的完整剧集：
+  {
+    "episodes": [
+      {
+        "episode_number": {{ episode.episode_number }},
+        "title": "{{ episode.title }}",
+        "summary": "更新后的概要（如有变化）",
+        "plot_points": [...],
+        "character_arcs": {...},
+        "conflicts": [...],
+        "scene_count": 新的场景数,
+        "total_estimated_duration_seconds": {{ target_duration_seconds }},
+        "enrichment_notes": "说明丰富了哪些内容",
+        "scenes": [
+          {
+            "scene_number": 1,
+            "slug_line": "INT. 地点 - TIME",
+            "location": "地点",
+            "time_of_day": "day/night",
+            "summary": "场景描述",
+            "estimated_duration_seconds": 30,
+            "is_new": false
+          },
+          {
+            "scene_number": 2,
+            "slug_line": "新增场景",
+            "location": "地点",
+            "time_of_day": "day",
+            "summary": "新增的场景描述",
+            "estimated_duration_seconds": 25,
+            "is_new": true
+          }
+        ]
+      }
+    ]
+  }

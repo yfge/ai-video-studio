@@ -15,6 +15,12 @@ from app.utils.json_utils import extract_json_block
 from app.prompts.templates import PromptTemplate
 from app.prompts.manager import prompt_manager
 
+# Duration validation constants
+DURATION_TOLERANCE_LOW = 0.85  # Allow 15% under target
+DURATION_TOLERANCE_HIGH = 1.15  # Allow 15% over target
+DEFAULT_SCENE_DURATION_SECONDS = 30  # Default if not specified
+MAX_ENRICH_ATTEMPTS = 2  # Maximum enrichment attempts
+
 try:
     from langgraph.graph import StateGraph, END
 
@@ -44,6 +50,49 @@ async def _maybe_await(
     if inspect.isawaitable(result):
         return await result
     return result
+
+
+def _calculate_episode_duration(episode_obj: Dict[str, Any]) -> int:
+    """Calculate total estimated duration from episode scenes.
+
+    Returns duration in seconds.
+    """
+    scenes = episode_obj.get("scenes") or []
+    total_seconds = 0
+    for scene in scenes:
+        if isinstance(scene, dict):
+            duration = scene.get("estimated_duration_seconds")
+            if duration is not None:
+                total_seconds += int(duration)
+            else:
+                total_seconds += DEFAULT_SCENE_DURATION_SECONDS
+    return total_seconds
+
+
+def _validate_episode_duration(
+    episode_obj: Dict[str, Any], target_minutes: Optional[int]
+) -> tuple[bool, int, int]:
+    """Validate if episode estimated duration meets target.
+
+    Args:
+        episode_obj: Episode data with scenes
+        target_minutes: Target duration in minutes
+
+    Returns:
+        Tuple of (is_valid, current_seconds, target_seconds)
+    """
+    if not target_minutes:
+        return True, 0, 0
+
+    target_seconds = target_minutes * 60
+    current_seconds = _calculate_episode_duration(episode_obj)
+
+    # Check if within tolerance
+    min_seconds = int(target_seconds * DURATION_TOLERANCE_LOW)
+    max_seconds = int(target_seconds * DURATION_TOLERANCE_HIGH)
+
+    is_valid = min_seconds <= current_seconds <= max_seconds
+    return is_valid, current_seconds, target_seconds
 
 
 class EpisodeLangGraphAgent:
@@ -414,6 +463,132 @@ class EpisodeLangGraphAgent:
                         reasoning.append(f"episode_invalid_{ep_num}_{reason}")
                     else:
                         reasoning.append(f"episode_ok_{ep_num}")
+
+                        # Duration validation and enrichment
+                        if episode_duration:
+                            dur_valid, cur_secs, tgt_secs = _validate_episode_duration(
+                                episode_obj, episode_duration
+                            )
+                            if not dur_valid and cur_secs < tgt_secs:
+                                # Duration insufficient, try enrichment
+                                await _progress(
+                                    f"生成第{ep_num}集：时长不足"
+                                    f"({cur_secs}秒<{tgt_secs}秒)，丰富内容中"
+                                )
+                                reasoning.append(
+                                    f"episode_duration_short_{ep_num}_{cur_secs}s"
+                                )
+
+                                for enrich_attempt in range(MAX_ENRICH_ATTEMPTS):
+                                    gap_secs = tgt_secs - cur_secs
+                                    enrich_prompt = prompt_manager.render_prompt(
+                                        PromptTemplate.EPISODE_ENRICH.value,
+                                        {
+                                            "story": story,
+                                            "episode": episode_obj,
+                                            "target_duration_seconds": tgt_secs,
+                                            "current_duration_seconds": cur_secs,
+                                            "duration_gap_seconds": gap_secs,
+                                        },
+                                    )
+                                    enrich_resp = (
+                                        await self.service.ai_manager.generate_text(
+                                            prompt=enrich_prompt,
+                                            temperature=temperature,
+                                            model=model,
+                                            prefer_provider=prefer_provider,
+                                            json_schema={
+                                                "name": "episode_enrich",
+                                                "schema": plan_schema,
+                                            },
+                                            system_prompt=prompt_manager.render_prompt(
+                                                PromptTemplate.SYSTEM_PROMPT_SCRIPT.value,
+                                                {},
+                                            ),
+                                        )
+                                    )
+                                    enrich_content = (
+                                        enrich_resp.data
+                                        if isinstance(enrich_resp.data, str)
+                                        else (
+                                            ""
+                                            if enrich_resp.data is None
+                                            else str(enrich_resp.data)
+                                        )
+                                    )
+                                    enrich_parsed = (
+                                        extract_json_block(enrich_content)
+                                        if isinstance(enrich_content, str)
+                                        else (
+                                            enrich_content
+                                            if isinstance(enrich_content, dict)
+                                            else None
+                                        )
+                                    )
+                                    if enrich_parsed and isinstance(enrich_parsed, dict):
+                                        enrich_episodes = enrich_parsed.get("episodes")
+                                        if (
+                                            isinstance(enrich_episodes, list)
+                                            and enrich_episodes
+                                        ):
+                                            enriched_ep = enrich_episodes[0]
+                                            new_dur = _calculate_episode_duration(
+                                                enriched_ep
+                                            )
+                                            if new_dur > cur_secs:
+                                                # Enrichment succeeded
+                                                episode_obj = enriched_ep
+                                                episode_obj.setdefault(
+                                                    "episode_number",
+                                                    outline.get("episode_number"),
+                                                )
+                                                cur_secs = new_dur
+                                                reasoning.append(
+                                                    f"episode_enriched_{ep_num}_"
+                                                    f"attempt{enrich_attempt + 1}_"
+                                                    f"{new_dur}s"
+                                                )
+                                                content = enrich_content
+                                                # Check if now valid
+                                                dur_valid, cur_secs, _ = (
+                                                    _validate_episode_duration(
+                                                        episode_obj, episode_duration
+                                                    )
+                                                )
+                                                if dur_valid:
+                                                    await _progress(
+                                                        f"生成第{ep_num}集：丰富成功"
+                                                        f"（{cur_secs}秒）"
+                                                    )
+                                                    break
+                                            else:
+                                                reasoning.append(
+                                                    f"episode_enrich_no_gain_{ep_num}_"
+                                                    f"attempt{enrich_attempt + 1}"
+                                                )
+                                    else:
+                                        reasoning.append(
+                                            f"episode_enrich_parse_failed_{ep_num}_"
+                                            f"attempt{enrich_attempt + 1}"
+                                        )
+
+                                # Log final duration status
+                                final_dur = _calculate_episode_duration(episode_obj)
+                                self.logger.info(
+                                    "Episode duration after enrichment",
+                                    extra={
+                                        "episode": ep_num,
+                                        "target_seconds": tgt_secs,
+                                        "final_seconds": final_dur,
+                                        "is_valid": final_dur
+                                        >= tgt_secs * DURATION_TOLERANCE_LOW,
+                                    },
+                                )
+                            elif dur_valid:
+                                reasoning.append(
+                                    f"episode_duration_ok_{ep_num}_{cur_secs}s"
+                                )
+
                     episodes_payload.append(episode_obj)
                     episode_contents.append(content)
                     provider_used = resp.provider or provider_used

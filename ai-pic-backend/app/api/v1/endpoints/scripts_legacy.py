@@ -3798,6 +3798,13 @@ def _process_script_dialogue_audio_task(
             if not scenes:
                 raise RuntimeError("no_scenes_found")
 
+            # Calculate per-scene target duration from episode
+            episode_duration_minutes = getattr(episode, "duration_minutes", None)
+            per_scene_target_seconds = None
+            if episode_duration_minutes and len(scenes) > 0:
+                # Evenly distribute episode duration across scenes
+                per_scene_target_seconds = (episode_duration_minutes * 60) // len(scenes)
+
             total = len(scenes)
             skipped = 0
             for idx, scene in enumerate(scenes, start=1):
@@ -3830,6 +3837,7 @@ def _process_script_dialogue_audio_task(
                     tts_model=str(tts_model),
                     overwrite_beats=overwrite_beats,
                     timing_model=timing_model,
+                    target_duration_seconds=per_scene_target_seconds,
                 )
 
         anyio.run(_run)
@@ -4101,6 +4109,13 @@ def _process_timeline_pipeline_task(
             if not scenes:
                 raise RuntimeError("no_scenes_found")
 
+            # Calculate per-scene target duration from episode
+            episode_duration_minutes = getattr(episode, "duration_minutes", None)
+            per_scene_target_seconds = None
+            if episode_duration_minutes and len(scenes) > 0:
+                # Evenly distribute episode duration across scenes
+                per_scene_target_seconds = (episode_duration_minutes * 60) // len(scenes)
+
             total = len(scenes)
             skipped = 0
             for idx, scene in enumerate(scenes, start=1):
@@ -4133,6 +4148,7 @@ def _process_timeline_pipeline_task(
                     tts_model=str(tts_model),
                     overwrite_beats=True,
                     timing_model=timing_model,
+                    target_duration_seconds=per_scene_target_seconds,
                 )
 
             # Step 2: Generate episode audio timeline

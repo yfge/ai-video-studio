@@ -58,9 +58,15 @@ class TimelineLangGraphAgent:
         model: Optional[str] = None,
         prefer_provider: Optional[str] = None,
         temperature: float = 0.4,
+        target_duration_seconds: Optional[int] = None,
     ) -> Optional[TimingPlan]:
         """
         Main entry point for computing intelligent timing.
+
+        Args:
+            target_duration_seconds: Optional target scene duration in seconds.
+                When provided, the agent will try to allocate gaps to match
+                the target duration.
 
         Returns TimingPlan or None if agent unavailable.
         Falls back to rule-based timing on LLM failure.
@@ -86,6 +92,7 @@ class TimelineLangGraphAgent:
             "model": model,
             "prefer_provider": prefer_provider,
             "temperature": temperature,
+            "target_duration_seconds": target_duration_seconds,
         }
 
         try:
@@ -171,9 +178,12 @@ class TimelineLangGraphAgent:
         async def think_timing(state: Dict[str, Any]) -> Dict[str, Any]:
             scene_ctx = state.get("scene_context", {})
             dialogue_contexts = state.get("dialogue_contexts", [])
+            target_duration = state.get("target_duration_seconds")
 
-            # Build prompt
-            prompt = self._build_reasoning_prompt(scene_ctx, dialogue_contexts)
+            # Build prompt with optional target duration
+            prompt = self._build_reasoning_prompt(
+                scene_ctx, dialogue_contexts, target_duration
+            )
 
             try:
                 resp = await self.service.ai_manager.generate_text(
@@ -415,6 +425,7 @@ class TimelineLangGraphAgent:
         self,
         scene_context: dict[str, Any],
         dialogue_contexts: list[dict[str, Any]],
+        target_duration_seconds: Optional[int] = None,
     ) -> str:
         """Build the reasoning prompt for LLM."""
         from .schemas import DialogueContext
@@ -431,6 +442,18 @@ class TimelineLangGraphAgent:
         scene_description = f"- 场景: {slug_line}" if slug_line else f"- 地点: {location}, 时间: {time_of_day}"
         summary_line = f"- 场景描述: {summary[:100]}..." if summary and len(summary) > 100 else (f"- 场景描述: {summary}" if summary else "")
 
+        # Build duration constraint section
+        duration_constraint = ""
+        if target_duration_seconds:
+            target_ms = target_duration_seconds * 1000
+            duration_constraint = f"""
+## 时长约束
+- **目标场景时长**: {target_duration_seconds} 秒 ({target_ms} 毫秒)
+- 停顿时长需要合理分配，使得整体场景（对白 + 停顿 + 动作）接近目标时长
+- 如果对白本身时长不足，适当增加停顿时间来补充
+- 但停顿时间仍需要自然合理，不能过于冗长
+"""
+
         return f"""## 场景信息
 - 场景编号: {scene_context.get('scene_number', 1)}
 {scene_description}
@@ -440,7 +463,7 @@ class TimelineLangGraphAgent:
 - 节奏类型: {scene_context.get('pacing', 'medium')}
 - 角色数量: {scene_context.get('character_count', 1)}
 - 对白数量: {scene_context.get('dialogue_count', 0)}
-
+{duration_constraint}
 ## 对白序列
 {formatted}
 
@@ -451,5 +474,6 @@ class TimelineLangGraphAgent:
 3. 语义完整性（句号后比逗号停顿更长）
 4. 角色切换（不同角色之间需要呼吸空间）
 5. 场景氛围（夜晚场景可能需要更长的呼吸空间）
+{f"6. 时长约束（总时长需接近目标 {target_duration_seconds} 秒）" if target_duration_seconds else ""}
 
 输出 JSON 格式的 timing_decisions。"""

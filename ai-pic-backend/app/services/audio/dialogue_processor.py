@@ -368,6 +368,8 @@ async def plan_scene_segments_intelligent(
     # Agent config
     timing_model: Optional[str] = None,
     prefer_provider: Optional[str] = None,
+    # Duration target
+    target_duration_seconds: Optional[int] = None,
 ) -> list[PlannedSegment]:
     """
     Build an ordered segment plan with intelligent gap calculation.
@@ -390,6 +392,9 @@ async def plan_scene_segments_intelligent(
         action_max_ms: Max action duration (fallback)
         timing_model: LLM model to use for timeline calculation
         prefer_provider: Preferred LLM provider
+        target_duration_seconds: Optional target scene duration for timing
+            calculation. When provided, gaps will be adjusted to help reach
+            the target duration.
 
     Returns:
         List of PlannedSegment with timing information
@@ -407,6 +412,7 @@ async def plan_scene_segments_intelligent(
                 scene_context=scene_context,
                 model=timing_model,
                 prefer_provider=prefer_provider,
+                target_duration_seconds=target_duration_seconds,
             )
 
             if timing_plan and timing_plan.decisions:

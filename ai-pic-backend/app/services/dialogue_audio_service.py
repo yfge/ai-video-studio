@@ -747,6 +747,7 @@ async def generate_scene_dialogue_audio(
     overwrite_beats: bool = True,
     use_intelligent_timing: bool = True,
     timing_model: str | None = None,
+    target_duration_seconds: int | None = None,
 ) -> dict[str, Any]:
     """
     Generate 1 dialogue audio track per scene and persist beats into scene_beats.
@@ -756,6 +757,8 @@ async def generate_scene_dialogue_audio(
             pause durations. Falls back to fixed 300ms pauses on failure.
         timing_model: LLM model to use for timeline calculation. Uses system
             default if not specified.
+        target_duration_seconds: Optional target scene duration. When provided,
+            gaps will be calculated to help reach the target duration.
 
     Returns the persisted scene.metadata.dialogue_audio payload.
     """
@@ -791,6 +794,7 @@ async def generate_scene_dialogue_audio(
         ai_service=ai_service,
         use_intelligent_timing=use_intelligent_timing,
         timing_model=timing_model,
+        target_duration_seconds=target_duration_seconds,
     )
 
     story_char_map = get_story_character_map(db, story.id)
@@ -1041,6 +1045,38 @@ async def generate_episode_audio_timeline(
         beats_by_scene_id=beats_by_scene,
     )
     duration_seconds_total = round(duration_ms_total / 1000.0, 3)
+
+    # Duration validation against episode target
+    episode_duration_minutes = getattr(episode, "duration_minutes", None)
+    if episode_duration_minutes:
+        target_ms = episode_duration_minutes * 60 * 1000
+        target_seconds = episode_duration_minutes * 60
+        duration_ratio = duration_ms_total / target_ms if target_ms > 0 else 0
+
+        logger.info(
+            "Episode timeline duration validation",
+            extra={
+                "episode_id": episode.id,
+                "script_id": script.id,
+                "target_duration_minutes": episode_duration_minutes,
+                "target_duration_ms": target_ms,
+                "actual_duration_ms": duration_ms_total,
+                "actual_duration_seconds": duration_seconds_total,
+                "duration_ratio": round(duration_ratio, 2),
+                "within_tolerance": 0.85 <= duration_ratio <= 1.15,
+            },
+        )
+
+        if duration_ratio < 0.85:
+            logger.warning(
+                f"Timeline duration too short: {duration_seconds_total}s "
+                f"vs target {target_seconds}s ({duration_ratio:.0%})"
+            )
+        elif duration_ratio > 1.15:
+            logger.warning(
+                f"Timeline duration too long: {duration_seconds_total}s "
+                f"vs target {target_seconds}s ({duration_ratio:.0%})"
+            )
 
     with tempfile.TemporaryDirectory(prefix="episode-audio-") as tmp_root:
         tmp_root_path = Path(tmp_root)
