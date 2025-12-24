@@ -264,17 +264,17 @@ function SceneDetailPanel({
         <div className="bg-white border border-gray-200 rounded-lg">
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-lg">
             <h4 className="text-sm font-semibold text-gray-700">
-              对白节选
+              对白
               <span className="ml-2 text-xs font-normal text-gray-400">
                 {sceneDialogues.length} 条
               </span>
             </h4>
           </div>
-          <div className="p-4 space-y-3 max-h-64 overflow-y-auto">
+          <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
             {sceneDialogues.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-4">暂无对白</p>
             )}
-            {sceneDialogues.slice(0, 10).map((dialogue, idx) => (
+            {sceneDialogues.map((dialogue, idx) => (
               <div key={`dialogue-${idx}`} className="bg-gray-50 rounded-lg p-3">
                 {typeof dialogue === "string" ? (
                   <p className="text-sm text-gray-600">{dialogue}</p>
@@ -298,11 +298,6 @@ function SceneDetailPanel({
                 )}
               </div>
             ))}
-            {sceneDialogues.length > 10 && (
-              <p className="text-xs text-gray-400 text-center">
-                还有 {sceneDialogues.length - 10} 条对白...
-              </p>
-            )}
           </div>
         </div>
 
@@ -316,11 +311,11 @@ function SceneDetailPanel({
               </span>
             </h4>
           </div>
-          <div className="p-4 space-y-3 max-h-64 overflow-y-auto">
+          <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
             {sceneDirections.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-4">暂无舞台指令</p>
             )}
-            {sceneDirections.slice(0, 10).map((direction, idx) => (
+            {sceneDirections.map((direction, idx) => (
               <div key={`direction-${idx}`} className="bg-gray-50 rounded-lg p-3">
                 {typeof direction === "string" ? (
                   <p className="text-sm text-gray-600">{direction}</p>
@@ -339,11 +334,6 @@ function SceneDetailPanel({
                 )}
               </div>
             ))}
-            {sceneDirections.length > 10 && (
-              <p className="text-xs text-gray-400 text-center">
-                还有 {sceneDirections.length - 10} 条指令...
-              </p>
-            )}
           </div>
         </div>
       </div>
