@@ -67,34 +67,56 @@ export function EpisodeWorkflowSteps({
   }
 
   return (
-    <section className="grid gap-3 rounded-2xl bg-white p-4 shadow md:grid-cols-3">
-      {steps.map((step, index) => {
-        const colors = colorMap[step.color];
-        return (
-          <div
-            key={step.key}
-            className={`rounded-xl border border-gray-100 bg-gradient-to-br ${colors.bg} p-4`}
-          >
-            <div className="flex items-center justify-between">
-              <div className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}>
-                步骤 {index + 1}
+    <section className="rounded-2xl bg-white p-4 shadow">
+      <div className="flex flex-col md:flex-row items-stretch gap-2">
+        {steps.map((step, index) => {
+          const colors = colorMap[step.color];
+          return (
+            <div key={step.key} className="flex items-center flex-1">
+              {/* Step Card */}
+              <div
+                className={`flex-1 rounded-xl border border-gray-100 bg-gradient-to-br ${colors.bg} p-4`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}>
+                    步骤 {index + 1}
+                  </div>
+                  {statusIcon(step.status)}
+                </div>
+                <div className="mt-1 text-base font-semibold text-gray-900">
+                  {step.label}
+                </div>
+                <p className="mt-1 text-xs text-gray-600">{step.description}</p>
+                <button
+                  onClick={step.onAction}
+                  disabled={step.status === "generating"}
+                  className={`mt-3 inline-flex items-center rounded-lg ${colors.button} px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50`}
+                >
+                  {step.status === "generating" ? "生成中..." : step.actionLabel}
+                </button>
               </div>
-              {statusIcon(step.status)}
+              {/* Arrow Connector */}
+              {index < steps.length - 1 && (
+                <div className="hidden md:flex items-center justify-center px-2">
+                  <svg
+                    className="w-8 h-8 text-gray-300"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
+                  </svg>
+                </div>
+              )}
             </div>
-            <div className="mt-1 text-base font-semibold text-gray-900">
-              {step.label}
-            </div>
-            <p className="mt-1 text-xs text-gray-600">{step.description}</p>
-            <button
-              onClick={step.onAction}
-              disabled={step.status === "generating"}
-              className={`mt-3 inline-flex items-center rounded-lg ${colors.button} px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50`}
-            >
-              {step.status === "generating" ? "生成中..." : step.actionLabel}
-            </button>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </section>
   );
 }
