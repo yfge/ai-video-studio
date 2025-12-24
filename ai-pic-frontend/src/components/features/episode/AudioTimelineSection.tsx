@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { NormalizedScene, Script, Task } from "@/utils/api";
+import type { NormalizedScene, Script } from "@/utils/api";
 import { Timeline, type TimelineTrack } from "@/components/features";
 import { asRecord, getString, getNumber, parseMs } from "@/hooks/useEpisodeDetail";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
@@ -11,46 +11,21 @@ interface AudioTimelineSectionProps {
   selectedScriptId: number | null;
   selectedScript: Script | null;
   onSelectScript: (id: number | null) => void;
-  episodeMeta: Record<string, unknown>;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
   normalizedScenesLoading: boolean;
   normalizedScenesError: string | null;
 
-  // Tasks
-  sceneAudioTaskId: number | null;
-  timelineTaskId: number | null;
-  storyboardTaskId: number | null;
-  sceneAudioTask: Task | null;
-  timelineTask: Task | null;
-  storyboardTask: Task | null;
+  // Busy states (for button disabled state)
+  pipelineBusy?: boolean;
 
-  // Busy states
-  sceneAudioBusy: boolean;
-  timelineBusy: boolean;
-  storyboardBusy: boolean;
-
-  // Overwrite options
-  overwriteSceneAudio: boolean;
-  setOverwriteSceneAudio: (value: boolean) => void;
-  overwriteTimeline: boolean;
-  setOverwriteTimeline: (value: boolean) => void;
-  overwriteStoryboard: boolean;
-  setOverwriteStoryboard: (value: boolean) => void;
-  minPauseSeconds: number;
-  setMinPauseSeconds: (value: number) => void;
-
-  // Timing model
+  // Model selection
   timingModel: string;
   setTimingModel: (value: string) => void;
 
   // Actions
-  onGenerateSceneDialogueAudio: () => void;
-  onGenerateAudioTimeline: () => void;
-  onGenerateStoryboardFromAudioTimeline: () => void;
   onGenerateTimelinePipeline?: () => void;
-  pipelineBusy?: boolean;
   pipelineTaskId?: number | null;
   onNavigateToTasks: () => void;
   onNavigateToScript: () => void;
@@ -66,30 +41,10 @@ export function AudioTimelineSection({
   normalizedScenes,
   normalizedScenesLoading,
   normalizedScenesError,
-  sceneAudioTaskId,
-  timelineTaskId,
-  storyboardTaskId,
-  sceneAudioTask,
-  timelineTask,
-  storyboardTask,
-  sceneAudioBusy,
-  timelineBusy,
-  storyboardBusy,
-  overwriteSceneAudio,
-  setOverwriteSceneAudio,
-  overwriteTimeline,
-  setOverwriteTimeline,
-  overwriteStoryboard,
-  setOverwriteStoryboard,
-  minPauseSeconds,
-  setMinPauseSeconds,
+  pipelineBusy,
   timingModel,
   setTimingModel,
-  onGenerateSceneDialogueAudio,
-  onGenerateAudioTimeline,
-  onGenerateStoryboardFromAudioTimeline,
   onGenerateTimelinePipeline,
-  pipelineBusy,
   pipelineTaskId,
   onNavigateToTasks,
   onNavigateToScript,
@@ -144,21 +99,6 @@ export function AudioTimelineSection({
         ? "bg-green-50 text-green-700 border border-green-200"
         : "bg-gray-50 text-gray-600 border border-gray-200"
     }`;
-
-  const taskStatusText = (status: Task["status"] | undefined) => {
-    switch (status) {
-      case "pending":
-        return "等待中";
-      case "processing":
-        return "进行中";
-      case "completed":
-        return "已完成";
-      case "failed":
-        return "失败";
-      default:
-        return "—";
-    }
-  };
 
   const timelineTracks = useMemo<TimelineTrack[]>(() => {
     const tracks: TimelineTrack[] = [];
@@ -356,54 +296,17 @@ export function AudioTimelineSection({
         {onGenerateTimelinePipeline && (
           <button
             onClick={onGenerateTimelinePipeline}
-            disabled={pipelineBusy || sceneAudioBusy || timelineBusy || storyboardBusy || !selectedScriptId}
+            disabled={pipelineBusy || !selectedScriptId}
             className="bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 text-white px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 font-medium"
           >
             {pipelineBusy ? "生成中..." : "一键生成全部"}
           </button>
         )}
-        <span className="text-gray-300 self-center">|</span>
-        <button onClick={onGenerateSceneDialogueAudio} disabled={sceneAudioBusy || pipelineBusy || !selectedScriptId} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50">
-          {sceneAudioBusy ? "生成中..." : "生成对白音轨"}
-        </button>
-        <button onClick={onGenerateAudioTimeline} disabled={timelineBusy || pipelineBusy || !selectedScriptId} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-          {timelineBusy ? "生成中..." : "生成时间轴"}
-        </button>
-        <button onClick={onGenerateStoryboardFromAudioTimeline} disabled={storyboardBusy || pipelineBusy || !selectedScriptId} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50">
-          {storyboardBusy ? "生成中..." : "生成分镜帧占位"}
-        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={overwriteSceneAudio} onChange={(e) => setOverwriteSceneAudio(e.target.checked)} />
-          覆盖对白音轨
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={overwriteTimeline} onChange={(e) => setOverwriteTimeline(e.target.checked)} />
-          覆盖时间轴
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={overwriteStoryboard} onChange={(e) => setOverwriteStoryboard(e.target.checked)} />
-          覆盖分镜
-        </label>
-        <label className="flex items-center gap-2">
-          pause阈值(s)
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            max="10"
-            value={minPauseSeconds}
-            onChange={(e) => {
-              const v = Number.parseFloat(e.target.value);
-              setMinPauseSeconds(Number.isFinite(v) ? v : 1.5);
-            }}
-            className="w-20 px-2 py-1 border border-gray-300 rounded"
-          />
-        </label>
-        <label className="flex items-center gap-2">
-          时间轴模型
+          模型
           <select
             value={timingModel}
             onChange={(e) => setTimingModel(e.target.value)}
@@ -420,37 +323,14 @@ export function AudioTimelineSection({
         </label>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-        {pipelineTaskId && (
-          <div className="border rounded p-3 bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
-            <div className="text-sm font-medium text-gray-900">一键流水线</div>
-            <div className="text-xs text-gray-600 mt-1">
-              task_id: {pipelineTaskId} • 进行中...
-            </div>
-          </div>
-        )}
-        <div className="border rounded p-3 bg-gray-50">
-          <div className="text-sm font-medium text-gray-900">对白音轨任务</div>
+      {pipelineTaskId && (
+        <div className="mt-4 border rounded p-3 bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
+          <div className="text-sm font-medium text-gray-900">一键流水线</div>
           <div className="text-xs text-gray-600 mt-1">
-            task_id: {sceneAudioTaskId ?? "—"} • 状态: {taskStatusText(sceneAudioTask?.status)}
+            task_id: {pipelineTaskId} • 进行中...
           </div>
-          {sceneAudioTask?.progress_detail && <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{sceneAudioTask.progress_detail}</div>}
         </div>
-        <div className="border rounded p-3 bg-gray-50">
-          <div className="text-sm font-medium text-gray-900">时间轴任务</div>
-          <div className="text-xs text-gray-600 mt-1">
-            task_id: {timelineTaskId ?? "—"} • 状态: {taskStatusText(timelineTask?.status)}
-          </div>
-          {timelineTask?.progress_detail && <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{timelineTask.progress_detail}</div>}
-        </div>
-        <div className="border rounded p-3 bg-gray-50">
-          <div className="text-sm font-medium text-gray-900">分镜占位任务</div>
-          <div className="text-xs text-gray-600 mt-1">
-            task_id: {storyboardTaskId ?? "—"} • 状态: {taskStatusText(storyboardTask?.status)}
-          </div>
-          {storyboardTask?.progress_detail && <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{storyboardTask.progress_detail}</div>}
-        </div>
-      </div>
+      )}
 
       <div className="mt-4">
         {timelineTracks.length === 0 ? (

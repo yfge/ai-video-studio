@@ -39,34 +39,10 @@ export default function EpisodeWorkspacePage() {
     normalizedScenes,
     normalizedScenesLoading,
     normalizedScenesError,
-    episodeMeta,
     selectedAudioTimeline,
     selectedStoryboard,
-    overwriteSceneAudio,
-    setOverwriteSceneAudio,
-    overwriteTimeline,
-    setOverwriteTimeline,
-    overwriteStoryboard,
-    setOverwriteStoryboard,
-    minPauseSeconds,
-    setMinPauseSeconds,
     timingModel,
     setTimingModel,
-    sceneAudioBusy,
-    setSceneAudioBusy,
-    timelineBusy,
-    setTimelineBusy,
-    storyboardBusy,
-    setStoryboardBusy,
-    sceneAudioTaskId,
-    setSceneAudioTaskId,
-    timelineTaskId,
-    setTimelineTaskId,
-    storyboardTaskId,
-    setStoryboardTaskId,
-    sceneAudioTask,
-    timelineTask,
-    storyboardTask,
     // Script generation state
     formats,
     languages,
@@ -225,41 +201,15 @@ export default function EpisodeWorkspacePage() {
           )}
           {activeTab === "timeline" && episode && (
             <WorkspaceTimelineTabContent
-              episodeKey={episodeKey}
-              episode={episode}
               scripts={scripts}
               selectedScriptId={selectedScriptId}
               selectedScript={selectedScript}
               onSelectScript={setSelectedScriptId}
-              episodeMeta={episodeMeta}
               selectedAudioTimeline={selectedAudioTimeline}
               selectedStoryboard={selectedStoryboard}
               normalizedScenes={normalizedScenes}
               normalizedScenesLoading={normalizedScenesLoading}
               normalizedScenesError={normalizedScenesError}
-              sceneAudioTaskId={sceneAudioTaskId}
-              timelineTaskId={timelineTaskId}
-              storyboardTaskId={storyboardTaskId}
-              sceneAudioTask={sceneAudioTask}
-              timelineTask={timelineTask}
-              storyboardTask={storyboardTask}
-              sceneAudioBusy={sceneAudioBusy}
-              timelineBusy={timelineBusy}
-              storyboardBusy={storyboardBusy}
-              setSceneAudioBusy={setSceneAudioBusy}
-              setTimelineBusy={setTimelineBusy}
-              setStoryboardBusy={setStoryboardBusy}
-              setSceneAudioTaskId={setSceneAudioTaskId}
-              setTimelineTaskId={setTimelineTaskId}
-              setStoryboardTaskId={setStoryboardTaskId}
-              overwriteSceneAudio={overwriteSceneAudio}
-              setOverwriteSceneAudio={setOverwriteSceneAudio}
-              overwriteTimeline={overwriteTimeline}
-              setOverwriteTimeline={setOverwriteTimeline}
-              overwriteStoryboard={overwriteStoryboard}
-              setOverwriteStoryboard={setOverwriteStoryboard}
-              minPauseSeconds={minPauseSeconds}
-              setMinPauseSeconds={setMinPauseSeconds}
               timingModel={timingModel}
               setTimingModel={setTimingModel}
               showAlert={showAlert}
