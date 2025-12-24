@@ -1,0 +1,116 @@
+# REACT 驳回重生成
+
+你之前生成的剧集内容**被驳回**，原因是**预估时长不符合要求**。请仔细阅读反馈，重新生成完整的剧集内容。
+
+## 驳回原因分析
+
+{% if rejection_reason == "duration_too_short" %}
+**问题**：内容量不足！
+- 目标时长：{{ target_duration_seconds }} 秒（{{ (target_duration_seconds / 60) | round(1) }} 分钟）
+- 你生成的预估时长：{{ current_duration_seconds }} 秒（{{ (current_duration_seconds / 60) | round(1) }} 分钟）
+- 差距：少了 {{ target_duration_seconds - current_duration_seconds }} 秒（{{ ((target_duration_seconds - current_duration_seconds) / 60) | round(1) }} 分钟）
+- 完成度：仅 {{ ((current_duration_seconds / target_duration_seconds) * 100) | round(0) }}%
+
+**要求**：
+1. 这是一个需要配音的剧本，必须有足够的对白内容！
+2. 每分钟对白约需要 120-150 个汉字（正常语速）
+3. {{ (target_duration_seconds / 60) | round(1) }} 分钟剧本需要约 {{ ((target_duration_seconds / 60) * 135) | int }} 个汉字的对白
+4. 每个场景必须包含多轮完整对话，不能只有描述性文字
+5. 对白要自然流畅，包含情感表达、反应、追问等
+6. 避免省略号省略对白，必须写出完整台词
+
+{% elif rejection_reason == "duration_too_long" %}
+**问题**：内容过长！
+- 目标时长：{{ target_duration_seconds }} 秒（{{ (target_duration_seconds / 60) | round(1) }} 分钟）
+- 你生成的预估时长：{{ current_duration_seconds }} 秒（{{ (current_duration_seconds / 60) | round(1) }} 分钟）
+- 超出：{{ current_duration_seconds - target_duration_seconds }} 秒（{{ ((current_duration_seconds - target_duration_seconds) / 60) | round(1) }} 分钟）
+- 超出比例：{{ (((current_duration_seconds - target_duration_seconds) / target_duration_seconds) * 100) | round(0) }}%
+
+**要求**：
+1. 精简场景数量，聚焦核心情节
+2. 缩短冗余对话，保留关键台词
+3. 合并相似场景
+4. 删除对主线贡献不大的过渡内容
+
+{% endif %}
+
+## 被驳回的版本（仅供参考，不要简单复制）
+
+集数：第{{ rejected_episode.episode_number }}集
+标题：{{ rejected_episode.title }}
+概要：{{ rejected_episode.summary | truncate(200) }}
+场景数：{{ rejected_episode.scenes | length if rejected_episode.scenes else 0 }}
+
+{% if rejected_episode.scenes %}
+场景时长分布：
+{% for scene in rejected_episode.scenes %}
+- 场景{{ scene.scene_number }}: {{ scene.estimated_duration_seconds or 30 }}秒 - {{ scene.slug_line or scene.summary | truncate(30) }}
+{% endfor %}
+{% endif %}
+
+## 故事信息
+
+标题：{{ story.title }}
+类型：{{ story.genre }}
+{% if story.theme %}主题：{{ story.theme }}{% endif %}
+{% if story.synopsis %}概要：{{ story.synopsis }}{% endif %}
+
+## 当前集的 Step Outline
+
+目标集数：{{ outline.episode_number }}
+集标题：{{ outline.title or '待定' }}
+Logline：{{ outline.logline or '无' }}
+
+## 已生成的前序集
+
+{% if previous_episodes and previous_episodes|length > 0 %}
+{% for prev in previous_episodes %}
+- 第{{ prev.episode_number }}集：{{ prev.title or '' }} — {{ prev.logline or '无概述' }}
+{% endfor %}
+{% else %}
+- （无前序集）
+{% endif %}
+
+## 重新生成要求（第 {{ attempt_number }} 次尝试）
+
+**必须达到以下标准，否则将再次被驳回：**
+
+1. **时长必须达标**：所有场景的 estimated_duration_seconds 之和必须在 {{ (target_duration_seconds * 0.85) | int }} 到 {{ (target_duration_seconds * 1.15) | int }} 秒之间
+2. **对白必须丰富**：每个场景必须包含完整的角色对白（用引号标注）
+3. **场景要合理**：每个场景 30-60 秒为宜，关键场景可适当延长
+4. **结构要完整**：开场、发展、高潮、结尾都要有
+{% if plot_complexity %}- 保持 {{ plot_complexity }} 复杂度{% endif %}
+{% if pacing %}- 保持 {{ pacing }} 节奏{% endif %}
+
+**对白示例**（正确写法）：
+错误：「角色A和角色B交谈，讨论了问题。」
+正确：「角色A皱眉看着手机：'这数据不对啊，昨天明明还是正常的。' 角色B凑过来看了一眼：'让我看看……确实，这个峰值太异常了。是不是系统出了问题？' 角色A摇头：'不像，更像是人为的。' 角色B表情凝重：'你是说……有人在搞鬼？'」
+
+## 输出格式
+
+仅返回 JSON，符合 EpisodePlanModel，但 episodes 只能有 1 条：
+{
+  "episodes": [
+    {
+      "episode_number": {{ outline.episode_number }},
+      "title": "第{{ outline.episode_number }}集标题",
+      "summary": "详细的剧集概要，150-300字",
+      "plot_points": [{"description": "...", "timing": "开场/发展/高潮/结尾"}],
+      "character_arcs": {"角色名": "本集发展"},
+      "conflicts": [{"description": "...", "intensity": "medium"}],
+      "scene_count": 场景数量,
+      "total_estimated_duration_seconds": {{ target_duration_seconds }},
+      "regeneration_attempt": {{ attempt_number }},
+      "scenes": [
+        {
+          "scene_number": 1,
+          "slug_line": "INT. 地点 - TIME",
+          "location": "地点",
+          "time_of_day": "day",
+          "summary": "场景描述，必须包含完整对白（用引号标注）",
+          "estimated_duration_seconds": 35
+        }
+      ]
+    }
+  ]
+}

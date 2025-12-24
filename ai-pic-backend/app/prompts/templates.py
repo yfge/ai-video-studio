@@ -34,6 +34,7 @@ class PromptTemplate(Enum):
     EPISODE_STEP_OUTLINE_REPAIR = "episode_step_outline_repair"
     EPISODE_FROM_OUTLINE = "episode_from_outline"
     EPISODE_ENRICH = "episode_enrich"  # 剧集丰富（当时长不足时）
+    EPISODE_DURATION_REJECT = "episode_duration_reject"  # 时长不符合要求时驳回重生成
     EPISODE_LIST = "episode_list"  # 剧集列表生成
 
     # 剧本相关
@@ -133,6 +134,7 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.EPISODE_STEP_OUTLINE_REPAIR: PromptCategory.EPISODE,
     PromptTemplate.EPISODE_FROM_OUTLINE: PromptCategory.EPISODE,
     PromptTemplate.EPISODE_ENRICH: PromptCategory.EPISODE,
+    PromptTemplate.EPISODE_DURATION_REJECT: PromptCategory.EPISODE,
     PromptTemplate.EPISODE_LIST: PromptCategory.EPISODE,
 
     PromptTemplate.SCRIPT_GENERATION: PromptCategory.SCRIPT,

@@ -19,7 +19,8 @@ from app.prompts.manager import prompt_manager
 DURATION_TOLERANCE_LOW = 0.85  # Allow 15% under target
 DURATION_TOLERANCE_HIGH = 1.15  # Allow 15% over target
 DEFAULT_SCENE_DURATION_SECONDS = 30  # Default if not specified
-MAX_ENRICH_ATTEMPTS = 2  # Maximum enrichment attempts
+MAX_ENRICH_ATTEMPTS = 2  # Maximum enrichment attempts (legacy)
+MAX_REACT_REGENERATE_ATTEMPTS = 3  # Maximum REACT rejection regeneration attempts
 
 try:
     from langgraph.graph import StateGraph, END
@@ -391,7 +392,6 @@ class EpisodeLangGraphAgent:
 
             for outline in outline_episodes[:episode_count]:
                 ep_num = outline.get("episode_number")
-                await _progress(f"生成第{ep_num}集：调用模型")
                 previous_eps = [
                     {
                         "episode_number": o.get("episode_number"),
@@ -403,192 +403,204 @@ class EpisodeLangGraphAgent:
                     and ep_num
                     and o.get("episode_number") < ep_num
                 ]
-                prompt = prompt_manager.render_prompt(
-                    PromptTemplate.EPISODE_FROM_OUTLINE.value,
-                    {
-                        "story": story,
-                        "outline": outline,
-                        "previous_episodes": previous_eps,
-                        "focus_characters": focus_characters or [],
-                        "episode_duration": episode_duration,
-                        "plot_complexity": plot_complexity,
-                        "pacing": pacing,
-                        "additional_requirements": additional_requirements,
-                        "style_preferences": style_preferences or [],
-                    },
-                )
-                resp = await self.service.ai_manager.generate_text(
-                    prompt=prompt,
-                    temperature=temperature,
-                    model=model,
-                    prefer_provider=prefer_provider,
-                    json_schema={"name": "episode_plan", "schema": plan_schema},
-                    system_prompt=prompt_manager.render_prompt(
-                        PromptTemplate.SYSTEM_PROMPT_SCRIPT.value, {}
-                    ),
-                )
-                content = (
-                    resp.data
-                    if isinstance(resp.data, str)
-                    else ("" if resp.data is None else str(resp.data))
-                )
-                parsed = (
-                    extract_json_block(content)
-                    if isinstance(content, str)
-                    else (content if isinstance(content, dict) else None)
-                )
+
+                # REACT loop: Generate -> Validate -> Reject/Regenerate
                 episode_obj: Dict[str, Any] | None = None
-                if parsed and isinstance(parsed, dict):
-                    episodes_arr = (
-                        parsed.get("episodes") if "episodes" in parsed else None
-                    )
-                    if isinstance(episodes_arr, list) and episodes_arr:
-                        episode_obj = episodes_arr[0]
-
+                content: str = ""
                 fallback_used = False
-                if not episode_obj:
-                    fallback_used = True
-                    await _progress(f"生成第{ep_num}集：模型输出无效，使用大纲兜底")
-                    episode_obj = _stub_episode_from_outline(outline)
-                    reasoning.append(f"episode_parse_failed_{ep_num}")
+                react_attempt = 0
+                duration_accepted = False
 
-                episode_obj.setdefault("episode_number", outline.get("episode_number"))
-                await _progress(f"生成第{ep_num}集：校验中")
-                try:
-                    EpisodePlanItem.model_validate(episode_obj)
-                    valid, reason = _is_episode_valid(episode_obj)
-                    if not valid:
+                while react_attempt < MAX_REACT_REGENERATE_ATTEMPTS:
+                    react_attempt += 1
+                    is_regeneration = react_attempt > 1
+
+                    if is_regeneration and episode_obj:
+                        # REACT: Regenerate with rejection feedback
+                        dur_valid, cur_secs, tgt_secs = _validate_episode_duration(
+                            episode_obj, episode_duration
+                        )
+                        rejection_reason = (
+                            "duration_too_short"
+                            if cur_secs < tgt_secs
+                            else "duration_too_long"
+                        )
+                        await _progress(
+                            f"生成第{ep_num}集：REACT驳回（{rejection_reason}，"
+                            f"{cur_secs}秒 vs 目标{tgt_secs}秒），第{react_attempt}次尝试"
+                        )
+                        reasoning.append(
+                            f"episode_react_reject_{ep_num}_attempt{react_attempt - 1}_"
+                            f"{rejection_reason}_{cur_secs}s"
+                        )
+
+                        prompt = prompt_manager.render_prompt(
+                            PromptTemplate.EPISODE_DURATION_REJECT.value,
+                            {
+                                "story": story,
+                                "outline": outline,
+                                "previous_episodes": previous_eps,
+                                "rejected_episode": episode_obj,
+                                "target_duration_seconds": tgt_secs,
+                                "current_duration_seconds": cur_secs,
+                                "rejection_reason": rejection_reason,
+                                "attempt_number": react_attempt,
+                                "focus_characters": focus_characters or [],
+                                "episode_duration": episode_duration,
+                                "plot_complexity": plot_complexity,
+                                "pacing": pacing,
+                            },
+                        )
+                    else:
+                        # Initial generation
+                        await _progress(f"生成第{ep_num}集：调用模型")
+                        prompt = prompt_manager.render_prompt(
+                            PromptTemplate.EPISODE_FROM_OUTLINE.value,
+                            {
+                                "story": story,
+                                "outline": outline,
+                                "previous_episodes": previous_eps,
+                                "focus_characters": focus_characters or [],
+                                "episode_duration": episode_duration,
+                                "plot_complexity": plot_complexity,
+                                "pacing": pacing,
+                                "additional_requirements": additional_requirements,
+                                "style_preferences": style_preferences or [],
+                            },
+                        )
+
+                    resp = await self.service.ai_manager.generate_text(
+                        prompt=prompt,
+                        temperature=temperature,
+                        model=model,
+                        prefer_provider=prefer_provider,
+                        json_schema={"name": "episode_plan", "schema": plan_schema},
+                        system_prompt=prompt_manager.render_prompt(
+                            PromptTemplate.SYSTEM_PROMPT_SCRIPT.value, {}
+                        ),
+                    )
+                    content = (
+                        resp.data
+                        if isinstance(resp.data, str)
+                        else ("" if resp.data is None else str(resp.data))
+                    )
+                    parsed = (
+                        extract_json_block(content)
+                        if isinstance(content, str)
+                        else (content if isinstance(content, dict) else None)
+                    )
+
+                    episode_obj = None
+                    if parsed and isinstance(parsed, dict):
+                        episodes_arr = (
+                            parsed.get("episodes") if "episodes" in parsed else None
+                        )
+                        if isinstance(episodes_arr, list) and episodes_arr:
+                            episode_obj = episodes_arr[0]
+
+                    if not episode_obj:
+                        fallback_used = True
+                        await _progress(
+                            f"生成第{ep_num}集：模型输出无效，使用大纲兜底"
+                        )
+                        episode_obj = _stub_episode_from_outline(outline)
+                        reasoning.append(f"episode_parse_failed_{ep_num}")
+                        break  # Can't retry if parsing fails
+
+                    episode_obj.setdefault(
+                        "episode_number", outline.get("episode_number")
+                    )
+                    await _progress(f"生成第{ep_num}集：校验中")
+
+                    # Validate episode structure
+                    try:
+                        EpisodePlanItem.model_validate(episode_obj)
+                        valid, reason = _is_episode_valid(episode_obj)
+                        if not valid:
+                            fallback_used = True
+                            episode_obj = _stub_episode_from_outline(outline)
+                            reasoning.append(f"episode_invalid_{ep_num}_{reason}")
+                            break  # Structure invalid, can't retry
+                    except Exception:
                         fallback_used = True
                         episode_obj = _stub_episode_from_outline(outline)
-                        reasoning.append(f"episode_invalid_{ep_num}_{reason}")
-                    else:
-                        reasoning.append(f"episode_ok_{ep_num}")
+                        reasoning.append(f"episode_schema_invalid_{ep_num}")
+                        break
 
-                        # Duration validation and enrichment
-                        if episode_duration:
-                            dur_valid, cur_secs, tgt_secs = _validate_episode_duration(
-                                episode_obj, episode_duration
+                    # Duration validation (REACT core logic)
+                    if episode_duration:
+                        dur_valid, cur_secs, tgt_secs = _validate_episode_duration(
+                            episode_obj, episode_duration
+                        )
+
+                        if dur_valid:
+                            # Duration acceptable
+                            duration_accepted = True
+                            reasoning.append(
+                                f"episode_duration_ok_{ep_num}_attempt{react_attempt}_"
+                                f"{cur_secs}s"
                             )
-                            if not dur_valid and cur_secs < tgt_secs:
-                                # Duration insufficient, try enrichment
+                            await _progress(
+                                f"生成第{ep_num}集：时长验证通过（{cur_secs}秒）"
+                            )
+                            self.logger.info(
+                                "REACT: Episode duration accepted",
+                                extra={
+                                    "episode": ep_num,
+                                    "attempt": react_attempt,
+                                    "target_seconds": tgt_secs,
+                                    "actual_seconds": cur_secs,
+                                    "ratio": round(cur_secs / tgt_secs, 2),
+                                },
+                            )
+                            break
+                        else:
+                            # Duration not acceptable, will retry if attempts remain
+                            self.logger.warning(
+                                "REACT: Episode duration rejected",
+                                extra={
+                                    "episode": ep_num,
+                                    "attempt": react_attempt,
+                                    "target_seconds": tgt_secs,
+                                    "actual_seconds": cur_secs,
+                                    "ratio": round(cur_secs / tgt_secs, 2),
+                                    "will_retry": react_attempt
+                                    < MAX_REACT_REGENERATE_ATTEMPTS,
+                                },
+                            )
+                            if react_attempt >= MAX_REACT_REGENERATE_ATTEMPTS:
+                                # Max attempts reached, accept anyway
+                                reasoning.append(
+                                    f"episode_duration_accepted_after_max_attempts_"
+                                    f"{ep_num}_{cur_secs}s"
+                                )
                                 await _progress(
-                                    f"生成第{ep_num}集：时长不足"
-                                    f"({cur_secs}秒<{tgt_secs}秒)，丰富内容中"
+                                    f"生成第{ep_num}集：达到最大重试次数，"
+                                    f"接受当前时长（{cur_secs}秒）"
                                 )
-                                reasoning.append(
-                                    f"episode_duration_short_{ep_num}_{cur_secs}s"
-                                )
+                    else:
+                        # No duration requirement
+                        reasoning.append(f"episode_ok_{ep_num}")
+                        break
 
-                                for enrich_attempt in range(MAX_ENRICH_ATTEMPTS):
-                                    gap_secs = tgt_secs - cur_secs
-                                    enrich_prompt = prompt_manager.render_prompt(
-                                        PromptTemplate.EPISODE_ENRICH.value,
-                                        {
-                                            "story": story,
-                                            "episode": episode_obj,
-                                            "target_duration_seconds": tgt_secs,
-                                            "current_duration_seconds": cur_secs,
-                                            "duration_gap_seconds": gap_secs,
-                                        },
-                                    )
-                                    enrich_resp = (
-                                        await self.service.ai_manager.generate_text(
-                                            prompt=enrich_prompt,
-                                            temperature=temperature,
-                                            model=model,
-                                            prefer_provider=prefer_provider,
-                                            json_schema={
-                                                "name": "episode_enrich",
-                                                "schema": plan_schema,
-                                            },
-                                            system_prompt=prompt_manager.render_prompt(
-                                                PromptTemplate.SYSTEM_PROMPT_SCRIPT.value,
-                                                {},
-                                            ),
-                                        )
-                                    )
-                                    enrich_content = (
-                                        enrich_resp.data
-                                        if isinstance(enrich_resp.data, str)
-                                        else (
-                                            ""
-                                            if enrich_resp.data is None
-                                            else str(enrich_resp.data)
-                                        )
-                                    )
-                                    enrich_parsed = (
-                                        extract_json_block(enrich_content)
-                                        if isinstance(enrich_content, str)
-                                        else (
-                                            enrich_content
-                                            if isinstance(enrich_content, dict)
-                                            else None
-                                        )
-                                    )
-                                    if enrich_parsed and isinstance(enrich_parsed, dict):
-                                        enrich_episodes = enrich_parsed.get("episodes")
-                                        if (
-                                            isinstance(enrich_episodes, list)
-                                            and enrich_episodes
-                                        ):
-                                            enriched_ep = enrich_episodes[0]
-                                            new_dur = _calculate_episode_duration(
-                                                enriched_ep
-                                            )
-                                            if new_dur > cur_secs:
-                                                # Enrichment succeeded
-                                                episode_obj = enriched_ep
-                                                episode_obj.setdefault(
-                                                    "episode_number",
-                                                    outline.get("episode_number"),
-                                                )
-                                                cur_secs = new_dur
-                                                reasoning.append(
-                                                    f"episode_enriched_{ep_num}_"
-                                                    f"attempt{enrich_attempt + 1}_"
-                                                    f"{new_dur}s"
-                                                )
-                                                content = enrich_content
-                                                # Check if now valid
-                                                dur_valid, cur_secs, _ = (
-                                                    _validate_episode_duration(
-                                                        episode_obj, episode_duration
-                                                    )
-                                                )
-                                                if dur_valid:
-                                                    await _progress(
-                                                        f"生成第{ep_num}集：丰富成功"
-                                                        f"（{cur_secs}秒）"
-                                                    )
-                                                    break
-                                            else:
-                                                reasoning.append(
-                                                    f"episode_enrich_no_gain_{ep_num}_"
-                                                    f"attempt{enrich_attempt + 1}"
-                                                )
-                                    else:
-                                        reasoning.append(
-                                            f"episode_enrich_parse_failed_{ep_num}_"
-                                            f"attempt{enrich_attempt + 1}"
-                                        )
+                # Log final REACT result
+                if episode_duration and episode_obj:
+                    final_dur = _calculate_episode_duration(episode_obj)
+                    tgt_secs = episode_duration * 60
+                    self.logger.info(
+                        "REACT: Episode generation complete",
+                        extra={
+                            "episode": ep_num,
+                            "total_attempts": react_attempt,
+                            "target_seconds": tgt_secs,
+                            "final_seconds": final_dur,
+                            "ratio": round(final_dur / tgt_secs, 2) if tgt_secs else 0,
+                            "duration_accepted": duration_accepted,
+                        },
+                    )
 
-                                # Log final duration status
-                                final_dur = _calculate_episode_duration(episode_obj)
-                                self.logger.info(
-                                    "Episode duration after enrichment",
-                                    extra={
-                                        "episode": ep_num,
-                                        "target_seconds": tgt_secs,
-                                        "final_seconds": final_dur,
-                                        "is_valid": final_dur
-                                        >= tgt_secs * DURATION_TOLERANCE_LOW,
-                                    },
-                                )
-                            elif dur_valid:
-                                reasoning.append(
-                                    f"episode_duration_ok_{ep_num}_{cur_secs}s"
-                                )
-
+                # Add episode to payload (after REACT loop completes)
+                if episode_obj:
                     episodes_payload.append(episode_obj)
                     episode_contents.append(content)
                     provider_used = resp.provider or provider_used
@@ -605,32 +617,8 @@ class EpisodeLangGraphAgent:
                             "usage": resp.usage,
                             "outline": outline,
                             "fallback_from_outline": fallback_used,
-                        },
-                    )
-                except Exception as exc:  # pragma: no cover - schema guard
-                    missing_fields = _extract_missing_fields(exc)
-                    self.logger.info(
-                        "Episode item validation failed",
-                        extra={
-                            "episode": outline.get("episode_number"),
-                            "missing": missing_fields,
-                        },
-                    )
-                    episode_obj = _stub_episode_from_outline(outline)
-                    episodes_payload.append(episode_obj)
-                    reasoning.append(f"episode_schema_invalid_{ep_num}")
-                    await _maybe_await(
-                        callbacks.on_episode if callbacks else None,
-                        episode_obj,
-                        {
-                            "prompt": prompt,
-                            "raw": content,
-                            "provider": resp.provider,
-                            "model": resp.model,
-                            "usage": resp.usage,
-                            "outline": outline,
-                            "fallback_from_outline": True,
-                            "missing_fields": missing_fields,
+                            "react_attempts": react_attempt,
+                            "duration_accepted": duration_accepted,
                         },
                     )
 
