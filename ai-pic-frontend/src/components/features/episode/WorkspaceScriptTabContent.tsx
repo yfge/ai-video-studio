@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { NormalizedScene, NormalizedShot, SceneBeat, Script } from "@/utils/api";
+import type { NormalizedScene, NormalizedShot, SceneBeat, Script, ScriptGenerationRequest } from "@/utils/api";
 import { storyStructureAPI, authAPI } from "@/utils/api";
-import { ScriptOverviewTab, ScriptScenesTab } from "@/components/features";
+import { ScriptOverviewTab, ScriptScenesTab, ScriptGenerationForm } from "@/components/features";
 import type { SceneNode } from "@/components/features";
 import { isAdmin } from "@/utils/auth";
 import type { User } from "@/utils/api";
@@ -64,12 +64,31 @@ const normalizeDirections = (items: unknown): ScriptDirection[] =>
 
 interface WorkspaceScriptTabContentProps {
   script: Script | null;
-  onGenerateScript: () => void;
+  // Script generation props
+  generateForm: ScriptGenerationRequest;
+  setGenerateForm: React.Dispatch<React.SetStateAction<ScriptGenerationRequest>>;
+  formats: Array<{ value: string; label: string }>;
+  languages: Array<{ value: string; label: string }>;
+  useAsync: boolean;
+  setUseAsync: (value: boolean) => void;
+  promptPreview: string | null;
+  setPromptPreview: (value: string | null) => void;
+  generating: boolean;
+  onGenerate: () => void;
 }
 
 export function WorkspaceScriptTabContent({
   script,
-  onGenerateScript,
+  generateForm,
+  setGenerateForm,
+  formats,
+  languages,
+  useAsync,
+  setUseAsync,
+  promptPreview,
+  setPromptPreview,
+  generating,
+  onGenerate,
 }: WorkspaceScriptTabContentProps) {
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "scenes">("scenes");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -224,15 +243,22 @@ export function WorkspaceScriptTabContent({
 
   if (!script) {
     return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">暂无剧本</h3>
-        <p className="text-gray-500 mb-4">请先生成剧本以继续工作流</p>
-        <button
-          onClick={onGenerateScript}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          生成剧本
-        </button>
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">生成剧本</h3>
+        <p className="text-gray-500 mb-6">请配置参数并生成剧本以继续工作流</p>
+        <ScriptGenerationForm
+          generateForm={generateForm}
+          setGenerateForm={setGenerateForm}
+          formats={formats}
+          languages={languages}
+          useAsync={useAsync}
+          setUseAsync={setUseAsync}
+          promptPreview={promptPreview}
+          setPromptPreview={setPromptPreview}
+          generating={generating}
+          onGenerate={onGenerate}
+          onCancel={() => {}}
+        />
       </div>
     );
   }

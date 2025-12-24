@@ -11,6 +11,7 @@ import {
 } from "@/components/features/episode";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
+import { scriptAPI } from "@/utils/api";
 
 type TabKey = "script" | "timeline" | "storyboard";
 
@@ -65,6 +66,18 @@ export default function EpisodeWorkspacePage() {
     sceneAudioTask,
     timelineTask,
     storyboardTask,
+    // Script generation state
+    formats,
+    languages,
+    generating,
+    setGenerating,
+    useAsync,
+    setUseAsync,
+    promptPreview,
+    setPromptPreview,
+    generateForm,
+    setGenerateForm,
+    setScripts,
   } = state;
 
   // Get the first/main script
@@ -104,10 +117,52 @@ export default function EpisodeWorkspacePage() {
     }
   }, [router, episode]);
 
-  const handleGenerateScript = useCallback(() => {
-    // Navigate to episode page with generate form open
-    router.push(`/episodes/${episodeKey}?action=generate-script`);
-  }, [router, episodeKey]);
+  // Handle script generation directly in workspace
+  const handleGenerateScript = useCallback(async () => {
+    if (!episode?.id) {
+      showAlert({ message: "剧集数据未加载", variant: "warning" });
+      return;
+    }
+    try {
+      setGenerating(true);
+      const payload = {
+        ...generateForm,
+        episode_id: episode.id,
+      };
+      let res;
+      if (useAsync) {
+        res = await scriptAPI.generateScriptAsync(payload);
+        if (res.success && res.data) {
+          showAlert({
+            message: `剧本生成任务已创建（task_id=${res.data.task_id}）`,
+            variant: "info",
+          });
+        } else {
+          showAlert({
+            message: `创建剧本生成任务失败：${res.error || "未知错误"}`,
+            variant: "error",
+          });
+        }
+      } else {
+        res = await scriptAPI.generateScript(payload);
+        if (res.success && res.data) {
+          // Add the new script to the list
+          setScripts((prev) => [res.data!, ...(prev || [])]);
+          showAlert({ message: "剧本生成成功", variant: "success" });
+        } else {
+          showAlert({
+            message: `剧本生成失败：${res.error || "未知错误"}`,
+            variant: "error",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to generate script:", error);
+      showAlert({ message: "剧本生成失败", variant: "error" });
+    } finally {
+      setGenerating(false);
+    }
+  }, [episode?.id, generateForm, useAsync, setGenerating, setScripts, showAlert]);
 
   const handleGenerateTimeline = useCallback(() => {
     // Navigate to episode page timeline section
@@ -155,7 +210,16 @@ export default function EpisodeWorkspacePage() {
           {activeTab === "script" && (
             <WorkspaceScriptTabContent
               script={mainScript}
-              onGenerateScript={handleGenerateScript}
+              generateForm={generateForm}
+              setGenerateForm={setGenerateForm}
+              formats={formats}
+              languages={languages}
+              useAsync={useAsync}
+              setUseAsync={setUseAsync}
+              promptPreview={promptPreview}
+              setPromptPreview={setPromptPreview}
+              generating={generating}
+              onGenerate={handleGenerateScript}
             />
           )}
           {activeTab === "timeline" && episode && (
