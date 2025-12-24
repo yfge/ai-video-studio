@@ -18,9 +18,6 @@ export function EpisodeHeader({
 }: EpisodeHeaderProps) {
   return (
     <div className="mb-8">
-      <div className="mb-3 text-xs text-gray-500">
-        scene_count: {getSceneCount(episode) || "—"}
-      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">

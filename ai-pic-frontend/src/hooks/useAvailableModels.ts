@@ -59,9 +59,22 @@ export function useAvailableModels(options: UseAvailableModelsOptions = {}) {
         throw new Error(response.error || '获取模型列表失败')
       }
 
-      modelCache.set(effectiveKey, response.data)
+      // Deduplicate models by model_id or id to prevent duplicates in dropdown
+      const rawModels = response.data.models ?? []
+      const seen = new Set<string>()
+      const deduplicatedModels = rawModels.filter(model => {
+        const key = model.model_id || model.id
+        if (seen.has(key)) {
+          return false
+        }
+        seen.add(key)
+        return true
+      })
+
+      const deduplicatedData = { ...response.data, models: deduplicatedModels }
+      modelCache.set(effectiveKey, deduplicatedData)
       setState({
-        models: response.data.models ?? [],
+        models: deduplicatedModels,
         defaultModel: response.data.default ?? '',
         loading: false,
         error: null,
