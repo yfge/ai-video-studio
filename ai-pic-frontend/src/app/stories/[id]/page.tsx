@@ -40,8 +40,7 @@ export default function StoryDetailPage() {
     toggleFocusCharacter,
     navigateToStories,
     navigateToEpisode,
-    navigateToStoryboard,
-    navigateToScript,
+    // Removed: navigateToStoryboard, navigateToScript - unified workspace entry
   } = state;
 
   if (loading) {
@@ -103,8 +102,6 @@ export default function StoryDetailPage() {
           scriptsByEpisode={scriptsByEpisode}
           loadingScripts={loadingScripts}
           onNavigateToEpisode={navigateToEpisode}
-          onNavigateToStoryboard={navigateToStoryboard}
-          onNavigateToScript={navigateToScript}
         />
       </div>
     </div>

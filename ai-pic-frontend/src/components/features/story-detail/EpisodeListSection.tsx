@@ -9,8 +9,8 @@ interface EpisodeListSectionProps {
   scriptsByEpisode: Record<number, Script[]>;
   loadingScripts: boolean;
   onNavigateToEpisode: (businessIdOrId: string | number) => void;
-  onNavigateToStoryboard: (businessIdOrId: string | number) => void;
-  onNavigateToScript: (scriptIdOrBiz: string | number) => void;
+  // Simplified: removed onNavigateToStoryboard and onNavigateToScript
+  // All navigation now goes through unified workspace entry
 }
 
 const normalizeEpisodeNumber = (value: unknown, fallback: number) => {
@@ -25,8 +25,6 @@ export function EpisodeListSection({
   scriptsByEpisode,
   loadingScripts,
   onNavigateToEpisode,
-  onNavigateToStoryboard,
-  onNavigateToScript,
 }: EpisodeListSectionProps) {
   const extra =
     story.extra_metadata && typeof story.extra_metadata === "object"
@@ -97,9 +95,7 @@ export function EpisodeListSection({
               episodeNumber={episodeNumber}
               scripts={episode ? scriptsByEpisode[episode.id] || [] : []}
               loadingScripts={loadingScripts}
-              onNavigateToEpisode={onNavigateToEpisode}
-              onNavigateToStoryboard={onNavigateToStoryboard}
-              onNavigateToScript={onNavigateToScript}
+              onNavigateToWorkspace={onNavigateToEpisode}
             />
           ))}
         </div>
@@ -114,9 +110,7 @@ interface EpisodeCardProps {
   episodeNumber: number;
   scripts: Script[];
   loadingScripts: boolean;
-  onNavigateToEpisode: (businessIdOrId: string | number) => void;
-  onNavigateToStoryboard: (businessIdOrId: string | number) => void;
-  onNavigateToScript: (scriptIdOrBiz: string | number) => void;
+  onNavigateToWorkspace: (businessIdOrId: string | number) => void;
 }
 
 function EpisodeCard({
@@ -125,9 +119,7 @@ function EpisodeCard({
   episodeNumber,
   scripts,
   loadingScripts,
-  onNavigateToEpisode,
-  onNavigateToStoryboard,
-  onNavigateToScript,
+  onNavigateToWorkspace,
 }: EpisodeCardProps) {
   const scenes = episode ? extractEpisodeScenes(episode) : [];
   const sceneCount = episode ? getEpisodeSceneCount(episode) : undefined;
@@ -155,14 +147,6 @@ function EpisodeCard({
         <div className="font-medium text-gray-900">
           第{episodeNumber}集 · {title}
         </div>
-        {episode && (
-          <button
-            onClick={() => onNavigateToEpisode(episode.business_id || episode.id)}
-            className="text-blue-600 hover:text-blue-800 text-sm"
-          >
-            查看
-          </button>
-        )}
       </div>
       <div className="text-sm text-gray-600 mt-2 line-clamp-3">{summary}</div>
       <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
@@ -179,13 +163,18 @@ function EpisodeCard({
         <ScenesPreview scenes={scenes} />
       )}
 
-      {scripts.length > 0 && episode && (
-        <ScriptsPreview
-          scripts={scripts}
-          episode={episode}
-          onNavigateToStoryboard={onNavigateToStoryboard}
-          onNavigateToScript={onNavigateToScript}
-        />
+      {scripts.length > 0 && (
+        <ScriptsInfo scripts={scripts} />
+      )}
+
+      {/* Single entry point button */}
+      {episode && (
+        <button
+          onClick={() => onNavigateToWorkspace(episode.business_id || episode.id)}
+          className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 text-sm font-medium"
+        >
+          进入工作台 →
+        </button>
       )}
     </div>
   );
@@ -258,42 +247,18 @@ function ScenesPreview({ scenes }: { scenes: Record<string, unknown>[] }) {
   );
 }
 
-function ScriptsPreview({
-  scripts,
-  episode,
-  onNavigateToStoryboard,
-  onNavigateToScript,
-}: {
-  scripts: Script[];
-  episode: Episode;
-  onNavigateToStoryboard: (businessIdOrId: string | number) => void;
-  onNavigateToScript: (scriptIdOrBiz: string | number) => void;
-}) {
+function ScriptsInfo({ scripts }: { scripts: Script[] }) {
   return (
     <div className="mt-3 text-sm">
-      <div className="text-gray-700 mb-1 flex items-center justify-between">
-        <span>最新剧本：</span>
-        <button
-          onClick={() => onNavigateToStoryboard(episode.business_id || episode.id)}
-          className="text-blue-600 hover:text-blue-800 text-xs"
-        >
-          分镜管理
-        </button>
-      </div>
+      <div className="text-gray-500 text-xs mb-1">剧本：</div>
       <div className="space-y-1">
         {scripts.slice(0, 2).map((sc) => (
-          <div key={sc.id} className="flex items-center justify-between">
-            <div className="truncate mr-2">{sc.title}</div>
-            <button
-              onClick={() => onNavigateToScript(sc.business_id || sc.id)}
-              className="text-blue-600 hover:text-blue-800 text-xs"
-            >
-              查看
-            </button>
+          <div key={sc.id} className="text-gray-700 truncate text-xs">
+            {sc.title}
           </div>
         ))}
         {scripts.length > 2 && (
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-400">
             还有 {scripts.length - 2} 个剧本…
           </div>
         )}
