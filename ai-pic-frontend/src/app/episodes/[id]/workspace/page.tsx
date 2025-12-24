@@ -107,9 +107,8 @@ export default function EpisodeWorkspacePage() {
         ...generateForm,
         episode_id: episode.id,
       };
-      let res;
       if (useAsync) {
-        res = await scriptAPI.generateScriptAsync(payload);
+        const res = await scriptAPI.generateScriptAsync(payload);
         if (res.success && res.data) {
           showAlert({
             message: `剧本生成任务已创建（task_id=${res.data.task_id}）`,
@@ -122,7 +121,7 @@ export default function EpisodeWorkspacePage() {
           });
         }
       } else {
-        res = await scriptAPI.generateScript(payload);
+        const res = await scriptAPI.generateScript(payload);
         if (res.success && res.data) {
           // Add the new script to the list
           setScripts((prev) => [res.data!, ...(prev || [])]);
@@ -207,7 +206,7 @@ export default function EpisodeWorkspacePage() {
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <EpisodeWorkspaceHeader
-          episode={episode}
+          episode={episode!}
           script={mainScript}
           workflowStatus={workflowStatus}
           activeTab={activeTab}

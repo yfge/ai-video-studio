@@ -72,8 +72,8 @@ interface WorkspaceScriptTabContentProps {
   languages: Array<{ value: string; label: string }>;
   useAsync: boolean;
   setUseAsync: (value: boolean) => void;
-  promptPreview: string | null;
-  setPromptPreview: (value: string | null) => void;
+  promptPreview: string;
+  setPromptPreview: React.Dispatch<React.SetStateAction<string>>;
   generating: boolean;
   onGenerate: () => void;
   // Regeneration
@@ -359,7 +359,7 @@ export function WorkspaceScriptTabContent({
               <button
                 onClick={() => {
                   setShowRegenerateModal(false);
-                  onRegenerateScript(regenerateModel || undefined);
+                  onRegenerateScript?.(regenerateModel || undefined);
                   setRegenerateModel("");
                 }}
                 disabled={regenerating}

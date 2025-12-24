@@ -265,34 +265,14 @@ export default function EpisodeDetailPage() {
           selectedScriptId={selectedScriptId}
           selectedScript={selectedScript}
           onSelectScript={setSelectedScriptId}
-          episodeMeta={episodeMeta}
           selectedAudioTimeline={selectedAudioTimeline}
           selectedStoryboard={selectedStoryboard}
           normalizedScenes={normalizedScenes}
           normalizedScenesLoading={normalizedScenesLoading}
           normalizedScenesError={normalizedScenesError}
-          sceneAudioTaskId={sceneAudioTaskId}
-          timelineTaskId={timelineTaskId}
-          storyboardTaskId={storyboardTaskId}
-          sceneAudioTask={sceneAudioTask}
-          timelineTask={timelineTask}
-          storyboardTask={storyboardTask}
-          sceneAudioBusy={sceneAudioBusy}
-          timelineBusy={timelineBusy}
-          storyboardBusy={storyboardBusy}
-          overwriteSceneAudio={overwriteSceneAudio}
-          setOverwriteSceneAudio={setOverwriteSceneAudio}
-          overwriteTimeline={overwriteTimeline}
-          setOverwriteTimeline={setOverwriteTimeline}
-          overwriteStoryboard={overwriteStoryboard}
-          setOverwriteStoryboard={setOverwriteStoryboard}
-          minPauseSeconds={minPauseSeconds}
-          setMinPauseSeconds={setMinPauseSeconds}
+          pipelineBusy={sceneAudioBusy || timelineBusy || storyboardBusy}
           timingModel={timingModel}
           setTimingModel={setTimingModel}
-          onGenerateSceneDialogueAudio={handleGenerateSceneDialogueAudio}
-          onGenerateAudioTimeline={handleGenerateAudioTimeline}
-          onGenerateStoryboardFromAudioTimeline={handleGenerateStoryboardFromAudioTimeline}
           onNavigateToTasks={() => router.push("/tasks")}
           onNavigateToScript={() => {
             if (selectedScript) {

@@ -63,8 +63,8 @@ export function useAvailableModels(options: UseAvailableModelsOptions = {}) {
       const rawModels = response.data.models ?? []
       const seen = new Set<string>()
       const deduplicatedModels = rawModels.filter(model => {
-        const key = model.model_id || model.id
-        if (seen.has(key)) {
+        const key = model.model_id || model.id || ''
+        if (!key || seen.has(key)) {
           return false
         }
         seen.add(key)

@@ -63,4 +63,5 @@ The backend's `_resolve_prefer_provider_and_model()` in `ai_service_manager.py` 
 
 ## Linked Commits
 
-- d3491fc fix(timeline): use provider:model_id format for model selector
+- d612a70 fix(timeline): use provider:model_id format for model selector
+- 2874a65 fix(frontend): resolve type errors for production build
