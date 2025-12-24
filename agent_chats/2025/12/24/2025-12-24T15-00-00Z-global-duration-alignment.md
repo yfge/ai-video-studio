@@ -230,3 +230,4 @@ Added explicit dialogue requirements (lines 113-124):
 
 - 07111df feat(timeline): implement global duration alignment from script to storyboard
 - 2fd4577 feat(timeline): add intelligent timing agent with model selection
+- 755e471 feat(episode): add REACT rejection mechanism for duration validation
