@@ -203,15 +203,24 @@ export function EnvironmentDetailView() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <EnvironmentImagesPanel
-            envName={env.name}
-            images={images}
-            imageSrc={imageSrc}
-            onImg2Img={(image) => setVariantTarget(image)}
-            onDelete={handleDeleteImage}
-          />
-          <EnvironmentSidePanel envKey={envKey} onImageUploaded={handleImageUploaded} />
+        <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-2xl overflow-hidden">
+          <div className="p-6 sm:p-8 border-b border-gray-100">
+            <EnvironmentSidePanel
+              envKey={envKey}
+              onImageUploaded={handleImageUploaded}
+              variant="embedded"
+            />
+          </div>
+          <div className="p-6 sm:p-8">
+            <EnvironmentImagesPanel
+              envName={env.name}
+              images={images}
+              imageSrc={imageSrc}
+              onImg2Img={(image) => setVariantTarget(image)}
+              onDelete={handleDeleteImage}
+              variant="embedded"
+            />
+          </div>
         </div>
       </main>
       <EnvironmentVariantModal

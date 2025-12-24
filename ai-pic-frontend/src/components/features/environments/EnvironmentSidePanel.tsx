@@ -11,9 +11,14 @@ import { EMPTY_GENERATION, type GenerationFormState } from './types'
 interface EnvironmentSidePanelProps {
   envKey: string
   onImageUploaded: (imageUrl: string) => void
+  variant?: 'card' | 'embedded'
 }
 
-export function EnvironmentSidePanel({ envKey, onImageUploaded }: EnvironmentSidePanelProps) {
+export function EnvironmentSidePanel({
+  envKey,
+  onImageUploaded,
+  variant = 'card',
+}: EnvironmentSidePanelProps) {
   const { showAlert } = useAlertModal()
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -78,8 +83,13 @@ export function EnvironmentSidePanel({ envKey, onImageUploaded }: EnvironmentSid
     }
   }
 
+  const containerClassName =
+    variant === 'embedded'
+      ? 'space-y-5'
+      : 'bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 space-y-5'
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 space-y-5">
+    <div className={containerClassName}>
       <div>
         <h3 className="text-lg font-semibold text-gray-900">上传参考图</h3>
         <p className="text-sm text-gray-500">支持常见图片格式，自动走 OSS 持久化。</p>

@@ -7,6 +7,7 @@ interface EnvironmentImagesPanelProps {
   imageSrc: (url: string) => string
   onImg2Img: (image: EnvironmentImage) => void
   onDelete: (url: string) => void
+  variant?: 'card' | 'embedded'
 }
 
 export function EnvironmentImagesPanel({
@@ -15,9 +16,15 @@ export function EnvironmentImagesPanel({
   imageSrc,
   onImg2Img,
   onDelete,
+  variant = 'card',
 }: EnvironmentImagesPanelProps) {
+  const containerClassName =
+    variant === 'embedded'
+      ? 'space-y-4'
+      : 'bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 space-y-4 lg:col-span-2'
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 space-y-4 lg:col-span-2">
+    <div className={containerClassName}>
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">参考图</h3>
         <span className="text-sm text-gray-500">共 {images.length} 张</span>
