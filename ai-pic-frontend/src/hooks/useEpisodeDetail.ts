@@ -86,6 +86,7 @@ export function useEpisodeDetail({ episodeKey, showAlert }: UseEpisodeDetailOpti
   const [overwriteTimeline, setOverwriteTimeline] = useState(false);
   const [overwriteStoryboard, setOverwriteStoryboard] = useState(false);
   const [minPauseSeconds, setMinPauseSeconds] = useState(1.5);
+  const [timingModel, setTimingModel] = useState<string>("");
 
   const [sceneAudioBusy, setSceneAudioBusy] = useState(false);
   const [timelineBusy, setTimelineBusy] = useState(false);
@@ -346,6 +347,8 @@ export function useEpisodeDetail({ episodeKey, showAlert }: UseEpisodeDetailOpti
     setOverwriteStoryboard,
     minPauseSeconds,
     setMinPauseSeconds,
+    timingModel,
+    setTimingModel,
 
     // Busy states
     sceneAudioBusy,

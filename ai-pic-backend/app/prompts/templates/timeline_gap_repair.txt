@@ -1,0 +1,37 @@
+上一次生成的时间轴计划未通过验证，请修正以下问题：
+
+## 验证错误
+{% for error in validation_errors %}
+- {{ error }}
+{% endfor %}
+
+## 约束条件
+- 最小间隔: {{ min_gap_ms }}ms
+- 最大间隔: {{ max_gap_ms }}ms
+- 平均间隔范围: {{ min_avg_gap_ms }}ms - {{ max_avg_gap_ms }}ms
+- 节奏需要变化，避免所有间隔都相同
+
+## 原计划
+{{ original_plan }}
+
+## 修正要求
+1. 调整 timing_decisions 中的 duration_ms 值，确保满足所有约束条件
+2. 保持节奏的自然变化，避免所有间隔都相同
+3. 如果原计划中某些间隔过长或过短，适当调整到合理范围
+
+## 输出格式
+请输出修正后的完整 JSON：
+```json
+{
+  "reasoning_steps": ["修正说明..."],
+  "timing_decisions": [
+    {
+      "segment_index": 0,
+      "gap_type": "post_dialogue",
+      "duration_ms": 300,
+      "reasoning": "修正后的说明"
+    }
+  ],
+  "overall_rhythm_note": "修正后的整体节奏说明"
+}
+```

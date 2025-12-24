@@ -53,6 +53,8 @@ export default function EpisodeDetailPage() {
     setOverwriteStoryboard,
     minPauseSeconds,
     setMinPauseSeconds,
+    timingModel,
+    setTimingModel,
     sceneAudioBusy,
     setSceneAudioBusy,
     timelineBusy,
@@ -109,6 +111,7 @@ export default function EpisodeDetailPage() {
       const res = await scriptAPI.generateSceneDialogueAudioAsync(selectedScriptId, {
         overwrite_audio: overwriteSceneAudio,
         overwrite_beats: true,
+        timing_model: timingModel || undefined,
       });
       if (res.success && res.data) {
         setSceneAudioTaskId(res.data.task_id);
@@ -285,6 +288,8 @@ export default function EpisodeDetailPage() {
           setOverwriteStoryboard={setOverwriteStoryboard}
           minPauseSeconds={minPauseSeconds}
           setMinPauseSeconds={setMinPauseSeconds}
+          timingModel={timingModel}
+          setTimingModel={setTimingModel}
           onGenerateSceneDialogueAudio={handleGenerateSceneDialogueAudio}
           onGenerateAudioTimeline={handleGenerateAudioTimeline}
           onGenerateStoryboardFromAudioTimeline={handleGenerateStoryboardFromAudioTimeline}

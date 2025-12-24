@@ -7,7 +7,7 @@ import wave
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 from uuid import uuid4
 
 import httpx
@@ -15,6 +15,9 @@ from app.core.logging import get_logger
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene, SceneBeat
 from app.services.ai_service import ai_service
+from app.services.audio.dialogue_processor import (
+    plan_scene_segments_intelligent,
+)
 from app.services.storage.oss_service import oss_service
 from app.services.storyboard.storyboard_prompt_utils import (
     apply_storyboard_prompt_optimizations,
@@ -742,9 +745,17 @@ async def generate_scene_dialogue_audio(
     scene: Scene,
     tts_model: str = "speech-2.6-hd",
     overwrite_beats: bool = True,
+    use_intelligent_timing: bool = True,
+    timing_model: str | None = None,
 ) -> dict[str, Any]:
     """
     Generate 1 dialogue audio track per scene and persist beats into scene_beats.
+
+    Args:
+        use_intelligent_timing: If True, uses AI agent to compute context-aware
+            pause durations. Falls back to fixed 300ms pauses on failure.
+        timing_model: LLM model to use for timeline calculation. Uses system
+            default if not specified.
 
     Returns the persisted scene.metadata.dialogue_audio payload.
     """
@@ -753,7 +764,29 @@ async def generate_scene_dialogue_audio(
     scene_number = _extract_scene_number(scene)
     dialogues = _extract_dialogues_for_scene(script, scene_number)
     stage = _extract_stage_for_scene(script, scene_number)
-    segments = plan_scene_segments(dialogues=dialogues, stage_directions=stage)
+
+    # Build scene context for intelligent timing
+    scene_context = {
+        "scene_id": scene.id,
+        "scene_number": scene_number,
+        "conflict_notes": getattr(scene, "conflict_notes", None),
+        "dramatic_question": None,
+    }
+    # Try to get dramatic_question from step_outline if available
+    if hasattr(scene, "step_outline") and scene.step_outline:
+        scene_context["dramatic_question"] = getattr(
+            scene.step_outline, "dramatic_question", None
+        )
+
+    # Use intelligent timing or fallback to fixed intervals
+    segments = await plan_scene_segments_intelligent(
+        dialogues=dialogues,
+        stage_directions=stage,
+        scene_context=scene_context,
+        ai_service=ai_service,
+        use_intelligent_timing=use_intelligent_timing,
+        timing_model=timing_model,
+    )
 
     story_char_map = get_story_character_map(db, story.id)
 

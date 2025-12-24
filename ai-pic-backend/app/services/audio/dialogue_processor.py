@@ -9,10 +9,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Sequence
 
+from app.core.logging import get_logger
 from app.models.script import Script
 from app.models.story_structure import Scene, SceneBeat
+
+if TYPE_CHECKING:
+    from app.services.ai_service import AIService
+
+logger = get_logger()
 
 
 # Regex patterns for dialogue processing
@@ -317,6 +323,231 @@ def plan_scene_segments(
                         text=content,
                         timing="mid",
                         planned_duration_ms=_action_duration_ms(content),
+                    )
+                )
+            mid_inserted = True
+
+    # Add any remaining mid-stage directions at end
+    if not mid_inserted and stages_mid:
+        for content in stages_mid:
+            planned.append(
+                PlannedSegment(
+                    kind="action",
+                    text=content,
+                    timing="mid",
+                    planned_duration_ms=_action_duration_ms(content),
+                )
+            )
+
+    # Add end stage directions
+    for content in stages_end:
+        planned.append(
+            PlannedSegment(
+                kind="action",
+                text=content,
+                timing="end",
+                planned_duration_ms=_action_duration_ms(content),
+            )
+        )
+
+    return planned
+
+
+async def plan_scene_segments_intelligent(
+    *,
+    dialogues: Sequence[dict[str, Any]],
+    stage_directions: Sequence[dict[str, Any]],
+    scene_context: dict[str, Any],
+    ai_service: Optional["AIService"] = None,
+    use_intelligent_timing: bool = True,
+    # Fallback defaults
+    pause_after_dialogue_ms: int = 300,
+    action_base_ms: int = 800,
+    action_per_char_ms: int = 20,
+    action_max_ms: int = 3000,
+    # Agent config
+    timing_model: Optional[str] = None,
+    prefer_provider: Optional[str] = None,
+) -> list[PlannedSegment]:
+    """
+    Build an ordered segment plan with intelligent gap calculation.
+
+    Uses TimelineLangGraphAgent to compute context-aware pause durations.
+    Falls back to fixed intervals if:
+    - LangGraph is not available
+    - AI service fails
+    - use_intelligent_timing is False
+
+    Args:
+        dialogues: List of dialogue dicts with character, content, emotion
+        stage_directions: List of stage direction dicts with content, timing
+        scene_context: Dict with scene_id, scene_number, conflict_notes, etc.
+        ai_service: AIService instance for LLM calls
+        use_intelligent_timing: Whether to use intelligent timing agent
+        pause_after_dialogue_ms: Default pause duration (fallback)
+        action_base_ms: Base action duration (fallback)
+        action_per_char_ms: Per-char action duration (fallback)
+        action_max_ms: Max action duration (fallback)
+        timing_model: LLM model to use for timeline calculation
+        prefer_provider: Preferred LLM provider
+
+    Returns:
+        List of PlannedSegment with timing information
+    """
+    timing_map: dict[int, int] = {}
+
+    if use_intelligent_timing and ai_service:
+        try:
+            from app.services.timeline_agent import TimelineLangGraphAgent
+
+            agent = TimelineLangGraphAgent(ai_service)
+            timing_plan = await agent.compute_timing(
+                dialogues=list(dialogues),
+                stage_directions=list(stage_directions),
+                scene_context=scene_context,
+                model=timing_model,
+                prefer_provider=prefer_provider,
+            )
+
+            if timing_plan and timing_plan.decisions:
+                for decision in timing_plan.decisions:
+                    timing_map[decision.segment_index] = decision.adjusted_duration_ms
+                logger.info(
+                    f"Intelligent timing computed: {len(timing_map)} decisions, "
+                    f"avg={timing_plan.avg_gap_ms:.0f}ms, "
+                    f"fallback={timing_plan.fallback_used}"
+                )
+        except Exception as e:
+            logger.warning(f"Intelligent timing failed, using fallback: {e}")
+
+    # Build segments using timing_map or fallback
+    return _build_segments_with_timing(
+        dialogues=dialogues,
+        stage_directions=stage_directions,
+        timing_map=timing_map,
+        pause_after_dialogue_ms=pause_after_dialogue_ms,
+        action_base_ms=action_base_ms,
+        action_per_char_ms=action_per_char_ms,
+        action_max_ms=action_max_ms,
+    )
+
+
+def _build_segments_with_timing(
+    *,
+    dialogues: Sequence[dict[str, Any]],
+    stage_directions: Sequence[dict[str, Any]],
+    timing_map: dict[int, int],
+    pause_after_dialogue_ms: int = 300,
+    action_base_ms: int = 800,
+    action_per_char_ms: int = 20,
+    action_max_ms: int = 3000,
+) -> list[PlannedSegment]:
+    """
+    Build segments with custom timing from timing_map.
+
+    Args:
+        timing_map: Dict mapping dialogue index -> pause duration in ms
+                   If index not in map, uses pause_after_dialogue_ms
+    """
+    stages_start: list[str] = []
+    stages_mid: list[str] = []
+    stages_end: list[str] = []
+
+    for sd in stage_directions:
+        if not isinstance(sd, dict):
+            continue
+        content = str(sd.get("content") or "").strip()
+        if not content:
+            continue
+        timing = str(sd.get("timing") or "mid").strip().lower()
+        if timing in {"start", "begin", "opening"}:
+            stages_start.append(content)
+        elif timing in {"end", "closing"}:
+            stages_end.append(content)
+        else:
+            stages_mid.append(content)
+
+    planned: list[PlannedSegment] = []
+
+    def _action_duration_ms(content: str) -> int:
+        length = len(content)
+        return min(
+            action_max_ms,
+            max(action_base_ms, action_base_ms + length * action_per_char_ms),
+        )
+
+    # Add start stage directions
+    for content in stages_start:
+        planned.append(
+            PlannedSegment(
+                kind="action",
+                text=content,
+                timing="start",
+                planned_duration_ms=_action_duration_ms(content),
+            )
+        )
+
+    mid_inserted = False
+
+    # Process dialogues
+    for idx, dlg in enumerate(dialogues):
+        speaker = str(dlg.get("character") or "旁白")
+        content = str(dlg.get("content") or "").strip()
+        emotion = (
+            str(dlg.get("emotion") or "").strip()
+            if isinstance(dlg.get("emotion"), str)
+            else None
+        )
+        emotion = emotion or None
+        action = (
+            str(dlg.get("action") or "").strip()
+            if isinstance(dlg.get("action"), str)
+            else None
+        )
+        action = action or None
+
+        if looks_like_silence(content):
+            planned.append(
+                PlannedSegment(
+                    kind="pause",
+                    text=content or "…",
+                    speaker_name=speaker,
+                    emotion=emotion,
+                    action=action,
+                    planned_duration_ms=800,
+                )
+            )
+        else:
+            planned.append(
+                PlannedSegment(
+                    kind="dialogue",
+                    text=content,
+                    speaker_name=speaker,
+                    emotion=emotion,
+                    action=action,
+                )
+            )
+
+        # Get pause duration from timing_map or use default
+        pause_duration = timing_map.get(idx, pause_after_dialogue_ms)
+        if pause_duration > 0:
+            planned.append(
+                PlannedSegment(
+                    kind="pause",
+                    text="",
+                    planned_duration_ms=pause_duration,
+                )
+            )
+
+        # Insert mid-stage directions after first dialogue
+        if not mid_inserted and idx == 0 and stages_mid:
+            for sd_content in stages_mid:
+                planned.append(
+                    PlannedSegment(
+                        kind="action",
+                        text=sd_content,
+                        timing="mid",
+                        planned_duration_ms=_action_duration_ms(sd_content),
                     )
                 )
             mid_inserted = True

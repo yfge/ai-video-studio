@@ -1,0 +1,28 @@
+# Timeline Gap Reasoning Template Configuration
+name: timeline_gap_reasoning
+description: 对白音频时间轴间隔推理提示词
+category: script
+version: "1.0"
+
+# Required variables
+required_variables:
+  - scene_number
+  - dialogues
+  - conflict_level
+  - pacing
+
+# Optional variables with defaults
+optional_variables:
+  mood: null
+  character_count: 1
+  dialogue_count: 0
+  stage_directions: []
+
+# Model configuration hints
+model_hints:
+  temperature: 0.4
+  max_tokens: 2048
+  prefer_json: true
+
+# Output schema reference
+output_schema: TIMING_OUTPUT_SCHEMA

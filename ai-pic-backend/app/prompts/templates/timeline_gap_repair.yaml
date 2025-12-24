@@ -1,0 +1,23 @@
+# Timeline Gap Repair Template Configuration
+name: timeline_gap_repair
+description: 对白音频时间轴间隔修复提示词
+category: script
+version: "1.0"
+
+# Required variables
+required_variables:
+  - validation_errors
+  - original_plan
+  - min_gap_ms
+  - max_gap_ms
+  - min_avg_gap_ms
+  - max_avg_gap_ms
+
+# Model configuration hints
+model_hints:
+  temperature: 0.3
+  max_tokens: 2048
+  prefer_json: true
+
+# Output schema reference
+output_schema: TIMING_OUTPUT_SCHEMA

@@ -173,6 +173,7 @@ export async function generateSceneDialogueAudioAsync(
   scriptId: number | string,
   payload?: {
     tts_model?: string;
+    timing_model?: string;
     scene_numbers?: number[];
     overwrite_audio?: boolean;
     overwrite_beats?: boolean;

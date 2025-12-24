@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { NormalizedScene, Script, Task } from "@/utils/api";
 import { Timeline, type TimelineTrack } from "@/components/features";
 import { asRecord, getString, getNumber, parseMs } from "@/hooks/useEpisodeDetail";
+import { useAvailableModels } from "@/hooks/useAvailableModels";
 
 interface AudioTimelineSectionProps {
   scripts: Script[];
@@ -40,6 +41,10 @@ interface AudioTimelineSectionProps {
   minPauseSeconds: number;
   setMinPauseSeconds: (value: number) => void;
 
+  // Timing model
+  timingModel: string;
+  setTimingModel: (value: string) => void;
+
   // Actions
   onGenerateSceneDialogueAudio: () => void;
   onGenerateAudioTimeline: () => void;
@@ -75,12 +80,20 @@ export function AudioTimelineSection({
   setOverwriteStoryboard,
   minPauseSeconds,
   setMinPauseSeconds,
+  timingModel,
+  setTimingModel,
   onGenerateSceneDialogueAudio,
   onGenerateAudioTimeline,
   onGenerateStoryboardFromAudioTimeline,
   onNavigateToTasks,
   onNavigateToScript,
 }: AudioTimelineSectionProps) {
+  // Load available LLM models for timing calculation
+  const { models: availableModels, loading: modelsLoading } = useAvailableModels({
+    modelType: "text",
+    enabled: true,
+  });
+
   const selectedEpisodeAudio = asRecord(selectedAudioTimeline?.["episode_audio"]);
   const selectedEpisodeAudioUrl = getString(selectedEpisodeAudio?.["oss_url"]);
   const selectedEpisodeAudioVersion = selectedEpisodeAudio?.["version"];
@@ -372,6 +385,22 @@ export function AudioTimelineSection({
             }}
             className="w-20 px-2 py-1 border border-gray-300 rounded"
           />
+        </label>
+        <label className="flex items-center gap-2">
+          时间轴模型
+          <select
+            value={timingModel}
+            onChange={(e) => setTimingModel(e.target.value)}
+            disabled={modelsLoading}
+            className="px-2 py-1 border border-gray-300 rounded min-w-[180px]"
+          >
+            <option value="">自动（默认模型）</option>
+            {availableModels.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name || model.id}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 

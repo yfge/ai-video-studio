@@ -58,6 +58,10 @@ class PromptTemplate(Enum):
     SCENE_IMAGE = "scene_image"
     ENVIRONMENT_IMAGE = "environment_image"  # 环境图像
 
+    # 时间轴相关
+    TIMELINE_GAP_REASONING = "timeline_gap_reasoning"  # 对白间隔推理
+    TIMELINE_GAP_REPAIR = "timeline_gap_repair"  # 对白间隔修复
+
     # 系统提示词 (System Prompts)
     SYSTEM_PROMPT_STORY = "system_prompt_story"  # 故事创作系统提示
     SYSTEM_PROMPT_SCRIPT = "system_prompt_script"  # 剧本创作系统提示
@@ -153,6 +157,10 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.STORY_OUTLINE_REPAIR: PromptCategory.GENERAL,
     PromptTemplate.EPISODE_PLAN_REPAIR: PromptCategory.GENERAL,
     PromptTemplate.EPISODE_STEP_OUTLINE_REPAIR: PromptCategory.GENERAL,
+
+    # 时间轴相关
+    PromptTemplate.TIMELINE_GAP_REASONING: PromptCategory.SCRIPT,
+    PromptTemplate.TIMELINE_GAP_REPAIR: PromptCategory.SCRIPT,
 }
 
 # 默认参数配置

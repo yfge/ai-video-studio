@@ -3629,6 +3629,9 @@ async def export_script(
 
 class ScriptDialogueAudioGenerateRequest(BaseModel):
     tts_model: str | None = Field(None, description="TTS 模型（默认 speech-2.6-hd）")
+    timing_model: str | None = Field(
+        None, description="时间轴计算 LLM 模型（默认使用系统默认模型）"
+    )
     scene_numbers: list[int] | None = Field(
         None, description="指定要生成的场景编号列表（为空则生成全部）"
     )
@@ -3726,6 +3729,7 @@ def _process_script_dialogue_audio_task(
         overwrite_audio = bool(payload.get("overwrite_audio"))
         overwrite_beats = bool(payload.get("overwrite_beats", True))
         tts_model = payload.get("tts_model") or "speech-2.6-hd"
+        timing_model = payload.get("timing_model")  # LLM model for timeline calculation
         selected_scene_numbers = payload.get("scene_numbers") or []
         selected_set = {
             int(x)
@@ -3801,6 +3805,7 @@ def _process_script_dialogue_audio_task(
                     scene=scene,
                     tts_model=str(tts_model),
                     overwrite_beats=overwrite_beats,
+                    timing_model=timing_model,
                 )
 
         anyio.run(_run)
