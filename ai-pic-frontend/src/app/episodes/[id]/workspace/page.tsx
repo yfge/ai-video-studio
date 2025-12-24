@@ -151,6 +151,38 @@ export default function EpisodeWorkspacePage() {
     router.push(`/episodes/${episodeKey}/storyboard`);
   }, [router, episodeKey]);
 
+  // State for script regeneration
+  const [regenerating, setRegenerating] = useState(false);
+
+  // Handle script regeneration
+  const handleRegenerateScript = useCallback(async () => {
+    if (!mainScript?.id) {
+      showAlert({ message: "没有可重新生成的剧本", variant: "warning" });
+      return;
+    }
+    try {
+      setRegenerating(true);
+      const res = await scriptAPI.regenerateScript(mainScript.id);
+      if (res.success && res.data) {
+        // Update the script in the list
+        setScripts((prev) =>
+          prev?.map((s) => (s.id === mainScript.id ? res.data! : s)) || []
+        );
+        showAlert({ message: "剧本重新生成成功", variant: "success" });
+      } else {
+        showAlert({
+          message: `剧本重新生成失败：${res.error || "未知错误"}`,
+          variant: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to regenerate script:", error);
+      showAlert({ message: "剧本重新生成失败", variant: "error" });
+    } finally {
+      setRegenerating(false);
+    }
+  }, [mainScript?.id, setScripts, showAlert]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -197,6 +229,8 @@ export default function EpisodeWorkspacePage() {
               setPromptPreview={setPromptPreview}
               generating={generating}
               onGenerate={handleGenerateScript}
+              onRegenerateScript={mainScript ? handleRegenerateScript : undefined}
+              regenerating={regenerating}
             />
           )}
           {activeTab === "timeline" && episode && (
