@@ -193,9 +193,9 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
 
   const navigateToStories = () => router.push("/stories");
   const navigateToEpisode = (businessIdOrId: string | number) =>
-    router.push(`/episodes/${businessIdOrId}`);
+    router.push(`/episodes/${businessIdOrId}/workspace`);
   const navigateToStoryboard = (businessIdOrId: string | number) =>
-    router.push(`/episodes/${businessIdOrId}/storyboard`);
+    router.push(`/episodes/${businessIdOrId}/workspace?tab=storyboard`);
   const navigateToScript = (scriptIdOrBiz: string | number) =>
     router.push(`/scripts/${scriptIdOrBiz}`);
 
