@@ -769,6 +769,11 @@ async def generate_scene_dialogue_audio(
     scene_context = {
         "scene_id": scene.id,
         "scene_number": scene_number,
+        "slug_line": getattr(scene, "slug_line", None),
+        "location": getattr(scene, "location", None),
+        "time_of_day": getattr(scene, "time_of_day", None),
+        "summary": getattr(scene, "summary", None),
+        "primary_characters": getattr(scene, "primary_characters", None),
         "conflict_notes": getattr(scene, "conflict_notes", None),
         "dramatic_question": None,
     }

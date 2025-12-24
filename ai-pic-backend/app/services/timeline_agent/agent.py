@@ -134,7 +134,7 @@ class TimelineLangGraphAgent:
         dialogues = state.get("dialogues", [])
         scene_ctx_raw = state.get("scene_context_raw", {})
 
-        # Build structured contexts
+        # Build structured contexts with enhanced scene data
         dialogue_contexts = build_dialogue_contexts(dialogues)
         scene_context = build_scene_context(
             scene_id=scene_ctx_raw.get("scene_id", 0),
@@ -142,10 +142,16 @@ class TimelineLangGraphAgent:
             dialogues=dialogues,
             conflict_notes=scene_ctx_raw.get("conflict_notes"),
             dramatic_question=scene_ctx_raw.get("dramatic_question"),
+            slug_line=scene_ctx_raw.get("slug_line"),
+            location=scene_ctx_raw.get("location"),
+            time_of_day=scene_ctx_raw.get("time_of_day"),
+            summary=scene_ctx_raw.get("summary"),
+            primary_characters=scene_ctx_raw.get("primary_characters"),
         )
 
         reasoning = state.get("reasoning", []) + [
-            f"analyzed: mood={scene_context.mood}, conflict={scene_context.conflict_level}"
+            f"analyzed: mood={scene_context.mood}, conflict={scene_context.conflict_level}, "
+            f"location={scene_context.location or 'unknown'}"
         ]
 
         return {
@@ -416,8 +422,19 @@ class TimelineLangGraphAgent:
         contexts = [DialogueContext.model_validate(d) for d in dialogue_contexts]
         formatted = format_dialogue_for_prompt(contexts)
 
+        # Build enhanced scene info
+        slug_line = scene_context.get('slug_line') or ''
+        location = scene_context.get('location') or '未知'
+        time_of_day = scene_context.get('time_of_day') or '未知'
+        summary = scene_context.get('summary') or ''
+
+        scene_description = f"- 场景: {slug_line}" if slug_line else f"- 地点: {location}, 时间: {time_of_day}"
+        summary_line = f"- 场景描述: {summary[:100]}..." if summary and len(summary) > 100 else (f"- 场景描述: {summary}" if summary else "")
+
         return f"""## 场景信息
 - 场景编号: {scene_context.get('scene_number', 1)}
+{scene_description}
+{summary_line}
 - 整体情绪: {scene_context.get('mood') or '未标注'}
 - 冲突程度: {scene_context.get('conflict_level', 'medium')}
 - 节奏类型: {scene_context.get('pacing', 'medium')}
@@ -433,5 +450,6 @@ class TimelineLangGraphAgent:
 2. 戏剧节奏（高冲突场景需要更短停顿保持紧张感）
 3. 语义完整性（句号后比逗号停顿更长）
 4. 角色切换（不同角色之间需要呼吸空间）
+5. 场景氛围（夜晚场景可能需要更长的呼吸空间）
 
 输出 JSON 格式的 timing_decisions。"""

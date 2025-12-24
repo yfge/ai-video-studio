@@ -29,6 +29,11 @@ class SceneContext(BaseModel):
     has_dramatic_question: bool = Field(
         False, description="Whether scene has dramatic tension"
     )
+    # Enhanced context fields
+    slug_line: Optional[str] = Field(None, description="Scene slug line (e.g., INT. APARTMENT - NIGHT)")
+    location: Optional[str] = Field(None, description="Scene location")
+    time_of_day: Optional[str] = Field(None, description="Time of day (day/night/etc)")
+    summary: Optional[str] = Field(None, description="Scene summary/description")
 
 
 class DialogueContext(BaseModel):

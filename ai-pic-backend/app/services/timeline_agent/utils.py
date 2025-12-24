@@ -137,21 +137,36 @@ def build_scene_context(
     dialogues: Sequence[dict[str, Any]],
     conflict_notes: Optional[str] = None,
     dramatic_question: Optional[str] = None,
+    slug_line: Optional[str] = None,
+    location: Optional[str] = None,
+    time_of_day: Optional[str] = None,
+    summary: Optional[str] = None,
+    primary_characters: Optional[list] = None,
 ) -> SceneContext:
     """
     Build SceneContext from scene data.
 
-    Extracts mood, conflict level, pacing from dialogue content.
+    Extracts mood, conflict level, pacing from dialogue content and scene metadata.
     """
     mood = extract_dominant_mood(dialogues)
     conflict_level = infer_conflict_level(conflict_notes)
     pacing = infer_pacing(len(dialogues))
 
-    characters = set(
+    # Extract characters from dialogues
+    dialogue_characters = set(
         str(d.get("character") or "").strip()
         for d in dialogues
         if d.get("character")
     )
+
+    # Merge with primary_characters if available
+    all_characters = dialogue_characters
+    if primary_characters and isinstance(primary_characters, list):
+        for char in primary_characters:
+            if isinstance(char, str):
+                all_characters.add(char.strip())
+            elif isinstance(char, dict) and char.get("name"):
+                all_characters.add(str(char["name"]).strip())
 
     return SceneContext(
         scene_number=scene_number,
@@ -159,9 +174,13 @@ def build_scene_context(
         mood=mood,
         conflict_level=conflict_level,
         pacing=pacing,
-        character_count=max(1, len(characters)),
+        character_count=max(1, len(all_characters)),
         dialogue_count=len(dialogues),
         has_dramatic_question=bool(dramatic_question),
+        slug_line=slug_line,
+        location=location,
+        time_of_day=time_of_day,
+        summary=summary,
     )
 
 
