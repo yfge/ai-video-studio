@@ -752,6 +752,11 @@ async def generate_scene_dialogue_audio(
     """
     Generate 1 dialogue audio track per scene and persist beats into scene_beats.
 
+    Two-phase flow for accurate duration control:
+    1. Generate TTS for all dialogues first → get actual durations
+    2. Call Timeline Agent with actual durations → compute GAPs dynamically
+    3. Assemble audio with computed GAPs
+
     Args:
         use_intelligent_timing: If True, uses AI agent to compute context-aware
             pause durations. Falls back to fixed 300ms pauses on failure.
@@ -786,24 +791,119 @@ async def generate_scene_dialogue_audio(
             scene.step_outline, "dramatic_question", None
         )
 
-    # Use intelligent timing or fallback to fixed intervals
-    segments = await plan_scene_segments_intelligent(
-        dialogues=dialogues,
-        stage_directions=stage,
-        scene_context=scene_context,
-        ai_service=ai_service,
-        use_intelligent_timing=use_intelligent_timing,
-        timing_model=timing_model,
-        target_duration_seconds=target_duration_seconds,
-    )
-
     story_char_map = get_story_character_map(db, story.id)
 
-    # Build wav segments
+    # Use single temp directory for all phases (TTS generation + assembly)
     with tempfile.TemporaryDirectory(prefix="scene-audio-") as tmp_root:
         tmp_root_path = Path(tmp_root)
+
+        # ========== PHASE 1: Generate TTS for all dialogues first ==========
+        # This gives us actual durations before computing GAPs
+        dialogue_tts_results: list[dict[str, Any]] = []
+        total_dialogue_duration_ms = 0
+
+        for idx, dlg in enumerate(dialogues):
+            speaker = dlg.get("character") or "旁白"
+            content = dlg.get("content") or ""
+            emotion = dlg.get("emotion")
+            action = dlg.get("action")
+
+            if not content.strip():
+                continue
+
+            speaker_key = _norm_name(speaker)
+            ip = story_char_map.get(speaker_key)
+
+            if ip:
+                voice_config = await ensure_virtual_ip_voice_config(
+                    db, ip, tts_provider="minimax", tts_model=tts_model
+                )
+                speaker_kind = "virtual_ip"
+            else:
+                _, voice_config = await ensure_derived_character_voice_binding(
+                    db,
+                    story=story,
+                    episode=episode,
+                    scene=scene,
+                    script_dialogues=script.dialogues or [],
+                    character_name=speaker,
+                    tts_provider="minimax",
+                    tts_model=tts_model,
+                )
+                speaker_kind = "derived"
+
+            tts_wav_path = tmp_root_path / f"phase1-dlg-{idx}.wav"
+            tts_emotion = _normalize_tts_emotion(emotion, action=action)
+            await _tts_to_wav_file(
+                text=content,
+                voice_config=voice_config,
+                out_path=tts_wav_path,
+                emotion=tts_emotion,
+            )
+            actual_duration_ms = _wav_duration_ms(tts_wav_path)
+            total_dialogue_duration_ms += actual_duration_ms
+
+            dialogue_tts_results.append({
+                "index": idx,
+                "speaker": speaker,
+                "speaker_kind": speaker_kind,
+                "content": content,
+                "emotion": emotion,
+                "action": action,
+                "tts_emotion": tts_emotion,
+                "voice_config": voice_config,
+                "wav_path": tts_wav_path,  # Keep as Path, not string
+                "actual_duration_ms": actual_duration_ms,
+            })
+
+        # ========== PHASE 2: Compute GAPs with actual durations ==========
+        # Update dialogues with actual durations for Timeline Agent
+        dialogues_with_actual_duration = []
+        for dlg in dialogues:
+            dlg_copy = dict(dlg)
+            # Find matching TTS result by content
+            for tts_res in dialogue_tts_results:
+                if tts_res["content"] == dlg.get("content"):
+                    dlg_copy["actual_duration_ms"] = tts_res["actual_duration_ms"]
+                    break
+            dialogues_with_actual_duration.append(dlg_copy)
+
+        # Log actual vs target duration
+        if target_duration_seconds:
+            target_ms = target_duration_seconds * 1000
+            available_gap_ms = target_ms - total_dialogue_duration_ms
+            logger.info(
+                "Phase 2: Computing GAPs with actual dialogue durations",
+                extra={
+                    "scene_id": scene.id,
+                    "scene_number": scene_number,
+                    "target_duration_seconds": target_duration_seconds,
+                    "total_dialogue_duration_ms": total_dialogue_duration_ms,
+                    "available_gap_ms": available_gap_ms,
+                    "dialogue_count": len(dialogue_tts_results),
+                },
+            )
+
+        # Call Timeline Agent with actual durations
+        segments = await plan_scene_segments_intelligent(
+            dialogues=dialogues_with_actual_duration,
+            stage_directions=stage,
+            scene_context=scene_context,
+            ai_service=ai_service,
+            use_intelligent_timing=use_intelligent_timing,
+            timing_model=timing_model,
+            target_duration_seconds=target_duration_seconds,
+        )
+
+        # ========== PHASE 3: Assemble audio with computed GAPs ==========
+        # Reuse pre-generated TTS files from Phase 1
         wav_paths: list[Path] = []
         beats: list[dict[str, Any]] = []
+
+        # Build a lookup map for pre-generated TTS by content
+        tts_lookup: dict[str, dict[str, Any]] = {
+            res["content"]: res for res in dialogue_tts_results
+        }
 
         for seg in segments:
             if seg.kind == "pause":
@@ -842,58 +942,83 @@ async def generate_scene_dialogue_audio(
                 )
                 continue
 
-            # dialogue segment
-            speaker = seg.speaker_name or "旁白"
-            speaker_key = _norm_name(speaker)
-            voice_config: dict[str, Any]
-            speaker_kind: str
+            # dialogue segment - reuse pre-generated TTS from Phase 1
+            tts_result = tts_lookup.get(seg.text)
 
-            ip = story_char_map.get(speaker_key)
-            if ip:
-                voice_config = await ensure_virtual_ip_voice_config(
-                    db,
-                    ip,
-                    tts_provider="minimax",
-                    tts_model=tts_model,
+            if tts_result:
+                # Reuse the pre-generated TTS file
+                wav_paths.append(tts_result["wav_path"])
+                beats.append(
+                    {
+                        "beat_type": "dialogue",
+                        "dialogue_excerpt": seg.text,
+                        "beat_summary": None,
+                        "speaker_name": tts_result["speaker"],
+                        "speaker_kind": tts_result["speaker_kind"],
+                        "voice_config": tts_result["voice_config"],
+                        "emotion": tts_result["emotion"],
+                        "tts_emotion": tts_result["tts_emotion"],
+                        "action": tts_result["action"],
+                        "duration_ms": tts_result["actual_duration_ms"],
+                    }
                 )
-                speaker_kind = "virtual_ip"
             else:
-                _, voice_config = await ensure_derived_character_voice_binding(
-                    db,
-                    story=story,
-                    episode=episode,
-                    scene=scene,
-                    script_dialogues=script.dialogues or [],
-                    character_name=speaker,
-                    tts_provider="minimax",
-                    tts_model=tts_model,
+                # Fallback: TTS not found in Phase 1 (shouldn't happen normally)
+                # Generate TTS on-the-fly as fallback
+                logger.warning(
+                    f"Dialogue not found in Phase 1 TTS cache, generating on-the-fly",
+                    extra={
+                        "scene_id": scene.id,
+                        "scene_number": scene_number,
+                        "text_preview": seg.text[:50] if seg.text else None,
+                    },
                 )
-                speaker_kind = "derived"
+                speaker = seg.speaker_name or "旁白"
+                speaker_key = _norm_name(speaker)
+                ip = story_char_map.get(speaker_key)
 
-            local_tts = tmp_root_path / f"dlg-{len(wav_paths)+1}.wav"
-            tts_emotion = _normalize_tts_emotion(seg.emotion, action=seg.action)
-            await _tts_to_wav_file(
-                text=seg.text,
-                voice_config=voice_config,
-                out_path=local_tts,
-                emotion=tts_emotion,
-            )
-            dur_ms = _wav_duration_ms(local_tts)
-            wav_paths.append(local_tts)
-            beats.append(
-                {
-                    "beat_type": "dialogue",
-                    "dialogue_excerpt": seg.text,
-                    "beat_summary": None,
-                    "speaker_name": speaker,
-                    "speaker_kind": speaker_kind,
-                    "voice_config": voice_config,
-                    "emotion": seg.emotion,
-                    "tts_emotion": tts_emotion,
-                    "action": seg.action,
-                    "duration_ms": dur_ms,
-                }
-            )
+                if ip:
+                    voice_config = await ensure_virtual_ip_voice_config(
+                        db, ip, tts_provider="minimax", tts_model=tts_model
+                    )
+                    speaker_kind = "virtual_ip"
+                else:
+                    _, voice_config = await ensure_derived_character_voice_binding(
+                        db,
+                        story=story,
+                        episode=episode,
+                        scene=scene,
+                        script_dialogues=script.dialogues or [],
+                        character_name=speaker,
+                        tts_provider="minimax",
+                        tts_model=tts_model,
+                    )
+                    speaker_kind = "derived"
+
+                local_tts = tmp_root_path / f"fallback-dlg-{len(wav_paths)+1}.wav"
+                tts_emotion = _normalize_tts_emotion(seg.emotion, action=seg.action)
+                await _tts_to_wav_file(
+                    text=seg.text,
+                    voice_config=voice_config,
+                    out_path=local_tts,
+                    emotion=tts_emotion,
+                )
+                dur_ms = _wav_duration_ms(local_tts)
+                wav_paths.append(local_tts)
+                beats.append(
+                    {
+                        "beat_type": "dialogue",
+                        "dialogue_excerpt": seg.text,
+                        "beat_summary": None,
+                        "speaker_name": speaker,
+                        "speaker_kind": speaker_kind,
+                        "voice_config": voice_config,
+                        "emotion": seg.emotion,
+                        "tts_emotion": tts_emotion,
+                        "action": seg.action,
+                        "duration_ms": dur_ms,
+                    }
+                )
 
         scene_wav = tmp_root_path / "scene.wav"
         _concat_wavs(wav_paths, scene_wav)
@@ -902,6 +1027,37 @@ async def generate_scene_dialogue_audio(
 
         duration_ms_total = _wav_duration_ms(scene_wav)
         duration_seconds_total = round(duration_ms_total / 1000.0, 3)
+
+        # Per-scene duration validation
+        if target_duration_seconds:
+            target_ms = target_duration_seconds * 1000
+            duration_ratio = duration_ms_total / target_ms if target_ms > 0 else 0
+            tolerance_low, tolerance_high = 0.7, 1.3  # ±30% for single scene
+
+            logger.info(
+                "Scene dialogue audio duration validation",
+                extra={
+                    "scene_id": scene.id,
+                    "scene_number": scene_number,
+                    "target_duration_seconds": target_duration_seconds,
+                    "actual_duration_seconds": duration_seconds_total,
+                    "duration_ratio": round(duration_ratio, 2),
+                    "within_tolerance": tolerance_low <= duration_ratio <= tolerance_high,
+                },
+            )
+
+            if duration_ratio < tolerance_low:
+                logger.warning(
+                    f"Scene {scene_number} duration too short: "
+                    f"{duration_seconds_total}s vs target {target_duration_seconds}s "
+                    f"({duration_ratio:.0%})"
+                )
+            elif duration_ratio > tolerance_high:
+                logger.warning(
+                    f"Scene {scene_number} duration too long: "
+                    f"{duration_seconds_total}s vs target {target_duration_seconds}s "
+                    f"({duration_ratio:.0%})"
+                )
 
         oss_result = await oss_service.upload_file_content(
             file_content=scene_mp3.read_bytes(),

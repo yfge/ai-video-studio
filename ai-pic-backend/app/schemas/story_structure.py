@@ -94,6 +94,7 @@ class SceneCreate(BaseModel):
     time_of_day: Optional[str] = None
     summary: Optional[str] = None
     page_length_eighths: Optional[int] = None
+    estimated_duration_seconds: Optional[int] = None
     primary_characters: Optional[dict[str, Any]] = None
     conflict_notes: Optional[str] = None
     ai_prompt_snapshot: Optional[dict[str, Any]] = None
@@ -115,6 +116,7 @@ class SceneResponse(ORMModel):
     time_of_day: Optional[str]
     summary: Optional[str]
     page_length_eighths: Optional[int]
+    estimated_duration_seconds: Optional[int]
     primary_characters: Optional[dict[str, Any]]
     conflict_notes: Optional[str]
     ai_prompt_snapshot: Optional[dict[str, Any]]

@@ -45,6 +45,16 @@ def script_generate_task(
     _process_script_generation_task(task_id, request_dict, user_id)
 
 
+@celery_app.task(name="tasks.script_regenerate")
+def script_regenerate_task(
+    task_id: int, request_dict: Dict[str, Any], user_id: int
+) -> None:
+    """异步剧本重新生成任务入口。"""
+    from app.api.v1.endpoints.scripts import _process_script_regeneration_task
+
+    _process_script_regeneration_task(task_id, request_dict, user_id)
+
+
 @celery_app.task(name="tasks.script_dialogue_audio_generate")
 def script_dialogue_audio_generate_task(
     task_id: int, payload: Dict[str, Any], user_id: int

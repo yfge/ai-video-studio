@@ -126,6 +126,9 @@ class Scene(SoftDeleteBusinessMixin, Base):
     time_of_day = Column(String(50))
     summary = Column(Text)
     page_length_eighths = Column(Integer)
+    estimated_duration_seconds = Column(
+        Integer, nullable=True, comment="预估场景时长（秒），由LLM生成或手动设置"
+    )
     primary_characters = Column(JSON)
     conflict_notes = Column(Text)
     ai_prompt_snapshot = Column(JSON)

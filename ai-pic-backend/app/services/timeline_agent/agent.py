@@ -296,6 +296,54 @@ class TimelineLangGraphAgent:
             if len(set(durations)) == 1:
                 errors.append("rhythm_too_monotonous")
 
+        # Duration validation against target
+        target_duration_seconds = state.get("target_duration_seconds")
+        if target_duration_seconds:
+            total_gap_ms = plan.get("total_gap_ms", 0)
+            # Calculate total duration: dialogue durations + gaps
+            # Prefer actual_duration_ms (from TTS) over estimated_duration_ms
+            dialogue_contexts = state.get("dialogue_contexts", [])
+            has_actual_durations = any(
+                d.get("actual_duration_ms") for d in dialogue_contexts
+            )
+            dialogue_duration_ms = sum(
+                (d.get("actual_duration_ms") or d.get("estimated_duration_ms") or 0)
+                for d in dialogue_contexts
+            )
+            computed_total_ms = dialogue_duration_ms + total_gap_ms
+            target_ms = target_duration_seconds * 1000
+            duration_ratio = computed_total_ms / target_ms if target_ms > 0 else 0
+
+            self.logger.info(
+                "Timeline Agent duration validation",
+                extra={
+                    "target_duration_seconds": target_duration_seconds,
+                    "dialogue_duration_ms": dialogue_duration_ms,
+                    "total_gap_ms": total_gap_ms,
+                    "computed_total_ms": computed_total_ms,
+                    "duration_ratio": round(duration_ratio, 2),
+                    "using_actual_durations": has_actual_durations,
+                },
+            )
+
+            # Use tighter tolerance (±20%) when using actual TTS durations
+            # Use wider tolerance (±40%) when using estimated durations
+            if has_actual_durations:
+                tolerance_low, tolerance_high = 0.8, 1.2
+            else:
+                tolerance_low, tolerance_high = 0.6, 1.4
+
+            if duration_ratio < tolerance_low:
+                errors.append(
+                    f"duration_too_short: {computed_total_ms}ms vs target {target_ms}ms "
+                    f"({duration_ratio:.0%})"
+                )
+            elif duration_ratio > tolerance_high:
+                errors.append(
+                    f"duration_too_long: {computed_total_ms}ms vs target {target_ms}ms "
+                    f"({duration_ratio:.0%})"
+                )
+
         return {
             **state,
             "validation_passed": len(errors) == 0,
@@ -433,6 +481,12 @@ class TimelineLangGraphAgent:
         contexts = [DialogueContext.model_validate(d) for d in dialogue_contexts]
         formatted = format_dialogue_for_prompt(contexts)
 
+        # Calculate total dialogue duration from actual/estimated durations
+        total_dialogue_ms = sum(
+            (c.actual_duration_ms or c.estimated_duration_ms or 0) for c in contexts
+        )
+        has_actual_durations = any(c.actual_duration_ms for c in contexts)
+
         # Build enhanced scene info
         slug_line = scene_context.get('slug_line') or ''
         location = scene_context.get('location') or '未知'
@@ -446,9 +500,19 @@ class TimelineLangGraphAgent:
         duration_constraint = ""
         if target_duration_seconds:
             target_ms = target_duration_seconds * 1000
+            available_gap_ms = max(0, target_ms - total_dialogue_ms)
+            avg_gap_per_dialogue = available_gap_ms // len(contexts) if contexts else 0
+
+            duration_info = ""
+            if has_actual_durations and total_dialogue_ms > 0:
+                duration_info = f"""- **对白总时长**: {total_dialogue_ms}ms ({total_dialogue_ms / 1000:.1f}秒) [已由TTS生成]
+- **可用于停顿的时间**: 约 {available_gap_ms}ms ({available_gap_ms / 1000:.1f}秒)
+- **平均每句后停顿**: 约 {avg_gap_per_dialogue}ms"""
+
             duration_constraint = f"""
 ## 时长约束
 - **目标场景时长**: {target_duration_seconds} 秒 ({target_ms} 毫秒)
+{duration_info}
 - 停顿时长需要合理分配，使得整体场景（对白 + 停顿 + 动作）接近目标时长
 - 如果对白本身时长不足，适当增加停顿时间来补充
 - 但停顿时间仍需要自然合理，不能过于冗长

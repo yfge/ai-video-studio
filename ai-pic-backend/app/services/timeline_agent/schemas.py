@@ -48,6 +48,13 @@ class DialogueContext(BaseModel):
     next_emotion: Optional[str] = Field(None, description="Next line emotion")
     is_first: bool = Field(False, description="Is first dialogue in scene")
     is_last: bool = Field(False, description="Is last dialogue in scene")
+    # Duration fields for accurate timing calculations
+    estimated_duration_ms: Optional[int] = Field(
+        None, description="Estimated TTS duration (before generation)"
+    )
+    actual_duration_ms: Optional[int] = Field(
+        None, description="Actual TTS duration (after generation)"
+    )
 
 
 class TimingDecision(BaseModel):

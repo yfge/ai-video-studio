@@ -48,6 +48,7 @@ from app.services.task_worker import (
     script_audio_timeline_generate_task,
     script_dialogue_audio_generate_task,
     script_generate_task,
+    script_regenerate_task,
     storyboard_generate_task,
     storyboard_image_generate_task,
     storyboard_video_generate_task,
@@ -616,6 +617,13 @@ def _build_scene_payload_from_script_data(
         else:
             slug_line = f"Scene {scene_no}"
 
+    # 提取预估时长（秒），支持多种字段名
+    estimated_duration = _to_int(
+        base.get("estimated_duration_seconds")
+        or base.get("duration_seconds")
+        or base.get("estimated_duration")
+    )
+
     return SceneCreate(
         script_id=script_id,
         scene_number=str(scene_no),
@@ -623,6 +631,7 @@ def _build_scene_payload_from_script_data(
         location=location,
         time_of_day=time_of_day,
         summary=summary,
+        estimated_duration_seconds=estimated_duration,
         status="draft",
     )
 
@@ -1386,6 +1395,164 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if task:
             task.status = TaskStatus.COMPLETED
             task.result_file_path = f"script:{sc.id}"
+            db.commit()
+    except Exception as e:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            db.commit()
+    finally:
+        db.close()
+
+
+def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id: int):
+    """异步剧本重新生成任务处理函数。
+
+    与 _process_script_generation_task 类似，但更新现有剧本而非创建新剧本。
+    """
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        logger = get_logger("script_regenerate_task")
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+
+        script_id = request_dict.get("script_id")
+        script = (
+            db.query(Script)
+            .join(Episode, Script.episode_id == Episode.id)
+            .join(Story, Episode.story_id == Story.id)
+            .filter(
+                Script.id == script_id,
+                Story.user_id == user_id,
+            )
+            .first()
+        )
+        if not script:
+            raise RuntimeError("剧本不存在")
+
+        episode = script.episode
+        if not episode or getattr(episode, "is_deleted", False):
+            raise RuntimeError("剧集不存在")
+
+        story = episode.story
+        if not story or getattr(story, "is_deleted", False):
+            raise RuntimeError("故事不存在")
+
+        previous_episode_summaries = _collect_previous_episode_summaries(
+            db, story.id, episode.episode_number
+        )
+        character_profiles = _build_character_profiles(story)
+
+        episode_data = _build_episode_data(episode)
+        story_data = _build_story_data(
+            story,
+            previous_episode_summaries=previous_episode_summaries,
+            character_profiles=character_profiles,
+        )
+
+        import anyio
+
+        async def _run():
+            prefer_provider = None
+            model_id = request_dict.get("model")
+            if model_id and ":" in model_id:
+                prefer_provider, model_id = model_id.split(":", 1)
+            return await ai_service.generate_script(
+                episode=episode_data,
+                story=story_data,
+                format_type=request_dict.get("format_type") or script.format_type,
+                language=request_dict.get("language") or script.language,
+                dialogue_style=request_dict.get("dialogue_style", "natural"),
+                scene_detail_level=request_dict.get("scene_detail_level", "medium"),
+                additional_requirements=request_dict.get("additional_requirements"),
+                style_preferences=request_dict.get("style_preferences"),
+                model=model_id,
+                prefer_provider=prefer_provider,
+                temperature=request_dict.get("temperature", 0.7),
+            )
+
+        result = anyio.run(_run)
+        if not result:
+            raise RuntimeError("AI剧本重新生成失败")
+
+        agent_run: Dict[str, Any] = {}
+        if isinstance(result, dict):
+            agent_run = {
+                "generation_method": result.get("generation_method"),
+                "template_used": result.get("template_used"),
+                "provider_used": result.get("provider_used"),
+                "model_used": result.get("model_used"),
+                "usage": result.get("usage"),
+                "reasoning": result.get("reasoning"),
+            }
+
+        raw_content = result.get("content")
+        if isinstance(raw_content, dict):
+            ai_content = raw_content
+        else:
+            parsed = extract_json_block(raw_content)
+            if parsed:
+                ai_content = parsed
+            else:
+                source_text = raw_content or ""
+                extracted = extract_script_structure(source_text)
+                ai_content = {
+                    "content": extracted.get("content", source_text),
+                    "scenes": extracted.get("scenes", []),
+                    "dialogues": extracted.get("dialogues", []),
+                    "stage_directions": extracted.get("stage_directions", []),
+                    "metadata": extracted.get("metadata", {}),
+                }
+
+        ai_content = _normalize_script_content(
+            ai_content,
+            format_type=request_dict.get("format_type") or script.format_type,
+            language=request_dict.get("language") or script.language,
+            default_scenes=episode_data.get("scenes"),
+        )
+
+        script_content = ai_content.get("content", "")
+        scenes = ai_content.get("scenes", [])
+        dialogues_raw = ai_content.get("dialogues", [])
+        stage_directions_raw = ai_content.get("stage_directions", [])
+        dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
+            scenes, dialogues_raw, stage_directions_raw, story=story
+        )
+
+        # 更新现有剧本而非创建新剧本
+        script.content = script_content
+        script.scenes = scenes
+        script.dialogues = dialogues
+        script.stage_directions = stage_directions
+        script.generation_prompt = result.get("prompt")
+        script.ai_model = result.get("generation_method")
+
+        if agent_run:
+            meta = dict(script.extra_metadata or {})
+            meta["agent_run"] = agent_run
+            script.extra_metadata = meta
+
+        script.word_count = len(script_content.split()) if script_content else 0
+        script.character_count = len(script_content) if script_content else 0
+        script.page_count = max(1, script.character_count // 2000)
+
+        db.commit()
+        db.refresh(script)
+
+        try:
+            _sync_script_scenes_to_story_structure(db, script)
+        except Exception:
+            logger.warning("同步规范化场景失败（regenerate-async）", exc_info=True)
+
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status = TaskStatus.COMPLETED
+            task.result_file_path = f"script:{script.id}"
             db.commit()
     except Exception as e:
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -3561,14 +3728,34 @@ class ScriptRegenerateRequest(BaseModel):
     model: Optional[str] = Field(None, description="模型ID，格式为 provider:model_id")
 
 
-@router.post("/{script_id}/regenerate", response_model=ScriptResponse)
-async def regenerate_script(
+def _build_script_regenerate_request(
+    script: Script, episode: Episode, override_model: Optional[str] = None
+) -> Dict[str, Any]:
+    """构建剧本重新生成的请求参数字典。"""
+    original_params = script.generation_params or {}
+    return {
+        "script_id": script.id,
+        "format_type": script.format_type,
+        "language": script.language,
+        "dialogue_style": original_params.get("dialogue_style", "natural"),
+        "scene_detail_level": original_params.get("scene_detail_level", "medium"),
+        "additional_requirements": f"重新生成第{episode.episode_number}集的剧本内容",
+        "style_preferences": original_params.get("style_preferences"),
+        "model": override_model or original_params.get("model"),
+        "temperature": original_params.get("temperature", 0.7),
+    }
+
+
+@router.post("/{script_id}/regenerate")
+async def regenerate_script_async(
     script_id: int,
     request: Optional[ScriptRegenerateRequest] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """重新生成剧本内容
+    """异步重新生成剧本内容
+
+    返回 task_id 用于跟踪进度。
 
     可选参数:
     - model: 指定使用的模型，格式为 "provider:model_id"，不传则使用原有模型
@@ -3584,20 +3771,41 @@ async def regenerate_script(
         raise HTTPException(status_code=404, detail="故事不存在")
 
     override_model = request.model if request else None
-    regenerated = await _regenerate_script_instance(
-        db=db, script=script, episode=episode, story=story, override_model=override_model
+    request_dict = _build_script_regenerate_request(script, episode, override_model)
+
+    t = Task(
+        title=_friendly_task_title("剧本重新生成", script, episode, story),
+        description=f"重新生成剧本 {script.id}（第{episode.episode_number}集）",
+        task_type="image_generation",
+        prompt=f"Script regeneration for script {script.id}",
+        parameters=json.dumps(request_dict, ensure_ascii=False),
+        user_id=current_user.id,
     )
-    return ScriptResponse.from_orm(regenerated)
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    script_regenerate_task.delay(t.id, request_dict, current_user.id)
+    return {
+        "success": True,
+        "data": {
+            "task_id": t.id,
+            "status": t.status,
+            "message": f"剧本重新生成任务已提交",
+        },
+    }
 
 
-@router.post("/business/{script_business_id}/regenerate", response_model=ScriptResponse)
-async def regenerate_script_by_business_id(
+@router.post("/business/{script_business_id}/regenerate")
+async def regenerate_script_by_business_id_async(
     script_business_id: str,
     request: Optional[ScriptRegenerateRequest] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """按 business_id 重新生成剧本内容
+    """按 business_id 异步重新生成剧本内容
+
+    返回 task_id 用于跟踪进度。
 
     可选参数:
     - model: 指定使用的模型，格式为 "provider:model_id"，不传则使用原有模型
@@ -3611,10 +3819,29 @@ async def regenerate_script_by_business_id(
         raise HTTPException(status_code=404, detail="故事不存在")
 
     override_model = request.model if request else None
-    regenerated = await _regenerate_script_instance(
-        db=db, script=script, episode=episode, story=story, override_model=override_model
+    request_dict = _build_script_regenerate_request(script, episode, override_model)
+
+    t = Task(
+        title=_friendly_task_title("剧本重新生成", script, episode, story),
+        description=f"重新生成剧本 {script.id}（第{episode.episode_number}集）",
+        task_type="image_generation",
+        prompt=f"Script regeneration for script {script.id}",
+        parameters=json.dumps(request_dict, ensure_ascii=False),
+        user_id=current_user.id,
     )
-    return ScriptResponse.from_orm(regenerated)
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    script_regenerate_task.delay(t.id, request_dict, current_user.id)
+    return {
+        "success": True,
+        "data": {
+            "task_id": t.id,
+            "status": t.status,
+            "message": f"剧本重新生成任务已提交",
+        },
+    }
 
 
 @router.post("/{script_id}/export")
@@ -3798,12 +4025,12 @@ def _process_script_dialogue_audio_task(
             if not scenes:
                 raise RuntimeError("no_scenes_found")
 
-            # Calculate per-scene target duration from episode
+            # Calculate fallback per-scene target duration from episode
             episode_duration_minutes = getattr(episode, "duration_minutes", None)
-            per_scene_target_seconds = None
+            fallback_target_seconds = None
             if episode_duration_minutes and len(scenes) > 0:
-                # Evenly distribute episode duration across scenes
-                per_scene_target_seconds = (episode_duration_minutes * 60) // len(scenes)
+                # Evenly distribute episode duration across scenes as fallback
+                fallback_target_seconds = (episode_duration_minutes * 60) // len(scenes)
 
             total = len(scenes)
             skipped = 0
@@ -3828,6 +4055,10 @@ def _process_script_dialogue_audio_task(
                     task,
                     f"生成对白音轨：{idx}/{total}（跳过 {skipped}） 场景 {scene.scene_number}",
                 )
+                # Use scene's estimated_duration_seconds if available, else fallback
+                scene_target = getattr(scene, "estimated_duration_seconds", None)
+                if scene_target is None:
+                    scene_target = fallback_target_seconds
                 await generate_scene_dialogue_audio(
                     db,
                     story=story,
@@ -3837,7 +4068,7 @@ def _process_script_dialogue_audio_task(
                     tts_model=str(tts_model),
                     overwrite_beats=overwrite_beats,
                     timing_model=timing_model,
-                    target_duration_seconds=per_scene_target_seconds,
+                    target_duration_seconds=scene_target,
                 )
 
         anyio.run(_run)
@@ -4109,12 +4340,12 @@ def _process_timeline_pipeline_task(
             if not scenes:
                 raise RuntimeError("no_scenes_found")
 
-            # Calculate per-scene target duration from episode
+            # Calculate fallback per-scene target duration from episode
             episode_duration_minutes = getattr(episode, "duration_minutes", None)
-            per_scene_target_seconds = None
+            fallback_target_seconds = None
             if episode_duration_minutes and len(scenes) > 0:
-                # Evenly distribute episode duration across scenes
-                per_scene_target_seconds = (episode_duration_minutes * 60) // len(scenes)
+                # Evenly distribute episode duration across scenes as fallback
+                fallback_target_seconds = (episode_duration_minutes * 60) // len(scenes)
 
             total = len(scenes)
             skipped = 0
@@ -4139,6 +4370,10 @@ def _process_timeline_pipeline_task(
                     task,
                     f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
                 )
+                # Use scene's estimated_duration_seconds if available, else fallback
+                scene_target = getattr(scene, "estimated_duration_seconds", None)
+                if scene_target is None:
+                    scene_target = fallback_target_seconds
                 await generate_scene_dialogue_audio(
                     db,
                     story=story,
@@ -4148,7 +4383,7 @@ def _process_timeline_pipeline_task(
                     tts_model=str(tts_model),
                     overwrite_beats=True,
                     timing_model=timing_model,
-                    target_duration_seconds=per_scene_target_seconds,
+                    target_duration_seconds=scene_target,
                 )
 
             # Step 2: Generate episode audio timeline

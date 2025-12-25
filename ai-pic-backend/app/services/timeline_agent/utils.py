@@ -106,6 +106,7 @@ def build_dialogue_contexts(
     Build DialogueContext list with emotion transitions.
 
     Extracts previous/next emotions for each dialogue.
+    Supports both estimated_duration_ms and actual_duration_ms fields.
     """
     contexts = []
     n = len(dialogues)
@@ -113,6 +114,10 @@ def build_dialogue_contexts(
     for idx, dlg in enumerate(dialogues):
         prev_em = dialogues[idx - 1].get("emotion") if idx > 0 else None
         next_em = dialogues[idx + 1].get("emotion") if idx < n - 1 else None
+
+        # Extract duration fields (prefer actual over estimated)
+        actual_duration_ms = dlg.get("actual_duration_ms")
+        estimated_duration_ms = dlg.get("estimated_duration_ms")
 
         contexts.append(
             DialogueContext(
@@ -125,6 +130,8 @@ def build_dialogue_contexts(
                 next_emotion=next_em if isinstance(next_em, str) else None,
                 is_first=idx == 0,
                 is_last=idx == n - 1,
+                estimated_duration_ms=int(estimated_duration_ms) if estimated_duration_ms else None,
+                actual_duration_ms=int(actual_duration_ms) if actual_duration_ms else None,
             )
         )
 
@@ -333,17 +340,35 @@ def format_dialogue_for_prompt(contexts: list[DialogueContext]) -> str:
     Format dialogue contexts for LLM prompt.
 
     Returns formatted string with indices and metadata.
+    Includes actual TTS duration when available for accurate gap calculation.
     """
     lines = []
+    total_duration_ms = 0
+
     for ctx in contexts:
         emotion_str = ctx.emotion or "无标注"
         action_str = f"（{ctx.action}）" if ctx.action else ""
         prev_str = f"前一句情绪: {ctx.prev_emotion}" if ctx.prev_emotion else ""
 
+        # Include actual duration if available (from TTS generation)
+        duration_ms = ctx.actual_duration_ms or ctx.estimated_duration_ms
+        duration_str = f"  - 语音时长: {duration_ms}ms" if duration_ms else ""
+        if duration_ms:
+            total_duration_ms += duration_ms
+
+        meta_parts = [f"  - 情绪: {emotion_str}"]
+        if prev_str:
+            meta_parts.append(f"  - {prev_str}")
+        if duration_str:
+            meta_parts.append(duration_str)
+
         lines.append(
             f"[{ctx.index + 1}] {ctx.speaker}: \"{ctx.content}\" {action_str}\n"
-            f"  - 情绪: {emotion_str}\n"
-            f"  - {prev_str}" if prev_str else ""
+            + "\n".join(meta_parts)
         )
+
+    # Add total dialogue duration summary if we have duration info
+    if total_duration_ms > 0:
+        lines.append(f"\n**对白总时长**: {total_duration_ms}ms ({total_duration_ms / 1000:.1f}秒)")
 
     return "\n".join(filter(None, lines))
