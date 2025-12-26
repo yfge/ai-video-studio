@@ -1551,35 +1551,74 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
             scenes, dialogues_raw, stage_directions_raw, story=story
         )
 
-        # 更新现有剧本而非创建新剧本
-        script.content = script_content
-        script.scenes = scenes
-        script.dialogues = dialogues
-        script.stage_directions = stage_directions
-        script.generation_prompt = result.get("prompt")
-        script.ai_model = result.get("generation_method")
+        # 创建新剧本而非覆盖原有剧本
+        # 解析原版本号并递增
+        old_version = script.version or "1.0"
+        try:
+            major, minor = old_version.split(".")
+            new_version = f"{major}.{int(minor) + 1}"
+        except (ValueError, AttributeError):
+            new_version = "1.1"
 
+        # 构建新剧本的元数据，保留原剧本ID作为父级
+        new_meta = dict(script.extra_metadata or {})
+        new_meta["parent_script_id"] = script.id
+        new_meta["parent_script_business_id"] = script.business_id
+        new_meta["regenerated_from_version"] = old_version
         if agent_run:
-            meta = dict(script.extra_metadata or {})
-            meta["agent_run"] = agent_run
-            script.extra_metadata = meta
+            new_meta["agent_run"] = agent_run
 
-        script.word_count = len(script_content.split()) if script_content else 0
-        script.character_count = len(script_content) if script_content else 0
-        script.page_count = max(1, script.character_count // 2000)
+        # 生成新标题
+        base_title = script.title or f"剧本 - {episode.title}"
+        # 移除之前的版本后缀（如果有）
+        import re
+        base_title = re.sub(r"\s*\(v[\d.]+\)$", "", base_title)
+        new_title = f"{base_title} (v{new_version})"
 
+        new_script = Script(
+            episode_id=script.episode_id,
+            episode_business_id=script.episode_business_id,
+            title=new_title,
+            content=script_content,
+            scenes=scenes,
+            dialogues=dialogues,
+            stage_directions=stage_directions,
+            format_type=request_dict.get("format_type") or script.format_type,
+            language=request_dict.get("language") or script.language,
+            generation_prompt=result.get("prompt"),
+            ai_model=result.get("generation_method"),
+            generation_params=request_dict,
+            status="draft",
+            version=new_version,
+            tags=script.tags,
+            extra_metadata=new_meta,
+            word_count=len(script_content.split()) if script_content else 0,
+            character_count=len(script_content) if script_content else 0,
+            page_count=max(1, len(script_content) // 2000) if script_content else 1,
+        )
+        db.add(new_script)
         db.commit()
-        db.refresh(script)
+        db.refresh(new_script)
+
+        logger.info(
+            "剧本重新生成: 创建新版本",
+            extra={
+                "old_script_id": script.id,
+                "new_script_id": new_script.id,
+                "old_version": old_version,
+                "new_version": new_version,
+            },
+        )
 
         try:
-            _sync_script_scenes_to_story_structure(db, script)
+            _sync_script_scenes_to_story_structure(db, new_script)
         except Exception:
             logger.warning("同步规范化场景失败（regenerate-async）", exc_info=True)
 
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
             task.status = TaskStatus.COMPLETED
-            task.result_file_path = f"script:{script.id}"
+            task.result_file_path = f"script:{new_script.id}"
             db.commit()
     except Exception as e:
         task = db.query(Task).filter(Task.id == task_id).first()
