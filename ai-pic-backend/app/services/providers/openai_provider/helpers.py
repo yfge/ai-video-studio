@@ -23,7 +23,7 @@ def reload_openai_params(model_id: str, temperature: float) -> Dict[str, Any]:
 
     if model_id.startswith("gpt-5"):
         return {
-            "reasoning_effort": "minimal",
+            "reasoning_effort": "low",
             "temperature": 1,
         }
     return {
