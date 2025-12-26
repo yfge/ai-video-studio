@@ -24,6 +24,10 @@ interface AudioTimelineSectionProps {
   timingModel: string;
   setTimingModel: (value: string) => void;
 
+  // Duration control
+  useDurationControl: boolean;
+  setUseDurationControl: (value: boolean) => void;
+
   // Actions
   onGenerateTimelinePipeline?: () => void;
   pipelineTaskId?: number | null;
@@ -44,6 +48,8 @@ export function AudioTimelineSection({
   pipelineBusy,
   timingModel,
   setTimingModel,
+  useDurationControl,
+  setUseDurationControl,
   onGenerateTimelinePipeline,
   pipelineTaskId,
   onNavigateToTasks,
@@ -324,6 +330,20 @@ export function AudioTimelineSection({
               );
             })}
           </select>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer" title="启用 Duration Orchestrator 确保时长在目标的±10%范围内">
+          <input
+            type="checkbox"
+            checked={useDurationControl}
+            onChange={(e) => setUseDurationControl(e.target.checked)}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <span className={useDurationControl ? "text-blue-600 font-medium" : ""}>
+            时长精控
+          </span>
+          {useDurationControl && (
+            <span className="text-xs text-blue-500">(±10%)</span>
+          )}
         </label>
       </div>
 

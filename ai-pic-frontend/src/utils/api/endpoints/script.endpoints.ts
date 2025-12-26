@@ -247,6 +247,7 @@ export async function generateTimelinePipelineAsync(
     overwrite_timeline?: boolean;
     overwrite_storyboard?: boolean;
     min_pause_seconds?: number;
+    use_duration_control?: boolean;
   }
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   return httpClient<{ task_id: number; status: string }>(

@@ -45,6 +45,7 @@ export function WorkspaceTimelineTabContent({
   const router = useRouter();
   const [pipelineBusy, setPipelineBusy] = useState(false);
   const [pipelineTaskId, setPipelineTaskId] = useState<number | null>(null);
+  const [useDurationControl, setUseDurationControl] = useState(false);
 
   const handleGenerateTimelinePipeline = useCallback(async () => {
     if (!selectedScriptId) {
@@ -60,6 +61,7 @@ export function WorkspaceTimelineTabContent({
         overwrite_timeline: true,
         overwrite_storyboard: true,
         min_pause_seconds: 1.5,
+        use_duration_control: useDurationControl,
       });
       if (res.success && res.data) {
         setPipelineTaskId(res.data.task_id);
@@ -79,7 +81,7 @@ export function WorkspaceTimelineTabContent({
     } finally {
       setPipelineBusy(false);
     }
-  }, [selectedScriptId, timingModel, showAlert]);
+  }, [selectedScriptId, timingModel, useDurationControl, showAlert]);
 
   const handleNavigateToTasks = useCallback(() => {
     router.push("/tasks");
@@ -114,6 +116,8 @@ export function WorkspaceTimelineTabContent({
       pipelineBusy={pipelineBusy}
       timingModel={timingModel}
       setTimingModel={setTimingModel}
+      useDurationControl={useDurationControl}
+      setUseDurationControl={setUseDurationControl}
       onGenerateTimelinePipeline={handleGenerateTimelinePipeline}
       pipelineTaskId={pipelineTaskId}
       onNavigateToTasks={handleNavigateToTasks}

@@ -1928,6 +1928,7 @@ class ApiClient {
       overwrite_timeline?: boolean;
       overwrite_storyboard?: boolean;
       min_pause_seconds?: number;
+      use_duration_control?: boolean;
     },
   ) {
     return this.request<{ task_id: number; status: string }>(

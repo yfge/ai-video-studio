@@ -4295,6 +4295,10 @@ class TimelinePipelineGenerateRequest(BaseModel):
     overwrite_timeline: bool = Field(False, description="是否覆盖已有时间轴")
     overwrite_storyboard: bool = Field(False, description="是否覆盖已有分镜帧占位")
     min_pause_seconds: float = Field(1.5, description="分镜帧占位最小停顿秒数")
+    use_duration_control: bool = Field(
+        False,
+        description="是否启用时长精控（Duration Orchestrator）确保时长在±10%目标范围内",
+    )
 
 
 @router.post("/{script_id}/timeline-pipeline/generate-async")
@@ -4362,6 +4366,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
         timing_model = payload.get("timing_model")
         min_pause_seconds = float(payload.get("min_pause_seconds") or 1.5)
         min_pause_ms = max(0, int(round(min_pause_seconds * 1000)))
+        use_duration_control = bool(payload.get("use_duration_control", False))
 
         async def _run() -> None:
             user = db.query(User).filter(User.id == user_id).first()
@@ -4390,57 +4395,108 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 raise RuntimeError("story_not_found")
 
             # Step 1: Generate dialogue audio for all scenes
-            _update_task_progress(db, task, "步骤 1/3：生成对白音轨…")
             scenes = story_structure_svc.list_scenes_by_script(db, script_id)
             scenes = sorted(scenes, key=_scene_number_sort_key)
             if not scenes:
                 raise RuntimeError("no_scenes_found")
 
-            # Calculate fallback per-scene target duration from episode
-            episode_duration_minutes = getattr(episode, "duration_minutes", None)
-            fallback_target_seconds = None
-            if episode_duration_minutes and len(scenes) > 0:
-                # Evenly distribute episode duration across scenes as fallback
-                fallback_target_seconds = (episode_duration_minutes * 60) // len(scenes)
-
-            total = len(scenes)
-            skipped = 0
-            for idx, scene in enumerate(scenes, start=1):
-                if not overwrite_audio and _scene_has_dialogue_audio(scene, script_id):
-                    beat_count = (
-                        db.query(SceneBeat)
-                        .filter(SceneBeat.scene_id == scene.id)
-                        .count()
-                    )
-                    if beat_count > 0:
-                        skipped += 1
-                        _update_task_progress(
-                            db,
-                            task,
-                            f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
-                        )
-                        continue
-
+            if use_duration_control:
+                # Duration Orchestrator 模式：时长精控
                 _update_task_progress(
                     db,
                     task,
-                    f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
+                    f"步骤 1/3：时长精控模式 - 编排 {len(scenes)} 个场景…",
                 )
-                # Use scene's estimated_duration_seconds if available, else fallback
-                scene_target = getattr(scene, "estimated_duration_seconds", None)
-                if scene_target is None:
-                    scene_target = fallback_target_seconds
-                await generate_scene_dialogue_audio(
+
+                def _progress_cb(msg: str) -> None:
+                    _update_task_progress(db, task, f"步骤 1/3：{msg}")
+
+                result = await generate_dialogue_with_duration_control(
                     db,
                     story=story,
                     episode=episode,
                     script=script,
-                    scene=scene,
+                    scenes=scenes,
                     tts_model=str(tts_model),
                     overwrite_beats=True,
                     timing_model=timing_model,
-                    target_duration_seconds=scene_target,
+                    progress_callback=_progress_cb,
                 )
+                if not result.get("success", False):
+                    errors = result.get("errors", [])
+                    final_val = result.get("final_validation", {})
+                    if final_val and not final_val.get("passed"):
+                        ratio = final_val.get("duration_ratio", 0)
+                        _update_task_progress(
+                            db,
+                            task,
+                            f"步骤 1/3：时长验证未通过 {ratio:.1%}（允许±10%）",
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"Duration Orchestrator failed: {'; '.join(errors)}"
+                        )
+                else:
+                    stats = result.get("statistics", {})
+                    ratio = stats.get("duration_ratio", 0)
+                    _update_task_progress(
+                        db,
+                        task,
+                        f"步骤 1/3：时长精控完成 {ratio:.1%}",
+                    )
+            else:
+                # 传统模式：逐场景生成
+                _update_task_progress(db, task, "步骤 1/3：生成对白音轨…")
+
+                # Calculate fallback per-scene target duration from episode
+                episode_duration_minutes = getattr(episode, "duration_minutes", None)
+                fallback_target_seconds = None
+                if episode_duration_minutes and len(scenes) > 0:
+                    # Evenly distribute episode duration across scenes as fallback
+                    fallback_target_seconds = (episode_duration_minutes * 60) // len(
+                        scenes
+                    )
+
+                total = len(scenes)
+                skipped = 0
+                for idx, scene in enumerate(scenes, start=1):
+                    if not overwrite_audio and _scene_has_dialogue_audio(
+                        scene, script_id
+                    ):
+                        beat_count = (
+                            db.query(SceneBeat)
+                            .filter(SceneBeat.scene_id == scene.id)
+                            .count()
+                        )
+                        if beat_count > 0:
+                            skipped += 1
+                            _update_task_progress(
+                                db,
+                                task,
+                                f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
+                            )
+                            continue
+
+                    _update_task_progress(
+                        db,
+                        task,
+                        f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
+                    )
+                    # Use scene's estimated_duration_seconds if available, else fallback
+                    scene_target = getattr(scene, "estimated_duration_seconds", None)
+                    if scene_target is None:
+                        scene_target = fallback_target_seconds
+                    await generate_scene_dialogue_audio(
+                        db,
+                        story=story,
+                        episode=episode,
+                        script=script,
+                        scene=scene,
+                        tts_model=str(tts_model),
+                        overwrite_beats=True,
+                        timing_model=timing_model,
+                        target_duration_seconds=scene_target,
+                    )
 
             # Step 2: Generate episode audio timeline
             _update_task_progress(db, task, "步骤 2/3：生成时间轴…")
