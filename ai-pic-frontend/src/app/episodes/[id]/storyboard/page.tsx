@@ -1736,8 +1736,8 @@ export default function EpisodeStoryboardPage() {
             <h1 className="text-2xl font-bold text-gray-900">
               分镜管理 - 第{episode.episode_number}集 {episode.title}
             </h1>
-            <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
-              <span>当前剧本：</span>
+            <div className="flex items-center gap-3 mt-2 text-sm text-gray-600">
+              <span className="font-medium">当前剧本：</span>
               <select
                 value={activeScript?.id ?? ""}
                 onChange={(e) => {
@@ -1745,14 +1745,22 @@ export default function EpisodeStoryboardPage() {
                   const target = scripts.find((sc) => sc.id === nextId) || null;
                   setActiveScript(target);
                 }}
-                className="px-3 py-1 border rounded"
+                className="px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {scripts.map((sc) => (
-                  <option key={sc.id} value={sc.id}>
-                    {sc.title}
-                  </option>
-                ))}
+                {scripts.map((sc) => {
+                  // Avoid duplicate version display if title already contains version
+                  const hasVersionInTitle = /\(v[\d.]+\)$/.test(sc.title || "");
+                  const versionSuffix = sc.version && !hasVersionInTitle ? ` (v${sc.version})` : "";
+                  return (
+                    <option key={sc.id} value={sc.id}>
+                      {sc.title}{versionSuffix} - ID: {sc.id}
+                    </option>
+                  );
+                })}
               </select>
+              <span className="text-xs text-gray-500">
+                共 {scripts.length} 个剧本
+              </span>
             </div>
           </div>
           <div className="flex gap-3 items-center">

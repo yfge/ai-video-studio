@@ -6,6 +6,7 @@ models: [claude-opus-4-5-20251101]
 tags: [frontend, episode-workspace, ui]
 related_paths:
   - ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx
+  - ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx
   - ai-pic-frontend/src/components/features/episode/AudioTimelineSection.tsx
   - ai-pic-frontend/src/components/features/episode/WorkspaceTimelineTabContent.tsx
 summary: "Move script selector from timeline tab to page level"
@@ -55,6 +56,13 @@ Also added logic to avoid duplicate version display when title already contains 
 - Removed `onSelectScript` prop from function parameters
 - Removed passing `onSelectScript` to AudioTimelineSection
 
+### storyboard/page.tsx
+
+- Enhanced existing script selector with version display
+- Added script count badge
+- Added logic to avoid duplicate version display
+- Styled consistently with workspace page selector
+
 ## Validation
 
 1. Lint check: No errors for modified files
@@ -68,4 +76,5 @@ Also added logic to avoid duplicate version display when title already contains 
 
 ## Linked Commits
 
-- (pending) feat(frontend): move script selector to page level in episode workspace
+- f854fdc feat(frontend): move script selector to page level in episode workspace
+- deda868 feat(frontend): enhance storyboard page script selector
