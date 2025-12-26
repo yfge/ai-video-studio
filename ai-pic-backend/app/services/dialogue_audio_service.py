@@ -466,6 +466,31 @@ def _generate_silence_wav(
     )
 
 
+def _normalize_wav(
+    in_path: Path,
+    out_path: Path,
+    *,
+    sample_rate: int = 24000,
+) -> None:
+    """Normalize WAVs to a consistent format for ffmpeg concat."""
+
+    _run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(in_path),
+            "-acodec",
+            "pcm_s16le",
+            "-ac",
+            "1",
+            "-ar",
+            str(sample_rate),
+            str(out_path),
+        ]
+    )
+
+
 async def _download_to_file(url: str, path: Path) -> None:
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.get(url)
@@ -832,14 +857,16 @@ async def generate_scene_dialogue_audio(
                 )
                 speaker_kind = "derived"
 
+            tts_wav_raw_path = tmp_root_path / f"phase1-dlg-{idx}-raw.wav"
             tts_wav_path = tmp_root_path / f"phase1-dlg-{idx}.wav"
             tts_emotion = _normalize_tts_emotion(emotion, action=action)
             await _tts_to_wav_file(
                 text=content,
                 voice_config=voice_config,
-                out_path=tts_wav_path,
+                out_path=tts_wav_raw_path,
                 emotion=tts_emotion,
             )
+            _normalize_wav(tts_wav_raw_path, tts_wav_path)
             actual_duration_ms = _wav_duration_ms(tts_wav_path)
             total_dialogue_duration_ms += actual_duration_ms
 
@@ -995,14 +1022,16 @@ async def generate_scene_dialogue_audio(
                     )
                     speaker_kind = "derived"
 
+                local_tts_raw = tmp_root_path / f"fallback-dlg-{len(wav_paths)+1}-raw.wav"
                 local_tts = tmp_root_path / f"fallback-dlg-{len(wav_paths)+1}.wav"
                 tts_emotion = _normalize_tts_emotion(seg.emotion, action=seg.action)
                 await _tts_to_wav_file(
                     text=seg.text,
                     voice_config=voice_config,
-                    out_path=local_tts,
+                    out_path=local_tts_raw,
                     emotion=tts_emotion,
                 )
+                _normalize_wav(local_tts_raw, local_tts)
                 dur_ms = _wav_duration_ms(local_tts)
                 wav_paths.append(local_tts)
                 beats.append(

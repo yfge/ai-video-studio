@@ -263,10 +263,8 @@ export default function EpisodeDetailPage() {
         />
 
         <AudioTimelineSection
-          scripts={scripts}
           selectedScriptId={selectedScriptId}
           selectedScript={selectedScript}
-          onSelectScript={setSelectedScriptId}
           selectedAudioTimeline={selectedAudioTimeline}
           selectedStoryboard={selectedStoryboard}
           normalizedScenes={normalizedScenes}
