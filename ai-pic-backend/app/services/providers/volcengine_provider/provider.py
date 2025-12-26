@@ -43,13 +43,14 @@ class VolcengineProvider(BaseProvider):
 
     @property
     def supported_model_types(self) -> List[AIModelType]:
+        # Note: TEXT_TO_SPEECH removed - Volcengine Ark API doesn't support TTS
+        # TTS would require a different service endpoint (not the Ark LLM API)
         return [
             AIModelType.TEXT_GENERATION,
             AIModelType.TEXT_TO_IMAGE,
             AIModelType.IMAGE_TO_IMAGE,
             AIModelType.IMAGE_TO_VIDEO,
             AIModelType.TEXT_TO_VIDEO,
-            AIModelType.TEXT_TO_SPEECH,
         ]
 
     @property
