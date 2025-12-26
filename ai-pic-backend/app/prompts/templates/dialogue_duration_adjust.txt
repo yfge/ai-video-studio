@@ -1,0 +1,81 @@
+# 对白时长调整
+
+你之前生成的对白**时长不符合要求**，需要调整后重新生成。
+
+## 时长差异分析
+
+- **目标时长**: {{ target_duration_seconds }} 秒（{{ (target_duration_seconds / 60) | round(2) }} 分钟）
+- **实际时长**: {{ actual_duration_seconds | round(1) }} 秒
+- **时长比例**: {{ (actual_duration_seconds / target_duration_seconds * 100) | round(0) }}%
+- **差异**: {% if actual_duration_seconds < target_duration_seconds %}少了 {{ (target_duration_seconds - actual_duration_seconds) | round(1) }} 秒{% else %}多了 {{ (actual_duration_seconds - target_duration_seconds) | round(1) }} 秒{% endif %}
+
+{% if rejection_reason == "duration_too_short" %}
+## 问题：对白内容不足
+
+当前对白字数约 {{ actual_word_count }} 字，目标约 {{ target_word_count }} 字，需要增加约 {{ (target_word_count - actual_word_count) | int }} 字。
+
+### 扩充建议
+
+1. **丰富情感表达**：为现有对白添加情感反应、内心活动
+2. **增加互动回合**：让角色之间有更多追问、回应、反驳
+3. **补充细节描述**：添加动作描写、表情描述、环境互动
+4. **添加过渡对白**：在话题转换处添加自然的过渡语句
+
+### 示例
+
+原对白（过短）：
+```
+小明："这个方案不行。"
+小红："好吧。"
+```
+
+扩充后（合适）：
+```
+小明（皱着眉头）："这个方案不行，预算超了整整三成。"
+小红沉默了一会儿，翻看着手中的文件："确实……那我们只能砍掉一些功能了。"
+小明叹了口气："关键是哪些能砍，哪些不能砍，客户那边不好交代。"
+小红抬头看着他："要不我们约个时间，和客户再沟通一下？"
+```
+
+{% elif rejection_reason == "duration_too_long" %}
+## 问题：对白内容过多
+
+当前对白字数约 {{ actual_word_count }} 字，目标约 {{ target_word_count }} 字，需要删减约 {{ (actual_word_count - target_word_count) | int }} 字。
+
+### 精简建议
+
+1. **删除冗余表达**：去掉重复的信息和无意义的语气词
+2. **合并相似内容**：把多轮相似对话合并成精炼的一两句
+3. **保留关键信息**：只保留推动剧情的核心对白
+4. **简化描述性语句**：用简洁的动作描写替代冗长的叙述
+
+### 示例
+
+原对白（过长）：
+```
+小明（看着报告，皱着眉头，沉思了一会儿）："我觉得这个方案可能有点问题。你看这里，预算超支了很多。这样的话，可能客户那边会有意见的。"
+小红（也凑过来看）："是吗？让我看看……嗯，确实是超了不少。这样不行啊，我们得想想办法。"
+小明（叹气）："是啊，真的很头疼。"
+```
+
+精简后（合适）：
+```
+小明（皱眉）："这方案预算超支了三成，客户那边不好交代。"
+小红看了看报告："确实。我们得重新调整一下。"
+```
+
+{% endif %}
+
+## 当前对白内容（需要调整）
+
+{% if current_dialogues %}
+{% for dlg in current_dialogues %}
+[{{ loop.index }}] {{ dlg.character or '旁白' }}: "{{ dlg.content }}"
+{% endfor %}
+{% else %}
+（无对白内容）
+{% endif %}
+
+## 输出要求
+
+请根据以上建议，重新生成符合时长要求的对白。输出格式与原始对白相同。

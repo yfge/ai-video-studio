@@ -1,0 +1,55 @@
+name: script_word_count_constraint
+description: 剧本字数约束提示词片段，用于 Duration Orchestrator 控制对白生成时长
+category: script
+version: "1.0"
+author: Duration Orchestrator
+created_at: "2025-12-26"
+updated_at: "2025-12-26"
+
+variables:
+  target_duration_seconds:
+    type: number
+    required: true
+    description: 目标场景时长（秒）
+  target_word_count:
+    type: number
+    required: true
+    description: 目标对白字数
+  min_duration_seconds:
+    type: number
+    required: true
+    description: 最小可接受时长（秒）
+  max_duration_seconds:
+    type: number
+    required: true
+    description: 最大可接受时长（秒）
+  is_retry:
+    type: boolean
+    required: false
+    description: 是否为重试
+  attempt_number:
+    type: number
+    required: false
+    description: 当前尝试次数
+  adjustment_hint:
+    type: string
+    required: false
+    description: 调整建议（重试时提供）
+
+usage_notes: |
+  此模板作为片段嵌入到 script_dialogues 或 script_generation 的 prompt 中。
+  通过 Jinja2 的 include 或字符串拼接方式使用。
+
+examples:
+  - target_duration_seconds: 45
+    target_word_count: 101
+    min_duration_seconds: 38
+    max_duration_seconds: 52
+    is_retry: false
+  - target_duration_seconds: 45
+    target_word_count: 101
+    min_duration_seconds: 38
+    max_duration_seconds: 52
+    is_retry: true
+    attempt_number: 2
+    adjustment_hint: "当前对白时长 32 秒，目标 45 秒，差距 13 秒。建议增加约 30 字的对白。"

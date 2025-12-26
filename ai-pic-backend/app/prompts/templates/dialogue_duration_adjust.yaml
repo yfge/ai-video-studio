@@ -1,0 +1,58 @@
+name: dialogue_duration_adjust
+description: 对白时长调整建议提示词，用于 Duration Orchestrator 在对白时长不达标时驳回重生成
+category: script
+version: "1.0"
+author: Duration Orchestrator
+created_at: "2025-12-26"
+updated_at: "2025-12-26"
+
+variables:
+  target_duration_seconds:
+    type: number
+    required: true
+    description: 目标场景时长（秒）
+  actual_duration_seconds:
+    type: number
+    required: true
+    description: 实际对白时长（秒）
+  target_word_count:
+    type: number
+    required: true
+    description: 目标对白字数
+  actual_word_count:
+    type: number
+    required: true
+    description: 实际对白字数
+  rejection_reason:
+    type: string
+    required: true
+    description: 驳回原因（duration_too_short 或 duration_too_long）
+    enum:
+      - duration_too_short
+      - duration_too_long
+  current_dialogues:
+    type: list
+    required: false
+    description: 当前对白列表（用于展示需要调整的内容）
+
+usage_notes: |
+  此模板用于 Duration Orchestrator 的 prepare_retry 节点。
+  当场景对白的 TTS 时长不在目标范围内时，使用此模板生成调整建议，
+  供 Script Agent 在重新生成时参考。
+
+examples:
+  - target_duration_seconds: 45
+    actual_duration_seconds: 32
+    target_word_count: 101
+    actual_word_count: 72
+    rejection_reason: duration_too_short
+    current_dialogues:
+      - character: 小明
+        content: 这个方案不行。
+      - character: 小红
+        content: 好吧。
+  - target_duration_seconds: 45
+    actual_duration_seconds: 68
+    target_word_count: 101
+    actual_word_count: 153
+    rejection_reason: duration_too_long

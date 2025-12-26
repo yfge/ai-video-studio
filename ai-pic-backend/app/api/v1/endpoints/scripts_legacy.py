@@ -4042,6 +4042,10 @@ def _process_script_dialogue_audio_task(
                     task,
                     f"时长精控模式：正在编排 {len(scenes)} 个场景",
                 )
+
+                def _progress_cb(msg: str) -> None:
+                    _update_task_progress(db, task, msg)
+
                 result = await generate_dialogue_with_duration_control(
                     db,
                     story=story,
@@ -4049,19 +4053,31 @@ def _process_script_dialogue_audio_task(
                     script=script,
                     scenes=scenes,
                     tts_model=str(tts_model),
-                    use_actual_tts=False,  # 目前使用字数估算
-                    generation_config={"timing_model": timing_model},
+                    overwrite_beats=overwrite_beats,
+                    timing_model=timing_model,
+                    progress_callback=_progress_cb,
                 )
                 if not result.get("success", False):
                     errors = result.get("errors", [])
-                    raise RuntimeError(
-                        f"Duration Orchestrator failed: {'; '.join(errors)}"
+                    final_val = result.get("final_validation", {})
+                    if final_val and not final_val.get("passed"):
+                        # 时长验证失败，但生成本身成功
+                        ratio = final_val.get("duration_ratio", 0)
+                        _update_task_progress(
+                            db,
+                            task,
+                            f"时长验证未通过：{ratio:.1%}（允许±10%）",
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"Duration Orchestrator failed: {'; '.join(errors)}"
+                        )
+                else:
+                    _update_task_progress(
+                        db,
+                        task,
+                        f"时长精控完成：{result.get('statistics', {}).get('duration_ratio', 0):.1%}",
                     )
-                _update_task_progress(
-                    db,
-                    task,
-                    f"时长精控完成：{result.get('statistics', {}).get('duration_ratio', 0):.1%}",
-                )
             else:
                 # 传统模式：逐场景生成
                 # Calculate fallback per-scene target duration from episode

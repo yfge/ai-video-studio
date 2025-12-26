@@ -6,6 +6,7 @@ from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import ScriptModel
+from app.services.duration_orchestrator.state import SceneBudget
 from app.utils.json_utils import extract_json_block
 
 try:
@@ -32,6 +33,49 @@ class ScriptLangGraphAgent:
         self.service = service
         self.logger = get_logger()
 
+    def _build_word_count_constraints(
+        self,
+        scene_budgets: List[SceneBudget],
+        scenes: List[Dict[str, Any]],
+    ) -> str:
+        """Build word count constraint text for dialogue generation prompt.
+
+        Args:
+            scene_budgets: List of SceneBudget objects with target word counts.
+            scenes: List of scenes from scene_plan node.
+
+        Returns:
+            Rendered constraint text to be appended to the dialogue prompt.
+        """
+        if not scene_budgets:
+            return ""
+
+        # Build per-scene constraints
+        scene_constraints = []
+        for budget in scene_budgets:
+            scene_constraints.append(
+                prompt_manager.render_prompt(
+                    PromptTemplate.SCRIPT_WORD_COUNT_CONSTRAINT.value,
+                    {
+                        "scene_number": budget.scene_number,
+                        "target_duration_seconds": budget.target_duration_seconds,
+                        "target_word_count": budget.target_word_count,
+                        "min_duration_seconds": budget.min_duration_seconds,
+                        "max_duration_seconds": budget.max_duration_seconds,
+                        "is_retry": budget.attempt_count > 0,
+                        "attempt_number": budget.attempt_count + 1,
+                        "adjustment_hint": budget.adjustment_hint or "",
+                    },
+                )
+            )
+
+        # Combine all scene constraints
+        combined = "\n\n---\n\n".join(
+            [f"### 场景 {i+1} 字数约束\n\n{c}" for i, c in enumerate(scene_constraints)]
+        )
+
+        return f"\n\n## 各场景字数约束\n\n{combined}"
+
     async def generate(
         self,
         *,
@@ -46,6 +90,7 @@ class ScriptLangGraphAgent:
         model: Optional[str],
         prefer_provider: Optional[str],
         temperature: float,
+        scene_budgets: Optional[List[SceneBudget]] = None,
     ) -> Optional[Dict[str, Any]]:
         if not LANGGRAPH_AVAILABLE or not self.service.ai_manager:
             return None
@@ -111,6 +156,18 @@ class ScriptLangGraphAgent:
                     "format_type": format_type,
                 },
             )
+
+            # Append word count constraints if scene budgets are provided
+            if scene_budgets:
+                constraints_text = self._build_word_count_constraints(
+                    scene_budgets, scenes
+                )
+                prompt = prompt + constraints_text
+                self.logger.info(
+                    "write_dialogues: Added word count constraints for %d scenes",
+                    len(scene_budgets),
+                )
+
             resp = await self.service.ai_manager.generate_text(
                 prompt=prompt,
                 temperature=temperature,

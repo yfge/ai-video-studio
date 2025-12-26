@@ -96,4 +96,5 @@ from app.api.v1.endpoints.scripts_legacy import (
 
 ## Linked Commits
 
-- `cc7c158` feat(duration-orchestrator): integrate into dialogue-audio API
+- `560943e` feat(duration-orchestrator): integrate into dialogue-audio API
+- `0c4f309` feat(duration-orchestrator): complete Phase 1-6 implementation
