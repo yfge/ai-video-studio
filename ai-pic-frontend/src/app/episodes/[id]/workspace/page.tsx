@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   EpisodeWorkspaceHeader,
@@ -27,6 +27,10 @@ export default function EpisodeWorkspacePage() {
   // Get initial tab from URL or default to "overview"
   const initialTab = (searchParams.get("tab") as TabKey) || "overview";
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
+
+  // Get initial scriptId from URL
+  const urlScriptId = searchParams.get("scriptId");
+  const initialScriptId = urlScriptId ? Number(urlScriptId) : null;
 
   // Use the full episode detail hook for all state
   const state = useEpisodeDetail({ episodeKey, showAlert });
@@ -58,6 +62,17 @@ export default function EpisodeWorkspacePage() {
     setScripts,
   } = state;
 
+  // Sync URL scriptId to hook state when scripts are loaded
+  useEffect(() => {
+    if (!scripts || scripts.length === 0) return;
+    if (initialScriptId && scripts.some((s) => s.id === initialScriptId)) {
+      // URL has a valid scriptId, sync to hook
+      if (selectedScriptId !== initialScriptId) {
+        setSelectedScriptId(initialScriptId);
+      }
+    }
+  }, [scripts, initialScriptId, selectedScriptId, setSelectedScriptId]);
+
   // Get the first/main script
   const mainScript = selectedScript ?? scripts?.[0] ?? null;
 
@@ -74,15 +89,39 @@ export default function EpisodeWorkspacePage() {
     };
   }, [scripts, selectedAudioTimeline, selectedStoryboard]);
 
+  // Build URL with tab and scriptId params
+  const buildUrl = useCallback(
+    (tab: TabKey, scriptId: number | null) => {
+      const params = new URLSearchParams();
+      params.set("tab", tab);
+      if (scriptId) {
+        params.set("scriptId", String(scriptId));
+      }
+      return `/episodes/${episodeKey}/workspace?${params.toString()}`;
+    },
+    [episodeKey]
+  );
+
   // Update URL when tab changes
   const handleTabChange = useCallback(
     (tab: TabKey) => {
       setActiveTab(tab);
-      router.replace(`/episodes/${episodeKey}/workspace?tab=${tab}`, {
+      router.replace(buildUrl(tab, selectedScriptId), {
         scroll: false,
       });
     },
-    [router, episodeKey]
+    [router, buildUrl, selectedScriptId]
+  );
+
+  // Handle script selection change - update both state and URL
+  const handleScriptChange = useCallback(
+    (scriptId: number | null) => {
+      setSelectedScriptId(scriptId);
+      router.replace(buildUrl(activeTab, scriptId), {
+        scroll: false,
+      });
+    },
+    [setSelectedScriptId, router, buildUrl, activeTab]
   );
 
   // Navigation handlers
@@ -228,7 +267,7 @@ export default function EpisodeWorkspacePage() {
                 value={selectedScriptId ?? ""}
                 onChange={(e) => {
                   const next = Number(e.target.value);
-                  setSelectedScriptId(Number.isFinite(next) ? next : null);
+                  handleScriptChange(Number.isFinite(next) ? next : null);
                 }}
                 className="flex-1 max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
@@ -296,7 +335,7 @@ export default function EpisodeWorkspacePage() {
               scripts={scripts}
               selectedScriptId={selectedScriptId}
               selectedScript={selectedScript}
-              onSelectScript={setSelectedScriptId}
+              onSelectScript={handleScriptChange}
               hasStoryboard={workflowStatus.storyboard === "ready"}
               showAlert={showAlert}
             />
