@@ -127,4 +127,5 @@ return await ai_service.generate_script(
 
 ## Linked Commits
 
-- (pending) feat(duration-control): add scene_budgets support to script regeneration
+- `b314db7` feat(duration-control): add scene_budgets support to script regeneration
+- (pending) fix(duration-control): improve budget allocation with buffer and density factors

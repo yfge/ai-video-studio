@@ -9,6 +9,7 @@ import pytest
 from app.services.duration_orchestrator.constants import (
     BUFFER_RATIO,
     DEFAULT_SCENE_DURATION_SECONDS,
+    DIALOGUE_DENSITY_FACTOR,
     DURATION_TOLERANCE_SCENE_HIGH,
     DURATION_TOLERANCE_SCENE_LOW,
     MAX_SCENE_DURATION_SECONDS,
@@ -27,25 +28,32 @@ from app.services.duration_orchestrator.utils import (
 
 
 class TestCalculateTargetWordCount:
-    """测试字数计算"""
+    """测试字数计算
+
+    新公式考虑对白密度因子 (DIALOGUE_DENSITY_FACTOR = 0.85):
+    目标字数 = 时长(秒) * 对白密度 * 语速
+    """
 
     def test_normal_duration(self):
         """正常时长的字数计算"""
         word_count = calculate_target_word_count(60)
-        # 60秒 * 2.25字/秒 = 135字
-        assert word_count == 135
+        # 60秒 * 0.85 * 2.25字/秒 = 114.75 -> 114字
+        expected = int(60 * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND)
+        assert word_count == expected
 
     def test_short_duration(self):
         """短时长的字数计算"""
         word_count = calculate_target_word_count(10)
-        # 10秒 * 2.25字/秒 = 22.5 -> 22字
-        assert word_count == 22
+        # 10秒 * 0.85 * 2.25字/秒 = 19.125 -> 19字
+        expected = int(10 * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND)
+        assert word_count == expected
 
     def test_long_duration(self):
         """长时长的字数计算"""
         word_count = calculate_target_word_count(180)
-        # 180秒 * 2.25字/秒 = 405字
-        assert word_count == 405
+        # 180秒 * 0.85 * 2.25字/秒 = 344.25 -> 344字
+        expected = int(180 * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND)
+        assert word_count == expected
 
 
 class TestAllocateSceneBudgets:
@@ -100,7 +108,7 @@ class TestAllocateSceneBudgets:
         assert budgets[0].target_duration_seconds == budgets[2].target_duration_seconds
 
     def test_word_count_calculated(self):
-        """字数目标正确计算"""
+        """字数目标正确计算 (考虑对白密度因子)"""
         scenes = [{"scene_number": 1, "estimated_duration_seconds": 60}]
         budgets, _ = allocate_scene_budgets(
             total_duration_minutes=2,
@@ -108,7 +116,10 @@ class TestAllocateSceneBudgets:
         )
 
         budget = budgets[0]
-        expected_words = int(budget.target_duration_seconds * WORDS_PER_SECOND)
+        # 新公式: 字数 = 时长 * 对白密度 * 语速
+        expected_words = int(
+            budget.target_duration_seconds * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND
+        )
         assert budget.target_word_count == expected_words
 
     def test_tolerance_range_calculated(self):

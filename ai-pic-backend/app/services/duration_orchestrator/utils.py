@@ -11,6 +11,7 @@ from app.services.duration_orchestrator.constants import (
     ADJUSTMENT_WORDS_PER_DIALOGUE,
     BUFFER_RATIO,
     DEFAULT_SCENE_DURATION_SECONDS,
+    DIALOGUE_DENSITY_FACTOR,
     DURATION_TOLERANCE_SCENE_HIGH,
     DURATION_TOLERANCE_SCENE_LOW,
     MAX_SCENE_DURATION_SECONDS,
@@ -28,13 +29,23 @@ def calculate_target_word_count(duration_seconds: int) -> int:
     """
     根据目标时长计算目标对白字数。
 
+    考虑因素:
+    - DIALOGUE_DENSITY_FACTOR (0.85): 不是所有时间都在说话，需要考虑
+      停顿、语气词、情绪表达、角色反应时间、环境音等
+    - WORDS_PER_SECOND (2.25): 正常中文朗读语速
+
+    例如: 60秒场景
+    - 实际对白时间: 60 * 0.85 = 51秒
+    - 目标字数: 51 * 2.25 ≈ 115字
+
     Args:
         duration_seconds: 目标时长 (秒)
 
     Returns:
         目标对白字数
     """
-    return int(duration_seconds * WORDS_PER_SECOND)
+    effective_seconds = duration_seconds * DIALOGUE_DENSITY_FACTOR
+    return int(effective_seconds * WORDS_PER_SECOND)
 
 
 def allocate_scene_budgets(
