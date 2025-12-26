@@ -10,6 +10,9 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/dialogue-audio-timeline-spec.md` — dialogue audio + timeline spec.
 - `docs/timeline-rendering-pipeline.md` — timeline/rendering pipeline design.
 
+## Design Documents
+- `docs/design/duration-orchestrator-agent.md` — Duration Orchestrator Agent 设计（端到端时长闭环验证）
+
 ## Testing
 - `docs/TESTING_GUIDE.md` — browser E2E validation steps.
 
