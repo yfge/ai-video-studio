@@ -1458,6 +1458,29 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
             character_profiles=character_profiles,
         )
 
+        # 计算场景预算（如果有 duration_minutes）
+        scene_budgets = None
+        duration_minutes = request_dict.get("duration_minutes")
+        if duration_minutes and duration_minutes > 0:
+            scenes = episode_data.get("scenes", [])
+            if scenes:
+                from app.services.duration_orchestrator.utils import allocate_scene_budgets
+                try:
+                    scene_budgets, _ = allocate_scene_budgets(
+                        total_duration_minutes=duration_minutes,
+                        scenes=scenes,
+                    )
+                    logger.info(
+                        "剧本重新生成: 分配场景预算",
+                        extra={
+                            "script_id": script_id,
+                            "duration_minutes": duration_minutes,
+                            "scene_count": len(scene_budgets),
+                        },
+                    )
+                except Exception as e:
+                    logger.warning(f"分配场景预算失败: {e}")
+
         import anyio
 
         async def _run():
@@ -1477,6 +1500,7 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
                 model=model_id,
                 prefer_provider=prefer_provider,
                 temperature=request_dict.get("temperature", 0.7),
+                scene_budgets=scene_budgets,
             )
 
         result = anyio.run(_run)
@@ -3737,6 +3761,8 @@ def _build_script_regenerate_request(
 ) -> Dict[str, Any]:
     """构建剧本重新生成的请求参数字典。"""
     original_params = script.generation_params or {}
+    # 获取剧集目标时长（分钟）
+    duration_minutes = getattr(episode, "duration_minutes", None)
     return {
         "script_id": script.id,
         "format_type": script.format_type,
@@ -3747,6 +3773,7 @@ def _build_script_regenerate_request(
         "style_preferences": original_params.get("style_preferences"),
         "model": override_model or original_params.get("model"),
         "temperature": original_params.get("temperature", 0.7),
+        "duration_minutes": duration_minutes,
     }
 
 

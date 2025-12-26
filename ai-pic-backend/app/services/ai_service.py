@@ -1107,6 +1107,7 @@ class AIService:
         model: Optional[str] = None,
         prefer_provider: Optional[str] = None,
         temperature: float = 0.7,
+        scene_budgets: Optional[List["SceneBudget"]] = None,
     ) -> Optional[Dict[str, Any]]:
         """基于剧集信息生成详细剧本"""
         # 1) LangGraph agent
@@ -1124,6 +1125,7 @@ class AIService:
                     model=model,
                     prefer_provider=prefer_provider,
                     temperature=temperature,
+                    scene_budgets=scene_budgets,
                 )
                 if lg and lg.get("content"):
                     # 组装 content 文本
