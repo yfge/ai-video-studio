@@ -55,6 +55,8 @@ export default function EpisodeDetailPage() {
     setMinPauseSeconds,
     timingModel,
     setTimingModel,
+    useDurationControl,
+    setUseDurationControl,
     sceneAudioBusy,
     setSceneAudioBusy,
     timelineBusy,
@@ -273,6 +275,8 @@ export default function EpisodeDetailPage() {
           pipelineBusy={sceneAudioBusy || timelineBusy || storyboardBusy}
           timingModel={timingModel}
           setTimingModel={setTimingModel}
+          useDurationControl={useDurationControl}
+          setUseDurationControl={setUseDurationControl}
           onNavigateToTasks={() => router.push("/tasks")}
           onNavigateToScript={() => {
             if (selectedScript) {
