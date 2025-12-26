@@ -10,7 +10,6 @@ interface WorkspaceTimelineTabContentProps {
   scripts: Script[];
   selectedScriptId: number | null;
   selectedScript: Script | null;
-  onSelectScript: (id: number | null) => void;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
@@ -32,7 +31,6 @@ export function WorkspaceTimelineTabContent({
   scripts,
   selectedScriptId,
   selectedScript,
-  onSelectScript,
   selectedAudioTimeline,
   selectedStoryboard,
   normalizedScenes,
@@ -104,10 +102,8 @@ export function WorkspaceTimelineTabContent({
 
   return (
     <AudioTimelineSection
-      scripts={scripts}
       selectedScriptId={selectedScriptId}
       selectedScript={selectedScript}
-      onSelectScript={onSelectScript}
       selectedAudioTimeline={selectedAudioTimeline}
       selectedStoryboard={selectedStoryboard}
       normalizedScenes={normalizedScenes}

@@ -7,10 +7,8 @@ import { asRecord, getString, getNumber, parseMs } from "@/hooks/useEpisodeDetai
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 
 interface AudioTimelineSectionProps {
-  scripts: Script[];
   selectedScriptId: number | null;
   selectedScript: Script | null;
-  onSelectScript: (id: number | null) => void;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
@@ -36,10 +34,8 @@ interface AudioTimelineSectionProps {
 }
 
 export function AudioTimelineSection({
-  scripts,
   selectedScriptId,
   selectedScript,
-  onSelectScript,
   selectedAudioTimeline,
   selectedStoryboard,
   normalizedScenes,
@@ -207,25 +203,7 @@ export function AudioTimelineSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">当前剧本</label>
-          <select
-            value={selectedScriptId ?? ""}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              onSelectScript(Number.isFinite(next) ? next : null);
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="" disabled>请选择剧本</option>
-            {scripts.map((script) => (
-              <option key={script.id} value={script.id}>
-                {script.title} (id={script.id})
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="mb-4">
         <div className="text-xs text-gray-600">
           <div className="mb-1">
             时间轴（剧集）：{" "}
