@@ -6,7 +6,93 @@
 
 - ✅ 稳定/收尾：叙事结构与数据模型对齐（迁移验证/权限收口待补）、对白音轨与声音驱动时间轴（已验证）
 - ⏳ 进行中：全局软删除 + business_id 落地、任务队列与 Agent 执行落库、虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐
+- 🔥 **高优新增**：Duration Orchestrator Agent（端到端时长闭环验证）
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
+
+## Feature: Duration Orchestrator Agent（端到端时长闭环验证）🔥
+
+:information_source: 背景：当前从剧集到时间轴/对白到分镜的时长对不齐。Episode Agent 的 `estimated_duration_seconds` 是 LLM 估算，与 TTS 实际时长差异可达 50%+；Script Agent 不知道场景目标时长，对白长度随机；Timeline Agent 只能通过 GAP 微调，无法拯救大偏差。需要构建端到端闭环验证系统。
+
+:link: 设计文档：`docs/design/duration-orchestrator-agent.md`
+
+:triangular_flag_on_post: 核心思路：
+- **场景级闭环验证**：每个场景生成后立即 TTS 测量，不达标则重新生成（最多3次），达标后锁定
+- **字数锚定**：根据目标时长计算 `target_word_count`，传递给 Script Agent 约束对白生成
+- **预算动态调整**：某场景超时/欠时，从后续场景预算中调整
+
+### Phase 1: 基础框架（P0）✅ 已完成
+
+- [x] 1.1 后端：创建 `app/services/duration_orchestrator/` 目录结构
+- [x] 1.2 后端：实现 `OrchestratorState` 数据类（`state.py`）
+- [x] 1.3 后端：实现 `allocate_budget` 节点 - 根据场景数量和重要性分配时长预算
+- [x] 1.4 后端：实现 `validate_duration` 节点 - 验证场景时长是否在容差范围内
+- [x] 1.5 测试：编写 `tests/unit/services/duration_orchestrator/test_budget_allocation.py`（26 tests passing）
+
+### Phase 2: 对白生成改造（P0）✅ 已完成
+
+- [x] 2.1 后端：新增 `SCRIPT_WORD_COUNT_CONSTRAINT` prompt 模板（`prompts/templates/script_word_count_constraint.txt`）
+- [x] 2.2 后端：改造 `ScriptLangGraphAgent` 支持 `target_word_count` 约束（`scene_budgets` 参数）
+- [x] 2.3 后端：实现 `generate_dialogue` 节点 - 调用改造后的 Script Agent
+- [x] 2.4 后端：实现 `compute_adjustment_hint` 函数 - 生成调整建议
+- [x] 2.5 测试：编写 `tests/unit/services/duration_orchestrator/test_generate_dialogue.py` 和 `tests/unit/services/test_script_agent_word_count.py`（19 tests passing）
+
+### Phase 3: TTS 估算与验证（P1）✅ 已完成
+
+- [x] 3.1 后端：实现 `tts_trial` 节点 - 支持估算模式和实际 TTS 采样模式
+- [x] 3.2 后端：实现 `validate_duration` 节点 - 验证 actual vs target ±15%（Phase 1 已完成）
+- [x] 3.3 后端：实现 `prepare_retry` 节点 - 生成调整建议（如"需增加2句对白，约50字"）
+- [x] 3.4 后端：实现 `commit_scene` 节点 - 场景验证通过后提交，并触发预算再平衡
+- [x] 3.5 测试：编写 `test_tts_trial.py`, `test_commit_scene.py`, `test_prepare_retry.py`（33 tests passing）
+
+### Phase 4: 闭环控制（P1）✅ 已完成
+
+- [x] 4.1 后端：实现 `rebalance_budget` 逻辑（已集成到 `commit_scene` 节点）
+- [x] 4.2 后端：组装 LangGraph StateGraph（`agent.py`）
+- [x] 4.3 后端：实现条件边路由逻辑（所有节点间的条件边已实现）
+- [x] 4.4 测试：编写 `test_agent.py` - 8 tests passing
+
+### Phase 5: 剧集组装与最终验证（P1）✅ 已完成
+
+- [x] 5.1 后端：实现 `assemble_episode` 节点 - 合并所有场景的对白、时长数据
+- [x] 5.2 后端：实现 `final_validation` 节点 - 验证总时长 ±10%
+- [x] 5.3 后端：集成到 StateGraph（agent.py 已更新）
+- [x] 5.4 测试：编写 `test_assemble_episode.py`（10 tests）和 `test_final_validation.py`（15 tests）
+
+### Phase 6: API 集成（P2，预计 1 天）
+
+- [x] 6.1 后端：在 `ScriptDialogueAudioGenerateRequest` 添加 `use_duration_control` 参数
+- [x] 6.2 后端：创建 `duration_controlled_dialogue_service.py` 集成服务
+- [x] 6.3 后端：修改 `_process_script_dialogue_audio_task` 支持分支逻辑
+- [ ] 6.4 后端：实现结果持久化（Scene/SceneBeat 更新）
+- [ ] 6.5 测试：编写 API 集成测试
+
+### Phase 7: 监控与可观测性（P2，预计 1 天）
+
+- [ ] 7.1 后端：添加结构化日志（各节点日志增强）
+- [ ] 7.2 后端：添加进度回调 callbacks
+- [ ] 7.3 文档：更新 `docs/duration-orchestrator-guide.md`
+
+### 验收标准
+
+| 指标 | 目标值 |
+|------|--------|
+| 单场景时长偏差 | ≤ ±15% |
+| 剧集总时长偏差 | ≤ ±10% |
+| 平均重试次数 | ≤ 1.5 次/场景 |
+| 端到端生成时间 | ≤ 现有流程 × 1.5 |
+| 单元测试覆盖率 | ≥ 80% |
+
+### 下一步
+
+1. ✅ Phase 1, 2, 3, 4, 5 已完成（108 tests passing）
+2. ✅ Phase 6 基础集成已完成（使用现有 API + `use_duration_control` 参数）
+   - `dialogue-audio/generate-async` 支持 `use_duration_control=true`
+   - 待完成：结果持久化到 Scene/SceneBeat
+3. 进行 Phase 6 收尾 + Phase 7：
+   - 实现 Duration Orchestrator 结果持久化
+   - 添加结构化日志和进度回调
+
+---
 
 ## Feature: 全局软删除 + business_id
 

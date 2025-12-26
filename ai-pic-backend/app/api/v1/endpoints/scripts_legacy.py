@@ -38,11 +38,14 @@ from app.services.dialogue_audio_service import (
     generate_scene_dialogue_audio,
     generate_storyboard_from_episode_audio_timeline,
 )
+from app.services.duration_controlled_dialogue_service import (
+    generate_dialogue_with_duration_control,
+)
+from app.services.storage.oss_service import oss_service
 from app.services.storyboard.storyboard_prompt_utils import (
     apply_storyboard_prompt_optimizations,
     render_keyframe_prompt,
 )
-from app.services.storage.oss_service import oss_service
 from app.services.task_worker import (
     script_audio_storyboard_generate_task,
     script_audio_timeline_generate_task,
@@ -3725,6 +3728,7 @@ async def _regenerate_script_instance(
 
 class ScriptRegenerateRequest(BaseModel):
     """剧本重新生成请求参数"""
+
     model: Optional[str] = Field(None, description="模型ID，格式为 provider:model_id")
 
 
@@ -3791,7 +3795,7 @@ async def regenerate_script_async(
         "data": {
             "task_id": t.id,
             "status": t.status,
-            "message": f"剧本重新生成任务已提交",
+            "message": "剧本重新生成任务已提交",
         },
     }
 
@@ -3839,7 +3843,7 @@ async def regenerate_script_by_business_id_async(
         "data": {
             "task_id": t.id,
             "status": t.status,
-            "message": f"剧本重新生成任务已提交",
+            "message": "剧本重新生成任务已提交",
         },
     }
 
@@ -3888,6 +3892,10 @@ class ScriptDialogueAudioGenerateRequest(BaseModel):
     )
     overwrite_audio: bool = Field(False, description="是否覆盖已有 scene 音频")
     overwrite_beats: bool = Field(True, description="是否覆盖已有 scene beats")
+    use_duration_control: bool = Field(
+        False,
+        description="是否启用时长精控（Duration Orchestrator Agent）",
+    )
 
 
 def _update_task_progress(db: Session, task: Task | None, description: str) -> None:
@@ -3981,6 +3989,7 @@ def _process_script_dialogue_audio_task(
         overwrite_beats = bool(payload.get("overwrite_beats", True))
         tts_model = payload.get("tts_model") or "speech-2.6-hd"
         timing_model = payload.get("timing_model")  # LLM model for timeline calculation
+        use_duration_control = bool(payload.get("use_duration_control", False))
         selected_scene_numbers = payload.get("scene_numbers") or []
         selected_set = {
             int(x)
@@ -4025,51 +4034,85 @@ def _process_script_dialogue_audio_task(
             if not scenes:
                 raise RuntimeError("no_scenes_found")
 
-            # Calculate fallback per-scene target duration from episode
-            episode_duration_minutes = getattr(episode, "duration_minutes", None)
-            fallback_target_seconds = None
-            if episode_duration_minutes and len(scenes) > 0:
-                # Evenly distribute episode duration across scenes as fallback
-                fallback_target_seconds = (episode_duration_minutes * 60) // len(scenes)
-
-            total = len(scenes)
-            skipped = 0
-            for idx, scene in enumerate(scenes, start=1):
-                if not overwrite_audio and _scene_has_dialogue_audio(scene, script_id):
-                    beat_count = (
-                        db.query(SceneBeat)
-                        .filter(SceneBeat.scene_id == scene.id)
-                        .count()
-                    )
-                    if beat_count > 0:
-                        skipped += 1
-                        _update_task_progress(
-                            db,
-                            task,
-                            f"生成对白音轨：{idx}/{total}（跳过 {skipped}） 场景 {scene.scene_number}",
-                        )
-                        continue
-
+            # 分支：使用 Duration Orchestrator 或传统逐场景生成
+            if use_duration_control:
+                # 使用 Duration Orchestrator Agent 进行时长精控
                 _update_task_progress(
                     db,
                     task,
-                    f"生成对白音轨：{idx}/{total}（跳过 {skipped}） 场景 {scene.scene_number}",
+                    f"时长精控模式：正在编排 {len(scenes)} 个场景",
                 )
-                # Use scene's estimated_duration_seconds if available, else fallback
-                scene_target = getattr(scene, "estimated_duration_seconds", None)
-                if scene_target is None:
-                    scene_target = fallback_target_seconds
-                await generate_scene_dialogue_audio(
+                result = await generate_dialogue_with_duration_control(
                     db,
                     story=story,
                     episode=episode,
                     script=script,
-                    scene=scene,
+                    scenes=scenes,
                     tts_model=str(tts_model),
-                    overwrite_beats=overwrite_beats,
-                    timing_model=timing_model,
-                    target_duration_seconds=scene_target,
+                    use_actual_tts=False,  # 目前使用字数估算
+                    generation_config={"timing_model": timing_model},
                 )
+                if not result.get("success", False):
+                    errors = result.get("errors", [])
+                    raise RuntimeError(
+                        f"Duration Orchestrator failed: {'; '.join(errors)}"
+                    )
+                _update_task_progress(
+                    db,
+                    task,
+                    f"时长精控完成：{result.get('statistics', {}).get('duration_ratio', 0):.1%}",
+                )
+            else:
+                # 传统模式：逐场景生成
+                # Calculate fallback per-scene target duration from episode
+                episode_duration_minutes = getattr(episode, "duration_minutes", None)
+                fallback_target_seconds = None
+                if episode_duration_minutes and len(scenes) > 0:
+                    # Evenly distribute episode duration across scenes as fallback
+                    fallback_target_seconds = (episode_duration_minutes * 60) // len(
+                        scenes
+                    )
+
+                total = len(scenes)
+                skipped = 0
+                for idx, scene in enumerate(scenes, start=1):
+                    if not overwrite_audio and _scene_has_dialogue_audio(
+                        scene, script_id
+                    ):
+                        beat_count = (
+                            db.query(SceneBeat)
+                            .filter(SceneBeat.scene_id == scene.id)
+                            .count()
+                        )
+                        if beat_count > 0:
+                            skipped += 1
+                            _update_task_progress(
+                                db,
+                                task,
+                                f"生成对白音轨：{idx}/{total}（跳过 {skipped}） 场景 {scene.scene_number}",
+                            )
+                            continue
+
+                    _update_task_progress(
+                        db,
+                        task,
+                        f"生成对白音轨：{idx}/{total}（跳过 {skipped}） 场景 {scene.scene_number}",
+                    )
+                    # Use scene's estimated_duration_seconds if available, else fallback
+                    scene_target = getattr(scene, "estimated_duration_seconds", None)
+                    if scene_target is None:
+                        scene_target = fallback_target_seconds
+                    await generate_scene_dialogue_audio(
+                        db,
+                        story=story,
+                        episode=episode,
+                        script=script,
+                        scene=scene,
+                        tts_model=str(tts_model),
+                        overwrite_beats=overwrite_beats,
+                        timing_model=timing_model,
+                        target_duration_seconds=scene_target,
+                    )
 
         anyio.run(_run)
 
@@ -4282,12 +4325,9 @@ async def generate_timeline_pipeline_async(
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 
-def _process_timeline_pipeline_task(
-    task_id: int, payload: dict, user_id: int
-) -> None:
+def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -> None:
     """后台处理一键时间轴流水线任务（对白音轨 → 时间轴 → 分镜帧占位）。"""
     import anyio
-
     from app.core.database import SessionLocal
     from app.models.user import User
 
