@@ -1,10 +1,10 @@
 name: script_scenes
-description: "剧本场景规划提示词模板"
+description: "剧本场景规划提示词模板（时长感知版）"
 category: script
-version: "1.0"
+version: "2.0"
 author: "AI Video Studio"
 created_at: "2025-12-10"
-updated_at: "2025-12-10"
+updated_at: "2025-12-26"
 
 variables:
   story:
@@ -16,6 +16,24 @@ variables:
     type: dict
     required: true
     description: "剧集信息（集数/标题等）"
+
+  duration_minutes:
+    type: number
+    required: false
+    description: "剧集目标时长（分钟），用于时长感知场景划分"
+    default: 0
+
+  min_scene_seconds:
+    type: number
+    required: false
+    description: "单场景最小时长（秒）"
+    default: 10
+
+  max_scene_seconds:
+    type: number
+    required: false
+    description: "单场景最大时长（秒）"
+    default: 120
 
   scene_detail_level:
     type: string
@@ -50,7 +68,8 @@ variables:
 
 usage_examples:
   - story: {title: "未来之城", genre: "科幻"}
-    episode: {episode_number: 1, title: "觉醒"}
+    episode: {episode_number: 1, title: "觉醒", duration_minutes: 3}
+    duration_minutes: 3
     scene_detail_level: "medium"
     format_type: "screenplay"
     language: "zh-CN"

@@ -6,7 +6,16 @@ from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import ScriptModel
-from app.services.duration_orchestrator.state import SceneBudget
+from app.services.duration_orchestrator.constants import (
+    DIALOGUE_DENSITY_FACTOR,
+    DURATION_TOLERANCE_SCENE_HIGH,
+    DURATION_TOLERANCE_SCENE_LOW,
+    MAX_RETRY_ATTEMPTS,
+    MAX_SCENE_DURATION_SECONDS,
+    MIN_SCENE_DURATION_SECONDS,
+    WORDS_PER_SECOND,
+)
+from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
 from app.utils.json_utils import extract_json_block
 
 try:
@@ -76,6 +85,129 @@ class ScriptLangGraphAgent:
 
         return f"\n\n## 各场景字数约束\n\n{combined}"
 
+    def _compute_budgets_from_scenes(
+        self,
+        scenes: List[Dict[str, Any]],
+        duration_minutes: float,
+    ) -> List[SceneBudget]:
+        """Compute scene budgets from LLM-planned scenes with duration/dialogue_ratio.
+
+        If the LLM didn't assign estimated_duration_seconds, fall back to equal distribution.
+
+        Args:
+            scenes: List of scenes from scene_plan node, each may have:
+                - estimated_duration_seconds (int): LLM-assigned duration
+                - dialogue_ratio (float): 0.0-1.0, % of scene that's dialogue
+            duration_minutes: Total episode duration in minutes.
+
+        Returns:
+            List of SceneBudget objects with computed word count targets.
+        """
+        if not scenes:
+            return []
+
+        total_seconds = int(duration_minutes * 60)
+        budgets: List[SceneBudget] = []
+
+        # Check if LLM assigned durations
+        llm_assigned = all(
+            isinstance(s.get("estimated_duration_seconds"), (int, float))
+            for s in scenes
+        )
+
+        if llm_assigned:
+            # Use LLM-assigned durations, normalize to fit total
+            raw_durations = [
+                float(s.get("estimated_duration_seconds", 30)) for s in scenes
+            ]
+            raw_total = sum(raw_durations)
+            if raw_total > 0:
+                scale = total_seconds / raw_total
+                normalized = [int(d * scale) for d in raw_durations]
+            else:
+                normalized = [total_seconds // len(scenes)] * len(scenes)
+        else:
+            # Equal distribution fallback
+            per_scene = total_seconds // len(scenes) if scenes else 30
+            normalized = [per_scene] * len(scenes)
+
+        for idx, scene in enumerate(scenes):
+            target_seconds = max(
+                MIN_SCENE_DURATION_SECONDS,
+                min(MAX_SCENE_DURATION_SECONDS, normalized[idx]),
+            )
+
+            # Get dialogue_ratio from LLM or use default
+            dialogue_ratio = scene.get("dialogue_ratio")
+            if not isinstance(dialogue_ratio, (int, float)) or not (0.0 <= dialogue_ratio <= 1.0):
+                dialogue_ratio = DIALOGUE_DENSITY_FACTOR
+
+            # Compute word count: dialogue_seconds * words_per_second
+            dialogue_seconds = target_seconds * dialogue_ratio
+            target_words = int(dialogue_seconds * WORDS_PER_SECOND)
+
+            budget = SceneBudget(
+                scene_number=scene.get("scene_number", idx + 1),
+                scene_index=idx,
+                target_duration_seconds=target_seconds,
+                target_word_count=target_words,
+                min_duration_seconds=int(target_seconds * DURATION_TOLERANCE_SCENE_LOW),
+                max_duration_seconds=int(target_seconds * DURATION_TOLERANCE_SCENE_HIGH),
+                status=SceneStatus.PENDING,
+                attempt_count=0,
+            )
+            budgets.append(budget)
+
+        return budgets
+
+    def _estimate_dialogue_duration(
+        self,
+        dialogues: List[Dict[str, Any]],
+        scene_number: Optional[int] = None,
+    ) -> float:
+        """Estimate duration in seconds from dialogues.
+
+        Args:
+            dialogues: List of dialogue dicts with 'content' field.
+            scene_number: If provided, filter to only this scene's dialogues.
+
+        Returns:
+            Estimated duration in seconds.
+        """
+        total_chars = 0
+        for d in dialogues:
+            if scene_number is not None:
+                if d.get("scene_number") != scene_number:
+                    continue
+            content = d.get("content", "")
+            if isinstance(content, str):
+                total_chars += len(content)
+        return total_chars / WORDS_PER_SECOND
+
+    def _validate_scene_duration(
+        self,
+        budget: SceneBudget,
+        actual_seconds: float,
+    ) -> tuple[bool, str]:
+        """Validate if actual duration is within tolerance.
+
+        Args:
+            budget: Scene budget with target duration.
+            actual_seconds: Actual estimated duration.
+
+        Returns:
+            (is_valid, rejection_reason)
+        """
+        if actual_seconds < budget.min_duration_seconds:
+            diff = budget.target_duration_seconds - actual_seconds
+            extra_words = int(diff * WORDS_PER_SECOND)
+            return False, f"时长不足：实际 {actual_seconds:.1f}s < 目标 {budget.target_duration_seconds}s，需增加约 {extra_words} 字"
+        elif actual_seconds > budget.max_duration_seconds:
+            diff = actual_seconds - budget.target_duration_seconds
+            reduce_words = int(diff * WORDS_PER_SECOND)
+            return False, f"时长过长：实际 {actual_seconds:.1f}s > 目标 {budget.target_duration_seconds}s，需删减约 {reduce_words} 字"
+        return True, ""
+
     async def generate(
         self,
         *,
@@ -91,9 +223,15 @@ class ScriptLangGraphAgent:
         prefer_provider: Optional[str],
         temperature: float,
         scene_budgets: Optional[List[SceneBudget]] = None,
+        duration_minutes: Optional[float] = None,
+        enable_react_validation: bool = True,
     ) -> Optional[Dict[str, Any]]:
         if not LANGGRAPH_AVAILABLE or not self.service.ai_manager:
             return None
+
+        # Extract duration_minutes from episode if not provided
+        if duration_minutes is None:
+            duration_minutes = episode.get("duration_minutes", 0) or 0
 
         graph = StateGraph(dict)
 
@@ -108,8 +246,23 @@ class ScriptLangGraphAgent:
                     "language": language,
                     "style_preferences": style_preferences or [],
                     "additional_requirements": additional_requirements or "",
+                    "duration_minutes": duration_minutes,
+                    "min_scene_seconds": MIN_SCENE_DURATION_SECONDS,
+                    "max_scene_seconds": MAX_SCENE_DURATION_SECONDS,
                 },
             )
+            # Build JSON schema - include duration fields if duration_minutes is set
+            scene_properties: Dict[str, Any] = {
+                "scene_number": {"type": "integer"},
+                "slug_line": {"type": "string"},
+                "location": {"type": "string"},
+                "time_of_day": {"type": "string"},
+                "summary": {"type": "string"},
+            }
+            if duration_minutes and duration_minutes > 0:
+                scene_properties["estimated_duration_seconds"] = {"type": "integer"}
+                scene_properties["dialogue_ratio"] = {"type": "number"}
+
             resp = await self.service.ai_manager.generate_text(
                 prompt=prompt,
                 temperature=min(0.6, temperature),
@@ -119,7 +272,15 @@ class ScriptLangGraphAgent:
                     "name": "script_scenes",
                     "schema": {
                         "type": "object",
-                        "properties": {"scenes": {"type": "array"}},
+                        "properties": {
+                            "scenes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": scene_properties,
+                                },
+                            },
+                        },
                     },
                 },
                 system_prompt="你是专业的剧本场景规划师，请严格按 JSON 返回。",
@@ -136,8 +297,27 @@ class ScriptLangGraphAgent:
             scenes = parsed.get("scenes") if isinstance(parsed, dict) else None
             if not scenes:
                 return {"error": "scene_plan_empty", "raw": parsed}
+
+            # Compute scene budgets from LLM-planned scenes if duration control enabled
+            computed_budgets: List[SceneBudget] = []
+            if duration_minutes and duration_minutes > 0:
+                computed_budgets = self._compute_budgets_from_scenes(scenes, duration_minutes)
+                self.logger.info(
+                    "plan_scenes: Computed %d scene budgets from LLM-planned durations",
+                    len(computed_budgets),
+                )
+                for b in computed_budgets:
+                    self.logger.debug(
+                        "  Scene %d: target=%ds, words=%d, dialogue_ratio=%.2f",
+                        b.scene_number,
+                        b.target_duration_seconds,
+                        b.target_word_count,
+                        scenes[b.scene_index].get("dialogue_ratio", DIALOGUE_DENSITY_FACTOR),
+                    )
+
             return {
                 "scenes": scenes,
+                "computed_budgets": computed_budgets,
                 "reasoning": ["scene_plan_ok"],
                 "provider": resp.provider,
                 "model_used": resp.model,
@@ -145,6 +325,9 @@ class ScriptLangGraphAgent:
 
         async def write_dialogues(state: Dict[str, Any]) -> Dict[str, Any]:
             scenes = state.get("scenes") or []
+            # Use computed budgets from scene planning, or fall back to externally provided
+            active_budgets = state.get("computed_budgets") or scene_budgets or []
+
             prompt = prompt_manager.render_prompt(
                 PromptTemplate.SCRIPT_DIALOGUES.value,
                 {
@@ -157,15 +340,16 @@ class ScriptLangGraphAgent:
                 },
             )
 
-            # Append word count constraints if scene budgets are provided
-            if scene_budgets:
+            # Append word count constraints if scene budgets are available
+            if active_budgets:
                 constraints_text = self._build_word_count_constraints(
-                    scene_budgets, scenes
+                    active_budgets, scenes
                 )
                 prompt = prompt + constraints_text
                 self.logger.info(
-                    "write_dialogues: Added word count constraints for %d scenes",
-                    len(scene_budgets),
+                    "write_dialogues: Added word count constraints for %d scenes (source: %s)",
+                    len(active_budgets),
+                    "computed" if state.get("computed_budgets") else "external",
                 )
 
             resp = await self.service.ai_manager.generate_text(
@@ -263,10 +447,111 @@ class ScriptLangGraphAgent:
                 "scenes": scenes,
                 "dialogues": dialogues,
                 "stage_directions": stage_dir or [],
+                "computed_budgets": active_budgets,
                 "reasoning": reasoning,
                 "provider": state.get("provider") or resp.provider,
                 "model_used": state.get("model_used") or resp.model,
             }
+
+        async def react_validate_duration(state: Dict[str, Any]) -> Dict[str, Any]:
+            """REACT validation: Check if dialogue durations match scene budgets.
+
+            If any scene is outside tolerance and retry count < MAX_RETRY_ATTEMPTS,
+            regenerate dialogues for that scene with adjustment hints.
+            """
+            dialogues = state.get("dialogues") or []
+            scenes = state.get("scenes") or []
+            budgets = state.get("computed_budgets") or []
+            reasoning = state.get("reasoning", [])
+
+            if not budgets or not enable_react_validation:
+                # No budgets or REACT disabled, skip validation
+                return {**state, "reasoning": reasoning + ["react_skipped"]}
+
+            # Validate each scene's dialogue duration
+            all_valid = True
+            rejection_reasons = []
+            updated_budgets = []
+
+            for budget in budgets:
+                scene_num = budget.scene_number
+                estimated_seconds = self._estimate_dialogue_duration(dialogues, scene_num)
+                is_valid, reason = self._validate_scene_duration(budget, estimated_seconds)
+
+                if not is_valid:
+                    all_valid = False
+                    rejection_reasons.append(f"场景{scene_num}: {reason}")
+
+                    # Update budget with rejection info for retry
+                    updated_budget = SceneBudget(
+                        scene_number=budget.scene_number,
+                        scene_index=budget.scene_index,
+                        target_duration_seconds=budget.target_duration_seconds,
+                        target_word_count=budget.target_word_count,
+                        min_duration_seconds=budget.min_duration_seconds,
+                        max_duration_seconds=budget.max_duration_seconds,
+                        status=SceneStatus.PENDING,
+                        attempt_count=budget.attempt_count + 1,
+                        adjustment_hint=reason,
+                        actual_duration_seconds=estimated_seconds,
+                    )
+                    updated_budgets.append(updated_budget)
+                else:
+                    # Scene is valid, mark as committed
+                    updated_budget = SceneBudget(
+                        scene_number=budget.scene_number,
+                        scene_index=budget.scene_index,
+                        target_duration_seconds=budget.target_duration_seconds,
+                        target_word_count=budget.target_word_count,
+                        min_duration_seconds=budget.min_duration_seconds,
+                        max_duration_seconds=budget.max_duration_seconds,
+                        status=SceneStatus.COMMITTED,
+                        attempt_count=budget.attempt_count,
+                        actual_duration_seconds=estimated_seconds,
+                    )
+                    updated_budgets.append(updated_budget)
+
+            if all_valid:
+                self.logger.info("react_validate_duration: All scenes within tolerance")
+                return {
+                    **state,
+                    "computed_budgets": updated_budgets,
+                    "reasoning": reasoning + ["react_passed"],
+                }
+
+            # Check if any scene needs retry and hasn't exceeded max attempts
+            needs_retry = any(
+                b.status == SceneStatus.PENDING and b.attempt_count < MAX_RETRY_ATTEMPTS
+                for b in updated_budgets
+            )
+
+            if needs_retry:
+                self.logger.info(
+                    "react_validate_duration: REACT rejection - %s",
+                    "; ".join(rejection_reasons),
+                )
+                return {
+                    **state,
+                    "computed_budgets": updated_budgets,
+                    "react_needs_retry": True,
+                    "reasoning": reasoning + [f"react_rejected({'; '.join(rejection_reasons)})"],
+                }
+            else:
+                # Max retries reached, accept as-is
+                self.logger.warning(
+                    "react_validate_duration: Max retries reached, accepting current result"
+                )
+                return {
+                    **state,
+                    "computed_budgets": updated_budgets,
+                    "reasoning": reasoning + ["react_max_retries_reached"],
+                }
+
+        def should_retry_dialogues(state: Dict[str, Any]) -> str:
+            """Conditional edge: decide whether to retry dialogue generation."""
+            if state.get("react_needs_retry"):
+                return "dialogue"  # Go back to dialogue generation
+            return "review"  # Continue to review
 
         async def review_classification(state: Dict[str, Any]) -> Dict[str, Any]:
             """Review and fix misclassified dialogues/stage_directions."""
@@ -447,10 +732,18 @@ class ScriptLangGraphAgent:
 
         graph.add_node("scene_plan", plan_scenes)
         graph.add_node("dialogue", write_dialogues)
+        graph.add_node("react_validate", react_validate_duration)
         graph.add_node("review", review_classification)
         graph.add_node("assemble", assemble)
+
+        # Flow: scene_plan → dialogue → react_validate → (conditional) → review → assemble
         graph.add_edge("scene_plan", "dialogue")
-        graph.add_edge("dialogue", "review")
+        graph.add_edge("dialogue", "react_validate")
+        graph.add_conditional_edges(
+            "react_validate",
+            should_retry_dialogues,
+            {"dialogue": "dialogue", "review": "review"},
+        )
         graph.add_edge("review", "assemble")
         graph.add_edge("assemble", END)
         graph.set_entry_point("scene_plan")
