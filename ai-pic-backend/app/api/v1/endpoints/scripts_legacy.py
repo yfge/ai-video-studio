@@ -714,7 +714,39 @@ def _populate_dialogues_and_stage_if_missing(
     story: Story | None = None,
 ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """为缺失的对白/舞台指示生成占位，避免空内容阻断前端流程。"""
-    if dialogues:
+    scene_numbers_with_dialogues: set[int] = set()
+    for dlg in dialogues or []:
+        if not isinstance(dlg, dict):
+            continue
+        scene_no = _to_int(dlg.get("scene_number"))
+        if scene_no:
+            scene_numbers_with_dialogues.add(scene_no)
+
+    scene_numbers_with_stage: set[int] = set()
+    for sd in stage_directions or []:
+        if not isinstance(sd, dict):
+            continue
+        scene_no = _to_int(sd.get("scene_number"))
+        if scene_no:
+            scene_numbers_with_stage.add(scene_no)
+
+    missing_scenes: List[tuple[int, Dict[str, Any]]] = []
+    missing_stage_scenes: List[tuple[int, Dict[str, Any]]] = []
+    for idx, sc in enumerate(scenes, start=1):
+        if not isinstance(sc, dict):
+            continue
+        scene_no = _to_int(sc.get("scene_number")) or idx
+        if scene_no not in scene_numbers_with_dialogues:
+            missing_scenes.append((scene_no, sc))
+        if scene_no not in scene_numbers_with_stage:
+            missing_stage_scenes.append((scene_no, sc))
+
+    if (
+        dialogues
+        and stage_directions
+        and not missing_scenes
+        and not missing_stage_scenes
+    ):
         return dialogues, stage_directions
 
     speakers: List[str] = []
@@ -730,12 +762,12 @@ def _populate_dialogues_and_stage_if_missing(
     if not speakers:
         speakers = ["旁白", "路人"]
 
-    generated_dialogues: List[Dict[str, Any]] = []
-    generated_stage: List[Dict[str, Any]] = []
-    for idx, sc in enumerate(scenes, start=1):
-        if not isinstance(sc, dict):
-            continue
-        scene_no = _to_int(sc.get("scene_number")) or idx
+    generated_dialogues: List[Dict[str, Any]] = list(dialogues) if dialogues else []
+    generated_stage: List[Dict[str, Any]] = (
+        list(stage_directions) if stage_directions else []
+    )
+
+    for scene_no, sc in missing_scenes or []:
         summary = (
             sc.get("summary")
             or sc.get("description")
@@ -748,28 +780,34 @@ def _populate_dialogues_and_stage_if_missing(
             {
                 "scene_number": scene_no,
                 "character": speaker_a,
-                "content": f"{summary}——我需要再确认细节。",
+                "content": "等一下……让我再确认一下。",
             }
         )
         generated_dialogues.append(
             {
                 "scene_number": scene_no,
                 "character": speaker_b,
-                "content": "明白，这里可以突出冲突或情绪。",
+                "content": "明白，我们继续。",
             }
         )
-        if not stage_directions:
-            generated_stage.append(
-                {
-                    "scene_number": scene_no,
-                    "timing": "mid",
-                    "content": summary,
-                    "type": "action",
-                }
-            )
 
-    final_stage = stage_directions or generated_stage
-    return generated_dialogues, final_stage
+    for scene_no, sc in missing_stage_scenes or []:
+        summary = (
+            sc.get("summary")
+            or sc.get("description")
+            or sc.get("slug_line")
+            or f"场景 {scene_no}"
+        )
+        generated_stage.append(
+            {
+                "scene_number": scene_no,
+                "timing": "mid",
+                "content": summary,
+                "type": "action",
+            }
+        )
+
+    return generated_dialogues, generated_stage
 
 
 def _merge_frames(
@@ -3632,14 +3670,16 @@ async def get_episode_scripts(
         raise HTTPException(status_code=404, detail="剧集不存在")
 
     # 为避免在 MySQL 中对大文本结果做排序耗尽 sort buffer，
-    # 这里不再对结果做 ORDER BY，仅取一批脚本返回，前端默认使用第一条。
+    # 这里不在 SQL 层做 ORDER BY；改为拉取后在 Python 内按 id 倒序排序，
+    # 让前端默认使用最新一条。
     scripts = (
         _not_deleted(db.query(Script), Script)
         .filter(Script.episode_id == episode_id)
         .limit(50)
         .all()
     )
-    return [ScriptResponse.from_orm(script) for script in scripts]
+    scripts_sorted = sorted(scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True)
+    return [ScriptResponse.from_orm(script) for script in scripts_sorted]
 
 
 @router.get(
@@ -3666,7 +3706,8 @@ async def get_episode_scripts_by_business_id(
         .limit(50)
         .all()
     )
-    return [ScriptResponse.from_orm(script) for script in scripts]
+    scripts_sorted = sorted(scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True)
+    return [ScriptResponse.from_orm(script) for script in scripts_sorted]
 
 
 async def _regenerate_script_instance(

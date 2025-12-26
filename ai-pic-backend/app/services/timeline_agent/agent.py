@@ -333,12 +333,10 @@ class TimelineLangGraphAgent:
             else:
                 tolerance_low, tolerance_high = 0.6, 1.4
 
-            if duration_ratio < tolerance_low:
-                errors.append(
-                    f"duration_too_short: {computed_total_ms}ms vs target {target_ms}ms "
-                    f"({duration_ratio:.0%})"
-                )
-            elif duration_ratio > tolerance_high:
+            # NOTE: 目标时长对齐的“补足”由 audio segment padding 负责（见 segment_padding.py），
+            # Timeline Agent 只负责节奏合理的间隔计算；因此不把“时长不足”视为硬错误，
+            # 否则在对白数量较少的场景下会出现不可满足的约束并触发无意义的修复循环。
+            if duration_ratio > tolerance_high:
                 errors.append(
                     f"duration_too_long: {computed_total_ms}ms vs target {target_ms}ms "
                     f"({duration_ratio:.0%})"
