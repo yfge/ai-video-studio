@@ -7,6 +7,10 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, urlunparse
 from uuid import UUID, uuid4
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.logging import get_logger
@@ -60,9 +64,6 @@ from app.services.task_worker import (
 from app.utils.json_utils import extract_json_block
 from app.utils.model_utils import infer_provider_from_model
 from app.utils.script_parser import extract_script_structure
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 
 def _now_iso() -> str:
@@ -713,101 +714,21 @@ def _populate_dialogues_and_stage_if_missing(
     *,
     story: Story | None = None,
 ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """为缺失的对白/舞台指示生成占位，避免空内容阻断前端流程。"""
-    scene_numbers_with_dialogues: set[int] = set()
-    for dlg in dialogues or []:
-        if not isinstance(dlg, dict):
-            continue
-        scene_no = _to_int(dlg.get("scene_number"))
-        if scene_no:
-            scene_numbers_with_dialogues.add(scene_no)
+    """Fill missing dialogues/stage_directions without misleading "fake" lines.
 
-    scene_numbers_with_stage: set[int] = set()
-    for sd in stage_directions or []:
-        if not isinstance(sd, dict):
-            continue
-        scene_no = _to_int(sd.get("scene_number"))
-        if scene_no:
-            scene_numbers_with_stage.add(scene_no)
-
-    missing_scenes: List[tuple[int, Dict[str, Any]]] = []
-    missing_stage_scenes: List[tuple[int, Dict[str, Any]]] = []
-    for idx, sc in enumerate(scenes, start=1):
-        if not isinstance(sc, dict):
-            continue
-        scene_no = _to_int(sc.get("scene_number")) or idx
-        if scene_no not in scene_numbers_with_dialogues:
-            missing_scenes.append((scene_no, sc))
-        if scene_no not in scene_numbers_with_stage:
-            missing_stage_scenes.append((scene_no, sc))
-
-    if (
-        dialogues
-        and stage_directions
-        and not missing_scenes
-        and not missing_stage_scenes
-    ):
-        return dialogues, stage_directions
-
-    speakers: List[str] = []
-    if story and isinstance(story.main_characters, list):
-        for raw in story.main_characters:
-            if not isinstance(raw, dict):
-                continue
-            name = raw.get("name") or raw.get("character_name")
-            if name:
-                speakers.append(str(name))
-            if len(speakers) >= 3:
-                break
-    if not speakers:
-        speakers = ["旁白", "路人"]
-
-    generated_dialogues: List[Dict[str, Any]] = list(dialogues) if dialogues else []
-    generated_stage: List[Dict[str, Any]] = (
-        list(stage_directions) if stage_directions else []
+    Note: Real dialogue completion should be done at generation time (ScriptLangGraphAgent).
+    This function is only a last-resort safeguard to keep downstream pipelines running.
+    """
+    from app.services.script_missing_parts import (
+        populate_dialogues_and_stage_if_missing,
     )
 
-    for scene_no, sc in missing_scenes or []:
-        summary = (
-            sc.get("summary")
-            or sc.get("description")
-            or sc.get("slug_line")
-            or f"场景 {scene_no}"
-        )
-        speaker_a = speakers[0]
-        speaker_b = speakers[1] if len(speakers) > 1 else speaker_a
-        generated_dialogues.append(
-            {
-                "scene_number": scene_no,
-                "character": speaker_a,
-                "content": "等一下……让我再确认一下。",
-            }
-        )
-        generated_dialogues.append(
-            {
-                "scene_number": scene_no,
-                "character": speaker_b,
-                "content": "明白，我们继续。",
-            }
-        )
-
-    for scene_no, sc in missing_stage_scenes or []:
-        summary = (
-            sc.get("summary")
-            or sc.get("description")
-            or sc.get("slug_line")
-            or f"场景 {scene_no}"
-        )
-        generated_stage.append(
-            {
-                "scene_number": scene_no,
-                "timing": "mid",
-                "content": summary,
-                "type": "action",
-            }
-        )
-
-    return generated_dialogues, generated_stage
+    return populate_dialogues_and_stage_if_missing(
+        scenes,
+        dialogues,
+        stage_directions,
+        story=story,
+    )
 
 
 def _merge_frames(
@@ -869,6 +790,11 @@ def _enforce_storyboard_variety(frames: List[Dict[str, Any]]) -> List[Dict[str, 
             frame["description"] = (
                 f"{base_desc}（变体{count + 1}，强调{frame['camera_movement']}）"
             )
+            old_prompt = frame.get("ai_prompt")
+            if isinstance(old_prompt, str) and old_prompt.strip():
+                frame["ai_prompt"] = f"{frame['description']}\n{old_prompt}"
+            else:
+                frame["ai_prompt"] = frame["description"]
             frame["duration_seconds"] = max(
                 2, min(12, (frame.get("duration_seconds") or 3) + ((count % 3) - 1))
             )
@@ -1502,7 +1428,10 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
         if duration_minutes and duration_minutes > 0:
             scenes = episode_data.get("scenes", [])
             if scenes:
-                from app.services.duration_orchestrator.utils import allocate_scene_budgets
+                from app.services.duration_orchestrator.utils import (
+                    allocate_scene_budgets,
+                )
+
                 try:
                     scene_budgets, _ = allocate_scene_budgets(
                         total_duration_minutes=duration_minutes,
@@ -1610,6 +1539,7 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
         base_title = script.title or f"剧本 - {episode.title}"
         # 移除之前的版本后缀（如果有）
         import re
+
         base_title = re.sub(r"\s*\(v[\d.]+\)$", "", base_title)
         new_title = f"{base_title} (v{new_version})"
 
@@ -1726,6 +1656,7 @@ def _process_script_audio_storyboard_task(
 ) -> None:
     """后台处理从 audio_timeline 生成分镜帧占位任务（供 Celery 调用）。"""
     import anyio
+
     from app.core.database import SessionLocal
     from app.models.user import User
 
@@ -2475,6 +2406,7 @@ def _process_storyboard_generation_task(
 ):
     """后台处理分镜结构生成任务（供 Celery 调用）。"""
     import anyio
+
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
     from app.models.user import User
@@ -3678,7 +3610,9 @@ async def get_episode_scripts(
         .limit(50)
         .all()
     )
-    scripts_sorted = sorted(scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True)
+    scripts_sorted = sorted(
+        scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
+    )
     return [ScriptResponse.from_orm(script) for script in scripts_sorted]
 
 
@@ -3706,7 +3640,9 @@ async def get_episode_scripts_by_business_id(
         .limit(50)
         .all()
     )
-    scripts_sorted = sorted(scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True)
+    scripts_sorted = sorted(
+        scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
+    )
     return [ScriptResponse.from_orm(script) for script in scripts_sorted]
 
 
@@ -4081,6 +4017,7 @@ def _process_script_dialogue_audio_task(
 ) -> None:
     """后台处理剧本场景对白音轨生成任务（供 Celery 调用）。"""
     import anyio
+
     from app.core.database import SessionLocal
     from app.models.user import User
 
@@ -4320,6 +4257,7 @@ def _process_script_audio_timeline_task(
 ) -> None:
     """后台处理 episode 音频拼接与时间轴生成任务（供 Celery 调用）。"""
     import anyio
+
     from app.core.database import SessionLocal
     from app.models.user import User
 
@@ -4455,6 +4393,7 @@ async def generate_timeline_pipeline_async(
 def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -> None:
     """后台处理一键时间轴流水线任务（对白音轨 → 时间轴 → 分镜帧占位）。"""
     import anyio
+
     from app.core.database import SessionLocal
     from app.models.user import User
 

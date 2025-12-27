@@ -5,26 +5,26 @@ Handles AI generation, content parsing, and normalization for scripts.
 """
 
 from typing import Any, Dict, List, Optional
+
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError, GenerationFailedError
+from app.core.exceptions import GenerationFailedError, NotFoundError
 from app.core.logging import get_logger
-from app.models.script import Script, Episode, Story
+from app.models.script import Episode, Script, Story
 from app.models.user import User
+from app.prompts.manager import PromptManager
+from app.prompts.templates import PromptTemplate
 from app.repositories.script_repository import EpisodeRepository, StoryRepository
+from app.services.ai_service import ai_service
 from app.services.script.script_utils import (
-    to_int,
-    collect_previous_episode_summaries,
     build_character_profiles,
     build_episode_data,
     build_story_data,
+    collect_previous_episode_summaries,
+    to_int,
 )
-from app.services.ai_service import ai_service
-from app.prompts.manager import PromptManager
-from app.prompts.templates import PromptTemplate
 from app.utils.json_utils import extract_json_block
 from app.utils.script_parser import extract_script_structure
-
 
 logger = get_logger()
 
@@ -322,11 +322,18 @@ class ScriptGenerator:
         """Normalize scenes list."""
         scenes = []
         for idx, scene in enumerate(raw_scenes, start=1):
-            base = dict(scene) if isinstance(scene, dict) else {"description": str(scene) if scene else ""}
+            base = (
+                dict(scene)
+                if isinstance(scene, dict)
+                else {"description": str(scene) if scene else ""}
+            )
             scene_no = to_int(base.get("scene_number")) or idx
             desc = (
-                base.get("description") or base.get("summary") or
-                base.get("slug_line") or base.get("story_beat") or base.get("title")
+                base.get("description")
+                or base.get("summary")
+                or base.get("slug_line")
+                or base.get("story_beat")
+                or base.get("title")
             )
             base["scene_number"] = scene_no
             if desc:
@@ -349,21 +356,34 @@ class ScriptGenerator:
         dialogues = []
         for idx, item in enumerate(raw_dialogues, start=1):
             if isinstance(item, str):
-                dialogues.append({
-                    "scene_number": scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx,
-                    "content": item,
-                })
+                dialogues.append(
+                    {
+                        "scene_number": (
+                            scenes[idx - 1]["scene_number"]
+                            if idx - 1 < len(scenes)
+                            else idx
+                        ),
+                        "content": item,
+                    }
+                )
                 continue
             if not isinstance(item, dict):
                 continue
             dialog = dict(item)
-            content = dialog.get("content") or dialog.get("line") or dialog.get("text") or dialog.get("dialogue")
+            content = (
+                dialog.get("content")
+                or dialog.get("line")
+                or dialog.get("text")
+                or dialog.get("dialogue")
+            )
             if not content:
                 continue
             dialog["content"] = content
             sn = to_int(dialog.get("scene_number"))
             if sn is None:
-                dialog["scene_number"] = scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+                dialog["scene_number"] = (
+                    scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+                )
             dialogues.append(dialog)
         return dialogues
 
@@ -374,21 +394,33 @@ class ScriptGenerator:
         directions = []
         for idx, item in enumerate(raw_stage, start=1):
             if isinstance(item, str):
-                directions.append({
-                    "scene_number": scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx,
-                    "content": item,
-                })
+                directions.append(
+                    {
+                        "scene_number": (
+                            scenes[idx - 1]["scene_number"]
+                            if idx - 1 < len(scenes)
+                            else idx
+                        ),
+                        "content": item,
+                    }
+                )
                 continue
             if not isinstance(item, dict):
                 continue
             direction = dict(item)
-            content = direction.get("content") or direction.get("direction") or direction.get("description")
+            content = (
+                direction.get("content")
+                or direction.get("direction")
+                or direction.get("description")
+            )
             if not content:
                 continue
             direction["content"] = content
             sn = to_int(direction.get("scene_number"))
             if sn is None:
-                direction["scene_number"] = scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+                direction["scene_number"] = (
+                    scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
+                )
             directions.append(direction)
         return directions
 
@@ -400,22 +432,26 @@ class ScriptGenerator:
         story: Story,
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """Populate missing dialogues and stage directions from scenes."""
-        # Import from original location for compatibility
-        try:
-            from app.api.v1.endpoints.scripts import _populate_dialogues_and_stage_if_missing
-            return _populate_dialogues_and_stage_if_missing(
-                scenes, dialogues, stage_directions, story=story
-            )
-        except ImportError:
-            return dialogues, stage_directions
+        from app.services.script_missing_parts import (
+            populate_dialogues_and_stage_if_missing,
+        )
+
+        return populate_dialogues_and_stage_if_missing(
+            scenes,
+            dialogues,
+            stage_directions,
+            story=story,
+        )
 
     def _build_extra_metadata(
         self, ai_content: Dict[str, Any], result: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Build extra metadata from AI result."""
         extra_meta = {
-            k: v for k, v in ai_content.items()
-            if k not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
+            k: v
+            for k, v in ai_content.items()
+            if k
+            not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
         }
 
         agent_run = {}

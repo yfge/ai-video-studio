@@ -4,7 +4,7 @@ import json
 import pytest
 
 from app.services.episode_agent import EpisodeGenerationCallbacks, EpisodeLangGraphAgent
-from app.services.providers.base import AIResponse, AITaskType, AIModelType
+from app.services.providers.base import AIModelType, AIResponse, AITaskType
 
 
 class FakeGraph:
@@ -119,7 +119,7 @@ async def test_episode_agent_callbacks_emit_and_fallback(monkeypatch):
     result = await agent.generate(
         story={"title": "T", "genre": "drama"},
         episode_count=2,
-        episode_duration=30,
+        episode_duration=None,
         focus_characters=[{"id": 1, "name": "文闻", "description": "desc"}],
         plot_complexity="medium",
         pacing="medium",

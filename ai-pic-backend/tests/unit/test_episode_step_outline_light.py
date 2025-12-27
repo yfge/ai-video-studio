@@ -1,9 +1,10 @@
 import asyncio
 import json
+
 import pytest
 
 from app.services.episode_agent import EpisodeLangGraphAgent
-from app.services.providers.base import AIResponse, AITaskType, AIModelType
+from app.services.providers.base import AIModelType, AIResponse, AITaskType
 
 
 class FakeGraph:
@@ -100,7 +101,7 @@ async def test_outline_logline_only(monkeypatch):
     result = await agent.generate(
         story={"title": "T", "genre": "drama"},
         episode_count=1,
-        episode_duration=30,
+        episode_duration=None,
         focus_characters=None,
         plot_complexity="medium",
         pacing="medium",
@@ -124,7 +125,9 @@ async def test_outline_missing_logline_triggers_repair(monkeypatch):
     monkeypatch.setattr("app.services.episode_agent.END", "END")
 
     outline_bad = {"episodes": [{"episode_number": 1, "title": "E1", "logline": ""}]}
-    outline_fixed = {"episodes": [{"episode_number": 1, "title": "E1", "logline": "修复后"}]}
+    outline_fixed = {
+        "episodes": [{"episode_number": 1, "title": "E1", "logline": "修复后"}]
+    }
     episode = {
         "episodes": [
             {

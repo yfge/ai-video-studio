@@ -4,6 +4,7 @@ Celery 应用配置
 用于统一处理后台任务（故事/剧集/剧本生成等），由独立 worker 进程运行。
 """
 
+import sys
 from datetime import timedelta
 
 from celery import Celery
@@ -11,15 +12,29 @@ from celery import Celery
 from app.core.config import settings
 
 
+def _running_under_pytest() -> bool:
+    # Avoid connecting to external Redis in unit/script tests.
+    return "pytest" in sys.modules
+
+
 def _get_broker_url() -> str:
     # 默认复用 REDIS_URL，后续如需区分可扩展单独的 CELERY_BROKER_URL
+    if _running_under_pytest():
+        return "memory://"
+    return getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
+
+
+def _get_backend_url() -> str:
+    # Celery does not support "memory://" as result backend.
+    if _running_under_pytest():
+        return "cache+memory://"
     return getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
 
 
 celery_app = Celery(
     "ai_video_studio",
     broker=_get_broker_url(),
-    backend=_get_broker_url(),
+    backend=_get_backend_url(),
 )
 
 celery_app.conf.update(
@@ -38,6 +53,13 @@ celery_app.conf.update(
         },
     },
 )
+
+# In pytest, execute tasks eagerly to keep endpoint tests self-contained.
+if _running_under_pytest():
+    celery_app.conf.update(
+        task_always_eager=True,
+        task_store_eager_result=False,
+    )
 
 # 确保在 Celery 应用初始化后注册所有任务
 # 任务定义位于 app.services.task_worker 中，使用显式 name（如 "tasks.virtual_ip_image_generate"）

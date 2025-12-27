@@ -16,6 +16,7 @@ from app.services.duration_orchestrator.constants import (
     WORDS_PER_SECOND,
 )
 from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
+from app.services.script_agent_react_fill import try_fill_pending_scenes_after_react
 from app.utils.json_utils import extract_json_block
 
 try:
@@ -139,7 +140,9 @@ class ScriptLangGraphAgent:
 
             # Get dialogue_ratio from LLM or use default
             dialogue_ratio = scene.get("dialogue_ratio")
-            if not isinstance(dialogue_ratio, (int, float)) or not (0.0 <= dialogue_ratio <= 1.0):
+            if not isinstance(dialogue_ratio, (int, float)) or not (
+                0.0 <= dialogue_ratio <= 1.0
+            ):
                 dialogue_ratio = DIALOGUE_DENSITY_FACTOR
 
             # Compute word count: dialogue_seconds * words_per_second
@@ -152,7 +155,9 @@ class ScriptLangGraphAgent:
                 target_duration_seconds=target_seconds,
                 target_word_count=target_words,
                 min_duration_seconds=int(target_seconds * DURATION_TOLERANCE_SCENE_LOW),
-                max_duration_seconds=int(target_seconds * DURATION_TOLERANCE_SCENE_HIGH),
+                max_duration_seconds=int(
+                    target_seconds * DURATION_TOLERANCE_SCENE_HIGH
+                ),
                 status=SceneStatus.PENDING,
                 attempt_count=0,
             )
@@ -176,8 +181,15 @@ class ScriptLangGraphAgent:
         """
         total_chars = 0
         for d in dialogues:
+            if not isinstance(d, dict):
+                continue
             if scene_number is not None:
-                if d.get("scene_number") != scene_number:
+                raw_scene_no = d.get("scene_number")
+                try:
+                    scene_no = int(raw_scene_no) if raw_scene_no is not None else None
+                except (TypeError, ValueError):
+                    scene_no = None
+                if scene_no != scene_number:
                     continue
             content = d.get("content", "")
             if isinstance(content, str):
@@ -201,11 +213,17 @@ class ScriptLangGraphAgent:
         if actual_seconds < budget.min_duration_seconds:
             diff = budget.target_duration_seconds - actual_seconds
             extra_words = int(diff * WORDS_PER_SECOND)
-            return False, f"时长不足：实际 {actual_seconds:.1f}s < 目标 {budget.target_duration_seconds}s，需增加约 {extra_words} 字"
+            return (
+                False,
+                f"时长不足：实际 {actual_seconds:.1f}s < 目标 {budget.target_duration_seconds}s，需增加约 {extra_words} 字",
+            )
         elif actual_seconds > budget.max_duration_seconds:
             diff = actual_seconds - budget.target_duration_seconds
             reduce_words = int(diff * WORDS_PER_SECOND)
-            return False, f"时长过长：实际 {actual_seconds:.1f}s > 目标 {budget.target_duration_seconds}s，需删减约 {reduce_words} 字"
+            return (
+                False,
+                f"时长过长：实际 {actual_seconds:.1f}s > 目标 {budget.target_duration_seconds}s，需删减约 {reduce_words} 字",
+            )
         return True, ""
 
     async def generate(
@@ -301,7 +319,9 @@ class ScriptLangGraphAgent:
             # Compute scene budgets from LLM-planned scenes if duration control enabled
             computed_budgets: List[SceneBudget] = []
             if duration_minutes and duration_minutes > 0:
-                computed_budgets = self._compute_budgets_from_scenes(scenes, duration_minutes)
+                computed_budgets = self._compute_budgets_from_scenes(
+                    scenes, duration_minutes
+                )
                 self.logger.info(
                     "plan_scenes: Computed %d scene budgets from LLM-planned durations",
                     len(computed_budgets),
@@ -312,7 +332,9 @@ class ScriptLangGraphAgent:
                         b.scene_number,
                         b.target_duration_seconds,
                         b.target_word_count,
-                        scenes[b.scene_index].get("dialogue_ratio", DIALOGUE_DENSITY_FACTOR),
+                        scenes[b.scene_index].get(
+                            "dialogue_ratio", DIALOGUE_DENSITY_FACTOR
+                        ),
                     )
 
             return {
@@ -475,8 +497,12 @@ class ScriptLangGraphAgent:
 
             for budget in budgets:
                 scene_num = budget.scene_number
-                estimated_seconds = self._estimate_dialogue_duration(dialogues, scene_num)
-                is_valid, reason = self._validate_scene_duration(budget, estimated_seconds)
+                estimated_seconds = self._estimate_dialogue_duration(
+                    dialogues, scene_num
+                )
+                is_valid, reason = self._validate_scene_duration(
+                    budget, estimated_seconds
+                )
 
                 if not is_valid:
                     all_valid = False
@@ -534,13 +560,48 @@ class ScriptLangGraphAgent:
                     **state,
                     "computed_budgets": updated_budgets,
                     "react_needs_retry": True,
-                    "reasoning": reasoning + [f"react_rejected({'; '.join(rejection_reasons)})"],
+                    "reasoning": reasoning
+                    + [f"react_rejected({'; '.join(rejection_reasons)})"],
                 }
             else:
                 # Max retries reached, accept as-is
                 self.logger.warning(
                     "react_validate_duration: Max retries reached, accepting current result"
                 )
+                pending_budgets = [
+                    b for b in updated_budgets if b.status == SceneStatus.PENDING
+                ]
+                if pending_budgets:
+                    filled = await try_fill_pending_scenes_after_react(
+                        ai_manager=self.service.ai_manager,
+                        episode=episode,
+                        story=story,
+                        scenes=scenes,
+                        pending_budgets=pending_budgets,
+                        dialogue_style=dialogue_style,
+                        language=language,
+                        format_type=format_type,
+                        temperature=temperature,
+                        model=model,
+                        prefer_provider=prefer_provider,
+                        existing_dialogues=dialogues,
+                        existing_stage_directions=state.get("stage_directions") or [],
+                        build_word_count_constraints=self._build_word_count_constraints,
+                    )
+                    if filled:
+                        merged_dialogues, merged_stage, pending_scene_numbers = filled
+                        return {
+                            **state,
+                            "dialogues": merged_dialogues,
+                            "stage_directions": merged_stage,
+                            "computed_budgets": updated_budgets,
+                            "reasoning": reasoning
+                            + [
+                                "react_max_retries_reached",
+                                f"react_filled_pending_scenes({pending_scene_numbers})",
+                            ],
+                        }
+
                 return {
                     **state,
                     "computed_budgets": updated_budgets,

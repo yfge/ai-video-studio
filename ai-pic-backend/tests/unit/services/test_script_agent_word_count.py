@@ -7,6 +7,7 @@ ScriptLangGraphAgent 字数约束单元测试
 from unittest.mock import MagicMock
 
 import pytest
+
 from app.services.duration_orchestrator.state import SceneBudget
 from app.services.script_agent import ScriptLangGraphAgent
 
@@ -195,3 +196,24 @@ class TestGenerateMethodSignature:
 
         # 无 AI manager 时返回 None
         assert result is None
+
+
+class TestEstimateDialogueDuration:
+    """测试对白时长估算的鲁棒性"""
+
+    @pytest.fixture
+    def mock_service(self):
+        service = MagicMock()
+        service.ai_manager = MagicMock()
+        return service
+
+    @pytest.fixture
+    def agent(self, mock_service):
+        return ScriptLangGraphAgent(mock_service)
+
+    def test_string_scene_number_is_counted(self, agent):
+        dialogues = [
+            {"scene_number": "1", "content": "1234"},
+            {"scene_number": 2, "content": "5678"},
+        ]
+        assert agent._estimate_dialogue_duration(dialogues, 1) > 0

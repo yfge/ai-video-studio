@@ -8,10 +8,8 @@ Note: During refactoring, legacy routes from scripts_legacy.py are
 temporarily re-exported here. They will be migrated in subsequent phases.
 """
 
-from fastapi import APIRouter
-
 # Import legacy router and task helpers for storyboard and other unmigrated endpoints.
-from app.api.v1.endpoints.scripts_legacy import (  # noqa: F401
+from app.api.v1.endpoints.scripts_legacy import (
     _augment_frames,
     _enforce_storyboard_variety,
     _merge_frames,
@@ -25,8 +23,11 @@ from app.api.v1.endpoints.scripts_legacy import (  # noqa: F401
     _process_storyboard_image_task,
     _process_storyboard_video_task,
     _sync_script_scenes_to_story_structure,
-    router as legacy_router,
 )
+from app.api.v1.endpoints.scripts_legacy import router as legacy_router  # noqa: F401
+
+# Imported for test monkeypatching consistency across endpoint modules.
+from app.services.ai_service import ai_service  # noqa: F401
 
 # New refactored routers will be added here as migration progresses
 # from app.api.v1.endpoints.scripts.crud import router as crud_router

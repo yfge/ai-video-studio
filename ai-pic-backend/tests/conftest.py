@@ -20,7 +20,6 @@ from sqlalchemy.orm import sessionmaker
 # 添加项目根目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from main import app
 from app.core.config import settings
 from app.core.database import Base, get_db
 from app.core.middleware import (
@@ -28,6 +27,7 @@ from app.core.middleware import (
     get_current_admin_user,
     get_current_superuser,
 )
+from main import app
 from tests.unit.test_database import get_test_db as unit_get_test_db
 
 
@@ -50,12 +50,13 @@ def test_db_session(db_session):
 @pytest.fixture
 def mock_ai_service(monkeypatch):
     """mock AI 服务，避免真实外部依赖。"""
-    from app.services import ai_service as ai_module
+    from app.api.v1.endpoints import scripts as scripts_ep
+    from app.api.v1.endpoints import scripts_legacy as scripts_legacy_ep
     from app.api.v1.endpoints import stories as stories_ep
+    from app.api.v1.endpoints.episodes import async_tasks as episodes_async
     from app.api.v1.endpoints.episodes import generation as episodes_generation
     from app.api.v1.endpoints.episodes import regenerate as episodes_regenerate
-    from app.api.v1.endpoints.episodes import async_tasks as episodes_async
-    from app.api.v1.endpoints import scripts as scripts_ep
+    from app.services import ai_service as ai_module
 
     uploads_dir = Path(settings.UPLOAD_DIR)
     uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -80,7 +81,11 @@ def mock_ai_service(monkeypatch):
 
                     return SimpleNamespace(
                         success=True,
-                        data={"images": [f"https://example.com/mock-img2img/{uuid4().hex}.png"]},
+                        data={
+                            "images": [
+                                f"https://example.com/mock-img2img/{uuid4().hex}.png"
+                            ]
+                        },
                         provider=prefer_provider or "mock-provider",
                         model=model or "mock-model",
                         usage={},
@@ -228,6 +233,7 @@ def mock_ai_service(monkeypatch):
     monkeypatch.setattr(episodes_regenerate, "ai_service", mock_service)
     monkeypatch.setattr(episodes_async, "ai_service", mock_service)
     monkeypatch.setattr(scripts_ep, "ai_service", mock_service)
+    monkeypatch.setattr(scripts_legacy_ep, "ai_service", mock_service)
 
     try:
         yield mock_service
@@ -280,18 +286,18 @@ def test_db():
     # 使用SQLite内存数据库进行测试
     SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
     engine = create_engine(
-        SQLALCHEMY_DATABASE_URL, 
-        connect_args={"check_same_thread": False}
+        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
     )
-    
+
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    
+
     # 创建所有表
-    from app import models  # ensure models are registered
+    from app import models  # noqa: F401  # ensure models are registered
+
     Base.metadata.create_all(bind=engine)
-    
+
     yield TestingSessionLocal
-    
+
     # 清理
     os.unlink("test.db")
 
@@ -318,9 +324,7 @@ def client(db_session):
     # 确保存在默认活跃管理员用户，便于通过权限校验
     from app.models.user import User
 
-    admin_user = (
-        db_session.query(User).filter(User.username == "test_admin").first()
-    )
+    admin_user = db_session.query(User).filter(User.username == "test_admin").first()
     if not admin_user:
         admin_user = User(
             username="test_admin",
@@ -351,7 +355,7 @@ def client(db_session):
 
     def override_superuser():
         return admin_user
-    
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_active_user] = override_active_user
     app.dependency_overrides[get_current_admin_user] = override_admin_user
@@ -366,12 +370,9 @@ def client(db_session):
 def auth_headers(client):
     """认证头fixture"""
     # 创建测试用户并登录
-    login_data = {
-        "username": "admin",
-        "password": "Ai7dio"
-    }
+    login_data = {"username": "admin", "password": "Ai7dio"}
     response = client.post("/api/v1/auth/login", data=login_data)
-    
+
     if response.status_code == 200:
         token = response.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
@@ -390,32 +391,31 @@ def test_virtual_ip_data():
         "background_story": "这是一个测试用的虚拟IP角色",
         "style_prompt": "realistic, professional",
         "is_active": True,
-        "is_public": False
+        "is_public": False,
     }
 
 
 @pytest.fixture
 def skip_if_no_openai():
     """如果没有OpenAI API密钥则跳过测试"""
-    if not getattr(settings, 'OPENAI_API_KEY', None):
+    if not getattr(settings, "OPENAI_API_KEY", None):
         pytest.skip("需要OPENAI_API_KEY环境变量")
 
 
-@pytest.fixture 
+@pytest.fixture
 def skip_if_no_oss():
     """如果没有OSS配置则跳过测试"""
     required_oss_configs = [
-        'ALIYUN_ACCESS_KEY_ID',
-        'ALIYUN_ACCESS_KEY_SECRET', 
-        'ALIYUN_OSS_ENDPOINT',
-        'ALIYUN_OSS_BUCKET'
+        "ALIYUN_ACCESS_KEY_ID",
+        "ALIYUN_ACCESS_KEY_SECRET",
+        "ALIYUN_OSS_ENDPOINT",
+        "ALIYUN_OSS_BUCKET",
     ]
-    
+
     missing_configs = [
-        config for config in required_oss_configs 
-        if not getattr(settings, config, None)
+        config for config in required_oss_configs if not getattr(settings, config, None)
     ]
-    
+
     if missing_configs:
         pytest.skip(f"需要OSS配置: {', '.join(missing_configs)}")
 
@@ -449,11 +449,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     """自定义测试结果总结"""
     if exitstatus == 0:
         terminalreporter.write_line(
-            "\n🎉 所有测试通过！AI图像生成系统运行正常。",
-            green=True
+            "\n🎉 所有测试通过！AI图像生成系统运行正常。", green=True
         )
     else:
-        terminalreporter.write_line(
-            "\n❌ 部分测试失败，请检查上述错误信息。",
-            red=True
-        )
+        terminalreporter.write_line("\n❌ 部分测试失败，请检查上述错误信息。", red=True)

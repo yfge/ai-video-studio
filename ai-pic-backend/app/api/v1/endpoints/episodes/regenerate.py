@@ -7,19 +7,18 @@ Regenerate AI-generated episode content by reusing the generation flow.
 import json
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.models.script import Story, Episode
+from app.models.script import Episode
 from app.models.task import Task
 from app.models.user import User
+from app.services.ai_service import ai_service  # noqa: F401
 from app.services.task_worker import episode_generate_task
-from .helpers import (
-    get_episode_by_identifier,
-    get_story_by_identifier,
-)
+
+from .helpers import get_episode_by_identifier, get_story_by_identifier
 
 router = APIRouter()
 
@@ -36,7 +35,7 @@ def _collect_previous_episodes(
         .filter(
             Episode.story_id == story_id,
             Episode.episode_number < current_episode_number,
-            Episode.is_deleted == False,
+            Episode.is_deleted.is_(False),
         )
         .order_by(Episode.episode_number.desc())
         .limit(limit)
@@ -70,7 +69,9 @@ def _build_regenerate_request(
         additional_req_parts.append(f"\n原剧集概要（必须遵循）：\n{episode.summary}")
 
     if previous_episodes:
-        additional_req_parts.append("\n【前序剧集摘要】（保持连贯性，不要重复已有内容）：")
+        additional_req_parts.append(
+            "\n【前序剧集摘要】（保持连贯性，不要重复已有内容）："
+        )
         for prev in previous_episodes:
             ep_desc = f"- 第{prev['episode_number']}集《{prev['title']}》: {prev['logline'] or '无摘要'}"
             additional_req_parts.append(ep_desc)
@@ -109,9 +110,7 @@ async def regenerate_episode_async(
     story = get_story_by_identifier(db, episode.story_id, None, current_user)
 
     # Collect previous episodes for context
-    previous_episodes = _collect_previous_episodes(
-        db, story.id, episode.episode_number
-    )
+    previous_episodes = _collect_previous_episodes(db, story.id, episode.episode_number)
 
     # Soft-delete the old episode FIRST so the generation flow can create a new one
     episode.soft_delete(user_id=current_user.id, reason="regenerate requested")
@@ -164,9 +163,7 @@ async def regenerate_episode_by_business_id_async(
     story = get_story_by_identifier(db, episode.story_id, None, current_user)
 
     # Collect previous episodes for context
-    previous_episodes = _collect_previous_episodes(
-        db, story.id, episode.episode_number
-    )
+    previous_episodes = _collect_previous_episodes(db, story.id, episode.episode_number)
 
     # Soft-delete the old episode FIRST so the generation flow can create a new one
     episode.soft_delete(user_id=current_user.id, reason="regenerate requested")
