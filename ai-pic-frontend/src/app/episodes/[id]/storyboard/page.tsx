@@ -130,6 +130,17 @@ export default function EpisodeStoryboardPage() {
   const [shotSaving, setShotSaving] = useState<number | null>(null);
   const [sceneEnvSaving, setSceneEnvSaving] = useState(false);
 
+  const workspaceStoryboardReturnUrl = useMemo(() => {
+    const episodeId = episode?.business_id || episodeKey;
+    const targetScriptId = activeScript?.id ?? scriptIdFromQuery;
+    const params = new URLSearchParams();
+    params.set("tab", "storyboard");
+    if (targetScriptId != null) {
+      params.set("scriptId", String(targetScriptId));
+    }
+    return `/episodes/${episodeId}/workspace?${params.toString()}`;
+  }, [episode?.business_id, episodeKey, activeScript?.id, scriptIdFromQuery]);
+
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imageModalFrameIndex, setImageModalFrameIndex] = useState<
     number | null
@@ -1718,7 +1729,7 @@ export default function EpisodeStoryboardPage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">未找到剧集</h2>
           <button
-            onClick={() => router.push(`/episodes/${episodeKey}`)}
+            onClick={() => router.push(workspaceStoryboardReturnUrl)}
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             返回剧集
@@ -1768,9 +1779,7 @@ export default function EpisodeStoryboardPage() {
               规范化结构已启用
             </span>
             <button
-              onClick={() =>
-                router.push(`/episodes/${episode?.business_id || episodeKey}`)
-              }
+              onClick={() => router.push(workspaceStoryboardReturnUrl)}
               className="bg-gray-600 text-white px-3 py-2 rounded"
             >
               返回剧集
@@ -1930,9 +1939,7 @@ export default function EpisodeStoryboardPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() =>
-                  router.push(`/episodes/${episode?.business_id || episodeKey}`)
-                }
+                onClick={() => router.push(workspaceStoryboardReturnUrl)}
                 className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
               >
                 返回剧集页

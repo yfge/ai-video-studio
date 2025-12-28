@@ -74,8 +74,13 @@ export function WorkspaceStoryboardTabContent({
   }, [selectedScriptId]);
 
   const handleOpenFullEditor = useCallback(() => {
-    router.push(`/episodes/${episodeKey}/storyboard`);
-  }, [router, episodeKey]);
+    const params = new URLSearchParams();
+    if (selectedScriptId) {
+      params.set("scriptId", String(selectedScriptId));
+    }
+    const suffix = params.toString();
+    router.push(`/episodes/${episodeKey}/storyboard${suffix ? `?${suffix}` : ""}`);
+  }, [router, episodeKey, selectedScriptId]);
 
   const handleToggleFrame = useCallback((index: number) => {
     setSelectedFrames((prev) => {
