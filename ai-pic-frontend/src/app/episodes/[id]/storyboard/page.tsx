@@ -1466,8 +1466,6 @@ export default function EpisodeStoryboardPage() {
     style?: string;
     style_preset_id?: string;
     style_spec?: Record<string, unknown>;
-    width?: number;
-    height?: number;
     referenceImages: string[];
   }) => {
     if (!activeScript) return;
@@ -1504,8 +1502,7 @@ export default function EpisodeStoryboardPage() {
         {
           frames: targets,
           model: payload.model,
-          width: payload.width ?? 1024,
-          height: payload.height ?? 1024,
+          size: payload.size,
           style: payload.style,
           style_preset_id: payload.style_preset_id,
           style_spec: payload.style_spec,
@@ -1649,8 +1646,6 @@ export default function EpisodeStoryboardPage() {
     style?: string;
     style_preset_id?: string;
     style_spec?: Record<string, unknown>;
-    width?: number;
-    height?: number;
     referenceImages: string[];
   }) => {
     if (!activeScript || imageModalFrameIndex == null) return;
@@ -1683,8 +1678,7 @@ export default function EpisodeStoryboardPage() {
         {
           frames: [imageModalFrameIndex],
           model: payload.model,
-          width: payload.width ?? 1024,
-          height: payload.height ?? 1024,
+          size: payload.size,
           style: payload.style,
           style_preset_id: payload.style_preset_id,
           style_spec: payload.style_spec,
@@ -3173,7 +3167,6 @@ export default function EpisodeStoryboardPage() {
         defaultCount={4}
         modelType={AIModelType.ImageToImage}
         modelCacheKey="storyboard-img2img"
-        useDimensions
         styleSpecFields={STORYBOARD_STYLE_SPEC_FIELDS}
         submitting={edgeModalSubmitting || edgeModalLoading}
         onSubmit={handleConfirmEdgeGeneration}
@@ -3245,7 +3238,6 @@ export default function EpisodeStoryboardPage() {
         defaultCount={4}
         modelType={AIModelType.ImageToImage}
         modelCacheKey="storyboard-img2img"
-        useDimensions
         styleSpecFields={STORYBOARD_STYLE_SPEC_FIELDS}
         submitting={imageModalSubmitting || imageModalLoading}
         onSubmit={handleConfirmGenerateFrameImage}

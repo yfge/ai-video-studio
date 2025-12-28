@@ -38,8 +38,6 @@ interface ImageToImageModalProps {
   defaultAspectRatio?: string;
   defaultStyle?: string;
   defaultStylePresetId?: string;
-  defaultWidth?: number;
-  defaultHeight?: number;
   minCount?: number;
   maxCount?: number;
   modelType?: string;
@@ -49,7 +47,6 @@ interface ImageToImageModalProps {
   showStylePreset?: boolean;
   styleSpecFields?: StyleSpecField[];
   defaultStyleSpec?: StyleSpec;
-  useDimensions?: boolean;
   extraContent?: ReactNode;
   submitting?: boolean;
   onClose: () => void;
@@ -62,8 +59,6 @@ interface ImageToImageModalProps {
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
-    width?: number;
-    height?: number;
     referenceImages: string[];
   }) => Promise<void>;
 }
@@ -83,8 +78,6 @@ export function ImageToImageModal({
   defaultStyle = "realistic",
   defaultStylePresetId = "",
   defaultStyleSpec,
-  defaultWidth = 1024,
-  defaultHeight = 1024,
   minCount = 1,
   maxCount = 4,
   modelType = AIModelType.ImageToImage,
@@ -93,7 +86,6 @@ export function ImageToImageModal({
   styleOptions,
   showStylePreset = true,
   styleSpecFields,
-  useDimensions = false,
   extraContent,
   submitting = false,
   onClose,
@@ -114,8 +106,6 @@ export function ImageToImageModal({
   const [style, setStyle] = useState(defaultStyle);
   const [stylePresetId, setStylePresetId] = useState(defaultStylePresetId);
   const [styleSpec, setStyleSpec] = useState<StyleSpec>(defaultStyleSpec ?? {});
-  const [width, setWidth] = useState(defaultWidth);
-  const [height, setHeight] = useState(defaultHeight);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const { presets: stylePresets } = useStylePresets({
@@ -137,8 +127,6 @@ export function ImageToImageModal({
     setStyle(defaultStyle);
     setStylePresetId(defaultStylePresetId);
     setStyleSpec(defaultStyleSpec ?? {});
-    setWidth(defaultWidth);
-    setHeight(defaultHeight);
   }, [
     open,
     defaultSelected,
@@ -149,8 +137,6 @@ export function ImageToImageModal({
     defaultStyle,
     defaultStylePresetId,
     defaultStyleSpec,
-    defaultWidth,
-    defaultHeight,
     defaultAspectRatio,
   ]);
 
@@ -181,17 +167,12 @@ export function ImageToImageModal({
       prompt: prompt.trim(),
       model: modelIds[0],
       count: Math.max(minCount, Math.min(maxCount, count || minCount)),
-      size: useDimensions ? undefined : size || undefined,
-      aspect_ratio:
-        !useDimensions && supportsAspectRatio
-          ? aspectRatio || undefined
-          : undefined,
+      size: size || undefined,
+      aspect_ratio: supportsAspectRatio ? aspectRatio || undefined : undefined,
       style: style || undefined,
       style_preset_id: stylePresetId || undefined,
       style_spec:
         styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
-      width: useDimensions ? width || defaultWidth : undefined,
-      height: useDimensions ? height || defaultHeight : undefined,
       referenceImages: refs,
     });
   };
@@ -403,26 +384,11 @@ export function ImageToImageModal({
               value={{
                 size,
                 aspect_ratio: aspectRatio || undefined,
-                width,
-                height,
               }}
-              useDimensions={useDimensions}
               onChange={(next) => {
                 if (next.size !== undefined) setSize(next.size);
                 if (next.aspect_ratio !== undefined)
                   setAspectRatio(next.aspect_ratio || undefined);
-                if (next.width !== undefined)
-                  setWidth(
-                    Number.isFinite(next.width) && next.width
-                      ? next.width
-                      : defaultWidth,
-                  );
-                if (next.height !== undefined)
-                  setHeight(
-                    Number.isFinite(next.height) && next.height
-                      ? next.height
-                      : defaultHeight,
-                  );
               }}
             />
           </div>

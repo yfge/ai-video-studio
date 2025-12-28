@@ -20,7 +20,6 @@ export function ImageModelUiFields({
   model,
   value,
   onChange,
-  useDimensions = false,
   disabled = false,
   showAspectRatio = true,
 }: ImageModelUiFieldsProps) {
@@ -88,43 +87,6 @@ export function ImageModelUiFields({
             ))}
           </select>
         </div>
-      ) : null}
-
-      {useDimensions ? (
-        <>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              宽度
-            </label>
-            <input
-              type="number"
-              min={64}
-              disabled={disabled}
-              value={value.width ?? ""}
-              onChange={(event) =>
-                onChange({ ...value, width: Number(event.target.value) || 0 })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              placeholder="例如 1024"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              高度
-            </label>
-            <input
-              type="number"
-              min={64}
-              disabled={disabled}
-              value={value.height ?? ""}
-              onChange={(event) =>
-                onChange({ ...value, height: Number(event.target.value) || 0 })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              placeholder="例如 1024"
-            />
-          </div>
-        </>
       ) : null}
     </div>
   );

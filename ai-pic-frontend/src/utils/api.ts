@@ -2040,6 +2040,7 @@ class ApiClient {
       prompt?: string;
       frames?: number[];
       model?: string;
+      size?: string;
       width?: number;
       height?: number;
       aspect_ratio?: string;
@@ -2056,6 +2057,18 @@ class ApiClient {
     const isStartEnd = payload?.keyframe_mode === "start_end";
     const desiredCount = payload?.count ?? (isStartEnd ? 4 : 1);
     const normalizedCount = Math.max(1, Math.min(desiredCount, 4));
+    const hasSizeOrAspect = Boolean(payload?.size || payload?.aspect_ratio);
+    const hasWidthHeight =
+      payload?.width !== undefined || payload?.height !== undefined;
+    const shouldOmitDefaultDimensions =
+      hasSizeOrAspect && payload?.width === 1024 && payload?.height === 1024;
+    const dimensions = shouldOmitDefaultDimensions
+      ? null
+      : hasWidthHeight
+        ? { width: payload?.width, height: payload?.height }
+        : hasSizeOrAspect
+          ? null
+          : { width: 1024, height: 1024 };
     return this.request(
       this.scriptPath(scriptId, "/storyboard/generate-images"),
       {
@@ -2064,8 +2077,8 @@ class ApiClient {
           frames: payload?.frames || [],
           prompt: payload?.prompt,
           model: payload?.model,
-          width: payload?.width ?? 1024,
-          height: payload?.height ?? 1024,
+          size: payload?.size,
+          ...(dimensions || {}),
           aspect_ratio: payload?.aspect_ratio,
           style: payload?.style ?? "realistic",
           style_preset_id: payload?.style_preset_id,

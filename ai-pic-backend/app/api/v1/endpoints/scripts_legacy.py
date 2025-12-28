@@ -2519,8 +2519,9 @@ def _process_storyboard_image_task(
     *,
     prompt_override: str | None = None,
     model: str | None = None,
-    width: int = 1024,
-    height: int = 1024,
+    size: str | None = None,
+    width: int | None = None,
+    height: int | None = None,
     style: str = "realistic",
     style_preset_id: str | None = None,
     style_spec: dict[str, Any] | None = None,
@@ -2637,6 +2638,23 @@ def _process_storyboard_image_task(
             count_int = 1
         count_int = max(1, min(count_int, 4))
 
+        width_value = width
+        height_value = height
+        if (
+            (width_value is None or height_value is None)
+            and isinstance(size, str)
+            and size.strip()
+        ):
+            from app.services.providers.image_param_utils import size_to_dimensions
+
+            dims = size_to_dimensions(size)
+            if dims:
+                width_value, height_value = dims
+        if width_value is None:
+            width_value = 1024
+        if height_value is None:
+            height_value = 1024
+
         async def _gen_images(prompt: str, ref_imgs: List[str]) -> dict | None:
             try:
                 prefer_provider = None
@@ -2658,8 +2676,9 @@ def _process_storyboard_image_task(
                         prefer_provider=prefer_provider,
                         count=count_int,
                         extra_images=extra,
-                        width=width,
-                        height=height,
+                        size=size,
+                        width=width_value,
+                        height=height_value,
                         style=style,
                         style_preset_id=style_preset_id,
                         style_spec=style_spec,
@@ -2670,8 +2689,9 @@ def _process_storyboard_image_task(
                         prompt=prompt,
                         model=model_id,
                         prefer_provider=prefer_provider,
-                        width=width,
-                        height=height,
+                        size=size,
+                        width=width_value,
+                        height=height_value,
                         style=style,
                         style_preset_id=style_preset_id,
                         style_spec=style_spec,
@@ -3107,8 +3127,15 @@ class StoryboardImageRequest(BaseModel):
     model: Optional[str] = Field(
         default=None, description="模型ID，可选 'provider:model' 形式"
     )
-    width: int = Field(default=1024, ge=64, le=2048)
-    height: int = Field(default=1024, ge=64, le=2048)
+    size: Optional[str] = Field(
+        default=None, description="分辨率/尺寸（例如 1024x1024 / 2K / 1K）"
+    )
+    width: Optional[int] = Field(
+        default=None, ge=64, le=4096, description="宽度（兼容旧字段）"
+    )
+    height: Optional[int] = Field(
+        default=None, ge=64, le=4096, description="高度（兼容旧字段）"
+    )
     style: str = Field(default="realistic")
     style_preset_id: Optional[str] = Field(
         default=None, description="风格预设ID（后端为唯一真源）"
@@ -3209,6 +3236,7 @@ async def generate_storyboard_images(
         "prompt": body.prompt,
         "frames": body.frames or [],
         "model": body.model,
+        "size": body.size,
         "width": body.width,
         "height": body.height,
         "style": body.style,

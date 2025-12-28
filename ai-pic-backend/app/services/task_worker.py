@@ -146,14 +146,22 @@ def storyboard_image_generate_task(
         count_int = 1
     if count_int > 4:
         count_int = 4
+    def _maybe_int(value: Any) -> int | None:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
     _process_storyboard_image_task(
         task_id,
         script_id,
         frame_indexes,
         prompt_override=payload.get("prompt"),
         model=payload.get("model"),
-        width=int(payload.get("width") or 1024),
-        height=int(payload.get("height") or 1024),
+        size=payload.get("size"),
+        width=_maybe_int(payload.get("width")),
+        height=_maybe_int(payload.get("height")),
         style=payload.get("style") or "realistic",
         style_preset_id=payload.get("style_preset_id"),
         style_spec=payload.get("style_spec"),
