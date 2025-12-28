@@ -81,7 +81,9 @@ export default function ScriptDetailPage() {
           setShowExportMenu={setShowExportMenu}
           onExport={handleExport}
           onNavigateToEpisode={() =>
-            router.push(`/episodes/${script.episode_business_id || script.episode_id}`)
+            router.push(
+              `/episodes/${script.episode_business_id || script.episode_id}/workspace?tab=script&scriptId=${script.id}`,
+            )
           }
           onNavigateToStoryboard={() =>
             router.push(`/episodes/${script.episode_business_id || script.episode_id}/storyboard`)

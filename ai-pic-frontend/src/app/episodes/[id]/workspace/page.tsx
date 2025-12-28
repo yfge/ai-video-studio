@@ -181,9 +181,9 @@ export default function EpisodeWorkspacePage() {
   }, [episode?.id, generateForm, useAsync, setGenerating, setScripts, showAlert]);
 
   const handleGenerateTimeline = useCallback(() => {
-    // Navigate to episode page timeline section
-    router.push(`/episodes/${episodeKey}?action=generate-timeline`);
-  }, [router, episodeKey]);
+    setActiveTab("timeline");
+    router.replace(buildUrl("timeline", selectedScriptId), { scroll: false });
+  }, [router, buildUrl, selectedScriptId]);
 
   const handleGenerateStoryboard = useCallback(() => {
     // Navigate to storyboard page
