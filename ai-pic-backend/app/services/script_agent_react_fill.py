@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
+from app.core.validators.script_dialogue_quality import looks_like_writer_note
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.services.duration_orchestrator.state import SceneBudget
@@ -85,7 +86,7 @@ async def try_fill_pending_scenes_after_react(
     if not pending_scenes:
         return None
 
-    prompt = prompt_manager.render_prompt(
+    base_prompt = prompt_manager.render_prompt(
         PromptTemplate.SCRIPT_DIALOGUES.value,
         {
             "episode": episode,
@@ -96,83 +97,115 @@ async def try_fill_pending_scenes_after_react(
             "format_type": format_type,
         },
     )
-    prompt = (
-        prompt
+    base_prompt = (
+        base_prompt
         + "\n\n## 重要：仅补全以下场景\n"
         + f"你只能生成这些 scene_number 的对白与舞台指示：{pending_scene_numbers}\n"
-        + "要求：每个场景至少 2-3 句对白，scene_number 必须为整数且准确。\n"
+        + "硬性要求：每个场景至少 2 句对白，scene_number 必须为整数且准确。\n"
+        + "严禁输出编剧/助手元语言（如“这里可以…”），严禁跨场景重复模板台词。\n"
         + "不要输出其它场景的内容。\n"
     )
 
     constraints_text = build_word_count_constraints(
         list(pending_budgets), pending_scenes
     )
-    prompt = prompt + constraints_text
+    base_prompt = base_prompt + constraints_text
 
-    resp = await ai_manager.generate_text(
-        prompt=prompt,
-        temperature=min(0.6, temperature),
-        model=model,
-        prefer_provider=prefer_provider,
-        json_schema={
-            "name": "script_dialogues_fill_missing",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "dialogues": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "scene_number": {
-                                    "anyOf": [{"type": "integer"}, {"type": "null"}]
-                                },
-                                "character": {
-                                    "anyOf": [{"type": "string"}, {"type": "null"}]
-                                },
-                                "content": {"type": "string"},
-                                "emotion": {
-                                    "anyOf": [{"type": "string"}, {"type": "null"}]
-                                },
-                                "action": {
-                                    "anyOf": [{"type": "string"}, {"type": "null"}]
-                                },
+    schema = {
+        "name": "script_dialogues_fill_missing",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "dialogues": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "scene_number": {
+                                "anyOf": [{"type": "integer"}, {"type": "null"}]
                             },
+                            "character": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "content": {"type": "string"},
+                            "emotion": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "action": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                         },
                     },
-                    "stage_directions": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "scene_number": {
-                                    "anyOf": [{"type": "integer"}, {"type": "null"}]
-                                },
-                                "timing": {
-                                    "anyOf": [{"type": "string"}, {"type": "null"}]
-                                },
-                                "content": {"type": "string"},
-                                "type": {
-                                    "anyOf": [{"type": "string"}, {"type": "null"}]
-                                },
+                },
+                "stage_directions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "scene_number": {
+                                "anyOf": [{"type": "integer"}, {"type": "null"}]
                             },
+                            "timing": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "content": {"type": "string"},
+                            "type": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                         },
                     },
                 },
             },
         },
-        system_prompt="你是专业的剧本对白与舞台指示写手，请严格按 JSON 返回。",
-    )
-    if not getattr(resp, "success", False):
-        return None
+    }
 
-    raw = resp.data if isinstance(resp.data, str) else str(resp.data)
-    parsed = extract_json_block(raw)
-    if not isinstance(parsed, dict):
-        return None
+    new_dialogues: List[Dict[str, Any]] = []
+    new_stage: List[Dict[str, Any]] = []
 
-    new_dialogues = _filter_scene_items(parsed.get("dialogues") or [], pending_set)
-    new_stage = _filter_scene_items(parsed.get("stage_directions") or [], pending_set)
+    prompt = base_prompt
+    for attempt in range(2):
+        resp = await ai_manager.generate_text(
+            prompt=prompt,
+            temperature=min(0.6, temperature) if attempt == 0 else 0.3,
+            model=model,
+            prefer_provider=prefer_provider,
+            json_schema=schema,
+            system_prompt="你是专业的剧本对白与舞台指示写手，请严格按 JSON 返回。",
+        )
+        if not getattr(resp, "success", False):
+            continue
+
+        parsed = (
+            resp.data
+            if isinstance(resp.data, dict)
+            else extract_json_block(
+                resp.data if isinstance(resp.data, str) else str(resp.data)
+            )
+        )
+        if not isinstance(parsed, dict):
+            continue
+
+        new_dialogues = _filter_scene_items(parsed.get("dialogues") or [], pending_set)
+        new_stage = _filter_scene_items(parsed.get("stage_directions") or [], pending_set)
+
+        per_scene_counts = {
+            s: len([d for d in new_dialogues if _to_int(d.get("scene_number")) == s])
+            for s in pending_scene_numbers
+        }
+        has_writer_notes = any(
+            looks_like_writer_note(str(d.get("content") or ""))
+            for d in new_dialogues
+            if isinstance(d, dict)
+        )
+        if has_writer_notes:
+            prompt = (
+                base_prompt
+                + "\n\n## REACT 驳回\n"
+                + "你输出了编剧/助手元语言（如“这里可以…”）。请全部改写为戏内台词，不要保留元语言。\n"
+            )
+            continue
+
+        missing = [s for s, c in per_scene_counts.items() if c < 2]
+        if not missing:
+            break
+
+        prompt = (
+            base_prompt
+            + "\n\n## REACT 驳回\n"
+            + f"以下场景对白条数仍不足 2 句：{missing}；当前计数：{per_scene_counts}\n"
+            + "请仅针对这些场景补足到 2-3 句对白。\n"
+        )
+
     if not new_dialogues and not new_stage:
         return None
 

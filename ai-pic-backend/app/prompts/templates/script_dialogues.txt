@@ -28,6 +28,8 @@
 - stage_directions: 每个元素包含 scene_number, timing（如 intro/mid/outro），content，type（如 action/camera/light/sfx 等）。
 - 保持语言：{{ language }}；对白风格：{{ dialogue_style }}；格式：{{ format_type }}。
 - 若缺少角色信息，可使用"旁白"/"路人"占位。
+- 严禁输出编剧/助手元语言（写作建议/点评/解释），例如「这里/此处/这一段…可以/建议/需要…突出冲突或情绪」。如果要体现冲突/情绪，请直接写成戏内台词或动作。
+- 严禁跨场景重复模板台词（如多场景反复出现同一句“明白，我们继续”）；每个场景对白必须与该场景 summary 强相关且具体。
 
 输入参考：
 - story: {{ story | tojson }}

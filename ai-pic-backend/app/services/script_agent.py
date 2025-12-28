@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from app.core.validators.script_dialogue_quality import (
+    find_reused_short_dialogues,
+    validate_scene_dialogues,
+)
 from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
@@ -91,14 +95,13 @@ class ScriptLangGraphAgent:
         scenes: List[Dict[str, Any]],
         duration_minutes: float,
     ) -> List[SceneBudget]:
-        """Compute scene budgets from LLM-planned scenes with duration/dialogue_ratio.
+        """Compute scene budgets from LLM-planned scenes with duration hints.
 
         If the LLM didn't assign estimated_duration_seconds, fall back to equal distribution.
 
         Args:
             scenes: List of scenes from scene_plan node, each may have:
                 - estimated_duration_seconds (int): LLM-assigned duration
-                - dialogue_ratio (float): 0.0-1.0, % of scene that's dialogue
             duration_minutes: Total episode duration in minutes.
 
         Returns:
@@ -138,16 +141,9 @@ class ScriptLangGraphAgent:
                 min(MAX_SCENE_DURATION_SECONDS, normalized[idx]),
             )
 
-            # Get dialogue_ratio from LLM or use default
-            dialogue_ratio = scene.get("dialogue_ratio")
-            if not isinstance(dialogue_ratio, (int, float)) or not (
-                0.0 <= dialogue_ratio <= 1.0
-            ):
-                dialogue_ratio = DIALOGUE_DENSITY_FACTOR
-
-            # Compute word count: dialogue_seconds * words_per_second
-            dialogue_seconds = target_seconds * dialogue_ratio
-            target_words = int(dialogue_seconds * WORDS_PER_SECOND)
+            # Compute word count: keep dialogue dense by default (short drama pacing)
+            # to avoid under-filled scenes and timeline drift later.
+            target_words = int(target_seconds * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND)
 
             budget = SceneBudget(
                 scene_number=scene.get("scene_number", idx + 1),
@@ -308,10 +304,13 @@ class ScriptLangGraphAgent:
                     "error": "scene_plan_failed",
                     "reasoning": ["scene_plan_failed"],
                 }
-            content = resp.data if isinstance(resp.data, str) else str(resp.data)
-            parsed = extract_json_block(content)
+            parsed = (
+                resp.data
+                if isinstance(resp.data, dict)
+                else extract_json_block(resp.data if isinstance(resp.data, str) else str(resp.data))
+            )
             if not parsed:
-                return {"error": "scene_plan_invalid_json", "raw": content}
+                return {"error": "scene_plan_invalid_json", "raw": resp.data}
             scenes = parsed.get("scenes") if isinstance(parsed, dict) else None
             if not scenes:
                 return {"error": "scene_plan_empty", "raw": parsed}
@@ -454,10 +453,13 @@ class ScriptLangGraphAgent:
                     "error": "dialogue_failed",
                     "reasoning": state.get("reasoning", []) + ["dialogue_failed"],
                 }
-            content = resp.data if isinstance(resp.data, str) else str(resp.data)
-            parsed = extract_json_block(content)
+            parsed = (
+                resp.data
+                if isinstance(resp.data, dict)
+                else extract_json_block(resp.data if isinstance(resp.data, str) else str(resp.data))
+            )
             if not parsed:
-                return {"error": "dialogue_invalid_json", "raw": content}
+                return {"error": "dialogue_invalid_json", "raw": resp.data}
             dialogues = parsed.get("dialogues") if isinstance(parsed, dict) else None
             stage_dir = (
                 parsed.get("stage_directions") if isinstance(parsed, dict) else None
@@ -490,6 +492,24 @@ class ScriptLangGraphAgent:
                 # No budgets or REACT disabled, skip validation
                 return {**state, "reasoning": reasoning + ["react_skipped"]}
 
+            reused_short_norms = find_reused_short_dialogues(dialogues)
+
+            def _get_scene_dialogues(scene_num: int) -> list[dict[str, Any]]:
+                matched: list[dict[str, Any]] = []
+                for d in dialogues:
+                    if not isinstance(d, dict):
+                        continue
+                    raw_scene_no = d.get("scene_number")
+                    try:
+                        scene_no = (
+                            int(raw_scene_no) if raw_scene_no is not None else None
+                        )
+                    except (TypeError, ValueError):
+                        scene_no = None
+                    if scene_no == scene_num:
+                        matched.append(d)
+                return matched
+
             # Validate each scene's dialogue duration
             all_valid = True
             rejection_reasons = []
@@ -497,12 +517,19 @@ class ScriptLangGraphAgent:
 
             for budget in budgets:
                 scene_num = budget.scene_number
-                estimated_seconds = self._estimate_dialogue_duration(
-                    dialogues, scene_num
+                scene_dialogues = _get_scene_dialogues(scene_num)
+                estimated_seconds = self._estimate_dialogue_duration(dialogues, scene_num)
+                is_valid, reason = self._validate_scene_duration(budget, estimated_seconds)
+
+                issues = validate_scene_dialogues(
+                    scene_dialogues,
+                    min_lines=2,
+                    repeated_short_norms=reused_short_norms,
                 )
-                is_valid, reason = self._validate_scene_duration(
-                    budget, estimated_seconds
-                )
+                if issues:
+                    is_valid = False
+                    issue_text = "；".join(i.message for i in issues)
+                    reason = f"{reason}；{issue_text}".strip("；") if reason else issue_text
 
                 if not is_valid:
                     all_valid = False
@@ -727,8 +754,11 @@ class ScriptLangGraphAgent:
                     "reasoning": reasoning,
                 }
 
-            content = resp.data if isinstance(resp.data, str) else str(resp.data)
-            parsed = extract_json_block(content)
+            parsed = (
+                resp.data
+                if isinstance(resp.data, dict)
+                else extract_json_block(resp.data if isinstance(resp.data, str) else str(resp.data))
+            )
             if not parsed or not isinstance(parsed, dict):
                 self.logger.warning("Review returned invalid JSON, keeping original")
                 reasoning = state.get("reasoning", []) + ["review_invalid_json"]
