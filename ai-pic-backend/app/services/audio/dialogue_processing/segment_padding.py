@@ -44,7 +44,7 @@ def _pad_segments_to_target_duration_ms(
     max_action_ms: int = 15000,
     max_pause_ms: int = 10000,
 ) -> list[PlannedSegment]:
-    """Pad action/pause segments so the planned scene duration reaches target."""
+    """Pad or trim action/pause segments so the planned scene duration matches target."""
 
     if target_duration_ms <= 0 or not segments:
         return segments
@@ -56,19 +56,60 @@ def _pad_segments_to_target_duration_ms(
         if seg.kind in {"action", "pause"}
     )
     planned_total_ms = dialogue_ms + non_dialogue_ms
-    deficit_ms = target_duration_ms - planned_total_ms
-    if deficit_ms <= 0:
+    delta_ms = target_duration_ms - planned_total_ms
+    if delta_ms == 0:
         return segments
 
-    if deficit_ms < min(1000, int(target_duration_ms * 0.05)):
+    if abs(delta_ms) < min(1000, int(target_duration_ms * 0.05)):
         return segments
 
     padded = list(segments)
 
+    # If we overshoot the target, trim non-dialogue segments first.
+    if delta_ms < 0:
+        overflow_ms = -delta_ms
+
+        def _trim(kind: str) -> None:
+            nonlocal overflow_ms, padded
+            next_segments: list[PlannedSegment] = []
+            for seg in padded:
+                if overflow_ms <= 0:
+                    next_segments.append(seg)
+                    continue
+                if seg.kind != kind or seg.planned_duration_ms is None:
+                    next_segments.append(seg)
+                    continue
+                current = int(seg.planned_duration_ms or 0)
+                if current <= 0:
+                    continue
+                remove = min(overflow_ms, current)
+                new_ms = current - remove
+                overflow_ms -= remove
+                if new_ms <= 0:
+                    # Drop the segment entirely to avoid creating 0ms beats.
+                    continue
+                next_segments.append(
+                    PlannedSegment(
+                        kind=seg.kind,
+                        text=seg.text,
+                        speaker_name=seg.speaker_name,
+                        emotion=seg.emotion,
+                        action=seg.action,
+                        timing=seg.timing,
+                        planned_duration_ms=new_ms,
+                    )
+                )
+            padded = next_segments
+
+        _trim("pause")
+        _trim("action")
+
+        return padded
+
     def _extend(kind: str, max_ms: int) -> None:
-        nonlocal deficit_ms, padded
+        nonlocal delta_ms, padded
         for idx, seg in enumerate(padded):
-            if deficit_ms <= 0:
+            if delta_ms <= 0:
                 return
             if seg.kind != kind:
                 continue
@@ -76,7 +117,7 @@ def _pad_segments_to_target_duration_ms(
             capacity = max(0, max_ms - current)
             if capacity <= 0:
                 continue
-            add = min(deficit_ms, capacity)
+            add = min(delta_ms, capacity)
             padded[idx] = PlannedSegment(
                 kind=seg.kind,
                 text=seg.text,
@@ -86,14 +127,14 @@ def _pad_segments_to_target_duration_ms(
                 timing=seg.timing,
                 planned_duration_ms=current + add,
             )
-            deficit_ms -= add
+            delta_ms -= add
 
     _extend("action", max_action_ms)
     _extend("pause", max_pause_ms)
 
     pad_text = "（转场留白）"
-    while deficit_ms > 0:
-        chunk = min(deficit_ms, max_action_ms)
+    while delta_ms > 0:
+        chunk = min(delta_ms, max_action_ms)
         padded.append(
             PlannedSegment(
                 kind="action",
@@ -102,7 +143,7 @@ def _pad_segments_to_target_duration_ms(
                 planned_duration_ms=int(chunk),
             )
         )
-        deficit_ms -= chunk
+        delta_ms -= chunk
 
     if scene_context:
         try:
@@ -130,4 +171,3 @@ def _pad_segments_to_target_duration_ms(
         )
 
     return padded
-

@@ -7,10 +7,12 @@ import wave
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 from uuid import uuid4
 
 import httpx
+from sqlalchemy.orm import Session
+
 from app.core.logging import get_logger
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene, SceneBeat
@@ -18,6 +20,7 @@ from app.services.ai_service import ai_service
 from app.services.audio.dialogue_processor import (
     plan_scene_segments_intelligent,
 )
+from app.services.audio.time_stretch import time_stretch_wav_ffmpeg_args
 from app.services.storage.oss_service import oss_service
 from app.services.storyboard.storyboard_prompt_utils import (
     apply_storyboard_prompt_optimizations,
@@ -27,7 +30,6 @@ from app.services.voice_binding_service import (
     ensure_virtual_ip_voice_config,
     get_story_character_map,
 )
-from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -672,27 +674,25 @@ def _encode_mp3(in_wav: Path, out_mp3: Path) -> None:
 
 
 def _concat_mp3s(paths: Sequence[Path], out_mp3: Path) -> None:
-    concat_file = out_mp3.parent / "concat.txt"
-    concat_file.write_text(
-        "".join(f"file '{p.as_posix()}'\n" for p in paths), encoding="utf-8"
-    )
-    _run_ffmpeg(
-        [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "concat",
-            "-safe",
-            "0",
-            "-i",
-            str(concat_file),
-            "-codec:a",
-            "libmp3lame",
-            "-q:a",
-            "4",
-            str(out_mp3),
-        ]
-    )
+    """Concatenate MP3s into 1 MP3.
+
+    Workaround: Some ffmpeg builds may fail when re-encoding directly from the
+    concat demuxer (`inadequate AVFrame plane padding`). Decode to normalized
+    WAV first, concat WAV, then encode once.
+    """
+    if not paths:
+        raise RuntimeError("no_mp3s_to_concat")
+
+    tmp_dir = out_mp3.parent
+    wav_paths: list[Path] = []
+    for idx, mp3 in enumerate(paths, start=1):
+        wav = tmp_dir / f"concat-src-{idx}.wav"
+        _normalize_wav(mp3, wav)
+        wav_paths.append(wav)
+
+    merged_wav = tmp_dir / "concat-merged.wav"
+    _concat_wavs(wav_paths, merged_wav)
+    _encode_mp3(merged_wav, out_mp3)
 
 
 def build_episode_timeline_beats(
@@ -870,18 +870,62 @@ async def generate_scene_dialogue_audio(
             actual_duration_ms = _wav_duration_ms(tts_wav_path)
             total_dialogue_duration_ms += actual_duration_ms
 
-            dialogue_tts_results.append({
-                "index": idx,
-                "speaker": speaker,
-                "speaker_kind": speaker_kind,
-                "content": content,
-                "emotion": emotion,
-                "action": action,
-                "tts_emotion": tts_emotion,
-                "voice_config": voice_config,
-                "wav_path": tts_wav_path,  # Keep as Path, not string
-                "actual_duration_ms": actual_duration_ms,
-            })
+            dialogue_tts_results.append(
+                {
+                    "index": idx,
+                    "speaker": speaker,
+                    "speaker_kind": speaker_kind,
+                    "content": content,
+                    "emotion": emotion,
+                    "action": action,
+                    "tts_emotion": tts_emotion,
+                    "voice_config": voice_config,
+                    "wav_path": tts_wav_path,  # Keep as Path, not string
+                    "actual_duration_ms": actual_duration_ms,
+                }
+            )
+
+        # If dialogues alone already exceed the scene target, compress dialogues
+        # so the full scene can still fit the planned duration budget.
+        if target_duration_seconds and dialogue_tts_results:
+            target_ms = int(target_duration_seconds * 1000)
+            # Keep a small reserved window for non-dialogue beats (actions/pause)
+            # so storyboard generation still has room to breathe.
+            reserved_non_dialogue_ms = 1000
+            allowed_dialogue_ms = max(1000, target_ms - reserved_non_dialogue_ms)
+            if total_dialogue_duration_ms > allowed_dialogue_ms:
+                speed = total_dialogue_duration_ms / allowed_dialogue_ms
+                logger.warning(
+                    "Dialogues exceed scene target; time-stretching dialogues",
+                    extra={
+                        "scene_id": scene.id,
+                        "scene_number": scene_number,
+                        "target_duration_seconds": target_duration_seconds,
+                        "target_ms": target_ms,
+                        "dialogue_ms_before": total_dialogue_duration_ms,
+                        "dialogue_ms_allowed": allowed_dialogue_ms,
+                        "speed_factor": round(speed, 3),
+                    },
+                )
+                new_total_dialogue_ms = 0
+                for res in dialogue_tts_results:
+                    stretched_path = (
+                        tmp_root_path / f"phase1-dlg-{res['index']}-stretched.wav"
+                    )
+                    _run_ffmpeg(
+                        time_stretch_wav_ffmpeg_args(
+                            in_path=res["wav_path"],
+                            out_path=stretched_path,
+                            speed=speed,
+                        )
+                    )
+                    new_ms = _wav_duration_ms(stretched_path)
+                    res["wav_path"] = stretched_path
+                    res["actual_duration_ms"] = new_ms
+                    res["audio_speed"] = round(speed, 6)
+                    new_total_dialogue_ms += new_ms
+
+                total_dialogue_duration_ms = new_total_dialogue_ms
 
         # ========== PHASE 2: Compute GAPs with actual durations ==========
         # Update dialogues with actual durations for Timeline Agent
@@ -911,13 +955,55 @@ async def generate_scene_dialogue_audio(
                 },
             )
 
+        # If the scene is already "tight" (dialogues occupy most of the budget),
+        # constrain non-dialogue beats to avoid overshooting the target duration.
+        action_base_ms = 800
+        action_per_char_ms = 20
+        action_max_ms = 3000
+        pause_after_dialogue_ms = 300
+        effective_stage = stage
+        effective_use_intelligent_timing = use_intelligent_timing
+
+        if target_duration_seconds:
+            target_ms = int(target_duration_seconds * 1000)
+            if total_dialogue_duration_ms >= target_ms:
+                pause_after_dialogue_ms = 0
+                effective_use_intelligent_timing = False
+                # Keep at most 1 compact action beat so downstream storyboard has context.
+                if stage:
+                    combined = "；".join(
+                        str(s.get("content") or "").strip()
+                        for s in stage
+                        if isinstance(s, dict) and str(s.get("content") or "").strip()
+                    )
+                    combined = combined.strip()
+                    if combined:
+                        effective_stage = [{"content": combined[:300], "timing": "mid"}]
+                        action_base_ms = 1000
+                        action_per_char_ms = 0
+                        action_max_ms = 1000
+                    else:
+                        effective_stage = []
+                        action_base_ms = 0
+                        action_per_char_ms = 0
+                        action_max_ms = 0
+                else:
+                    effective_stage = []
+                    action_base_ms = 0
+                    action_per_char_ms = 0
+                    action_max_ms = 0
+
         # Call Timeline Agent with actual durations
         segments = await plan_scene_segments_intelligent(
             dialogues=dialogues_with_actual_duration,
-            stage_directions=stage,
+            stage_directions=effective_stage,
             scene_context=scene_context,
             ai_service=ai_service,
-            use_intelligent_timing=use_intelligent_timing,
+            use_intelligent_timing=effective_use_intelligent_timing,
+            pause_after_dialogue_ms=pause_after_dialogue_ms,
+            action_base_ms=action_base_ms,
+            action_per_char_ms=action_per_char_ms,
+            action_max_ms=action_max_ms,
             timing_model=timing_model,
             target_duration_seconds=target_duration_seconds,
         )
@@ -935,7 +1021,12 @@ async def generate_scene_dialogue_audio(
         for seg in segments:
             if seg.kind == "pause":
                 silence_wav = tmp_root_path / f"pause-{len(wav_paths)+1}.wav"
-                _generate_silence_wav(silence_wav, int(seg.planned_duration_ms or 300))
+                planned_ms = (
+                    int(seg.planned_duration_ms)
+                    if seg.planned_duration_ms is not None
+                    else 300
+                )
+                _generate_silence_wav(silence_wav, planned_ms)
                 dur_ms = _wav_duration_ms(silence_wav)
                 wav_paths.append(silence_wav)
                 beats.append(
@@ -953,7 +1044,12 @@ async def generate_scene_dialogue_audio(
 
             if seg.kind == "action":
                 action_wav = tmp_root_path / f"action-{len(wav_paths)+1}.wav"
-                _generate_silence_wav(action_wav, int(seg.planned_duration_ms or 800))
+                planned_ms = (
+                    int(seg.planned_duration_ms)
+                    if seg.planned_duration_ms is not None
+                    else 800
+                )
+                _generate_silence_wav(action_wav, planned_ms)
                 dur_ms = _wav_duration_ms(action_wav)
                 wav_paths.append(action_wav)
                 beats.append(
@@ -993,7 +1089,7 @@ async def generate_scene_dialogue_audio(
                 # Fallback: TTS not found in Phase 1 (shouldn't happen normally)
                 # Generate TTS on-the-fly as fallback
                 logger.warning(
-                    f"Dialogue not found in Phase 1 TTS cache, generating on-the-fly",
+                    "Dialogue not found in Phase 1 TTS cache, generating on-the-fly",
                     extra={
                         "scene_id": scene.id,
                         "scene_number": scene_number,
@@ -1022,7 +1118,9 @@ async def generate_scene_dialogue_audio(
                     )
                     speaker_kind = "derived"
 
-                local_tts_raw = tmp_root_path / f"fallback-dlg-{len(wav_paths)+1}-raw.wav"
+                local_tts_raw = (
+                    tmp_root_path / f"fallback-dlg-{len(wav_paths)+1}-raw.wav"
+                )
                 local_tts = tmp_root_path / f"fallback-dlg-{len(wav_paths)+1}.wav"
                 tts_emotion = _normalize_tts_emotion(seg.emotion, action=seg.action)
                 await _tts_to_wav_file(
@@ -1071,7 +1169,9 @@ async def generate_scene_dialogue_audio(
                     "target_duration_seconds": target_duration_seconds,
                     "actual_duration_seconds": duration_seconds_total,
                     "duration_ratio": round(duration_ratio, 2),
-                    "within_tolerance": tolerance_low <= duration_ratio <= tolerance_high,
+                    "within_tolerance": tolerance_low
+                    <= duration_ratio
+                    <= tolerance_high,
                 },
             )
 

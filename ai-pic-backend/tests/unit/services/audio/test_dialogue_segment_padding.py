@@ -71,3 +71,37 @@ async def test_padding_falls_back_to_pause_when_no_actions():
     assert pause_durations, "expected pause segments"
     assert max(pause_durations) > 3000
 
+
+@pytest.mark.asyncio
+async def test_padding_trims_non_dialogue_when_dialogue_near_target():
+    dialogues = [
+        {"character": "A", "content": "Hello", "actual_duration_ms": 14000},
+    ]
+    stage_directions = [
+        {
+            "scene_number": 1,
+            "timing": "mid",
+            "content": "x"
+            * 500,  # would cap to 3000ms action, exceeding remaining 1000ms
+        },
+    ]
+
+    target_seconds = 15
+    segments = await plan_scene_segments_intelligent(
+        dialogues=dialogues,
+        stage_directions=stage_directions,
+        scene_context={"scene_id": 1, "scene_number": 1},
+        ai_service=None,
+        use_intelligent_timing=False,
+        target_duration_seconds=target_seconds,
+    )
+
+    assert segments
+    assert _planned_total_ms(segments, dialogue_ms=14000) == target_seconds * 1000
+
+    non_dialogue_ms = sum(
+        int(getattr(seg, "planned_duration_ms", 0) or 0)
+        for seg in segments
+        if getattr(seg, "kind", "") in {"action", "pause"}
+    )
+    assert non_dialogue_ms == 1000
