@@ -18,6 +18,43 @@ from ..base import AIModelType, AIResponse, AITaskType
 logger = get_logger(__name__)
 
 
+def _iter_event_dicts(event: Any) -> List[Dict[str, Any]]:
+    """Normalize SSE/JSON payload into a list of dict events."""
+    if isinstance(event, dict):
+        return [event]
+    if isinstance(event, list):
+        return [item for item in event if isinstance(item, dict)]
+    return []
+
+
+def _collect_text_and_usage(payload: Any) -> tuple[str, Dict[str, Any]]:
+    """Collect candidate text and usageMetadata from Gemini response payload.
+
+    Some proxy gateways may return a list of event-like dicts instead of a
+    single object. Handle both to avoid `'list' object has no attribute 'get'`.
+    """
+    text_parts: List[str] = []
+    usage: Dict[str, Any] = {}
+
+    for event in _iter_event_dicts(payload):
+        for candidate in event.get("candidates", []) or []:
+            if not isinstance(candidate, dict):
+                continue
+            content = candidate.get("content") or {}
+            if not isinstance(content, dict):
+                continue
+            for part in content.get("parts", []) or []:
+                if not isinstance(part, dict):
+                    continue
+                t = part.get("text")
+                if isinstance(t, str) and t:
+                    text_parts.append(t)
+        if event.get("usageMetadata"):
+            usage = event["usageMetadata"]
+
+    return "\n".join(text_parts).strip(), usage
+
+
 async def stream_generate_content(
     client: httpx.AsyncClient,
     endpoint: str,
@@ -43,17 +80,24 @@ async def stream_generate_content(
             if payload == "[DONE]":
                 break
             try:
-                event = json.loads(payload)
+                raw_event = json.loads(payload)
             except Exception:
                 continue
-            for candidate in event.get("candidates", []):
-                content = candidate.get("content") or {}
-                for part in content.get("parts", []):
-                    t = part.get("text")
-                    if isinstance(t, str):
-                        text_parts.append(t)
-            if event.get("usageMetadata"):
-                usage = event["usageMetadata"]
+            for event in _iter_event_dicts(raw_event):
+                for candidate in event.get("candidates", []) or []:
+                    if not isinstance(candidate, dict):
+                        continue
+                    content = candidate.get("content") or {}
+                    if not isinstance(content, dict):
+                        continue
+                    for part in content.get("parts", []) or []:
+                        if not isinstance(part, dict):
+                            continue
+                        t = part.get("text")
+                        if isinstance(t, str):
+                            text_parts.append(t)
+                if event.get("usageMetadata"):
+                    usage = event["usageMetadata"]
 
     return "".join(text_parts).strip(), usage
 
@@ -96,10 +140,9 @@ async def generate_text(
 
     model_id = model or default_model
     stream = bool(kwargs.pop("stream", True))
-    method = "streamGenerateContent" if stream else "generateContent"
-    endpoint = f"{base_url.rstrip('/')}/v1beta/models/{model_id}:{method}"
-    if stream:
-        endpoint = f"{endpoint}?alt=sse"
+    base = base_url.rstrip("/")
+    stream_endpoint = f"{base}/v1beta/models/{model_id}:streamGenerateContent?alt=sse"
+    generate_endpoint = f"{base}/v1beta/models/{model_id}:generateContent"
 
     # Build request body
     contents: List[Dict[str, Any]] = [
@@ -108,14 +151,11 @@ async def generate_text(
             "parts": [{"text": prompt}],
         }
     ]
-    if system_prompt:
-        contents.insert(
-            0,
-            {
-                "role": "system",
-                "parts": [{"text": system_prompt}],
-            },
-        )
+    # Gemini v1beta content roles are restricted to `user` / `model`.
+    # Use systemInstruction instead of injecting a `system` role content.
+    system_instruction: Dict[str, Any] | None = (
+        {"parts": [{"text": system_prompt}]} if system_prompt else None
+    )
 
     generation_config: Dict[str, Any] = {"temperature": temperature}
     if max_tokens is not None:
@@ -128,12 +168,14 @@ async def generate_text(
         "contents": contents,
         "generationConfig": generation_config,
     }
+    if system_instruction:
+        body["systemInstruction"] = system_instruction
 
     try:
         if stream:
             try:
                 full_text, usage_meta = await stream_generate_content(
-                    client, endpoint, body
+                    client, stream_endpoint, body
                 )
                 if full_text:
                     return AIResponse(
@@ -172,21 +214,10 @@ async def generate_text(
                     exc_info=True,
                 )
 
-        resp = await client.post(
-            endpoint.replace("&alt=sse", "") if stream else endpoint, json=body
-        )
+        resp = await client.post(generate_endpoint, json=body)
         resp.raise_for_status()
         data = resp.json()
-
-        # Parse candidates[0].content.parts[*].text
-        text_parts: List[str] = []
-        for candidate in data.get("candidates", []):
-            content = candidate.get("content") or {}
-            for part in content.get("parts", []):
-                t = part.get("text")
-                if isinstance(t, str):
-                    text_parts.append(t)
-        full_text = "\n".join(text_parts).strip()
+        full_text, usage_meta = _collect_text_and_usage(data)
 
         if not full_text:
             return AIResponse(
@@ -198,8 +229,6 @@ async def generate_text(
                 model_type=AIModelType.TEXT_GENERATION,
             )
 
-        usage = data.get("usageMetadata", {})
-
         return AIResponse(
             success=True,
             data=full_text,
@@ -208,9 +237,9 @@ async def generate_text(
             task_type=AITaskType.STORY_GENERATION,
             model_type=AIModelType.TEXT_GENERATION,
             usage={
-                "prompt_tokens": usage.get("promptTokenCount"),
-                "completion_tokens": usage.get("candidatesTokenCount"),
-                "total_tokens": usage.get("totalTokenCount"),
+                "prompt_tokens": (usage_meta or {}).get("promptTokenCount"),
+                "completion_tokens": (usage_meta or {}).get("candidatesTokenCount"),
+                "total_tokens": (usage_meta or {}).get("totalTokenCount"),
             },
             metadata={"raw": data},
         )
