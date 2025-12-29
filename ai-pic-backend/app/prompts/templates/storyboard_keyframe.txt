@@ -1,4 +1,5 @@
 {{ base_prompt }}
+要求（重要）：只生成单幅画面（single frame / movie still），不要拼接/分屏/九宫格/多格漫画；不要文字/字幕/UI/边框/分割线/水印/logo。
 {% if role == "start" %}
 关键帧：首帧，强调镜头运动起势与动作开始瞬间，保持镜头语言与风格一致。
 {% else %}

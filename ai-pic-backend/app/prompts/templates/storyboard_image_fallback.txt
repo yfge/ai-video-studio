@@ -1,1 +1,2 @@
 请生成分镜画面（第{{ frame_index }}帧{% if scene_number %}，场景{{ scene_number }}{% endif %}），保持故事风格一致，并与参考图像保持一致。
+要求（重要）：只生成单幅画面（single frame / movie still），不要拼接/分屏/九宫格/多格漫画；不要文字/字幕/UI/边框/分割线/水印/logo。
