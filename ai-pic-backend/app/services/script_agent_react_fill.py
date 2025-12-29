@@ -152,6 +152,7 @@ async def try_fill_pending_scenes_after_react(
 
     new_dialogues: List[Dict[str, Any]] = []
     new_stage: List[Dict[str, Any]] = []
+    passed_constraints = False
 
     prompt = base_prompt
     budgets_by_scene = {b.scene_number: b for b in pending_budgets if b.scene_number}
@@ -227,6 +228,7 @@ async def try_fill_pending_scenes_after_react(
                     )
 
             if not too_short and not too_long:
+                passed_constraints = True
                 break
 
             reject_lines: list[str] = []
@@ -249,6 +251,9 @@ async def try_fill_pending_scenes_after_react(
             + f"以下场景对白条数仍不足 2 句：{missing}；当前计数：{per_scene_counts}\n"
             + "请仅针对这些场景补足到 2-3 句对白。\n"
         )
+
+    if not passed_constraints:
+        return None
 
     if not new_dialogues and not new_stage:
         return None
