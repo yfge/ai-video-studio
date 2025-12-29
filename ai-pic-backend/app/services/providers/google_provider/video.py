@@ -119,7 +119,13 @@ async def generate_video(
         body: Dict[str, Any] = {"instances": [instance]}
         parameters: Dict[str, Any] = {}
 
-        resolved_ratio = normalize_ratio(aspect_ratio or kwargs.get("aspectRatio"))
+        resolved_ratio = normalize_ratio(
+            aspect_ratio
+            or kwargs.get("aspectRatio")
+            # Our internal API uses `ratio` for video aspect ratio; keep backward-compatible
+            # with provider-specific `aspectRatio`.
+            or kwargs.get("ratio")
+        )
         if resolved_ratio:
             parameters["aspectRatio"] = resolved_ratio
 
