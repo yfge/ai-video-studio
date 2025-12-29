@@ -30,13 +30,13 @@ def calculate_target_word_count(duration_seconds: int) -> int:
     根据目标时长计算目标对白字数。
 
     考虑因素:
-    - DIALOGUE_DENSITY_FACTOR (0.85): 不是所有时间都在说话，需要考虑
+    - DIALOGUE_DENSITY_FACTOR (0.90): 不是所有时间都在说话，需要考虑
       停顿、语气词、情绪表达、角色反应时间、环境音等
-    - WORDS_PER_SECOND (2.25): 正常中文朗读语速
+    - WORDS_PER_SECOND (4.7): 校准后的中文 TTS 语速
 
     例如: 60秒场景
-    - 实际对白时间: 60 * 0.85 = 51秒
-    - 目标字数: 51 * 2.25 ≈ 115字
+    - 实际对白时间: 60 * 0.90 = 54秒
+    - 目标字数: 54 * 4.7 ≈ 254字
 
     Args:
         duration_seconds: 目标时长 (秒)
@@ -162,8 +162,8 @@ def compute_adjustment_hint(
     diff_ms = target_ms - actual_duration_ms
     diff_seconds = abs(diff_ms) / 1000
 
-    # 估算需要增减的字数 (按 2.5 字/秒)
-    words_per_second = 2.5
+    # 估算需要增减的字数（按当前基准语速）
+    words_per_second = WORDS_PER_SECOND
     word_diff = max(int(abs(diff_seconds) * words_per_second), MIN_WORD_ADJUSTMENT)
 
     # 估算需要增减的对白句数

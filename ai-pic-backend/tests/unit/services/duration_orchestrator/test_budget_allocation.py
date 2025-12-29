@@ -30,28 +30,28 @@ from app.services.duration_orchestrator.utils import (
 class TestCalculateTargetWordCount:
     """测试字数计算
 
-    新公式考虑对白密度因子 (DIALOGUE_DENSITY_FACTOR = 0.85):
+    新公式考虑对白密度因子 (DIALOGUE_DENSITY_FACTOR = 0.90):
     目标字数 = 时长(秒) * 对白密度 * 语速
     """
 
     def test_normal_duration(self):
         """正常时长的字数计算"""
         word_count = calculate_target_word_count(60)
-        # 60秒 * 0.85 * 2.25字/秒 = 114.75 -> 114字
+        # 60秒 * 对白密度 * 语速
         expected = int(60 * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND)
         assert word_count == expected
 
     def test_short_duration(self):
         """短时长的字数计算"""
         word_count = calculate_target_word_count(10)
-        # 10秒 * 0.85 * 2.25字/秒 = 19.125 -> 19字
+        # 10秒 * 对白密度 * 语速
         expected = int(10 * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND)
         assert word_count == expected
 
     def test_long_duration(self):
         """长时长的字数计算"""
         word_count = calculate_target_word_count(180)
-        # 180秒 * 0.85 * 2.25字/秒 = 344.25 -> 344字
+        # 180秒 * 对白密度 * 语速
         expected = int(180 * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND)
         assert word_count == expected
 
@@ -396,8 +396,8 @@ class TestEstimateDurationFromWords:
 
     def test_estimate_duration(self):
         """正常字数估算时长"""
-        # 135 字 / 2.25 字/秒 = 60 秒
-        assert estimate_duration_from_words(135) == 60
+        word_count = int(60 * WORDS_PER_SECOND)
+        assert estimate_duration_from_words(word_count) == 60
 
     def test_estimate_zero_words(self):
         """零字数"""

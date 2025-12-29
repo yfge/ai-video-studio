@@ -26,7 +26,7 @@ def estimate_duration_from_dialogues(
 
     Args:
         dialogues: 对白列表，每个元素包含 content 字段
-        speaking_rate: 每秒汉字数（默认 2.25）
+        speaking_rate: 每秒汉字数（默认 4.7，来自线上 TTS 语速校准）
 
     Returns:
         估算时长（毫秒）

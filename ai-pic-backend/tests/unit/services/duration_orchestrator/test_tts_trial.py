@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.services.duration_orchestrator.constants import WORDS_PER_SECOND
 from app.services.duration_orchestrator.nodes.tts_trial import (
     estimate_duration_from_dialogues,
     tts_trial_node,
@@ -24,9 +25,9 @@ class TestEstimateDurationFromDialogues:
             {"character": "小明", "content": "你好世界"},  # 4 chars
             {"character": "小红", "content": "再见朋友"},  # 4 chars
         ]
-        # 8 chars / 2.25 chars/s = 3.56s = 3556ms
+        # 8 chars / WORDS_PER_SECOND chars/s
         duration_ms = estimate_duration_from_dialogues(dialogues)
-        assert 3500 <= duration_ms <= 3600
+        assert 1600 <= duration_ms <= 1800
 
     def test_estimate_empty_dialogues(self):
         """空对白列表"""
@@ -42,8 +43,8 @@ class TestEstimateDurationFromDialogues:
 
     def test_estimate_long_dialogue(self):
         """长对白的时长估算"""
-        # 135 chars should be ~60 seconds (135 / 2.25 = 60)
-        long_text = "这是一段" * 33 + "话"  # 133 chars
+        # int(60 * WORDS_PER_SECOND) chars should be ~60 seconds
+        long_text = "啊" * int(60 * WORDS_PER_SECOND)
         dialogues = [{"content": long_text}]
         duration_ms = estimate_duration_from_dialogues(dialogues)
         assert 58000 <= duration_ms <= 62000  # ~60 seconds
@@ -61,7 +62,7 @@ class TestTtsTrialNode:
                     scene_number=1,
                     scene_index=0,
                     target_duration_seconds=60,
-                    target_word_count=135,
+                    target_word_count=int(60 * WORDS_PER_SECOND),
                     min_duration_seconds=51,
                     max_duration_seconds=69,
                 ),
@@ -151,7 +152,7 @@ class TestTtsTrialNode:
         """计算偏差"""
         result = await tts_trial_node(base_state)
 
-        # 8 chars / 2.25 = 3.56s, target is 60s
+        # 8 chars / WORDS_PER_SECOND, target is 60s
         # deviation should be negative (too short)
         budget = result["scene_budgets"][0]
         assert budget.actual_duration_seconds < budget.target_duration_seconds

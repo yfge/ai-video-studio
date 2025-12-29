@@ -247,7 +247,7 @@ def allocate_budget(
             budgets.append(SceneBudget(
                 scene_number=s.get("scene_number", len(budgets) + 1),
                 target_duration_seconds=target,
-                target_word_count=int(target * 2.25),  # 135字/分钟
+                target_word_count=int(target * 4.7),  # 约 280字/分钟（校准后）
                 min_duration_seconds=int(target * 0.85),
                 max_duration_seconds=int(target * 1.15),
             ))
@@ -258,7 +258,7 @@ def allocate_budget(
             SceneBudget(
                 scene_number=i + 1,
                 target_duration_seconds=per_scene,
-                target_word_count=int(per_scene * 2.25),
+                target_word_count=int(per_scene * 4.7),
                 min_duration_seconds=int(per_scene * 0.85),
                 max_duration_seconds=int(per_scene * 1.15),
             )
@@ -381,7 +381,7 @@ SCRIPT_WORD_COUNT_CONSTRAINT = """
 ## 时长约束
 - **目标场景时长**: {{ target_duration_seconds }} 秒
 - **目标对白字数**: 约 {{ target_word_count }} 个汉字
-- 按照平均语速 135字/分钟 计算，对白总字数应接近目标
+- 按照平均语速 280字/分钟 计算，对白总字数应接近目标
 
 {% if is_retry and adjustment_hint %}
 ## 调整建议 (重试)
@@ -667,9 +667,9 @@ ai-pic-backend/app/services/
 
 | 语速类型 | 字/分钟 | 字/秒 | 用途 |
 |----------|---------|-------|------|
-| 慢速 | 100 | 1.67 | 旁白、独白 |
-| 正常 | 135 | 2.25 | 对话、叙述 |
-| 快速 | 180 | 3.00 | 激动、紧张 |
+| 慢速 | 228 | 3.8 | 旁白、独白 |
+| 正常 | 282 | 4.7 | 对话、叙述 |
+| 快速 | 336 | 5.6 | 激动、紧张 |
 
 ### 9.2 容差设计依据
 

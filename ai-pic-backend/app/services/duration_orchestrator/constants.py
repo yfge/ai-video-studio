@@ -39,14 +39,19 @@ TTS_FULL_GENERATION_THRESHOLD = 5
 # 语速与字数配置
 # =============================================================================
 
-# 中文朗读语速 (字/秒)
-# 慢速: 1.67 字/秒 (100 字/分钟)
-# 正常: 2.25 字/秒 (135 字/分钟)
-# 快速: 3.00 字/秒 (180 字/分钟)
-WORDS_PER_SECOND_SLOW = 1.67
-WORDS_PER_SECOND_NORMAL = 2.25
-WORDS_PER_SECOND_FAST = 3.00
-WORDS_PER_SECOND = WORDS_PER_SECOND_NORMAL  # 默认使用正常语速
+# 中文 TTS 语速 (字/秒)
+#
+# 重要：这里的“字”按代码实现约定等同于 `len(text)` 的字符数（中文为主）。
+# 早期采用 2.25 字/秒（135 字/分钟）会显著高估对白时长，导致：
+# - 生成阶段对白字数偏少
+# - 后续对白音频/时间轴出现明显“音频过短、间隙过大”的漂移
+#
+# 实测校准：基于 MySQL `scene_beats` 中 `beat_type='dialogue'` 的统计，
+# 平均语速约 4.7 字/秒（≈282 字/分钟）。
+WORDS_PER_SECOND_SLOW = 3.8
+WORDS_PER_SECOND_NORMAL = 4.7
+WORDS_PER_SECOND_FAST = 5.6
+WORDS_PER_SECOND = WORDS_PER_SECOND_NORMAL  # 默认使用正常语速（与线上数据校准）
 
 # 每字平均 TTS 时长 (毫秒)
 MS_PER_CHAR_DEFAULT = 150

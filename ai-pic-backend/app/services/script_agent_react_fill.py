@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 from app.core.validators.script_dialogue_quality import looks_like_writer_note
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
+from app.services.duration_orchestrator.constants import WORDS_PER_SECOND
 from app.services.duration_orchestrator.state import SceneBudget
 from app.utils.json_utils import extract_json_block
 
@@ -153,10 +154,12 @@ async def try_fill_pending_scenes_after_react(
     new_stage: List[Dict[str, Any]] = []
 
     prompt = base_prompt
-    for attempt in range(2):
+    budgets_by_scene = {b.scene_number: b for b in pending_budgets if b.scene_number}
+
+    for attempt in range(3):
         resp = await ai_manager.generate_text(
             prompt=prompt,
-            temperature=min(0.6, temperature) if attempt == 0 else 0.3,
+            temperature=min(0.6, temperature) if attempt == 0 else (0.4 if attempt == 1 else 0.2),
             model=model,
             prefer_provider=prefer_provider,
             json_schema=schema,
@@ -197,7 +200,48 @@ async def try_fill_pending_scenes_after_react(
 
         missing = [s for s, c in per_scene_counts.items() if c < 2]
         if not missing:
-            break
+            # Additional guard: ensure dialogue duration is within scene budget tolerance.
+            too_short: list[str] = []
+            too_long: list[str] = []
+            for scene_no in pending_scene_numbers:
+                budget = budgets_by_scene.get(scene_no)
+                if not budget:
+                    continue
+                total_chars = sum(
+                    len(str(d.get("content") or ""))
+                    for d in new_dialogues
+                    if isinstance(d, dict)
+                    and _to_int(d.get("scene_number")) == scene_no
+                )
+                est_seconds = total_chars / WORDS_PER_SECOND if total_chars > 0 else 0.0
+                if budget.min_duration_seconds and est_seconds < float(budget.min_duration_seconds):
+                    need = int((budget.target_duration_seconds - est_seconds) * WORDS_PER_SECOND)
+                    min_chars = int(float(budget.min_duration_seconds) * WORDS_PER_SECOND)
+                    too_short.append(
+                        f"{scene_no}(当前≈{est_seconds:.1f}s，至少≈{budget.min_duration_seconds}s；字符数≥{min_chars}，建议再+{max(need, 20)}字)"
+                    )
+                elif budget.max_duration_seconds and est_seconds > float(budget.max_duration_seconds):
+                    over = int((est_seconds - budget.target_duration_seconds) * WORDS_PER_SECOND)
+                    too_long.append(
+                        f"{scene_no}(当前≈{est_seconds:.1f}s，最多≈{budget.max_duration_seconds}s；建议删减≈{max(over, 20)}字)"
+                    )
+
+            if not too_short and not too_long:
+                break
+
+            reject_lines: list[str] = []
+            if too_short:
+                reject_lines.append("以下场景对白时长仍不足：" + "；".join(too_short))
+            if too_long:
+                reject_lines.append("以下场景对白时长过长：" + "；".join(too_long))
+
+            prompt = (
+                base_prompt
+                + "\n\n## REACT 驳回（时长不达标）\n"
+                + "\n".join(reject_lines)
+                + "\n硬性要求：严格满足各场景字数/时长约束；只能输出指定 scene_number；禁止编剧/助手元语言与跨场景重复模板台词。\n"
+            )
+            continue
 
         prompt = (
             base_prompt
