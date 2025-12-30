@@ -150,6 +150,7 @@ export default function EpisodeStoryboardPage() {
     Array<{ id: number; name: string; images: string[] }>
   >([]);
   const [imageModalSelected, setImageModalSelected] = useState<string[]>([]);
+  const [imageModalPrimaryRef, setImageModalPrimaryRef] = useState<string>("");
   const [imageModalTargets, setImageModalTargets] = useState({
     first: true,
     last: true,
@@ -1346,10 +1347,24 @@ export default function EpisodeStoryboardPage() {
     [],
   );
 
-  const imageModalReferenceSections = useMemo(
-    () => buildReferenceSections(imageModalEnvImages, imageModalCharImages),
-    [buildReferenceSections, imageModalCharImages, imageModalEnvImages],
-  );
+  const imageModalReferenceSections = useMemo(() => {
+    const sections = buildReferenceSections(
+      imageModalEnvImages,
+      imageModalCharImages,
+    );
+    if (imageModalPrimaryRef) {
+      return [
+        { title: "首要参考图（点击的候选图）", images: [imageModalPrimaryRef] },
+        ...sections,
+      ];
+    }
+    return sections;
+  }, [
+    buildReferenceSections,
+    imageModalCharImages,
+    imageModalEnvImages,
+    imageModalPrimaryRef,
+  ]);
 
   const edgeModalReferenceSections = useMemo(
     () => buildReferenceSections(edgeModalEnvImages, edgeModalCharImages),
@@ -1602,6 +1617,7 @@ export default function EpisodeStoryboardPage() {
     const normalizedPreset = opts?.presetReference
       ? imageSrc(opts.presetReference)
       : "";
+    setImageModalPrimaryRef(normalizedPreset);
     const defaultPrompt =
       frames[absIndex].ai_prompt ||
       frames[absIndex].description ||
@@ -1694,6 +1710,7 @@ export default function EpisodeStoryboardPage() {
       if (response.success) {
         showAlert({ message: "已创建图像生成任务", variant: "success" });
         setImageModalOpen(false);
+        setImageModalPrimaryRef("");
         startImagePolling("分镜图像");
       } else {
         showAlert({ message: "图像生成失败", variant: "error" });
@@ -3221,7 +3238,10 @@ export default function EpisodeStoryboardPage() {
       />
       <ImageToImageModal
         open={imageModalOpen}
-        onClose={() => setImageModalOpen(false)}
+        onClose={() => {
+          setImageModalOpen(false);
+          setImageModalPrimaryRef("");
+        }}
         title="选择参考图生成分镜关键帧"
         description={
           imageModalLoading
