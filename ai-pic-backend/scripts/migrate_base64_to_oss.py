@@ -8,6 +8,7 @@
 - tasks.result_file_path
 - virtual_ips.style_reference_images (JSON)
 - environments.reference_images (JSON)
+- scripts.extra_metadata (JSON) - 包含 storyboard 中的 *_original 字段
 
 Usage:
     python scripts/migrate_base64_to_oss.py [--dry-run] [--table TABLE_NAME] [--batch-size N]
@@ -25,7 +26,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # 添加项目根目录到 Python 路径
 project_root = Path(__file__).parent.parent
@@ -179,7 +180,7 @@ class Base64ToOSSMigrator:
         field_name: str,
         prefix: str,
     ) -> Tuple[int, int, int]:
-        """迁移 JSON 字段中的 base64 数据"""
+        """迁移 JSON 字段中的 base64 数据（仅处理简单列表）"""
         found = 0
         converted = 0
         failed = 0
@@ -258,6 +259,142 @@ class Base64ToOSSMigrator:
 
         return found, converted, failed
 
+    def _count_base64_in_json(self, data: Any) -> int:
+        """递归统计 JSON 中的 base64 图片数量"""
+        count = 0
+        if isinstance(data, str):
+            if self.is_base64_image(data):
+                count += 1
+        elif isinstance(data, list):
+            for item in data:
+                count += self._count_base64_in_json(item)
+        elif isinstance(data, dict):
+            for value in data.values():
+                count += self._count_base64_in_json(value)
+        return count
+
+    async def _convert_base64_in_json(
+        self, data: Any, prefix: str
+    ) -> Tuple[Any, int, int]:
+        """
+        递归转换 JSON 中的所有 base64 图片为 OSS URL
+
+        Returns:
+            (converted_data, success_count, fail_count)
+        """
+        success = 0
+        fail = 0
+
+        if isinstance(data, str):
+            if self.is_base64_image(data):
+                oss_url = await self.convert_base64_to_oss(data, prefix)
+                if oss_url:
+                    return oss_url, 1, 0
+                else:
+                    return data, 0, 1
+            return data, 0, 0
+
+        elif isinstance(data, list):
+            new_list = []
+            for item in data:
+                new_item, s, f = await self._convert_base64_in_json(item, prefix)
+                new_list.append(new_item)
+                success += s
+                fail += f
+            return new_list, success, fail
+
+        elif isinstance(data, dict):
+            new_dict = {}
+            for key, value in data.items():
+                new_value, s, f = await self._convert_base64_in_json(value, prefix)
+                new_dict[key] = new_value
+                success += s
+                fail += f
+            return new_dict, success, fail
+
+        else:
+            return data, 0, 0
+
+    async def migrate_nested_json_field(
+        self,
+        table_name: str,
+        id_column: str,
+        field_name: str,
+        prefix: str,
+    ) -> Tuple[int, int, int]:
+        """迁移嵌套 JSON 字段中的 base64 数据（递归处理）"""
+        found = 0
+        converted = 0
+        failed = 0
+
+        with self.Session() as session:
+            # 查询包含 base64 的记录
+            query = text(
+                f"SELECT {id_column}, {field_name} FROM {table_name} "
+                f"WHERE {field_name} LIKE '%data:image%' "
+                f"LIMIT :limit"
+            )
+            results = session.execute(query, {"limit": self.batch_size}).fetchall()
+
+            for row in results:
+                record_id = row[0]
+                json_value = row[1]
+                self.stats["scanned"] += 1
+
+                if not json_value:
+                    continue
+
+                # 解析 JSON
+                try:
+                    if isinstance(json_value, str):
+                        data = json.loads(json_value)
+                    else:
+                        data = json_value
+                except json.JSONDecodeError:
+                    continue
+
+                # 统计 base64 数量
+                base64_count = self._count_base64_in_json(data)
+                if base64_count == 0:
+                    continue
+
+                found += 1
+                self.stats["base64_found"] += base64_count
+                logger.info(
+                    f"[{table_name}] ID={record_id}: 发现 {base64_count} 个 base64 图片"
+                )
+
+                # 递归转换
+                new_data, success, fail = await self._convert_base64_in_json(
+                    data, prefix
+                )
+
+                if success > 0:
+                    if not self.dry_run:
+                        update_query = text(
+                            f"UPDATE {table_name} SET {field_name} = :data "
+                            f"WHERE {id_column} = :id"
+                        )
+                        session.execute(
+                            update_query,
+                            {"data": json.dumps(new_data, ensure_ascii=False), "id": record_id},
+                        )
+                        session.commit()
+                    converted += success
+                    self.stats["converted"] += success
+                    logger.info(
+                        f"[{table_name}] ID={record_id}: 成功转换 {success} 个图片"
+                    )
+
+                if fail > 0:
+                    failed += fail
+                    self.stats["failed"] += fail
+                    logger.warning(
+                        f"[{table_name}] ID={record_id}: {fail} 个图片转换失败"
+                    )
+
+        return found, converted, failed
+
     async def migrate_table(self, table_name: str) -> Dict[str, int]:
         """迁移指定表"""
         logger.info(f"开始处理表: {table_name}")
@@ -312,6 +449,15 @@ class Base64ToOSSMigrator:
             results["converted"] += c
             results["failed"] += fa
 
+        elif table_name == "scripts":
+            # extra_metadata 是嵌套 JSON，包含 storyboard.frames[].image_url_original 等
+            f, c, fa = await self.migrate_nested_json_field(
+                "scripts", "id", "extra_metadata", "migrated/scripts-storyboard"
+            )
+            results["found"] += f
+            results["converted"] += c
+            results["failed"] += fa
+
         else:
             logger.warning(f"未知的表: {table_name}")
 
@@ -322,6 +468,7 @@ class Base64ToOSSMigrator:
         await self.init_oss_service()
 
         all_tables = [
+            "scripts",  # 最重要，包含 storyboard 的 base64 数据
             "virtual_ip_images",
             "images",
             "tasks",
