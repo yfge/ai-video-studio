@@ -3,12 +3,16 @@
 数据迁移脚本：将数据库中的 base64 图片数据上传到 OSS 并更新为 URL
 
 此脚本扫描以下表中可能包含 base64 图片数据的字段：
+- scripts.extra_metadata (JSON) - storyboard 中的 *_original 字段
+- stories.extra_metadata (JSON)
+- episodes.extra_metadata (JSON)
+- scenes.metadata (JSON)
+- shots.metadata (JSON)
 - virtual_ip_images.file_path / oss_url
 - images.file_path
 - tasks.result_file_path
 - virtual_ips.style_reference_images (JSON)
 - environments.reference_images (JSON)
-- scripts.extra_metadata (JSON) - 包含 storyboard 中的 *_original 字段
 
 Usage:
     python scripts/migrate_base64_to_oss.py [--dry-run] [--table TABLE_NAME] [--batch-size N]
@@ -458,6 +462,38 @@ class Base64ToOSSMigrator:
             results["converted"] += c
             results["failed"] += fa
 
+        elif table_name == "stories":
+            f, c, fa = await self.migrate_nested_json_field(
+                "stories", "id", "extra_metadata", "migrated/stories"
+            )
+            results["found"] += f
+            results["converted"] += c
+            results["failed"] += fa
+
+        elif table_name == "episodes":
+            f, c, fa = await self.migrate_nested_json_field(
+                "episodes", "id", "extra_metadata", "migrated/episodes"
+            )
+            results["found"] += f
+            results["converted"] += c
+            results["failed"] += fa
+
+        elif table_name == "scenes":
+            f, c, fa = await self.migrate_nested_json_field(
+                "scenes", "id", "metadata", "migrated/scenes"
+            )
+            results["found"] += f
+            results["converted"] += c
+            results["failed"] += fa
+
+        elif table_name == "shots":
+            f, c, fa = await self.migrate_nested_json_field(
+                "shots", "id", "metadata", "migrated/shots"
+            )
+            results["found"] += f
+            results["converted"] += c
+            results["failed"] += fa
+
         else:
             logger.warning(f"未知的表: {table_name}")
 
@@ -469,6 +505,10 @@ class Base64ToOSSMigrator:
 
         all_tables = [
             "scripts",  # 最重要，包含 storyboard 的 base64 数据
+            "stories",
+            "episodes",
+            "scenes",
+            "shots",
             "virtual_ip_images",
             "images",
             "tasks",
