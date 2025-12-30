@@ -236,3 +236,30 @@ class GoogleProvider(BaseProvider):
             format_error=self.format_error,
             **kwargs,
         )
+
+    async def submit_video_task(
+        self,
+        prompt: Optional[str] = None,
+        image_url: Optional[str] = None,
+        end_image_url: Optional[str] = None,
+        model: Optional[str] = None,
+        duration: int = 5,
+        fps: int = 24,
+        resolution: str = "720p",
+        ratio: Optional[str] = None,
+        **kwargs: Any,
+    ) -> AIResponse:
+        """Submit async video generation task using Veo.
+
+        Delegates to generate_video since Veo API is synchronous polling-based.
+        """
+        return await self.generate_video(
+            prompt=prompt,
+            image_url=image_url,
+            end_image_url=end_image_url,
+            model=model,
+            duration=duration,
+            resolution=resolution,
+            aspect_ratio=ratio,
+            **kwargs,
+        )
