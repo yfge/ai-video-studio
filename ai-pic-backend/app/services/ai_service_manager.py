@@ -4,6 +4,7 @@ AI服务管理器
 统一管理所有AI服务提供商，提供负载均衡、故障转移等功能
 """
 
+import base64
 import random
 from dataclasses import dataclass, field
 from enum import Enum
@@ -221,6 +222,87 @@ class AIServiceManager:
             )
         except Exception:
             pass
+
+    async def _convert_base64_images_to_oss(
+        self, images: List[str], prefix: str = "ai-generated"
+    ) -> List[str]:
+        """
+        将 base64 格式的图片上传到 OSS 并返回 URL 列表。
+
+        如果图片已经是 URL 格式，则直接返回。
+        如果是 data:image/...;base64,... 格式，则解码后上传到 OSS。
+
+        Args:
+            images: 图片列表，可以是 URL 或 base64 格式
+            prefix: OSS 存储前缀
+
+        Returns:
+            转换后的 URL 列表
+        """
+        if not images:
+            return images
+
+        from app.services.storage.oss_service import oss_service
+
+        if not oss_service:
+            self.logger.warning("OSS service not available, returning original images")
+            return images
+
+        result_urls: List[str] = []
+
+        for img in images:
+            if not isinstance(img, str):
+                result_urls.append(img)
+                continue
+
+            # 检查是否是 base64 格式
+            if not img.startswith("data:image"):
+                # 已经是 URL，直接添加
+                result_urls.append(img)
+                continue
+
+            try:
+                # 解析 base64 数据
+                # 格式: data:image/png;base64,iVBORw0KGgo...
+                header, b64_data = img.split(",", 1)
+                # 从 header 中提取 MIME 类型，如 "data:image/png;base64"
+                mime_part = header.split(";")[0]  # "data:image/png"
+                mime_type = mime_part.split(":")[1] if ":" in mime_part else "image/png"
+                ext = mime_type.split("/")[1] if "/" in mime_type else "png"
+
+                # 解码 base64
+                image_bytes = base64.b64decode(b64_data)
+
+                # 上传到 OSS
+                upload_result = await oss_service.upload_file_content(
+                    file_content=image_bytes,
+                    filename=f"generated.{ext}",
+                    file_type="image",
+                    prefix=prefix,
+                )
+
+                if upload_result.get("success"):
+                    oss_url = upload_result.get("file_url")
+                    result_urls.append(oss_url)
+                    self.logger.info(
+                        "Converted base64 image to OSS URL | size=%d url=%s",
+                        len(image_bytes),
+                        oss_url,
+                    )
+                else:
+                    # 上传失败，保留原始 base64（降级处理）
+                    self.logger.warning(
+                        "Failed to upload base64 image to OSS: %s",
+                        upload_result.get("error"),
+                    )
+                    result_urls.append(img)
+
+            except Exception as e:
+                self.logger.error("Error converting base64 to OSS URL: %s", e)
+                # 出错时保留原始数据
+                result_urls.append(img)
+
+        return result_urls
 
     def _initialize_providers(self):
         """初始化所有提供商"""
@@ -695,6 +777,13 @@ class AIServiceManager:
                     response=response,
                 )
                 if response.success or not self.config.enable_fallback:
+                    # 将 base64 图片转换为 OSS URL
+                    if response.success and response.data and "images" in response.data:
+                        converted_images = await self._convert_base64_images_to_oss(
+                            response.data["images"],
+                            prefix="ai-generated/text-to-image",
+                        )
+                        response.data["images"] = converted_images
                     return response
 
             except Exception as e:
@@ -919,6 +1008,13 @@ class AIServiceManager:
                         meta["style_spec_resolution"] = style_resolution_meta
                     response.metadata = meta
                 if response.success or not self.config.enable_fallback:
+                    # 将 base64 图片转换为 OSS URL
+                    if response.success and response.data and "images" in response.data:
+                        converted_images = await self._convert_base64_images_to_oss(
+                            response.data["images"],
+                            prefix="ai-generated/image-to-image",
+                        )
+                        response.data["images"] = converted_images
                     return response
             except Exception as e:
                 if not self.config.enable_fallback:
