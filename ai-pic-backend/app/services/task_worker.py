@@ -167,6 +167,7 @@ def storyboard_image_generate_task(
         style_spec=payload.get("style_spec"),
         aspect_ratio=payload.get("aspect_ratio"),
         reference_images=payload.get("reference_images") or [],
+        labeled_references=payload.get("labeled_references"),
         count=count_int,
         keyframe_mode=(payload.get("keyframe_mode") or "single"),
         start_enabled=payload.get("start_enabled", True),

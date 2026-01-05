@@ -27,6 +27,7 @@ import {
   ImageToImageModal,
   ImagePreviewModal,
   StoryboardVideoModal,
+  type LabeledReferenceImage,
 } from "@/components/shared/modals";
 import {
   MultiModelSelector,
@@ -1330,15 +1331,26 @@ export default function EpisodeStoryboardPage() {
       envImages: string[],
       charGroups: Array<{ id: number; name: string; images: string[] }>,
     ) => {
-      const sections: { title?: string; images: string[] }[] = [];
+      const sections: {
+        title?: string;
+        images: string[];
+        imageType?: "character" | "environment" | "primary" | "other";
+        imageLabel?: string;
+      }[] = [];
       if (envImages.length > 0) {
-        sections.push({ title: "环境参考图", images: envImages });
+        sections.push({
+          title: "环境参考图",
+          images: envImages,
+          imageType: "environment",
+        });
       }
       charGroups.forEach((group) => {
         if (group.images.length > 0) {
           sections.push({
             title: `${group.name} 参考图`,
             images: group.images,
+            imageType: "character",
+            imageLabel: group.name,
           });
         }
       });
@@ -1354,7 +1366,11 @@ export default function EpisodeStoryboardPage() {
     );
     if (imageModalPrimaryRef) {
       return [
-        { title: "首要参考图（点击的候选图）", images: [imageModalPrimaryRef] },
+        {
+          title: "首要参考图（点击的候选图）",
+          images: [imageModalPrimaryRef],
+          imageType: "primary" as const,
+        },
         ...sections,
       ];
     }
@@ -1663,6 +1679,7 @@ export default function EpisodeStoryboardPage() {
     style_preset_id?: string;
     style_spec?: Record<string, unknown>;
     referenceImages: string[];
+    labeledReferences?: LabeledReferenceImage[];
   }) => {
     if (!activeScript || imageModalFrameIndex == null) return;
     if (!payload.referenceImages || payload.referenceImages.length === 0) {
@@ -1699,6 +1716,7 @@ export default function EpisodeStoryboardPage() {
           style_preset_id: payload.style_preset_id,
           style_spec: payload.style_spec,
           reference_images: payload.referenceImages,
+          labeled_references: payload.labeledReferences,
           count: payload.count,
           keyframe_mode: "start_end",
           start_enabled: imageModalTargets.first,

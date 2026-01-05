@@ -362,6 +362,13 @@ export async function generateStoryboardVideo(
   });
 }
 
+/** Labeled reference image with type and optional character name */
+export type LabeledReferenceImage = {
+  url: string;
+  type: 'character' | 'environment' | 'primary' | 'other';
+  label?: string;
+};
+
 /**
  * Generate storyboard images.
  */
@@ -379,6 +386,8 @@ export async function generateStoryboardImages(
     style_preset_id?: string;
     style_spec?: StyleSpec;
     reference_images?: string[];
+    /** Labeled references with type and character/environment info */
+    labeled_references?: LabeledReferenceImage[];
     count?: number;
     keyframe_mode?: 'single' | 'start_end';
     start_enabled?: boolean;
@@ -412,6 +421,7 @@ export async function generateStoryboardImages(
       style_preset_id: payload?.style_preset_id,
       style_spec: payload?.style_spec,
       reference_images: payload?.reference_images,
+      labeled_references: payload?.labeled_references,
       count: normalizedCount,
       keyframe_mode: payload?.keyframe_mode ?? 'single',
       start_enabled: payload?.start_enabled,

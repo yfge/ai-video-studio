@@ -19,9 +19,19 @@ import {
   type StyleSpec,
 } from "@/utils/api";
 
+export type LabeledReferenceImage = {
+  url: string;
+  type: "character" | "environment" | "primary" | "other";
+  label?: string; // e.g., character name like "老拐"
+};
+
 type ReferenceSection = {
   title?: string;
   images: string[];
+  /** Optional: structured metadata for each image */
+  imageType?: "character" | "environment" | "primary" | "other";
+  /** Optional: label for character sections (e.g., "老拐") */
+  imageLabel?: string;
 };
 
 interface ImageToImageModalProps {
@@ -60,6 +70,8 @@ interface ImageToImageModalProps {
     style_preset_id?: string;
     style_spec?: StyleSpec;
     referenceImages: string[];
+    /** Labeled references with type and character/environment info */
+    labeledReferences?: LabeledReferenceImage[];
   }) => Promise<void>;
 }
 
@@ -163,6 +175,23 @@ export function ImageToImageModal({
 
   const handleSubmit = async () => {
     const refs = referenceSections.length > 0 ? selectedRefs : [];
+
+    // Build labeled references from selected refs
+    const labeledRefs: LabeledReferenceImage[] = [];
+    for (const url of refs) {
+      // Find which section this URL belongs to
+      for (const section of referenceSections) {
+        if (section.images.includes(url)) {
+          labeledRefs.push({
+            url,
+            type: section.imageType || "other",
+            label: section.imageLabel,
+          });
+          break;
+        }
+      }
+    }
+
     await onSubmit({
       prompt: prompt.trim(),
       model: modelIds[0],
@@ -174,6 +203,7 @@ export function ImageToImageModal({
       style_spec:
         styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
       referenceImages: refs,
+      labeledReferences: labeledRefs.length > 0 ? labeledRefs : undefined,
     });
   };
 

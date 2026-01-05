@@ -2512,6 +2512,39 @@ async def update_storyboard(
     return {"success": True}
 
 
+def _build_reference_image_context(
+    labeled_references: list[dict[str, Any]] | None,
+) -> str:
+    """从带标签的参考图构建上下文说明，让AI知道每张图代表什么。
+
+    返回格式示例：
+    [参考图说明]
+    - 第1张图是角色"老拐"的参考形象
+    - 第2张图是场景环境参考
+    """
+    if not labeled_references:
+        return ""
+
+    lines = []
+    for i, ref in enumerate(labeled_references, 1):
+        ref_type = ref.get("type", "other")
+        label = ref.get("label")
+
+        if ref_type == "character" and label:
+            lines.append(f"- 第{i}张图是角色「{label}」的参考形象")
+        elif ref_type == "environment":
+            lines.append(f"- 第{i}张图是场景环境参考")
+        elif ref_type == "primary":
+            lines.append(f"- 第{i}张图是首要参考图（用于风格/构图参考）")
+        else:
+            lines.append(f"- 第{i}张图是补充参考")
+
+    if not lines:
+        return ""
+
+    return "[参考图说明]\n" + "\n".join(lines)
+
+
 def _process_storyboard_image_task(
     task_id: int,
     script_id: int,
@@ -2527,6 +2560,7 @@ def _process_storyboard_image_task(
     style_spec: dict[str, Any] | None = None,
     aspect_ratio: str | None = None,
     reference_images: Optional[List[str]] = None,
+    labeled_references: Optional[List[dict[str, Any]]] = None,
     count: int = 1,
     keyframe_mode: str = "single",
     start_enabled: bool = True,
@@ -2818,7 +2852,14 @@ def _process_storyboard_image_task(
                 reference_notes.append({"type": "frame"})
 
             # 2) 前端调用时附带的额外参考图（单次请求作用域）
-            payload_refs = _normalize_reference_images(reference_images or [])
+            # 优先使用带标签的参考图（labeled_references），否则使用原始 reference_images
+            if labeled_references:
+                # 从带标签的参考图中提取 URL 列表
+                payload_refs = _normalize_reference_images(
+                    [ref.get("url") for ref in labeled_references if ref.get("url")]
+                )
+            else:
+                payload_refs = _normalize_reference_images(reference_images or [])
             if payload_refs:
                 reference_notes.append({"type": "user"})
 
@@ -2867,6 +2908,19 @@ def _process_storyboard_image_task(
                     "reference_notes": reference_notes,
                 },
             )
+
+            # 如果前端传了带标签的参考图，添加上下文说明让AI知道每张图代表什么
+            if labeled_references:
+                ref_context = _build_reference_image_context(labeled_references)
+                if ref_context:
+                    prompt = f"{ref_context}\n\n{prompt}"
+                    context_log = (
+                        f"[SBIMG] added labeled ref context | idx={idx} "
+                        f"labeled_refs={len(labeled_references)}"
+                    )
+                    logger.info(context_log)
+                    print(context_log, flush=True)
+
             if ref_images:
                 fr["reference_images"] = ref_images
 
@@ -3117,6 +3171,19 @@ def _process_storyboard_image_task(
         db.close()
 
 
+class LabeledReferenceImage(BaseModel):
+    """带标签的参考图，用于告知AI每张图代表什么角色/环境"""
+
+    url: str = Field(..., description="参考图URL")
+    type: str = Field(
+        ...,
+        description="参考图类型：character=角色, environment=环境, primary=首要参考, other=其他",
+    )
+    label: Optional[str] = Field(
+        default=None, description="标签名称，如角色名'老拐'"
+    )
+
+
 class StoryboardImageRequest(BaseModel):
     prompt: Optional[str] = Field(
         default=None, description="可选：覆盖默认提示词，用于本次生成"
@@ -3160,6 +3227,10 @@ class StoryboardImageRequest(BaseModel):
         default=None,
         description="优先使用的参考图（环境/角色），传入则走图生图；会与场景环境/角色自动锚点合并",
     )
+    labeled_references: Optional[List[LabeledReferenceImage]] = Field(
+        default=None,
+        description="带标签的参考图列表，包含类型和角色名等元数据，用于构造更精准的提示词",
+    )
     start_enabled: Optional[bool] = Field(
         default=True,
         description="keyframe_mode=start_end 时是否生成首帧（默认生成）",
@@ -3200,6 +3271,13 @@ async def generate_storyboard_images(
     )
     episode = script.episode
     story = episode.story if episode else None
+    # Serialize labeled_references if present
+    labeled_refs_payload = None
+    if body.labeled_references:
+        labeled_refs_payload = [
+            ref.model_dump(mode="json") for ref in body.labeled_references
+        ]
+
     t = Task(
         title=_friendly_task_title("分镜图像生成", script, episode, story),
         description="根据分镜生成图像",
@@ -3220,6 +3298,7 @@ async def generate_storyboard_images(
                 "count": body.count,
                 "keyframe_mode": body.keyframe_mode,
                 "reference_images": body.reference_images or [],
+                "labeled_references": labeled_refs_payload,
                 "start_enabled": body.start_enabled,
                 "end_enabled": body.end_enabled,
             },
@@ -3246,6 +3325,7 @@ async def generate_storyboard_images(
         "count": body.count,
         "keyframe_mode": body.keyframe_mode,
         "reference_images": body.reference_images or [],
+        "labeled_references": labeled_refs_payload,
         "start_enabled": body.start_enabled,
         "end_enabled": body.end_enabled,
     }

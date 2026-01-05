@@ -2048,6 +2048,11 @@ class ApiClient {
       style_preset_id?: string;
       style_spec?: StyleSpec;
       reference_images?: string[];
+      labeled_references?: Array<{
+        url: string;
+        type: "character" | "environment" | "primary" | "other";
+        label?: string;
+      }>;
       count?: number;
       keyframe_mode?: "single" | "start_end";
       start_enabled?: boolean;
@@ -2084,6 +2089,7 @@ class ApiClient {
           style_preset_id: payload?.style_preset_id,
           style_spec: payload?.style_spec,
           reference_images: payload?.reference_images,
+          labeled_references: payload?.labeled_references,
           count: normalizedCount,
           keyframe_mode: payload?.keyframe_mode ?? "single",
           start_enabled: payload?.start_enabled,
