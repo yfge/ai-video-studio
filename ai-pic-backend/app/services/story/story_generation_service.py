@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.script import Story, StoryCharacter
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
-from app.schemas.script import StoryGenerationRequest
+from app.schemas.generation_requests import StoryGenerationRequest
 from app.services.ai_service import ai_service
 from app.utils.json_utils import extract_json_block
 from app.utils.story_parser import extract_outline_from_text, normalize_story_json_keys

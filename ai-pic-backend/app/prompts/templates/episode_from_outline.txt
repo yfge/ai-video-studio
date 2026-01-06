@@ -3,10 +3,16 @@
 ## 故事信息
 标题：{{ story.title }}
 类型：{{ story.genre }}
+{% if story.market_region %}目标市场：{{ story.market_region }}{% endif %}
+{% if story.micro_genre %}微类型：{{ story.micro_genre }}{% endif %}
 {% if story.theme %}主题：{{ story.theme }}{% endif %}
 {% if story.synopsis %}概要：{{ story.synopsis }}{% endif %}
 {% if story.main_conflict %}总冲突：{{ story.main_conflict }}{% endif %}
 {% if story.resolution %}总收束/解法：{{ story.resolution }}{% endif %}
+{% if story.hook_plan %}爽点节奏：{{ story.hook_plan | tojson }}{% endif %}
+{% if story.twist_density %}反转密度：{{ story.twist_density }}{% endif %}
+{% if story.cliffhanger_plan %}悬念卡点：{{ story.cliffhanger_plan | join('；') }}{% endif %}
+{% if story.ad_snippets %}投流素材：{{ story.ad_snippets | tojson }}{% endif %}
 
 ## 当前集的 Step Outline
 目标集数：{{ outline.episode_number }}
@@ -51,6 +57,7 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
 - scenes 需包含 scene_number/slug_line/location/time_of_day/summary；若有 beats 尽量顺序对应；无 beats 时按合理节奏拆分。
 - 保持 {{ pacing }} 节奏与 {{ plot_complexity }} 复杂度。
 {% if episode_duration %}- 单集目标时长：{{ episode_duration }} 分钟{% endif %}
+{% if story.hook_plan or story.cliffhanger_plan %}- 场景安排需匹配爽点/卡点节奏{% endif %}
 {% if style_preferences %}- 风格偏好：{{ style_preferences | join(', ') }}{% endif %}
 {% if additional_requirements %}- 额外要求：{{ additional_requirements }}{% endif %}
 
@@ -65,6 +72,10 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
       "plot_points": [{"description": "...", "timing": "开场"}],
       "character_arcs": {"主角": "本集发展"},
       "conflicts": [{"description": "...", "intensity": "medium"}],
+      "hook_plan": {"opening_hook": "...", "escalation_plan": "...", "payoff_plan": "..."},
+      "twist_density": "...",
+      "cliffhanger_plan": ["..."],
+      "ad_snippets": [{"hook": "...", "duration_seconds": 15}],
       "scene_count": 6,
       "scenes": [
         {

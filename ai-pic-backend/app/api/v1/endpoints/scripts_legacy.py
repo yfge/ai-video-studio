@@ -27,15 +27,12 @@ from app.schemas.generation import (
     StoryboardPlanModel,
     StoryboardPlanScene,
 )
-from app.schemas.script import (
-    ScriptCreate,
-    ScriptGenerationRequest,
-    ScriptResponse,
-    ScriptUpdate,
-)
+from app.schemas.generation_requests import ScriptGenerationRequest
+from app.schemas.script import ScriptCreate, ScriptResponse, ScriptUpdate
 from app.schemas.story_structure import SceneCreate, ShotCreate
 from app.schemas.style import StyleSpec
 from app.services import story_structure_service as story_structure_svc
+from app.services.ai.storyboard_utils import build_storyboard_context
 from app.services.ai_service import ai_service
 from app.services.dialogue_audio_service import (
     generate_episode_audio_timeline,
@@ -62,6 +59,7 @@ from app.services.task_worker import (
     timeline_pipeline_generate_task,
 )
 from app.utils.json_utils import extract_json_block
+from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.model_utils import infer_provider_from_model
 from app.utils.script_parser import extract_script_structure
 
@@ -352,6 +350,10 @@ def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
 def _build_episode_data(episode: Episode) -> Dict[str, Any]:
     scenes = _extract_episode_scenes(episode)
     scene_count = episode.scene_count or (len(scenes) if scenes else None)
+    marketing_meta = merge_marketing_meta(
+        episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {},
+        episode.generation_params if isinstance(episode.generation_params, dict) else {},
+    )
     return {
         "episode_number": episode.episode_number,
         "title": episode.title,
@@ -362,6 +364,7 @@ def _build_episode_data(episode: Episode) -> Dict[str, Any]:
         "duration_minutes": episode.duration_minutes,
         "scene_count": scene_count,
         "scenes": scenes,
+        **marketing_meta,
     }
 
 
@@ -412,6 +415,10 @@ def _build_story_data(
     previous_episode_summaries: List[Dict[str, Any]],
     character_profiles: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
+    marketing_meta = merge_marketing_meta(
+        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
+        story.generation_params if isinstance(story.generation_params, dict) else {},
+    )
     return {
         "title": story.title,
         "genre": story.genre,
@@ -426,6 +433,7 @@ def _build_story_data(
         "setting_location": story.setting_location,
         "previous_episode_summaries": previous_episode_summaries,
         "character_profiles": character_profiles,
+        **marketing_meta,
     }
 
 
@@ -1026,6 +1034,22 @@ async def generate_script(
         previous_episode_summaries=previous_episode_summaries,
         character_profiles=character_profiles,
     )
+    hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
+    ad_snippets_payload = (
+        [snippet.model_dump() for snippet in request.ad_snippets]
+        if request.ad_snippets
+        else None
+    )
+    marketing_overrides = {
+        "market_region": request.market_region,
+        "micro_genre": request.micro_genre,
+        "hook_plan": hook_plan_payload,
+        "twist_density": request.twist_density,
+        "cliffhanger_plan": request.cliffhanger_plan,
+        "ad_snippets": ad_snippets_payload,
+    }
+    apply_marketing_overrides(story_data, marketing_overrides)
+    apply_marketing_overrides(episode_data, marketing_overrides)
 
     # 调用AI服务生成剧本
     # 解析模型与提供商
@@ -1110,6 +1134,13 @@ async def generate_script(
         for k, v in ai_content.items()
         if k not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
     }
+    marketing_defaults = merge_marketing_meta(
+        story_data,
+        episode_data,
+        marketing_overrides,
+    )
+    if marketing_defaults:
+        extra_meta = {**extra_meta, **marketing_defaults}
     if agent_run:
         extra_meta = {
             **(extra_meta or {}),
@@ -1133,6 +1164,12 @@ async def generate_script(
         generation_params={
             "dialogue_style": request.dialogue_style,
             "scene_detail_level": request.scene_detail_level,
+            "market_region": request.market_region,
+            "micro_genre": request.micro_genre,
+            "hook_plan": hook_plan_payload,
+            "twist_density": request.twist_density,
+            "cliffhanger_plan": request.cliffhanger_plan,
+            "ad_snippets": ad_snippets_payload,
             "additional_requirements": request.additional_requirements,
             "style_preferences": request.style_preferences,
             "model": request.model,
@@ -1182,6 +1219,22 @@ async def preview_script_prompt(
         previous_episode_summaries=previous_episode_summaries,
         character_profiles=character_profiles,
     )
+    hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
+    ad_snippets_payload = (
+        [snippet.model_dump() for snippet in request.ad_snippets]
+        if request.ad_snippets
+        else None
+    )
+    marketing_overrides = {
+        "market_region": request.market_region,
+        "micro_genre": request.micro_genre,
+        "hook_plan": hook_plan_payload,
+        "twist_density": request.twist_density,
+        "cliffhanger_plan": request.cliffhanger_plan,
+        "ad_snippets": ad_snippets_payload,
+    }
+    apply_marketing_overrides(story_data, marketing_overrides)
+    apply_marketing_overrides(episode_data, marketing_overrides)
     variables = {
         "story": story_data,
         "episode": episode_data,
@@ -1235,6 +1288,26 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             previous_episode_summaries=previous_episode_summaries,
             character_profiles=character_profiles,
         )
+        marketing_overrides = {
+            "market_region": request_dict.get("market_region"),
+            "micro_genre": request_dict.get("micro_genre"),
+            "hook_plan": request_dict.get("hook_plan"),
+            "twist_density": request_dict.get("twist_density"),
+            "cliffhanger_plan": request_dict.get("cliffhanger_plan"),
+            "ad_snippets": request_dict.get("ad_snippets"),
+        }
+        apply_marketing_overrides(story_data, marketing_overrides)
+        apply_marketing_overrides(episode_data, marketing_overrides)
+        marketing_overrides = {
+            "market_region": request_dict.get("market_region"),
+            "micro_genre": request_dict.get("micro_genre"),
+            "hook_plan": request_dict.get("hook_plan"),
+            "twist_density": request_dict.get("twist_density"),
+            "cliffhanger_plan": request_dict.get("cliffhanger_plan"),
+            "ad_snippets": request_dict.get("ad_snippets"),
+        }
+        apply_marketing_overrides(story_data, marketing_overrides)
+        apply_marketing_overrides(episode_data, marketing_overrides)
 
         import anyio
 
@@ -1310,6 +1383,13 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             if k
             not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
         }
+        marketing_defaults = merge_marketing_meta(
+            story_data,
+            episode_data,
+            marketing_overrides,
+        )
+        if marketing_defaults:
+            extra_meta = {**extra_meta, **marketing_defaults}
         if agent_run:
             extra_meta = {
                 **(extra_meta or {}),
@@ -1339,6 +1419,12 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                 for k in [
                     "dialogue_style",
                     "scene_detail_level",
+                    "market_region",
+                    "micro_genre",
+                    "hook_plan",
+                    "twist_density",
+                    "cliffhanger_plan",
+                    "ad_snippets",
                     "additional_requirements",
                     "style_preferences",
                     "model",
@@ -1532,6 +1618,13 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
         new_meta["parent_script_id"] = script.id
         new_meta["parent_script_business_id"] = script.business_id
         new_meta["regenerated_from_version"] = old_version
+        marketing_defaults = merge_marketing_meta(
+            story_data,
+            episode_data,
+            marketing_overrides,
+        )
+        if marketing_defaults:
+            new_meta = {**new_meta, **marketing_defaults}
         if agent_run:
             new_meta["agent_run"] = agent_run
 
@@ -1803,7 +1896,52 @@ async def preview_storyboard_prompt(
     script = db.query(Script).filter(Script.id == script_id).first()
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
-    context_text = _trim_local(script.content or "", 400)
+    episode = script.episode
+    story = episode.story if episode else None
+    story_marketing = merge_marketing_meta(
+        story.extra_metadata if story and isinstance(story.extra_metadata, dict) else {},
+        story.generation_params if story and isinstance(story.generation_params, dict) else {},
+    )
+    episode_marketing = merge_marketing_meta(
+        episode.extra_metadata if episode and isinstance(episode.extra_metadata, dict) else {},
+        episode.generation_params if episode and isinstance(episode.generation_params, dict) else {},
+    )
+    scenes = script.scenes or []
+    scene_indices = list(range(1, len(scenes) + 1))
+    script_data = {
+        "content": script.content,
+        "scenes": scenes,
+        "dialogues": script.dialogues,
+        "stage_directions": script.stage_directions,
+        "scene_indices": scene_indices,
+        "episode": (
+            {
+                "episode_number": episode.episode_number if episode else None,
+                "title": episode.title if episode else None,
+                "summary": episode.summary if episode else None,
+                "duration_minutes": episode.duration_minutes if episode else None,
+                "scene_count": episode.scene_count if episode else None,
+                **episode_marketing,
+            }
+            if episode
+            else None
+        ),
+        "story": (
+            {
+                "title": story.title if story else None,
+                "genre": story.genre if story else None,
+                "theme": story.theme if story else None,
+                "setting_time": story.setting_time if story else None,
+                "setting_location": story.setting_location if story else None,
+                "world_building": story.world_building if story else None,
+                "main_characters": story.main_characters if story else None,
+                **story_marketing,
+            }
+            if story
+            else None
+        ),
+    }
+    context_text = build_storyboard_context(script_data)
     prompt = prompt_manager.render_prompt(
         PromptTemplate.STORYBOARD_GENERATION.value,
         {
@@ -1868,6 +2006,14 @@ async def generate_storyboard(
         else None
     )
 
+    story_marketing = merge_marketing_meta(
+        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
+        story.generation_params if isinstance(story.generation_params, dict) else {},
+    )
+    episode_marketing = merge_marketing_meta(
+        episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {},
+        episode.generation_params if isinstance(episode.generation_params, dict) else {},
+    )
     script_data = {
         "content": script.content,
         "scenes": scenes_filtered,
@@ -1878,8 +2024,10 @@ async def generate_storyboard(
             {
                 "episode_number": episode.episode_number if episode else None,
                 "title": episode.title if episode else None,
+                "summary": episode.summary if episode else None,
                 "duration_minutes": episode.duration_minutes if episode else None,
                 "scene_count": episode.scene_count if episode else None,
+                **episode_marketing,
             }
             if episode
             else None
@@ -1893,6 +2041,7 @@ async def generate_storyboard(
                 "setting_location": story.setting_location if story else None,
                 "world_building": story.world_building if story else None,
                 "main_characters": story.main_characters if story else None,
+                **story_marketing,
             }
             if story
             else None
@@ -3780,6 +3929,16 @@ async def _regenerate_script_instance(
     )
 
     original_params = script.generation_params or {}
+    marketing_overrides = {
+        "market_region": original_params.get("market_region"),
+        "micro_genre": original_params.get("micro_genre"),
+        "hook_plan": original_params.get("hook_plan"),
+        "twist_density": original_params.get("twist_density"),
+        "cliffhanger_plan": original_params.get("cliffhanger_plan"),
+        "ad_snippets": original_params.get("ad_snippets"),
+    }
+    apply_marketing_overrides(story_data, marketing_overrides)
+    apply_marketing_overrides(episode_data, marketing_overrides)
     prefer_provider = None
     # 如果提供了 override_model，使用它；否则使用原有模型
     model_id = override_model if override_model else original_params.get("model")
@@ -3855,6 +4014,13 @@ async def _regenerate_script_instance(
 
     if agent_run:
         meta = dict(script.extra_metadata or {})
+        marketing_defaults = merge_marketing_meta(
+            story_data,
+            episode_data,
+            marketing_overrides,
+        )
+        if marketing_defaults:
+            meta.update(marketing_defaults)
         meta["agent_run"] = agent_run
         script.extra_metadata = meta
 
@@ -3893,6 +4059,12 @@ def _build_script_regenerate_request(
         "language": script.language,
         "dialogue_style": original_params.get("dialogue_style", "natural"),
         "scene_detail_level": original_params.get("scene_detail_level", "medium"),
+        "market_region": original_params.get("market_region"),
+        "micro_genre": original_params.get("micro_genre"),
+        "hook_plan": original_params.get("hook_plan"),
+        "twist_density": original_params.get("twist_density"),
+        "cliffhanger_plan": original_params.get("cliffhanger_plan"),
+        "ad_snippets": original_params.get("ad_snippets"),
         "additional_requirements": f"重新生成第{episode.episode_number}集的剧本内容",
         "style_preferences": original_params.get("style_preferences"),
         "model": override_model or original_params.get("model"),

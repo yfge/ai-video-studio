@@ -9,7 +9,7 @@ from app.core.database import SessionLocal, get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.schemas.script import StoryGenerationRequest
+from app.schemas.generation_requests import StoryGenerationRequest
 from app.services.story.story_generation_service import StoryGenerationService
 from app.services.task_worker import story_generate_task
 

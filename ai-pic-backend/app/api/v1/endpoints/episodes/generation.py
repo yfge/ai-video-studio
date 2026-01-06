@@ -18,10 +18,12 @@ from app.models.user import User
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import EpisodePlanItem
-from app.schemas.script import EpisodeGenerationRequest, EpisodeResponse
+from app.schemas.generation_requests import EpisodeGenerationRequest
+from app.schemas.script import EpisodeResponse
 from app.schemas.story_structure import StoryStepOutlineCreate
 from app.services.ai_service import ai_service
 from app.services import story_structure_service
+from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.json_utils import extract_json_block
 from .helpers import (
     not_deleted,
@@ -36,6 +38,10 @@ router = APIRouter()
 
 def _build_story_data(story: Story) -> Dict[str, Any]:
     """Build story data dict for AI generation."""
+    marketing_meta = merge_marketing_meta(
+        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
+        story.generation_params if isinstance(story.generation_params, dict) else {},
+    )
     return {
         "title": story.title,
         "genre": story.genre,
@@ -48,6 +54,7 @@ def _build_story_data(story: Story) -> Dict[str, Any]:
         "world_building": story.world_building,
         "setting_time": story.setting_time,
         "setting_location": story.setting_location,
+        **marketing_meta,
     }
 
 
@@ -110,6 +117,23 @@ async def generate_episodes(
 
     # Build story data
     story_data = _build_story_data(story)
+    hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
+    ad_snippets_payload = (
+        [snippet.model_dump() for snippet in request.ad_snippets]
+        if request.ad_snippets
+        else None
+    )
+    apply_marketing_overrides(
+        story_data,
+        {
+            "market_region": request.market_region,
+            "micro_genre": request.micro_genre,
+            "hook_plan": hook_plan_payload,
+            "twist_density": request.twist_density,
+            "cliffhanger_plan": request.cliffhanger_plan,
+            "ad_snippets": ad_snippets_payload,
+        },
+    )
 
     # Parse model and provider
     prefer_provider = None
@@ -218,6 +242,19 @@ async def generate_episodes(
         }
         extra_meta = {k: v for k, v in episode_data.items() if k not in known_keys}
         extra_metadata = extra_meta or None
+        marketing_defaults = merge_marketing_meta(
+            story_data,
+            {
+                "market_region": request.market_region,
+                "micro_genre": request.micro_genre,
+                "hook_plan": hook_plan_payload,
+                "twist_density": request.twist_density,
+                "cliffhanger_plan": request.cliffhanger_plan,
+                "ad_snippets": ad_snippets_payload,
+            },
+        )
+        if marketing_defaults:
+            extra_metadata = {**(extra_metadata or {}), **marketing_defaults}
         if agent_run:
             extra_metadata = {
                 **(extra_metadata or {}),
@@ -246,6 +283,12 @@ async def generate_episodes(
                 "focus_characters": request.focus_characters,
                 "plot_complexity": request.plot_complexity,
                 "pacing": request.pacing,
+                "market_region": request.market_region,
+                "micro_genre": request.micro_genre,
+                "hook_plan": hook_plan_payload,
+                "twist_density": request.twist_density,
+                "cliffhanger_plan": request.cliffhanger_plan,
+                "ad_snippets": ad_snippets_payload,
                 "additional_requirements": request.additional_requirements,
                 "style_preferences": request.style_preferences,
             },
@@ -343,6 +386,23 @@ async def preview_episode_prompt(
         raise HTTPException(status_code=404, detail="故事不存在")
 
     story_data = _build_story_data(story)
+    hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
+    ad_snippets_payload = (
+        [snippet.model_dump() for snippet in request.ad_snippets]
+        if request.ad_snippets
+        else None
+    )
+    apply_marketing_overrides(
+        story_data,
+        {
+            "market_region": request.market_region,
+            "micro_genre": request.micro_genre,
+            "hook_plan": hook_plan_payload,
+            "twist_density": request.twist_density,
+            "cliffhanger_plan": request.cliffhanger_plan,
+            "ad_snippets": ad_snippets_payload,
+        },
+    )
     focus_characters = _get_focus_characters(
         db, request.focus_characters, current_user
     )

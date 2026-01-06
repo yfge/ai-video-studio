@@ -19,11 +19,12 @@ from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import EpisodePlanItem
-from app.schemas.script import EpisodeGenerationRequest
+from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services.ai_service import ai_service
 from app.services.episode_agent import EpisodeGenerationCallbacks
 from app.services.task_worker import episode_generate_task
 from app.services import story_structure_service
+from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.json_utils import extract_json_block
 from .helpers import (
     is_episode_payload_valid,
@@ -40,6 +41,10 @@ router = APIRouter()
 
 def _build_story_data(story: Story) -> Dict[str, Any]:
     """Build story data dict for AI generation."""
+    marketing_meta = merge_marketing_meta(
+        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
+        story.generation_params if isinstance(story.generation_params, dict) else {},
+    )
     return {
         "title": story.title,
         "genre": story.genre,
@@ -52,6 +57,7 @@ def _build_story_data(story: Story) -> Dict[str, Any]:
         "world_building": story.world_building,
         "setting_time": story.setting_time,
         "setting_location": story.setting_location,
+        **marketing_meta,
     }
 
 
@@ -116,6 +122,15 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
         used_callbacks = False
 
         story_data = _build_story_data(story)
+        marketing_overrides = {
+            "market_region": request_dict.get("market_region"),
+            "micro_genre": request_dict.get("micro_genre"),
+            "hook_plan": request_dict.get("hook_plan"),
+            "twist_density": request_dict.get("twist_density"),
+            "cliffhanger_plan": request_dict.get("cliffhanger_plan"),
+            "ad_snippets": request_dict.get("ad_snippets"),
+        }
+        apply_marketing_overrides(story_data, marketing_overrides)
 
         focus_characters = []
         for cid in request_dict.get("focus_characters") or []:
@@ -219,6 +234,9 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
             extra_meta = {k: v for k, v in coerced.items() if k not in known_keys} or {}
             if scenes and "scenes" not in extra_meta:
                 extra_meta["scenes"] = scenes
+            marketing_defaults = merge_marketing_meta(story_data, marketing_overrides)
+            if marketing_defaults:
+                extra_meta = {**extra_meta, **marketing_defaults}
 
             episode_agent_run = {
                 "generation_method": meta.get("generation_method")
@@ -248,6 +266,12 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
                         "focus_characters",
                         "plot_complexity",
                         "pacing",
+                        "market_region",
+                        "micro_genre",
+                        "hook_plan",
+                        "twist_density",
+                        "cliffhanger_plan",
+                        "ad_snippets",
                         "additional_requirements",
                         "style_preferences",
                         "model",
@@ -356,6 +380,17 @@ def _process_fallback_result(
     """Process AI result when callbacks were not used."""
     progress_fn("剧集生成：模型返回结果解析中")
 
+    story_data = _build_story_data(story)
+    marketing_overrides = {
+        "market_region": request_dict.get("market_region"),
+        "micro_genre": request_dict.get("micro_genre"),
+        "hook_plan": request_dict.get("hook_plan"),
+        "twist_density": request_dict.get("twist_density"),
+        "cliffhanger_plan": request_dict.get("cliffhanger_plan"),
+        "ad_snippets": request_dict.get("ad_snippets"),
+    }
+    apply_marketing_overrides(story_data, marketing_overrides)
+
     content = (
         result.get("normalized") if isinstance(result, dict) else None
     ) or extract_json_block(
@@ -373,7 +408,6 @@ def _process_fallback_result(
             "usage": result.get("usage"),
             "reasoning": result.get("reasoning"),
         }
-
     raw_step_outlines = None
     if isinstance(result, dict):
         raw_step_outlines = result.get("step_outlines") or result.get(
@@ -447,6 +481,9 @@ def _process_fallback_result(
         } or {}
         if scenes and "scenes" not in extra_meta:
             extra_meta["scenes"] = scenes
+        marketing_defaults = merge_marketing_meta(story_data, marketing_overrides)
+        if marketing_defaults:
+            extra_meta = {**extra_meta, **marketing_defaults}
 
         ep = Episode(
             story_id=story.id,
@@ -472,6 +509,12 @@ def _process_fallback_result(
                     "focus_characters",
                     "plot_complexity",
                     "pacing",
+                    "market_region",
+                    "micro_genre",
+                    "hook_plan",
+                    "twist_density",
+                    "cliffhanger_plan",
+                    "ad_snippets",
                     "additional_requirements",
                     "style_preferences",
                     "model",

@@ -221,10 +221,16 @@ class EpisodeGenerationMixin:
 故事概要:
 标题: {story.get('title', '')}
 类型: {story.get('genre', '')}
+目标市场: {story.get('market_region', '')}
+微类型: {story.get('micro_genre', '')}
 主题: {story.get('theme', '')}
 简介: {story.get('synopsis', '')}
 主要冲突: {story.get('main_conflict', '')}
 结局: {story.get('resolution', '')}
+爽点规划: {story.get('hook_plan', '')}
+反转密度: {story.get('twist_density', '')}
+悬念卡点: {story.get('cliffhanger_plan', '')}
+投流素材: {story.get('ad_snippets', '')}
 
 {characters_desc}
 

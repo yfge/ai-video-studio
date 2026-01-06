@@ -17,6 +17,50 @@ def _to_int_safe(value: Any) -> Optional[int]:
         return None
 
 
+def _format_hook_plan(plan: Any) -> str:
+    if not plan:
+        return ""
+    if isinstance(plan, dict):
+        parts: List[str] = []
+        opening = plan.get("opening_hook")
+        escalation = plan.get("escalation_plan")
+        payoff = plan.get("payoff_plan")
+        if opening:
+            parts.append(f"开场:{opening}")
+        if escalation:
+            parts.append(f"升级:{escalation}")
+        if payoff:
+            parts.append(f"回收:{payoff}")
+        reversals = plan.get("key_reversals")
+        if isinstance(reversals, list) and reversals:
+            reversal_desc = []
+            for item in reversals[:3]:
+                if isinstance(item, dict):
+                    desc = item.get("description") or item.get("beat")
+                else:
+                    desc = str(item)
+                if desc:
+                    reversal_desc.append(desc)
+            if reversal_desc:
+                parts.append("反转:" + "；".join(reversal_desc))
+        return "；".join(parts) if parts else str(plan)
+    return str(plan)
+
+
+def _format_ad_snippets(snippets: Any) -> str:
+    if not isinstance(snippets, list):
+        return ""
+    hooks: List[str] = []
+    for item in snippets[:3]:
+        if isinstance(item, dict):
+            hook = item.get("hook") or item.get("visual_summary")
+        else:
+            hook = str(item)
+        if hook:
+            hooks.append(str(hook))
+    return "；".join(hooks)
+
+
 def _collect_scene_dialogues(
     script: Dict[str, Any], scene_number: Optional[int], limit: int = 2
 ) -> List[str]:
@@ -74,10 +118,27 @@ def build_storyboard_context(script: Dict[str, Any]) -> str:
             story_bits.append(str(story["title"]))
         if story.get("genre"):
             story_bits.append(f"类型:{story['genre']}")
+        if story.get("market_region"):
+            story_bits.append(f"市场:{story['market_region']}")
+        if story.get("micro_genre"):
+            story_bits.append(f"微类型:{story['micro_genre']}")
         if story.get("theme"):
             story_bits.append(f"主题:{_trim_text(story['theme'], 80)}")
         if story.get("world_building"):
             story_bits.append(f"设定:{_trim_text(story['world_building'], 100)}")
+        hook_plan = _format_hook_plan(story.get("hook_plan"))
+        if hook_plan:
+            story_bits.append(f"钩子:{_trim_text(hook_plan, 120)}")
+        if story.get("twist_density"):
+            story_bits.append(f"反转密度:{story['twist_density']}")
+        cliffhangers = story.get("cliffhanger_plan")
+        if isinstance(cliffhangers, list) and cliffhangers:
+            story_bits.append(
+                "卡点:" + _trim_text("；".join(map(str, cliffhangers[:3])), 80)
+            )
+        ad_snippets = _format_ad_snippets(story.get("ad_snippets"))
+        if ad_snippets:
+            story_bits.append(f"投流:{_trim_text(ad_snippets, 100)}")
         if story_bits:
             sections.append("故事背景：" + "，".join(story_bits))
 
@@ -87,6 +148,19 @@ def build_storyboard_context(script: Dict[str, Any]) -> str:
             epi_bits.append(f"第{episode['episode_number']}集")
         if episode.get("title"):
             epi_bits.append(str(episode["title"]))
+        if episode.get("micro_genre"):
+            epi_bits.append(f"微类型:{episode['micro_genre']}")
+        if episode.get("hook_plan"):
+            epi_bits.append(
+                f"钩子:{_trim_text(_format_hook_plan(episode.get('hook_plan')), 100)}"
+            )
+        epi_cliffs = episode.get("cliffhanger_plan")
+        if isinstance(epi_cliffs, list) and epi_cliffs:
+            epi_bits.append(
+                "卡点:" + _trim_text("；".join(map(str, epi_cliffs[:3])), 60)
+            )
+        elif isinstance(epi_cliffs, str) and epi_cliffs:
+            epi_bits.append("卡点:" + _trim_text(epi_cliffs, 60))
         if episode.get("summary"):
             epi_bits.append(f"概要:{_trim_text(episode['summary'], 120)}")
         if episode.get("duration_minutes"):

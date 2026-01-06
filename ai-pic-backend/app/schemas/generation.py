@@ -92,6 +92,12 @@ class ScriptMetadata(BaseModel):
     shooting_locations: Optional[List[str]] = None
     main_characters: Optional[List[str]] = None
     special_effects: Optional[List[str]] = None
+    market_region: Optional[str] = Field(None, description="目标市场/地区")
+    micro_genre: Optional[str] = Field(None, description="微类型/细分题材")
+    hook_plan: Optional[HookPlan] = Field(None, description="爽点/钩子节奏规划")
+    twist_density: Optional[str] = Field(None, description="反转密度目标")
+    cliffhanger_plan: Optional[List[str]] = Field(None, description="悬念/卡点规划")
+    ad_snippets: Optional[List[AdSnippet]] = Field(None, description="投流素材建议")
 
 
 class ScriptModel(BaseModel):
@@ -123,6 +129,8 @@ class StoryboardFrame(BaseModel):
     start_ms: Optional[int] = Field(None, description="时间轴起点（毫秒）")
     end_ms: Optional[int] = Field(None, description="时间轴终点（毫秒）")
     ai_prompt: Optional[str] = Field(None, description="用于生成图像/视频的提示词")
+    hook_tag: Optional[str] = Field(None, description="对应爽点/钩子标签（可选）")
+    ad_snippet: Optional[AdSnippet] = Field(None, description="关联投流素材（可选）")
     reference_images: Optional[List[str]] = Field(None, description="参考图 URL 列表")
     image_url: Optional[str] = Field(
         None, description="生成的分镜图像URL（生成后回填）"
@@ -237,6 +245,12 @@ class EpisodePlanItem(BaseModel):
     episode_number: int
     title: str
     summary: str
+    market_region: Optional[str] = Field(None, description="目标市场/地区")
+    micro_genre: Optional[str] = Field(None, description="微类型/细分题材")
+    hook_plan: Optional[HookPlan] = Field(None, description="爽点/钩子节奏规划")
+    twist_density: Optional[str] = Field(None, description="反转密度目标")
+    cliffhanger_plan: Optional[List[str]] = Field(None, description="悬念/卡点规划")
+    ad_snippets: Optional[List[AdSnippet]] = Field(None, description="投流素材建议")
     plot_points: Optional[List[PlotPoint]] = None
     character_arcs: Optional[Dict[str, Any]] = None
     conflicts: Optional[List[ConflictItem]] = None

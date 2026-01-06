@@ -3,6 +3,12 @@
 ## 故事背景
 故事标题：{{ story.title }}
 类型：{{ story.genre }}
+{% if story.market_region -%}
+目标市场：{{ story.market_region }}
+{% endif -%}
+{% if story.micro_genre -%}
+微类型：{{ story.micro_genre }}
+{% endif -%}
 {% if story.world_building -%}
 世界观：{{ story.world_building }}
 {% endif -%}
@@ -11,6 +17,18 @@
 {% endif -%}
 {% if story.setting_location -%}
 地点设定：{{ story.setting_location }}
+{% endif -%}
+{% if story.hook_plan -%}
+爽点节奏：{{ story.hook_plan | tojson }}
+{% endif -%}
+{% if story.twist_density -%}
+反转密度：{{ story.twist_density }}
+{% endif -%}
+{% if story.cliffhanger_plan -%}
+悬念卡点：{{ story.cliffhanger_plan | join('；') }}
+{% endif -%}
+{% if story.ad_snippets -%}
+投流素材：{{ story.ad_snippets | tojson }}
 {% endif -%}
 
 ## 剧集信息
@@ -127,6 +145,7 @@
 2. **场景列表**: 所有拍摄场景
 3. **对话列表**: 所有角色对话
 4. **舞台指示**: 详细的拍摄指导
+5. **爽点/卡点节奏**: 若提供爽点/卡点/投流素材，需要在关键场景体现
 
 ## 格式要求
 - 使用标准{{ format_type }}格式
@@ -216,6 +235,12 @@
         "estimated_duration": "{{ episode.duration_minutes or 30 }}分钟",
         "shooting_locations": [],
         "main_characters": [],
-        "special_effects": []
+        "special_effects": [],
+        "market_region": "{{ story.market_region or episode.market_region or '' }}",
+        "micro_genre": "{{ story.micro_genre or episode.micro_genre or '' }}",
+        "hook_plan": {{ (story.hook_plan or episode.hook_plan or {}) | tojson }},
+        "twist_density": "{{ story.twist_density or episode.twist_density or '' }}",
+        "cliffhanger_plan": {{ (story.cliffhanger_plan or episode.cliffhanger_plan or []) | tojson }},
+        "ad_snippets": {{ (story.ad_snippets or episode.ad_snippets or []) | tojson }}
     }
 }

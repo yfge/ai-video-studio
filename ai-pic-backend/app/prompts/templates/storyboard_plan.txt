@@ -9,6 +9,7 @@
 - composition 在三分法/对称/前后景/对角线/中心对称中选择
 - intent 说明情绪或叙事作用，避免重复
 - 每个选定场景 target_frames={{ frames_per_scene }}
+- 若上下文含爽点/卡点/投流素材，在 intent 中标注相应钩子
 
 {% if selected_scenes %}目标场景：{{ selected_scenes | tojson }}
 {% endif %}上下文：{{ context_json }}

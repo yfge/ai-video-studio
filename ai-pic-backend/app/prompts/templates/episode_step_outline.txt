@@ -3,11 +3,17 @@
 ## 故事信息
 标题：{{ story.title }}
 类型：{{ story.genre }}
+{% if story.market_region %}目标市场：{{ story.market_region }}{% endif %}
+{% if story.micro_genre %}微类型：{{ story.micro_genre }}{% endif %}
 {% if story.theme %}主题：{{ story.theme }}{% endif %}
 {% if story.synopsis %}概要：{{ story.synopsis }}{% endif %}
 {% if story.main_conflict %}主要冲突：{{ story.main_conflict }}{% endif %}
 {% if story.resolution %}结局/解法：{{ story.resolution }}{% endif %}
 {% if story.world_building %}世界观：{{ story.world_building | trim | truncate(300, True, '…') }}{% endif %}
+{% if story.hook_plan %}爽点节奏：{{ story.hook_plan | tojson }}{% endif %}
+{% if story.twist_density %}反转密度：{{ story.twist_density }}{% endif %}
+{% if story.cliffhanger_plan %}悬念卡点：{{ story.cliffhanger_plan | join('；') }}{% endif %}
+{% if story.ad_snippets %}投流素材：{{ story.ad_snippets | tojson }}{% endif %}
 
 ## 角色
 {% if story.main_characters -%}
@@ -23,6 +29,7 @@
 - 总集数：{{ episode_count }} 集{% if episode_duration %}，每集约 {{ episode_duration }} 分钟{% endif %}
 - 情节复杂度：{{ plot_complexity }}；节奏：{{ pacing }}
 - 每集只需要 1 句 logline（不要分段/换行），需与主线一致；建议在同一句话里包含「起承转合 + 钩子」（可用分号/顿号分隔）。
+- 若提供爽点/卡点/投流素材，需要在 logline 中体现节奏与钩子。
 - beats/详细节点此阶段可以省略（如果提供也可，但非必填）。
 {% if additional_requirements -%}
 - 额外要求：{{ additional_requirements }}

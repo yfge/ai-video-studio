@@ -178,6 +178,13 @@ class ScriptManagerMixin:
                 "format_type": format_type,
                 "scene_detail_level": scene_detail_level,
                 "style_preferences": style_preferences or [],
+                "market_region": story.get("market_region") or episode.get("market_region"),
+                "micro_genre": story.get("micro_genre") or episode.get("micro_genre"),
+                "hook_plan": story.get("hook_plan") or episode.get("hook_plan"),
+                "twist_density": story.get("twist_density") or episode.get("twist_density"),
+                "cliffhanger_plan": story.get("cliffhanger_plan")
+                or episode.get("cliffhanger_plan"),
+                "ad_snippets": story.get("ad_snippets") or episode.get("ad_snippets"),
             },
         }
 

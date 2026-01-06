@@ -3,6 +3,12 @@
 ## 故事信息
 故事标题：{{ story.title }}
 类型：{{ story.genre }}
+{% if story.market_region -%}
+目标市场：{{ story.market_region }}
+{% endif -%}
+{% if story.micro_genre -%}
+微类型：{{ story.micro_genre }}
+{% endif -%}
 {% if story.theme -%}
 主题：{{ story.theme }}
 {% endif -%}
@@ -14,6 +20,18 @@
 {% endif -%}
 {% if story.resolution -%}
 解决方案：{{ story.resolution }}
+{% endif -%}
+{% if story.hook_plan -%}
+爽点节奏：{{ story.hook_plan | tojson }}
+{% endif -%}
+{% if story.twist_density -%}
+反转密度：{{ story.twist_density }}
+{% endif -%}
+{% if story.cliffhanger_plan -%}
+悬念卡点：{{ story.cliffhanger_plan | join('；') }}
+{% endif -%}
+{% if story.ad_snippets -%}
+投流素材建议：{{ story.ad_snippets | tojson }}
 {% endif -%}
 
 ## 主要角色
@@ -64,6 +82,7 @@
 4. **角色发展**: 每个角色都有清晰的成长轨迹
 5. **冲突升级**: 冲突逐步升级，在适当时机达到高潮
 6. **场景拆分**: 返回每集的 scenes 数组，至少包含 scene_number/slug_line/location/time_of_day/summary
+7. **微类型与投流对齐**: 若给出微类型/爽点/投流素材，需在每集体现节奏与钩子
 
 ## 输出格式
 请以JSON格式返回，包含episodes数组，每集包含：
@@ -78,7 +97,11 @@
 8. **emotional_tone**: 情感基调
 9. **key_moments**: 关键时刻描述
 10. **cliffhanger**: 悬念设置（如果适用）
-11. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary
+11. **hook_plan**: 爽点/钩子节奏规划（如有）
+12. **twist_density**: 反转密度目标（如有）
+13. **cliffhanger_plan**: 悬念/卡点规划（如有）
+14. **ad_snippets**: 投流素材建议（如有）
+15. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary
 
 ## 情节发展建议
 - 第1集：角色介绍和背景设定，建立世界观
@@ -114,6 +137,20 @@
             "emotional_tone": "...",
             "key_moments": ["..."],
             "cliffhanger": "...",
+            "hook_plan": {
+                "opening_hook": "...",
+                "escalation_plan": "...",
+                "payoff_plan": "..."
+            },
+            "twist_density": "...",
+            "cliffhanger_plan": ["..."],
+            "ad_snippets": [
+                {
+                    "hook": "...",
+                    "duration_seconds": 15,
+                    "visual_summary": "..."
+                }
+            ],
             "scenes": [
                 {
                     "scene_number": 1,

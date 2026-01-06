@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.models.script import Episode, Story
+from app.utils.marketing_meta import merge_marketing_meta
 
 
 def to_int(value: Any) -> Optional[int]:
@@ -136,6 +137,10 @@ def build_episode_data(episode: Episode) -> Dict[str, Any]:
     """
     scenes = extract_episode_scenes(episode)
     scene_count = episode.scene_count or (len(scenes) if scenes else None)
+    marketing_meta = merge_marketing_meta(
+        episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {},
+        episode.generation_params if isinstance(episode.generation_params, dict) else {},
+    )
     return {
         "episode_number": episode.episode_number,
         "title": episode.title,
@@ -146,6 +151,7 @@ def build_episode_data(episode: Episode) -> Dict[str, Any]:
         "duration_minutes": episode.duration_minutes,
         "scene_count": scene_count,
         "scenes": scenes,
+        **marketing_meta,
     }
 
 
@@ -214,6 +220,10 @@ def build_story_data(
     Returns:
         Story data dict
     """
+    marketing_meta = merge_marketing_meta(
+        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
+        story.generation_params if isinstance(story.generation_params, dict) else {},
+    )
     return {
         "title": story.title,
         "genre": story.genre,
@@ -228,4 +238,5 @@ def build_story_data(
         "setting_location": story.setting_location,
         "previous_episode_summaries": previous_episode_summaries,
         "character_profiles": character_profiles,
+        **marketing_meta,
     }

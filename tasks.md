@@ -21,9 +21,10 @@
 - [ ] 功能/需求：定义脚本评分维度与阈值（冲突强度、角色辨识度、文化适配、素材可剪性、逻辑一致性），明确低分修订流程
 
 - [x] 后端：扩展 Story 生成 schema，支持 `market_region`/`micro_genre`/`hook_plan`/`twist_density`/`cliffhanger_plan`/`ad_snippets`
-- [ ] 后端：扩展 Episode/Script 生成 schema，支持市场/微类型/钩子/投流素材字段
+- [x] 后端：扩展 Episode/Script 生成 schema，支持市场/微类型/钩子/投流素材字段
 - [x] 后端：更新 story outline prompt 模板，注入微类型与 hook 规则
-- [ ] 后端：更新 episode/script/storyboard prompt 模板，注入微类型与 hook 规则；新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）
+- [x] 后端：更新 episode/script/storyboard prompt 模板，注入微类型与 hook 规则
+- [ ] 后端：新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）
 - [ ] 后端：实现 HookScore/ScriptScore agent 与“投流表生成”service，接入生成链路，低分触发修订或给出改写建议
 - [x] 后端：故事生成在 `extra_metadata` 落库 hook 计划与投流素材（hook_plan/twist_density/cliffhanger_plan/ad_snippets）
 - [ ] 后端：在 Task `parameters.agent_run` 中落库评分报告、投流表、素材标签

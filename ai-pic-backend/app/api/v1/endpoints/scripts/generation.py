@@ -14,7 +14,8 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task
 from app.models.user import User
-from app.schemas.script import ScriptGenerationRequest, ScriptResponse
+from app.schemas.generation_requests import ScriptGenerationRequest
+from app.schemas.script import ScriptResponse
 from app.services.script import ScriptGenerator, get_script_generator
 from app.services.task_worker import script_generate_task
 

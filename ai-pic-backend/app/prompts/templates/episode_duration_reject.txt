@@ -54,6 +54,10 @@
 类型：{{ story.genre }}
 {% if story.theme %}主题：{{ story.theme }}{% endif %}
 {% if story.synopsis %}概要：{{ story.synopsis }}{% endif %}
+{% if story.market_region %}目标市场：{{ story.market_region }}{% endif %}
+{% if story.micro_genre %}微类型：{{ story.micro_genre }}{% endif %}
+{% if story.hook_plan %}爽点节奏：{{ story.hook_plan | tojson }}{% endif %}
+{% if story.cliffhanger_plan %}悬念卡点：{{ story.cliffhanger_plan | join('；') }}{% endif %}
 
 ## 当前集的 Step Outline
 
