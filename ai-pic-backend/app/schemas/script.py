@@ -200,6 +200,8 @@ class StoryGenerationRequest(BaseModel):
     # 基本信息
     title: str = Field(..., max_length=255)
     genre: str = Field(..., max_length=50)
+    market_region: Optional[str] = Field(None, max_length=50, description="目标市场/地区")
+    micro_genre: Optional[str] = Field(None, max_length=80, description="微类型/细分题材")
     theme: Optional[str] = Field(None, max_length=255)
     target_audience: Optional[str] = Field(None, max_length=100)
     duration_minutes: Optional[int] = Field(None, ge=1)

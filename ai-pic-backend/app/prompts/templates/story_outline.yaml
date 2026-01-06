@@ -19,6 +19,18 @@ variables:
     required: true
     description: "故事类型"
     examples: ["剧情", "喜剧", "爱情", "悬疑", "科幻", "奇幻"]
+
+  market_region:
+    type: string
+    required: false
+    description: "目标市场/地区"
+    examples: ["北美", "东南亚", "欧洲", "拉美"]
+
+  micro_genre:
+    type: string
+    required: false
+    description: "微类型/细分题材"
+    examples: ["霸总复仇", "狼人恋爱", "黑帮复仇"]
   
   theme:
     type: string
@@ -100,3 +112,7 @@ expected_fields:
   - core_values
   - visual_style
   - selling_points
+  - hook_plan
+  - twist_density
+  - cliffhanger_plan
+  - ad_snippets
