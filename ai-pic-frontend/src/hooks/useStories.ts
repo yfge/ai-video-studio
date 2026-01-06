@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { storyAPI, virtualIPAPI } from "@/utils/api";
+import { STORY_GENERATE_DEFAULTS, STORY_GENRES, STORY_STATUSES } from "@/utils/storyOptions";
 import type { Story, VirtualIP, StoryGenerationRequest } from "@/utils/api";
 
 export interface UseStoriesOptions {
@@ -15,43 +16,10 @@ export interface UseStoriesOptions {
   }) => void;
 }
 
-export const GENRES = [
-  { value: "drama", label: "剧情" },
-  { value: "comedy", label: "喜剧" },
-  { value: "romance", label: "爱情" },
-  { value: "thriller", label: "惊悚" },
-  { value: "action", label: "动作" },
-  { value: "fantasy", label: "奇幻" },
-  { value: "sci-fi", label: "科幻" },
-  { value: "horror", label: "恐怖" },
-  { value: "mystery", label: "悬疑" },
-  { value: "historical", label: "历史" },
-];
+export const GENRES = STORY_GENRES;
+export const STATUSES = STORY_STATUSES;
 
-export const STATUSES = [
-  { value: "", label: "全部状态" },
-  { value: "draft", label: "草稿" },
-  { value: "approved", label: "已批准" },
-  { value: "published", label: "已发布" },
-];
-
-const INITIAL_GENERATE_FORM: StoryGenerationRequest = {
-  title: "",
-  genre: "drama",
-  theme: "",
-  target_audience: "",
-  duration_minutes: 30,
-  character_ids: [],
-  setting_time: "",
-  setting_location: "",
-  world_building: "",
-  additional_requirements: "",
-  style_preferences: [],
-  content_restrictions: [],
-  tags: [],
-  model: "",
-  temperature: 0.7,
-};
+const INITIAL_GENERATE_FORM: StoryGenerationRequest = STORY_GENERATE_DEFAULTS;
 
 export function useStories({ showAlert }: UseStoriesOptions) {
   const router = useRouter();

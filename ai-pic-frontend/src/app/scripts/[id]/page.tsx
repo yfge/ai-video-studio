@@ -7,6 +7,7 @@ import {
   WorkflowSteps,
   ScriptOverviewTab,
   ScriptScenesTab,
+  ScriptTrafficTab,
 } from "@/components/features";
 import { useScriptDetail, TABS } from "@/hooks/useScriptDetail";
 
@@ -143,6 +144,8 @@ export default function ScriptDetailPage() {
             setStructuredScenes={setStructuredScenes}
           />
         )}
+
+        {activeTab === "traffic" && <ScriptTrafficTab script={script} />}
       </div>
     </div>
   );

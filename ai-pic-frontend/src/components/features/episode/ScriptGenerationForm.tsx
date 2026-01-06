@@ -1,6 +1,6 @@
 "use client";
 
-import { MultiModelSelector } from "@/components/shared";
+import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import { scriptAPI } from "@/utils/api";
 import type { ScriptGenerationRequest } from "@/utils/api";
 
@@ -121,6 +121,13 @@ export function ScriptGenerationForm({
           </select>
         </div>
       </div>
+
+      <MarketingFields
+        form={generateForm}
+        setForm={setGenerateForm}
+        title="市场/微类型/节奏模板"
+        idPrefix="script"
+      />
 
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">

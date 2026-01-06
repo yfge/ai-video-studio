@@ -35,6 +35,7 @@ export {
   WorkflowSteps,
   ScriptOverviewTab,
   ScriptScenesTab,
+  ScriptTrafficTab,
 } from './script'
 export {
   VirtualIPDetailHeader,

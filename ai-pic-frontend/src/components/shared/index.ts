@@ -7,6 +7,7 @@
 export { default as AuthGuard } from './AuthGuard'
 export { CreationOverlay } from './CreationOverlay'
 export { ImagePreviewCard } from './ImagePreviewCard'
+export { MarketingFields, type MarketingFormValues } from './MarketingFields'
 export { ModelSelector } from './ModelSelector'
 export { MultiModelSelector } from './MultiModelSelector'
 export { ModelUiFields } from './ModelUiFields'

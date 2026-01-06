@@ -669,9 +669,37 @@ export interface NormalizedShot {
   character_ids?: number[] | null;
 }
 
+export interface HookBeat {
+  beat_type?: string;
+  description: string;
+  timing?: string;
+  intensity?: string;
+}
+
+export interface HookPlan {
+  opening_hook?: string;
+  escalation_plan?: string;
+  payoff_plan?: string;
+  key_reversals?: HookBeat[];
+}
+
+export interface AdSnippet {
+  duration_seconds?: number;
+  hook: string;
+  visual_summary?: string;
+  call_to_action?: string;
+}
+
 export interface StoryGenerationRequest {
   title: string;
   genre: string;
+  market_region?: string;
+  micro_genre?: string;
+  hook_plan?: HookPlan;
+  twist_density?: string;
+  cliffhanger_plan?: string[];
+  ad_snippets?: AdSnippet[];
+  pacing_template?: string;
   theme?: string;
   target_audience?: string;
   duration_minutes?: number;
@@ -691,6 +719,13 @@ export interface EpisodeGenerationRequest {
   story_id: number;
   episode_count: number;
   episode_duration?: number;
+  market_region?: string;
+  micro_genre?: string;
+  hook_plan?: HookPlan;
+  twist_density?: string;
+  cliffhanger_plan?: string[];
+  ad_snippets?: AdSnippet[];
+  pacing_template?: string;
   focus_characters?: number[];
   plot_complexity: string;
   pacing: string;
@@ -706,6 +741,13 @@ export interface ScriptGenerationRequest {
   language: string;
   dialogue_style: string;
   scene_detail_level: string;
+  market_region?: string;
+  micro_genre?: string;
+  hook_plan?: HookPlan;
+  twist_density?: string;
+  cliffhanger_plan?: string[];
+  ad_snippets?: AdSnippet[];
+  pacing_template?: string;
   additional_requirements?: string;
   style_preferences?: string[];
   model?: string;

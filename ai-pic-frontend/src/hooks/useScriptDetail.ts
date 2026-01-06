@@ -3,78 +3,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authAPI, scriptAPI, storyStructureAPI } from "@/utils/api";
 import type { NormalizedScene, NormalizedShot, SceneBeat, Script, User } from "@/utils/api";
-import type { SceneNode } from "@/components/features";
 import { isAdmin } from "@/utils/auth";
+import {
+  normalizeDialogues,
+  normalizeDirections,
+  normalizeScenes,
+  toSceneNumber,
+  type ScriptScene,
+} from "@/hooks/scriptDetailUtils";
+import { SCRIPT_TABS, type ScriptTabId } from "@/hooks/scriptTabs";
+import { useScriptStructure } from "@/hooks/useScriptStructure";
 
-export type TabId = "overview" | "scenes";
-
-export type ScriptScene = {
-  scene_number?: number | string;
-  location?: string;
-  time?: string;
-  description?: string;
-  characters?: string[] | string;
-  notes?: string;
-  [key: string]: unknown;
-};
-
-export type ScriptDialogue =
-  | {
-      scene_number?: number | string;
-      character?: string;
-      content?: string;
-      emotion?: string;
-      action?: string;
-    }
-  | string;
-
-export type ScriptDirection =
-  | {
-      scene_number?: number | string;
-      timing?: string;
-      content?: string;
-      type?: string;
-    }
-  | string;
-
-export const TABS: Array<{ id: TabId; name: string; description: string }> = [
-  { id: "overview", name: "概览", description: "剧本文本与统计" },
-  { id: "scenes", name: "场景", description: "按场景查看对白与指令" },
-];
-
-export const formatDate = (value?: string): string => {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
-};
-
-export const toSceneNumber = (value: number | string | undefined): number | undefined => {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const parsed = parseInt(value, 10);
-    return Number.isNaN(parsed) ? undefined : parsed;
-  }
-  return undefined;
-};
-
-const normalizeScenes = (scenes: unknown): ScriptScene[] => {
-  if (!Array.isArray(scenes)) return [];
-  return scenes.map((scene, index) => {
-    if (scene && typeof scene === "object") {
-      return scene as ScriptScene;
-    }
-    return { scene_number: index + 1, description: typeof scene === "string" ? scene : undefined };
-  });
-};
-
-const normalizeDialogues = (items: unknown): ScriptDialogue[] =>
-  Array.isArray(items) ? (items as ScriptDialogue[]) : [];
-
-const normalizeDirections = (items: unknown): ScriptDirection[] =>
-  Array.isArray(items) ? (items as ScriptDirection[]) : [];
+export type TabId = ScriptTabId;
+export const TABS = SCRIPT_TABS;
+export { formatDate, toSceneNumber } from "@/hooks/scriptDetailUtils";
+export type { ScriptScene, ScriptDialogue, ScriptDirection } from "@/hooks/scriptDetailUtils";
 
 export interface UseScriptDetailOptions {
   scriptKey: string;
@@ -86,12 +29,10 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
   const [activeTab, setActiveTab] = useState<TabId>("scenes");
   const [script, setScript] = useState<Script | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [structuredScenes, setStructuredScenes] = useState<SceneNode[]>([]);
-  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>([]);
   const [sceneBeatsMap, setSceneBeatsMap] = useState<Record<number, SceneBeat[]>>({});
   const [sceneShotsMap, setSceneShotsMap] = useState<Record<number, NormalizedShot[]>>({});
-  const [structureLoading, setStructureLoading] = useState(false);
-  const [structureError, setStructureError] = useState<string | null>(null);
+  const { normalizedScenes, structuredScenes, setStructuredScenes, structureLoading, structureError } =
+    useScriptStructure(script?.id);
   const [showStructureEditor, setShowStructureEditor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -119,37 +60,6 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
     loadInitialData();
   }, [loadInitialData]);
 
-  // Load normalized scenes
-  useEffect(() => {
-    if (!script?.id) return;
-    let cancelled = false;
-    const loadStructure = async () => {
-      try {
-        setStructureLoading(true);
-        setStructureError(null);
-        const res = await storyStructureAPI.getNormalizedScenes(script.id);
-        if (cancelled) return;
-        if (res.success && Array.isArray(res.data)) {
-          setNormalizedScenes(res.data);
-        } else {
-          setNormalizedScenes([]);
-          if (res.error) setStructureError(res.error);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to load structured scenes", error);
-          setStructureError("加载结构化场景失败");
-        }
-      } finally {
-        if (!cancelled) setStructureLoading(false);
-      }
-    };
-    loadStructure();
-    return () => {
-      cancelled = true;
-    };
-  }, [script?.id]);
-
   // Load current user
   useEffect(() => {
     let mounted = true;
@@ -171,22 +81,6 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
 
   // Computed values
   const rawScenes = useMemo(() => normalizeScenes(script?.scenes), [script?.scenes]);
-
-  useEffect(() => {
-    if (!normalizedScenes.length) return;
-    setStructuredScenes(
-      normalizedScenes.map((scene) => ({
-        id: scene.id,
-        scene_number: scene.scene_number,
-        slug_line: scene.slug_line,
-        location: scene.location ?? undefined,
-        time_of_day: scene.time_of_day ?? undefined,
-        status: scene.status,
-        beats: [],
-        shots: [],
-      })),
-    );
-  }, [normalizedScenes]);
 
   const structuredSceneViews = useMemo<ScriptScene[]>(() => {
     if (!structuredScenes.length) return [];

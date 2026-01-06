@@ -8,6 +8,8 @@ import type {
   Episode,
   Script,
   VirtualIP,
+  HookPlan,
+  AdSnippet,
   EpisodeGenerationRequest,
 } from "@/utils/api";
 
@@ -22,6 +24,13 @@ export interface UseStoryDetailOptions {
 export interface EpisodeGenForm {
   episode_count: number;
   episode_duration: number;
+  market_region: string;
+  micro_genre: string;
+  hook_plan?: HookPlan;
+  twist_density: string;
+  cliffhanger_plan: string[];
+  ad_snippets: AdSnippet[];
+  pacing_template: string;
   plot_complexity: string;
   pacing: string;
   additional_requirements: string;
@@ -30,33 +39,18 @@ export interface EpisodeGenForm {
   temperature: number;
 }
 
-type EpisodeScene = Record<string, unknown>;
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-
-export const extractEpisodeScenes = (episode: Episode | null): EpisodeScene[] => {
-  if (!episode) return [];
-  const meta = asRecord(episode.extra_metadata) ?? asRecord(episode.metadata) ?? {};
-  const scenes = (meta as Record<string, unknown>).scenes;
-  if (Array.isArray(scenes)) {
-    return scenes.filter(
-      (scene): scene is EpisodeScene => Boolean(scene) && typeof scene === "object"
-    );
-  }
-  return [];
-};
-
-export const getEpisodeSceneCount = (episode: Episode | null): number | undefined => {
-  if (!episode) return undefined;
-  const scenes = extractEpisodeScenes(episode);
-  const fallback = scenes.length > 0 ? scenes.length : undefined;
-  return episode.scene_count ?? fallback;
-};
+export { extractEpisodeScenes, getEpisodeSceneCount } from "@/hooks/storyDetailUtils";
 
 const INITIAL_GEN_FORM: EpisodeGenForm = {
   episode_count: 3,
   episode_duration: 30,
+  market_region: "",
+  micro_genre: "",
+  hook_plan: undefined,
+  twist_density: "",
+  cliffhanger_plan: [],
+  ad_snippets: [],
+  pacing_template: "",
   plot_complexity: "medium",
   pacing: "medium",
   additional_requirements: "",
@@ -89,6 +83,15 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
     story_id: story?.id ?? 0,
     episode_count: genForm.episode_count,
     episode_duration: genForm.episode_duration,
+    market_region: genForm.market_region || undefined,
+    micro_genre: genForm.micro_genre || undefined,
+    hook_plan: genForm.hook_plan,
+    twist_density: genForm.twist_density || undefined,
+    cliffhanger_plan: genForm.cliffhanger_plan.length
+      ? genForm.cliffhanger_plan
+      : undefined,
+    ad_snippets: genForm.ad_snippets.length ? genForm.ad_snippets : undefined,
+    pacing_template: genForm.pacing_template || undefined,
     plot_complexity: genForm.plot_complexity,
     pacing: genForm.pacing,
     additional_requirements: genForm.additional_requirements || undefined,

@@ -1,7 +1,7 @@
 "use client";
 
 import type { VirtualIP } from "@/utils/api";
-import { MultiModelSelector } from "@/components/shared";
+import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import type { EpisodeGenForm } from "@/hooks/useStoryDetail";
 
 interface EpisodeGeneratePanelProps {
@@ -145,6 +145,12 @@ export function EpisodeGeneratePanel({
               />
             </div>
           </div>
+          <MarketingFields
+            form={genForm}
+            setForm={setGenForm}
+            title="市场/微类型/节奏模板"
+            idPrefix="episode"
+          />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               额外要求
