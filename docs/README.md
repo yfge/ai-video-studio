@@ -13,6 +13,9 @@ This directory holds design notes, API references, and testing guides. Keep this
 ## Design Documents
 - `docs/design/duration-orchestrator-agent.md` — Duration Orchestrator Agent 设计（端到端时长闭环验证）
 
+## Market Insights
+- `docs/short-drama-overseas-insights.md` — notes from Sanlian Lifeweek PDFs on short‑drama export.
+
 ## Testing
 - `docs/TESTING_GUIDE.md` — browser E2E validation steps.
 
