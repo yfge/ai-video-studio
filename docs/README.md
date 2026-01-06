@@ -15,6 +15,7 @@ This directory holds design notes, API references, and testing guides. Keep this
 
 ## Market Insights
 - `docs/short-drama-overseas-insights.md` — notes from Sanlian Lifeweek PDFs on short‑drama export.
+- `docs/short-drama-microgenre-framework.md` — market x micro-genre matrix, Story Bible template, hook cadence, traffic sheet spec, and scoring rules.
 
 ## Testing
 - `docs/TESTING_GUIDE.md` — browser E2E validation steps.

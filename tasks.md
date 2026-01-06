@@ -16,9 +16,9 @@
 ### 进度（功能→后端→前端→验证）
 
 - [x] 功能/需求：整理海外短剧/网文出海投流洞察至 `docs/short-drama-overseas-insights.md`
-- [ ] 功能/需求：定义“市场×微类型”矩阵与 Story Bible（人群、强钩子、禁区、本土化壳），并在 `docs/` 建立规范文档
-- [ ] 功能/需求：制定 hook/反转/卡点节奏规范（含前N集情绪积压与释放节奏、反转密度阈值），输出“投流表/素材清单”标准结构
-- [ ] 功能/需求：定义脚本评分维度与阈值（冲突强度、角色辨识度、文化适配、素材可剪性、逻辑一致性），明确低分修订流程
+- [x] 功能/需求：定义“市场×微类型”矩阵与 Story Bible（人群、强钩子、禁区、本土化壳），并在 `docs/short-drama-microgenre-framework.md` 建立规范文档
+- [x] 功能/需求：制定 hook/反转/卡点节奏规范（含前N集情绪积压与释放节奏、反转密度阈值），输出“投流表/素材清单”标准结构
+- [x] 功能/需求：定义脚本评分维度与阈值（冲突强度、角色辨识度、文化适配、素材可剪性、逻辑一致性），明确低分修订流程
 
 - [x] 后端：扩展 Story 生成 schema，支持 `market_region`/`micro_genre`/`hook_plan`/`twist_density`/`cliffhanger_plan`/`ad_snippets`
 - [x] 后端：扩展 Episode/Script 生成 schema，支持市场/微类型/钩子/投流素材字段
