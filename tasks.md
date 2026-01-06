@@ -15,14 +15,18 @@
 
 ### 进度（功能→后端→前端→验证）
 
+- [x] 功能/需求：整理海外短剧/网文出海投流洞察至 `docs/short-drama-overseas-insights.md`
 - [ ] 功能/需求：定义“市场×微类型”矩阵与 Story Bible（人群、强钩子、禁区、本土化壳），并在 `docs/` 建立规范文档
 - [ ] 功能/需求：制定 hook/反转/卡点节奏规范（含前N集情绪积压与释放节奏、反转密度阈值），输出“投流表/素材清单”标准结构
 - [ ] 功能/需求：定义脚本评分维度与阈值（冲突强度、角色辨识度、文化适配、素材可剪性、逻辑一致性），明确低分修订流程
 
-- [ ] 后端：扩展 Story/Episode/Script 生成 schema，支持 `market_region`/`micro_genre`/`hook_plan`/`twist_density`/`cliffhanger_plan`/`ad_snippets`
-- [ ] 后端：更新 story/episode/script/storyboard prompt 模板，注入微类型与 hook 规则；新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）
+- [x] 后端：扩展 Story 生成 schema，支持 `market_region`/`micro_genre`/`hook_plan`/`twist_density`/`cliffhanger_plan`/`ad_snippets`
+- [ ] 后端：扩展 Episode/Script 生成 schema，支持市场/微类型/钩子/投流素材字段
+- [x] 后端：更新 story outline prompt 模板，注入微类型与 hook 规则
+- [ ] 后端：更新 episode/script/storyboard prompt 模板，注入微类型与 hook 规则；新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）
 - [ ] 后端：实现 HookScore/ScriptScore agent 与“投流表生成”service，接入生成链路，低分触发修订或给出改写建议
-- [ ] 后端：在 `extra_metadata` 与 Task `parameters.agent_run` 中落库 hook 计划、评分报告、投流表、素材标签
+- [x] 后端：故事生成在 `extra_metadata` 落库 hook 计划与投流素材（hook_plan/twist_density/cliffhanger_plan/ad_snippets）
+- [ ] 后端：在 Task `parameters.agent_run` 中落库评分报告、投流表、素材标签
 
 - [ ] 前端：故事/剧集/剧本生成入口新增“市场/微类型/节奏模板”选择与预览说明
 - [ ] 前端：新增“爽点评分/风险提示/投流表”视图，支持导出素材清单
