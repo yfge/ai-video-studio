@@ -1308,6 +1308,16 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         }
         apply_marketing_overrides(story_data, marketing_overrides)
         apply_marketing_overrides(episode_data, marketing_overrides)
+        marketing_overrides = {
+            "market_region": request_dict.get("market_region"),
+            "micro_genre": request_dict.get("micro_genre"),
+            "hook_plan": request_dict.get("hook_plan"),
+            "twist_density": request_dict.get("twist_density"),
+            "cliffhanger_plan": request_dict.get("cliffhanger_plan"),
+            "ad_snippets": request_dict.get("ad_snippets"),
+        }
+        apply_marketing_overrides(story_data, marketing_overrides)
+        apply_marketing_overrides(episode_data, marketing_overrides)
 
         import anyio
 

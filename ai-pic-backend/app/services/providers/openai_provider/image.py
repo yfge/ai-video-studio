@@ -51,11 +51,13 @@ async def generate_image(
             )
         size_value = normalized_size or size
 
-        # DALL-E 3 parameters
+        request_n = 1 if model == "dall-e-3" else n
+
+        # DALL-E parameters
         request_data = {
             "model": model,
             "prompt": prompt,
-            "n": n,
+            "n": request_n,
             "size": size_value,
         }
 
