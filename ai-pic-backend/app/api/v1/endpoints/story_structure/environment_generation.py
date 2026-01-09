@@ -43,12 +43,20 @@ class EnvironmentImageGenerateParams:
         count: int = Query(1, ge=1, le=4, description="生成数量"),
         size: str | None = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
         aspect_ratio: str | None = Query(None, description="画幅比例，如 16:9、1:1"),
+        seed: int | None = Query(None, description="随机种子（可选）"),
+        steps: int | None = Query(None, description="采样步数（可选）"),
+        cfg_scale: float | None = Query(None, description="CFG scale（可选）"),
+        negative_prompt: str | None = Query(None, description="反向提示词（可选）"),
     ) -> None:
         self.prompt = prompt
         self.model = model
         self.count = count
         self.size = size
         self.aspect_ratio = aspect_ratio
+        self.seed = seed
+        self.steps = steps
+        self.cfg_scale = cfg_scale
+        self.negative_prompt = negative_prompt
 
 
 @router.post("/environments/{env_id}/images/generate")
@@ -73,6 +81,10 @@ async def generate_environment_images(
             count=params.count,
             size=params.size,
             aspect_ratio=params.aspect_ratio,
+            seed=params.seed,
+            steps=params.steps,
+            cfg_scale=params.cfg_scale,
+            negative_prompt=params.negative_prompt,
         )
         saved = await generate_environment_images_service(
             db=db,
@@ -109,6 +121,10 @@ async def generate_environment_images_async(
         count=params.count,
         size=params.size,
         aspect_ratio=params.aspect_ratio,
+        seed=params.seed,
+        steps=params.steps,
+        cfg_scale=params.cfg_scale,
+        negative_prompt=params.negative_prompt,
     )
     payload = build_environment_text_to_image_task_payload(env_id=env.id, request=req)
 

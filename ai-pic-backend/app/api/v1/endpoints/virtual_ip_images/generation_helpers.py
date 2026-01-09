@@ -11,6 +11,7 @@ from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.prompts.template_audit import build_prompt_template_audit
 from app.schemas.virtual_ip import VirtualIPImageCreate
 from app.services.ai_service import ai_service
+from app.services.image_gen.coerce import clean_str, maybe_float, maybe_int
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,10 @@ def resolve_virtual_ip_image_params(
     count: Optional[int],
     size: Optional[str],
     aspect_ratio: Optional[str],
+    seed: Optional[int],
+    steps: Optional[int],
+    cfg_scale: Optional[float],
+    negative_prompt: Optional[str],
 ) -> Dict[str, Any]:
     """Resolve image generation parameters from payload + form defaults."""
     style_value = payload.get("style", style) or "realistic"
@@ -56,6 +61,10 @@ def resolve_virtual_ip_image_params(
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)
     aspect_ratio_value = payload.get("aspect_ratio", aspect_ratio)
+    seed_int = maybe_int(payload.get("seed", seed))
+    steps_int = maybe_int(payload.get("steps", steps))
+    cfg_scale_value = maybe_float(payload.get("cfg_scale", cfg_scale))
+    negative_prompt_value = clean_str(payload.get("negative_prompt", negative_prompt))
     additional_raw = payload.get("additional_prompts", additional_prompts) or ""
     is_default_value = payload.get("is_default", is_default)
     additional_prompt_list = [
@@ -82,6 +91,10 @@ def resolve_virtual_ip_image_params(
         "count": count_int,
         "size": size_value,
         "aspect_ratio": aspect_ratio_value,
+        "seed": seed_int,
+        "steps": steps_int,
+        "cfg_scale": cfg_scale_value,
+        "negative_prompt": negative_prompt_value,
         "additional_prompts": additional_prompt_list,
         "is_default": is_default_bool,
     }
@@ -132,6 +145,10 @@ async def run_virtual_ip_image_generation(
         count=params["count"],
         size=params["size"],
         aspect_ratio=params["aspect_ratio"],
+        seed=params.get("seed"),
+        steps=params.get("steps"),
+        cfg_scale=params.get("cfg_scale"),
+        negative_prompt=params.get("negative_prompt"),
     )
 
     if not result:
@@ -157,6 +174,10 @@ def build_virtual_ip_image_payload(
         "count": params["count"],
         "size": params["size"],
         "aspect_ratio": params["aspect_ratio"],
+        "seed": params.get("seed"),
+        "steps": params.get("steps"),
+        "cfg_scale": params.get("cfg_scale"),
+        "negative_prompt": params.get("negative_prompt"),
         "additional_prompts": params["additional_prompts"],
         "is_default": params["is_default"],
         "prompt_template": build_prompt_template_audit("virtual_ip_image"),
@@ -268,6 +289,12 @@ def persist_virtual_ip_image(
         params.get("size"),
         params.get("aspect_ratio"),
     )
+    for key in ("seed", "steps", "cfg_scale", "negative_prompt"):
+        value = result.get(key)
+        if value is None:
+            value = params.get(key)
+        if value is not None:
+            generation_params[key] = value
 
     image_data = VirtualIPImageCreate(
         virtual_ip_id=virtual_ip.id,

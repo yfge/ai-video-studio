@@ -7,15 +7,15 @@ Text-to-image generation for virtual IP images.
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, Request
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.virtual_ip import VirtualIPImageResponse
 from app.services.task_worker import virtual_ip_image_generate_task
+from fastapi import APIRouter, Depends, Form, Request
+from sqlalchemy.orm import Session
+
 from .generation_helpers import (
     build_virtual_ip_image_payload,
     persist_virtual_ip_image,
@@ -41,6 +41,10 @@ async def generate_virtual_ip_image(
     count: Optional[int] = Form(None),
     size: Optional[str] = Form(None),
     aspect_ratio: Optional[str] = Form(None),
+    seed: Optional[int] = Form(None),
+    steps: Optional[int] = Form(None),
+    cfg_scale: Optional[float] = Form(None),
+    negative_prompt: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -58,6 +62,10 @@ async def generate_virtual_ip_image(
         count=count,
         size=size,
         aspect_ratio=aspect_ratio,
+        seed=seed,
+        steps=steps,
+        cfg_scale=cfg_scale,
+        negative_prompt=negative_prompt,
     )
 
     result = await run_virtual_ip_image_generation(virtual_ip_id, virtual_ip, params)
@@ -78,6 +86,10 @@ async def generate_virtual_ip_image_async(
     count: Optional[int] = Form(None),
     size: Optional[str] = Form(None),
     aspect_ratio: Optional[str] = Form(None),
+    seed: Optional[int] = Form(None),
+    steps: Optional[int] = Form(None),
+    cfg_scale: Optional[float] = Form(None),
+    negative_prompt: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -95,6 +107,10 @@ async def generate_virtual_ip_image_async(
         count=count,
         size=size,
         aspect_ratio=aspect_ratio,
+        seed=seed,
+        steps=steps,
+        cfg_scale=cfg_scale,
+        negative_prompt=negative_prompt,
     )
     payload = build_virtual_ip_image_payload(virtual_ip, params)
 

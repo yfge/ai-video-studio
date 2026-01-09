@@ -16,6 +16,7 @@ from app.services.image_gen import (
 from app.services.image_gen.coerce import (
     clean_str,
     coerce_str_list,
+    maybe_float,
     maybe_int,
     value_from_payload,
 )
@@ -38,6 +39,11 @@ class VirtualIPVariantRequest:
     style: str | None
     style_preset_id: str | None
     style_spec: Any | None
+    seed: int | None
+    steps: int | None
+    cfg_scale: float | None
+    negative_prompt: str | None
+    strength: float | None
     reference_images: list[str]
 
 
@@ -50,6 +56,11 @@ def resolve_virtual_ip_variant_request(
     count: int | None,
     size: str | None,
     aspect_ratio: str | None,
+    seed: int | None,
+    steps: int | None,
+    cfg_scale: float | None,
+    negative_prompt: str | None,
+    strength: float | None,
     base_image_model: str | None,
 ) -> VirtualIPVariantRequest:
     prompt_value = clean_str(value_from_payload(payload, "prompt", prompt))
@@ -66,6 +77,13 @@ def resolve_virtual_ip_variant_request(
     aspect_ratio_value = clean_str(
         value_from_payload(payload, "aspect_ratio", aspect_ratio)
     )
+    seed_int = maybe_int(value_from_payload(payload, "seed", seed))
+    steps_int = maybe_int(value_from_payload(payload, "steps", steps))
+    cfg_scale_value = maybe_float(value_from_payload(payload, "cfg_scale", cfg_scale))
+    negative_prompt_value = clean_str(
+        value_from_payload(payload, "negative_prompt", negative_prompt)
+    )
+    strength_value = maybe_float(value_from_payload(payload, "strength", strength))
 
     style_hint = clean_str(payload.get("style")) or "realistic"
     style_preset_id_value = clean_str(payload.get("style_preset_id"))
@@ -82,6 +100,11 @@ def resolve_virtual_ip_variant_request(
         style=style_hint,
         style_preset_id=style_preset_id_value,
         style_spec=style_spec_value,
+        seed=seed_int,
+        steps=steps_int,
+        cfg_scale=cfg_scale_value,
+        negative_prompt=negative_prompt_value,
+        strength=strength_value,
         reference_images=reference_images,
     )
 
@@ -105,6 +128,11 @@ def build_virtual_ip_variant_task_payload(
         "style": request.style,
         "style_preset_id": request.style_preset_id,
         "style_spec": request.style_spec,
+        "seed": request.seed,
+        "steps": request.steps,
+        "cfg_scale": request.cfg_scale,
+        "negative_prompt": request.negative_prompt,
+        "strength": request.strength,
         "reference_images": request.reference_images,
         "prompt_template": build_prompt_template_audit("virtual_ip_image_variant"),
     }
@@ -144,6 +172,11 @@ async def generate_virtual_ip_image_variants(
             count=request.count,
             size=request.size,
             aspect_ratio=request.aspect_ratio,
+            seed=request.seed,
+            steps=request.steps,
+            cfg_scale=request.cfg_scale,
+            negative_prompt=request.negative_prompt,
+            strength=request.strength,
             base_image=base_image_input,
             reference_images=request.reference_images,
             backend_base=backend_base,
@@ -175,6 +208,10 @@ async def generate_virtual_ip_image_variants(
         generation_params["size"] = normalized.size
     if normalized.aspect_ratio is not None:
         generation_params["aspect_ratio"] = normalized.aspect_ratio
+    for key in ("seed", "steps", "cfg_scale", "negative_prompt", "strength"):
+        value = getattr(normalized, key, None)
+        if value is not None:
+            generation_params[key] = value
     if prompt_template is not None:
         generation_params["prompt_template"] = prompt_template
     if normalized.prompt:
@@ -188,6 +225,11 @@ async def generate_virtual_ip_image_variants(
         "model_id": normalized.model_id,
         "size": normalized.size,
         "aspect_ratio": normalized.aspect_ratio,
+        "seed": normalized.seed,
+        "steps": normalized.steps,
+        "cfg_scale": normalized.cfg_scale,
+        "negative_prompt": normalized.negative_prompt,
+        "strength": normalized.strength,
         "reference_images_count": len(extra_images),
         "reference_images_hash": hash_reference_images(extra_images),
         "audit_warnings": list(normalized.audit.warnings or []),

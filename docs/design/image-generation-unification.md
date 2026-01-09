@@ -12,6 +12,7 @@
 - ✅ Phase 2：虚拟 IP 文生图/图生图（variants）接入归一化层，并统一 Runtime Prompt（`virtual_ip_image` / `virtual_ip_image_variant`）
 - ✅ Phase 3：环境文生图/图生图（sync+async+worker）接入归一化层，并接入 PromptManager（`environment_image`）
 - ✅ Phase 4：分镜图生图接入归一化层（保留现有锚点合并策略，抽出参数构建到 service）
+- ✅ Phase 5：统一“质量一致性/可复现”参数（`seed/steps/cfg_scale/negative_prompt/strength`）贯通 VirtualIP / Environment / Storyboard（含 Task.parameters 记录）
 
 ---
 
@@ -161,10 +162,15 @@
    - `aspect_ratio`: str | None
    - `width/height`: int | None（兼容旧字段）
    - `count`: int
+   - `seed`: int | None（可选：固定随机种子）
+   - `steps`: int | None（可选：采样步数）
+   - `cfg_scale`: float | None（可选：CFG scale）
+   - `negative_prompt`: str | None（可选：反向提示词，仅部分 provider 支持）
+   - `strength`: float | None（可选：图生图强度，仅 img2img 场景）
    - `base_image`: str | None（img2img 基准）
    - `reference_images`: list[str]（额外参考图）
    - `labeled_references`: list[dict] | None（仅 storyboard）
-   - 扩展字段（后续）：`negative_prompt/seed/steps/cfg_scale/...`
+   - 扩展字段（后续）：`quality/denoise/image_fidelity/...`（按 provider 逐步收敛）
 
 2. `ImageGenNormalized`（归一化后的结构）
 
@@ -173,9 +179,10 @@
    - `normalized_size`: str | None
    - `normalized_aspect_ratio`: str | None（按能力过滤后的结果）
    - `prompt`: str（最终 prompt，模板化/追加 style prompt 等）
+   - `seed/steps/cfg_scale/negative_prompt/strength`（完成类型转换与范围约束后的值）
    - `base_image_url`: str | None（已转为绝对可访问 URL）
    - `extra_images`: list[str]（已归一化）
-   - `safe_kwargs`: dict（按 provider 白名单过滤后的 kwargs）
+   - provider-safe 调用参数：由 `build_ai_manager_call(normalized)` 生成（按 provider 白名单过滤 kwargs）
    - `audit`: dict（归一化过程信息：丢弃的字段、默认值来源、policy 选择等）
 
 3. `ImagePersistResult`（持久化结果）

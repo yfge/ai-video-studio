@@ -165,6 +165,14 @@ def storyboard_image_generate_task(
         except (TypeError, ValueError):
             return None
 
+    def _maybe_float(value: Any) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
     _process_storyboard_image_task(
         task_id,
         script_id,
@@ -178,6 +186,11 @@ def storyboard_image_generate_task(
         style_preset_id=payload.get("style_preset_id"),
         style_spec=payload.get("style_spec"),
         aspect_ratio=payload.get("aspect_ratio"),
+        seed=_maybe_int(payload.get("seed")),
+        steps=_maybe_int(payload.get("steps")),
+        cfg_scale=_maybe_float(payload.get("cfg_scale")),
+        negative_prompt=payload.get("negative_prompt"),
+        strength=_maybe_float(payload.get("strength")),
         reference_images=payload.get("reference_images") or [],
         labeled_references=payload.get("labeled_references"),
         count=count_int,

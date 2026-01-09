@@ -67,6 +67,11 @@ def process_virtual_ip_image_variant_task(
                 count=None,
                 size=None,
                 aspect_ratio=None,
+                seed=None,
+                steps=None,
+                cfg_scale=None,
+                negative_prompt=None,
+                strength=None,
                 base_image_model=base_image.ai_model,
             )
             return await generate_virtual_ip_image_variants(

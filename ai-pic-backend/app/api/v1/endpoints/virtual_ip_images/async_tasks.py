@@ -58,6 +58,10 @@ def process_virtual_ip_image_task(
                 count=int(payload.get("count") or 1),
                 size=payload.get("size"),
                 aspect_ratio=payload.get("aspect_ratio"),
+                seed=payload.get("seed"),
+                steps=payload.get("steps"),
+                cfg_scale=payload.get("cfg_scale"),
+                negative_prompt=payload.get("negative_prompt"),
             )
             if not result:
                 raise RuntimeError("AI图像生成失败")
@@ -111,6 +115,12 @@ def process_virtual_ip_image_task(
                 generation_params["prompt_template"] = prompt_template
             if result.get("prompt_sha256") is not None:
                 generation_params["prompt_sha256"] = result.get("prompt_sha256")
+            for key in ("seed", "steps", "cfg_scale", "negative_prompt"):
+                value = result.get(key)
+                if value is None:
+                    value = payload.get(key)
+                if value is not None:
+                    generation_params[key] = value
 
             image_data = VirtualIPImageCreate(
                 virtual_ip_id=virtual_ip.id,

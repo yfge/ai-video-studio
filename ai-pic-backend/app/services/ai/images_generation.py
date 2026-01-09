@@ -31,6 +31,10 @@ class ImageGenerationMixin:
         count: int = 1,
         size: str | None = None,
         aspect_ratio: str | None = None,
+        seed: int | None = None,
+        steps: int | None = None,
+        cfg_scale: float | None = None,
+        negative_prompt: str | None = None,
     ) -> Optional[Dict[str, Any]]:
         """为虚拟IP生成图像"""
 
@@ -124,6 +128,10 @@ class ImageGenerationMixin:
                     count=count,
                     size=size,
                     aspect_ratio=aspect_ratio,
+                    seed=seed,
+                    steps=steps,
+                    cfg_scale=cfg_scale,
+                    negative_prompt=negative_prompt,
                 ),
                 strict=False,
             )
@@ -212,6 +220,10 @@ class ImageGenerationMixin:
                             "model": model_used,
                             "prompt_template": prompt_template,
                             "prompt_sha256": prompt_sha256,
+                            "seed": normalized.seed,
+                            "steps": normalized.steps,
+                            "cfg_scale": normalized.cfg_scale,
+                            "negative_prompt": normalized.negative_prompt,
                         },
                         require_upload=bool(oss_service),
                     )
@@ -242,6 +254,10 @@ class ImageGenerationMixin:
                     "template_used": "virtual_ip_image",
                     "prompt_template": prompt_template,
                     "prompt_sha256": prompt_sha256,
+                    "seed": normalized.seed,
+                    "steps": normalized.steps,
+                    "cfg_scale": normalized.cfg_scale,
+                    "negative_prompt": normalized.negative_prompt,
                     "provider_used": provider_used,
                     "model_used": model_used,
                     "usage": {},

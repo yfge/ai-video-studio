@@ -50,6 +50,11 @@ async def generate_virtual_ip_image_variant(
     count: Optional[int] = Form(1),
     size: Optional[str] = Form(None),
     aspect_ratio: Optional[str] = Form(None),
+    seed: Optional[int] = Form(None),
+    steps: Optional[int] = Form(None),
+    cfg_scale: Optional[float] = Form(None),
+    negative_prompt: Optional[str] = Form(None),
+    strength: Optional[float] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -70,6 +75,11 @@ async def generate_virtual_ip_image_variant(
             count=count,
             size=size,
             aspect_ratio=aspect_ratio,
+            seed=seed,
+            steps=steps,
+            cfg_scale=cfg_scale,
+            negative_prompt=negative_prompt,
+            strength=strength,
             base_image_model=base_image.ai_model,
         )
         created_images = await generate_virtual_ip_image_variants(
@@ -98,6 +108,11 @@ async def generate_virtual_ip_image_variant_async(
     count: Optional[int] = Form(1),
     size: Optional[str] = Form(None),
     aspect_ratio: Optional[str] = Form(None),
+    seed: Optional[int] = Form(None),
+    steps: Optional[int] = Form(None),
+    cfg_scale: Optional[float] = Form(None),
+    negative_prompt: Optional[str] = Form(None),
+    strength: Optional[float] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -114,6 +129,11 @@ async def generate_virtual_ip_image_variant_async(
         count=count,
         size=size,
         aspect_ratio=aspect_ratio,
+        seed=seed,
+        steps=steps,
+        cfg_scale=cfg_scale,
+        negative_prompt=negative_prompt,
+        strength=strength,
         base_image_model=base_image.ai_model,
     )
     payload: Dict[str, Any] = build_virtual_ip_variant_task_payload(

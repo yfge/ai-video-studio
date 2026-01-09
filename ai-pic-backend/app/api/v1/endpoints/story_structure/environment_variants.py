@@ -42,6 +42,13 @@ class EnvironmentImageVariantParams:
         count: int = Query(1, ge=1, le=4, description="生成数量"),
         size: str | None = Query(None, description="分辨率/尺寸"),
         aspect_ratio: str | None = Query(None, description="画幅比例，如 16:9、1:1"),
+        seed: int | None = Query(None, description="随机种子（可选）"),
+        steps: int | None = Query(None, description="采样步数（可选）"),
+        cfg_scale: float | None = Query(None, description="CFG scale（可选）"),
+        negative_prompt: str | None = Query(None, description="反向提示词（可选）"),
+        strength: float | None = Query(
+            None, ge=0.0, le=1.0, description="图生图强度（可选）"
+        ),
     ) -> None:
         self.base_image = base_image
         self.prompt = prompt
@@ -49,6 +56,11 @@ class EnvironmentImageVariantParams:
         self.count = count
         self.size = size
         self.aspect_ratio = aspect_ratio
+        self.seed = seed
+        self.steps = steps
+        self.cfg_scale = cfg_scale
+        self.negative_prompt = negative_prompt
+        self.strength = strength
 
 
 @router.post("/environments/{env_id}/images/variants")
@@ -76,6 +88,11 @@ async def generate_environment_image_variants(
             count=params.count,
             size=params.size,
             aspect_ratio=params.aspect_ratio,
+            seed=params.seed,
+            steps=params.steps,
+            cfg_scale=params.cfg_scale,
+            negative_prompt=params.negative_prompt,
+            strength=params.strength,
         )
         if not req.base_image:
             raise HTTPException(status_code=400, detail="缺少基准图像")
@@ -117,6 +134,11 @@ async def generate_environment_image_variants_async(
         count=params.count,
         size=params.size,
         aspect_ratio=params.aspect_ratio,
+        seed=params.seed,
+        steps=params.steps,
+        cfg_scale=params.cfg_scale,
+        negative_prompt=params.negative_prompt,
+        strength=params.strength,
     )
     if not req.base_image:
         raise HTTPException(status_code=400, detail="缺少基准图像")

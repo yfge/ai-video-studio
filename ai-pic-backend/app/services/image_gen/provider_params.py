@@ -26,6 +26,7 @@ def build_ai_manager_call(normalized: ImageGenNormalized) -> Dict[str, Any]:
         "style": normalized.style,
         "style_preset_id": normalized.style_preset_id,
         "style_spec": normalized.style_spec,
+        "negative_prompt": normalized.negative_prompt,
     }
 
     if normalized.mode == ImageGenMode.TEXT_TO_IMAGE:
@@ -36,6 +37,9 @@ def build_ai_manager_call(normalized: ImageGenNormalized) -> Dict[str, Any]:
             "height": normalized.height,
             "size": normalized.size,
             "aspect_ratio": normalized.aspect_ratio,
+            "seed": normalized.seed,
+            "steps": normalized.steps,
+            "cfg_scale": normalized.cfg_scale,
         }
         return _filter_text_to_image(provider, payload)
 
@@ -46,6 +50,10 @@ def build_ai_manager_call(normalized: ImageGenNormalized) -> Dict[str, Any]:
         "size": normalized.size,
         "aspect_ratio": normalized.aspect_ratio,
         "extra_images": list(normalized.extra_images or []),
+        "seed": normalized.seed,
+        "steps": normalized.steps,
+        "cfg_scale": normalized.cfg_scale,
+        "strength": normalized.strength,
     }
     return _filter_image_to_image(provider, payload)
 

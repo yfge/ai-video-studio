@@ -7,6 +7,7 @@ from app.prompts.template_audit import build_prompt_template_audit
 from app.services.image_gen.coerce import (
     clean_str,
     coerce_str_list,
+    maybe_float,
     maybe_int,
     value_from_payload,
 )
@@ -22,6 +23,10 @@ class EnvironmentTextToImageRequest:
     style: str | None
     style_preset_id: str | None
     style_spec: Any | None
+    seed: int | None
+    steps: int | None
+    cfg_scale: float | None
+    negative_prompt: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,6 +40,11 @@ class EnvironmentImageVariantRequest:
     style: str | None
     style_preset_id: str | None
     style_spec: Any | None
+    seed: int | None
+    steps: int | None
+    cfg_scale: float | None
+    negative_prompt: str | None
+    strength: float | None
     reference_images: list[str]
 
 
@@ -46,6 +56,10 @@ def resolve_environment_text_to_image_request(
     count: int | None,
     size: str | None,
     aspect_ratio: str | None,
+    seed: int | None = None,
+    steps: int | None = None,
+    cfg_scale: float | None = None,
+    negative_prompt: str | None = None,
 ) -> EnvironmentTextToImageRequest:
     extra_prompt = clean_str(value_from_payload(payload, "prompt", prompt))
     selected_model = clean_str(value_from_payload(payload, "model", model))
@@ -53,6 +67,12 @@ def resolve_environment_text_to_image_request(
     size_value = clean_str(value_from_payload(payload, "size", size))
     aspect_ratio_value = clean_str(
         value_from_payload(payload, "aspect_ratio", aspect_ratio)
+    )
+    seed_int = maybe_int(value_from_payload(payload, "seed", seed))
+    steps_int = maybe_int(value_from_payload(payload, "steps", steps))
+    cfg_scale_value = maybe_float(value_from_payload(payload, "cfg_scale", cfg_scale))
+    negative_prompt_value = clean_str(
+        value_from_payload(payload, "negative_prompt", negative_prompt)
     )
 
     style_hint = clean_str(payload.get("style")) or "realistic"
@@ -68,6 +88,10 @@ def resolve_environment_text_to_image_request(
         style=style_hint,
         style_preset_id=style_preset_id_value,
         style_spec=style_spec_value,
+        seed=seed_int,
+        steps=steps_int,
+        cfg_scale=cfg_scale_value,
+        negative_prompt=negative_prompt_value,
     )
 
 
@@ -81,6 +105,11 @@ def resolve_environment_image_variant_request(
     count: int | None,
     size: str | None,
     aspect_ratio: str | None,
+    seed: int | None = None,
+    steps: int | None = None,
+    cfg_scale: float | None = None,
+    negative_prompt: str | None = None,
+    strength: float | None = None,
 ) -> EnvironmentImageVariantRequest:
     base_value = clean_str(value_from_payload(payload, "base_image", base_image))
     if not base_value:
@@ -93,6 +122,13 @@ def resolve_environment_image_variant_request(
     aspect_ratio_value = clean_str(
         value_from_payload(payload, "aspect_ratio", aspect_ratio)
     )
+    seed_int = maybe_int(value_from_payload(payload, "seed", seed))
+    steps_int = maybe_int(value_from_payload(payload, "steps", steps))
+    cfg_scale_value = maybe_float(value_from_payload(payload, "cfg_scale", cfg_scale))
+    negative_prompt_value = clean_str(
+        value_from_payload(payload, "negative_prompt", negative_prompt)
+    )
+    strength_value = maybe_float(value_from_payload(payload, "strength", strength))
 
     style_hint = clean_str(payload.get("style")) or "realistic"
     style_preset_id_value = clean_str(payload.get("style_preset_id"))
@@ -110,6 +146,11 @@ def resolve_environment_image_variant_request(
         style=style_hint,
         style_preset_id=style_preset_id_value,
         style_spec=style_spec_value,
+        seed=seed_int,
+        steps=steps_int,
+        cfg_scale=cfg_scale_value,
+        negative_prompt=negative_prompt_value,
+        strength=strength_value,
         reference_images=reference_images,
     )
 
@@ -133,6 +174,10 @@ def build_environment_text_to_image_task_payload(
         "style": request.style,
         "style_preset_id": request.style_preset_id,
         "style_spec": request.style_spec,
+        "seed": request.seed,
+        "steps": request.steps,
+        "cfg_scale": request.cfg_scale,
+        "negative_prompt": request.negative_prompt,
         "prompt_template": build_prompt_template_audit("environment_image"),
     }
     return {k: v for k, v in payload.items() if v is not None}
@@ -154,6 +199,11 @@ def build_environment_variant_task_payload(
         "style": request.style,
         "style_preset_id": request.style_preset_id,
         "style_spec": request.style_spec,
+        "seed": request.seed,
+        "steps": request.steps,
+        "cfg_scale": request.cfg_scale,
+        "negative_prompt": request.negative_prompt,
+        "strength": request.strength,
         "reference_images": request.reference_images,
         "prompt_template": build_prompt_template_audit("environment_image"),
     }

@@ -47,6 +47,12 @@ class ImageGenRequest:
 
     count: int | None = None
 
+    seed: int | None = None
+    steps: int | None = None
+    cfg_scale: float | None = None
+    negative_prompt: str | None = None
+    strength: float | None = None
+
     base_image: str | None = None
     reference_images: Sequence[str] = ()
     labeled_references: Any | None = None
@@ -74,6 +80,12 @@ class ImageGenNormalized:
     width: int
     height: int
     count: int
+
+    seed: int | None
+    steps: int | None
+    cfg_scale: float | None
+    negative_prompt: str | None
+    strength: float | None
 
     base_image_url: str | None
     extra_images: list[str]

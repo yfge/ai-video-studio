@@ -20,6 +20,15 @@ def maybe_int(value: Any) -> int | None:
         return None
 
 
+def maybe_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def coerce_str_list(value: Any) -> list[str]:
     if isinstance(value, str):
         return [value]

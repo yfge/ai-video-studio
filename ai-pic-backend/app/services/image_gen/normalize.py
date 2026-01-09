@@ -41,6 +41,18 @@ def normalize_image_gen_request(
     size_value = _clean_optional_str(req.size)
     aspect_ratio_value = _clean_optional_str(req.aspect_ratio)
 
+    seed = _normalize_seed(req.seed, audit=audit)
+    steps = _normalize_steps(req.steps, audit=audit)
+    cfg_scale = _normalize_cfg_scale(req.cfg_scale, audit=audit)
+    negative_prompt = _clean_optional_str(req.negative_prompt)
+
+    strength = None
+    if req.mode == ImageGenMode.IMAGE_TO_IMAGE:
+        strength = _normalize_strength(req.strength, audit=audit)
+    elif req.strength is not None:
+        audit.dropped_fields.append("strength")
+        audit.warnings.append("strength ignored for text_to_image")
+
     normalized_size, normalized_ratio = _normalize_size_ratio(
         provider=provider,
         model_id=clean_model,
@@ -103,6 +115,11 @@ def normalize_image_gen_request(
         width=width,
         height=height,
         count=count,
+        seed=seed,
+        steps=steps,
+        cfg_scale=cfg_scale,
+        negative_prompt=negative_prompt,
+        strength=strength,
         base_image_url=base_image_url,
         extra_images=extra_images,
         audit=audit,
@@ -139,6 +156,81 @@ def _clamp_count(value: int | None, *, audit: ImageGenAudit) -> int:
         audit.warnings.append("count > 4, clamped to 4")
         return 4
     return num
+
+
+def _normalize_seed(value: int | None, *, audit: ImageGenAudit) -> int | None:
+    if value is None:
+        return None
+    try:
+        seed_int = int(value)
+    except (TypeError, ValueError):
+        audit.warnings.append(f"invalid seed '{value}', ignoring")
+        audit.dropped_fields.append("seed")
+        return None
+    if seed_int < 0:
+        audit.dropped_fields.append("seed")
+        return None
+    max_seed = 2**31 - 1
+    if seed_int > max_seed:
+        audit.warnings.append(f"seed > {max_seed}, clamped")
+        return max_seed
+    return seed_int
+
+
+def _normalize_steps(value: int | None, *, audit: ImageGenAudit) -> int | None:
+    if value is None:
+        return None
+    try:
+        steps_int = int(value)
+    except (TypeError, ValueError):
+        audit.warnings.append(f"invalid steps '{value}', ignoring")
+        audit.dropped_fields.append("steps")
+        return None
+    if steps_int < 1:
+        audit.dropped_fields.append("steps")
+        return None
+    max_steps = 60
+    if steps_int > max_steps:
+        audit.warnings.append(f"steps > {max_steps}, clamped")
+        return max_steps
+    return steps_int
+
+
+def _normalize_cfg_scale(value: float | None, *, audit: ImageGenAudit) -> float | None:
+    if value is None:
+        return None
+    try:
+        cfg_value = float(value)
+    except (TypeError, ValueError):
+        audit.warnings.append(f"invalid cfg_scale '{value}', ignoring")
+        audit.dropped_fields.append("cfg_scale")
+        return None
+    if cfg_value <= 0:
+        audit.dropped_fields.append("cfg_scale")
+        return None
+    max_cfg = 30.0
+    if cfg_value > max_cfg:
+        audit.warnings.append(f"cfg_scale > {max_cfg}, clamped")
+        return max_cfg
+    return float(cfg_value)
+
+
+def _normalize_strength(value: float | None, *, audit: ImageGenAudit) -> float | None:
+    if value is None:
+        return None
+    try:
+        strength_value = float(value)
+    except (TypeError, ValueError):
+        audit.warnings.append(f"invalid strength '{value}', ignoring")
+        audit.dropped_fields.append("strength")
+        return None
+    if strength_value < 0:
+        audit.warnings.append("strength < 0, clamped")
+        return 0.0
+    if strength_value > 1:
+        audit.warnings.append("strength > 1, clamped")
+        return 1.0
+    return float(strength_value)
 
 
 def _normalize_size_ratio(

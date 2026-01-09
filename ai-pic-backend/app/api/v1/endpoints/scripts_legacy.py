@@ -2749,6 +2749,11 @@ def _process_storyboard_image_task(
     style_preset_id: str | None = None,
     style_spec: dict[str, Any] | None = None,
     aspect_ratio: str | None = None,
+    seed: int | None = None,
+    steps: int | None = None,
+    cfg_scale: float | None = None,
+    negative_prompt: str | None = None,
+    strength: float | None = None,
     reference_images: Optional[List[str]] = None,
     labeled_references: Optional[List[dict[str, Any]]] = None,
     count: int = 1,
@@ -2898,6 +2903,11 @@ def _process_storyboard_image_task(
                     style=style,
                     style_preset_id=style_preset_id,
                     style_spec=style_spec,
+                    seed=seed,
+                    steps=steps,
+                    cfg_scale=cfg_scale,
+                    negative_prompt=negative_prompt,
+                    strength=strength,
                     ai_service=ai_service,
                 )
             except Exception as e:
@@ -3344,6 +3354,19 @@ class StoryboardImageRequest(BaseModel):
     aspect_ratio: Optional[str] = Field(
         default=None, description="宽高比（例如 16:9/9:16），部分模型支持"
     )
+    seed: Optional[int] = Field(default=None, description="随机种子（可选）")
+    steps: Optional[int] = Field(
+        default=None, ge=1, le=60, description="采样步数（可选）"
+    )
+    cfg_scale: Optional[float] = Field(
+        default=None, ge=0.0, le=30.0, description="CFG scale（可选）"
+    )
+    negative_prompt: Optional[str] = Field(
+        default=None, description="反向提示词（可选）"
+    )
+    strength: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0, description="图生图强度（可选）"
+    )
     count: int = Field(
         default=1,
         ge=1,
@@ -3426,6 +3449,11 @@ async def generate_storyboard_images(
                 "style_preset_id": body.style_preset_id,
                 "style_spec": style_spec_payload,
                 "aspect_ratio": body.aspect_ratio,
+                "seed": body.seed,
+                "steps": body.steps,
+                "cfg_scale": body.cfg_scale,
+                "negative_prompt": body.negative_prompt,
+                "strength": body.strength,
                 "count": body.count,
                 "keyframe_mode": body.keyframe_mode,
                 "reference_images": body.reference_images or [],
@@ -3453,6 +3481,11 @@ async def generate_storyboard_images(
         "style_preset_id": body.style_preset_id,
         "style_spec": style_spec_payload,
         "aspect_ratio": body.aspect_ratio,
+        "seed": body.seed,
+        "steps": body.steps,
+        "cfg_scale": body.cfg_scale,
+        "negative_prompt": body.negative_prompt,
+        "strength": body.strength,
         "count": body.count,
         "keyframe_mode": body.keyframe_mode,
         "reference_images": body.reference_images or [],
