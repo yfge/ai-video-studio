@@ -102,3 +102,19 @@ def test_build_ai_manager_call_filters_jimeng_aspect_ratio():
     call = build_ai_manager_call(normalized)
     assert call["prefer_provider"] == "jimeng"
     assert "aspect_ratio" not in call
+
+
+@pytest.mark.unit
+def test_build_ai_manager_call_keeps_extra_images_without_provider():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.IMAGE_TO_IMAGE,
+        prompt="test",
+        model=None,
+        base_image="/uploads/base.png",
+        reference_images=["/uploads/ref.png"],
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    call = build_ai_manager_call(normalized)
+    assert call["extra_images"] == ["http://localhost:8000/uploads/ref.png"]

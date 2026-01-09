@@ -210,7 +210,16 @@ def _filter_image_to_image(provider: str, payload: Dict[str, Any]) -> Dict[str, 
         return _keep(payload, allowed)
 
     return _keep(
-        payload, {"image_url", "prompt", "model", "prefer_provider", "count", "size"}
+        payload,
+        {
+            "image_url",
+            "prompt",
+            "model",
+            "prefer_provider",
+            "count",
+            "size",
+            "extra_images",
+        },
     )
 
 
