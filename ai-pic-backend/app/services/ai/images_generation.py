@@ -3,6 +3,13 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.prompts.manager import prompt_manager
+from app.services.image_gen import (
+    ImageGenDomain,
+    ImageGenMode,
+    ImageGenRequest,
+    build_ai_manager_call,
+    normalize_image_gen_request,
+)
 from app.services.storage.oss_service import oss_service
 from app.utils.model_utils import parse_model_and_provider
 
@@ -29,6 +36,18 @@ class ImageGenerationMixin:
         raw_model = model or "dalle-3"
         pure_model, provider_hint = parse_model_and_provider(raw_model)
         pure_model = pure_model or "dall-e-3"
+
+        # Canonicalize common OpenAI DALL-E aliases ("dalle-3" -> "dall-e-3"),
+        # so size/aspect-ratio normalization can apply provider UI rules reliably.
+        if (
+            provider_hint == "openai"
+            and pure_model
+            and pure_model.lower().startswith("dalle-")
+        ):
+            pure_model = pure_model.lower().replace("dalle-", "dall-e-", 1)
+            raw_model = f"openai:{pure_model}" if ":" in raw_model else pure_model
+
+        normalized_style_preset_id = (style_preset_id or "").strip() or None
 
         resolved_style_spec = None
         style_spec_resolution: dict[str, Any] | None = None
@@ -70,23 +89,46 @@ class ImageGenerationMixin:
                 "background_story": background_story,
                 "style": derived_style,
                 "category": category,
-                "style_prompt": style_prompt or None,
+                # style_spec 的 prompt suffix 统一由 AIServiceManager 注入（避免重复叠加）
+                "style_prompt": None,
                 "additional_prompts": additional_prompts or [],
             }
 
             try:
-                final_prompt = prompt_manager.render_prompt(
+                base_prompt = prompt_manager.render_prompt(
                     "virtual_ip_image", variables
                 ).strip()
             except Exception:
                 if category == "portrait":
-                    final_prompt = f"A professional {derived_style} portrait of {ip_name}, {description}"
+                    base_prompt = f"A professional {derived_style} portrait of {ip_name}, {description}"
                 else:
-                    final_prompt = f"A professional {derived_style} {category} of {ip_name}, {description}"
+                    base_prompt = f"A professional {derived_style} {category} of {ip_name}, {description}"
                 if additional_prompts:
-                    final_prompt += f", {', '.join(additional_prompts)}"
-                if style_prompt:
-                    final_prompt = f"{final_prompt}\n\n{style_prompt}"
+                    base_prompt += f", {', '.join(additional_prompts)}"
+
+            normalized = normalize_image_gen_request(
+                ImageGenRequest(
+                    domain=ImageGenDomain.VIRTUAL_IP,
+                    mode=ImageGenMode.TEXT_TO_IMAGE,
+                    prompt=base_prompt,
+                    model=raw_model,
+                    prefer_provider=provider_hint,
+                    style=style,
+                    style_preset_id=normalized_style_preset_id,
+                    style_spec=style_spec,
+                    count=count,
+                    size=size,
+                    aspect_ratio=aspect_ratio,
+                ),
+                strict=False,
+            )
+            call = build_ai_manager_call(normalized)
+
+            # For OpenAI direct call / task metadata: approximate the final prompt that will be
+            # sent downstream (AIServiceManager appends the same style_spec suffix).
+            final_prompt = base_prompt
+            if style_prompt:
+                final_prompt = f"{final_prompt.rstrip()}\n\n{style_prompt}"
 
             self.logger.info(f"生成图像提示词: {final_prompt[:200]}...")
             self.logger.info(
@@ -101,67 +143,30 @@ class ImageGenerationMixin:
             provider_used = "openai"
             generation_method = "openai_dalle"
             image_url = None
+            model_used = model
 
-            normalized_model = pure_model.lower()
-            if (
-                normalized_model.startswith("keling-")
-                or normalized_model.startswith("kling-")
-                or normalized_model in {"keling", "kling"}
-            ):
-                # 使用可灵AI生成图像
-                image_url = await self._generate_with_keling_image(
-                    final_prompt,
-                    derived_style,
-                    category,
-                    pure_model,
-                    style_preset_id=style_preset_id,
-                    style_spec=style_spec,
-                    aspect_ratio=aspect_ratio,
-                )
-                provider_used = "keling"
-                generation_method = "keling_image"
-            elif normalized_model.startswith("dall-e") or normalized_model.startswith(
-                "dalle"
-            ):
+            model_id = (normalized.model_id or pure_model).lower()
+            provider_key = (normalized.provider or provider_hint or "openai").lower()
+
+            if provider_key == "openai" and model_id.startswith(("dall-e", "dalle")):
                 # 使用 OpenAI DALL-E 直连 API，并支持按官方 size 选项控制分辨率
                 image_url = await self._generate_with_openai_dalle(
                     final_prompt,
                     openai_style,
                     category,
-                    size=size or "1024x1024",
+                    size=normalized.size or size or "1024x1024",
                 )
                 provider_used = "openai"
                 generation_method = "openai_dalle"
+                model_used = "dall-e-3"
             elif self.ai_manager:
-                # 使用AI管理器的其他服务（根据模型名偏向特定提供商）
-                prefer_provider = provider_hint
-                if normalized_model.startswith(
-                    "seedream"
-                ) or normalized_model.startswith("volcengine"):
-                    prefer_provider = "volcengine"
-                elif normalized_model.startswith("deepseek"):
-                    prefer_provider = "deepseek"
-                elif normalized_model.startswith("google"):
-                    prefer_provider = "google"
-                response = await self.ai_manager.generate_image(
-                    prompt=final_prompt,
-                    width=1024,
-                    height=1024,
-                    style=derived_style,
-                    style_preset_id=style_preset_id,
-                    style_spec=style_spec,
-                    model=pure_model,
-                    n=count or 1,
-                    prefer_provider=prefer_provider,
-                    # 对火山 Ark Seedream，size 由 VolcengineProvider 映射为 Ark 的 size 字段（例如 "2K"）
-                    size=size if prefer_provider == "volcengine" else size,
-                    aspect_ratio=aspect_ratio,
-                )
+                response = await self.ai_manager.generate_image(**call)
                 if response.success:
                     images = response.data.get("images", [])
                     image_url = images[0] if images else None
                     provider_used = response.provider or provider_used
                     generation_method = f"ai_{provider_used}"
+                    model_used = response.model or model_used
                 else:
                     self.logger.error(f"AI管理器图像生成失败: {response.error}")
                     image_url = None
@@ -174,6 +179,7 @@ class ImageGenerationMixin:
                 )
                 provider_used = "openai"
                 generation_method = "openai_dalle"
+                model_used = "dall-e-3"
 
             if image_url:
                 try:
@@ -197,7 +203,7 @@ class ImageGenerationMixin:
                             "style_spec_resolution": style_spec_resolution,
                             "aspect_ratio": aspect_ratio,
                             "provider": provider_used,
-                            "model": model,
+                            "model": model_used,
                         },
                         require_upload=bool(oss_service),
                     )
@@ -227,7 +233,7 @@ class ImageGenerationMixin:
                     "generation_method": generation_method,
                     "template_used": "virtual_ip_image",
                     "provider_used": provider_used,
-                    "model_used": model,
+                    "model_used": model_used,
                     "usage": {},
                 }
 

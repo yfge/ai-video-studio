@@ -9,9 +9,9 @@
 当前落地进度（截至 2026-01-09）：
 
 - ✅ Phase 1：归一化层（`app/services/image_gen/`）
-- ✅ Phase 2：虚拟 IP 图生图（variants）接入归一化层
+- ✅ Phase 2：虚拟 IP 文生图/图生图（variants）接入归一化层，并统一 Runtime Prompt（`virtual_ip_image` / `virtual_ip_image_variant`）
 - ✅ Phase 3：环境文生图/图生图（sync+async+worker）接入归一化层，并接入 PromptManager（`environment_image`）
-- ⏳ Phase 4：分镜图生图接入归一化层（保留现有锚点合并策略，先抽参数构建）
+- ✅ Phase 4：分镜图生图接入归一化层（保留现有锚点合并策略，抽出参数构建到 service）
 
 ---
 
@@ -129,7 +129,7 @@
 
    - 分镜有专用模板强约束（避免拼图、字幕、UI 等）
    - 环境使用结构化拼接
-   - 虚拟 IP 文生图当前 prompt 较薄，且存在“调用 prompt 模板但未使用返回值”的迹象
+   - 虚拟 IP 文生图历史上存在“模板渲染/实际入参不一致”的问题（现已统一到 Runtime 模板，并避免 style_spec suffix 重复叠加）
      → 质量不稳定且难以统一调参/迭代。
 
 5. **可追溯性不足**
@@ -204,11 +204,11 @@
 
 ### 统一提示词管理（PromptManager）
 
-**现状**：仓库已有 PromptManager（`app/prompts/`），但图像生成链路对它的使用不一致：
+**现状**：仓库已有 PromptManager（`app/prompts/`），图像生成链路已逐步统一到“Runtime Prompt Templates”：
 
 - 分镜已使用 `PromptTemplate.STORYBOARD_IMAGE_PROMPT` 进行 prompt 组装（并可注入 labeled reference context）
 - 环境已使用 `PromptTemplate.ENVIRONMENT_IMAGE` 渲染最终给图像模型的 prompt
-- 虚拟 IP 文生图目前存在“渲染了 `image_generation` 模板但未使用其输出”的情况；且该模板当前是“提示词生成器”（期望 LLM 输出 JSON），并不适合作为图像模型的直接输入
+- 虚拟 IP 文生图/图生图已接入 `virtual_ip_image` / `virtual_ip_image_variant`（直接喂给图像模型）
 
 **统一策略**：把图像相关模板分成两类，并明确每条链路的模板边界。
 
@@ -320,13 +320,14 @@
 2. Phase 2：接入虚拟 IP 图生图（风险较小，结果落库清晰）
 
    - 将 `virtual_ip_images/variants.py` 与 `virtual_ip_images/async_tasks.py` 改为调用统一层构建请求与安全透传
+   - 将 `ai_service.generate_virtual_ip_image(...)`（`app/services/ai/images_generation.py`）接入统一层，对 size/aspect_ratio 做统一归一化，并避免 style_spec prompt suffix 重复叠加
 
 3. Phase 3：接入环境文生图/图生图（保持禁用 style_spec 的 policy）
 
    - 替换 `environment_generation.py` / `environment_variants.py` / `story_structure/async_tasks.py` 的重复逻辑
 
-4. Phase 4：接入分镜（保持现有合并锚点逻辑，先抽出 normalize 与 provider mapping）
-   - 将 `_gen_images` 参数构建迁移到统一层，减少脚手架代码重复
+4. Phase 4：接入分镜（保持现有合并锚点逻辑，抽出 normalize 与 provider mapping）
+   - 将 `_gen_images` 参数构建迁移到统一层（`app/services/storyboard/storyboard_image_generation.py`），减少脚手架代码重复
 
 ---
 
