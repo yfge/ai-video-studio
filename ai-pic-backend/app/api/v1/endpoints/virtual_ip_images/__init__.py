@@ -10,13 +10,11 @@ Aggregates all virtual IP image sub-routers:
 
 from fastapi import APIRouter
 
+from .async_tasks import process_virtual_ip_image_task
+from .async_variant_task import process_virtual_ip_image_variant_task
 from .crud import router as crud_router
 from .generation import router as generation_router
 from .variants import router as variants_router
-from .async_tasks import (
-    process_virtual_ip_image_task,
-    process_virtual_ip_image_variant_task,
-)
 
 # Create main router and aggregate sub-routers
 router = APIRouter()
