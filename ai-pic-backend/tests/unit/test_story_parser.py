@@ -26,5 +26,17 @@ def test_extract_json_block_trims_non_json_wrappers():
     assert parsed == {"premise": "P", "synopsis": "S"}
 
 
+def test_extract_json_block_handles_trailing_commas():
+    payload = '{"premise": "P", "synopsis": "S",}'
+    parsed = extract_json_block(payload)
+    assert parsed == {"premise": "P", "synopsis": "S"}
+
+
+def test_extract_json_block_handles_yaml_payload():
+    payload = "premise: P\nsynopsis: S\n"
+    parsed = extract_json_block(payload)
+    assert parsed == {"premise": "P", "synopsis": "S"}
+
+
 def test_extract_json_block_reexported_from_story_parser():
     assert story_parser.extract_json_block is extract_json_block

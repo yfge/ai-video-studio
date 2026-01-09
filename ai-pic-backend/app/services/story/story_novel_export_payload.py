@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy.orm import Session, joinedload
-
 from app.models.script import Episode, Story, StoryCharacter
+from sqlalchemy.orm import Session, joinedload
 
 from .story_novel_export_utils import clip_text
 
@@ -13,7 +12,9 @@ def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
 
 
-def _load_episode_summaries(db: Session, *, story_id: int, limit: int = 30) -> list[dict[str, Any]]:
+def _load_episode_summaries(
+    db: Session, *, story_id: int, limit: int = 30
+) -> list[dict[str, Any]]:
     episodes = (
         _not_deleted(db.query(Episode), Episode)
         .filter(Episode.story_id == story_id)
@@ -101,3 +102,84 @@ def build_story_novel_payload(db: Session, *, story: Story) -> dict[str, Any]:
         "characters": _load_story_character_profiles(db, story_id=story.id, limit=50),
     }
     return payload
+
+
+def _compact_plot_points(value: Any, *, max_items: int, max_len: int) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    result: list[str] = []
+    for raw in value[:max_items]:
+        text = ""
+        if isinstance(raw, dict):
+            for key in ("plot", "event", "description", "content", "summary", "text"):
+                candidate = raw.get(key)
+                if isinstance(candidate, str) and candidate.strip():
+                    text = candidate.strip()
+                    break
+            if not text:
+                text = str(raw).strip()
+        else:
+            text = str(raw or "").strip()
+        clipped = clip_text(text, max_len) or ""
+        if clipped:
+            result.append(clipped)
+    return result
+
+
+def shrink_story_novel_payload_for_plan(
+    story_payload: dict[str, Any]
+) -> dict[str, Any]:
+    """Reduce story payload size to improve plan JSON compliance."""
+
+    base = story_payload if isinstance(story_payload, dict) else {}
+
+    episodes: list[dict[str, Any]] = []
+    for ep in base.get("episodes") or []:
+        if not isinstance(ep, dict):
+            continue
+        episodes.append(
+            {
+                "episode_number": ep.get("episode_number"),
+                "title": clip_text(str(ep.get("title") or "").strip(), 120),
+                "summary": clip_text(str(ep.get("summary") or "").strip(), 600),
+                "plot_points": _compact_plot_points(
+                    ep.get("plot_points"), max_items=6, max_len=220
+                ),
+            }
+        )
+
+    characters: list[dict[str, Any]] = []
+    for ch in base.get("characters") or []:
+        if not isinstance(ch, dict):
+            continue
+        characters.append(
+            {
+                "name": ch.get("name"),
+                "role_type": ch.get("role_type"),
+                "importance": ch.get("importance"),
+                "personality": clip_text(str(ch.get("personality") or "").strip(), 280),
+                "background": clip_text(str(ch.get("background") or "").strip(), 420),
+                "motivation": clip_text(str(ch.get("motivation") or "").strip(), 280),
+                "character_arc": clip_text(
+                    str(ch.get("character_arc") or "").strip(), 280
+                ),
+            }
+        )
+
+    return {
+        "title": base.get("title"),
+        "story_format": base.get("story_format"),
+        "genre": base.get("genre"),
+        "theme": base.get("theme"),
+        "target_audience": base.get("target_audience"),
+        "duration_minutes": base.get("duration_minutes"),
+        "setting_time": base.get("setting_time"),
+        "setting_location": base.get("setting_location"),
+        "world_building": clip_text(base.get("world_building"), 1200),
+        "premise": clip_text(base.get("premise"), 1200),
+        "synopsis": clip_text(base.get("synopsis"), 2000),
+        "main_conflict": clip_text(base.get("main_conflict"), 1200),
+        "resolution": clip_text(base.get("resolution"), 1200),
+        "episodes": episodes[:30],
+        "characters": characters[:50],
+    }

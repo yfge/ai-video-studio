@@ -19,6 +19,7 @@ from .story_novel_export_continuity import (
     normalize_ledger_update_payload,
     tail_text,
 )
+from .story_novel_export_payload import shrink_story_novel_payload_for_plan
 from .story_novel_export_planner import (
     generate_zhihu_plan_compact,
     plan_intro_from_plan,
@@ -51,8 +52,9 @@ async def export_zhihu_novel_to_file(
         progress("生成小说大纲（知乎体）…")
     json_system_prompt = prompt_manager.render_prompt("system_prompt_json_strict", {})
     novel_system_prompt = prompt_manager.render_prompt("system_prompt_novel_zhihu", {})
+    plan_story_payload = shrink_story_novel_payload_for_plan(story_payload)
     plan, chapters = await generate_zhihu_plan_compact(
-        story_payload=story_payload,
+        story_payload=plan_story_payload,
         target_words=target_words,
         chapter_total=chapter_total,
         model_id=model_id,
@@ -60,9 +62,11 @@ async def export_zhihu_novel_to_file(
         system_prompt=json_system_prompt,
     )
 
-    question_title, question_detail, narrator_profile, running_summary = plan_intro_from_plan(
-        plan,
-        story_title=story_title,
+    question_title, question_detail, narrator_profile, running_summary = (
+        plan_intro_from_plan(
+            plan,
+            story_title=story_title,
+        )
     )
     full_text_parts: list[str] = [
         f"【问题】\n{question_title}\n\n{question_detail}\n",
@@ -109,7 +113,9 @@ async def export_zhihu_novel_to_file(
             progress=progress,
             chapter_total=len(chapters),
         )
-        chapter_body, extracted_summary, extracted_cliffhanger = extract_chapter_markers(final_text)
+        chapter_body, extracted_summary, extracted_cliffhanger = (
+            extract_chapter_markers(final_text)
+        )
         if progress:
             progress(f"更新连贯性账本：更新 {chapter_number}/{len(chapters)}…")
         ledger_prompt = prompt_manager.render_prompt(
@@ -123,17 +129,22 @@ async def export_zhihu_novel_to_file(
                 "extracted_cliffhanger": extracted_cliffhanger,
             },
         )
-        ledger_payload = extract_json_block(
-            await generate_story_novel_text(
-                prompt=ledger_prompt,
-                system_prompt=json_system_prompt,
-                model=model_id,
-                prefer_provider=prefer_provider,
-                temperature=0.2,
-                max_tokens=1800,
+        ledger_payload = (
+            extract_json_block(
+                await generate_story_novel_text(
+                    prompt=ledger_prompt,
+                    system_prompt=json_system_prompt,
+                    model=model_id,
+                    prefer_provider=prefer_provider,
+                    temperature=0.2,
+                    max_tokens=1800,
+                )
             )
-        ) or {}
-        updated_ledger, summary_text, cliffhanger_text = normalize_ledger_update_payload(ledger_payload)
+            or {}
+        )
+        updated_ledger, summary_text, cliffhanger_text = (
+            normalize_ledger_update_payload(ledger_payload)
+        )
         if updated_ledger:
             ledger = updated_ledger
         final_summary = summary_text or extracted_summary

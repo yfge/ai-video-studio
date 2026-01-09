@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional, Tuple
-
-from fastapi import HTTPException
 
 from app.prompts.manager import prompt_manager
 from app.utils.json_utils import extract_json_block
 
 from .story_novel_export_ai import generate_story_novel_text
+from .story_novel_export_utils import clip_text
+
+logger = logging.getLogger(__name__)
 
 
 def plan_intro_from_plan(
@@ -68,7 +70,9 @@ def _normalize_plan_chapters(
     chapter_total: int,
     target_words: int,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
-    chapters_raw = plan.get("chapters") if isinstance(plan.get("chapters"), list) else []
+    chapters_raw = (
+        plan.get("chapters") if isinstance(plan.get("chapters"), list) else []
+    )
     distributed_targets = _distribute_target_words(
         target_words=target_words,
         chapter_total=chapter_total,
@@ -77,9 +81,7 @@ def _normalize_plan_chapters(
     for idx in range(1, chapter_total + 1):
         source = chapters_raw[idx - 1] if idx - 1 < len(chapters_raw) else {}
         title = (
-            str(source.get("title") or "").strip()
-            if isinstance(source, dict)
-            else ""
+            str(source.get("title") or "").strip() if isinstance(source, dict) else ""
         )
         chapter_goal = (
             str(source.get("chapter_goal") or "").strip()
@@ -101,7 +103,9 @@ def _normalize_plan_chapters(
             {
                 "chapter_number": idx,
                 "title": title,
-                "target_words": distributed_targets[idx - 1] if distributed_targets else 0,
+                "target_words": (
+                    distributed_targets[idx - 1] if distributed_targets else 0
+                ),
                 "chapter_goal": chapter_goal,
                 "cliffhanger_hint": cliffhanger_hint,
             }
@@ -152,9 +156,82 @@ async def generate_zhihu_plan_compact(
         plan = extract_json_block(plan_text_retry) or {}
         chapters = plan.get("chapters") if isinstance(plan, dict) else None
     if not isinstance(chapters, list) or not chapters:
-        raise HTTPException(status_code=500, detail="小说大纲解析失败（chapters为空）")
+        logger.warning("Zhihu novel plan parse failed; using fallback plan generator.")
+        fallback_plan = _fallback_zhihu_plan(
+            story_payload=story_payload, chapter_total=chapter_total
+        )
+        return _normalize_plan_chapters(
+            fallback_plan,
+            chapter_total=chapter_total,
+            target_words=target_words,
+        )
 
-    return _normalize_plan_chapters(plan, chapter_total=chapter_total, target_words=target_words)
+    return _normalize_plan_chapters(
+        plan, chapter_total=chapter_total, target_words=target_words
+    )
+
+
+def _fallback_zhihu_plan(
+    *, story_payload: Dict[str, Any], chapter_total: int
+) -> Dict[str, Any]:
+    title = str(story_payload.get("title") or "").strip()
+    synopsis = story_payload.get("synopsis")
+    running_summary_seed = (
+        clip_text(synopsis, 900)
+        if isinstance(synopsis, str) and synopsis.strip()
+        else ""
+    )
+    episodes = (
+        story_payload.get("episodes")
+        if isinstance(story_payload.get("episodes"), list)
+        else []
+    )
+
+    chapters: list[dict[str, Any]] = []
+    for idx in range(1, chapter_total + 1):
+        episode = episodes[idx - 1] if idx - 1 < len(episodes) else {}
+        chapter_title = ""
+        chapter_goal = ""
+        cliffhanger_hint = ""
+        if isinstance(episode, dict) and episode:
+            chapter_title = str(episode.get("title") or "").strip()
+            chapter_goal = str(episode.get("summary") or "").strip()
+            plot_points = episode.get("plot_points")
+            if isinstance(plot_points, list) and plot_points:
+                if not chapter_goal:
+                    first_points = [
+                        str(x or "").strip()
+                        for x in plot_points[:3]
+                        if str(x or "").strip()
+                    ]
+                    if first_points:
+                        chapter_goal = "；".join(first_points)
+                cliffhanger_hint = str(plot_points[-1] or "").strip()
+
+        if not chapter_title:
+            chapter_title = f"更新 {idx}"
+        if not chapter_goal:
+            chapter_goal = "推进主线冲突并埋下新的因果。"
+        if not cliffhanger_hint:
+            cliffhanger_hint = "章末出现意外转折，下一章局势骤然升级。"
+
+        chapters.append(
+            {
+                "chapter_number": idx,
+                "title": clip_text(chapter_title, 120) or chapter_title,
+                "chapter_goal": clip_text(chapter_goal, 520) or chapter_goal,
+                "cliffhanger_hint": clip_text(cliffhanger_hint, 260)
+                or cliffhanger_hint,
+            }
+        )
+
+    return {
+        "question_title": title or "如何评价这个故事？",
+        "question_detail": "想看一个有钩子、有反转、节奏在线的长文故事，最好是连续更新那种。\\n麻烦来点真实细节，不要空泛。",
+        "narrator_profile": "利益相关：写过一些长文故事。以下为个人经历改编，细节请勿深究。",
+        "running_summary_seed": running_summary_seed or "",
+        "chapters": chapters,
+    }
 
 
 async def generate_zhihu_chapter_beats(
@@ -191,7 +268,9 @@ async def generate_zhihu_chapter_beats(
         max_tokens=1400,
     )
     payload = extract_json_block(beats_text) or {}
-    beats = _normalize_key_beats(payload.get("key_beats") if isinstance(payload, dict) else None)
+    beats = _normalize_key_beats(
+        payload.get("key_beats") if isinstance(payload, dict) else None
+    )
     if len(beats) >= 5:
         return beats[:9]
 
@@ -228,5 +307,7 @@ async def generate_zhihu_chapter_beats(
         )
     elif previous_cliffhanger:
         # Ensure the opening beat always responds to the cliffhanger even when partial beats exist.
-        fallback[0] = f"承接上一章卡点：{previous_cliffhanger}（继续现场，交代卡点之后发生了什么）"
+        fallback[0] = (
+            f"承接上一章卡点：{previous_cliffhanger}（继续现场，交代卡点之后发生了什么）"
+        )
     return fallback[:9]
