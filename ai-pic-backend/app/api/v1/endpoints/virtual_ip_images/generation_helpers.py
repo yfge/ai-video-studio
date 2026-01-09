@@ -7,12 +7,13 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional
 
+from app.models.virtual_ip import VirtualIP, VirtualIPImage
+from app.prompts.template_audit import build_prompt_template_audit
+from app.schemas.virtual_ip import VirtualIPImageCreate
+from app.services.ai_service import ai_service
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.models.virtual_ip import VirtualIP, VirtualIPImage
-from app.schemas.virtual_ip import VirtualIPImageCreate
-from app.services.ai_service import ai_service
 from .helpers import not_deleted, set_ip_default_avatar
 
 
@@ -158,6 +159,7 @@ def build_virtual_ip_image_payload(
         "aspect_ratio": params["aspect_ratio"],
         "additional_prompts": params["additional_prompts"],
         "is_default": params["is_default"],
+        "prompt_template": build_prompt_template_audit("virtual_ip_image"),
     }
 
 
@@ -209,6 +211,10 @@ def build_generation_params(
         params["size"] = size_value
     if aspect_ratio_value is not None:
         params["aspect_ratio"] = aspect_ratio_value
+    if result.get("prompt_template") is not None:
+        params["prompt_template"] = result.get("prompt_template")
+    if result.get("prompt_sha256") is not None:
+        params["prompt_sha256"] = result.get("prompt_sha256")
     return params
 
 
@@ -222,6 +228,8 @@ def build_virtual_ip_image_metadata(
     return {
         "generation_method": result["generation_method"],
         "prompt": result["prompt"],
+        "prompt_template": result.get("prompt_template"),
+        "prompt_sha256": result.get("prompt_sha256"),
         "style": style,
         "additional_prompts": additional_prompts,
         "original_openai_url": result.get("original_image_url", ""),

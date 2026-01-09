@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.prompts.manager import prompt_manager
+from app.prompts.template_audit import build_prompt_template_audit, sha256_text
 from app.services.image_gen import (
     ImageGenDomain,
     ImageGenMode,
@@ -94,10 +95,14 @@ class ImageGenerationMixin:
                 "additional_prompts": additional_prompts or [],
             }
 
+            prompt_template = None
             try:
                 base_prompt = prompt_manager.render_prompt(
                     "virtual_ip_image", variables
                 ).strip()
+                prompt_template = build_prompt_template_audit(
+                    "virtual_ip_image", variables=variables
+                )
             except Exception:
                 if category == "portrait":
                     base_prompt = f"A professional {derived_style} portrait of {ip_name}, {description}"
@@ -129,6 +134,7 @@ class ImageGenerationMixin:
             final_prompt = base_prompt
             if style_prompt:
                 final_prompt = f"{final_prompt.rstrip()}\n\n{style_prompt}"
+            prompt_sha256 = sha256_text(final_prompt)
 
             self.logger.info(f"生成图像提示词: {final_prompt[:200]}...")
             self.logger.info(
@@ -204,6 +210,8 @@ class ImageGenerationMixin:
                             "aspect_ratio": aspect_ratio,
                             "provider": provider_used,
                             "model": model_used,
+                            "prompt_template": prompt_template,
+                            "prompt_sha256": prompt_sha256,
                         },
                         require_upload=bool(oss_service),
                     )
@@ -232,6 +240,8 @@ class ImageGenerationMixin:
                     "category": category,
                     "generation_method": generation_method,
                     "template_used": "virtual_ip_image",
+                    "prompt_template": prompt_template,
+                    "prompt_sha256": prompt_sha256,
                     "provider_used": provider_used,
                     "model_used": model_used,
                     "usage": {},

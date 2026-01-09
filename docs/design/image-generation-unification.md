@@ -130,6 +130,7 @@
    - 分镜有专用模板强约束（避免拼图、字幕、UI 等）
    - 环境使用结构化拼接
    - 虚拟 IP 文生图历史上存在“模板渲染/实际入参不一致”的问题（现已统一到 Runtime 模板，并避免 style_spec suffix 重复叠加）
+   - 各模板内部仍有大量“通用约束/负面词/质量片段”重复，容易在迭代时产生漂移（现已引入 `app/prompts/templates/fragments/` 统一管理）
      → 质量不稳定且难以统一调参/迭代。
 
 5. **可追溯性不足**
@@ -306,6 +307,8 @@
 - `provider/model`
 - `style/style_spec/style_spec_resolution`（若适用）
 - `size/aspect_ratio/count`
+- `prompt_template`（模板名/版本/源码哈希，用于审计与回放）
+- `prompt_sha256`（实际入参 prompt 的哈希，用于去重/对比）
 - `reference_images_count` + `reference_images_hash`（不存全量 URL 也可）
 
 ---

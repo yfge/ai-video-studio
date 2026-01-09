@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
+from app.prompts.template_audit import build_prompt_template_audit, sha256_text
 from app.schemas.virtual_ip import VirtualIPImageCreate
 from app.services.image_gen import (
     ImageGenDomain,
@@ -20,7 +21,7 @@ from app.services.image_gen.coerce import (
 )
 from app.services.image_gen.refs import hash_reference_images
 from app.services.virtual_ip.virtual_ip_image_prompts import (
-    render_virtual_ip_image_variant_prompt,
+    render_virtual_ip_image_variant_prompt_with_audit,
 )
 from sqlalchemy.orm import Session
 
@@ -105,6 +106,7 @@ def build_virtual_ip_variant_task_payload(
         "style_preset_id": request.style_preset_id,
         "style_spec": request.style_spec,
         "reference_images": request.reference_images,
+        "prompt_template": build_prompt_template_audit("virtual_ip_image_variant"),
     }
     return {k: v for k, v in payload.items() if v is not None}
 
@@ -121,7 +123,7 @@ async def generate_virtual_ip_image_variants(
 ) -> list[VirtualIPImage]:
     base_image_input = base_image.oss_url or base_image.file_path or ""
 
-    final_prompt = render_virtual_ip_image_variant_prompt(
+    final_prompt, prompt_template = render_virtual_ip_image_variant_prompt_with_audit(
         character_name=virtual_ip.name,
         variant_prompt=request.prompt,
         character_description=virtual_ip.description,
@@ -173,6 +175,10 @@ async def generate_virtual_ip_image_variants(
         generation_params["size"] = normalized.size
     if normalized.aspect_ratio is not None:
         generation_params["aspect_ratio"] = normalized.aspect_ratio
+    if prompt_template is not None:
+        generation_params["prompt_template"] = prompt_template
+    if normalized.prompt:
+        generation_params["prompt_sha256"] = sha256_text(normalized.prompt)
 
     extra_images = list(normalized.extra_images or [])
     image_gen_meta = {
@@ -185,6 +191,8 @@ async def generate_virtual_ip_image_variants(
         "reference_images_count": len(extra_images),
         "reference_images_hash": hash_reference_images(extra_images),
         "audit_warnings": list(normalized.audit.warnings or []),
+        "prompt_template": prompt_template,
+        "prompt_sha256": sha256_text(normalized.prompt) if normalized.prompt else None,
     }
 
     created_images: list[VirtualIPImage] = []
@@ -219,6 +227,10 @@ async def generate_virtual_ip_image_variants(
             is_default=False,
             metadata={
                 "generation_method": "image_to_image",
+                "prompt_template": prompt_template,
+                "prompt_sha256": (
+                    sha256_text(normalized.prompt) if normalized.prompt else None
+                ),
                 "provider": response.provider,
                 "model": response.model,
                 "base_image_id": base_image.id,

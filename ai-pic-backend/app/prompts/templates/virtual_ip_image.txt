@@ -1,5 +1,6 @@
 {%- set style_value = (style | default('realistic')) | lower -%}
 {%- set category_value = (category | default('portrait')) | lower -%}
+{%- import "fragments/image_macros.txt" as img -%}
 {%- if category_value in ['portrait', 'headshot', 'avatar'] -%}
 {%- set composition = 'head and shoulders portrait, centered composition, neutral/clean background, face clearly visible' -%}
 {%- elif category_value in ['full_body', 'fullbody'] -%}
@@ -11,4 +12,4 @@
 {%- else -%}
 {%- set composition = 'cinematic character still, coherent composition, consistent identity' -%}
 {%- endif -%}
-Virtual IP Character: {{ character_name }}{% if character_description %} | Description: {{ character_description }}{% endif %}{% if background_story %} | Background: {{ background_story }}{% endif %} | Style: {{ style_value }} | Category: {{ category_value }} | Composition: {{ composition }} | Quality: high quality, ultra detailed, sharp focus, professional lighting, detailed texture | Constraints: single character only, consistent identity, no text, no subtitles, no watermark, no logo, no collage, no extra limbs, no deformed hands, no multiple faces{% if style_prompt %} | Style Notes: {{ style_prompt }}{% endif %}{% if additional_prompts %} | Extra: {{ additional_prompts | join(', ') }}{% endif %}
+Virtual IP Character: {{ character_name }}{% if character_description %} | Description: {{ character_description }}{% endif %}{% if background_story %} | Background: {{ background_story }}{% endif %} | Style: {{ style_value }} | Category: {{ category_value }} | Composition: {{ composition }} | Quality: {{ img.quality_high() }} | Constraints: {{ img.constraint_single_character_identity() }}, {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_collage() }}, {{ img.constraint_no_deformities() }}{% if style_prompt %} | Style Notes: {{ style_prompt }}{% endif %}{% if additional_prompts %} | Extra: {{ additional_prompts | join(', ') }}{% endif %}

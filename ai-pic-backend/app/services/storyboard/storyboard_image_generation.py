@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from app.core.config import settings
+from app.prompts.template_audit import build_prompt_template_audit, sha256_text
 from app.services.image_gen import (
     ImageGenDomain,
     ImageGenMode,
@@ -115,6 +116,7 @@ async def generate_storyboard_image_urls(
         response_meta = {}
 
     extra = list(normalized.extra_images or [])
+    prompt_template = build_prompt_template_audit("storyboard_image_prompt")
     image_gen_meta = {
         "domain": normalized.domain.value,
         "mode": normalized.mode.value,
@@ -122,6 +124,8 @@ async def generate_storyboard_image_urls(
         "model_id": normalized.model_id,
         "size": normalized.size,
         "aspect_ratio": normalized.aspect_ratio,
+        "prompt_template": prompt_template,
+        "prompt_sha256": sha256_text(prompt),
         "reference_images_count": len(extra),
         "reference_images_hash": hash_reference_images(extra),
         "audit_warnings": list(normalized.audit.warnings or []),

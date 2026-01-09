@@ -104,6 +104,13 @@ def process_virtual_ip_image_task(
                 generation_params["size"] = payload.get("size")
             if payload.get("aspect_ratio") is not None:
                 generation_params["aspect_ratio"] = payload.get("aspect_ratio")
+            prompt_template = result.get("prompt_template") or payload.get(
+                "prompt_template"
+            )
+            if prompt_template is not None:
+                generation_params["prompt_template"] = prompt_template
+            if result.get("prompt_sha256") is not None:
+                generation_params["prompt_sha256"] = result.get("prompt_sha256")
 
             image_data = VirtualIPImageCreate(
                 virtual_ip_id=virtual_ip.id,
@@ -122,6 +129,8 @@ def process_virtual_ip_image_task(
                 metadata={
                     "generation_method": result["generation_method"],
                     "prompt": result["prompt"],
+                    "prompt_template": prompt_template,
+                    "prompt_sha256": result.get("prompt_sha256"),
                     "style": result["style"],
                     "additional_prompts": additional_prompts_list,
                     "original_openai_url": result.get("original_image_url", ""),

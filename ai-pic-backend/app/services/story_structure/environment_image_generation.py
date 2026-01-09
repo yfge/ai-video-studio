@@ -5,6 +5,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.models.story_structure import Environment
+from app.prompts.template_audit import build_prompt_template_audit, sha256_text
 from app.services.image_gen import (
     ImageGenDomain,
     ImageGenMode,
@@ -41,6 +42,8 @@ async def generate_environment_images(
     require_upload: bool,
 ) -> list[str]:
     final_prompt = compose_environment_prompt(env, request.prompt)
+    prompt_template = build_prompt_template_audit("environment_image")
+    prompt_sha256 = sha256_text(final_prompt)
 
     normalized = normalize_image_gen_request(
         ImageGenRequest(
@@ -81,6 +84,8 @@ async def generate_environment_images(
     extra = dict(env.extra_metadata or {})
     extra["last_text_to_image_generation"] = {
         "generated_at": datetime.utcnow().isoformat(),
+        "prompt_template": prompt_template,
+        "prompt_sha256": prompt_sha256,
         "style": normalized.style,
         "style_preset_id": normalized.style_preset_id,
         "style_spec": response_meta.get("style_spec"),
@@ -112,6 +117,8 @@ async def generate_environment_image_variants(
 
     prompt_hint = request.prompt or DEFAULT_ENV_VARIANT_EXTRA_PROMPT
     final_prompt = compose_environment_prompt(env, prompt_hint)
+    prompt_template = build_prompt_template_audit("environment_image")
+    prompt_sha256 = sha256_text(final_prompt)
 
     normalized = normalize_image_gen_request(
         ImageGenRequest(
@@ -158,6 +165,8 @@ async def generate_environment_image_variants(
     extra = dict(env.extra_metadata or {})
     extra["last_image_to_image_generation"] = {
         "generated_at": datetime.utcnow().isoformat(),
+        "prompt_template": prompt_template,
+        "prompt_sha256": prompt_sha256,
         "style": normalized.style,
         "style_preset_id": normalized.style_preset_id,
         "style_spec": response_meta.get("style_spec"),

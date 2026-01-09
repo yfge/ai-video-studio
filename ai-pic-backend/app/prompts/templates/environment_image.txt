@@ -4,4 +4,5 @@
 {%- else -%}
 {%- set focus = '室内布局、光线、材质细节' -%}
 {%- endif -%}
-Environment: {{ environment_name }} | Category: {{ category | default('indoor') }} | Overall-to-detail: 开场远景交代空间 -> 中景展示主要区域 -> 近景刻画关键道具/纹理；Environment focus: {{ focus }}；保持真实光影和透视，色彩和风格统一。{% if tags %} | Tags: {{ tags }}{% endif %}{% if description %} | Description: {{ description }}{% endif %}{% if additional_prompts %} | {{ additional_prompts }}{% endif %} | {{ prompt }}
+{%- import "fragments/image_macros.txt" as img -%}
+Environment: {{ environment_name }} | Category: {{ category | default('indoor') }} | Overall-to-detail: 开场远景交代空间 -> 中景展示主要区域 -> 近景刻画关键道具/纹理；Environment focus: {{ focus }}；保持真实光影和透视，色彩和风格统一。{% if tags %} | Tags: {{ tags }}{% endif %}{% if description %} | Description: {{ description }}{% endif %}{% if additional_prompts %} | {{ additional_prompts }}{% endif %} | {{ prompt }} | Constraints: {{ img.constraint_no_text_artifacts() }}

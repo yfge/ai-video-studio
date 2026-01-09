@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from app.prompts.template_audit import build_prompt_template_audit
 from app.services.image_gen.coerce import (
     clean_str,
     coerce_str_list,
@@ -132,6 +133,7 @@ def build_environment_text_to_image_task_payload(
         "style": request.style,
         "style_preset_id": request.style_preset_id,
         "style_spec": request.style_spec,
+        "prompt_template": build_prompt_template_audit("environment_image"),
     }
     return {k: v for k, v in payload.items() if v is not None}
 
@@ -153,5 +155,6 @@ def build_environment_variant_task_payload(
         "style_preset_id": request.style_preset_id,
         "style_spec": request.style_spec,
         "reference_images": request.reference_images,
+        "prompt_template": build_prompt_template_audit("environment_image"),
     }
     return {k: v for k, v in payload.items() if v is not None}
