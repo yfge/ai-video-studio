@@ -3,10 +3,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.prompts.manager import prompt_manager
-from app.prompts.templates import PromptTemplate
-from app.utils.model_utils import parse_model_and_provider
-
 from app.services.storage.oss_service import oss_service
+from app.utils.model_utils import parse_model_and_provider
 
 
 class ImageGenerationMixin:
@@ -64,7 +62,7 @@ class ImageGenerationMixin:
             style_prompt = ""
             openai_style = "natural" if style == "realistic" else "vivid"
 
-        # 使用提示词管理器生成专业提示词
+        # 使用统一 PromptManager 模板生成运行时提示词（直接用于图像模型）
         try:
             variables = {
                 "character_name": ip_name,
@@ -72,25 +70,23 @@ class ImageGenerationMixin:
                 "background_story": background_story,
                 "style": derived_style,
                 "category": category,
+                "style_prompt": style_prompt or None,
                 "additional_prompts": additional_prompts or [],
-                "is_default": category == "portrait",
             }
 
-            prompt_manager.render_prompt(
-                PromptTemplate.IMAGE_GENERATION.value, variables
-            )
-
-            # 使用简单的提示词，避免复杂的AI管理器调用
-            if category == "portrait":
-                final_prompt = f"A professional {derived_style} portrait of {ip_name}, {description}"
-            else:
-                final_prompt = f"A professional {derived_style} {category} of {ip_name}, {description}"
-            if additional_prompts:
-                final_prompt += f", {', '.join(additional_prompts)}"
-
-            direct_prompt = final_prompt
-            if style_prompt:
-                direct_prompt = f"{final_prompt}\n\n{style_prompt}"
+            try:
+                final_prompt = prompt_manager.render_prompt(
+                    "virtual_ip_image", variables
+                ).strip()
+            except Exception:
+                if category == "portrait":
+                    final_prompt = f"A professional {derived_style} portrait of {ip_name}, {description}"
+                else:
+                    final_prompt = f"A professional {derived_style} {category} of {ip_name}, {description}"
+                if additional_prompts:
+                    final_prompt += f", {', '.join(additional_prompts)}"
+                if style_prompt:
+                    final_prompt = f"{final_prompt}\n\n{style_prompt}"
 
             self.logger.info(f"生成图像提示词: {final_prompt[:200]}...")
             self.logger.info(
@@ -129,7 +125,7 @@ class ImageGenerationMixin:
             ):
                 # 使用 OpenAI DALL-E 直连 API，并支持按官方 size 选项控制分辨率
                 image_url = await self._generate_with_openai_dalle(
-                    direct_prompt,
+                    final_prompt,
                     openai_style,
                     category,
                     size=size or "1024x1024",
@@ -172,7 +168,7 @@ class ImageGenerationMixin:
             else:
                 # 默认使用OpenAI DALL-E（保持向后兼容）
                 image_url = await self._generate_with_openai_dalle(
-                    direct_prompt,
+                    final_prompt,
                     openai_style,
                     category,
                 )
@@ -218,7 +214,7 @@ class ImageGenerationMixin:
                     "relative_path": stored.get("relative_path"),
                     "original_image_url": image_url,
                     "oss_upload": stored.get("oss_upload"),
-                    "prompt": direct_prompt,
+                    "prompt": final_prompt,
                     "style": derived_style,
                     "style_preset_id": (style_preset_id or "").strip() or None,
                     "style_spec": (
@@ -229,7 +225,7 @@ class ImageGenerationMixin:
                     "style_spec_resolution": style_spec_resolution,
                     "category": category,
                     "generation_method": generation_method,
-                    "template_used": PromptTemplate.IMAGE_GENERATION.value,
+                    "template_used": "virtual_ip_image",
                     "provider_used": provider_used,
                     "model_used": model,
                     "usage": {},

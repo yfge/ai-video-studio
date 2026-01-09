@@ -1,0 +1,14 @@
+{%- set style_value = (style | default('realistic')) | lower -%}
+{%- set category_value = (category | default('portrait')) | lower -%}
+{%- if category_value in ['portrait', 'headshot', 'avatar'] -%}
+{%- set composition = 'head and shoulders portrait, centered composition, neutral/clean background, face clearly visible' -%}
+{%- elif category_value in ['full_body', 'fullbody'] -%}
+{%- set composition = 'full body, head-to-toe visible, clear silhouette, full outfit visible, simple background' -%}
+{%- elif category_value == 'action' -%}
+{%- set composition = 'dynamic action pose, cinematic framing, keep face and body proportions correct' -%}
+{%- elif category_value == 'emotion' -%}
+{%- set composition = 'close-up expression study, eyes sharp, subtle background blur' -%}
+{%- else -%}
+{%- set composition = 'cinematic character still, coherent composition, consistent identity' -%}
+{%- endif -%}
+Virtual IP Character: {{ character_name }}{% if character_description %} | Description: {{ character_description }}{% endif %}{% if background_story %} | Background: {{ background_story }}{% endif %} | Style: {{ style_value }} | Category: {{ category_value }} | Composition: {{ composition }} | Quality: high quality, ultra detailed, sharp focus, professional lighting, detailed texture | Constraints: single character only, consistent identity, no text, no subtitles, no watermark, no logo, no collage, no extra limbs, no deformed hands, no multiple faces{% if style_prompt %} | Style Notes: {{ style_prompt }}{% endif %}{% if additional_prompts %} | Extra: {{ additional_prompts | join(', ') }}{% endif %}

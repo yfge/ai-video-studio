@@ -6,6 +6,13 @@
 
 本设计提出引入一个“**统一归一化层**”（Normalizer + Domain Policy + Provider Param Mapping），将各入口/worker 的分散逻辑收敛为一致的请求规范与可追溯元数据，再由各域适配器完成各自落库（VirtualIPImage / Environment.reference_images / Storyboard JSON）与 UI 兼容。
 
+当前落地进度（截至 2026-01-09）：
+
+- ✅ Phase 1：归一化层（`app/services/image_gen/`）
+- ✅ Phase 2：虚拟 IP 图生图（variants）接入归一化层
+- ✅ Phase 3：环境文生图/图生图（sync+async+worker）接入归一化层，并接入 PromptManager（`environment_image`）
+- ⏳ Phase 4：分镜图生图接入归一化层（保留现有锚点合并策略，先抽参数构建）
+
 ---
 
 ## 背景
@@ -194,6 +201,35 @@
 - `StoryboardPolicy`
   - prompt：使用 storyboard 模板（避免拼图/字幕/UI），并支持 labeled reference context
   - reference_images 合并策略：用户 > 帧 refs > 角色锚点 > 环境锚点（保持现有逻辑）
+
+### 统一提示词管理（PromptManager）
+
+**现状**：仓库已有 PromptManager（`app/prompts/`），但图像生成链路对它的使用不一致：
+
+- 分镜已使用 `PromptTemplate.STORYBOARD_IMAGE_PROMPT` 进行 prompt 组装（并可注入 labeled reference context）
+- 环境已使用 `PromptTemplate.ENVIRONMENT_IMAGE` 渲染最终给图像模型的 prompt
+- 虚拟 IP 文生图目前存在“渲染了 `image_generation` 模板但未使用其输出”的情况；且该模板当前是“提示词生成器”（期望 LLM 输出 JSON），并不适合作为图像模型的直接输入
+
+**统一策略**：把图像相关模板分成两类，并明确每条链路的模板边界。
+
+1. **Runtime Prompt Templates（直接喂给图像模型）**
+
+   - 输出是单段 prompt 文本（必要时可附带 `negative_prompt` 字段供支持的 provider 使用）
+   - 目标：可预测、可复现、可版本化地迭代“图像质量与一致性”
+   - 典型模板：`environment_image`、`storyboard_image_prompt`、（建议新增）`virtual_ip_image` / `virtual_ip_image_variant`
+
+2. **Prompt-Generator Templates（给 LLM 用来生成 prompt）**
+
+   - 输出是结构化 JSON（`positive_prompt/negative_prompt/...`），用于“提示词改写/扩写”场景
+   - 目标：在需要更强表达力时，用 LLM 生成更细的 prompt，但必须可控（temperature=0、严格 JSON、可回放）
+   - 典型模板：现有 `image_generation` 更适合归到这一类（并应明确只在开启 prompt-rewrite pipeline 时使用）
+
+**元数据记录（建议）**：所有 domain 在 Task.parameters 与域对象落库时统一记录：
+
+- `prompt_template` / `prompt_template_version`
+- `prompt_variables`（可选：只存 hash/摘要，避免泄露敏感文本）
+- `final_prompt`（必要时可截断）
+- （可选）`negative_prompt` / `seed` / `steps` / `cfg_scale` 等
 
 ### Provider Param Mapping（安全透传）
 
