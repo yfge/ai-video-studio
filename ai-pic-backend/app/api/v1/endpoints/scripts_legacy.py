@@ -7,10 +7,6 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, urlunparse
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.logging import get_logger
@@ -60,8 +56,10 @@ from app.services.task_worker import (
 )
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
-from app.utils.model_utils import infer_provider_from_model
 from app.utils.script_parser import extract_script_structure
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 
 def _now_iso() -> str:
@@ -352,7 +350,11 @@ def _build_episode_data(episode: Episode) -> Dict[str, Any]:
     scene_count = episode.scene_count or (len(scenes) if scenes else None)
     marketing_meta = merge_marketing_meta(
         episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {},
-        episode.generation_params if isinstance(episode.generation_params, dict) else {},
+        (
+            episode.generation_params
+            if isinstance(episode.generation_params, dict)
+            else {}
+        ),
     )
     return {
         "episode_number": episode.episode_number,
@@ -1518,6 +1520,17 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
             character_profiles=character_profiles,
         )
 
+        marketing_overrides = {
+            "market_region": request_dict.get("market_region"),
+            "micro_genre": request_dict.get("micro_genre"),
+            "hook_plan": request_dict.get("hook_plan"),
+            "twist_density": request_dict.get("twist_density"),
+            "cliffhanger_plan": request_dict.get("cliffhanger_plan"),
+            "ad_snippets": request_dict.get("ad_snippets"),
+        }
+        apply_marketing_overrides(story_data, marketing_overrides)
+        apply_marketing_overrides(episode_data, marketing_overrides)
+
         # 计算场景预算（如果有 duration_minutes）
         scene_budgets = None
         duration_minutes = request_dict.get("duration_minutes")
@@ -1759,7 +1772,6 @@ def _process_script_audio_storyboard_task(
 ) -> None:
     """后台处理从 audio_timeline 生成分镜帧占位任务（供 Celery 调用）。"""
     import anyio
-
     from app.core.database import SessionLocal
     from app.models.user import User
 
@@ -1909,12 +1921,28 @@ async def preview_storyboard_prompt(
     episode = script.episode
     story = episode.story if episode else None
     story_marketing = merge_marketing_meta(
-        story.extra_metadata if story and isinstance(story.extra_metadata, dict) else {},
-        story.generation_params if story and isinstance(story.generation_params, dict) else {},
+        (
+            story.extra_metadata
+            if story and isinstance(story.extra_metadata, dict)
+            else {}
+        ),
+        (
+            story.generation_params
+            if story and isinstance(story.generation_params, dict)
+            else {}
+        ),
     )
     episode_marketing = merge_marketing_meta(
-        episode.extra_metadata if episode and isinstance(episode.extra_metadata, dict) else {},
-        episode.generation_params if episode and isinstance(episode.generation_params, dict) else {},
+        (
+            episode.extra_metadata
+            if episode and isinstance(episode.extra_metadata, dict)
+            else {}
+        ),
+        (
+            episode.generation_params
+            if episode and isinstance(episode.generation_params, dict)
+            else {}
+        ),
     )
     scenes = script.scenes or []
     scene_indices = list(range(1, len(scenes) + 1))
@@ -2022,7 +2050,11 @@ async def generate_storyboard(
     )
     episode_marketing = merge_marketing_meta(
         episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {},
-        episode.generation_params if isinstance(episode.generation_params, dict) else {},
+        (
+            episode.generation_params
+            if isinstance(episode.generation_params, dict)
+            else {}
+        ),
     )
     script_data = {
         "content": script.content,
@@ -2565,7 +2597,6 @@ def _process_storyboard_generation_task(
 ):
     """后台处理分镜结构生成任务（供 Celery 调用）。"""
     import anyio
-
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
     from app.models.user import User
@@ -2850,82 +2881,25 @@ def _process_storyboard_image_task(
 
         async def _gen_images(prompt: str, ref_imgs: List[str]) -> dict | None:
             try:
-                prefer_provider = None
-                model_id = model
-                if model_id and ":" in model_id:
-                    prefer_provider, model_id = model_id.split(":", 1)
-                if not prefer_provider:
-                    prefer_provider = infer_provider_from_model(model_id or "")
+                from app.services.storyboard.storyboard_image_generation import (
+                    generate_storyboard_image_urls,
+                )
 
                 refs = [_abs_url(u) for u in ref_imgs if u]
-
-                if refs:
-                    base_image = refs[0]
-                    extra = refs[1:]
-                    resp = await ai_service.ai_manager.image_to_image(
-                        image_url=base_image,
-                        prompt=prompt,
-                        model=model_id,
-                        prefer_provider=prefer_provider,
-                        count=count_int,
-                        extra_images=extra,
-                        size=size,
-                        width=width_value,
-                        height=height_value,
-                        style=style,
-                        style_preset_id=style_preset_id,
-                        style_spec=style_spec,
-                        aspect_ratio=aspect_ratio,
-                    )
-                else:
-                    resp = await ai_service.ai_manager.generate_image(
-                        prompt=prompt,
-                        model=model_id,
-                        prefer_provider=prefer_provider,
-                        size=size,
-                        width=width_value,
-                        height=height_value,
-                        style=style,
-                        style_preset_id=style_preset_id,
-                        style_spec=style_spec,
-                        n=count_int,
-                        aspect_ratio=aspect_ratio,
-                    )
-                if resp.success:
-                    data = resp.data if isinstance(resp.data, dict) else {}
-                    urls: list[str] = []
-                    url_single = data.get("image_url") or data.get("url")
-                    if isinstance(url_single, str) and url_single:
-                        urls.append(url_single)
-                    # 兼容火山 Seedream 等返回 {"images": [...]} 的格式
-                    images = data.get("images")
-                    if isinstance(images, list):
-                        for item in images:
-                            if isinstance(item, str) and item:
-                                urls.append(item)
-                            elif isinstance(item, dict) and item.get("url"):
-                                urls.append(str(item.get("url")))
-
-                    deduped: list[str] = []
-                    for u in urls:
-                        if u and u not in deduped:
-                            deduped.append(u)
-                    if deduped:
-                        return {
-                            "urls": deduped,
-                            "provider": resp.provider,
-                            "model": resp.model,
-                            "style_spec": (
-                                (resp.metadata or {}).get("style_spec")
-                                if isinstance(resp.metadata, dict)
-                                else None
-                            ),
-                            "style_spec_resolution": (
-                                (resp.metadata or {}).get("style_spec_resolution")
-                                if isinstance(resp.metadata, dict)
-                                else None
-                            ),
-                        }
+                return await generate_storyboard_image_urls(
+                    prompt=prompt,
+                    refs=refs,
+                    model=model,
+                    count=count_int,
+                    size=size,
+                    aspect_ratio=aspect_ratio,
+                    width=width_value,
+                    height=height_value,
+                    style=style,
+                    style_preset_id=style_preset_id,
+                    style_spec=style_spec,
+                    ai_service=ai_service,
+                )
             except Exception as e:
                 print(f"图像生成失败: {e}")
             return None
@@ -3338,9 +3312,7 @@ class LabeledReferenceImage(BaseModel):
         ...,
         description="参考图类型：character=角色, environment=环境, primary=首要参考, other=其他",
     )
-    label: Optional[str] = Field(
-        default=None, description="标签名称，如角色名'老拐'"
-    )
+    label: Optional[str] = Field(default=None, description="标签名称，如角色名'老拐'")
 
 
 class StoryboardImageRequest(BaseModel):
@@ -4307,7 +4279,6 @@ def _process_script_dialogue_audio_task(
 ) -> None:
     """后台处理剧本场景对白音轨生成任务（供 Celery 调用）。"""
     import anyio
-
     from app.core.database import SessionLocal
     from app.models.user import User
 
@@ -4547,7 +4518,6 @@ def _process_script_audio_timeline_task(
 ) -> None:
     """后台处理 episode 音频拼接与时间轴生成任务（供 Celery 调用）。"""
     import anyio
-
     from app.core.database import SessionLocal
     from app.models.user import User
 
@@ -4683,7 +4653,6 @@ async def generate_timeline_pipeline_async(
 def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -> None:
     """后台处理一键时间轴流水线任务（对白音轨 → 时间轴 → 分镜帧占位）。"""
     import anyio
-
     from app.core.database import SessionLocal
     from app.models.user import User
 
