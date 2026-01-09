@@ -86,6 +86,67 @@ Resolver implementation:
 - Output directory: `uploads/exports/novels/`
 - Persisted in DB: `story_novel_exports` (linked to `tasks.id` / `stories.id`, full text stored in `content_text`; download falls back to DB when the file is missing)
 
+## Agent state graphs (LangGraph)
+
+LangGraph can export state machines to Mermaid/PNG. This repo snapshots the current major agent flows as diagrams for easier onboarding and debugging:
+
+- Generate diagrams: `python scripts/generate_agent_graphs.py`
+- Output directory: `docs/agent_graphs/` (`.png` + `.mmd`)
+
+<details>
+<summary><code>StoryLangGraphAgent</code> (conceptual story-outline flow)</summary>
+
+![StoryLangGraphAgent](docs/agent_graphs/story_langgraph_agent.png)
+
+Source: `docs/agent_graphs/story_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>EpisodeLangGraphAgent</code> (conceptual episode-generation flow)</summary>
+
+![EpisodeLangGraphAgent](docs/agent_graphs/episode_langgraph_agent.png)
+
+Source: `docs/agent_graphs/episode_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>ScriptLangGraphAgent</code> (script generation)</summary>
+
+![ScriptLangGraphAgent](docs/agent_graphs/script_langgraph_agent.png)
+
+Source: `docs/agent_graphs/script_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>StoryboardReActReasoner</code> (plan → critique → finalize)</summary>
+
+![StoryboardReActReasoner](docs/agent_graphs/storyboard_react_reasoner.png)
+
+Source: `docs/agent_graphs/storyboard_react_reasoner.mmd`
+
+</details>
+
+<details>
+<summary><code>TimelineLangGraphAgent</code> (rhythm / gap timing)</summary>
+
+![TimelineLangGraphAgent](docs/agent_graphs/timeline_langgraph_agent.png)
+
+Source: `docs/agent_graphs/timeline_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>DurationOrchestratorAgent</code> (end-to-end duration control loop)</summary>
+
+![DurationOrchestratorAgent](docs/agent_graphs/duration_orchestrator_agent.png)
+
+Source: `docs/agent_graphs/duration_orchestrator_agent.mmd`
+
+</details>
+
 ## Common validation commands
 
 ```bash

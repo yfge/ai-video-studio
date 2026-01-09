@@ -86,6 +86,67 @@ npm run dev
 - 导出落盘：`uploads/exports/novels/`
 - 导出入库：`story_novel_exports`（关联 `tasks.id` / `stories.id`，正文存 `content_text`；下载接口在文件缺失时会回退读取数据库）
 
+## Agent 状态图（LangGraph）
+
+LangGraph 支持将状态机导出为 Mermaid/PNG。仓库内已为当前主要 Agent 生成状态图，便于理解流程与排查问题：
+
+- 生成脚本：`python scripts/generate_agent_graphs.py`
+- 输出目录：`docs/agent_graphs/`（`.png` + `.mmd`）
+
+<details>
+<summary><code>StoryLangGraphAgent</code>（故事大纲生成，概念流程）</summary>
+
+![StoryLangGraphAgent](docs/agent_graphs/story_langgraph_agent.png)
+
+源码：`docs/agent_graphs/story_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>EpisodeLangGraphAgent</code>（分集生成，概念流程）</summary>
+
+![EpisodeLangGraphAgent](docs/agent_graphs/episode_langgraph_agent.png)
+
+源码：`docs/agent_graphs/episode_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>ScriptLangGraphAgent</code>（剧本生成）</summary>
+
+![ScriptLangGraphAgent](docs/agent_graphs/script_langgraph_agent.png)
+
+源码：`docs/agent_graphs/script_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>StoryboardReActReasoner</code>（分镜规划+评审+生成）</summary>
+
+![StoryboardReActReasoner](docs/agent_graphs/storyboard_react_reasoner.png)
+
+源码：`docs/agent_graphs/storyboard_react_reasoner.mmd`
+
+</details>
+
+<details>
+<summary><code>TimelineLangGraphAgent</code>（对白节奏/间隔计算）</summary>
+
+![TimelineLangGraphAgent](docs/agent_graphs/timeline_langgraph_agent.png)
+
+源码：`docs/agent_graphs/timeline_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>DurationOrchestratorAgent</code>（端到端时长闭环验证）</summary>
+
+![DurationOrchestratorAgent](docs/agent_graphs/duration_orchestrator_agent.png)
+
+源码：`docs/agent_graphs/duration_orchestrator_agent.mmd`
+
+</details>
+
 ## 常用验证命令
 
 ```bash
