@@ -1,0 +1,104 @@
+import pytest
+from app.services.image_gen import (
+    ImageGenDomain,
+    ImageGenMode,
+    ImageGenRequest,
+    build_ai_manager_call,
+    normalize_image_gen_request,
+)
+
+
+@pytest.mark.unit
+def test_environment_policy_disables_style_spec():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="seedream-4.5",
+        style="realistic",
+        style_preset_id="preset",
+        style_spec={"style_universe": "japanese_anime"},
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.style_preset_id is None
+    assert normalized.style_spec is None
+
+
+@pytest.mark.unit
+def test_parse_provider_prefix_and_infer_provider():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="keling:kling-image-v2",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.provider == "keling"
+    assert normalized.model_id == "kling-image-v2"
+
+
+@pytest.mark.unit
+def test_openai_drops_aspect_ratio_and_defaults_size_on_invalid():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="openai:dall-e-3",
+        size="999x999",
+        aspect_ratio="16:9",
+    )
+    normalized = normalize_image_gen_request(req)
+    # OpenAI DALL-E does not support aspect_ratio in our UI rules
+    assert normalized.aspect_ratio is None
+    # Invalid size should fall back to default for that model (1024x1024)
+    assert normalized.size == "1024x1024"
+
+
+@pytest.mark.unit
+def test_reference_images_normalization_requires_backend_base():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.STORYBOARD,
+        mode=ImageGenMode.IMAGE_TO_IMAGE,
+        prompt="test",
+        model="volcengine:seedream-4.5",
+        base_image="/uploads/a.png",
+        reference_images=["uploads/b.png", "not-a-url", "http://example.com/c.jpg"],
+    )
+    normalized = normalize_image_gen_request(req, strict=False)
+    assert normalized.extra_images == []
+    assert any("backend_base is missing" in w for w in normalized.audit.warnings)
+
+
+@pytest.mark.unit
+def test_reference_images_normalized_and_base_image_resolved():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.STORYBOARD,
+        mode=ImageGenMode.IMAGE_TO_IMAGE,
+        prompt="test",
+        model="volcengine:seedream-4.5",
+        base_image="uploads/a.png",
+        reference_images=["uploads/b.png", "not-a-url", "http://example.com/c.jpg"],
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.base_image_url == "http://localhost:8000/uploads/a.png"
+    assert normalized.extra_images == [
+        "http://localhost:8000/uploads/b.png",
+        "http://example.com/c.jpg",
+    ]
+
+
+@pytest.mark.unit
+def test_build_ai_manager_call_filters_jimeng_aspect_ratio():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-sdxl",
+        size="1024x1024",
+        aspect_ratio="16:9",
+    )
+    normalized = normalize_image_gen_request(req)
+    call = build_ai_manager_call(normalized)
+    assert call["prefer_provider"] == "jimeng"
+    assert "aspect_ratio" not in call
