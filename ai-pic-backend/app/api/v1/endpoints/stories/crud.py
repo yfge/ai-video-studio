@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from typing import List, Optional
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
@@ -11,13 +8,15 @@ from app.models.script import Story, StoryCharacter
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.schemas.script import StoryCreate, StoryResponse, StoryUpdate
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
 from .helpers import get_story_by_identifier, not_deleted
 
 router = APIRouter()
 
 
-@router.post("/", response_model=StoryResponse)
+@router.post("/", response_model=StoryResponse, status_code=201)
 async def create_story(
     story: StoryCreate,
     current_user: User = Depends(get_current_active_user),
@@ -51,7 +50,7 @@ async def create_story(
     return StoryResponse.from_orm(db_story)
 
 
-@router.get("/")
+@router.get("/", response_model=List[StoryResponse])
 async def get_stories(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -73,10 +72,7 @@ async def get_stories(
         query = query.filter(Story.status == status)
 
     stories = query.offset(skip).limit(limit).all()
-    return {
-        "success": True,
-        "data": [StoryResponse.from_orm(story) for story in stories],
-    }
+    return [StoryResponse.from_orm(story) for story in stories]
 
 
 @router.get("", include_in_schema=False)
@@ -111,7 +107,7 @@ async def get_story(
 ):
     """获取故事详情（支持业务ID）"""
     story = get_story_by_identifier(db, story_id, None, current_user)
-    return {"success": True, "data": StoryResponse.from_orm(story)}
+    return StoryResponse.from_orm(story)
 
 
 @router.get("/business/{story_business_id}")
@@ -122,7 +118,7 @@ async def get_story_by_business_id(
 ):
     """按 business_id 获取故事详情"""
     story = get_story_by_identifier(db, None, story_business_id, current_user)
-    return {"success": True, "data": StoryResponse.from_orm(story)}
+    return StoryResponse.from_orm(story)
 
 
 @router.put("/{story_id}", response_model=StoryResponse)
@@ -163,7 +159,7 @@ async def update_story_by_business_id(
     return StoryResponse.from_orm(story)
 
 
-@router.delete("/{story_id}")
+@router.delete("/{story_id}", status_code=204)
 async def delete_story(
     story_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -174,10 +170,10 @@ async def delete_story(
     story.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
 
-    return {"message": "故事删除成功"}
+    return None
 
 
-@router.delete("/business/{story_business_id}")
+@router.delete("/business/{story_business_id}", status_code=204)
 async def delete_story_by_business_id(
     story_business_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -188,4 +184,4 @@ async def delete_story_by_business_id(
     story.soft_delete(user_id=current_user.id, reason="user delete")
     db.commit()
 
-    return {"message": "故事删除成功"}
+    return None

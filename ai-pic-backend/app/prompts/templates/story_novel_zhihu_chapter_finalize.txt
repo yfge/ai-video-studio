@@ -1,0 +1,52 @@
+你将作为“知乎体长文故事”的责任编辑，对一章可能被截断/未完整收尾的草稿进行补全与收尾，然后输出终稿。
+
+要求：输出纯文本，不要 Markdown，不要代码块。
+
+【故事信息】
+{{ story | tojson }}
+
+【整体大纲（plan）】
+{{ plan | tojson }}
+
+【连贯性账本（ledger）】
+{{ ledger | tojson }}
+
+【上一章结尾片段（previous_tail）】
+{{ previous_tail }}
+
+【上一章卡点（previous_cliffhanger）】
+{{ previous_cliffhanger }}
+
+【已生成连载小结（running_summary）】
+{{ running_summary }}
+
+【当前章节规划】
+章节号：{{ chapter.chapter_number }}
+章节标题：{{ chapter.title }}
+目标字数：{{ chapter.target_words }}
+关键节拍（按顺序）：
+{{ chapter.key_beats | tojson }}
+章末卡点提示：{{ chapter.cliffhanger_hint }}
+
+【字数目标】
+总目标：{{ total_target_words }}
+剩余目标：{{ remaining_target_words }}
+
+【本章草稿（draft）】
+{{ draft }}
+
+任务（必须同时满足）：
+- 在 draft 基础上“续写/补全缺失部分”，避免从头重写；必要时可对结尾附近做小幅改写以保证连贯。
+- 必须遵守 ledger 的已知事实/时间线/人物关系/开放线索，不得自相矛盾。
+- 若 previous_cliffhanger 非空：检查 draft 是否已承接该卡点；如未承接，必须在开头 1-3 段补写承接内容（续写现场或立刻解释卡点后的变化）。
+- 修复 draft 中的逻辑跳跃与场景断裂；跨时间/地点切换必须用一句话交代（例如“第二天”“回到公司”“下班后我在楼下”）。
+- 修复 draft 中的半句话/未完成对话/未闭合引号；在进入【本章小结】前，正文最后一句必须完整。
+- 字数尽量贴近目标字数（允许 ±15%），且不要超过剩余目标的 120%。
+- 必须按以下格式收尾（标记要一字不差，且各出现一次）：
+  【本章小结】
+  （用 2-6 条要点概括本章推进与人物变化）
+  【本章卡点】
+  （用 1-2 句制造悬念/钩子，引导下一章）
+
+只输出终稿正文。
+

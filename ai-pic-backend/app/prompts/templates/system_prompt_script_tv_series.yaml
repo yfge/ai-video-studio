@@ -1,0 +1,10 @@
+name: system_prompt_script_tv_series
+description: "系统提示：剧集规划助手（电视剧/网剧）"
+category: system
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-08"
+updated_at: "2026-01-08"
+
+variables: {}
+

@@ -1,14 +1,17 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.schemas.user import UserSummary
+from pydantic import BaseModel, Field, field_validator
+
 
 # 故事概要相关schemas
 class StoryCharacterBase(BaseModel):
     virtual_ip_id: int
     character_name: Optional[str] = None
-    role_type: Optional[str] = Field(None, description="角色类型：protagonist, antagonist, supporting")
+    role_type: Optional[str] = Field(
+        None, description="角色类型：protagonist, antagonist, supporting"
+    )
     importance: int = Field(1, ge=1, le=5, description="重要度：1-5")
     personality: Optional[str] = None
     background: Optional[str] = None
@@ -16,8 +19,10 @@ class StoryCharacterBase(BaseModel):
     character_arc: Optional[str] = None
     relationships: Optional[Dict[str, Any]] = None
 
+
 class StoryCharacterCreate(StoryCharacterBase):
     pass
+
 
 class StoryCharacterUpdate(BaseModel):
     character_name: Optional[str] = None
@@ -29,65 +34,87 @@ class StoryCharacterUpdate(BaseModel):
     character_arc: Optional[str] = None
     relationships: Optional[Dict[str, Any]] = None
 
+
 class StoryCharacterResponse(StoryCharacterBase):
     id: int
     story_id: int
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
+
 class StoryBase(BaseModel):
     title: str = Field(..., max_length=255)
+    story_format: str = Field(
+        "short_drama",
+        description="故事形态：short_drama（短剧）/ tv_series（电视剧/网剧）/ film（电影）",
+    )
     genre: str = Field(..., max_length=50)
     theme: Optional[str] = Field(None, max_length=255)
     target_audience: Optional[str] = Field(None, max_length=100)
     duration_minutes: Optional[int] = Field(None, ge=1)
-    
+
     premise: Optional[str] = None
     synopsis: Optional[str] = None
     main_conflict: Optional[str] = None
     resolution: Optional[str] = None
-    
+
     main_characters: Optional[List[Dict[str, Any]]] = None
     character_relationships: Optional[Dict[str, Any]] = None
-    
+
     setting_time: Optional[str] = Field(None, max_length=100)
     setting_location: Optional[str] = Field(None, max_length=255)
     world_building: Optional[str] = None
-    
+
     status: str = Field("draft", description="状态：draft, approved, published")
     is_public: bool = False
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
 
+    @field_validator("story_format", mode="before")
+    @classmethod
+    def _coerce_story_format(cls, value: Any) -> str:
+        if value is None:
+            return "short_drama"
+        if isinstance(value, str) and not value.strip():
+            return "short_drama"
+        return str(value)
+
+
 class StoryCreate(StoryBase):
     characters: Optional[List[StoryCharacterCreate]] = None
 
+
 class StoryUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
+    story_format: Optional[str] = Field(
+        None,
+        description="故事形态：short_drama（短剧）/ tv_series（电视剧/网剧）/ film（电影）",
+    )
     genre: Optional[str] = Field(None, max_length=50)
     theme: Optional[str] = Field(None, max_length=255)
     target_audience: Optional[str] = Field(None, max_length=100)
     duration_minutes: Optional[int] = Field(None, ge=1)
-    
+
     premise: Optional[str] = None
     synopsis: Optional[str] = None
     main_conflict: Optional[str] = None
     resolution: Optional[str] = None
-    
+
     main_characters: Optional[List[Dict[str, Any]]] = None
     character_relationships: Optional[Dict[str, Any]] = None
-    
+
     setting_time: Optional[str] = Field(None, max_length=100)
     setting_location: Optional[str] = Field(None, max_length=255)
     world_building: Optional[str] = None
-    
+
     status: Optional[str] = None
     is_public: Optional[bool] = None
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
+
 
 class StoryResponse(StoryBase):
     id: int
@@ -98,11 +125,12 @@ class StoryResponse(StoryBase):
     creator: Optional[UserSummary] = Field(None, validation_alias="owner")
     created_at: datetime
     updated_at: datetime
-    
+
     story_characters: Optional[List[StoryCharacterResponse]] = None
-    
+
     class Config:
         from_attributes = True
+
 
 # 剧集相关schemas
 class EpisodeBase(BaseModel):
@@ -118,8 +146,10 @@ class EpisodeBase(BaseModel):
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
 
+
 class EpisodeCreate(EpisodeBase):
     story_id: int
+
 
 class EpisodeUpdate(BaseModel):
     episode_number: Optional[int] = Field(None, ge=1)
@@ -134,6 +164,7 @@ class EpisodeUpdate(BaseModel):
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
 
+
 class EpisodeResponse(EpisodeBase):
     id: int
     business_id: str
@@ -144,9 +175,10 @@ class EpisodeResponse(EpisodeBase):
     generation_params: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 # 剧本相关schemas
 class ScriptBase(BaseModel):
@@ -162,8 +194,10 @@ class ScriptBase(BaseModel):
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
 
+
 class ScriptCreate(ScriptBase):
     episode_id: int
+
 
 class ScriptUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
@@ -178,6 +212,7 @@ class ScriptUpdate(BaseModel):
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
 
+
 class ScriptResponse(ScriptBase):
     id: int
     business_id: str
@@ -191,9 +226,10 @@ class ScriptResponse(ScriptBase):
     generation_params: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 # 模板相关schemas
 class ScriptTemplateBase(BaseModel):
@@ -205,8 +241,10 @@ class ScriptTemplateBase(BaseModel):
     is_active: bool = True
     is_public: bool = False
 
+
 class ScriptTemplateCreate(ScriptTemplateBase):
     pass
+
 
 class ScriptTemplateUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
@@ -217,12 +255,13 @@ class ScriptTemplateUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_public: Optional[bool] = None
 
+
 class ScriptTemplateResponse(ScriptTemplateBase):
     id: int
     usage_count: int
     rating: Optional[float] = None
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
-        from_attributes = True 
+        from_attributes = True

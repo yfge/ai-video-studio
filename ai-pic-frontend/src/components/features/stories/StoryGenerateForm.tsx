@@ -1,6 +1,7 @@
 "use client";
 
-import type { StoryGenerationRequest, VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api";
+import type { StoryGenerationForm } from "@/utils/storyOptions";
 import { CreationOverlay } from "@/components/shared";
 import { StoryBasicsSection } from "./StoryBasicsSection";
 import { StorySettingSection } from "./StorySettingSection";
@@ -9,8 +10,8 @@ interface StoryGenerateFormProps {
   open: boolean;
   onClose: () => void;
   virtualIPs: VirtualIP[];
-  generateForm: StoryGenerationRequest;
-  setGenerateForm: React.Dispatch<React.SetStateAction<StoryGenerationRequest>>;
+  generateForm: StoryGenerationForm;
+  setGenerateForm: React.Dispatch<React.SetStateAction<StoryGenerationForm>>;
   promptPreview: string;
   showPromptPreview: boolean;
   useAsync: boolean;
@@ -105,11 +106,7 @@ export function StoryGenerateForm({
             disabled={generating}
             className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
           >
-            {generating
-              ? "生成中..."
-              : useAsync
-                ? "创建异步任务"
-                : "开始生成"}
+            {generating ? "生成中..." : useAsync ? "创建异步任务" : "开始生成"}
           </button>
         </div>
       </form>

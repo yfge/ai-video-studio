@@ -1,8 +1,7 @@
 import re
 from typing import Any, Dict
 
-from .json_utils import extract_json_block
-
+from .json_utils import extract_json_block  # noqa: F401
 
 CHINESE_KEY_MAP = {
     "故事前提": "premise",
@@ -17,6 +16,15 @@ CHINESE_KEY_MAP = {
     "角色关系": "character_relationships",
     "主角信息": "main_characters",
     "主要角色": "main_characters",
+}
+
+_OUTLINE_KEYS = {
+    "premise",
+    "synopsis",
+    "main_conflict",
+    "resolution",
+    "character_relationships",
+    "main_characters",
 }
 
 
@@ -37,6 +45,43 @@ def normalize_story_json_keys(data: Dict[str, Any]) -> Dict[str, Any]:
             normalized[std_key] = data.get(zh_key)
 
     return normalized
+
+
+def extract_story_outline_payload(data: Any) -> Dict[str, Any]:
+    """
+    从任意 JSON 结构中尽量抽取包含故事概要字段的 dict。
+
+    部分模型/代理可能会把结果包裹在 `data`/`story_outline`/`result` 等字段里，
+    直接用顶层 dict 写入 comfortably 会导致 premise/synopsis 等字段为空。
+    """
+    if isinstance(data, dict):
+        if _OUTLINE_KEYS.intersection(data.keys()) or set(CHINESE_KEY_MAP).intersection(
+            data.keys()
+        ):
+            return normalize_story_json_keys(data)
+
+        # 常见包裹：只有一个 key 且值为 dict/list
+        if len(data) == 1:
+            only_value = next(iter(data.values()))
+            extracted = extract_story_outline_payload(only_value)
+            if extracted:
+                return extracted
+
+        # 递归在子结构中寻找第一份可用 payload
+        for value in data.values():
+            extracted = extract_story_outline_payload(value)
+            if extracted:
+                return extracted
+        return {}
+
+    if isinstance(data, list):
+        for item in data:
+            extracted = extract_story_outline_payload(item)
+            if extracted:
+                return extracted
+        return {}
+
+    return {}
 
 
 def extract_outline_from_text(text: str) -> Dict[str, Any]:

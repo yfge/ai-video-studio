@@ -1,0 +1,13 @@
+description: Zhihu novel plan prompt (JSON only)
+category: story
+version: "1.0"
+variables:
+  story:
+    required: true
+    type: dict
+  target_words:
+    required: true
+    type: number
+  chapter_count:
+    required: true
+    type: number

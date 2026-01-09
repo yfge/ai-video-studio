@@ -1,0 +1,35 @@
+description: Zhihu novel chapter finalize prompt (recover from truncation, enforce markers)
+category: story
+version: "1.0"
+variables:
+  story:
+    required: true
+    type: dict
+  plan:
+    required: true
+    type: dict
+  ledger:
+    required: true
+    type: dict
+  previous_tail:
+    required: true
+    type: string
+  previous_cliffhanger:
+    required: false
+    type: string
+  chapter:
+    required: true
+    type: dict
+  running_summary:
+    required: true
+    type: string
+  draft:
+    required: true
+    type: string
+  remaining_target_words:
+    required: true
+    type: number
+  total_target_words:
+    required: true
+    type: number
+

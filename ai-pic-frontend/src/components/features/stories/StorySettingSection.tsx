@@ -1,13 +1,14 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { StoryGenerationRequest, VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api";
+import type { StoryGenerationForm } from "@/utils/storyOptions";
 import { CharacterSelector } from "./CharacterSelector";
 
 interface StorySettingSectionProps {
   virtualIPs: VirtualIP[];
-  generateForm: StoryGenerationRequest;
-  setGenerateForm: Dispatch<SetStateAction<StoryGenerationRequest>>;
+  generateForm: StoryGenerationForm;
+  setGenerateForm: Dispatch<SetStateAction<StoryGenerationForm>>;
   onCharacterToggle: (characterId: number) => void;
   onNavigateToVirtualIP: () => void;
 }

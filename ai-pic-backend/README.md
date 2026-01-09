@@ -2,6 +2,8 @@
 
 这是一个以虚拟IP为中心的AI短剧制作工作流平台的后端服务，所有大模型能力均通过外部API调用。
 
+> 快速跑通全栈开发环境建议从根目录 `README.md` / `README_EN.md` 与 `docker/README.md` 开始。
+
 ## 核心功能
 
 - **虚拟IP管理**: 虚拟IP档案管理、图像资源管理
@@ -21,9 +23,9 @@
 
 ### 环境要求
 
-- Python 3.8+
-- MySQL 8.0+ (推荐) 或 SQLite (开发环境)
-- Redis (可选)
+- Python 3.11+
+- MySQL 8.0+（推荐；开发/生产均可）
+- Redis 7+（Celery 队列/缓存，建议启用）
 
 ### 安装依赖
 
@@ -42,6 +44,7 @@ pip install -r requirements.txt
 #### MySQL配置 (推荐)
 
 1. 启动MySQL数据库：
+
 ```bash
 # 使用Docker启动MySQL
 docker run --name mysql-ai-studio \
@@ -52,6 +55,7 @@ docker run --name mysql-ai-studio \
 ```
 
 2. 配置环境变量：
+
 ```bash
 # .env 文件
 DATABASE_URL=mysql+pymysql://root:Pa88word@127.0.0.1:13306/ai_video_studio?charset=utf8mb4
@@ -64,6 +68,9 @@ DATABASE_URL=mysql+pymysql://root:Pa88word@127.0.0.1:13306/ai_video_studio?chars
 python manage.py migration init
 python manage.py migration upgrade
 
+# 或直接使用 Alembic（docker/backend-entrypoint.sh 也会执行该命令）
+alembic upgrade head
+
 # 运行初始数据种子
 python manage.py seed run --all
 
@@ -74,11 +81,13 @@ python manage.py migration status
 ### 环境配置
 
 1. 复制环境变量文件：
+
 ```bash
 cp env.example .env
 ```
 
 2. 配置环境变量：
+
 ```bash
 # 基础配置
 SECRET_KEY=your-secret-key-here
@@ -96,21 +105,32 @@ AI_API_KEY=your-custom-ai-service-key
 
 ### AI服务配置
 
-平台支持多种AI图像生成服务：
+平台支持多种模型/服务提供商（图像/文本/视频能力按需启用，均通过外部 API 调用）：
 
 #### 1. OpenAI DALL-E (推荐)
+
 - 注册 [OpenAI](https://platform.openai.com/)
 - 获取API Key
 - 配置环境变量：`OPENAI_API_KEY=your-key`
 
 #### 2. Stability AI
+
 - 注册 [Stability AI](https://platform.stability.ai/)
 - 获取API Key
 - 配置环境变量：`STABILITY_API_KEY=your-key`
 
-#### 3. 自定义AI服务
-- 配置服务URL和API Key
-- 环境变量：`AI_SERVICE_URL` 和 `AI_API_KEY`
+#### 3. 其他常用文本/视频提供商（示例）
+
+- Google：`GOOGLE_API_KEY`（可选 `GOOGLE_BASE_URL`）
+- DeepSeek：`DEEPSEEK_API_KEY`
+- MiniMax：`MINIMAX_API_KEY`、`MINIMAX_GROUP_ID`
+- 可灵（Keling）：`KELING_API_KEY`、`KELING_SECRET_KEY`
+- 即梦（Jimeng）：`JIMENG_API_KEY`、`JIMENG_SECRET_KEY`
+- 火山引擎：`VOLCENGINE_API_KEY`（可选 `VOLCENGINE_SECRET_KEY`、`VOLCENGINE_REGION`）
+
+#### 4. OSS 存储（可选）
+
+- 阿里云 OSS：`ALIYUN_ACCESS_KEY_ID`、`ALIYUN_ACCESS_KEY_SECRET`、`ALIYUN_OSS_ENDPOINT`、`ALIYUN_OSS_BUCKET`、`ALIYUN_OSS_DOMAIN`
 
 ### 启动服务
 
@@ -261,6 +281,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 ### 核心实体表
 
 #### 虚拟IP表 (virtual_ips)
+
 - id: 主键
 - name: IP名称
 - description: 描述
@@ -275,6 +296,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 - updated_at: 更新时间
 
 #### 虚拟IP图像表 (virtual_ip_images)
+
 - id: 主键
 - virtual_ip_id: 虚拟IP ID
 - filename: 文件名
@@ -293,8 +315,10 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 - created_at: 创建时间
 
 #### 故事表 (stories)
+
 - id: 主键
 - title: 故事标题
+- story_format: 故事形态（short_drama / tv_series / film）
 - genre: 故事类型
 - theme: 故事主题
 - target_audience: 目标受众
@@ -319,6 +343,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 - updated_at: 更新时间
 
 #### 剧集表 (episodes)
+
 - id: 主键
 - story_id: 故事ID（外键）
 - episode_number: 集数
@@ -339,6 +364,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 - updated_at: 更新时间
 
 #### 剧本表 (scripts)
+
 - id: 主键
 - episode_id: 剧集ID（外键）
 - title: 剧本标题
@@ -364,6 +390,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 ### 关系表
 
 #### 故事角色表 (story_characters)
+
 - id: 主键
 - story_id: 故事ID（外键）
 - virtual_ip_id: 虚拟IP ID（外键）
@@ -381,6 +408,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 ### 系统支持表
 
 #### 用户表 (users)
+
 - id: 主键
 - username: 用户名（唯一）
 - email: 邮箱（唯一）
@@ -392,6 +420,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 - updated_at: 更新时间
 
 #### 任务表 (tasks)
+
 - id: 主键
 - title: 任务标题
 - description: 任务描述
@@ -406,6 +435,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 - updated_at: 更新时间
 
 #### 图像表 (images)
+
 - id: 主键
 - filename: 文件名
 - original_filename: 原始文件名
@@ -418,6 +448,7 @@ curl -X POST "http://localhost:8000/api/v1/virtual-ips/1/images/generate" \
 - created_at: 创建时间
 
 #### 脚本模板表 (script_templates)
+
 - id: 主键
 - name: 模板名称
 - category: 模板分类
@@ -463,35 +494,39 @@ docker run -p 8000:8000 --env-file .env ai-pic-backend
 ### 生产环境配置
 
 1. **数据库配置**
+
    - 使用MySQL 8.0+作为主数据库
    - 配置数据库连接池和优化参数
    - 设置定期备份策略
 
 2. **迁移管理**
+
    - 配置迁移中间件保护
    - 设置自动备份和回滚点
    - 监控迁移状态和健康检查
 
 3. **基础设施**
+
    - 配置Redis缓存
    - 设置反向代理（Nginx）
    - 配置SSL证书
    - 设置监控和日志
 
 4. **部署流程**
+
    ```bash
    # 1. 拉取代码
    git pull origin main
-   
+
    # 2. 检查迁移状态
    python manage.py migration status
-   
+
    # 3. 执行迁移（带备份）
    python manage.py migration upgrade --backup
-   
+
    # 4. 验证部署
    python manage.py dev check
-   
+
    # 5. 启动服务
    python manage.py server production
    ```
@@ -515,7 +550,8 @@ python manage.py migration cleanup-rollbacks --days 30
 
 ## 许可证
 
-MIT License 
+MIT License
+
 ## Storyboard Pipeline Updates
 
 - Storyboard frames now carry stable `frame_id` values alongside generation metadata (source, method, model, timestamps) so downstream image/video tasks can reference frames reliably.

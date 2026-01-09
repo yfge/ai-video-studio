@@ -3,8 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { storyAPI, virtualIPAPI } from "@/utils/api";
-import { STORY_GENERATE_DEFAULTS, STORY_GENRES, STORY_STATUSES } from "@/utils/storyOptions";
-import type { Story, VirtualIP, StoryGenerationRequest } from "@/utils/api";
+import {
+  STORY_GENERATE_DEFAULTS,
+  STORY_GENRES,
+  STORY_STATUSES,
+  type StoryGenerationForm,
+} from "@/utils/storyOptions";
+import type { Story, VirtualIP } from "@/utils/api";
 
 export interface UseStoriesOptions {
   showAlert: (options: {
@@ -19,7 +24,7 @@ export interface UseStoriesOptions {
 export const GENRES = STORY_GENRES;
 export const STATUSES = STORY_STATUSES;
 
-const INITIAL_GENERATE_FORM: StoryGenerationRequest = STORY_GENERATE_DEFAULTS;
+const INITIAL_GENERATE_FORM: StoryGenerationForm = STORY_GENERATE_DEFAULTS;
 
 export function useStories({ showAlert }: UseStoriesOptions) {
   const router = useRouter();
@@ -36,8 +41,9 @@ export function useStories({ showAlert }: UseStoriesOptions) {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
 
   // Generate form state
-  const [generateForm, setGenerateForm] =
-    useState<StoryGenerationRequest>(INITIAL_GENERATE_FORM);
+  const [generateForm, setGenerateForm] = useState<StoryGenerationForm>(
+    INITIAL_GENERATE_FORM,
+  );
   const [promptPreview, setPromptPreview] = useState<string>("");
   const [showPromptPreview, setShowPromptPreview] = useState<boolean>(false);
   const [useAsync, setUseAsync] = useState<boolean>(true);
@@ -88,9 +94,17 @@ export function useStories({ showAlert }: UseStoriesOptions) {
       if (useAsync) {
         const response = await storyAPI.generateStoryAsync(generateForm);
         if (response.success) {
+          const taskId = (response.data as { task_id?: number } | null)
+            ?.task_id;
           showAlert({
-            message: "已创建异步任务，稍后在任务页查看进度",
+            message: taskId
+              ? `已创建异步任务（ID: ${taskId}），可前往任务页查看进度`
+              : "已创建异步任务，可前往任务页查看进度",
             variant: "info",
+            confirmText: "去任务页",
+            onConfirm: () => {
+              router.push("/tasks");
+            },
           });
         } else {
           showAlert({
@@ -102,6 +116,7 @@ export function useStories({ showAlert }: UseStoriesOptions) {
         const response = await storyAPI.generateStory(generateForm);
         if (response.success && response.data) {
           setStories((prev) => [response.data as Story, ...prev]);
+          showAlert({ message: "故事生成成功！", variant: "success" });
         } else {
           showAlert({
             message: `故事生成失败：${response.error || "未知错误"}`,
@@ -112,7 +127,6 @@ export function useStories({ showAlert }: UseStoriesOptions) {
       setShowGenerateForm(false);
       setGenerateForm(INITIAL_GENERATE_FORM);
       setPromptPreview("");
-      showAlert({ message: "故事生成成功！", variant: "success" });
     } catch (error) {
       console.error("故事生成失败:", error);
       showAlert({ message: "故事生成失败", variant: "error" });
@@ -126,7 +140,7 @@ export function useStories({ showAlert }: UseStoriesOptions) {
       const response = await storyAPI.deleteStory(storyBusinessId);
       if (response.success) {
         setStories((prev) =>
-          prev.filter((story) => story.business_id !== storyBusinessId)
+          prev.filter((story) => story.business_id !== storyBusinessId),
         );
         showAlert({ message: "故事删除成功", variant: "success" });
       } else {

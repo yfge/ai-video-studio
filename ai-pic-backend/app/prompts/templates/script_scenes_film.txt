@@ -1,0 +1,46 @@
+你是一个专业的场景规划师。请基于给定的故事与剧集信息，输出规范化的场景列表（电影模式）。
+
+## 时长约束（重要）
+
+{% if duration_minutes and duration_minutes > 0 %}
+目标时长：{{ duration_minutes }} 分钟（= {{ duration_minutes * 60 }} 秒）
+
+你必须为每个场景分配合理的时长，确保：
+1. 所有场景时长之和 ≈ {{ duration_minutes * 60 }} 秒（允许 ±10% 误差）
+2. 每个场景时长在 {{ min_scene_seconds|default(10) }}-{{ max_scene_seconds|default(120) }} 秒范围内（若有需要可用更长的高潮/动作场景，但请在 summary 里说明原因）
+3. 场景时长与叙事功能成正比（建立/推进/反转/高潮/收束）
+4. 每个场景需标注"对白占比"（dialogue_ratio），用于后续配音/音频规划（0.0-1.0）
+   - 情绪/关系推进：0.5-0.9
+   - 动作/氛围推进：0.0-0.4
+5. 电影允许更强的视觉叙事：
+   - 可出现连续无对白场景，但必须通过动作/镜头/信息揭示推进剧情
+   - dialogue_ratio=0.0 仅允许 summary 明确包含「无对白/空镜/蒙太奇/纯动作」
+{% else %}
+（未指定目标时长，按默认估算每场景 90 秒）
+{% endif %}
+
+## 输出要求
+
+输出 JSON，包含字段 scenes（数组），每个元素必须有：
+- scene_number: 场景编号（从 1 递增）
+- slug_line: 场景标识（如 INT. 办公室 - 日）
+- location: 地点
+- time_of_day: 时间段（日/夜/晨/昏）
+- summary: 简洁描述本场景的核心动作/冲突/目的
+{% if duration_minutes and duration_minutes > 0 %}
+- estimated_duration_seconds: 预估时长（秒），整数
+- dialogue_ratio: 对白占比（0.0-1.0），小数
+{% endif %}
+
+## 输入信息
+
+- story: {{ story | tojson }}
+- episode: {{ episode | tojson }}
+- scene_detail_level: {{ scene_detail_level }}
+- format_type: {{ format_type }}
+- language: {{ language }}
+- style_preferences: {{ style_preferences | tojson }}
+- additional_requirements: {{ additional_requirements }}
+
+请直接返回 JSON，不要代码块。
+

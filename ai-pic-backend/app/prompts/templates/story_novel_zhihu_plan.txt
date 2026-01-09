@@ -1,0 +1,33 @@
+你将基于“故事信息”，为知乎体长文故事生成一个可执行的连载写作大纲（plan）。
+
+【故事信息】
+{{ story | tojson }}
+
+【目标约束】
+- 目标字数：{{ target_words }}
+- 章节数：{{ chapter_count }}
+
+请输出**严格 JSON**（不要代码块、不要多余解释），结构如下：
+{
+  "question_title": "知乎问题标题（1 行）",
+  "question_detail": "问题补充描述（用 \\n 表示换行，2-6 行，像知乎提问；字符串内不要出现真实换行符）",
+  "narrator_profile": "回答者自我介绍/立场（用 \\n 表示换行，1-4 行，例如利益相关/亲历者/旁观者；字符串内不要出现真实换行符）",
+  "running_summary_seed": "用于保持连贯性的初始小结（可为空字符串）",
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "title": "更新标题（短句）",
+      "target_words": 1800,
+      "key_beats": ["按发生顺序列 5-9 条关键节拍（动作/冲突/信息揭示/情绪变化）"],
+      "cliffhanger_hint": "章末卡点/悬念提示（1-2 句）"
+    }
+  ]
+}
+
+规则：
+- chapters.length 必须 == {{ chapter_count }}
+- 各章 target_words 之和应接近 {{ target_words }}（允许 ±10%）
+- 每章必须包含 cliffhanger_hint（最后一章可用“收束+余味”式卡点）
+- key_beats 需要可拍可演：具体、可执行、带因果链
+- 仅输出 JSON
+- JSON 字符串中禁止出现真实换行符；需要换行请写成 \\n

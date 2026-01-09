@@ -87,7 +87,7 @@ class EpisodeGenerationMixin:
             )
 
             result = await self._call_text_generation_service(
-                prompt, "episode_generation"
+                prompt, "episode_generation", story_format=story.get("story_format")
             )
             if result:
                 return {

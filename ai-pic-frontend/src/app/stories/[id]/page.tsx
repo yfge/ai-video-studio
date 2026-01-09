@@ -5,6 +5,7 @@ import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
   StoryDetailHeader,
   StorySummarySection,
+  StoryNovelExportSection,
   CharactersSection,
   AdditionalInfoSection,
   EpisodeGeneratePanel,
@@ -76,6 +77,8 @@ export default function StoryDetailPage() {
         <StoryDetailHeader story={story} onBack={navigateToStories} />
 
         <StorySummarySection story={story} />
+
+        <StoryNovelExportSection story={story} />
 
         <CharactersSection story={story} />
 

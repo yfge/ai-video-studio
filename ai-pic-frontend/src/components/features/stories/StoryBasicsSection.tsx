@@ -1,14 +1,14 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { StoryGenerationRequest } from "@/utils/api";
+import type { StoryGenerationForm, StoryFormat } from "@/utils/storyOptions";
 import { AIModelType } from "@/utils/api";
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
-import { STORY_GENRES } from "@/utils/storyOptions";
+import { STORY_FORMATS, STORY_GENRES } from "@/utils/storyOptions";
 
 interface StoryBasicsSectionProps {
-  generateForm: StoryGenerationRequest;
-  setGenerateForm: Dispatch<SetStateAction<StoryGenerationRequest>>;
+  generateForm: StoryGenerationForm;
+  setGenerateForm: Dispatch<SetStateAction<StoryGenerationForm>>;
 }
 
 export function StoryBasicsSection({
@@ -50,6 +50,31 @@ export function StoryBasicsSection({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            故事形态
+          </label>
+          <select
+            value={generateForm.story_format}
+            onChange={(e) =>
+              setGenerateForm((prev) => ({
+                ...prev,
+                story_format: e.target.value as StoryFormat,
+              }))
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {STORY_FORMATS.map((format) => (
+              <option key={format.value} value={format.value}>
+                {format.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            选择后端对应的提示词变体（短剧/电视剧/电影）会自动生效
+          </p>
         </div>
 
         <div>

@@ -1,6 +1,12 @@
-import uvicorn
+"""Uvicorn entrypoint.
 
-from app.main import app
+The Docker dev stack starts the backend via `uvicorn main:app`, so this module
+must expose a top-level `app` object.
+"""
+
+from app.main import app  # noqa: F401
+
+import uvicorn
 
 if __name__ == "__main__":
     uvicorn.run(

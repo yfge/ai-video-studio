@@ -1,0 +1,10 @@
+name: system_prompt_story_film
+description: "系统提示：故事创作助手（电影）"
+category: system
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-08"
+updated_at: "2026-01-08"
+
+variables: {}
+

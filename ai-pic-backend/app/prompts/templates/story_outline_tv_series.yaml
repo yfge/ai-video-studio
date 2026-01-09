@@ -1,0 +1,105 @@
+name: story_outline_tv_series
+description: "故事大纲生成提示词模板（电视剧/网剧）"
+category: story
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-08"
+updated_at: "2026-01-08"
+
+variables:
+  title:
+    type: string
+    required: true
+    description: "故事标题"
+    min_length: 1
+    max_length: 100
+
+  genre:
+    type: string
+    required: true
+    description: "故事类型"
+    examples: ["剧情", "喜剧", "爱情", "悬疑", "科幻", "奇幻"]
+
+  market_region:
+    type: string
+    required: false
+    description: "目标市场/地区"
+    examples: ["北美", "东南亚", "欧洲", "拉美"]
+
+  micro_genre:
+    type: string
+    required: false
+    description: "微类型/细分题材"
+    examples: ["霸总复仇", "狼人恋爱", "黑帮复仇"]
+
+  theme:
+    type: string
+    required: false
+    description: "故事主题"
+    max_length: 200
+
+  target_audience:
+    type: string
+    required: false
+    description: "目标受众"
+    examples: ["儿童", "青少年", "年轻人", "成年人", "家庭"]
+
+  duration_minutes:
+    type: number
+    required: false
+    description: "总时长（分钟）"
+
+  characters:
+    type: list
+    required: true
+    description: "主要角色列表"
+    min_length: 1
+
+  setting_time:
+    type: string
+    required: false
+    description: "时间背景"
+    examples: ["现代", "古代", "未来", "民国", "80年代"]
+
+  setting_location:
+    type: string
+    required: false
+    description: "地点设定"
+
+  world_building:
+    type: string
+    required: false
+    description: "世界观设定"
+
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外创作要求"
+
+  style_preferences:
+    type: list
+    required: false
+    description: "风格偏好列表"
+
+  content_restrictions:
+    type: list
+    required: false
+    description: "内容限制列表"
+
+output_format: "JSON"
+expected_fields:
+  - premise
+  - synopsis
+  - main_conflict
+  - resolution
+  - character_relationships
+  - main_characters
+  - plot_structure
+  - core_values
+  - visual_style
+  - selling_points
+  - hook_plan
+  - twist_density
+  - cliffhanger_plan
+  - ad_snippets
+

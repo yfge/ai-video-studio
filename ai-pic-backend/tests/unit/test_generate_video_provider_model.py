@@ -2,6 +2,7 @@ import pytest
 
 from app.core.logging import get_logger
 import app.services.ai_service as ai_service_module
+import app.services.ai.video as video_module
 from app.services.ai_service import AIService
 from app.services.ai_service_manager import AIServiceConfig, AIServiceManager, ProviderWeight
 from app.services.providers.base import (
@@ -163,7 +164,7 @@ async def test_ai_service_generate_video_uploads_last_frame(monkeypatch):
     service.ai_manager = _DummyVideoManager(fake_resp)
 
     dummy_oss = _DummyOSS()
-    monkeypatch.setattr(ai_service_module, "oss_service", dummy_oss, raising=False)
+    monkeypatch.setattr(video_module, "oss_service", dummy_oss, raising=False)
 
     result = await AIService.generate_video(
         service,

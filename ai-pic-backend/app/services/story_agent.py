@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
+from app.prompts.template_resolver import resolve_template_name
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryOutlineModel
 from app.utils.json_utils import extract_json_block
 
-try:
-    from langgraph.graph import StateGraph, END
+try:  # pragma: no cover - optional dependency
+    import langgraph  # noqa: F401
 
     LANGGRAPH_AVAILABLE = True
 except ImportError:  # pragma: no cover - optional dependency
@@ -20,17 +20,31 @@ if TYPE_CHECKING:
     from .ai_service import AIService
 
 
+def _extract_missing_fields(exc: Exception) -> list[str]:
+    try:
+        return ["/".join(map(str, err.get("loc", []))) for err in exc.errors()]
+    except Exception:
+        return []
+
+
+def _coerce_text_and_parsed(payload: object) -> tuple[str, dict | None]:
+    if isinstance(payload, dict):
+        return json.dumps(payload, ensure_ascii=False), payload
+    text = payload if isinstance(payload, str) else ("" if payload is None else str(payload))
+    return text, extract_json_block(text)
+
+
 class StoryLangGraphAgent:
-    """LangGraph pipeline for story outline generation using prompt templates."""
+    """Story outline generator with schema validation + repair loop."""
 
     def __init__(self, service: "AIService") -> None:
         self.service = service
-        self.logger = get_logger()
 
     async def generate(
         self,
         *,
         title: str,
+        story_format: Optional[str],
         genre: str,
         characters: List[Dict[str, Any]],
         market_region: Optional[str],
@@ -48,19 +62,13 @@ class StoryLangGraphAgent:
         prefer_provider: Optional[str],
         temperature: float,
     ) -> Optional[Dict[str, Any]]:
-        if not LANGGRAPH_AVAILABLE or not self.service.ai_manager:
+        if not LANGGRAPH_AVAILABLE or not getattr(self.service, "ai_manager", None):
             return None
 
         schema = StoryOutlineModel.model_json_schema()
-
-        def _extract_missing_fields(exc: Exception) -> list[str]:
-            try:
-                return ["/".join(map(str, err.get("loc", []))) for err in exc.errors()]
-            except Exception:
-                return []
-
         variables = {
             "title": title,
+            "story_format": story_format,
             "genre": genre,
             "characters": characters,
             "market_region": market_region,
@@ -75,187 +83,91 @@ class StoryLangGraphAgent:
             "style_preferences": style_preferences or [],
             "content_restrictions": content_restrictions or [],
         }
-        story_schema = StoryOutlineModel.model_json_schema()
-
-        graph = StateGraph(dict)
-
-        async def draft(state: Dict[str, Any]) -> Dict[str, Any]:
-            prompt = prompt_manager.render_prompt(
-                PromptTemplate.STORY_OUTLINE.value, variables
+        resolved_template = resolve_template_name(
+            PromptTemplate.STORY_OUTLINE.value, variables, prompt_manager.prompts_dir
+        )
+        prompt = prompt_manager.render_prompt(PromptTemplate.STORY_OUTLINE.value, variables)
+        system_prompt = (
+            prompt_manager.render_prompt(
+                PromptTemplate.SYSTEM_PROMPT_STORY.value,
+                {"story_format": story_format},
             )
-            resp = await self.service.ai_manager.generate_text(
-                prompt=prompt,
+            + " 并严格输出 JSON。"
+        )
+
+        resp = await self.service.ai_manager.generate_text(
+            prompt=prompt,
+            temperature=temperature,
+            model=model,
+            prefer_provider=prefer_provider,
+            json_schema={"name": "story_outline", "schema": schema},
+            system_prompt=system_prompt,
+        )
+        latest_text, parsed = _coerce_text_and_parsed(resp.data)
+        provider_used = resp.provider
+        model_used = resp.model
+        usage = resp.usage
+        reasoning = ["draft_ok"] if resp.success else ["draft_failed"]
+
+        try:
+            if parsed:
+                StoryOutlineModel.model_validate(parsed)
+                return {
+                    "content": latest_text,
+                    "normalized": parsed,
+                    "generation_method": "langgraph_story",
+                    "template_used": resolved_template,
+                    "provider_used": provider_used,
+                    "model_used": model_used,
+                    "usage": usage,
+                    "prompt": prompt,
+                    "reasoning": reasoning + ["validated"],
+                }
+        except Exception:
+            pass
+
+        missing_fields: list[str] = []
+        for attempt in range(3):
+            if parsed:
+                try:
+                    StoryOutlineModel.model_validate(parsed)
+                    return {
+                        "content": latest_text,
+                        "normalized": parsed,
+                        "generation_method": "langgraph_story",
+                        "template_used": resolved_template,
+                        "provider_used": provider_used,
+                        "model_used": model_used,
+                        "usage": usage,
+                        "prompt": prompt,
+                        "reasoning": reasoning + [f"validated_attempt_{attempt}"],
+                    }
+                except Exception as exc:  # pragma: no cover - schema guard
+                    missing_fields = _extract_missing_fields(exc)
+
+            repair_prompt = prompt_manager.render_prompt(
+                PromptTemplate.STORY_OUTLINE_REPAIR.value,
+                {
+                    "schema": schema,
+                    "original_prompt": prompt,
+                    "original_output": latest_text,
+                    "missing_fields": missing_fields,
+                },
+            )
+            repair_resp = await self.service.ai_manager.generate_text(
+                prompt=repair_prompt,
                 temperature=temperature,
                 model=model,
                 prefer_provider=prefer_provider,
-                json_schema={"name": "story_outline", "schema": story_schema},
-                system_prompt="你是一个专业的编剧和故事创作者，擅长创作各种类型的短剧剧本。请根据用户的要求生成高质量的故事内容，并严格输出 JSON。",
+                json_schema={"name": "story_outline_repair", "schema": schema},
+                system_prompt=prompt_manager.render_prompt(
+                    PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
+                ),
             )
-            content = (
-                resp.data
-                if isinstance(resp.data, str)
-                else ("" if resp.data is None else str(resp.data))
-            )
-            state_update = {
-                "prompt": prompt,
-                "content": content,
-                "provider": resp.provider,
-                "model_used": resp.model,
-                "usage": resp.usage,
-                "reasoning": ["draft_ok"] if resp.success else ["draft_failed"],
-            }
-            if not resp.success:
-                state_update["error"] = "draft_failed"
-            return state_update
+            latest_text, parsed = _coerce_text_and_parsed(repair_resp.data)
+            provider_used = repair_resp.provider or provider_used
+            model_used = repair_resp.model or model_used
+            usage = repair_resp.usage or usage
+            reasoning.append(f"repair_attempt_{attempt + 1}")
 
-        def validate(state: Dict[str, Any]) -> Dict[str, Any]:
-            """Initial parse + schema validation; hand off to repair if invalid."""
-            content_text = state.get("content") or ""
-            reasoning = list(state.get("reasoning", []))
-            parsed = (
-                extract_json_block(content_text)
-                if isinstance(content_text, str)
-                else (content_text if isinstance(content_text, dict) else None)
-            )
-            if not parsed:
-                reasoning.append("parse_failed")
-                return {
-                    "needs_repair": True,
-                    "raw": content_text,
-                    "reasoning": reasoning,
-                }
-            try:
-                StoryOutlineModel.model_validate(parsed)
-                reasoning.append("validated")
-                return {
-                    "content": content_text,
-                    "normalized": parsed,
-                    "generation_method": "langgraph_story",
-                    "template_used": PromptTemplate.STORY_OUTLINE.value,
-                    "provider_used": state.get("provider"),
-                    "model_used": state.get("model_used"),
-                    "usage": state.get("usage"),
-                    "prompt": state.get("prompt"),
-                    "reasoning": reasoning,
-                }
-            except Exception as exc:  # pragma: no cover - schema guard
-                missing_fields = _extract_missing_fields(exc)
-                reasoning.append("schema_invalid")
-                return {
-                    "needs_repair": True,
-                    "raw": content_text,
-                    "missing_fields": missing_fields,
-                    "reasoning": reasoning,
-                    "prompt": state.get("prompt"),
-                    "provider": state.get("provider"),
-                    "model_used": state.get("model_used"),
-                    "usage": state.get("usage"),
-                }
-
-        async def repair(state: Dict[str, Any]) -> Dict[str, Any]:
-            """Repair loop with up to 3 attempts; uses prompt_manager repair template."""
-            if state.get("normalized") and not state.get("needs_repair"):
-                state.setdefault("reasoning", []).append("repair_skip_validated")
-                return state
-
-            latest_text = state.get("raw") or state.get("content") or ""
-            reasoning = list(state.get("reasoning", []))
-            provider_used = state.get("provider_used") or state.get("provider")
-            model_used = state.get("model_used")
-            usage = state.get("usage")
-            missing_fields = state.get("missing_fields") or []
-
-            for attempt in range(3):
-                parsed = (
-                    extract_json_block(latest_text)
-                    if isinstance(latest_text, str)
-                    else (latest_text if isinstance(latest_text, dict) else None)
-                )
-                if parsed:
-                    try:
-                        StoryOutlineModel.model_validate(parsed)
-                        reasoning.append(f"validated_attempt_{attempt}")
-                        return {
-                            "content": latest_text,
-                            "normalized": parsed,
-                            "generation_method": "langgraph_story",
-                            "template_used": PromptTemplate.STORY_OUTLINE.value,
-                            "provider_used": provider_used,
-                            "model_used": model_used,
-                            "usage": usage,
-                            "prompt": state.get("prompt"),
-                            "reasoning": reasoning + ["validated"],
-                        }
-                    except Exception as exc:  # pragma: no cover - schema guard
-                        missing_fields = _extract_missing_fields(exc)
-                        reasoning.append(f"schema_invalid_attempt_{attempt}")
-                        self.logger.info(
-                            "Story validation failed; repairing",
-                            extra={"attempt": attempt, "missing": missing_fields},
-                        )
-                else:
-                    reasoning.append(f"parse_failed_attempt_{attempt}")
-                    self.logger.info(
-                        "Story parse failed; repairing", extra={"attempt": attempt}
-                    )
-
-                if attempt >= 2:
-                    break
-
-                repair_prompt = prompt_manager.render_prompt(
-                    PromptTemplate.STORY_OUTLINE_REPAIR.value,
-                    {
-                        "schema": schema,
-                        "original_prompt": state.get("prompt"),
-                        "original_output": latest_text,
-                        "missing_fields": missing_fields if parsed else [],
-                    },
-                )
-                resp = await self.service.ai_manager.generate_text(
-                    prompt=repair_prompt,
-                    temperature=temperature,
-                    model=model,
-                    prefer_provider=prefer_provider,
-                    json_schema={"name": "story_outline_repair", "schema": schema},
-                    system_prompt=prompt_manager.render_prompt(
-                        PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
-                    ),
-                )
-                latest_text = (
-                    resp.data
-                    if isinstance(resp.data, str)
-                    else ("" if resp.data is None else str(resp.data))
-                )
-                provider_used = resp.provider or provider_used
-                model_used = resp.model or model_used
-                usage = resp.usage or usage
-                reasoning.append(f"repair_attempt_{attempt + 1}")
-
-            return {
-                "error": "schema_invalid",
-                "raw": latest_text,
-                "reasoning": reasoning + ["schema_invalid"],
-            }
-
-        graph.add_node("draft", draft)
-        graph.add_node("validate", validate)
-        graph.add_node("repair", repair)
-        graph.add_edge("draft", "validate")
-        graph.add_edge("validate", "repair")
-        graph.add_edge("repair", END)
-        graph.set_entry_point("draft")
-
-        app = graph.compile()
-        result = await app.ainvoke({})
-
-        if result.get("error") or not result.get("normalized"):
-            self.logger.warning(
-                "LangGraph story agent failed, falling back to default",
-                extra={
-                    "error": result.get("error"),
-                    "reasoning": result.get("reasoning"),
-                },
-            )
-            return None
-
-        return result
+        return None

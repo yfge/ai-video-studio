@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import HTTPException
-from sqlalchemy.orm import Session
-
 from app.models.script import Story, StoryCharacter
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.schemas.generation_requests import StoryGenerationRequest
 from app.services.ai_service import ai_service
 from app.utils.json_utils import extract_json_block
-from app.utils.story_parser import extract_outline_from_text, normalize_story_json_keys
-
+from app.utils.story_parser import (
+    extract_outline_from_text,
+    extract_story_outline_payload,
+)
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 _EXTRA_METADATA_EXCLUDE = {
     "premise",
@@ -38,7 +39,9 @@ class StoryGenerationService:
     def _not_deleted(self, query, model):
         return query.filter(model.is_deleted.is_(False))
 
-    def _resolve_model(self, model_id: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+    def _resolve_model(
+        self, model_id: Optional[str]
+    ) -> Tuple[Optional[str], Optional[str]]:
         prefer_provider = None
         resolved_model = model_id
         if model_id and ":" in model_id:
@@ -50,9 +53,9 @@ class StoryGenerationService:
     ) -> List[Dict[str, Any]]:
         characters = []
         for char_id in character_ids:
-            query = self._not_deleted(
-                self.db.query(VirtualIP), VirtualIP
-            ).filter(VirtualIP.id == char_id)
+            query = self._not_deleted(self.db.query(VirtualIP), VirtualIP).filter(
+                VirtualIP.id == char_id
+            )
             if user_id is not None:
                 query = query.filter(VirtualIP.user_id == user_id)
             elif self.current_user and not (
@@ -80,7 +83,9 @@ class StoryGenerationService:
             result.get("content") if isinstance(result, dict) else None
         )
         if raw:
-            return normalize_story_json_keys(raw)
+            extracted = extract_story_outline_payload(raw)
+            if extracted:
+                return extracted
         return extract_outline_from_text(
             result.get("content") if isinstance(result, dict) else ""
         )
@@ -105,6 +110,7 @@ class StoryGenerationService:
         prefer_provider, model_id = self._resolve_model(request.model)
         result = await ai_service.generate_story_outline(
             title=request.title,
+            story_format=request.story_format,
             genre=request.genre,
             characters=characters,
             market_region=request.market_region,
@@ -126,7 +132,9 @@ class StoryGenerationService:
             raise HTTPException(status_code=500, detail="AI故事生成失败")
         return result
 
-    def _persist_story(self, story_data: Dict[str, Any], character_ids: List[int]) -> Story:
+    def _persist_story(
+        self, story_data: Dict[str, Any], character_ids: List[int]
+    ) -> Story:
         story = Story(**story_data)
         self.db.add(story)
         self.db.commit()
@@ -166,6 +174,7 @@ class StoryGenerationService:
         return {
             "user_id": user_id,
             "title": request.title,
+            "story_format": request.story_format,
             "genre": request.genre,
             "theme": request.theme,
             "target_audience": request.target_audience,
@@ -179,10 +188,15 @@ class StoryGenerationService:
             "resolution": ai_content.get("resolution"),
             "main_characters": ai_content.get("main_characters"),
             "character_relationships": ai_content.get("character_relationships"),
-            "generation_prompt": result.get("prompt") if isinstance(result, dict) else None,
-            "ai_model": result.get("generation_method") if isinstance(result, dict) else None,
+            "generation_prompt": (
+                result.get("prompt") if isinstance(result, dict) else None
+            ),
+            "ai_model": (
+                result.get("generation_method") if isinstance(result, dict) else None
+            ),
             "generation_params": {
                 "character_ids": request.character_ids,
+                "story_format": request.story_format,
                 "market_region": request.market_region,
                 "micro_genre": request.micro_genre,
                 "additional_requirements": request.additional_requirements,
@@ -217,33 +231,7 @@ class StoryGenerationService:
         result = await self._run_story_outline(request, characters)
         ai_content = self._normalize_ai_content(result)
         agent_run = self._build_agent_run(result)
-        story_data = self._build_story_data(request, ai_content, result, agent_run, user_id)
-        return self._persist_story(story_data, request.character_ids)
-
-    def build_preview_prompt(self, request: StoryGenerationRequest) -> str:
-        from app.prompts.manager import PromptManager
-        from app.prompts.templates import PromptTemplate
-
-        characters = [
-            {"id": char_id, "name": f"角色#{char_id}", "description": ""}
-            for char_id in request.character_ids
-        ]
-        variables = {
-            "title": request.title,
-            "genre": request.genre,
-            "characters": characters,
-            "market_region": request.market_region,
-            "micro_genre": request.micro_genre,
-            "theme": request.theme,
-            "target_audience": request.target_audience,
-            "duration_minutes": request.duration_minutes,
-            "setting_time": request.setting_time,
-            "setting_location": request.setting_location,
-            "world_building": request.world_building,
-            "additional_requirements": request.additional_requirements,
-            "style_preferences": request.style_preferences or [],
-            "content_restrictions": request.content_restrictions or [],
-        }
-        return PromptManager().render_prompt(
-            PromptTemplate.STORY_OUTLINE.value, variables
+        story_data = self._build_story_data(
+            request, ai_content, result, agent_run, user_id
         )
+        return self._persist_story(story_data, request.character_ids)

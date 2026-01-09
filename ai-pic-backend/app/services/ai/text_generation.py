@@ -11,7 +11,7 @@ from app.prompts.templates import PromptTemplate
 
 class TextGenerationMixin:
     async def _call_text_generation_service(
-        self, prompt: str, task_type: str
+        self, prompt: str, task_type: str, *, story_format: Optional[str] = None
     ) -> Optional[str]:
         """调用文本生成服务"""
 
@@ -24,7 +24,7 @@ class TextGenerationMixin:
 
         for service in services:
             try:
-                result = await service(prompt, task_type)
+                result = await service(prompt, task_type, story_format=story_format)
                 if result:
                     return result
             except Exception as exc:
@@ -34,7 +34,7 @@ class TextGenerationMixin:
         return None
 
     async def _generate_with_openai_gpt(
-        self, prompt: str, task_type: str
+        self, prompt: str, task_type: str, *, story_format: Optional[str] = None
     ) -> Optional[str]:
         """使用OpenAI GPT生成文本"""
         if not self.openai_api_key:
@@ -42,6 +42,22 @@ class TextGenerationMixin:
         base_url = settings.OPENAI_BASE_URL or "https://api.openai.com/v1"
 
         try:
+            if task_type == "story_novel":
+                system_message = prompt_manager.render_prompt(
+                    "system_prompt_novel_zhihu", {}
+                )
+            else:
+                if task_type == "story_outline":
+                    system_template = PromptTemplate.SYSTEM_PROMPT_STORY
+                elif task_type in {"episode_generation", "script_generation"}:
+                    system_template = PromptTemplate.SYSTEM_PROMPT_SCRIPT
+                else:
+                    system_template = PromptTemplate.SYSTEM_PROMPT_STORY
+                system_message = prompt_manager.render_prompt(
+                    system_template.value,
+                    {"story_format": story_format},
+                )
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{base_url.rstrip('/')}/chat/completions",
@@ -54,9 +70,7 @@ class TextGenerationMixin:
                         "messages": [
                             {
                                 "role": "system",
-                                "content": prompt_manager.render_prompt(
-                                    PromptTemplate.SYSTEM_PROMPT_STORY.value, {}
-                                ),
+                                "content": system_message,
                             },
                             {"role": "user", "content": prompt},
                         ],
@@ -72,7 +86,7 @@ class TextGenerationMixin:
             return None
 
     async def _generate_with_custom_service(
-        self, prompt: str, task_type: str
+        self, prompt: str, task_type: str, *, story_format: Optional[str] = None
     ) -> Optional[str]:
         """使用自定义文本生成服务"""
         if not self.base_url or not self.api_key:
@@ -105,7 +119,7 @@ class TextGenerationMixin:
             return None
 
     async def _generate_with_mock_service(
-        self, prompt: str, task_type: str
+        self, prompt: str, task_type: str, *, story_format: Optional[str] = None
     ) -> Optional[str]:
         """模拟AI服务（用于测试和演示）"""
         await asyncio.sleep(1)  # 模拟处理时间

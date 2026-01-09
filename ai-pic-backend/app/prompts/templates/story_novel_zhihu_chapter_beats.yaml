@@ -1,0 +1,25 @@
+description: Zhihu novel chapter beats prompt (JSON only)
+category: story
+version: "1.0"
+variables:
+  story:
+    required: true
+    type: dict
+  plan:
+    required: true
+    type: dict
+  ledger:
+    required: true
+    type: dict
+  previous_tail:
+    required: false
+    type: string
+  previous_cliffhanger:
+    required: false
+    type: string
+  chapter:
+    required: true
+    type: dict
+  running_summary:
+    required: false
+    type: string

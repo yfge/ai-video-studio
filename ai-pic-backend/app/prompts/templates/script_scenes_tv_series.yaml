@@ -1,0 +1,72 @@
+name: script_scenes_tv_series
+description: "剧本场景规划提示词模板（电视剧/网剧）"
+category: script
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-08"
+updated_at: "2026-01-08"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息（标题/类型/概要等）"
+
+  episode:
+    type: dict
+    required: true
+    description: "剧集信息（集数/标题等）"
+
+  duration_minutes:
+    type: number
+    required: false
+    description: "剧集目标时长（分钟），用于时长感知场景划分"
+    default: 0
+
+  min_scene_seconds:
+    type: number
+    required: false
+    description: "单场景最小时长（秒）"
+    default: 10
+
+  max_scene_seconds:
+    type: number
+    required: false
+    description: "单场景最大时长（秒）"
+    default: 120
+
+  scene_detail_level:
+    type: string
+    required: false
+    description: "场景细节程度"
+    default: "medium"
+    enum: ["minimal", "medium", "detailed", "cinematic"]
+
+  format_type:
+    type: string
+    required: false
+    description: "剧本格式"
+    default: "screenplay"
+    enum: ["screenplay", "teleplay", "stage", "audio", "animation"]
+
+  language:
+    type: string
+    required: false
+    description: "语言"
+    default: "zh-CN"
+    enum: ["zh-CN", "en-US", "ja-JP", "ko-KR"]
+
+  style_preferences:
+    type: list
+    required: false
+    description: "风格偏好列表"
+
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外场景要求"
+
+output_format: "JSON"
+expected_fields:
+  - scenes
+

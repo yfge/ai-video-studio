@@ -1,0 +1,121 @@
+你是一个专业的电影编剧和故事创作者，擅长三幕式叙事与电影化表达。请根据以下信息创作一个完整的电影故事概要：
+
+## 基本信息
+故事标题：{{ title }}
+类型：{{ genre }}
+{% if market_region -%}
+目标市场：{{ market_region }}
+{% endif -%}
+{% if micro_genre -%}
+微类型：{{ micro_genre }}
+{% endif -%}
+{% if theme -%}
+主题：{{ theme }}
+{% endif -%}
+{% if target_audience -%}
+目标受众：{{ target_audience }}
+{% endif -%}
+{% if duration_minutes -%}
+总时长：{{ duration_minutes }}分钟
+{% endif -%}
+
+## 主要角色
+{% for character in characters %}
+### {{ character.name }}
+{% if character.description -%}
+描述：{{ character.description }}
+{% endif -%}
+{% if character.background_story -%}
+背景：{{ character.background_story }}
+{% endif -%}
+{% if character.tags -%}
+标签：{{ character.tags | join(', ') }}
+{% endif -%}
+
+{% endfor %}
+
+## 设定信息
+{% if setting_time -%}
+时间背景：{{ setting_time }}
+{% endif -%}
+{% if setting_location -%}
+地点设定：{{ setting_location }}
+{% endif -%}
+{% if world_building -%}
+世界观：{{ world_building }}
+{% endif -%}
+
+## 创作要求
+{% if additional_requirements -%}
+额外要求：{{ additional_requirements }}
+{% endif -%}
+{% if style_preferences -%}
+风格偏好：{{ style_preferences | join(', ') }}
+{% endif -%}
+{% if content_restrictions -%}
+内容限制：{{ content_restrictions | join(', ') }}
+{% endif -%}
+
+## 生成内容
+请以JSON格式返回一个完整的电影故事概要，包含以下内容：
+
+1. **故事前提** (premise): 核心概念与设定
+2. **详细概要** (synopsis): 电影级梗概，强调因果链与情绪推进
+3. **主要冲突** (main_conflict): 主线冲突与对抗关系（明确对手/阻力）
+4. **解决方案** (resolution): 冲突的解决与主题落点（明确结局质感）
+5. **角色关系** (character_relationships): 主要角色关系网
+6. **主角信息** (main_characters): 主要角色信息（动机/弧光）
+7. **情节结构** (plot_structure): 三幕式结构（包含关键转折）
+8. **核心价值** (core_values): 主题表达与情感内核
+9. **视觉风格** (visual_style): 电影化视觉表达建议（镜头/美术/灯光/调色）
+10. **营销卖点** (selling_points): 卖点与亮点（类型亮点、视觉亮点、情感亮点）
+11. **爽点节奏** (hook_plan): 如提供爽点/反转规划，则映射到关键段落
+12. **反转密度** (twist_density): 反转密度目标（如有）
+13. **悬念卡点** (cliffhanger_plan): 关键悬念点（如有，可为段落节点）
+14. **投流素材** (ad_snippets): 15/30/60 秒素材的钩子、画面摘要、CTA（如有）
+
+## 创作原则（电影）
+- 叙事闭环：清晰的起因→发展→高潮→结局，逻辑自洽
+- 角色弧光：主角变化明确，关键节点推动转变
+- 电影化表达：强调画面叙事、节奏与情绪曲线
+
+## 输出格式
+{
+    "premise": "...",
+    "synopsis": "...",
+    "main_conflict": "...",
+    "resolution": "...",
+    "character_relationships": {...},
+    "main_characters": [...],
+    "plot_structure": {
+        "act1": "...",
+        "act2": "...",
+        "act3": "..."
+    },
+    "core_values": "...",
+    "visual_style": "...",
+    "selling_points": [...],
+    "hook_plan": {
+        "opening_hook": "...",
+        "escalation_plan": "...",
+        "payoff_plan": "...",
+        "key_reversals": [
+            {
+                "beat_type": "reversal",
+                "description": "...",
+                "timing": "..."
+            }
+        ]
+    },
+    "twist_density": "...",
+    "cliffhanger_plan": ["..."],
+    "ad_snippets": [
+        {
+            "duration_seconds": 15,
+            "hook": "...",
+            "visual_summary": "...",
+            "call_to_action": "..."
+        }
+    ]
+}
+

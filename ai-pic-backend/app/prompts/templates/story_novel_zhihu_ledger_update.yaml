@@ -1,0 +1,23 @@
+description: Zhihu novel continuity ledger update (JSON only)
+category: story
+version: "1.0"
+variables:
+  previous_ledger:
+    required: true
+    type: dict
+  chapter_number:
+    required: true
+    type: number
+  chapter_title:
+    required: true
+    type: string
+  chapter_text:
+    required: true
+    type: string
+  extracted_summary:
+    required: true
+    type: string
+  extracted_cliffhanger:
+    required: true
+    type: string
+

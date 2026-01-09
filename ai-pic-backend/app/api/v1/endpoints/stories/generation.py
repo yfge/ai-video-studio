@@ -9,6 +9,9 @@ from app.models.user import User
 from app.schemas.generation_requests import StoryGenerationRequest
 from app.schemas.script import StoryResponse
 from app.services.story.story_generation_service import StoryGenerationService
+from app.services.story.story_generation_prompt_preview import (
+    build_story_outline_preview_prompt,
+)
 
 router = APIRouter()
 
@@ -28,9 +31,7 @@ async def generate_story(
 @router.post("/prompt/preview")
 async def preview_story_prompt(
     request: StoryGenerationRequest,
-    db: Session = Depends(get_db),
 ):
     """返回根据请求生成的最终提示词（不调用模型）"""
-    service = StoryGenerationService(db)
-    prompt = service.build_preview_prompt(request)
+    prompt = build_story_outline_preview_prompt(request)
     return {"success": True, "data": {"prompt": prompt}}

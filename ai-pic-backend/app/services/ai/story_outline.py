@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.prompts.manager import prompt_manager
+from app.prompts.template_resolver import resolve_template_name
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryOutlineModel
 from app.utils.json_utils import extract_json_block
@@ -14,6 +15,7 @@ class StoryOutlineMixin:
         title: str,
         genre: str,
         characters: List[Dict[str, Any]],
+        story_format: Optional[str] = None,
         market_region: Optional[str] = None,
         micro_genre: Optional[str] = None,
         theme: Optional[str] = None,
@@ -45,6 +47,7 @@ class StoryOutlineMixin:
 
             variables = {
                 "title": title,
+                "story_format": story_format,
                 "genre": genre,
                 "characters": characters,
                 "market_region": market_region,
@@ -65,6 +68,7 @@ class StoryOutlineMixin:
             if self.story_agent:
                 lg = await self.story_agent.generate(
                     title=title,
+                    story_format=story_format,
                     genre=genre,
                     characters=characters,
                     market_region=market_region,
@@ -85,6 +89,11 @@ class StoryOutlineMixin:
                 if lg:
                     return lg
 
+            resolved_template = resolve_template_name(
+                PromptTemplate.STORY_OUTLINE.value,
+                variables,
+                prompt_manager.prompts_dir,
+            )
             prompt = prompt_manager.render_prompt(
                 PromptTemplate.STORY_OUTLINE.value, variables
             )
@@ -99,7 +108,8 @@ class StoryOutlineMixin:
                         json_schema={"name": "story_outline", "schema": story_schema},
                         prefer_provider=prefer_provider,
                         system_prompt=prompt_manager.render_prompt(
-                            PromptTemplate.SYSTEM_PROMPT_STORY.value, {}
+                            PromptTemplate.SYSTEM_PROMPT_STORY.value,
+                            {"story_format": story_format},
                         ),
                     )
 
@@ -156,7 +166,7 @@ class StoryOutlineMixin:
                                 "normalized": normalized,
                                 "prompt": prompt,
                                 "generation_method": f"ai_{provider_used}",
-                                "template_used": PromptTemplate.STORY_OUTLINE.value,
+                                "template_used": resolved_template,
                                 "provider_used": provider_used,
                                 "model_used": model_used,
                                 "usage": usage,
@@ -175,7 +185,7 @@ class StoryOutlineMixin:
                                 "normalized": normalized,
                                 "prompt": prompt,
                                 "generation_method": f"ai_{response.provider}_error",
-                                "template_used": PromptTemplate.STORY_OUTLINE.value,
+                                "template_used": resolved_template,
                                 "provider_used": response.provider,
                                 "model_used": response.model,
                                 "usage": response.usage,
@@ -185,7 +195,7 @@ class StoryOutlineMixin:
 
             # 兜底：使用文本生成服务链（最终会回退到mock）
             fallback_content = await self._call_text_generation_service(
-                prompt, "story_outline"
+                prompt, "story_outline", story_format=story_format
             )
             if fallback_content:
                 normalized = _parse_story_json(fallback_content)
@@ -194,7 +204,7 @@ class StoryOutlineMixin:
                     "normalized": normalized,
                     "prompt": prompt,
                     "generation_method": "ai_fallback",
-                    "template_used": PromptTemplate.STORY_OUTLINE.value,
+                    "template_used": resolved_template,
                     "provider_used": "fallback",
                     "model_used": "mock",
                     "usage": {},

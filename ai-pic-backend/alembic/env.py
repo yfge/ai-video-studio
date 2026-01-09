@@ -2,10 +2,8 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # 添加项目根目录到 Python 路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,8 +16,9 @@ from app.core.database import Base
 # access to the values within the .ini file in use.
 config = context.config
 
-# 从环境变量设置数据库 URL
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# 从环境变量设置数据库 URL（允许测试覆盖 sqlalchemy.url）
+if not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -27,9 +26,6 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # 导入所有模型以确保它们被注册到 Base.metadata
-from app.models.user import User
-from app.models.virtual_ip import VirtualIP, VirtualIPImage
-from app.models.script import Story, Episode, Script, StoryCharacter, ScriptTemplate
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -79,9 +75,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

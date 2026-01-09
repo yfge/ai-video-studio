@@ -1,6 +1,8 @@
 # AI短剧制作工作流平台 - 前端
 
-这是一个以虚拟IP为中心的AI短剧制作工作流平台的前端应用，基于Next.js 14构建。
+这是一个以虚拟IP为中心的AI短剧制作工作流平台的前端应用，基于 Next.js 15（App Router）构建。
+
+> 快速跑通全栈开发环境建议从根目录 `README.md` / `README_EN.md` 与 `docker/README.md` 开始。
 
 ## 核心功能
 
@@ -21,7 +23,7 @@
 
 ### 环境要求
 
-- Node.js 18+
+- Node.js 20+
 - npm 或 yarn
 
 ### 安装依赖
@@ -34,12 +36,8 @@ yarn install
 
 ### 环境配置
 
-1. 创建环境变量文件：
-```bash
-cp .env.example .env.local
-```
+1. 配置环境变量（推荐使用 `.env.local`）：
 
-2. 配置环境变量：
 ```bash
 # API服务地址
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -86,6 +84,9 @@ yarn dev
 ```
 src/app/
 ├── page.tsx                 # 主页
+├── environments/            # 环境资产
+├── stories/                 # 故事创作
+├── episodes/                # 分集/分镜相关页面
 ├── virtual-ip/             # 虚拟IP管理
 │   ├── page.tsx            # 虚拟IP列表
 │   └── [id]/               # 虚拟IP详情
@@ -95,7 +96,7 @@ src/app/
 ├── login/                  # 登录页面
 ├── register/               # 注册页面
 ├── tasks/                  # 任务管理
-└── gallery/                # 图库展示
+└── scripts/                # 剧本相关页面
 ```
 
 ## AI图像生成使用指南
@@ -123,11 +124,13 @@ src/app/
 ### 3. 生成参数说明
 
 #### 生成风格
+
 - **写实风格**: 真实照片风格，适合正式场合
 - **动漫风格**: 日式动漫风格，适合二次元内容
 - **卡通风格**: 欧美卡通风格，适合儿童内容
 
 #### 图像类别
+
 - **肖像**: 头像、半身像，突出面部特征
 - **全身像**: 完整人物形象，展示整体造型
 - **场景**: 背景场景，展示环境氛围
@@ -135,6 +138,7 @@ src/app/
 - **表情**: 面部表情特写，展示情感状态
 
 #### 额外提示词示例
+
 - 表情相关: "smiling", "serious", "happy", "confident"
 - 环境相关: "outdoor", "indoor", "studio", "natural lighting"
 - 风格相关: "professional", "casual", "elegant", "cute"
@@ -149,7 +153,7 @@ src/app/
 
 ## 技术栈
 
-- **框架**: Next.js 14 (App Router)
+- **框架**: Next.js 15 (App Router)
 - **语言**: TypeScript
 - **样式**: Tailwind CSS
 - **状态管理**: React Hooks

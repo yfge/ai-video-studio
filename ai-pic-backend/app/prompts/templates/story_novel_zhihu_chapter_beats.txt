@@ -1,0 +1,41 @@
+你将为“知乎体长文故事”的单章生成一个可执行的“关键节拍（beats）”列表，用于后续写作。
+
+请输出**严格 JSON**（不要代码块、不要解释），结构如下：
+{
+  "key_beats": ["按发生顺序列 5-9 条关键节拍（短句）"]
+}
+
+【故事信息】
+{{ story | tojson }}
+
+【整体大纲（plan）】
+{{ plan | tojson }}
+
+【连贯性账本（ledger）】
+{{ ledger | tojson }}
+
+【上一章结尾片段（previous_tail）】
+{{ previous_tail }}
+
+【上一章卡点（previous_cliffhanger）】
+{{ previous_cliffhanger }}
+
+【当前章节规划】
+章节号：{{ chapter.chapter_number }}
+章节标题：{{ chapter.title }}
+目标字数：{{ chapter.target_words }}
+本章目标：{{ chapter.chapter_goal }}
+章末卡点提示：{{ chapter.cliffhanger_hint }}
+
+【已生成连载小结（running_summary）】
+{{ running_summary }}
+
+规则：
+- key_beats.length 必须在 5-9 之间
+- 每条 beat 必须具体、可执行、带动作/冲突/信息推进，避免“概述/旁白式总结”
+- 严格遵守 ledger 的事实/人物关系/时间线，不得自相矛盾
+- 必须自然承接 previous_tail（若为空则从本章开场起笔）
+- 若 previous_cliffhanger 非空，第一条 beat 必须直接回应/承接该卡点（要么续写现场，要么立刻交代“卡点之后发生了什么”）。
+- beats 最后一条要能导向 cliffhanger_hint（不需要直接写卡点台词，但要铺垫到位）
+- 如 beats 中首次出现新的角色姓名（此前未在 previous_tail / running_summary / ledger.characters 中出现），必须在该 beat 中写明“姓名的获取方式”（自报、他人介绍、工牌/名牌、手机备注等）。
+- 仅输出 JSON；JSON 字符串中禁止出现真实换行符；需要换行请写成 \\n

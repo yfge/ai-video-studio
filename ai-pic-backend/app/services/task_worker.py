@@ -25,6 +25,16 @@ def story_generate_task(
     _process_story_generation_task(task_id, request_dict, user_id)
 
 
+@celery_app.task(name="tasks.story_novel_generate")
+def story_novel_generate_task(
+    task_id: int, payload: Dict[str, Any], user_id: int
+) -> None:
+    """异步导出知乎体小说任务入口。"""
+    from app.api.v1.endpoints.stories import process_story_novel_export_task
+
+    process_story_novel_export_task(task_id, payload, user_id)
+
+
 @celery_app.task(name="tasks.episode_generate")
 def episode_generate_task(
     task_id: int, request_dict: Dict[str, Any], user_id: int
@@ -146,6 +156,7 @@ def storyboard_image_generate_task(
         count_int = 1
     if count_int > 4:
         count_int = 4
+
     def _maybe_int(value: Any) -> int | None:
         if value is None:
             return None
@@ -153,6 +164,7 @@ def storyboard_image_generate_task(
             return int(value)
         except (TypeError, ValueError):
             return None
+
     _process_storyboard_image_task(
         task_id,
         script_id,

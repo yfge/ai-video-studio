@@ -20,8 +20,21 @@ export const STORY_STATUSES = [
   { value: "published", label: "已发布" },
 ];
 
-export const STORY_GENERATE_DEFAULTS: StoryGenerationRequest = {
+export type StoryFormat = "short_drama" | "tv_series" | "film";
+
+export const STORY_FORMATS: Array<{ value: StoryFormat; label: string }> = [
+  { value: "short_drama", label: "短剧" },
+  { value: "tv_series", label: "电视剧/网剧" },
+  { value: "film", label: "电影" },
+];
+
+export type StoryGenerationForm = StoryGenerationRequest & {
+  story_format: StoryFormat;
+};
+
+export const STORY_GENERATE_DEFAULTS: StoryGenerationForm = {
   title: "",
+  story_format: "short_drama",
   genre: "drama",
   market_region: "",
   micro_genre: "",
