@@ -19,6 +19,9 @@ from app.services.image_gen.coerce import (
     value_from_payload,
 )
 from app.services.image_gen.refs import hash_reference_images
+from app.services.virtual_ip.virtual_ip_image_prompts import (
+    render_virtual_ip_image_variant_prompt,
+)
 from sqlalchemy.orm import Session
 
 DEFAULT_VARIANT_PROMPT = "为当前角色生成不同视角/姿态的图像，如背面照或全身照"
@@ -118,11 +121,20 @@ async def generate_virtual_ip_image_variants(
 ) -> list[VirtualIPImage]:
     base_image_input = base_image.oss_url or base_image.file_path or ""
 
+    final_prompt = render_virtual_ip_image_variant_prompt(
+        character_name=virtual_ip.name,
+        variant_prompt=request.prompt,
+        character_description=virtual_ip.description,
+        style=request.style,
+        category=base_image.category,
+        style_prompt=virtual_ip.style_prompt,
+    )
+
     normalized = normalize_image_gen_request(
         ImageGenRequest(
             domain=ImageGenDomain.VIRTUAL_IP,
             mode=ImageGenMode.IMAGE_TO_IMAGE,
-            prompt=request.prompt,
+            prompt=final_prompt,
             model=request.model,
             style=request.style,
             style_preset_id=request.style_preset_id,
