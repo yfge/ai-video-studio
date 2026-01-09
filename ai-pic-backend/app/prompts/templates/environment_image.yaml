@@ -19,6 +19,16 @@ variables:
     description: "环境类别（如室内/室外/自然/城市）"
     default: "indoor"
 
+  tags:
+    type: string
+    required: false
+    description: "环境标签（逗号分隔）"
+
+  description:
+    type: string
+    required: false
+    description: "环境描述"
+
   prompt:
     type: string
     required: true
@@ -32,5 +42,7 @@ variables:
 usage_examples:
   - environment_name: "未来科技办公室"
     category: "indoor"
+    tags: "科幻, 办公室, 未来"
+    description: "悬浮屏幕、玻璃隔断、冷色调灯光"
     prompt: "冷色调科幻办公室，玻璃隔断与悬浮屏幕"
     additional_prompts: "体积光, 高动态范围, 电影级灯光"

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
-from fastapi.testclient import TestClient
-
+from app.core.database import Base, get_db
 from app.main import app
-from app.core.database import get_db, Base
-from app.models.script import Story, Episode, Script
-from app.schemas.story_structure import SceneCreate, SceneBeatCreate, ShotCreate
-from tests.conftest import override_get_db
+from app.models.script import Episode, Script, Story
+from app.schemas.story_structure import SceneBeatCreate, SceneCreate, ShotCreate
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 
 def _bootstrap_script(db: Session) -> Script:
@@ -35,12 +33,16 @@ def test_scene_crud_with_children(db_session: Session):
         "scene_number": "1",
         "slug_line": "INT. TEST - DAY",
     }
-    res = client.post(f"/api/v1/story-structure/scripts/{script.id}/scenes", json=scene_payload)
+    res = client.post(
+        f"/api/v1/story-structure/scripts/{script.id}/scenes", json=scene_payload
+    )
     assert res.status_code == 200
     scene_id = res.json()["id"]
 
     # update scene
-    res = client.put(f"/api/v1/story-structure/scenes/{scene_id}", json={"location": "Office"})
+    res = client.put(
+        f"/api/v1/story-structure/scenes/{scene_id}", json={"location": "Office"}
+    )
     assert res.status_code == 200
     assert res.json()["location"] == "Office"
 
@@ -50,12 +52,17 @@ def test_scene_crud_with_children(db_session: Session):
         "order_index": 1,
         "beat_summary": "first",
     }
-    res = client.post(f"/api/v1/story-structure/scenes/{scene_id}/beats", json=beat_payload)
+    res = client.post(
+        f"/api/v1/story-structure/scenes/{scene_id}/beats", json=beat_payload
+    )
     assert res.status_code == 200
     beat_id = res.json()["id"]
 
     # update beat
-    res = client.put(f"/api/v1/story-structure/scene-beats/{beat_id}", json={"beat_summary": "updated"})
+    res = client.put(
+        f"/api/v1/story-structure/scene-beats/{beat_id}",
+        json={"beat_summary": "updated"},
+    )
     assert res.status_code == 200
     assert res.json()["beat_summary"] == "updated"
 
@@ -64,12 +71,16 @@ def test_scene_crud_with_children(db_session: Session):
         "scene_id": scene_id,
         "shot_number": "1A",
     }
-    res = client.post(f"/api/v1/story-structure/scenes/{scene_id}/shots", json=shot_payload)
+    res = client.post(
+        f"/api/v1/story-structure/scenes/{scene_id}/shots", json=shot_payload
+    )
     assert res.status_code == 200
     shot_id = res.json()["id"]
 
     # update shot
-    res = client.put(f"/api/v1/story-structure/shots/{shot_id}", json={"shot_type": "WS"})
+    res = client.put(
+        f"/api/v1/story-structure/shots/{shot_id}", json={"shot_type": "WS"}
+    )
     assert res.status_code == 200
     assert res.json()["shot_type"] == "WS"
 
@@ -90,14 +101,27 @@ def test_scene_beat_order_conflict_returns_400(db_session: Session):
 
     scene = client.post(
         f"/api/v1/story-structure/scripts/{script.id}/scenes",
-        json=SceneCreate(script_id=script.id, scene_number="1", slug_line="INT").model_dump(),
+        json=SceneCreate(
+            script_id=script.id, scene_number="1", slug_line="INT"
+        ).model_dump(),
     ).json()
 
-    first = SceneBeatCreate(scene_id=scene["id"], order_index=1, beat_summary="first").model_dump()
-    assert client.post(f"/api/v1/story-structure/scenes/{scene['id']}/beats", json=first).status_code == 200
+    first = SceneBeatCreate(
+        scene_id=scene["id"], order_index=1, beat_summary="first"
+    ).model_dump()
+    assert (
+        client.post(
+            f"/api/v1/story-structure/scenes/{scene['id']}/beats", json=first
+        ).status_code
+        == 200
+    )
 
-    conflict = SceneBeatCreate(scene_id=scene["id"], order_index=1, beat_summary="duplicate").model_dump()
-    res = client.post(f"/api/v1/story-structure/scenes/{scene['id']}/beats", json=conflict)
+    conflict = SceneBeatCreate(
+        scene_id=scene["id"], order_index=1, beat_summary="duplicate"
+    ).model_dump()
+    res = client.post(
+        f"/api/v1/story-structure/scenes/{scene['id']}/beats", json=conflict
+    )
 
     assert res.status_code == 400
     assert res.json()["detail"] == "order_index already exists for scene"
@@ -112,27 +136,44 @@ def test_shot_duplicate_number_and_beat_mismatch(db_session: Session):
     # scene A with beat
     scene_a = client.post(
         f"/api/v1/story-structure/scripts/{script.id}/scenes",
-        json=SceneCreate(script_id=script.id, scene_number="1", slug_line="INT").model_dump(),
+        json=SceneCreate(
+            script_id=script.id, scene_number="1", slug_line="INT"
+        ).model_dump(),
     ).json()
     beat = client.post(
         f"/api/v1/story-structure/scenes/{scene_a['id']}/beats",
-        json=SceneBeatCreate(scene_id=scene_a["id"], order_index=1, beat_summary="first").model_dump(),
+        json=SceneBeatCreate(
+            scene_id=scene_a["id"], order_index=1, beat_summary="first"
+        ).model_dump(),
     ).json()
 
     # duplicate shot number in same scene
     first_shot = ShotCreate(scene_id=scene_a["id"], shot_number="1A").model_dump()
-    assert client.post(f"/api/v1/story-structure/scenes/{scene_a['id']}/shots", json=first_shot).status_code == 200
-    res_dup = client.post(f"/api/v1/story-structure/scenes/{scene_a['id']}/shots", json=first_shot)
+    assert (
+        client.post(
+            f"/api/v1/story-structure/scenes/{scene_a['id']}/shots", json=first_shot
+        ).status_code
+        == 200
+    )
+    res_dup = client.post(
+        f"/api/v1/story-structure/scenes/{scene_a['id']}/shots", json=first_shot
+    )
     assert res_dup.status_code == 400
     assert res_dup.json()["detail"] == "shot_number already exists for scene"
 
     # beat/scene mismatch
     scene_b = client.post(
         f"/api/v1/story-structure/scripts/{script.id}/scenes",
-        json=SceneCreate(script_id=script.id, scene_number="2", slug_line="EXT").model_dump(),
+        json=SceneCreate(
+            script_id=script.id, scene_number="2", slug_line="EXT"
+        ).model_dump(),
     ).json()
-    bad_shot = ShotCreate(scene_id=scene_b["id"], shot_number="2A", scene_beat_id=beat["id"]).model_dump()
-    res_mismatch = client.post(f"/api/v1/story-structure/scenes/{scene_b['id']}/shots", json=bad_shot)
+    bad_shot = ShotCreate(
+        scene_id=scene_b["id"], shot_number="2A", scene_beat_id=beat["id"]
+    ).model_dump()
+    res_mismatch = client.post(
+        f"/api/v1/story-structure/scenes/{scene_b['id']}/shots", json=bad_shot
+    )
     assert res_mismatch.status_code == 400
     assert res_mismatch.json()["detail"] == "beat does not belong to scene"
 
@@ -140,10 +181,12 @@ def test_shot_duplicate_number_and_beat_mismatch(db_session: Session):
 def test_environment_variants_pass_reference_images(db_session: Session, monkeypatch):
     Base.metadata.create_all(bind=db_session.get_bind())
 
+    from app.api.v1.endpoints.story_structure import (
+        environment_variants as environment_variants_module,
+    )
     from app.core.middleware import get_current_active_user
     from app.models.story_structure import Environment
     from app.models.user import User
-    from app.api.v1.endpoints import story_structure as story_structure_module
 
     user = User(
         username="env_test_user",
@@ -181,7 +224,9 @@ def test_environment_variants_pass_reference_images(db_session: Session, monkeyp
 
     class _DummyAIManager:
         async def image_to_image(self, *args, **kwargs):
-            captured["image_url"] = kwargs.get("image_url") or (args[0] if args else None)
+            captured["image_url"] = kwargs.get("image_url") or (
+                args[0] if args else None
+            )
             captured["extra_images"] = kwargs.get("extra_images")
             return _DummyResp()
 
@@ -204,12 +249,19 @@ def test_environment_variants_pass_reference_images(db_session: Session, monkeyp
                 "relative_path": "/uploads/env_variant.png",
                 "file_size": 123,
                 "filename": "env_variant.png",
-                "oss_url": "https://oss.example.com/env_variant.png" if require_upload else None,
-                "oss_upload": {"success": True, "file_url": "https://oss.example.com/env_variant.png"},
+                "oss_url": (
+                    "https://oss.example.com/env_variant.png"
+                    if require_upload
+                    else None
+                ),
+                "oss_upload": {
+                    "success": True,
+                    "file_url": "https://oss.example.com/env_variant.png",
+                },
             }
 
     dummy_service = _DummyAIService()
-    monkeypatch.setattr(story_structure_module, "ai_service", dummy_service)
+    monkeypatch.setattr(environment_variants_module, "ai_service", dummy_service)
 
     app.dependency_overrides[get_db] = lambda: db_session
     app.dependency_overrides[get_current_active_user] = lambda: user
@@ -220,7 +272,9 @@ def test_environment_variants_pass_reference_images(db_session: Session, monkeyp
         "prompt": "variant",
         "reference_images": ["/uploads/ref_env.png"],
     }
-    res = client.post(f"/api/v1/story-structure/environments/{env.id}/images/variants", json=payload)
+    res = client.post(
+        f"/api/v1/story-structure/environments/{env.id}/images/variants", json=payload
+    )
     assert res.status_code == 200, res.text
 
     assert captured["extra_images"] == ["http://localhost:8000/uploads/ref_env.png"]

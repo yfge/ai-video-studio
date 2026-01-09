@@ -1,1 +1,7 @@
-Environment: {{ environment_name }} | Category: {{ category | default('indoor') }} | Overall-to-detail: 开场远景交代空间 -> 中景展示主要区域 -> 近景刻画关键道具/纹理；Environment focus: 室内布局、光线、材质细节；保持真实光影和透视，色彩和风格统一。{% if additional_prompts %} | {{ additional_prompts }}{% endif %} | {{ prompt }}
+{%- set cat = (category | default('indoor')) | lower -%}
+{%- if 'outdoor' in cat or cat in ['outdoor', 'outside', 'exterior', '室外', '户外'] -%}
+{%- set focus = '室外空间、天气、周边环境' -%}
+{%- else -%}
+{%- set focus = '室内布局、光线、材质细节' -%}
+{%- endif -%}
+Environment: {{ environment_name }} | Category: {{ category | default('indoor') }} | Overall-to-detail: 开场远景交代空间 -> 中景展示主要区域 -> 近景刻画关键道具/纹理；Environment focus: {{ focus }}；保持真实光影和透视，色彩和风格统一。{% if tags %} | Tags: {{ tags }}{% endif %}{% if description %} | Description: {{ description }}{% endif %}{% if additional_prompts %} | {{ additional_prompts }}{% endif %} | {{ prompt }}
