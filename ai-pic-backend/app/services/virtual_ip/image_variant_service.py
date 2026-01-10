@@ -39,6 +39,7 @@ class VirtualIPVariantRequest:
     style: str | None
     style_preset_id: str | None
     style_spec: Any | None
+    generation_profile: str | None
     seed: int | None
     steps: int | None
     cfg_scale: float | None
@@ -56,11 +57,12 @@ def resolve_virtual_ip_variant_request(
     count: int | None,
     size: str | None,
     aspect_ratio: str | None,
-    seed: int | None,
-    steps: int | None,
-    cfg_scale: float | None,
-    negative_prompt: str | None,
-    strength: float | None,
+    generation_profile: str | None = None,
+    seed: int | None = None,
+    steps: int | None = None,
+    cfg_scale: float | None = None,
+    negative_prompt: str | None = None,
+    strength: float | None = None,
     base_image_model: str | None,
 ) -> VirtualIPVariantRequest:
     prompt_value = clean_str(value_from_payload(payload, "prompt", prompt))
@@ -76,6 +78,9 @@ def resolve_virtual_ip_variant_request(
     size_value = clean_str(value_from_payload(payload, "size", size))
     aspect_ratio_value = clean_str(
         value_from_payload(payload, "aspect_ratio", aspect_ratio)
+    )
+    generation_profile_value = clean_str(
+        value_from_payload(payload, "generation_profile", generation_profile)
     )
     seed_int = maybe_int(value_from_payload(payload, "seed", seed))
     steps_int = maybe_int(value_from_payload(payload, "steps", steps))
@@ -100,6 +105,7 @@ def resolve_virtual_ip_variant_request(
         style=style_hint,
         style_preset_id=style_preset_id_value,
         style_spec=style_spec_value,
+        generation_profile=generation_profile_value,
         seed=seed_int,
         steps=steps_int,
         cfg_scale=cfg_scale_value,
@@ -128,6 +134,7 @@ def build_virtual_ip_variant_task_payload(
         "style": request.style,
         "style_preset_id": request.style_preset_id,
         "style_spec": request.style_spec,
+        "generation_profile": request.generation_profile,
         "seed": request.seed,
         "steps": request.steps,
         "cfg_scale": request.cfg_scale,
@@ -166,6 +173,7 @@ async def generate_virtual_ip_image_variants(
             mode=ImageGenMode.IMAGE_TO_IMAGE,
             prompt=final_prompt,
             model=request.model,
+            generation_profile=request.generation_profile,
             style=request.style,
             style_preset_id=request.style_preset_id,
             style_spec=request.style_spec,
@@ -208,7 +216,14 @@ async def generate_virtual_ip_image_variants(
         generation_params["size"] = normalized.size
     if normalized.aspect_ratio is not None:
         generation_params["aspect_ratio"] = normalized.aspect_ratio
-    for key in ("seed", "steps", "cfg_scale", "negative_prompt", "strength"):
+    for key in (
+        "generation_profile",
+        "seed",
+        "steps",
+        "cfg_scale",
+        "negative_prompt",
+        "strength",
+    ):
         value = getattr(normalized, key, None)
         if value is not None:
             generation_params[key] = value
@@ -223,6 +238,7 @@ async def generate_virtual_ip_image_variants(
         "mode": normalized.mode.value,
         "provider": normalized.provider,
         "model_id": normalized.model_id,
+        "generation_profile": normalized.generation_profile,
         "size": normalized.size,
         "aspect_ratio": normalized.aspect_ratio,
         "seed": normalized.seed,

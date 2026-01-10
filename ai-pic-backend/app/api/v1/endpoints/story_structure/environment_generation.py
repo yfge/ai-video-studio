@@ -40,6 +40,10 @@ class EnvironmentImageGenerateParams:
             None, description="生成提示词，不填则用环境描述/名称"
         ),
         model: str | None = Query(None, description="模型，形如 provider:model_id"),
+        generation_profile: str | None = Query(
+            None,
+            description="生成参数档位（后端按 provider+model 解析默认 steps/cfg/negative_prompt）",
+        ),
         count: int = Query(1, ge=1, le=4, description="生成数量"),
         size: str | None = Query(None, description="分辨率/尺寸，如 1024x1024 或 2K"),
         aspect_ratio: str | None = Query(None, description="画幅比例，如 16:9、1:1"),
@@ -50,6 +54,7 @@ class EnvironmentImageGenerateParams:
     ) -> None:
         self.prompt = prompt
         self.model = model
+        self.generation_profile = generation_profile
         self.count = count
         self.size = size
         self.aspect_ratio = aspect_ratio
@@ -81,6 +86,7 @@ async def generate_environment_images(
             count=params.count,
             size=params.size,
             aspect_ratio=params.aspect_ratio,
+            generation_profile=params.generation_profile,
             seed=params.seed,
             steps=params.steps,
             cfg_scale=params.cfg_scale,
@@ -121,6 +127,7 @@ async def generate_environment_images_async(
         count=params.count,
         size=params.size,
         aspect_ratio=params.aspect_ratio,
+        generation_profile=params.generation_profile,
         seed=params.seed,
         steps=params.steps,
         cfg_scale=params.cfg_scale,

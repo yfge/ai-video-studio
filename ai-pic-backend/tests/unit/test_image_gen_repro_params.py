@@ -71,6 +71,6 @@ def test_image_gen_img2img_strength_clamped_for_jimeng():
 
     assert call["prefer_provider"] == "jimeng"
     assert call["strength"] == 1.0
-    assert "steps" not in call
-    assert "cfg_scale" not in call
+    assert call["steps"] == 25
+    assert call["cfg_scale"] == 7.0
     assert "seed" not in call

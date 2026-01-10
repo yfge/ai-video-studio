@@ -118,3 +118,67 @@ def test_build_ai_manager_call_keeps_extra_images_without_provider():
     normalized = normalize_image_gen_request(req)
     call = build_ai_manager_call(normalized)
     assert call["extra_images"] == ["http://localhost:8000/uploads/ref.png"]
+
+
+@pytest.mark.unit
+def test_profile_defaults_applied_for_jimeng():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-sdxl",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.generation_profile == "balanced"
+    assert normalized.steps == 30
+    assert normalized.cfg_scale == 7.0
+    assert normalized.negative_prompt
+    assert normalized.audit.defaults_applied["generation_profile"] == "balanced"
+    assert normalized.audit.defaults_applied["steps"] == 30
+    assert normalized.audit.defaults_applied["cfg_scale"] == 7.0
+
+
+@pytest.mark.unit
+def test_profile_quality_for_jimeng():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-sdxl",
+        generation_profile="quality",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.generation_profile == "quality"
+    assert normalized.steps == 40
+    assert normalized.cfg_scale == 7.5
+    assert "generation_profile" not in normalized.audit.defaults_applied
+
+
+@pytest.mark.unit
+def test_profile_unknown_falls_back_to_default():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-sdxl",
+        generation_profile="does-not-exist",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.generation_profile == "balanced"
+    assert any("unknown generation_profile" in w for w in normalized.audit.warnings)
+
+
+@pytest.mark.unit
+def test_profile_fallback_when_invalid_steps():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-sdxl",
+        generation_profile="quality",
+        steps=0,
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.generation_profile == "quality"
+    assert normalized.steps == 40
+    assert any("invalid steps" in w for w in normalized.audit.warnings)

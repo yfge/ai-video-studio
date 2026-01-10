@@ -1,7 +1,22 @@
-from fastapi import APIRouter
-from app.api.v1.endpoints import auth, virtual_ip, virtual_ip_images, virtual_ip_voice_samples, stories, episodes, scripts, migrations, prompts, diagnostic, admin, tasks, styles
-from app.api.v1.endpoints import story_structure
 from app.api.v1 import ai_providers, voice
+from app.api.v1.endpoints import (
+    admin,
+    auth,
+    diagnostic,
+    episodes,
+    image_gen_profiles,
+    migrations,
+    prompts,
+    scripts,
+    stories,
+    story_structure,
+    styles,
+    tasks,
+    virtual_ip,
+    virtual_ip_images,
+    virtual_ip_voice_samples,
+)
+from fastapi import APIRouter
 
 api_router = APIRouter()
 
@@ -13,20 +28,31 @@ api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 # 虚拟IP相关路由
 api_router.include_router(virtual_ip.router, tags=["virtual-ips"])
-api_router.include_router(virtual_ip_images.router, prefix="/virtual-ips", tags=["virtual-ip-images"])
-api_router.include_router(virtual_ip_voice_samples.router, prefix="/virtual-ips", tags=["virtual-ips"])
+api_router.include_router(
+    virtual_ip_images.router, prefix="/virtual-ips", tags=["virtual-ip-images"]
+)
+api_router.include_router(
+    virtual_ip_voice_samples.router, prefix="/virtual-ips", tags=["virtual-ips"]
+)
 
 # 剧本相关路由
 api_router.include_router(stories.router, prefix="/stories", tags=["stories"])
 api_router.include_router(episodes.router, prefix="/episodes", tags=["episodes"])
 api_router.include_router(scripts.router, prefix="/scripts", tags=["scripts"])
-api_router.include_router(story_structure.router, prefix="/story-structure", tags=["story-structure"]) 
+api_router.include_router(
+    story_structure.router, prefix="/story-structure", tags=["story-structure"]
+)
 
 # 数据库迁移相关路由
 api_router.include_router(migrations.router, prefix="/migrations", tags=["migrations"])
 
 # 提示词管理相关路由
 api_router.include_router(prompts.router, prefix="/prompts", tags=["prompts"])
+
+# 图像生成 profiles（后端为唯一真源）
+api_router.include_router(
+    image_gen_profiles.router, prefix="/image-gen", tags=["image-gen"]
+)
 
 # AI服务提供商相关路由
 api_router.include_router(ai_providers.router, prefix="/ai", tags=["ai-providers"])
@@ -40,4 +66,4 @@ api_router.include_router(styles.router, prefix="/styles", tags=["styles"])
 api_router.include_router(diagnostic.router, prefix="/diagnostic", tags=["diagnostic"])
 
 # 任务相关路由
-api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"]) 
+api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])

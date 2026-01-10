@@ -179,6 +179,7 @@ def storyboard_image_generate_task(
         frame_indexes,
         prompt_override=payload.get("prompt"),
         model=payload.get("model"),
+        generation_profile=payload.get("generation_profile"),
         size=payload.get("size"),
         width=_maybe_int(payload.get("width")),
         height=_maybe_int(payload.get("height")),

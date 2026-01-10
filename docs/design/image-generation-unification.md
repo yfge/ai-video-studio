@@ -6,13 +6,14 @@
 
 本设计提出引入一个“**统一归一化层**”（Normalizer + Domain Policy + Provider Param Mapping），将各入口/worker 的分散逻辑收敛为一致的请求规范与可追溯元数据，再由各域适配器完成各自落库（VirtualIPImage / Environment.reference_images / Storyboard JSON）与 UI 兼容。
 
-当前落地进度（截至 2026-01-09）：
+当前落地进度（截至 2026-01-10）：
 
 - ✅ Phase 1：归一化层（`app/services/image_gen/`）
 - ✅ Phase 2：虚拟 IP 文生图/图生图（variants）接入归一化层，并统一 Runtime Prompt（`virtual_ip_image` / `virtual_ip_image_variant`）
 - ✅ Phase 3：环境文生图/图生图（sync+async+worker）接入归一化层，并接入 PromptManager（`environment_image`）
 - ✅ Phase 4：分镜图生图接入归一化层（保留现有锚点合并策略，抽出参数构建到 service）
 - ✅ Phase 5：统一“质量一致性/可复现”参数（`seed/steps/cfg_scale/negative_prompt/strength`）贯通 VirtualIP / Environment / Storyboard（含 Task.parameters 记录）
+- ✅ Phase 6：引入“生成参数 profile/preset”（按 `provider+model+mode` 提供默认 `steps/cfg_scale/negative_prompt`），并提供 profiles 查询 API（`GET /api/v1/image-gen/profiles`）
 
 ---
 
@@ -254,6 +255,24 @@
 - 丢弃不支持字段（记录在 `audit.dropped_fields`）
 - 必要转换（`size -> resolution`、`size -> width/height`）
 - 统一 `count` clamp（1..4）
+
+### 生成参数 profile/preset（质量一致性）
+
+**问题**：同一个 provider/model 在不同入口（VirtualIP/Environment/Storyboard）下，经常因为“默认 steps/cfg/negative_prompt 不一致或缺失”导致质量与风格难以稳定。
+
+**策略**：后端引入 `generation_profile`（profile/preset），作为“按 `provider+model+mode` 的默认生成参数档位”。入口只需要传：
+
+- `generation_profile`（如：`balanced` / `quality` / `fast`）
+- 可选覆盖：`steps/cfg_scale/negative_prompt/strength`
+
+后端在统一归一化层中按 profile **填充缺省值**（不覆盖显式传入的字段），并在元数据中记录最终使用的参数。
+
+**后端真源**：
+
+- Registry：`ai-pic-backend/app/services/image_gen/profiles.py`
+- Profiles API：`GET /api/v1/image-gen/profiles?model=<provider:model_id>&mode=text_to_image|image_to_image`
+
+> 注意：并非所有 provider 都支持 `steps/cfg_scale/negative_prompt`，profiles API 可能返回空列表；前端应按返回内容决定是否展示 profile 选择。
 
 ### reference_images 归一化（统一实现）
 

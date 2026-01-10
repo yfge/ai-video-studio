@@ -9,6 +9,7 @@ from app.services.providers.image_param_utils import (
 from app.utils.model_utils import infer_provider_from_model, parse_model_and_provider
 
 from .policies import get_policy
+from .profiles import resolve_image_gen_profile
 from .refs import normalize_reference_images, resolve_base_image
 from .types import ImageGenAudit, ImageGenMode, ImageGenNormalized, ImageGenRequest
 
@@ -41,14 +42,69 @@ def normalize_image_gen_request(
     size_value = _clean_optional_str(req.size)
     aspect_ratio_value = _clean_optional_str(req.aspect_ratio)
 
+    requested_profile = _clean_optional_str(req.generation_profile)
+    profile = resolve_image_gen_profile(
+        provider=provider,
+        model_id=clean_model,
+        mode=req.mode,
+        requested_profile=requested_profile,
+    )
+    generation_profile = profile.id if profile else None
+    if profile and requested_profile and profile.id != requested_profile:
+        audit.warnings.append(
+            f"unknown generation_profile '{requested_profile}', using '{profile.id}'"
+        )
+    if requested_profile and profile is None:
+        audit.warnings.append(
+            f"generation_profile '{requested_profile}' ignored (unsupported provider/model)"
+        )
+    if profile and not requested_profile:
+        audit.defaults_applied["generation_profile"] = profile.id
+
     seed = _normalize_seed(req.seed, audit=audit)
-    steps = _normalize_steps(req.steps, audit=audit)
-    cfg_scale = _normalize_cfg_scale(req.cfg_scale, audit=audit)
-    negative_prompt = _clean_optional_str(req.negative_prompt)
+    steps_input = req.steps
+    if steps_input is None and profile and profile.defaults.steps is not None:
+        steps_input = profile.defaults.steps
+        audit.defaults_applied["steps"] = steps_input
+    steps = _normalize_steps(steps_input, audit=audit)
+    if steps is None and req.steps is not None and profile and profile.defaults.steps:
+        audit.warnings.append("invalid steps; falling back to generation_profile")
+        audit.defaults_applied["steps"] = profile.defaults.steps
+        steps = _normalize_steps(profile.defaults.steps, audit=audit)
+
+    cfg_input = req.cfg_scale
+    if cfg_input is None and profile and profile.defaults.cfg_scale is not None:
+        cfg_input = profile.defaults.cfg_scale
+        audit.defaults_applied["cfg_scale"] = cfg_input
+    cfg_scale = _normalize_cfg_scale(cfg_input, audit=audit)
+    if (
+        cfg_scale is None
+        and req.cfg_scale is not None
+        and profile
+        and profile.defaults.cfg_scale is not None
+    ):
+        audit.warnings.append("invalid cfg_scale; falling back to generation_profile")
+        audit.defaults_applied["cfg_scale"] = profile.defaults.cfg_scale
+        cfg_scale = _normalize_cfg_scale(profile.defaults.cfg_scale, audit=audit)
+
+    negative_prompt_input = _clean_optional_str(req.negative_prompt)
+    if (
+        negative_prompt_input is None
+        and profile
+        and profile.defaults.negative_prompt is not None
+    ):
+        negative_prompt_input = _clean_optional_str(profile.defaults.negative_prompt)
+        if negative_prompt_input is not None:
+            audit.defaults_applied["negative_prompt"] = negative_prompt_input
+    negative_prompt = negative_prompt_input
 
     strength = None
     if req.mode == ImageGenMode.IMAGE_TO_IMAGE:
-        strength = _normalize_strength(req.strength, audit=audit)
+        strength_input = req.strength
+        if strength_input is None and profile and profile.defaults.strength is not None:
+            strength_input = profile.defaults.strength
+            audit.defaults_applied["strength"] = strength_input
+        strength = _normalize_strength(strength_input, audit=audit)
     elif req.strength is not None:
         audit.dropped_fields.append("strength")
         audit.warnings.append("strength ignored for text_to_image")
@@ -106,6 +162,7 @@ def normalize_image_gen_request(
         mode=req.mode,
         provider=provider,
         model_id=clean_model,
+        generation_profile=generation_profile,
         prompt=prompt,
         style=style,
         style_preset_id=_clean_optional_str(req.style_preset_id),

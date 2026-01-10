@@ -2742,6 +2742,7 @@ def _process_storyboard_image_task(
     *,
     prompt_override: str | None = None,
     model: str | None = None,
+    generation_profile: str | None = None,
     size: str | None = None,
     width: int | None = None,
     height: int | None = None,
@@ -2895,6 +2896,7 @@ def _process_storyboard_image_task(
                     prompt=prompt,
                     refs=refs,
                     model=model,
+                    generation_profile=generation_profile,
                     count=count_int,
                     size=size,
                     aspect_ratio=aspect_ratio,
@@ -3335,6 +3337,10 @@ class StoryboardImageRequest(BaseModel):
     model: Optional[str] = Field(
         default=None, description="模型ID，可选 'provider:model' 形式"
     )
+    generation_profile: Optional[str] = Field(
+        default=None,
+        description="生成参数档位（后端按 provider+model 解析默认 steps/cfg/negative_prompt）",
+    )
     size: Optional[str] = Field(
         default=None, description="分辨率/尺寸（例如 1024x1024 / 2K / 1K）"
     )
@@ -3443,6 +3449,7 @@ async def generate_storyboard_images(
                 "prompt": body.prompt,
                 "frames": body.frames or [],
                 "model": body.model,
+                "generation_profile": body.generation_profile,
                 "width": body.width,
                 "height": body.height,
                 "style": body.style,
@@ -3474,6 +3481,7 @@ async def generate_storyboard_images(
         "prompt": body.prompt,
         "frames": body.frames or [],
         "model": body.model,
+        "generation_profile": body.generation_profile,
         "size": body.size,
         "width": body.width,
         "height": body.height,

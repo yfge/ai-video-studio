@@ -45,6 +45,7 @@ async def generate_virtual_ip_image(
     steps: Optional[int] = Form(None),
     cfg_scale: Optional[float] = Form(None),
     negative_prompt: Optional[str] = Form(None),
+    generation_profile: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -66,6 +67,7 @@ async def generate_virtual_ip_image(
         steps=steps,
         cfg_scale=cfg_scale,
         negative_prompt=negative_prompt,
+        generation_profile=generation_profile,
     )
 
     result = await run_virtual_ip_image_generation(virtual_ip_id, virtual_ip, params)
@@ -90,6 +92,7 @@ async def generate_virtual_ip_image_async(
     steps: Optional[int] = Form(None),
     cfg_scale: Optional[float] = Form(None),
     negative_prompt: Optional[str] = Form(None),
+    generation_profile: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -111,6 +114,7 @@ async def generate_virtual_ip_image_async(
         steps=steps,
         cfg_scale=cfg_scale,
         negative_prompt=negative_prompt,
+        generation_profile=generation_profile,
     )
     payload = build_virtual_ip_image_payload(virtual_ip, params)
 

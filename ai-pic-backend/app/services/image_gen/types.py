@@ -35,6 +35,7 @@ class ImageGenRequest:
 
     model: str | None = None
     prefer_provider: str | None = None
+    generation_profile: str | None = None
 
     style: str | None = None
     style_preset_id: str | None = None
@@ -69,6 +70,7 @@ class ImageGenNormalized:
 
     provider: str | None
     model_id: str | None
+    generation_profile: str | None
 
     prompt: str
     style: str

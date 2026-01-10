@@ -58,6 +58,7 @@ def process_virtual_ip_image_task(
                 count=int(payload.get("count") or 1),
                 size=payload.get("size"),
                 aspect_ratio=payload.get("aspect_ratio"),
+                generation_profile=payload.get("generation_profile"),
                 seed=payload.get("seed"),
                 steps=payload.get("steps"),
                 cfg_scale=payload.get("cfg_scale"),
@@ -115,6 +116,9 @@ def process_virtual_ip_image_task(
                 generation_params["prompt_template"] = prompt_template
             if result.get("prompt_sha256") is not None:
                 generation_params["prompt_sha256"] = result.get("prompt_sha256")
+            generation_profile_value = result.get("generation_profile")
+            if generation_profile_value is not None:
+                generation_params["generation_profile"] = generation_profile_value
             for key in ("seed", "steps", "cfg_scale", "negative_prompt"):
                 value = result.get(key)
                 if value is None:

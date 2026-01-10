@@ -43,6 +43,7 @@
 :link: 设计文档：`docs/design/duration-orchestrator-agent.md`
 
 :triangular_flag_on_post: 核心思路：
+
 - **场景级闭环验证**：每个场景生成后立即 TTS 测量，不达标则重新生成（最多3次），达标后锁定
 - **字数锚定**：根据目标时长计算 `target_word_count`，传递给 Script Agent 约束对白生成
 - **预算动态调整**：某场景超时/欠时，从后续场景预算中调整
@@ -101,13 +102,13 @@
 
 ### 验收标准
 
-| 指标 | 目标值 |
-|------|--------|
-| 单场景时长偏差 | ≤ ±15% |
-| 剧集总时长偏差 | ≤ ±10% |
-| 平均重试次数 | ≤ 1.5 次/场景 |
+| 指标           | 目标值           |
+| -------------- | ---------------- |
+| 单场景时长偏差 | ≤ ±15%           |
+| 剧集总时长偏差 | ≤ ±10%           |
+| 平均重试次数   | ≤ 1.5 次/场景    |
 | 端到端生成时间 | ≤ 现有流程 × 1.5 |
-| 单元测试覆盖率 | ≥ 80% |
+| 单元测试覆盖率 | ≥ 80%            |
 
 ### 下一步
 
@@ -180,6 +181,7 @@
 - [ ] 功能/需求：图生图能力完善，梳理 Seedream/其他提供商的单图生图、多图生图参数，对齐 `/api/v1/ai/generate/image-to-image`，覆盖背面照/全身照等变体
 - [x] 后端：虚拟 IP 文案注入提示词，聚合 `description` / `background_story` / `biography` / `style_prompt`，确保生成提示词携带完整角色设定
 - [x] 后端：模型注册表已提供 `size_options` / `aspect_ratio_options`（OpenAI/Seedream 等）
+- [x] 后端：引入图像生成参数 `generation_profile`（按 provider+model+mode 默认 `steps/cfg_scale/negative_prompt`），并提供 `GET /api/v1/image-gen/profiles`
 - [ ] 后端：分辨率与规格校验/落盘完善（`size` / `width` / `height` / `aspect_ratio`），统一记录实际下发规格
 - [x] 前端：虚拟 IP 图像页支持基于已有图像的变体生成（`/api/v1/virtual-ips/{id}/images/{image_id}/variants`），含模型选择与生成数量，变体会保存为新的虚拟 IP 图像资产
 - [x] 前端：虚拟 IP 更新请求类型补齐 `voice_config`，修复 `next build` 类型检查失败

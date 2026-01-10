@@ -45,6 +45,7 @@ def resolve_virtual_ip_image_params(
     steps: Optional[int],
     cfg_scale: Optional[float],
     negative_prompt: Optional[str],
+    generation_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Resolve image generation parameters from payload + form defaults."""
     style_value = payload.get("style", style) or "realistic"
@@ -65,6 +66,9 @@ def resolve_virtual_ip_image_params(
     steps_int = maybe_int(payload.get("steps", steps))
     cfg_scale_value = maybe_float(payload.get("cfg_scale", cfg_scale))
     negative_prompt_value = clean_str(payload.get("negative_prompt", negative_prompt))
+    generation_profile_value = clean_str(
+        payload.get("generation_profile", generation_profile)
+    )
     additional_raw = payload.get("additional_prompts", additional_prompts) or ""
     is_default_value = payload.get("is_default", is_default)
     additional_prompt_list = [
@@ -95,6 +99,7 @@ def resolve_virtual_ip_image_params(
         "steps": steps_int,
         "cfg_scale": cfg_scale_value,
         "negative_prompt": negative_prompt_value,
+        "generation_profile": generation_profile_value,
         "additional_prompts": additional_prompt_list,
         "is_default": is_default_bool,
     }
@@ -145,6 +150,7 @@ async def run_virtual_ip_image_generation(
         count=params["count"],
         size=params["size"],
         aspect_ratio=params["aspect_ratio"],
+        generation_profile=params.get("generation_profile"),
         seed=params.get("seed"),
         steps=params.get("steps"),
         cfg_scale=params.get("cfg_scale"),
@@ -174,6 +180,7 @@ def build_virtual_ip_image_payload(
         "count": params["count"],
         "size": params["size"],
         "aspect_ratio": params["aspect_ratio"],
+        "generation_profile": params.get("generation_profile"),
         "seed": params.get("seed"),
         "steps": params.get("steps"),
         "cfg_scale": params.get("cfg_scale"),
@@ -289,6 +296,9 @@ def persist_virtual_ip_image(
         params.get("size"),
         params.get("aspect_ratio"),
     )
+    generation_profile_value = result.get("generation_profile")
+    if generation_profile_value is not None:
+        generation_params["generation_profile"] = generation_profile_value
     for key in ("seed", "steps", "cfg_scale", "negative_prompt"):
         value = result.get(key)
         if value is None:
