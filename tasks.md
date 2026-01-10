@@ -187,6 +187,7 @@
 - [x] 前端：虚拟 IP 更新请求类型补齐 `voice_config`，修复 `next build` 类型检查失败
 - [x] 前端：虚拟 IP 手动上传走统一 OSS（修复上传字段与 FormData 头部）
 - [x] 前端：文生图表单按模型动态限制分辨率选项（含 Seedream/DALL·E 白名单）
+- [x] 前端：统一 `generation_profile`（质量档位）选择与展示，并贯通虚拟IP/环境/分镜图生图请求
 - [ ] 前端：图生图弹窗补齐分辨率/比例限制与错误提示（当前复用文生图已选 `size`）
 - [ ] 验证：为不同模型+分辨率补齐端到端用例（含 DALL·E 3 官方三种长宽比、DALL·E 2 三种尺寸、Seedream 2K），在 README / TESTING_GUIDE 记录 Ark 凭证、调试与兼容矩阵
 

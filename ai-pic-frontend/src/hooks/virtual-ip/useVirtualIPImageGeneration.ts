@@ -32,6 +32,7 @@ export function useVirtualIPImageGeneration({
     style_spec: {},
     category: "portrait",
     model: "",
+    generation_profile: undefined,
     additional_prompts: "",
     is_default: false,
     count: 1,
@@ -42,24 +43,30 @@ export function useVirtualIPImageGeneration({
     () => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage }),
     [],
   );
-  const { models: availableModels, defaultModel: recommendedModel } = useAvailableModels({
-    fetcher: fetchModels,
-    modelType: AIModelType.Image,
-    cacheKey: `virtual-ip-image:${virtualIPId}`,
-  });
+  const { models: availableModels, defaultModel: recommendedModel } =
+    useAvailableModels({
+      fetcher: fetchModels,
+      modelType: AIModelType.Image,
+      cacheKey: `virtual-ip-image:${virtualIPId}`,
+    });
 
   const selectedModel = useMemo(
     () =>
-      availableModels.find((model) => model.model_id === (generateForm.model || recommendedModel)),
+      availableModels.find(
+        (model) => model.model_id === (generateForm.model || recommendedModel),
+      ),
     [availableModels, generateForm.model, recommendedModel],
   );
 
   useEffect(() => {
     if (generateForm.model) return;
     const firstModelId =
-      recommendedModel || (availableModels.length > 0 ? availableModels[0].model_id : "");
+      recommendedModel ||
+      (availableModels.length > 0 ? availableModels[0].model_id : "");
     if (!firstModelId) return;
-    setGenerateForm((prev) => (prev.model ? prev : { ...prev, model: firstModelId }));
+    setGenerateForm((prev) =>
+      prev.model ? prev : { ...prev, model: firstModelId },
+    );
   }, [availableModels, recommendedModel, generateForm.model]);
 
   const imageUi = useMemo(() => extractImageUi(selectedModel), [selectedModel]);
@@ -83,7 +90,11 @@ export function useVirtualIPImageGeneration({
       }
       return changed ? next : prev;
     });
-  }, [imageUi.defaultAspectRatio, imageUi.defaultSize, imageUi.supportsAspectRatio]);
+  }, [
+    imageUi.defaultAspectRatio,
+    imageUi.defaultSize,
+    imageUi.supportsAspectRatio,
+  ]);
 
   const resolutionOptions = useMemo(
     () =>
@@ -102,7 +113,9 @@ export function useVirtualIPImageGeneration({
   const { presets: stylePresets } = useStylePresets();
   const selectedStylePreset = useMemo(() => {
     if (!generateForm.style_preset_id) return undefined;
-    return stylePresets.find((p) => p.preset_id === generateForm.style_preset_id);
+    return stylePresets.find(
+      (p) => p.preset_id === generateForm.style_preset_id,
+    );
   }, [generateForm.style_preset_id, stylePresets]);
 
   const handleGenerateImage = async () => {
@@ -126,7 +139,8 @@ export function useVirtualIPImageGeneration({
         ...generateForm,
         model: modelToUse,
         style_spec:
-          generateForm.style_spec && Object.keys(generateForm.style_spec).length > 0
+          generateForm.style_spec &&
+          Object.keys(generateForm.style_spec).length > 0
             ? generateForm.style_spec
             : undefined,
       });
@@ -139,6 +153,7 @@ export function useVirtualIPImageGeneration({
           style_spec: {},
           category: "portrait",
           model: recommendedModel || "",
+          generation_profile: undefined,
           additional_prompts: "",
           is_default: false,
           count: 1,
@@ -160,7 +175,9 @@ export function useVirtualIPImageGeneration({
     } catch (error) {
       console.error("AI image generation failed:", error);
       showAlert({
-        message: `AI 图片生成失败：${error instanceof Error ? error.message : "未知错误"}`,
+        message: `AI 图片生成失败：${
+          error instanceof Error ? error.message : "未知错误"
+        }`,
         variant: "error",
       });
     } finally {

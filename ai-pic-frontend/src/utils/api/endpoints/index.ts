@@ -5,40 +5,43 @@
  */
 
 // Auth endpoints
-export * from './auth.endpoints';
+export * from "./auth.endpoints";
 
 // Admin/User management endpoints
-export * from './admin.endpoints';
+export * from "./admin.endpoints";
 
 // Task endpoints
-export * from './task.endpoints';
+export * from "./task.endpoints";
 
 // Image endpoints
-export * from './image.endpoints';
+export * from "./image.endpoints";
+
+// Image generation profiles endpoints
+export * from "./image-gen.endpoints";
 
 // Voice/TTS endpoints
-export * from './voice.endpoints';
+export * from "./voice.endpoints";
 
 // Virtual IP endpoints
-export * from './virtual-ip.endpoints';
+export * from "./virtual-ip.endpoints";
 
 // Virtual IP Image endpoints
-export * from './virtual-ip-image.endpoints';
+export * from "./virtual-ip-image.endpoints";
 
 // Story endpoints
-export * from './story.endpoints';
+export * from "./story.endpoints";
 
 // Episode endpoints
-export * from './episode.endpoints';
+export * from "./episode.endpoints";
 
 // Script endpoints (includes storyboard)
-export * from './script.endpoints';
+export * from "./script.endpoints";
 
 // Story structure endpoints (scenes, beats, shots, environments)
-export * from './story-structure.endpoints';
+export * from "./story-structure.endpoints";
 
 // AI model endpoints
-export * from './ai.endpoints';
+export * from "./ai.endpoints";
 
 // Style endpoints
-export * from './style.endpoints';
+export * from "./style.endpoints";

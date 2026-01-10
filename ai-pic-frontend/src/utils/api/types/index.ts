@@ -6,37 +6,40 @@
  */
 
 // Common types (API response, pagination)
-export * from './common.types';
+export * from "./common.types";
 
 // User and authentication types
-export * from './user.types';
+export * from "./user.types";
 
 // Task management types
-export * from './task.types';
+export * from "./task.types";
 
 // Image and gallery types
-export * from './image.types';
+export * from "./image.types";
+
+// Image generation profiles
+export * from "./image-gen.types";
 
 // Style configuration types
-export * from './style.types';
+export * from "./style.types";
 
 // Voice and TTS types
-export * from './voice.types';
+export * from "./voice.types";
 
 // AI model types
-export * from './ai-model.types';
+export * from "./ai-model.types";
 
 // Virtual IP (character) types
-export * from './virtual-ip.types';
+export * from "./virtual-ip.types";
 
 // Story and episode types
-export * from './story.types';
+export * from "./story.types";
 
 // Script types
-export * from './script.types';
+export * from "./script.types";
 
 // Video and storyboard types
-export * from './video.types';
+export * from "./video.types";
 
 // Environment asset types
-export * from './environment.types';
+export * from "./environment.types";

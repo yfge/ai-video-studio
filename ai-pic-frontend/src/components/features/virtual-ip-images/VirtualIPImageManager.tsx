@@ -147,7 +147,9 @@ export function VirtualIPImageManager({
                   setPreview({
                     src: resolveImageUrl(image),
                     alt: `${activeVirtualIP.name} - ${image.category}`,
-                    description: `${image.category} | ${new Date(image.created_at).toLocaleString()}`,
+                    description: `${image.category} | ${new Date(
+                      image.created_at,
+                    ).toLocaleString()}`,
                   })
                 }
                 onImg2Img={handleOpenVariant}
@@ -165,7 +167,9 @@ export function VirtualIPImageManager({
             title="图生图变体"
             description="将参考图与提示词提交到图生图任务，可调整模型、分辨率与生成数量。"
             referenceSections={variantReferenceSections}
-            defaultSelected={variantReferenceSections.flatMap((section) => section.images)}
+            defaultSelected={variantReferenceSections.flatMap(
+              (section) => section.images,
+            )}
             lockSelection
             defaultPrompt={variantPrompt}
             defaultModel={
@@ -173,6 +177,7 @@ export function VirtualIPImageManager({
               generateForm.model ||
               ""
             }
+            defaultGenerationProfileId={generateForm.generation_profile || ""}
             defaultCount={1}
             defaultSize={generateForm.size || ""}
             defaultAspectRatio={generateForm.aspect_ratio || ""}
@@ -180,7 +185,9 @@ export function VirtualIPImageManager({
             defaultStyleSpec={generateForm.style_spec || {}}
             styleSpecFields={VIRTUAL_IP_STYLE_SPEC_FIELDS}
             modelType={AIModelType.ImageToImage}
-            modelFetcher={() => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })}
+            modelFetcher={() =>
+              aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })
+            }
             modelCacheKey={`virtual-ip-img2img:${virtualIPId}`}
             submitting={variantSubmitting}
             onSubmit={handleSubmitVariant}

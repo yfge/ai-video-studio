@@ -200,6 +200,8 @@ export interface AIImageGenerationRequest {
   style_spec?: StyleSpec;
   category: string;
   model: string;
+  /** Optional quality preset/profile (backend will normalize provider defaults). */
+  generation_profile?: string;
   additional_prompts: string;
   is_default: boolean;
   count?: number;
@@ -212,6 +214,8 @@ export interface ImageToImageRequestPayload {
   prompt?: string;
   model?: string;
   prefer_provider?: string;
+  /** Optional quality preset/profile (backend will normalize provider defaults). */
+  generation_profile?: string;
   style?: string;
   style_preset_id?: string;
   style_spec?: StyleSpec;
@@ -1601,6 +1605,7 @@ class ApiClient {
     payload: {
       prompt?: string;
       model?: string;
+      generation_profile?: string;
       count?: number;
       size?: string;
       aspect_ratio?: string;
@@ -1625,6 +1630,7 @@ class ApiClient {
       base_image?: string;
       prompt?: string;
       model?: string;
+      generation_profile?: string;
       count?: number;
       size?: string;
       aspect_ratio?: string;
@@ -1648,6 +1654,7 @@ class ApiClient {
     payload: {
       prompt?: string;
       model?: string;
+      generation_profile?: string;
       count?: number;
       size?: string;
       aspect_ratio?: string;
@@ -1672,6 +1679,7 @@ class ApiClient {
       base_image?: string;
       prompt?: string;
       model?: string;
+      generation_profile?: string;
       count?: number;
       size?: string;
       aspect_ratio?: string;
@@ -1876,7 +1884,10 @@ class ApiClient {
     return this.request<Script[]>(endpoint);
   }
 
-  async regenerateScript(idOrBusinessId: number | string, options?: { model?: string }) {
+  async regenerateScript(
+    idOrBusinessId: number | string,
+    options?: { model?: string },
+  ) {
     return this.request<Script>(
       this.scriptPath(idOrBusinessId, "/regenerate"),
       {
@@ -2082,6 +2093,7 @@ class ApiClient {
       prompt?: string;
       frames?: number[];
       model?: string;
+      generation_profile?: string;
       size?: string;
       width?: number;
       height?: number;
@@ -2112,10 +2124,10 @@ class ApiClient {
     const dimensions = shouldOmitDefaultDimensions
       ? null
       : hasWidthHeight
-        ? { width: payload?.width, height: payload?.height }
-        : hasSizeOrAspect
-          ? null
-          : { width: 1024, height: 1024 };
+      ? { width: payload?.width, height: payload?.height }
+      : hasSizeOrAspect
+      ? null
+      : { width: 1024, height: 1024 };
     return this.request(
       this.scriptPath(scriptId, "/storyboard/generate-images"),
       {
@@ -2124,6 +2136,7 @@ class ApiClient {
           frames: payload?.frames || [],
           prompt: payload?.prompt,
           model: payload?.model,
+          generation_profile: payload?.generation_profile,
           size: payload?.size,
           ...(dimensions || {}),
           aspect_ratio: payload?.aspect_ratio,
@@ -2557,6 +2570,7 @@ export const virtualIPImageAPI = {
           style_spec: request.style_spec,
           category: request.category,
           model: request.model,
+          generation_profile: request.generation_profile,
           additional_prompts: request.additional_prompts,
           is_default: request.is_default,
           count: request.count ?? 1,
@@ -2582,6 +2596,7 @@ export const virtualIPImageAPI = {
           style_spec: request.style_spec,
           category: request.category,
           model: request.model,
+          generation_profile: request.generation_profile,
           additional_prompts: request.additional_prompts,
           is_default: request.is_default,
           count: request.count ?? 1,
@@ -2604,6 +2619,7 @@ export const virtualIPImageAPI = {
         prompt: payload.prompt,
         model: payload.model,
         prefer_provider: payload.prefer_provider,
+        generation_profile: payload.generation_profile,
         style: payload.style,
         style_preset_id: payload.style_preset_id,
         style_spec: payload.style_spec,
@@ -2626,6 +2642,7 @@ export const virtualIPImageAPI = {
       | "style"
       | "style_preset_id"
       | "style_spec"
+      | "generation_profile"
     >,
   ): Promise<ApiResponse<VirtualIPImage | VirtualIPImage[]>> => {
     return apiClient.makeRequest(
@@ -2635,6 +2652,7 @@ export const virtualIPImageAPI = {
         body: JSON.stringify({
           prompt: payload.prompt,
           model: payload.model,
+          generation_profile: payload.generation_profile,
           count: payload.count ?? 1,
           size: payload.size,
           aspect_ratio: payload.aspect_ratio,
@@ -2661,6 +2679,7 @@ export const virtualIPImageAPI = {
       | "style"
       | "style_preset_id"
       | "style_spec"
+      | "generation_profile"
     >,
   ): Promise<ApiResponse<{ task_id: number; status: string }>> => {
     return apiClient.makeRequest(
@@ -2670,6 +2689,7 @@ export const virtualIPImageAPI = {
         body: JSON.stringify({
           prompt: payload.prompt,
           model: payload.model,
+          generation_profile: payload.generation_profile,
           count: payload.count ?? 1,
           size: payload.size,
           aspect_ratio: payload.aspect_ratio,

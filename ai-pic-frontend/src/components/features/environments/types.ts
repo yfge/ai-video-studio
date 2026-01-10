@@ -1,39 +1,41 @@
 export type EnvironmentFormState = {
-  name: string
-  category: string
-  tags: string[]
-  description: string
-  reference_images: string[]
-}
+  name: string;
+  category: string;
+  tags: string[];
+  description: string;
+  reference_images: string[];
+};
 
 export type EnvironmentImage = {
-  url: string
-}
+  url: string;
+};
 
 export type GenerationFormState = {
-  enabled: boolean
-  prompt: string
-  model: string
-  count: number
-  size: string
-  aspect_ratio: string
-  style: string
-}
+  enabled: boolean;
+  prompt: string;
+  model: string;
+  generation_profile: string;
+  count: number;
+  size: string;
+  aspect_ratio: string;
+  style: string;
+};
 
 export const EMPTY_ENV_FORM: EnvironmentFormState = {
-  name: '',
-  category: 'indoor',
+  name: "",
+  category: "indoor",
   tags: [],
-  description: '',
+  description: "",
   reference_images: [],
-}
+};
 
 export const EMPTY_GENERATION: GenerationFormState = {
   enabled: false,
-  prompt: '',
-  model: '',
+  prompt: "",
+  model: "",
+  generation_profile: "",
   count: 1,
-  size: '',
-  aspect_ratio: '',
-  style: 'realistic',
-}
+  size: "",
+  aspect_ratio: "",
+  style: "realistic",
+};

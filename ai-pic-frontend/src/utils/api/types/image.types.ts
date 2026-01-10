@@ -65,6 +65,7 @@ export interface AIImageGenerationRequest {
   style_spec?: StyleSpec;
   category: string;
   model: string;
+  generation_profile?: string;
   additional_prompts: string;
   is_default: boolean;
   count?: number;
@@ -78,6 +79,7 @@ export interface ImageToImageRequestPayload {
   prompt?: string;
   model?: string;
   prefer_provider?: string;
+  generation_profile?: string;
   style?: string;
   style_preset_id?: string;
   style_spec?: StyleSpec;

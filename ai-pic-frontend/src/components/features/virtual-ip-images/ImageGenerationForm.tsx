@@ -3,6 +3,7 @@
 import type { AIModel } from "@/utils/api";
 import { AIModelType, aiAPI } from "@/utils/api";
 import {
+  GenerationProfileSelect,
   ModelUiFields,
   MultiModelSelector,
   StyleSpecAdvancedPanel,
@@ -20,7 +21,9 @@ interface StylePreset {
 interface ImageGenerationFormProps {
   virtualIPId: number | null;
   generateForm: ImageGenerationFormState;
-  setGenerateForm: React.Dispatch<React.SetStateAction<ImageGenerationFormState>>;
+  setGenerateForm: React.Dispatch<
+    React.SetStateAction<ImageGenerationFormState>
+  >;
   stylePresets: StylePreset[];
   selectedStylePreset: StylePreset | undefined;
   selectedModel: AIModel | undefined;
@@ -55,7 +58,9 @@ export function ImageGenerationForm({
               setGenerateForm((prev) => ({ ...prev, model: ids[0] || "" }))
             }
             modelType="image"
-            fetcher={() => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })}
+            fetcher={() =>
+              aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })
+            }
             cacheKey={`virtual-ip-image:${virtualIPId}`}
             allowAuto={false}
             multiple={false}
@@ -71,6 +76,19 @@ export function ImageGenerationForm({
           <p className="text-xs text-gray-500 mt-1">
             {selectedModel?.capabilities?.join(", ") || "加载模型能力中..."}
           </p>
+        </div>
+        <div>
+          <GenerationProfileSelect
+            modelId={generateForm.model}
+            mode="text_to_image"
+            value={generateForm.generation_profile}
+            onChange={(next) =>
+              setGenerateForm((prev) => ({
+                ...prev,
+                generation_profile: next || undefined,
+              }))
+            }
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -95,7 +113,10 @@ export function ImageGenerationForm({
           <select
             value={generateForm.style_preset_id || ""}
             onChange={(e) =>
-              setGenerateForm((prev) => ({ ...prev, style_preset_id: e.target.value }))
+              setGenerateForm((prev) => ({
+                ...prev,
+                style_preset_id: e.target.value,
+              }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -107,14 +128,18 @@ export function ImageGenerationForm({
             ))}
           </select>
           {selectedStylePreset?.description && (
-            <p className="mt-1 text-xs text-gray-500">{selectedStylePreset.description}</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {selectedStylePreset.description}
+            </p>
           )}
         </div>
         <div className="md:col-span-3">
           <StyleSpecAdvancedPanel
             fields={VIRTUAL_IP_STYLE_SPEC_FIELDS as StyleSpecField[]}
             value={generateForm.style_spec || {}}
-            onChange={(next) => setGenerateForm((prev) => ({ ...prev, style_spec: next }))}
+            onChange={(next) =>
+              setGenerateForm((prev) => ({ ...prev, style_spec: next }))
+            }
           />
         </div>
         <div>
@@ -208,10 +233,10 @@ export function ImageGenerationForm({
                 setGenerateForm((prev) => ({
                   ...prev,
                   is_default: e.target.checked,
-              }))
-            }
-            className="mr-2"
-          />
+                }))
+              }
+              className="mr-2"
+            />
             <span className="text-sm text-gray-700">设为默认图片</span>
           </label>
         </div>

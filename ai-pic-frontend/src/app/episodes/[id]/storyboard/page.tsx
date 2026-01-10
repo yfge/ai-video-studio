@@ -1491,6 +1491,7 @@ export default function EpisodeStoryboardPage() {
   const handleConfirmEdgeGeneration = async (payload: {
     prompt: string;
     model?: string;
+    generation_profile?: string;
     count: number;
     size?: string;
     aspect_ratio?: string;
@@ -1533,6 +1534,7 @@ export default function EpisodeStoryboardPage() {
         {
           frames: targets,
           model: payload.model,
+          generation_profile: payload.generation_profile,
           size: payload.size,
           style: payload.style,
           style_preset_id: payload.style_preset_id,
@@ -1672,6 +1674,7 @@ export default function EpisodeStoryboardPage() {
   const handleConfirmGenerateFrameImage = async (payload: {
     prompt: string;
     model?: string;
+    generation_profile?: string;
     count: number;
     size?: string;
     aspect_ratio?: string;
@@ -1711,6 +1714,7 @@ export default function EpisodeStoryboardPage() {
         {
           frames: [imageModalFrameIndex],
           model: payload.model,
+          generation_profile: payload.generation_profile,
           size: payload.size,
           style: payload.style,
           style_preset_id: payload.style_preset_id,
@@ -1790,10 +1794,12 @@ export default function EpisodeStoryboardPage() {
                 {scripts.map((sc) => {
                   // Avoid duplicate version display if title already contains version
                   const hasVersionInTitle = /\(v[\d.]+\)$/.test(sc.title || "");
-                  const versionSuffix = sc.version && !hasVersionInTitle ? ` (v${sc.version})` : "";
+                  const versionSuffix =
+                    sc.version && !hasVersionInTitle ? ` (v${sc.version})` : "";
                   return (
                     <option key={sc.id} value={sc.id}>
-                      {sc.title}{versionSuffix} - ID: {sc.id}
+                      {sc.title}
+                      {versionSuffix} - ID: {sc.id}
                     </option>
                   );
                 })}
