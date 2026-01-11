@@ -182,3 +182,44 @@ def test_profile_fallback_when_invalid_steps():
     assert normalized.generation_profile == "quality"
     assert normalized.steps == 40
     assert any("invalid steps" in w for w in normalized.audit.warnings)
+
+
+@pytest.mark.unit
+def test_profile_negative_prompt_appends_virtual_ip_overlay():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-sdxl",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.negative_prompt
+    assert "multiple faces" in normalized.negative_prompt.lower()
+    assert normalized.audit.defaults_applied.get("negative_prompt_virtual_ip")
+
+
+@pytest.mark.unit
+def test_profile_negative_prompt_storyboard_has_no_multi_face_term():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.STORYBOARD,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-sdxl",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.negative_prompt
+    assert "multiple faces" not in normalized.negative_prompt.lower()
+
+
+@pytest.mark.unit
+def test_user_negative_prompt_not_modified_by_virtual_ip_overlay():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-sdxl",
+        negative_prompt="user override",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.negative_prompt == "user override"
+    assert "negative_prompt" not in normalized.audit.defaults_applied

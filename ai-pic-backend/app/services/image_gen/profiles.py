@@ -39,8 +39,8 @@ class ImageGenProfileSet:
 
 
 DEFAULT_NEGATIVE_PROMPT = (
-    "text, watermark, logo, subtitles, UI, blurry, lowres, low quality, jpeg artifacts, "
-    "bad anatomy, deformed, extra limbs, extra fingers, mutated hands, multiple faces, duplicate"
+    "text, watermark, logo, subtitles, UI, collage, split-screen, multi-panel, blurry, lowres, "
+    "low quality, jpeg artifacts, bad anatomy, deformed, extra limbs, extra fingers, mutated hands"
 )
 
 

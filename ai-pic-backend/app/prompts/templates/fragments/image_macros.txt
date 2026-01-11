@@ -5,4 +5,5 @@
 {%- macro constraint_no_collage() -%}no collage{%- endmacro -%}
 {%- macro constraint_no_collage_storyboard() -%}no collage, no split-screen, no multi-panel{%- endmacro -%}
 {%- macro constraint_single_character_identity() -%}single character only, consistent identity{%- endmacro -%}
+{%- macro constraint_no_deformities_basic() -%}no extra limbs, no deformed hands{%- endmacro -%}
 {%- macro constraint_no_deformities() -%}no extra limbs, no deformed hands, no multiple faces{%- endmacro -%}

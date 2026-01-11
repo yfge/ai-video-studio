@@ -58,7 +58,24 @@ def test_environment_image_prompt_template_renders_constraints():
 
     assert "Environment:" in prompt
     assert "Constraints:" in prompt
+    assert "Quality:" in prompt
     assert "no watermark" in prompt.lower()
+
+
+def test_storyboard_image_prompt_template_includes_quality_and_constraints():
+    prompt = prompt_manager.render_prompt(
+        "storyboard_image_prompt",
+        {
+            "base_prompt": "夜色中的仓库，景别: 中景",
+            "reference_notes": [{"type": "frame"}],
+        },
+    )
+
+    assert "Quality:" in prompt
+    assert "Constraints:" in prompt
+    assert "no watermark" in prompt.lower()
+    assert "no split-screen" in prompt.lower()
+    assert "no multiple faces" not in prompt.lower()
 
 
 def test_prompt_template_audit_has_version_and_hash():

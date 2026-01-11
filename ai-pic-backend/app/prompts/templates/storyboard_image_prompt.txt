@@ -1,5 +1,7 @@
 {%- import "fragments/image_macros.txt" as img -%}
 {{ base_prompt }}
+Quality: {{ img.quality_high() }}
+Constraints: {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_collage_storyboard() }}, {{ img.constraint_no_deformities_basic() }}
 生成要求（重要）：
 - 只生成单幅画面：一个镜头的一个瞬间（single frame / movie still）。
 - 不要拼接、分屏、九宫格、多格漫画、多镜头合成（{{ img.constraint_no_collage_storyboard() }}）。
