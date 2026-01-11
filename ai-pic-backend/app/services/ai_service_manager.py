@@ -714,6 +714,10 @@ class AIServiceManager:
         )
         self._log_prompt(kwargs.get("prompt_override", prompt))
 
+        last_error: str | None = None
+        last_provider: str | None = None
+        last_model: str | None = None
+
         for attempt in range(self.config.max_retries):
             provider_name = self._select_provider(available_providers, prefer_provider)
             if not provider_name:
@@ -776,6 +780,10 @@ class AIServiceManager:
                     model=provider_model,
                     response=response,
                 )
+                if not response.success and response.error:
+                    last_error = response.error
+                    last_provider = provider_name
+                    last_model = provider_model
                 if response.success or not self.config.enable_fallback:
                     # 将 base64 图片转换为 OSS URL
                     if response.success and response.data and "images" in response.data:
@@ -787,6 +795,9 @@ class AIServiceManager:
                     return response
 
             except Exception as e:
+                last_error = str(e)
+                last_provider = provider_name
+                last_model = provider_model
                 if not self.config.enable_fallback:
                     return AIResponse(
                         success=False,
@@ -799,6 +810,21 @@ class AIServiceManager:
 
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
+
+        if last_error:
+            error_msg = last_error
+            if last_provider and not error_msg.lower().startswith(
+                last_provider.lower()
+            ):
+                error_msg = f"{last_provider}: {error_msg}"
+            return AIResponse(
+                success=False,
+                error=error_msg,
+                provider=last_provider or "ai_service_manager",
+                model=last_model or last_model_used or model or "unknown",
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+            )
 
         return AIResponse(
             success=False,
@@ -881,6 +907,10 @@ class AIServiceManager:
             params={"image_url": image_url},
         )
         self._log_prompt(prompt)
+
+        last_error: str | None = None
+        last_provider: str | None = None
+        last_model: str | None = None
 
         # 预读取参考图，转换为 data:image/...;base64,...，避免外部模型无法访问内网 URL
         base64_images: list[str] = []
@@ -1007,6 +1037,10 @@ class AIServiceManager:
                     if style_resolution_meta:
                         meta["style_spec_resolution"] = style_resolution_meta
                     response.metadata = meta
+                if not response.success and response.error:
+                    last_error = response.error
+                    last_provider = provider_name
+                    last_model = effective_model
                 if response.success or not self.config.enable_fallback:
                     # 将 base64 图片转换为 OSS URL
                     if response.success and response.data and "images" in response.data:
@@ -1017,6 +1051,9 @@ class AIServiceManager:
                         response.data["images"] = converted_images
                     return response
             except Exception as e:
+                last_error = str(e)
+                last_provider = provider_name
+                last_model = effective_model
                 if not self.config.enable_fallback:
                     return AIResponse(
                         success=False,
@@ -1086,8 +1123,28 @@ class AIServiceManager:
                     text_resp.model_type = AIModelType.IMAGE_TO_IMAGE
                     text_resp.task_type = AITaskType.SCENE_GENERATION
                     return text_resp
+                if text_resp and not text_resp.success and text_resp.error:
+                    last_error = text_resp.error
+                    last_provider = text_resp.provider
+                    last_model = text_resp.model
             except Exception as e:
+                last_error = str(e)
                 self.logger.error("image_to_image fallback failed: %s", e)
+
+        if last_error:
+            error_msg = last_error
+            if last_provider and not error_msg.lower().startswith(
+                last_provider.lower()
+            ):
+                error_msg = f"{last_provider}: {error_msg}"
+            return AIResponse(
+                success=False,
+                error=error_msg,
+                provider=last_provider or "ai_service_manager",
+                model=last_model or model or "unknown",
+                task_type=AITaskType.SCENE_GENERATION,
+                model_type=AIModelType.IMAGE_TO_IMAGE,
+            )
 
         return AIResponse(
             success=False,

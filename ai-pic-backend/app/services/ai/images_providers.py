@@ -14,7 +14,7 @@ class ImageProviderMixin:
         prompt: str,
         style: str,
         category: str,
-        model: str = "kling-image",
+        model: str = "kling-v2-1",
         *,
         style_preset_id: str | None = None,
         style_spec: Any | None = None,
@@ -46,9 +46,11 @@ class ImageProviderMixin:
                     image_url = images[0]
                     self.logger.info(
                         "可灵AI图像生成成功: %s...",
-                        image_url[:100]
-                        if isinstance(image_url, str)
-                        else str(image_url)[:100],
+                        (
+                            image_url[:100]
+                            if isinstance(image_url, str)
+                            else str(image_url)[:100]
+                        ),
                     )
                     return image_url
                 self.logger.error("可灵AI返回了空的图像列表")

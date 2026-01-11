@@ -48,7 +48,9 @@ def compute_image_ui(provider: str, model_id: str) -> ImageUiRules:
             size_options = ["256x256", "512x512", "1024x1024"]
     elif provider_key == "volcengine" and "seedream" in mid:
         size_options = ["2K"]
-    elif provider_key == "keling" and "kling-image" in mid:
+    elif provider_key == "keling" and (
+        "kling-image" in mid or mid.startswith("kling-v")
+    ):
         size_options = ["2k", "1k"]
         supports_aspect_ratio = True
     elif provider_key == "google":

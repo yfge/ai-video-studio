@@ -2,8 +2,24 @@ from __future__ import annotations
 
 import hashlib
 from typing import Sequence
+from urllib.parse import urlparse, urlunparse
 
 DEFAULT_ALLOWED_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg")
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0"}
+
+
+def _rewrite_localhost_url(url: str, *, backend_base: str) -> str:
+    base = (backend_base or "").rstrip("/")
+    if not base:
+        return url
+    parsed = urlparse(url)
+    if parsed.hostname not in _LOCAL_HOSTS:
+        return url
+    base_parsed = urlparse(base)
+    if not base_parsed.scheme or not base_parsed.netloc:
+        return url
+    rebuilt = parsed._replace(netloc=base_parsed.netloc, scheme=base_parsed.scheme)
+    return urlunparse(rebuilt)
 
 
 def normalize_reference_images(
@@ -28,7 +44,10 @@ def normalize_reference_images(
         lower = ref_url.lower()
         base_path = lower.split("?", 1)[0]
         if lower.startswith(("http://", "https://", "data:image/")):
-            normalized.append(ref_url)
+            if lower.startswith("data:image/"):
+                normalized.append(ref_url)
+            else:
+                normalized.append(_rewrite_localhost_url(ref_url, backend_base=base))
             continue
         if base_path.endswith(allowed_ext):
             path = ref_url if ref_url.startswith("/") else f"/{ref_url}"
@@ -43,7 +62,9 @@ def resolve_base_image(base_image: str, *, backend_base: str) -> str:
         return ""
     lower = raw.lower()
     if lower.startswith(("http://", "https://", "data:image/")):
-        return raw
+        if lower.startswith("data:image/"):
+            return raw
+        return _rewrite_localhost_url(raw, backend_base=backend_base)
     base = (backend_base or "").rstrip("/")
     path = raw if raw.startswith("/") else f"/{raw}"
     return f"{base}{path}" if base else path

@@ -131,7 +131,9 @@ class ModelUiMixin:
                 size_options = ["256x256", "512x512", "1024x1024"]
         elif provider == "volcengine" and "seedream" in model_id:
             size_options = ["2K"]
-        elif provider == "keling" and "kling-image" in model_id:
+        elif provider == "keling" and (
+            "kling-image" in model_id or model_id.startswith("kling-v")
+        ):
             size_options = ["2k", "1k"]
             supports_aspect_ratio = True
         elif provider == "google":

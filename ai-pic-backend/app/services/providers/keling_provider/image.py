@@ -18,6 +18,21 @@ if TYPE_CHECKING:
     pass
 
 
+_KELING_IMAGE_MODEL_ALIASES = {
+    "kling-image-v1": "kling-v1",
+    "kling-image-v2": "kling-v2-1",
+    "kling-image": "kling-v1",
+}
+
+
+def normalize_keling_image_model(model: str | None) -> str:
+    raw = (model or "").strip()
+    if not raw:
+        return "kling-v2-1"
+    mapped = _KELING_IMAGE_MODEL_ALIASES.get(raw.lower())
+    return mapped or raw
+
+
 async def poll_image_task(
     client: httpx.AsyncClient,
     base_url: str,
@@ -63,7 +78,7 @@ async def generate_image(
     provider_name: str,
     get_auth_headers: Callable[[], Dict[str, str]],
     prompt: str,
-    model: str = "kling-image-v2",
+    model: str = "kling-v2-1",
     negative_prompt: Optional[str] = None,
     image: Optional[str] = None,
     image_reference: Optional[str] = None,
@@ -87,7 +102,7 @@ async def generate_image(
         provider_name: Provider name for response
         get_auth_headers: Function to get fresh auth headers
         prompt: Text prompt for image generation
-        model: Model name (kling-image-v2 or kling-image-v1)
+        model: Model name (e.g. kling-v1 / kling-v2-1)
         negative_prompt: Negative prompt to avoid certain elements
         image: Reference image (URL or base64 data URL)
         image_reference: Reference mode ("character" or "face")
@@ -100,18 +115,19 @@ async def generate_image(
     Returns:
         AIResponse with generated images
     """
+    model_name = normalize_keling_image_model(model)
     try:
         size_value = kwargs.get("size") or resolution
         try:
             normalized_size, aspect_ratio, _ = normalize_image_params(
-                provider_name, model, size_value, aspect_ratio
+                provider_name, model_name, size_value, aspect_ratio
             )
         except ValueError as exc:
             return AIResponse(
                 success=False,
                 error=str(exc),
                 provider=provider_name,
-                model=model,
+                model=model_name,
                 task_type=AITaskType.PORTRAIT_GENERATION,
                 model_type=AIModelType.TEXT_TO_IMAGE,
             )
@@ -119,7 +135,7 @@ async def generate_image(
 
         # Build request payload according to API spec
         request_data = {
-            "model_name": model,
+            "model_name": model_name,
             "prompt": prompt,
             "n": n,
             "resolution": resolution_value,
@@ -129,7 +145,11 @@ async def generate_image(
         if negative_prompt:
             request_data["negative_prompt"] = negative_prompt
         if image:
-            request_data["image"] = image
+            payload_image = image
+            lower_image = payload_image.lower()
+            if lower_image.startswith("data:") and "base64," in lower_image:
+                payload_image = payload_image.split(",", 1)[1].strip()
+            request_data["image"] = payload_image
         if image_reference:
             request_data["image_reference"] = image_reference
         if image_fidelity is not None:
@@ -140,12 +160,33 @@ async def generate_image(
             request_data["aspect_ratio"] = aspect_ratio
 
         # Create image generation task
-        response = await client.post(
-            f"{base_url}/v1/images/generations",
-            json=request_data,
-            headers=get_auth_headers(),
-        )
-        response.raise_for_status()
+        try:
+            response = await client.post(
+                f"{base_url}/v1/images/generations",
+                json=request_data,
+                headers=get_auth_headers(),
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            detail: str = ""
+            try:
+                payload = exc.response.json()
+                code = payload.get("code")
+                msg = (
+                    payload.get("message") or payload.get("msg") or payload.get("error")
+                )
+                request_id = payload.get("request_id") or payload.get("requestId")
+                detail = f"code={code}, message={msg}, request_id={request_id}"
+            except Exception:
+                detail = exc.response.text or str(exc)
+            return AIResponse(
+                success=False,
+                error=f"Keling image generation HTTP {exc.response.status_code}: {detail}",
+                provider=provider_name,
+                model=model_name,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+            )
         data = response.json()
 
         task_id = data.get("data", {}).get("task_id")
@@ -154,7 +195,7 @@ async def generate_image(
                 success=False,
                 error="No task_id in response",
                 provider=provider_name,
-                model=model,
+                model=model_name,
                 task_type=AITaskType.PORTRAIT_GENERATION,
                 model_type=AIModelType.TEXT_TO_IMAGE,
             )
@@ -167,7 +208,7 @@ async def generate_image(
                 success=True,
                 data={"images": result["images"]},
                 provider=provider_name,
-                model=model,
+                model=model_name,
                 task_type=AITaskType.PORTRAIT_GENERATION,
                 model_type=AIModelType.TEXT_TO_IMAGE,
                 metadata={
@@ -183,7 +224,7 @@ async def generate_image(
                 success=False,
                 error="Image generation task failed or timed out",
                 provider=provider_name,
-                model=model,
+                model=model_name,
                 task_type=AITaskType.PORTRAIT_GENERATION,
                 model_type=AIModelType.TEXT_TO_IMAGE,
             )
@@ -193,7 +234,69 @@ async def generate_image(
             success=False,
             error=format_error(e),
             provider=provider_name,
-            model=model,
+            model=model_name,
             task_type=AITaskType.PORTRAIT_GENERATION,
             model_type=AIModelType.TEXT_TO_IMAGE,
         )
+
+
+async def image_to_image(
+    client: httpx.AsyncClient,
+    base_url: str,
+    provider_name: str,
+    get_auth_headers: Callable[[], Dict[str, str]],
+    image_url: str,
+    prompt: Optional[str] = None,
+    model: str = "kling-v2-1",
+    negative_prompt: Optional[str] = None,
+    resolution: str = "1k",
+    n: int = 1,
+    aspect_ratio: Optional[str] = None,
+    base64_images: Optional[list[str]] = None,
+    image_reference: Optional[str] = None,
+    image_fidelity: Optional[float] = None,
+    human_fidelity: Optional[float] = None,
+    format_error: Callable = str,
+    **kwargs,
+) -> AIResponse:
+    """Generate image variants using Keling AI (image-to-image)."""
+    reference_image = None
+    if base64_images:
+        reference_image = base64_images[0]
+    elif image_url:
+        reference_image = image_url
+
+    response = await generate_image(
+        client=client,
+        base_url=base_url,
+        provider_name=provider_name,
+        get_auth_headers=get_auth_headers,
+        prompt=prompt or "",
+        model=model,
+        negative_prompt=negative_prompt,
+        image=reference_image,
+        image_reference=image_reference,
+        image_fidelity=image_fidelity,
+        human_fidelity=human_fidelity,
+        resolution=resolution,
+        n=n,
+        aspect_ratio=aspect_ratio,
+        format_error=format_error,
+        **kwargs,
+    )
+    response.task_type = AITaskType.SCENE_GENERATION
+    response.model_type = AIModelType.IMAGE_TO_IMAGE
+    if response.metadata is not None and isinstance(response.metadata, dict):
+        response.metadata.setdefault("init_image", image_url)
+        response.metadata.setdefault(
+            "reference_mode", "base64" if base64_images else "url"
+        )
+        if base64_images is not None:
+            response.metadata.setdefault("reference_images_count", len(base64_images))
+    elif response.metadata is None:
+        response.metadata = {
+            "init_image": image_url,
+            "reference_mode": "base64" if base64_images else "url",
+            "reference_images_count": len(base64_images or []),
+        }
+    return response

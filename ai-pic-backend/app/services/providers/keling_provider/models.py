@@ -181,9 +181,9 @@ def get_available_models() -> List[ModelInfo]:
         ),
         # Image Generation Models
         ModelInfo(
-            model_id="kling-image-v2",
-            name="可灵图像生成 V2",
-            description="V2图像生成模型，支持2K分辨率和人物参考",
+            model_id="kling-v2-1",
+            name="可灵图像生成 V2.1",
+            description="可灵图像生成模型（kling-v2-1），支持图生图参考与更高质量输出",
             model_type=AIModelType.TEXT_TO_IMAGE,
             supported_formats=["png", "jpg"],
             capabilities=[
@@ -203,9 +203,9 @@ def get_available_models() -> List[ModelInfo]:
             },
         ),
         ModelInfo(
-            model_id="kling-image-v1",
+            model_id="kling-v1",
             name="可灵图像生成 V1",
-            description="V1图像生成模型，支持1K分辨率",
+            description="可灵图像生成模型（kling-v1），支持 1K 输出与图生图参考",
             model_type=AIModelType.TEXT_TO_IMAGE,
             supported_formats=["png", "jpg"],
             capabilities=["text_to_image", "image_to_image", "1k_resolution"],

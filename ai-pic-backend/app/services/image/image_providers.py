@@ -10,11 +10,9 @@ Provides direct API integrations for image generation providers:
 from typing import Any, Optional
 
 import httpx
-
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.services.image.image_persistence import save_base64_image
-
 
 logger = get_logger()
 
@@ -24,7 +22,7 @@ async def generate_with_keling(
     prompt: str,
     style: str,
     category: str,
-    model: str = "kling-image",
+    model: str = "kling-v2-1",
     *,
     style_preset_id: str | None = None,
     style_spec: Any | None = None,
@@ -112,8 +110,10 @@ async def generate_with_openai_dalle(
     base_url = settings.OPENAI_BASE_URL or "https://api.openai.com/v1"
 
     # Normalize style for OpenAI
-    openai_style = style if style in {"vivid", "natural"} else (
-        "natural" if style == "realistic" else "vivid"
+    openai_style = (
+        style
+        if style in {"vivid", "natural"}
+        else ("natural" if style == "realistic" else "vivid")
     )
 
     try:

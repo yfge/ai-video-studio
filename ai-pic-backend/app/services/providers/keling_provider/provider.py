@@ -1,13 +1,6 @@
-"""
-Keling (可灵) service provider.
+"""Keling (可灵) service provider.
 
-Specialized in video generation and image-related functionality.
-
-Features:
-- JWT authentication (HS256) with automatic token refresh
-- Base URL: https://api-beijing.klingai.com
-- V2 series models support (kling-v2-6, kling-v2-5-turbo, etc.)
-- Image and video generation endpoints
+JWT authentication (HS256) + image/video generation endpoints.
 """
 
 from __future__ import annotations
@@ -25,10 +18,10 @@ from ..base import (
     ModelInfo,
     ProviderConfig,
 )
-from .models import get_available_models
 from . import image as image_module
 from . import video as video_module
 from . import video_tasks as video_tasks_module
+from .models import get_available_models
 
 
 class KelingProvider(BaseProvider):
@@ -107,7 +100,7 @@ class KelingProvider(BaseProvider):
     async def generate_image(
         self,
         prompt: str,
-        model: str = "kling-image-v2",
+        model: str = "kling-v2-1",
         negative_prompt: Optional[str] = None,
         image: Optional[str] = None,
         image_reference: Optional[str] = None,
@@ -133,6 +126,35 @@ class KelingProvider(BaseProvider):
             image_fidelity=image_fidelity,
             human_fidelity=human_fidelity,
             resolution=resolution,
+            n=n,
+            aspect_ratio=aspect_ratio,
+            format_error=self.format_error,
+            **kwargs,
+        )
+
+    async def image_to_image(
+        self,
+        image_url: str,
+        prompt: Optional[str] = None,
+        model: str = "kling-v2-1",
+        n: int = 1,
+        size: Optional[str] = None,
+        aspect_ratio: Optional[str] = None,
+        negative_prompt: Optional[str] = None,
+        **kwargs,
+    ) -> AIResponse:
+        """Generate image variants using Keling AI (image-to-image)."""
+        client = await self.get_client()
+        return await image_module.image_to_image(
+            client=client,
+            base_url=self.base_url,
+            provider_name=self.name,
+            get_auth_headers=self._get_auth_headers,
+            image_url=image_url,
+            prompt=prompt,
+            model=model,
+            negative_prompt=negative_prompt,
+            resolution=size or "1k",
             n=n,
             aspect_ratio=aspect_ratio,
             format_error=self.format_error,
