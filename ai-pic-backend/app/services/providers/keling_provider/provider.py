@@ -136,7 +136,7 @@ class KelingProvider(BaseProvider):
         self,
         image_url: str,
         prompt: Optional[str] = None,
-        model: str = "kling-v2-1",
+        model: str = "kling-v2",
         n: int = 1,
         size: Optional[str] = None,
         aspect_ratio: Optional[str] = None,

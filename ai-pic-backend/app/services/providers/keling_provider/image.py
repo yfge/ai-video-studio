@@ -1,12 +1,8 @@
-"""
-Keling image generation module.
-
-Contains text-to-image generation functionality with polling.
-"""
+"""Keling image generation module."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import httpx
 
@@ -14,13 +10,11 @@ from ..base import AIModelType, AIResponse, AITaskType
 from ..image_param_utils import normalize_image_params, normalize_keling_resolution
 from ..polling_utils import TaskPoller, keling_status_mapper
 
-if TYPE_CHECKING:
-    pass
-
-
 _KELING_IMAGE_MODEL_ALIASES = {
     "kling-image-v1": "kling-v1",
-    "kling-image-v2": "kling-v2-1",
+    # Note: kling-v2 supports image-to-image; kling-v2-1 currently does not.
+    "kling-image-v2": "kling-v2",
+    "kling-image-v2-1": "kling-v2-1",
     "kling-image": "kling-v1",
 }
 
@@ -33,17 +27,36 @@ def normalize_keling_image_model(model: str | None) -> str:
     return mapped or raw
 
 
+def _extract_keling_image_urls(raw_images: Any) -> list[str]:
+    if not raw_images:
+        return []
+    if isinstance(raw_images, dict):
+        raw_images = [raw_images]
+    if not isinstance(raw_images, list):
+        return []
+
+    images: list[str] = []
+    for item in raw_images:
+        if isinstance(item, str):
+            images.append(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        for key in ("url", "image_url", "image", "src"):
+            value = item.get(key)
+            if isinstance(value, str) and value:
+                images.append(value)
+                break
+    return images
+
+
 async def poll_image_task(
     client: httpx.AsyncClient,
     base_url: str,
     task_id: str,
     get_auth_headers: Callable[[], Dict[str, str]],
 ) -> Optional[Dict[str, Any]]:
-    """
-    Poll image generation task status.
-
-    Endpoint: GET /v1/images/generations/{task_id}
-    """
+    """Poll image generation task status."""
 
     async def poll_fn() -> Dict[str, Any]:
         response = await client.get(
@@ -56,7 +69,7 @@ async def poll_image_task(
     def extract_result(data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract images from response"""
         task_result = data.get("task_result", {})
-        images = task_result.get("images", [])
+        images = _extract_keling_image_urls(task_result.get("images"))
         return {"images": images}
 
     poller = TaskPoller(
@@ -90,31 +103,7 @@ async def generate_image(
     format_error: Callable = str,
     **kwargs,
 ) -> AIResponse:
-    """
-    Generate images using Keling AI.
-
-    Endpoint: POST /v1/images/generations
-    Polling: GET /v1/images/generations/{task_id}
-
-    Args:
-        client: HTTP client
-        base_url: API base URL
-        provider_name: Provider name for response
-        get_auth_headers: Function to get fresh auth headers
-        prompt: Text prompt for image generation
-        model: Model name (e.g. kling-v1 / kling-v2-1)
-        negative_prompt: Negative prompt to avoid certain elements
-        image: Reference image (URL or base64 data URL)
-        image_reference: Reference mode ("character" or "face")
-        image_fidelity: Image similarity (0.5-1.0)
-        human_fidelity: Human feature fidelity (0.5-1.0)
-        resolution: Output resolution ("1k" or "2k")
-        n: Number of images to generate (1-4)
-        aspect_ratio: Aspect ratio like "16:9", "1:1", etc.
-
-    Returns:
-        AIResponse with generated images
-    """
+    """Generate images using Keling `/v1/images/generations` (polling until done)."""
     model_name = normalize_keling_image_model(model)
     try:
         size_value = kwargs.get("size") or resolution
@@ -141,17 +130,23 @@ async def generate_image(
             "resolution": resolution_value,
         }
 
-        # Add optional parameters
-        if negative_prompt:
-            request_data["negative_prompt"] = negative_prompt
+        # Add optional parameters (Keling doc: img2img does not support negative_prompt)
         if image:
             payload_image = image
             lower_image = payload_image.lower()
             if lower_image.startswith("data:") and "base64," in lower_image:
                 payload_image = payload_image.split(",", 1)[1].strip()
             request_data["image"] = payload_image
-        if image_reference:
-            request_data["image_reference"] = image_reference
+        elif negative_prompt:
+            request_data["negative_prompt"] = negative_prompt
+
+        ref = (image_reference or "").strip()
+        if ref.lower() == "character":
+            ref = "subject"
+        if model_name.lower() == "kling-v1-5" and image and not ref:
+            ref = "subject"
+        if ref and model_name.lower() == "kling-v1-5":
+            request_data["image_reference"] = ref
         if image_fidelity is not None:
             request_data["image_fidelity"] = image_fidelity
         if human_fidelity is not None:
@@ -247,7 +242,7 @@ async def image_to_image(
     get_auth_headers: Callable[[], Dict[str, str]],
     image_url: str,
     prompt: Optional[str] = None,
-    model: str = "kling-v2-1",
+    model: str = "kling-v2",
     negative_prompt: Optional[str] = None,
     resolution: str = "1k",
     n: int = 1,

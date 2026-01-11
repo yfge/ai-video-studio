@@ -181,24 +181,43 @@ def get_available_models() -> List[ModelInfo]:
         ),
         # Image Generation Models
         ModelInfo(
-            model_id="kling-v2-1",
-            name="可灵图像生成 V2.1",
-            description="可灵图像生成模型（kling-v2-1），支持图生图参考与更高质量输出",
+            model_id="kling-v2",
+            name="可灵图像生成 V2",
+            description="可灵图像生成模型（kling-v2），支持文生图与图生图参考",
             model_type=AIModelType.TEXT_TO_IMAGE,
             supported_formats=["png", "jpg"],
-            capabilities=[
-                "text_to_image",
-                "image_to_image",
-                "2k_resolution",
-                "character_reference",
-                "face_reference",
-            ],
+            capabilities=["text_to_image", "image_to_image", "2k_resolution"],
+            metadata={
+                "ui": {
+                    "size_options": ["2k", "1k"],
+                    "aspect_ratio_options": [
+                        "1:1",
+                        "16:9",
+                        "9:16",
+                        "4:3",
+                        "3:4",
+                        "3:2",
+                        "2:3",
+                        "21:9",
+                    ],
+                    "supports_aspect_ratio": True,
+                    "supports_reference_image": True,
+                }
+            },
+        ),
+        ModelInfo(
+            model_id="kling-v2-1",
+            name="可灵图像生成 V2.1",
+            description="可灵图像生成模型（kling-v2-1），支持 2K 高质量文生图输出",
+            model_type=AIModelType.TEXT_TO_IMAGE,
+            supported_formats=["png", "jpg"],
+            capabilities=["text_to_image", "2k_resolution"],
             metadata={
                 "ui": {
                     "size_options": ["2k", "1k"],
                     "aspect_ratio_options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
                     "supports_aspect_ratio": True,
-                    "supports_reference_image": True,
+                    "supports_reference_image": False,
                 }
             },
         ),
