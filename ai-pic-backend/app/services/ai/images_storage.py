@@ -11,7 +11,7 @@ from app.services.storage.oss_service import oss_service
 
 class ImageStorageMixin:
     async def _download_image(
-        self, image_data: str, ip_name: str, category: str
+        self, image_data: Any, ip_name: str, category: str
     ) -> str:
         """处理图像数据（URL或base64）并保存到本地，失败抛异常并保留原因。"""
         import base64
@@ -30,6 +30,20 @@ class ImageStorageMixin:
         os.makedirs(upload_dir, exist_ok=True)
 
         local_file_path = os.path.join(upload_dir, unique_filename)
+
+        if not isinstance(image_data, str):
+            resolved: str | None = None
+            if isinstance(image_data, dict):
+                for key in ("url", "image_url", "image", "src"):
+                    value = image_data.get(key)
+                    if isinstance(value, str) and value:
+                        resolved = value
+                        break
+            if resolved is None:
+                raise TypeError(
+                    f"image_data must be a string URL or data URL, got {type(image_data).__name__}"
+                )
+            image_data = resolved
 
         # 判断是base64数据还是URL
         if image_data.startswith("data:image"):
