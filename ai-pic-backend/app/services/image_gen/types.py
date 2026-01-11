@@ -53,6 +53,9 @@ class ImageGenRequest:
     cfg_scale: float | None = None
     negative_prompt: str | None = None
     strength: float | None = None
+    image_reference: str | None = None
+    image_fidelity: float | None = None
+    human_fidelity: float | None = None
 
     base_image: str | None = None
     reference_images: Sequence[str] = ()
@@ -88,6 +91,9 @@ class ImageGenNormalized:
     cfg_scale: float | None
     negative_prompt: str | None
     strength: float | None
+    image_reference: str | None
+    image_fidelity: float | None
+    human_fidelity: float | None
 
     base_image_url: str | None
     extra_images: list[str]

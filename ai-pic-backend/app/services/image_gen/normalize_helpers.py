@@ -102,6 +102,30 @@ def normalize_strength(value: float | None, *, audit: ImageGenAudit) -> float | 
     return float(strength_value)
 
 
+def normalize_unit_float(
+    value: float | None,
+    *,
+    audit: ImageGenAudit,
+    field_name: str,
+) -> float | None:
+    """Normalize a [0,1] float field with audit tracing."""
+    if value is None:
+        return None
+    try:
+        float_value = float(value)
+    except (TypeError, ValueError):
+        audit.warnings.append(f"invalid {field_name} '{value}', ignoring")
+        audit.dropped_fields.append(field_name)
+        return None
+    if float_value < 0:
+        audit.warnings.append(f"{field_name} < 0, clamped")
+        return 0.0
+    if float_value > 1:
+        audit.warnings.append(f"{field_name} > 1, clamped")
+        return 1.0
+    return float(float_value)
+
+
 def normalize_size_ratio(
     *,
     provider: str | None,

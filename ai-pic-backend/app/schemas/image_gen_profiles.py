@@ -10,6 +10,13 @@ class ImageGenProfileDefaultsResponse(BaseModel):
     cfg_scale: float | None = Field(None, description="CFG scale（可选）")
     negative_prompt: str | None = Field(None, description="反向提示词（可选）")
     strength: float | None = Field(None, description="图生图强度（可选）")
+    image_reference: str | None = Field(None, description="图生图图片参考类型（可选）")
+    image_fidelity: float | None = Field(
+        None, description="图生图参考强度（可选，0~1）"
+    )
+    human_fidelity: float | None = Field(
+        None, description="图生图面部参考强度（可选，0~1）"
+    )
 
 
 class ImageGenProfileResponse(BaseModel):

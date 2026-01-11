@@ -11,6 +11,9 @@ class ImageGenProfileDefaults:
     cfg_scale: float | None = None
     negative_prompt: str | None = None
     strength: float | None = None
+    image_reference: str | None = None
+    image_fidelity: float | None = None
+    human_fidelity: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,9 +138,39 @@ def list_image_gen_profiles(
         )
 
     if provider_key == "keling":
-        # Our provider-safe mapping only guarantees negative_prompt passthrough today.
         if mode == ImageGenMode.IMAGE_TO_IMAGE:
-            return None
+            return ImageGenProfileSet(
+                default_profile_id="balanced",
+                profiles=(
+                    ImageGenProfile(
+                        id="balanced",
+                        label="均衡",
+                        description="使用可灵默认参考强度（更适合大多数场景）",
+                        defaults=ImageGenProfileDefaults(
+                            image_fidelity=0.5,
+                            human_fidelity=0.45,
+                        ),
+                    ),
+                    ImageGenProfile(
+                        id="identity",
+                        label="身份优先",
+                        description="更强参考强度，适合虚拟 IP 多次生成保持一致（更保守）",
+                        defaults=ImageGenProfileDefaults(
+                            image_fidelity=0.7,
+                            human_fidelity=0.6,
+                        ),
+                    ),
+                    ImageGenProfile(
+                        id="creative",
+                        label="更自由",
+                        description="更弱参考强度，允许更多变化（更发散）",
+                        defaults=ImageGenProfileDefaults(
+                            image_fidelity=0.35,
+                            human_fidelity=0.35,
+                        ),
+                    ),
+                ),
+            )
         return ImageGenProfileSet(
             default_profile_id="balanced",
             profiles=(

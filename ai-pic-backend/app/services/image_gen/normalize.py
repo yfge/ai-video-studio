@@ -13,6 +13,7 @@ from .normalize_helpers import (
     normalize_size_ratio,
     normalize_steps,
     normalize_strength,
+    normalize_unit_float,
     resolve_dimensions,
 )
 from .policies import get_policy
@@ -122,12 +123,54 @@ def normalize_image_gen_request(
         )
 
     strength = None
+    image_reference = None
+    image_fidelity = None
+    human_fidelity = None
     if req.mode == ImageGenMode.IMAGE_TO_IMAGE:
         strength_input = req.strength
         if strength_input is None and profile and profile.defaults.strength is not None:
             strength_input = profile.defaults.strength
             audit.defaults_applied["strength"] = strength_input
         strength = normalize_strength(strength_input, audit=audit)
+
+        image_reference_input = clean_str(req.image_reference)
+        if (
+            image_reference_input is None
+            and profile
+            and profile.defaults.image_reference is not None
+        ):
+            image_reference_input = clean_str(profile.defaults.image_reference)
+            if image_reference_input is not None:
+                audit.defaults_applied["image_reference"] = image_reference_input
+        image_reference = image_reference_input
+
+        image_fidelity_input = req.image_fidelity
+        if (
+            image_fidelity_input is None
+            and profile
+            and profile.defaults.image_fidelity is not None
+        ):
+            image_fidelity_input = profile.defaults.image_fidelity
+            audit.defaults_applied["image_fidelity"] = image_fidelity_input
+        image_fidelity = normalize_unit_float(
+            image_fidelity_input,
+            audit=audit,
+            field_name="image_fidelity",
+        )
+
+        human_fidelity_input = req.human_fidelity
+        if (
+            human_fidelity_input is None
+            and profile
+            and profile.defaults.human_fidelity is not None
+        ):
+            human_fidelity_input = profile.defaults.human_fidelity
+            audit.defaults_applied["human_fidelity"] = human_fidelity_input
+        human_fidelity = normalize_unit_float(
+            human_fidelity_input,
+            audit=audit,
+            field_name="human_fidelity",
+        )
     elif req.strength is not None:
         audit.dropped_fields.append("strength")
         audit.warnings.append("strength ignored for text_to_image")
@@ -200,6 +243,9 @@ def normalize_image_gen_request(
         cfg_scale=cfg_scale,
         negative_prompt=negative_prompt,
         strength=strength,
+        image_reference=image_reference,
+        image_fidelity=image_fidelity,
+        human_fidelity=human_fidelity,
         base_image_url=base_image_url,
         extra_images=extra_images,
         audit=audit,

@@ -58,6 +58,9 @@ async def get_image_gen_profiles(
                     cfg_scale=profile.defaults.cfg_scale,
                     negative_prompt=profile.defaults.negative_prompt,
                     strength=profile.defaults.strength,
+                    image_reference=profile.defaults.image_reference,
+                    image_fidelity=profile.defaults.image_fidelity,
+                    human_fidelity=profile.defaults.human_fidelity,
                 ),
             )
             for profile in profiles.profiles
