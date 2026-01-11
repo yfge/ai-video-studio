@@ -6,16 +6,13 @@ Contains text-to-image and image-to-image generation functionality.
 
 from __future__ import annotations
 
-import base64
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
 from ..image_param_utils import normalize_image_params
-
-if TYPE_CHECKING:
-    pass
+from .guidance_scale import coerce_guidance_scale, supports_guidance_scale
 
 
 def _normalize_size(size_value: Optional[str]) -> str:
@@ -34,9 +31,7 @@ def _normalize_size(size_value: Optional[str]) -> str:
     return "1024x1024"
 
 
-def _build_image_payload(
-    image_url: str, backend_base: str
-) -> Dict[str, Any]:
+def _build_image_payload(image_url: str, backend_base: str) -> Dict[str, Any]:
     """Build image payload for API request."""
     image_payload: Dict[str, Any] = {}
     url_lower = image_url.lower()
@@ -46,7 +41,7 @@ def _build_image_payload(
         comma_idx = image_url.find(",")
         if comma_idx > 0:
             image_payload["type"] = "base64"
-            image_payload["data"] = image_url[comma_idx + 1:]
+            image_payload["data"] = image_url[comma_idx + 1 :]
         else:
             image_payload["type"] = "base64"
             image_payload["data"] = image_url
@@ -92,9 +87,7 @@ async def generate_image(
             ark_model = model.strip()
 
     try:
-        size_value, _, _ = normalize_image_params(
-            provider_name, ark_model, size, None
-        )
+        size_value, _, _ = normalize_image_params(provider_name, ark_model, size, None)
     except ValueError as exc:
         return AIResponse(
             success=False,
@@ -115,6 +108,13 @@ async def generate_image(
         "response_format": "url",
         "watermark": kwargs.pop("watermark", False),
     }
+
+    cfg_scale = kwargs.pop("cfg_scale", None)
+    if cfg_scale is None:
+        cfg_scale = kwargs.pop("guidance_scale", None)
+    guidance_scale = coerce_guidance_scale(cfg_scale)
+    if guidance_scale is not None and supports_guidance_scale(ark_model):
+        request_data["guidance_scale"] = guidance_scale
 
     if style:
         request_data["style"] = style
@@ -235,9 +235,7 @@ async def image_to_image(
             ark_model = model.strip()
 
     try:
-        size_value, _, _ = normalize_image_params(
-            provider_name, ark_model, size, None
-        )
+        size_value, _, _ = normalize_image_params(provider_name, ark_model, size, None)
     except ValueError as exc:
         return AIResponse(
             success=False,
@@ -266,9 +264,7 @@ async def image_to_image(
                 "model": ark_model,
                 "prompt": prompt,
                 "image": (
-                    image_payloads[0]
-                    if len(image_payloads) == 1
-                    else image_payloads
+                    image_payloads[0] if len(image_payloads) == 1 else image_payloads
                 ),
                 "size": effective_size,
                 "response_format": "url",
@@ -276,6 +272,13 @@ async def image_to_image(
                 # Use non-streaming for image-to-image to simplify upstream processing
                 "stream": False,
             }
+
+            cfg_scale = kwargs.pop("cfg_scale", None)
+            if cfg_scale is None:
+                cfg_scale = kwargs.pop("guidance_scale", None)
+            guidance_scale = coerce_guidance_scale(cfg_scale)
+            if guidance_scale is not None and supports_guidance_scale(ark_model):
+                request_data["guidance_scale"] = guidance_scale
 
             if style:
                 request_data["style"] = style

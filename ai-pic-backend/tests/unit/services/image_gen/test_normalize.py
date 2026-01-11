@@ -223,3 +223,53 @@ def test_user_negative_prompt_not_modified_by_virtual_ip_overlay():
     normalized = normalize_image_gen_request(req)
     assert normalized.negative_prompt == "user override"
     assert "negative_prompt" not in normalized.audit.defaults_applied
+
+
+@pytest.mark.unit
+def test_profile_strength_default_applied_for_jimeng_img2img():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.IMAGE_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-img2img",
+        base_image="http://example.com/base.png",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.generation_profile == "balanced"
+    assert normalized.strength == 0.75
+    assert normalized.audit.defaults_applied.get("strength") == 0.75
+
+
+@pytest.mark.unit
+def test_profile_defaults_applied_for_volcengine_seedream3_text_to_image():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="volcengine:doubao-seedream-3-0-t2i",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.generation_profile == "balanced"
+    assert normalized.cfg_scale == 2.5
+    assert normalized.audit.defaults_applied.get("cfg_scale") == 2.5
+
+    call = build_ai_manager_call(normalized)
+    assert call.get("cfg_scale") == 2.5
+
+
+@pytest.mark.unit
+def test_profile_defaults_applied_for_volcengine_seededit3_img2img():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.IMAGE_TO_IMAGE,
+        prompt="test",
+        model="volcengine:doubao-seededit-3-0-i2i",
+        base_image="http://example.com/base.png",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.generation_profile == "balanced"
+    assert normalized.cfg_scale == 5.5
+    assert normalized.audit.defaults_applied.get("cfg_scale") == 5.5
+
+    call = build_ai_manager_call(normalized)
+    assert call.get("cfg_scale") == 5.5

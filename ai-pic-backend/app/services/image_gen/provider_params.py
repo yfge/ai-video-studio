@@ -112,6 +112,7 @@ def _filter_text_to_image(provider: str, payload: Dict[str, Any]) -> Dict[str, A
             "style",
             "style_preset_id",
             "style_spec",
+            "cfg_scale",
             "watermark",
             "reference_images",
         }
@@ -194,6 +195,7 @@ def _filter_image_to_image(provider: str, payload: Dict[str, Any]) -> Dict[str, 
             "style_preset_id",
             "style_spec",
             "extra_images",
+            "cfg_scale",
             "watermark",
         }
         return _keep(payload, allowed)
