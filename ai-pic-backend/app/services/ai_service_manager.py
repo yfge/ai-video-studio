@@ -1037,8 +1037,11 @@ class AIServiceManager:
                     if style_resolution_meta:
                         meta["style_spec_resolution"] = style_resolution_meta
                     response.metadata = meta
-                if not response.success and response.error:
-                    last_error = response.error
+                if not response.success:
+                    error_value = (response.error or "").strip()
+                    if not error_value:
+                        error_value = "未知错误"
+                    last_error = error_value
                     last_provider = provider_name
                     last_model = effective_model
                 if response.success or not self.config.enable_fallback:
@@ -1051,7 +1054,8 @@ class AIServiceManager:
                         response.data["images"] = converted_images
                     return response
             except Exception as e:
-                last_error = str(e)
+                error_value = str(e).strip() or repr(e)
+                last_error = error_value
                 last_provider = provider_name
                 last_model = effective_model
                 if not self.config.enable_fallback:
@@ -1123,16 +1127,19 @@ class AIServiceManager:
                     text_resp.model_type = AIModelType.IMAGE_TO_IMAGE
                     text_resp.task_type = AITaskType.SCENE_GENERATION
                     return text_resp
-                if text_resp and not text_resp.success and text_resp.error:
-                    last_error = text_resp.error
+                if text_resp and not text_resp.success:
+                    error_value = (text_resp.error or "").strip()
+                    if not error_value:
+                        error_value = "未知错误"
+                    last_error = error_value
                     last_provider = text_resp.provider
                     last_model = text_resp.model
             except Exception as e:
-                last_error = str(e)
+                last_error = str(e).strip() or repr(e)
                 self.logger.error("image_to_image fallback failed: %s", e)
 
-        if last_error:
-            error_msg = last_error
+        if last_error is not None:
+            error_msg = (last_error or "").strip() or "未知错误"
             if last_provider and not error_msg.lower().startswith(
                 last_provider.lower()
             ):
@@ -1148,7 +1155,7 @@ class AIServiceManager:
 
         return AIResponse(
             success=False,
-            error="所有图生图提供商都失败了",
+            error="所有图生图提供商都失败了（未捕获到具体错误信息）",
             provider="ai_service_manager",
             model=model or "unknown",
             task_type=AITaskType.SCENE_GENERATION,
