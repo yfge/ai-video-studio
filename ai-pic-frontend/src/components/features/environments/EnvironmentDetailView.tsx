@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
+import { GenerationAuditWarnings } from '@/components/shared'
 import { useAlertModal } from '@/components/shared/modals'
 import { storyStructureAPI, type Environment } from '@/utils/api'
 
@@ -182,6 +183,14 @@ export function EnvironmentDetailView() {
     )
   }
 
+  const envMeta = (env.metadata ?? {}) as Record<string, unknown>
+  const lastTextToImageWarnings = (
+    envMeta['last_text_to_image_generation'] as Record<string, unknown> | undefined
+  )?.['audit_warnings']
+  const lastImageToImageWarnings = (
+    envMeta['last_image_to_image_generation'] as Record<string, unknown> | undefined
+  )?.['audit_warnings']
+
   return (
     <div className="min-h-screen bg-gray-50">
       <EnvironmentDetailHeader
@@ -192,6 +201,10 @@ export function EnvironmentDetailView() {
         onSave={handleSaveMeta}
       />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div className="space-y-3">
+          <GenerationAuditWarnings title="环境文生图提示" warnings={lastTextToImageWarnings} />
+          <GenerationAuditWarnings title="环境图生图提示" warnings={lastImageToImageWarnings} />
+        </div>
         <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-2xl overflow-hidden">
           <EnvironmentHeader
             env={env}

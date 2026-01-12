@@ -1,21 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-
 import { GenerationProfileSelect } from "@/components/shared/GenerationProfileSelect";
 import { ModelUiFields } from "@/components/shared/ModelUiFields";
 import { MultiModelSelector } from "@/components/shared/MultiModelSelector";
-import {
-  StyleSpecAdvancedPanel,
-  type StyleSpecField,
-} from "@/components/shared/StyleSpecAdvancedPanel";
-import type {
-  AIModel,
-  ApiResponse,
-  AvailableModelsResponse,
-  StylePreset,
-  StyleSpec,
-} from "@/utils/api";
+import { StyleSpecAdvancedPanel, type StyleSpecField } from "@/components/shared/StyleSpecAdvancedPanel";
+import type { AIModel, ApiResponse, AvailableModelsResponse, StylePreset, StyleSpec } from "@/utils/api";
+import { supportsReferenceImage } from "@/utils/modelSupport";
 
 interface ImageToImageSettingsFormProps {
   prompt: string;
@@ -56,12 +47,7 @@ interface ImageToImageSettingsFormProps {
   onDimensionsChange: (next: { size?: string; aspect_ratio?: string }) => void;
 }
 
-const FALLBACK_STYLE_OPTIONS = [
-  { value: "realistic", label: "写实" },
-  { value: "anime", label: "二次元" },
-  { value: "cinematic", label: "电影感" },
-  { value: "sketch", label: "素描" },
-];
+const FALLBACK_STYLE_OPTIONS = [{ value: "realistic", label: "写实" }, { value: "anime", label: "二次元" }, { value: "cinematic", label: "电影感" }, { value: "sketch", label: "素描" }];
 
 export function ImageToImageSettingsForm({
   prompt,
@@ -131,8 +117,23 @@ export function ImageToImageSettingsForm({
             allowAuto={false}
             autoSelectDefault
             fetcher={modelFetcher}
-            helperText="选择支持图生图的模型"
-            onModelsLoaded={onModelsLoaded}
+            helperText="仅展示支持参考图图生图的模型（不支持的将隐藏）"
+            filterModels={supportsReferenceImage}
+            onModelsLoaded={(models, defaultModelId) => {
+              const supported = models.filter(supportsReferenceImage);
+              const supportedIds = new Set(supported.map((m) => m.model_id));
+              const nextDefault =
+                (defaultModelId && supportedIds.has(defaultModelId)
+                  ? defaultModelId
+                  : supported[0]?.model_id) || defaultModelId;
+
+              onModelsLoaded(models, nextDefault);
+
+              const current = modelIds[0];
+              if ((!current || !supportedIds.has(current)) && nextDefault) {
+                onModelIdsChange([nextDefault]);
+              }
+            }}
           />
           {selectedModel?.capabilities?.length ? (
             <p className="mt-1 text-xs text-gray-500">

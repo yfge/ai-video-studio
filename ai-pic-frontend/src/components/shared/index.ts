@@ -8,6 +8,7 @@ export { default as AuthGuard } from "./AuthGuard";
 export { CreationOverlay } from "./CreationOverlay";
 export { ImagePreviewCard } from "./ImagePreviewCard";
 export { MarketingFields, type MarketingFormValues } from "./MarketingFields";
+export { GenerationAuditWarnings } from "./GenerationAuditWarnings";
 export { GenerationProfileSelect } from "./GenerationProfileSelect";
 export { ModelSelector } from "./ModelSelector";
 export { MultiModelSelector } from "./MultiModelSelector";
