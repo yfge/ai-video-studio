@@ -1,4 +1,12 @@
 {%- set style_value = (style | default('realistic')) | lower -%}
 {%- set category_value = (category | default('portrait')) | lower -%}
 {%- import "fragments/image_macros.txt" as img -%}
-Virtual IP Variant: {{ character_name }}{% if character_description %} | Description: {{ character_description }}{% endif %}{% if background_story %} | Background: {{ background_story }}{% endif %}{% if style_prompt %} | Style Notes: {{ style_prompt }}{% endif %}{% if base_prompt %} | Base Prompt: {{ base_prompt }}{% endif %} | Style: {{ style_value }} | Category: {{ category_value }} | Quality: {{ img.quality_high() }} | Variant Instructions: {{ variant_prompt }} | Constraints: keep same character identity and facial features, single character only, consistent proportions, {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_collage() }}, {{ img.constraint_no_deformities() }}, coherent lighting and perspective
+Virtual IP Variant: {{ character_name }}
+{% if character_description %}Description: {{ character_description }}{% endif %}
+{% if background_story %}Background: {{ background_story }}{% endif %}
+{% if style_prompt %}Style Notes: {{ style_prompt }}{% endif %}
+{% if base_prompt %}Base Prompt: {{ base_prompt }}{% endif %}
+Style: {{ style_value }} | Category: {{ category_value }}
+Variant Instructions: {{ variant_prompt }}
+Quality: {{ img.quality_high(style_value, subject="character") }}
+Constraints: preserve the same character identity and facial features (age/gender/ethnicity), keep hairstyle and outfit consistent unless requested, only change what the variant instructions specify, {{ img.constraint_single_character_identity() }}, {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_collage() }}, {{ img.constraint_no_deformities() }}, {{ img.constraint_no_low_quality() }}, coherent lighting and perspective

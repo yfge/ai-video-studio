@@ -1,10 +1,11 @@
 {%- import "fragments/image_macros.txt" as img -%}
 {{ base_prompt }}
-Quality: {{ img.quality_high() }}
-Constraints: {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_collage_storyboard() }}, {{ img.constraint_no_deformities_basic() }}
+Quality: {{ img.quality_high(subject="scene") }}, {{ img.quality_storyboard() }}
+Constraints: {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_collage_storyboard() }}, {{ img.constraint_no_deformities_basic() }}, {{ img.constraint_no_low_quality() }}
 生成要求（重要）：
 - 只生成单幅画面：一个镜头的一个瞬间（single frame / movie still）。
 - 不要拼接、分屏、九宫格、多格漫画、多镜头合成（{{ img.constraint_no_collage_storyboard() }}）。
 - 画面中不要出现文字、字幕、对白气泡、界面UI、边框、分割线、水印、logo。
 - 若提示词包含“镜头切换/转场/上一镜头”等，仅作剪辑备注，不要在画面中表现多个镜头。
+- 若提供参考图像：优先匹配人物脸/服装/发型与环境光线/色彩，保持镜头风格统一与延续性。
 {% if reference_notes %}参考图像：{% for ref in reference_notes %}{% if ref.type == "frame" %}帧参考图{% elif ref.type == "user" %}用户提供的参考图{% elif ref.type == "character" %}{{ ref.name }} 的参考图{% elif ref.type == "environment" %}环境参考图{% else %}参考图{% endif %}{% if not loop.last %} | {% endif %}{% endfor %}{% endif %}

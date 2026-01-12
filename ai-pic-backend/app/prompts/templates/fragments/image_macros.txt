@@ -1,9 +1,24 @@
 {#- Shared fragments for image-generation prompt templates. -#}
 
-{%- macro quality_high() -%}high quality, ultra detailed, sharp focus, professional lighting, detailed texture{%- endmacro -%}
-{%- macro constraint_no_text_artifacts() -%}no text, no subtitles, no watermark, no logo{%- endmacro -%}
+{%- macro quality_high(style=None, subject=None) -%}
+{%- set s = (style or "realistic") | lower -%}
+{%- set sub = (subject or "generic") | lower -%}
+{%- if s in ["anime", "cartoon", "manga", "illustration"] -%}
+high quality, ultra detailed, crisp line art, clean edges, vibrant colors, detailed shading, cinematic lighting
+{%- elif sub in ["character", "portrait", "human"] -%}
+high quality, ultra detailed, sharp focus, professional lighting, detailed facial features, natural skin texture, high dynamic range, cinematic color grading
+{%- else -%}
+high quality, ultra detailed, sharp focus, professional lighting, fine texture details, realistic materials, high dynamic range, cinematic color grading
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro quality_storyboard() -%}cinematic movie still, cohesive color grading, clear composition, realistic perspective{%- endmacro -%}
+
+{%- macro constraint_no_text_artifacts() -%}no text, no subtitles, no watermark, no logo, no UI, no frame, no border{%- endmacro -%}
 {%- macro constraint_no_collage() -%}no collage{%- endmacro -%}
-{%- macro constraint_no_collage_storyboard() -%}no collage, no split-screen, no multi-panel{%- endmacro -%}
-{%- macro constraint_single_character_identity() -%}single character only, consistent identity{%- endmacro -%}
-{%- macro constraint_no_deformities_basic() -%}no extra limbs, no deformed hands{%- endmacro -%}
-{%- macro constraint_no_deformities() -%}no extra limbs, no deformed hands, no multiple faces{%- endmacro -%}
+{%- macro constraint_no_collage_storyboard() -%}no collage, no split-screen, no multi-panel, no contact sheet{%- endmacro -%}
+{%- macro constraint_single_character_identity() -%}single character only, single subject, consistent identity and facial features{%- endmacro -%}
+{%- macro constraint_environment_clean() -%}no people, no characters, no animals{%- endmacro -%}
+{%- macro constraint_no_low_quality() -%}no lowres, no blurry, no jpeg artifacts, no noisy image{%- endmacro -%}
+{%- macro constraint_no_deformities_basic() -%}no extra limbs, no deformed hands, anatomically correct{%- endmacro -%}
+{%- macro constraint_no_deformities() -%}no extra limbs, no deformed hands, no multiple faces, anatomically correct{%- endmacro -%}
