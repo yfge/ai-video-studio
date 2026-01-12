@@ -3087,6 +3087,10 @@ def _process_storyboard_image_task(
                 if start_enabled:
                     start_result = anyio.run(_gen_images, start_prompt, ref_images)
                     if start_result:
+                        start_image_gen = start_result.get("image_gen")
+                        if isinstance(start_image_gen, dict):
+                            fr["start_image_gen"] = start_image_gen
+                            fr["image_gen"] = start_image_gen
                         urls_preview = start_result.get("urls") or []
                         url_preview = urls_preview[0] if urls_preview else None
                         if isinstance(url_preview, str) and len(url_preview) > 200:
@@ -3150,6 +3154,9 @@ def _process_storyboard_image_task(
                 if end_enabled:
                     end_result = anyio.run(_gen_images, end_prompt, ref_images)
                     if end_result:
+                        end_image_gen = end_result.get("image_gen")
+                        if isinstance(end_image_gen, dict):
+                            fr["end_image_gen"] = end_image_gen
                         urls_preview = end_result.get("urls") or []
                         url_preview = urls_preview[0] if urls_preview else None
                         if isinstance(url_preview, str) and len(url_preview) > 200:
@@ -3206,6 +3213,9 @@ def _process_storyboard_image_task(
             else:
                 result = anyio.run(_gen_images, prompt, ref_images)
                 if result:
+                    image_gen = result.get("image_gen")
+                    if isinstance(image_gen, dict):
+                        fr["image_gen"] = image_gen
                     urls_preview = result.get("urls") or []
                     url_preview = urls_preview[0] if urls_preview else None
                     if isinstance(url_preview, str) and len(url_preview) > 200:
