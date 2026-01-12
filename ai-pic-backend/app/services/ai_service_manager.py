@@ -224,7 +224,7 @@ class AIServiceManager:
             pass
 
     async def _convert_base64_images_to_oss(
-        self, images: List[str], prefix: str = "ai-generated"
+        self, images: Any, prefix: str = "ai-generated"
     ) -> List[str]:
         """
         将 base64 格式的图片上传到 OSS 并返回 URL 列表。
@@ -240,20 +240,40 @@ class AIServiceManager:
             转换后的 URL 列表
         """
         if not images:
-            return images
+            return []
+
+        normalized_images: List[str] = []
+        raw_images: list[Any]
+        if isinstance(images, list):
+            raw_images = images
+        else:
+            raw_images = [images]
+
+        for img in raw_images:
+            candidate: Any = img
+            if isinstance(img, dict):
+                candidate = img.get("url") or img.get("image_url")
+            if candidate is None:
+                continue
+            if not isinstance(candidate, str):
+                candidate = str(candidate)
+            candidate = candidate.strip()
+            if not candidate:
+                continue
+            normalized_images.append(candidate)
+
+        if not normalized_images:
+            return []
 
         from app.services.storage.oss_service import oss_service
 
         if not oss_service:
             self.logger.warning("OSS service not available, returning original images")
-            return images
+            return normalized_images
 
         result_urls: List[str] = []
 
-        for img in images:
-            if not isinstance(img, str):
-                result_urls.append(img)
-                continue
+        for img in normalized_images:
 
             # 检查是否是 base64 格式
             if not img.startswith("data:image"):
