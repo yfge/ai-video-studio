@@ -80,3 +80,21 @@ def test_keling_v1_5_img2img_defaults_image_reference_subject():
 
     call = build_ai_manager_call(normalized)
     assert call["image_reference"] == "subject"
+
+
+@pytest.mark.unit
+def test_keling_v2_1_img2img_maps_to_v2_to_avoid_fallback():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.IMAGE_TO_IMAGE,
+        prompt="test",
+        model="keling:kling-v2-1",
+        base_image="/uploads/base.png",
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.model_id == "kling-v2"
+    assert any("kling-v2-1" in w and "kling-v2" in w for w in normalized.audit.warnings)
+
+    call = build_ai_manager_call(normalized)
+    assert call["model"] == "kling-v2"

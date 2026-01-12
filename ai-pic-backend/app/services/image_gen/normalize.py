@@ -53,6 +53,16 @@ def normalize_image_gen_request(
     )
     provider = provider.lower() if provider else None
 
+    if (
+        req.mode == ImageGenMode.IMAGE_TO_IMAGE
+        and provider == "keling"
+        and (clean_model or "").strip().lower() in {"kling-v2-1", "kling-image-v2-1"}
+    ):
+        audit.warnings.append(
+            "keling model kling-v2-1 does not support image_to_image; using kling-v2"
+        )
+        clean_model = "kling-v2"
+
     size_value = clean_str(req.size)
     aspect_ratio_value = clean_str(req.aspect_ratio)
 
