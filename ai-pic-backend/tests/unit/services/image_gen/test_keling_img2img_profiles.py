@@ -62,3 +62,21 @@ def test_keling_img2img_fidelity_clamped_to_unit_interval():
     assert normalized.human_fidelity == 0.0
     assert any("image_fidelity > 1" in w for w in normalized.audit.warnings)
     assert any("human_fidelity < 0" in w for w in normalized.audit.warnings)
+
+
+@pytest.mark.unit
+def test_keling_v1_5_img2img_defaults_image_reference_subject():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.IMAGE_TO_IMAGE,
+        prompt="test",
+        model="keling:kling-v1-5",
+        base_image="/uploads/base.png",
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.image_reference == "subject"
+    assert normalized.audit.defaults_applied["image_reference"] == "subject"
+
+    call = build_ai_manager_call(normalized)
+    assert call["image_reference"] == "subject"

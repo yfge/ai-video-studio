@@ -144,6 +144,15 @@ def normalize_image_gen_request(
                 audit.defaults_applied["image_reference"] = image_reference_input
         image_reference = image_reference_input
 
+        if (
+            provider == "keling"
+            and image_reference is None
+            and (clean_model or "").strip().lower()
+            in {"kling-v1-5", "kling-image-v1-5"}
+        ):
+            image_reference = "subject"
+            audit.defaults_applied["image_reference"] = image_reference
+
         image_fidelity_input = req.image_fidelity
         if (
             image_fidelity_input is None

@@ -123,4 +123,7 @@ async def test_storyboard_image_to_image_preserves_extra_images_for_supported_pr
     assert "width" not in kwargs
     assert "height" not in kwargs
     assert result["urls"] == ["https://example.com/out-1.png"]
+    assert result["image_gen"]["generation_profile"] == "balanced"
+    assert result["image_gen"]["image_fidelity"] == 0.5
+    assert result["image_gen"]["human_fidelity"] == 0.45
     assert result["image_gen"]["reference_images_count"] == 1

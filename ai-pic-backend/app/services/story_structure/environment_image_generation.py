@@ -195,6 +195,9 @@ async def generate_environment_image_variants(
         "cfg_scale": normalized.cfg_scale,
         "negative_prompt": normalized.negative_prompt,
         "strength": normalized.strength,
+        "image_reference": normalized.image_reference,
+        "image_fidelity": normalized.image_fidelity,
+        "human_fidelity": normalized.human_fidelity,
         "count": len(saved_urls),
         "audit_warnings": list(normalized.audit.warnings or []),
     }

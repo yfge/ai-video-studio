@@ -13,9 +13,11 @@ from app.models.task import Task, TaskStatus
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.services.ai_service import ai_service
 from app.services.storage import oss_service
+from app.services.virtual_ip.image_variant_requests import (
+    resolve_virtual_ip_variant_request,
+)
 from app.services.virtual_ip.image_variant_service import (
     generate_virtual_ip_image_variants,
-    resolve_virtual_ip_variant_request,
 )
 
 

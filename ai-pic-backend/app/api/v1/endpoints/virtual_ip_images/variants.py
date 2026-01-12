@@ -16,10 +16,12 @@ from app.schemas.virtual_ip import VirtualIPImageResponse
 from app.services.ai_service import ai_service
 from app.services.storage import oss_service
 from app.services.task_worker import virtual_ip_image_variant_task
-from app.services.virtual_ip.image_variant_service import (
+from app.services.virtual_ip.image_variant_requests import (
     build_virtual_ip_variant_task_payload,
-    generate_virtual_ip_image_variants,
     resolve_virtual_ip_variant_request,
+)
+from app.services.virtual_ip.image_variant_service import (
+    generate_virtual_ip_image_variants,
 )
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from sqlalchemy.orm import Session
