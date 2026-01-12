@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from app.prompts.manager import prompt_manager
 from app.prompts.template_audit import build_prompt_template_audit, sha256_text
+from app.prompts.templates import PromptTemplate
 from app.services.image_gen import (
     ImageGenDomain,
     ImageGenMode,
@@ -102,11 +103,10 @@ class ImageGenerationMixin:
 
             prompt_template = None
             try:
-                base_prompt = prompt_manager.render_prompt(
-                    "virtual_ip_image", variables
-                ).strip()
+                template_name = PromptTemplate.VIRTUAL_IP_IMAGE.value
+                base_prompt = prompt_manager.render_prompt(template_name, variables).strip()
                 prompt_template = build_prompt_template_audit(
-                    "virtual_ip_image", variables=variables
+                    template_name, variables=variables
                 )
             except Exception:
                 if category == "portrait":
@@ -254,7 +254,7 @@ class ImageGenerationMixin:
                     "style_spec_resolution": style_spec_resolution,
                     "category": category,
                     "generation_method": generation_method,
-                    "template_used": "virtual_ip_image",
+                    "template_used": PromptTemplate.VIRTUAL_IP_IMAGE.value,
                     "prompt_template": prompt_template,
                     "prompt_sha256": prompt_sha256,
                     "generation_profile": normalized.generation_profile,

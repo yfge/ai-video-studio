@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from app.prompts.template_audit import build_prompt_template_audit
+from app.prompts.templates import PromptTemplate
 from app.services.image_gen.coerce import (
     clean_str,
     coerce_str_list,
@@ -127,6 +128,8 @@ def build_virtual_ip_variant_task_payload(
         "negative_prompt": request.negative_prompt,
         "strength": request.strength,
         "reference_images": request.reference_images,
-        "prompt_template": build_prompt_template_audit("virtual_ip_image_variant"),
+        "prompt_template": build_prompt_template_audit(
+            PromptTemplate.VIRTUAL_IP_IMAGE_VARIANT.value
+        ),
     }
     return {k: v for k, v in payload.items() if v is not None}

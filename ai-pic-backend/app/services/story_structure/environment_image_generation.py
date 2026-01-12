@@ -6,6 +6,7 @@ from typing import Any
 from app.core.config import settings
 from app.models.story_structure import Environment
 from app.prompts.template_audit import build_prompt_template_audit, sha256_text
+from app.prompts.templates import PromptTemplate
 from app.services.image_gen import (
     ImageGenDomain,
     ImageGenMode,
@@ -42,7 +43,7 @@ async def generate_environment_images(
     require_upload: bool,
 ) -> list[str]:
     final_prompt = compose_environment_prompt(env, request.prompt)
-    prompt_template = build_prompt_template_audit("environment_image")
+    prompt_template = build_prompt_template_audit(PromptTemplate.ENVIRONMENT_IMAGE.value)
     prompt_sha256 = sha256_text(final_prompt)
 
     normalized = normalize_image_gen_request(
@@ -127,7 +128,7 @@ async def generate_environment_image_variants(
 
     prompt_hint = request.prompt or DEFAULT_ENV_VARIANT_EXTRA_PROMPT
     final_prompt = compose_environment_prompt(env, prompt_hint)
-    prompt_template = build_prompt_template_audit("environment_image")
+    prompt_template = build_prompt_template_audit(PromptTemplate.ENVIRONMENT_IMAGE.value)
     prompt_sha256 = sha256_text(final_prompt)
 
     normalized = normalize_image_gen_request(

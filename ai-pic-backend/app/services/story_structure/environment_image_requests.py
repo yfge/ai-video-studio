@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from app.prompts.template_audit import build_prompt_template_audit
+from app.prompts.templates import PromptTemplate
 from app.services.image_gen.coerce import (
     clean_str,
     coerce_str_list,
@@ -191,7 +192,9 @@ def build_environment_text_to_image_task_payload(
         "steps": request.steps,
         "cfg_scale": request.cfg_scale,
         "negative_prompt": request.negative_prompt,
-        "prompt_template": build_prompt_template_audit("environment_image"),
+        "prompt_template": build_prompt_template_audit(
+            PromptTemplate.ENVIRONMENT_IMAGE.value
+        ),
     }
     return {k: v for k, v in payload.items() if v is not None}
 
@@ -219,6 +222,8 @@ def build_environment_variant_task_payload(
         "negative_prompt": request.negative_prompt,
         "strength": request.strength,
         "reference_images": request.reference_images,
-        "prompt_template": build_prompt_template_audit("environment_image"),
+        "prompt_template": build_prompt_template_audit(
+            PromptTemplate.ENVIRONMENT_IMAGE.value
+        ),
     }
     return {k: v for k, v in payload.items() if v is not None}

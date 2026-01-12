@@ -4,6 +4,7 @@ from typing import Any, Sequence
 
 from app.core.config import settings
 from app.prompts.template_audit import build_prompt_template_audit, sha256_text
+from app.prompts.templates import PromptTemplate
 from app.services.image_gen import (
     ImageGenDomain,
     ImageGenMode,
@@ -128,7 +129,9 @@ async def generate_storyboard_image_urls(
         response_meta = {}
 
     extra = list(normalized.extra_images or [])
-    prompt_template = build_prompt_template_audit("storyboard_image_prompt")
+    prompt_template = build_prompt_template_audit(
+        PromptTemplate.STORYBOARD_IMAGE_PROMPT.value
+    )
     image_gen_meta = {
         "domain": normalized.domain.value,
         "mode": normalized.mode.value,

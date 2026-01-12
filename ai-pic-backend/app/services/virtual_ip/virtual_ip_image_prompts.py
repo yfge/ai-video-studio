@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from app.prompts.manager import prompt_manager
 from app.prompts.template_audit import build_prompt_template_audit
+from app.prompts.templates import PromptTemplate
 
-VIRTUAL_IP_IMAGE_VARIANT_TEMPLATE = "virtual_ip_image_variant"
+VIRTUAL_IP_IMAGE_VARIANT_TEMPLATE = PromptTemplate.VIRTUAL_IP_IMAGE_VARIANT.value
 
 
 def render_virtual_ip_image_variant_prompt_with_audit(

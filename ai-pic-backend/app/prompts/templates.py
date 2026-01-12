@@ -62,6 +62,8 @@ class PromptTemplate(Enum):
     PORTRAIT_GENERATION = "portrait_generation"
     SCENE_IMAGE = "scene_image"
     ENVIRONMENT_IMAGE = "environment_image"  # 环境图像
+    VIRTUAL_IP_IMAGE = "virtual_ip_image"  # 虚拟IP文生图
+    VIRTUAL_IP_IMAGE_VARIANT = "virtual_ip_image_variant"  # 虚拟IP图生图
 
     # 时间轴相关
     TIMELINE_GAP_REASONING = "timeline_gap_reasoning"  # 对白间隔推理
@@ -160,6 +162,8 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.PORTRAIT_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.SCENE_IMAGE: PromptCategory.IMAGE,
     PromptTemplate.ENVIRONMENT_IMAGE: PromptCategory.IMAGE,
+    PromptTemplate.VIRTUAL_IP_IMAGE: PromptCategory.IMAGE,
+    PromptTemplate.VIRTUAL_IP_IMAGE_VARIANT: PromptCategory.IMAGE,
 
     PromptTemplate.SYSTEM_PROMPT_STORY: PromptCategory.GENERAL,
     PromptTemplate.SYSTEM_PROMPT_SCRIPT: PromptCategory.GENERAL,
