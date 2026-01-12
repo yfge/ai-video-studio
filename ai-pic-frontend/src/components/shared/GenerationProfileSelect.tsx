@@ -36,6 +36,24 @@ const formatDefaults = (profile: ImageGenProfile) => {
   ) {
     parts.push(`strength=${profile.defaults.strength}`);
   }
+  if (profile.defaults.image_reference) {
+    const trimmed = profile.defaults.image_reference.trim();
+    if (trimmed) {
+      parts.push(`ref=${trimmed}`);
+    }
+  }
+  if (
+    profile.defaults.image_fidelity !== undefined &&
+    profile.defaults.image_fidelity !== null
+  ) {
+    parts.push(`image_fidelity=${profile.defaults.image_fidelity}`);
+  }
+  if (
+    profile.defaults.human_fidelity !== undefined &&
+    profile.defaults.human_fidelity !== null
+  ) {
+    parts.push(`human_fidelity=${profile.defaults.human_fidelity}`);
+  }
   if (profile.defaults.negative_prompt) {
     const trimmed = profile.defaults.negative_prompt.trim();
     if (trimmed) {
@@ -56,7 +74,7 @@ export function GenerationProfileSelect({
   onChange,
   disabled = false,
   label = "质量档位",
-  helperText = "按模型默认参数收敛 steps/cfg/negative，提升质量一致性",
+  helperText,
   className,
 }: GenerationProfileSelectProps) {
   const enabled = Boolean(modelId) && !disabled;
@@ -102,14 +120,19 @@ export function GenerationProfileSelect({
 
   const isUnsupported = Boolean(modelId) && !loading && profiles.length === 0;
   const selectDisabled = disabled || !modelId || loading || isUnsupported;
+  const effectiveHelperText =
+    helperText ??
+    (mode === "image_to_image"
+      ? "按模型默认参数收敛 strength/fidelity 等关键参数，提升质量一致性"
+      : "按模型默认参数收敛 steps/cfg/negative 等关键参数，提升质量一致性");
 
   return (
     <div className={className}>
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
-      {helperText ? (
-        <p className="text-xs text-gray-500 mb-1">{helperText}</p>
+      {effectiveHelperText ? (
+        <p className="text-xs text-gray-500 mb-1">{effectiveHelperText}</p>
       ) : null}
       <div className="flex items-center gap-2">
         <select

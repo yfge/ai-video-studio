@@ -9,6 +9,9 @@ export interface ImageGenProfileDefaults {
   cfg_scale?: number | null;
   negative_prompt?: string | null;
   strength?: number | null;
+  image_reference?: string | null;
+  image_fidelity?: number | null;
+  human_fidelity?: number | null;
 }
 
 export interface ImageGenProfile {
