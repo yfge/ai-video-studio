@@ -92,7 +92,7 @@
 - [x] 6.2 后端：创建 `duration_controlled_dialogue_service.py` 集成服务
 - [x] 6.3 后端：修改 `_process_script_dialogue_audio_task` 支持分支逻辑
 - [ ] 6.4 后端：实现结果持久化（Scene/SceneBeat 更新）
-- [ ] 6.5 测试：编写 API 集成测试
+- [x] 6.5 测试：编写 API 集成测试
 
 ### Phase 7: 监控与可观测性（P2，预计 1 天）
 
