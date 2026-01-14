@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM dockerproxy.com/library/node:20-alpine AS builder
 
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -13,7 +13,7 @@ RUN rm -f .env.local
 ENV NODE_ENV=production
 RUN npm run build
 
-FROM node:20-alpine
+FROM dockerproxy.com/library/node:20-alpine
 
 WORKDIR /app/ai-pic-frontend
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
