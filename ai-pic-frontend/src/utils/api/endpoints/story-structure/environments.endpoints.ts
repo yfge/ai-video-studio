@@ -201,6 +201,9 @@ export async function generateEnvironmentImageVariantsAsync(
     cfg_scale?: number;
     negative_prompt?: string;
     strength?: number;
+    image_reference?: string;
+    image_fidelity?: number;
+    human_fidelity?: number;
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;

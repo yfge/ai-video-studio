@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import { ImageToImageModal, useAlertModal } from "@/components/shared/modals";
 import {
   AIModelType,
-  storyStructureAPI,
   type Environment,
   type StyleSpec,
 } from "@/utils/api";
+import { storyStructureAPI } from "@/utils/api/endpoints";
 
 import type { EnvironmentImage } from "./types";
 
@@ -43,6 +43,14 @@ export function EnvironmentVariantModal({
     count: number;
     size?: string;
     aspect_ratio?: string;
+    seed?: number;
+    steps?: number;
+    cfg_scale?: number;
+    negative_prompt?: string;
+    strength?: number;
+    image_reference?: string;
+    image_fidelity?: number;
+    human_fidelity?: number;
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
@@ -61,9 +69,17 @@ export function EnvironmentVariantModal({
           count: payload.count,
           size: payload.size,
           aspect_ratio: payload.aspect_ratio,
+          seed: payload.seed,
+          steps: payload.steps,
+          cfg_scale: payload.cfg_scale,
+          negative_prompt: payload.negative_prompt,
           style: payload.style,
           style_preset_id: payload.style_preset_id,
           style_spec: payload.style_spec,
+          strength: payload.strength,
+          image_reference: payload.image_reference,
+          image_fidelity: payload.image_fidelity,
+          human_fidelity: payload.human_fidelity,
           reference_images: payload.referenceImages,
         },
       );
@@ -99,6 +115,7 @@ export function EnvironmentVariantModal({
       defaultCount={1}
       modelType={AIModelType.ImageToImage}
       modelCacheKey="environment-img2img"
+      showAdvancedParams
       submitting={submitting}
       onSubmit={handleSubmit}
     />

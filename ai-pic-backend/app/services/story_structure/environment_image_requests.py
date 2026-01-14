@@ -48,6 +48,9 @@ class EnvironmentImageVariantRequest:
     cfg_scale: float | None
     negative_prompt: str | None
     strength: float | None
+    image_reference: str | None
+    image_fidelity: float | None
+    human_fidelity: float | None
     reference_images: list[str]
 
 
@@ -119,6 +122,9 @@ def resolve_environment_image_variant_request(
     cfg_scale: float | None = None,
     negative_prompt: str | None = None,
     strength: float | None = None,
+    image_reference: str | None = None,
+    image_fidelity: float | None = None,
+    human_fidelity: float | None = None,
 ) -> EnvironmentImageVariantRequest:
     base_value = clean_str(value_from_payload(payload, "base_image", base_image))
     if not base_value:
@@ -141,6 +147,15 @@ def resolve_environment_image_variant_request(
         value_from_payload(payload, "negative_prompt", negative_prompt)
     )
     strength_value = maybe_float(value_from_payload(payload, "strength", strength))
+    image_reference_value = clean_str(
+        value_from_payload(payload, "image_reference", image_reference)
+    )
+    image_fidelity_value = maybe_float(
+        value_from_payload(payload, "image_fidelity", image_fidelity)
+    )
+    human_fidelity_value = maybe_float(
+        value_from_payload(payload, "human_fidelity", human_fidelity)
+    )
 
     style_hint = clean_str(payload.get("style")) or "realistic"
     style_preset_id_value = clean_str(payload.get("style_preset_id"))
@@ -164,6 +179,9 @@ def resolve_environment_image_variant_request(
         cfg_scale=cfg_scale_value,
         negative_prompt=negative_prompt_value,
         strength=strength_value,
+        image_reference=image_reference_value,
+        image_fidelity=image_fidelity_value,
+        human_fidelity=human_fidelity_value,
         reference_images=reference_images,
     )
 
@@ -221,6 +239,9 @@ def build_environment_variant_task_payload(
         "cfg_scale": request.cfg_scale,
         "negative_prompt": request.negative_prompt,
         "strength": request.strength,
+        "image_reference": request.image_reference,
+        "image_fidelity": request.image_fidelity,
+        "human_fidelity": request.human_fidelity,
         "reference_images": request.reference_images,
         "prompt_template": build_prompt_template_audit(
             PromptTemplate.ENVIRONMENT_IMAGE.value

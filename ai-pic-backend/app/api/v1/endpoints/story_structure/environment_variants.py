@@ -53,6 +53,15 @@ class EnvironmentImageVariantParams:
         strength: float | None = Query(
             None, ge=0.0, le=1.0, description="图生图强度（可选）"
         ),
+        image_reference: str | None = Query(
+            None, description="参考维度（可选），如 subject/face"
+        ),
+        image_fidelity: float | None = Query(
+            None, ge=0.0, le=1.0, description="图像参考强度（可选）"
+        ),
+        human_fidelity: float | None = Query(
+            None, ge=0.0, le=1.0, description="人物参考强度（可选）"
+        ),
     ) -> None:
         self.base_image = base_image
         self.prompt = prompt
@@ -66,6 +75,9 @@ class EnvironmentImageVariantParams:
         self.cfg_scale = cfg_scale
         self.negative_prompt = negative_prompt
         self.strength = strength
+        self.image_reference = image_reference
+        self.image_fidelity = image_fidelity
+        self.human_fidelity = human_fidelity
 
 
 @router.post("/environments/{env_id}/images/variants")
@@ -99,6 +111,9 @@ async def generate_environment_image_variants(
             cfg_scale=params.cfg_scale,
             negative_prompt=params.negative_prompt,
             strength=params.strength,
+            image_reference=params.image_reference,
+            image_fidelity=params.image_fidelity,
+            human_fidelity=params.human_fidelity,
         )
         if not req.base_image:
             raise HTTPException(status_code=400, detail="缺少基准图像")
@@ -146,6 +161,9 @@ async def generate_environment_image_variants_async(
         cfg_scale=params.cfg_scale,
         negative_prompt=params.negative_prompt,
         strength=params.strength,
+        image_reference=params.image_reference,
+        image_fidelity=params.image_fidelity,
+        human_fidelity=params.human_fidelity,
     )
     if not req.base_image:
         raise HTTPException(status_code=400, detail="缺少基准图像")
