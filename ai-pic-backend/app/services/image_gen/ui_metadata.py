@@ -75,14 +75,14 @@ def build_image_gen_ui_metadata(
     negative_prompt_note = (
         "该提供商不支持 negative_prompt：常用约束需写入 prompt（模板已内置 Constraints）"
     )
-    if provider_key in {"openai", "google", "volcengine"}:
-        if not text_to_image["supports_negative_prompt"]:
-            _append_note(text_notes, negative_prompt_note)
-        if supports_reference_image and not image_to_image["supports_negative_prompt"]:
-            _append_note(image_notes, negative_prompt_note)
+    if not text_to_image["supports_negative_prompt"]:
+        _append_note(text_notes, negative_prompt_note)
 
-    if provider_key == "keling" and supports_reference_image:
-        _append_note(image_notes, "可灵图生图不支持 negative_prompt：请将约束写入 prompt")
+    if supports_reference_image and not image_to_image["supports_negative_prompt"]:
+        if provider_key == "keling":
+            _append_note(image_notes, "可灵图生图不支持 negative_prompt：请将约束写入 prompt")
+        else:
+            _append_note(image_notes, negative_prompt_note)
 
     volc_cfg_note = "火山引擎 cfg_scale 会映射到 guidance_scale（有效范围约 1-10）"
     if provider_key == "volcengine":
