@@ -6,11 +6,11 @@ import {
   GenerationProfileSelect,
   ModelUiFields,
   MultiModelSelector,
-  StyleSpecAdvancedPanel,
-  type StyleSpecField,
 } from "@/components/shared";
 import type { ImageGenerationFormState } from "@/hooks/useVirtualIPImages";
-import { VIRTUAL_IP_STYLE_SPEC_FIELDS } from "@/hooks/useVirtualIPImages";
+
+import { ImageGenerationOptionsFields } from "./ImageGenerationOptionsFields";
+import { ImageGenerationStyleFields } from "./ImageGenerationStyleFields";
 
 interface StylePreset {
   preset_id: string;
@@ -106,83 +106,14 @@ export function ImageGenerationForm({
             <option value="cartoon">卡通</option>
           </select>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            风格预设
-          </label>
-          <select
-            value={generateForm.style_preset_id || ""}
-            onChange={(e) =>
-              setGenerateForm((prev) => ({
-                ...prev,
-                style_preset_id: e.target.value,
-              }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">（不使用预设）</option>
-            {stylePresets.map((preset) => (
-              <option key={preset.preset_id} value={preset.preset_id}>
-                {preset.label || preset.preset_id}
-              </option>
-            ))}
-          </select>
-          {selectedStylePreset?.description && (
-            <p className="mt-1 text-xs text-gray-500">
-              {selectedStylePreset.description}
-            </p>
-          )}
-        </div>
-        <div className="md:col-span-3">
-          <StyleSpecAdvancedPanel
-            fields={VIRTUAL_IP_STYLE_SPEC_FIELDS as StyleSpecField[]}
-            value={generateForm.style_spec || {}}
-            onChange={(next) =>
-              setGenerateForm((prev) => ({ ...prev, style_spec: next }))
-            }
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            图片类别
-          </label>
-          <select
-            value={generateForm.category}
-            onChange={(e) =>
-              setGenerateForm((prev) => ({ ...prev, category: e.target.value }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="portrait">肖像</option>
-            <option value="full_body">全身</option>
-            <option value="scene">场景</option>
-            <option value="action">动作</option>
-            <option value="emotion">情绪</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            生成数量
-          </label>
-          <select
-            value={generateForm.count ?? 1}
-            onChange={(e) =>
-              setGenerateForm((prev) => ({
-                ...prev,
-                count: Number(e.target.value) || 1,
-              }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value={1}>1 张</option>
-            <option value={2}>2 张</option>
-            <option value={3}>3 张</option>
-            <option value={4}>4 张</option>
-          </select>
-          <p className="mt-1 text-xs text-gray-500">
-            部分模型一次会返回多张候选图片。
-          </p>
-        </div>
+
+        <ImageGenerationStyleFields
+          generateForm={generateForm}
+          setGenerateForm={setGenerateForm}
+          stylePresets={stylePresets}
+          selectedStylePreset={selectedStylePreset}
+        />
+
         <div>
           <ModelUiFields
             mode="image"
@@ -207,39 +138,11 @@ export function ImageGenerationForm({
             }}
           />
         </div>
-        <div className="md:col-span-3">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            补充提示词（可选，逗号分隔）
-          </label>
-          <input
-            type="text"
-            value={generateForm.additional_prompts}
-            onChange={(e) =>
-              setGenerateForm((prev) => ({
-                ...prev,
-                additional_prompts: e.target.value,
-              }))
-            }
-            placeholder="例如：微笑、晴天、户外"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="md:col-span-3">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={generateForm.is_default}
-              onChange={(e) =>
-                setGenerateForm((prev) => ({
-                  ...prev,
-                  is_default: e.target.checked,
-                }))
-              }
-              className="mr-2"
-            />
-            <span className="text-sm text-gray-700">设为默认图片</span>
-          </label>
-        </div>
+
+        <ImageGenerationOptionsFields
+          generateForm={generateForm}
+          setGenerateForm={setGenerateForm}
+        />
       </div>
       <div className="mt-4 flex gap-2 flex-wrap">
         <button
