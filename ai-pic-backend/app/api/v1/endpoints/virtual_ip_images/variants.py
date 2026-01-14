@@ -58,6 +58,9 @@ async def generate_virtual_ip_image_variant(
     cfg_scale: Optional[float] = Form(None),
     negative_prompt: Optional[str] = Form(None),
     strength: Optional[float] = Form(None),
+    image_reference: Optional[str] = Form(None),
+    image_fidelity: Optional[float] = Form(None),
+    human_fidelity: Optional[float] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -84,6 +87,9 @@ async def generate_virtual_ip_image_variant(
             cfg_scale=cfg_scale,
             negative_prompt=negative_prompt,
             strength=strength,
+            image_reference=image_reference,
+            image_fidelity=image_fidelity,
+            human_fidelity=human_fidelity,
             base_image_model=base_image.ai_model,
         )
         created_images = await generate_virtual_ip_image_variants(
@@ -118,6 +124,9 @@ async def generate_virtual_ip_image_variant_async(
     cfg_scale: Optional[float] = Form(None),
     negative_prompt: Optional[str] = Form(None),
     strength: Optional[float] = Form(None),
+    image_reference: Optional[str] = Form(None),
+    image_fidelity: Optional[float] = Form(None),
+    human_fidelity: Optional[float] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -140,6 +149,9 @@ async def generate_virtual_ip_image_variant_async(
         cfg_scale=cfg_scale,
         negative_prompt=negative_prompt,
         strength=strength,
+        image_reference=image_reference,
+        image_fidelity=image_fidelity,
+        human_fidelity=human_fidelity,
         base_image_model=base_image.ai_model,
     )
     payload: Dict[str, Any] = build_virtual_ip_variant_task_payload(

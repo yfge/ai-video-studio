@@ -6,6 +6,7 @@ import type {
   AvailableModelsResponse,
   StyleSpec,
 } from "@/utils/api";
+import type { ImageGenAdvancedValue } from "../../imageGenAdvancedTypes";
 
 export type ReferenceImageType =
   | "character"
@@ -38,7 +39,7 @@ export type ImageToImageSubmitPayload = {
   style_spec?: StyleSpec;
   referenceImages: string[];
   labeledReferences?: LabeledReferenceImage[];
-};
+} & ImageGenAdvancedValue;
 
 export interface ImageToImageModalProps {
   open: boolean;
@@ -64,6 +65,8 @@ export interface ImageToImageModalProps {
   showStylePreset?: boolean;
   styleSpecFields?: StyleSpecField[];
   defaultStyleSpec?: StyleSpec;
+  showAdvancedParams?: boolean;
+  defaultAdvancedValue?: ImageGenAdvancedValue;
   extraContent?: ReactNode;
   submitting?: boolean;
   onClose: () => void;

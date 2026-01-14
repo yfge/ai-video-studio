@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { AIModel, StyleSpec } from "@/utils/api";
+import type { ImageGenAdvancedValue } from "../../imageGenAdvancedTypes";
 
 interface UseImageToImageModalStateOptions {
   open: boolean;
@@ -14,6 +15,7 @@ interface UseImageToImageModalStateOptions {
   defaultStyle: string;
   defaultStylePresetId: string;
   defaultStyleSpec?: StyleSpec;
+  defaultAdvancedValue?: ImageGenAdvancedValue;
 }
 
 export function useImageToImageModalState({
@@ -28,6 +30,7 @@ export function useImageToImageModalState({
   defaultStyle,
   defaultStylePresetId,
   defaultStyleSpec,
+  defaultAdvancedValue,
 }: UseImageToImageModalStateOptions) {
   const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
   const [loadedDefaultModel, setLoadedDefaultModel] = useState<string>("");
@@ -47,6 +50,9 @@ export function useImageToImageModalState({
   const [style, setStyle] = useState(defaultStyle);
   const [stylePresetId, setStylePresetId] = useState(defaultStylePresetId);
   const [styleSpec, setStyleSpec] = useState<StyleSpec>(defaultStyleSpec ?? {});
+  const [advanced, setAdvanced] = useState<ImageGenAdvancedValue>(
+    defaultAdvancedValue ?? {},
+  );
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,6 +67,7 @@ export function useImageToImageModalState({
     setStyle(defaultStyle);
     setStylePresetId(defaultStylePresetId);
     setStyleSpec(defaultStyleSpec ?? {});
+    setAdvanced(defaultAdvancedValue ?? {});
   }, [
     open,
     defaultSelected,
@@ -72,6 +79,7 @@ export function useImageToImageModalState({
     defaultStyle,
     defaultStylePresetId,
     defaultStyleSpec,
+    defaultAdvancedValue,
     defaultAspectRatio,
   ]);
 
@@ -121,8 +129,9 @@ export function useImageToImageModalState({
     setStylePresetId,
     styleSpec,
     setStyleSpec,
+    advanced,
+    setAdvanced,
     previewImage,
     setPreviewImage,
   };
 }
-

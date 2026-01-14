@@ -33,6 +33,9 @@ export async function generateVariantFromImage(
       cfg_scale: payload.cfg_scale,
       negative_prompt: payload.negative_prompt,
       strength: payload.strength,
+      image_reference: payload.image_reference,
+      image_fidelity: payload.image_fidelity,
+      human_fidelity: payload.human_fidelity,
     }),
   });
 }
@@ -53,6 +56,9 @@ export async function generateVariantAndSave(
     | 'cfg_scale'
     | 'negative_prompt'
     | 'strength'
+    | 'image_reference'
+    | 'image_fidelity'
+    | 'human_fidelity'
     | 'count'
     | 'size'
     | 'aspect_ratio'
@@ -75,6 +81,9 @@ export async function generateVariantAndSave(
         cfg_scale: payload.cfg_scale,
         negative_prompt: payload.negative_prompt,
         strength: payload.strength,
+        image_reference: payload.image_reference,
+        image_fidelity: payload.image_fidelity,
+        human_fidelity: payload.human_fidelity,
         count: payload.count ?? 1,
         size: payload.size,
         aspect_ratio: payload.aspect_ratio,
@@ -103,6 +112,9 @@ export async function generateVariantAndSaveAsync(
     | 'cfg_scale'
     | 'negative_prompt'
     | 'strength'
+    | 'image_reference'
+    | 'image_fidelity'
+    | 'human_fidelity'
     | 'count'
     | 'size'
     | 'aspect_ratio'
@@ -125,6 +137,9 @@ export async function generateVariantAndSaveAsync(
         cfg_scale: payload.cfg_scale,
         negative_prompt: payload.negative_prompt,
         strength: payload.strength,
+        image_reference: payload.image_reference,
+        image_fidelity: payload.image_fidelity,
+        human_fidelity: payload.human_fidelity,
         count: payload.count ?? 1,
         size: payload.size,
         aspect_ratio: payload.aspect_ratio,

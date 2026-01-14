@@ -189,6 +189,12 @@ export function VirtualIPImageManager({
               aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })
             }
             modelCacheKey={`virtual-ip-img2img:${virtualIPId}`}
+            showAdvancedParams
+            defaultAdvancedValue={{
+              seed: generateForm.seed,
+              steps: generateForm.steps,
+              cfg_scale: generateForm.cfg_scale,
+            }}
             submitting={variantSubmitting}
             onSubmit={handleSubmitVariant}
           />

@@ -6,6 +6,7 @@ import { useStylePresets } from "@/hooks/useStylePresets";
 import { extractImageUi } from "@/utils/modelUi";
 import { AIModelType } from "@/utils/api";
 
+import { ImageGenAdvancedFields } from "../ImageGenAdvancedFields";
 import { ImageToImageReferencePicker } from "./image-to-image/ImageToImageReferencePicker";
 import { ImageToImagePreviewOverlay } from "./image-to-image/ImageToImagePreviewOverlay";
 import { ImageToImageSettingsForm } from "./image-to-image/ImageToImageSettingsForm";
@@ -29,6 +30,8 @@ export function ImageToImageModal({
   defaultStyle = "realistic",
   defaultStylePresetId = "",
   defaultStyleSpec,
+  showAdvancedParams = false,
+  defaultAdvancedValue,
   minCount = 1,
   maxCount = 4,
   modelType = AIModelType.ImageToImage,
@@ -65,6 +68,8 @@ export function ImageToImageModal({
     setStylePresetId,
     styleSpec,
     setStyleSpec,
+    advanced,
+    setAdvanced,
     previewImage,
     setPreviewImage,
   } = useImageToImageModalState({
@@ -79,6 +84,7 @@ export function ImageToImageModal({
     defaultStyle,
     defaultStylePresetId,
     defaultStyleSpec,
+    defaultAdvancedValue,
   });
 
   const { presets: stylePresets } = useStylePresets({
@@ -116,6 +122,14 @@ export function ImageToImageModal({
         styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
       referenceImages: refs,
       labeledReferences: labeledRefs.length > 0 ? labeledRefs : undefined,
+      seed: advanced.seed,
+      steps: advanced.steps,
+      cfg_scale: advanced.cfg_scale,
+      negative_prompt: advanced.negative_prompt,
+      strength: advanced.strength,
+      image_reference: advanced.image_reference,
+      image_fidelity: advanced.image_fidelity,
+      human_fidelity: advanced.human_fidelity,
     });
   };
 
@@ -183,6 +197,18 @@ export function ImageToImageModal({
               setAspectRatio(next.aspect_ratio || undefined);
           }}
         />
+
+        {showAdvancedParams ? (
+          <div className="mt-4 border-t pt-4">
+            <ImageGenAdvancedFields
+              mode="image_to_image"
+              model={selectedModel}
+              value={advanced}
+              onChange={setAdvanced}
+              disabled={submitting}
+            />
+          </div>
+        ) : null}
 
         {extraContent ? (
           <div className="mt-4 border-t pt-4">{extraContent}</div>

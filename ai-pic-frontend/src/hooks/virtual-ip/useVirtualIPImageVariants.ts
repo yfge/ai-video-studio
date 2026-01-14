@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
-import { virtualIPImageAPI, type VirtualIPImage } from "@/utils/api";
+import { virtualIPImageAPI } from "@/utils/api/endpoints";
+import type { VirtualIPImage } from "@/utils/api/types";
 
 import type { ImageGenerationFormState } from "./virtualIpImageTypes";
 import { resolveImageUrl } from "./virtualIpImageConstants";
@@ -52,6 +53,14 @@ export function useVirtualIPImageVariants({
     count: number;
     size?: string;
     aspect_ratio?: string;
+    seed?: number;
+    steps?: number;
+    cfg_scale?: number;
+    negative_prompt?: string;
+    strength?: number;
+    image_reference?: string;
+    image_fidelity?: number;
+    human_fidelity?: number;
     style?: string;
     style_preset_id?: string;
     style_spec?: Record<string, unknown>;
@@ -78,6 +87,14 @@ export function useVirtualIPImageVariants({
           model: modelFallback || undefined,
           generation_profile:
             payload.generation_profile || generateForm.generation_profile,
+          seed: payload.seed,
+          steps: payload.steps,
+          cfg_scale: payload.cfg_scale,
+          negative_prompt: payload.negative_prompt,
+          strength: payload.strength,
+          image_reference: payload.image_reference,
+          image_fidelity: payload.image_fidelity,
+          human_fidelity: payload.human_fidelity,
           count: payload.count,
           size: payload.size || generateForm.size,
           aspect_ratio: payload.aspect_ratio || generateForm.aspect_ratio,
