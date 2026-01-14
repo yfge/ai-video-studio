@@ -95,9 +95,14 @@ export async function generateEnvironmentImages(
   payload: {
     prompt?: string;
     model?: string;
+    generation_profile?: string;
     count?: number;
     size?: string;
     aspect_ratio?: string;
+    seed?: number;
+    steps?: number;
+    cfg_scale?: number;
+    negative_prompt?: string;
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
@@ -122,11 +127,19 @@ export async function generateEnvironmentImageVariants(
     base_image?: string;
     prompt?: string;
     model?: string;
+    generation_profile?: string;
     count?: number;
     size?: string;
+    aspect_ratio?: string;
+    seed?: number;
+    steps?: number;
+    cfg_scale?: number;
+    negative_prompt?: string;
+    strength?: number;
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
+    reference_images?: string[];
   }
 ): Promise<ApiResponse<{ images: string[]; count: number }>> {
   const envKey = encodeURIComponent(String(envId));
@@ -147,8 +160,14 @@ export async function generateEnvironmentImagesAsync(
   payload: {
     prompt?: string;
     model?: string;
+    generation_profile?: string;
     count?: number;
     size?: string;
+    aspect_ratio?: string;
+    seed?: number;
+    steps?: number;
+    cfg_scale?: number;
+    negative_prompt?: string;
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
@@ -173,9 +192,15 @@ export async function generateEnvironmentImageVariantsAsync(
     base_image?: string;
     prompt?: string;
     model?: string;
+    generation_profile?: string;
     count?: number;
     size?: string;
     aspect_ratio?: string;
+    seed?: number;
+    steps?: number;
+    cfg_scale?: number;
+    negative_prompt?: string;
+    strength?: number;
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
@@ -206,4 +231,3 @@ export async function deleteEnvironmentImage(
     { method: 'DELETE' }
   );
 }
-

@@ -21,11 +21,16 @@ export async function generateVirtualIPImage(
       style_spec: request.style_spec,
       category: request.category,
       model: request.model,
+      generation_profile: request.generation_profile,
       additional_prompts: request.additional_prompts,
       is_default: request.is_default,
       count: request.count ?? 1,
       size: request.size,
       aspect_ratio: request.aspect_ratio,
+      seed: request.seed,
+      steps: request.steps,
+      cfg_scale: request.cfg_scale,
+      negative_prompt: request.negative_prompt,
     }),
   });
 }
@@ -47,13 +52,17 @@ export async function generateVirtualIPImageAsync(
         style_spec: request.style_spec,
         category: request.category,
         model: request.model,
+        generation_profile: request.generation_profile,
         additional_prompts: request.additional_prompts,
         is_default: request.is_default,
         count: request.count ?? 1,
         size: request.size,
         aspect_ratio: request.aspect_ratio,
+        seed: request.seed,
+        steps: request.steps,
+        cfg_scale: request.cfg_scale,
+        negative_prompt: request.negative_prompt,
       }),
     }
   );
 }
-

@@ -20,10 +20,19 @@ export async function generateVariantFromImage(
       prompt: payload.prompt,
       model: payload.model,
       prefer_provider: payload.prefer_provider,
+      generation_profile: payload.generation_profile,
       style: payload.style,
       style_preset_id: payload.style_preset_id,
       style_spec: payload.style_spec,
       count: payload.count ?? 1,
+      size: payload.size,
+      aspect_ratio: payload.aspect_ratio,
+      reference_images: payload.reference_images,
+      seed: payload.seed,
+      steps: payload.steps,
+      cfg_scale: payload.cfg_scale,
+      negative_prompt: payload.negative_prompt,
+      strength: payload.strength,
     }),
   });
 }
@@ -36,7 +45,21 @@ export async function generateVariantAndSave(
   imageId: number,
   payload: Pick<
     ImageToImageRequestPayload,
-    'prompt' | 'model' | 'count' | 'size' | 'aspect_ratio' | 'style' | 'style_preset_id' | 'style_spec'
+    | 'prompt'
+    | 'model'
+    | 'generation_profile'
+    | 'seed'
+    | 'steps'
+    | 'cfg_scale'
+    | 'negative_prompt'
+    | 'strength'
+    | 'count'
+    | 'size'
+    | 'aspect_ratio'
+    | 'reference_images'
+    | 'style'
+    | 'style_preset_id'
+    | 'style_spec'
   >
 ): Promise<ApiResponse<VirtualIPImage | VirtualIPImage[]>> {
   return httpClient<VirtualIPImage | VirtualIPImage[]>(
@@ -46,9 +69,16 @@ export async function generateVariantAndSave(
       body: JSON.stringify({
         prompt: payload.prompt,
         model: payload.model,
+        generation_profile: payload.generation_profile,
+        seed: payload.seed,
+        steps: payload.steps,
+        cfg_scale: payload.cfg_scale,
+        negative_prompt: payload.negative_prompt,
+        strength: payload.strength,
         count: payload.count ?? 1,
         size: payload.size,
         aspect_ratio: payload.aspect_ratio,
+        reference_images: payload.reference_images,
         style: payload.style,
         style_preset_id: payload.style_preset_id,
         style_spec: payload.style_spec,
@@ -67,6 +97,12 @@ export async function generateVariantAndSaveAsync(
     ImageToImageRequestPayload,
     | 'prompt'
     | 'model'
+    | 'generation_profile'
+    | 'seed'
+    | 'steps'
+    | 'cfg_scale'
+    | 'negative_prompt'
+    | 'strength'
     | 'count'
     | 'size'
     | 'aspect_ratio'
@@ -83,6 +119,12 @@ export async function generateVariantAndSaveAsync(
       body: JSON.stringify({
         prompt: payload.prompt,
         model: payload.model,
+        generation_profile: payload.generation_profile,
+        seed: payload.seed,
+        steps: payload.steps,
+        cfg_scale: payload.cfg_scale,
+        negative_prompt: payload.negative_prompt,
+        strength: payload.strength,
         count: payload.count ?? 1,
         size: payload.size,
         aspect_ratio: payload.aspect_ratio,
@@ -94,4 +136,3 @@ export async function generateVariantAndSaveAsync(
     }
   );
 }
-

@@ -128,10 +128,16 @@ export async function generateStoryboardImages(
     prompt?: string;
     frames?: number[];
     model?: string;
+    generation_profile?: string;
     size?: string;
     width?: number;
     height?: number;
     aspect_ratio?: string;
+    seed?: number;
+    steps?: number;
+    cfg_scale?: number;
+    negative_prompt?: string;
+    strength?: number;
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
@@ -164,9 +170,15 @@ export async function generateStoryboardImages(
       frames: payload?.frames || [],
       prompt: payload?.prompt,
       model: payload?.model,
+      generation_profile: payload?.generation_profile,
       size: payload?.size,
       ...(dimensions || {}),
       aspect_ratio: payload?.aspect_ratio,
+      seed: payload?.seed,
+      steps: payload?.steps,
+      cfg_scale: payload?.cfg_scale,
+      negative_prompt: payload?.negative_prompt,
+      strength: payload?.strength,
       style: payload?.style ?? 'realistic',
       style_preset_id: payload?.style_preset_id,
       style_spec: payload?.style_spec,
@@ -192,4 +204,3 @@ export async function updateStoryboard(
     body: JSON.stringify({ frames }),
   });
 }
-
