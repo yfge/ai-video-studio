@@ -191,6 +191,7 @@ def build_ai_manager_call(normalized: ImageGenNormalized) -> Dict[str, Any]:
             "height": normalized.height,
             "size": normalized.size,
             "aspect_ratio": normalized.aspect_ratio,
+            "reference_images": list(normalized.extra_images or []),
             "seed": normalized.seed,
             "steps": normalized.steps,
             "cfg_scale": normalized.cfg_scale,
