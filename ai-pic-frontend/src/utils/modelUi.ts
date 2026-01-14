@@ -23,6 +23,22 @@ export type ImageUiOptions = {
   defaultAspectRatio?: string;
 };
 
+export type ImageGenMode = "text_to_image" | "image_to_image";
+
+export type ImageGenUiOptions = {
+  version: number;
+  supportsSeed: boolean;
+  supportsSteps: boolean;
+  supportsCfgScale: boolean;
+  supportsNegativePrompt: boolean;
+  supportsStrength: boolean;
+  supportsImageReference: boolean;
+  supportsImageFidelity: boolean;
+  supportsHumanFidelity: boolean;
+  supportsExtraImages: boolean;
+  notes: string[];
+};
+
 type ModelUiMetadata = {
   resolution_options?: string[];
   ratio_options?: string[];
@@ -41,6 +57,29 @@ type ModelUiMetadata = {
   supports_aspect_ratio?: boolean;
   default_size?: string;
   default_aspect_ratio?: string;
+
+  image_gen?: {
+    version?: number;
+    text_to_image?: {
+      supports_seed?: boolean;
+      supports_steps?: boolean;
+      supports_cfg_scale?: boolean;
+      supports_negative_prompt?: boolean;
+      supports_reference_images?: boolean;
+    };
+    image_to_image?: {
+      supports_seed?: boolean;
+      supports_steps?: boolean;
+      supports_cfg_scale?: boolean;
+      supports_negative_prompt?: boolean;
+      supports_strength?: boolean;
+      supports_image_reference?: boolean;
+      supports_image_fidelity?: boolean;
+      supports_human_fidelity?: boolean;
+      supports_extra_images?: boolean;
+    };
+    notes?: string[];
+  };
 };
 
 type ModelMetadata = {
@@ -95,8 +134,7 @@ export const extractImageUi = (model?: AIModel): ImageUiOptions => {
   const aspectRatioOptions =
     (ui.aspect_ratio_options as string[] | undefined)?.filter(Boolean) ?? [];
   const supportsAspectRatio = Boolean(ui.supports_aspect_ratio);
-  const defaultSize =
-    (ui.default_size as string | undefined) || sizeOptions[0];
+  const defaultSize = (ui.default_size as string | undefined) || sizeOptions[0];
   const defaultAspectRatio =
     (ui.default_aspect_ratio as string | undefined) ||
     (supportsAspectRatio && aspectRatioOptions.length > 0
@@ -109,5 +147,57 @@ export const extractImageUi = (model?: AIModel): ImageUiOptions => {
     supportsAspectRatio,
     defaultSize,
     defaultAspectRatio,
+  };
+};
+
+const safeStringList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+export const extractImageGenUi = (
+  model: AIModel | undefined,
+  mode: ImageGenMode,
+): ImageGenUiOptions => {
+  const ui = ((model?.metadata as ModelMetadata | undefined)?.ui ||
+    {}) as ModelUiMetadata;
+  const imageGen = ui.image_gen || {};
+  const version = Number(imageGen.version ?? 1) || 1;
+  const notes = safeStringList(imageGen.notes);
+
+  const t2i = imageGen.text_to_image || {};
+  const i2i = imageGen.image_to_image || {};
+
+  if (mode === "text_to_image") {
+    return {
+      version,
+      supportsSeed: Boolean(t2i.supports_seed),
+      supportsSteps: Boolean(t2i.supports_steps),
+      supportsCfgScale: Boolean(t2i.supports_cfg_scale),
+      supportsNegativePrompt: Boolean(t2i.supports_negative_prompt),
+      supportsStrength: false,
+      supportsImageReference: false,
+      supportsImageFidelity: false,
+      supportsHumanFidelity: false,
+      supportsExtraImages: Boolean(t2i.supports_reference_images),
+      notes,
+    };
+  }
+
+  return {
+    version,
+    supportsSeed: Boolean(i2i.supports_seed),
+    supportsSteps: Boolean(i2i.supports_steps),
+    supportsCfgScale: Boolean(i2i.supports_cfg_scale),
+    supportsNegativePrompt: Boolean(i2i.supports_negative_prompt),
+    supportsStrength: Boolean(i2i.supports_strength),
+    supportsImageReference: Boolean(i2i.supports_image_reference),
+    supportsImageFidelity: Boolean(i2i.supports_image_fidelity),
+    supportsHumanFidelity: Boolean(i2i.supports_human_fidelity),
+    supportsExtraImages: Boolean(i2i.supports_extra_images),
+    notes,
   };
 };
