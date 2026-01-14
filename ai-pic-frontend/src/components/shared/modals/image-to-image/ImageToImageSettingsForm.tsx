@@ -4,9 +4,11 @@ import { useMemo } from "react";
 import { GenerationProfileSelect } from "@/components/shared/GenerationProfileSelect";
 import { ModelUiFields } from "@/components/shared/ModelUiFields";
 import { MultiModelSelector } from "@/components/shared/MultiModelSelector";
-import { StyleSpecAdvancedPanel, type StyleSpecField } from "@/components/shared/StyleSpecAdvancedPanel";
+import type { StyleSpecField } from "@/components/shared/StyleSpecAdvancedPanel";
 import type { AIModel, ApiResponse, AvailableModelsResponse, StylePreset, StyleSpec } from "@/utils/api";
 import { supportsReferenceImage } from "@/utils/modelSupport";
+
+import { ImageToImageStyleFields } from "./ImageToImageStyleFields";
 
 interface ImageToImageSettingsFormProps {
   prompt: string;
@@ -188,38 +190,16 @@ export function ImageToImageSettingsForm({
           </div>
         </div>
 
-        {showStylePreset ? (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              风格预设
-            </label>
-            <select
-              value={stylePresetId}
-              onChange={(e) => onStylePresetIdChange(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">（不使用预设）</option>
-              {stylePresets.map((preset) => (
-                <option key={preset.preset_id} value={preset.preset_id}>
-                  {preset.label || preset.preset_id}
-                </option>
-              ))}
-            </select>
-            {selectedStylePreset?.description ? (
-              <p className="mt-1 text-[11px] text-gray-500">
-                {selectedStylePreset.description}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
-        {styleSpecFields && styleSpecFields.length > 0 ? (
-          <StyleSpecAdvancedPanel
-            fields={styleSpecFields}
-            value={styleSpec}
-            onChange={onStyleSpecChange}
-          />
-        ) : null}
+        <ImageToImageStyleFields
+          showStylePreset={showStylePreset}
+          stylePresets={stylePresets}
+          stylePresetId={stylePresetId}
+          onStylePresetIdChange={onStylePresetIdChange}
+          selectedStylePreset={selectedStylePreset}
+          styleSpecFields={styleSpecFields}
+          styleSpec={styleSpec}
+          onStyleSpecChange={onStyleSpecChange}
+        />
 
         <ModelUiFields
           mode="image"

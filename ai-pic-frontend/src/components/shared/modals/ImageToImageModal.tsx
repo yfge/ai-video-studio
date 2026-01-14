@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { useStylePresets } from "@/hooks/useStylePresets";
 import { extractImageUi } from "@/utils/modelUi";
-import { AIModelType, type AIModel, type StyleSpec } from "@/utils/api";
+import { AIModelType } from "@/utils/api";
 
 import { ImageToImageReferencePicker } from "./image-to-image/ImageToImageReferencePicker";
 import { ImageToImagePreviewOverlay } from "./image-to-image/ImageToImagePreviewOverlay";
 import { ImageToImageSettingsForm } from "./image-to-image/ImageToImageSettingsForm";
 import { buildLabeledReferences } from "./image-to-image/referenceUtils";
 import type { ImageToImageModalProps } from "./image-to-image/types";
+import { useImageToImageModalState } from "./image-to-image/useImageToImageModalState";
 
 export function ImageToImageModal({
   open,
@@ -41,25 +42,44 @@ export function ImageToImageModal({
   onClose,
   onSubmit,
 }: ImageToImageModalProps) {
-  const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
-  const [loadedDefaultModel, setLoadedDefaultModel] = useState<string>("");
-  const [selectedRefs, setSelectedRefs] = useState<string[]>(defaultSelected);
-  const [prompt, setPrompt] = useState(defaultPrompt);
-  const [modelIds, setModelIds] = useState<string[]>(
-    defaultModel ? [defaultModel] : [],
-  );
-  const [generationProfile, setGenerationProfile] = useState<string>(
+  const {
+    selectedModel,
+    handleModelsLoaded,
+    selectedRefs,
+    setSelectedRefs,
+    prompt,
+    setPrompt,
+    modelIds,
+    setModelIds,
+    generationProfile,
+    setGenerationProfile,
+    count,
+    setCount,
+    size,
+    setSize,
+    aspectRatio,
+    setAspectRatio,
+    style,
+    setStyle,
+    stylePresetId,
+    setStylePresetId,
+    styleSpec,
+    setStyleSpec,
+    previewImage,
+    setPreviewImage,
+  } = useImageToImageModalState({
+    open,
+    defaultSelected,
+    defaultPrompt,
+    defaultModel,
     defaultGenerationProfileId,
-  );
-  const [count, setCount] = useState(defaultCount);
-  const [size, setSize] = useState(defaultSize);
-  const [aspectRatio, setAspectRatio] = useState<string | undefined>(
-    defaultAspectRatio || undefined,
-  );
-  const [style, setStyle] = useState(defaultStyle);
-  const [stylePresetId, setStylePresetId] = useState(defaultStylePresetId);
-  const [styleSpec, setStyleSpec] = useState<StyleSpec>(defaultStyleSpec ?? {});
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+    defaultCount,
+    defaultSize,
+    defaultAspectRatio,
+    defaultStyle,
+    defaultStylePresetId,
+    defaultStyleSpec,
+  });
 
   const { presets: stylePresets } = useStylePresets({
     enabled: showStylePreset,
@@ -68,43 +88,6 @@ export function ImageToImageModal({
     if (!stylePresetId) return undefined;
     return stylePresets.find((p) => p.preset_id === stylePresetId);
   }, [stylePresets, stylePresetId]);
-
-  useEffect(() => {
-    if (!open) return;
-    setSelectedRefs(defaultSelected);
-    setPrompt(defaultPrompt);
-    setModelIds(defaultModel ? [defaultModel] : []);
-    setGenerationProfile(defaultGenerationProfileId);
-    setCount(defaultCount);
-    setSize(defaultSize);
-    setAspectRatio(defaultAspectRatio || undefined);
-    setStyle(defaultStyle);
-    setStylePresetId(defaultStylePresetId);
-    setStyleSpec(defaultStyleSpec ?? {});
-  }, [
-    open,
-    defaultSelected,
-    defaultPrompt,
-    defaultModel,
-    defaultGenerationProfileId,
-    defaultCount,
-    defaultSize,
-    defaultStyle,
-    defaultStylePresetId,
-    defaultStyleSpec,
-    defaultAspectRatio,
-  ]);
-
-  useEffect(() => {
-    if (modelIds.length === 0 && loadedDefaultModel) {
-      setModelIds([loadedDefaultModel]);
-    }
-  }, [loadedDefaultModel, modelIds.length]);
-
-  const selectedModel = useMemo(() => {
-    if (!modelIds[0]) return undefined;
-    return availableModels.find((m) => m.model_id === modelIds[0]);
-  }, [availableModels, modelIds]);
 
   const imageUi = useMemo(() => extractImageUi(selectedModel), [selectedModel]);
   const supportsAspectRatio = imageUi.supportsAspectRatio;
@@ -173,15 +156,7 @@ export function ImageToImageModal({
           modelType={modelType}
           modelFetcher={modelFetcher}
           modelCacheKey={modelCacheKey}
-          onModelsLoaded={(loaded, defaultModelId) => {
-            setAvailableModels(loaded);
-            setLoadedDefaultModel(defaultModelId);
-            if (modelIds.length === 0 && defaultModelId) {
-              setModelIds([defaultModelId]);
-            } else if (modelIds.length === 0 && loaded.length > 0) {
-              setModelIds([loaded[0].model_id]);
-            }
-          }}
+          onModelsLoaded={handleModelsLoaded}
           selectedModel={selectedModel}
           generationProfile={generationProfile}
           onGenerationProfileChange={setGenerationProfile}
