@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { CreationOverlay } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
-import {
-  storyStructureAPI,
-  type Environment,
-  type EnvironmentCreate,
-} from "@/utils/api";
+import { storyStructureAPI } from "@/utils/api/endpoints";
+import type { Environment, EnvironmentCreate } from "@/utils/api/types";
+
+import { EnvironmentCreateIcon } from "./EnvironmentCreateIcon";
 import { EnvironmentGenerationFields } from "./EnvironmentGenerationFields";
 import {
   EMPTY_ENV_FORM,
@@ -88,6 +87,10 @@ export function EnvironmentCreateOverlay({
             count: generation.count,
             size: generation.size || undefined,
             aspect_ratio: generation.aspect_ratio || undefined,
+            seed: generation.seed,
+            steps: generation.steps,
+            cfg_scale: generation.cfg_scale,
+            negative_prompt: generation.negative_prompt || undefined,
             style: generation.style || undefined,
           },
         );
@@ -124,21 +127,7 @@ export function EnvironmentCreateOverlay({
       title="创建环境资产"
       subtitle="补充基础信息，可选生成参考图"
       onClose={onClose}
-      icon={
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 7h18M3 12h18M3 17h18"
-          />
-        </svg>
-      }
+      icon={<EnvironmentCreateIcon />}
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

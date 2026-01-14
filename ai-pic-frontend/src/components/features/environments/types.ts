@@ -18,6 +18,10 @@ export type GenerationFormState = {
   count: number;
   size: string;
   aspect_ratio: string;
+  seed?: number;
+  steps?: number;
+  cfg_scale?: number;
+  negative_prompt?: string;
   style: string;
 };
 

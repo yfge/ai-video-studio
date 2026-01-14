@@ -207,6 +207,10 @@ export interface AIImageGenerationRequest {
   count?: number;
   size?: string;
   aspect_ratio?: string;
+  seed?: number;
+  steps?: number;
+  cfg_scale?: number;
+  negative_prompt?: string;
 }
 
 export interface ImageToImageRequestPayload {
@@ -2576,6 +2580,10 @@ export const virtualIPImageAPI = {
           count: request.count ?? 1,
           size: request.size,
           aspect_ratio: request.aspect_ratio,
+          seed: request.seed,
+          steps: request.steps,
+          cfg_scale: request.cfg_scale,
+          negative_prompt: request.negative_prompt,
         }),
       },
     );
@@ -2602,6 +2610,10 @@ export const virtualIPImageAPI = {
           count: request.count ?? 1,
           size: request.size,
           aspect_ratio: request.aspect_ratio,
+          seed: request.seed,
+          steps: request.steps,
+          cfg_scale: request.cfg_scale,
+          negative_prompt: request.negative_prompt,
         }),
       },
     );

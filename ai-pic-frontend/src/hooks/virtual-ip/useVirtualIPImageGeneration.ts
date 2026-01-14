@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { aiAPI, AIModelType, virtualIPImageAPI } from "@/utils/api";
+import { aiAPI, AIModelType } from "@/utils/api";
+import { virtualIPImageAPI } from "@/utils/api/endpoints";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 import { useStylePresets } from "@/hooks/useStylePresets";
 import { extractImageUi } from "@/utils/modelUi";

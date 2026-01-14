@@ -3,6 +3,7 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   GenerationProfileSelect,
+  ImageGenAdvancedFields,
   ModelUiFields,
   MultiModelSelector,
 } from "@/components/shared";
@@ -145,6 +146,27 @@ export function EnvironmentGenerationFields({
                   updateField("aspect_ratio", next.aspect_ratio || "");
                 }
               }}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <ImageGenAdvancedFields
+              mode="text_to_image"
+              model={selectedModel}
+              value={{
+                seed: generation.seed,
+                steps: generation.steps,
+                cfg_scale: generation.cfg_scale,
+                negative_prompt: generation.negative_prompt,
+              }}
+              onChange={(next) =>
+                setGeneration((prev) => ({
+                  ...prev,
+                  seed: next.seed,
+                  steps: next.steps,
+                  cfg_scale: next.cfg_scale,
+                  negative_prompt: next.negative_prompt,
+                }))
+              }
             />
           </div>
         </div>

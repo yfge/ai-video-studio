@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { useAlertModal } from "@/components/shared/modals";
-import { storyStructureAPI } from "@/utils/api";
+import { storyStructureAPI } from "@/utils/api/endpoints";
 
 import { EnvironmentGenerationFields } from "./EnvironmentGenerationFields";
 import { EMPTY_GENERATION, type GenerationFormState } from "./types";
@@ -70,6 +70,10 @@ export function EnvironmentSidePanel({
           count: generation.count,
           size: generation.size || undefined,
           aspect_ratio: generation.aspect_ratio || undefined,
+          seed: generation.seed,
+          steps: generation.steps,
+          cfg_scale: generation.cfg_scale,
+          negative_prompt: generation.negative_prompt || undefined,
           style: generation.style || undefined,
         },
       );

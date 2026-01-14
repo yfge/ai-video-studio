@@ -4,6 +4,7 @@ import type { AIModel } from "@/utils/api";
 import { AIModelType, aiAPI } from "@/utils/api";
 import {
   GenerationProfileSelect,
+  ImageGenAdvancedFields,
   ModelUiFields,
   MultiModelSelector,
 } from "@/components/shared";
@@ -143,6 +144,29 @@ export function ImageGenerationForm({
           generateForm={generateForm}
           setGenerateForm={setGenerateForm}
         />
+
+        <div className="md:col-span-3">
+          <ImageGenAdvancedFields
+            mode="text_to_image"
+            model={selectedModel}
+            value={{
+              seed: generateForm.seed,
+              steps: generateForm.steps,
+              cfg_scale: generateForm.cfg_scale,
+              negative_prompt: generateForm.negative_prompt,
+            }}
+            onChange={(next) =>
+              setGenerateForm((prev) => ({
+                ...prev,
+                seed: next.seed,
+                steps: next.steps,
+                cfg_scale: next.cfg_scale,
+                negative_prompt: next.negative_prompt,
+              }))
+            }
+            disabled={generating}
+          />
+        </div>
       </div>
       <div className="mt-4 flex gap-2 flex-wrap">
         <button

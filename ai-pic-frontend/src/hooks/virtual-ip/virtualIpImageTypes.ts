@@ -1,4 +1,4 @@
-import type { AIImageGenerationRequest } from "@/utils/api";
+import type { AIImageGenerationRequest } from "@/utils/api/types";
 
 export interface ImageGenerationFormState extends AIImageGenerationRequest {
   size?: string;
