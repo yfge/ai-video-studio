@@ -55,6 +55,31 @@ def test_model_ui_image_gen_keling_img2img_does_not_support_negative_prompt():
     assert image_gen["image_to_image"]["supports_negative_prompt"] is False
     assert image_gen["image_to_image"]["supports_image_fidelity"] is True
     assert image_gen["image_to_image"]["supports_human_fidelity"] is True
+    assert any(
+        "可灵图生图不支持 negative_prompt" in note
+        for note in image_gen["image_to_image"].get("notes", [])
+    )
+
+
+def test_model_ui_image_gen_notes_are_mode_specific():
+    image_gen = _extract_image_gen(
+        {
+            "id": "kling-v1",
+            "type": "text_to_image",
+            "provider": "keling",
+            "capabilities": ["text_to_image", "image_to_image"],
+        }
+    )
+
+    assert image_gen["text_to_image"]["supports_negative_prompt"] is True
+    assert not any(
+        "可灵图生图不支持 negative_prompt" in note
+        for note in image_gen["text_to_image"].get("notes", [])
+    )
+    assert any(
+        "可灵图生图不支持 negative_prompt" in note
+        for note in image_gen["image_to_image"].get("notes", [])
+    )
 
 
 def test_model_ui_image_gen_volcengine_cfg_scale_model_specific():

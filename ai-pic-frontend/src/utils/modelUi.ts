@@ -66,6 +66,7 @@ type ModelUiMetadata = {
       supports_cfg_scale?: boolean;
       supports_negative_prompt?: boolean;
       supports_reference_images?: boolean;
+      notes?: string[];
     };
     image_to_image?: {
       supports_seed?: boolean;
@@ -77,6 +78,7 @@ type ModelUiMetadata = {
       supports_image_fidelity?: boolean;
       supports_human_fidelity?: boolean;
       supports_extra_images?: boolean;
+      notes?: string[];
     };
     notes?: string[];
   };
@@ -166,10 +168,18 @@ export const extractImageGenUi = (
     {}) as ModelUiMetadata;
   const imageGen = ui.image_gen || {};
   const version = Number(imageGen.version ?? 1) || 1;
-  const notes = safeStringList(imageGen.notes);
-
   const t2i = imageGen.text_to_image || {};
   const i2i = imageGen.image_to_image || {};
+  const legacyNotes = safeStringList(imageGen.notes);
+  const t2iNotes = safeStringList(t2i.notes);
+  const i2iNotes = safeStringList(i2i.notes);
+  const hasModeNotes =
+    mode === "text_to_image" ? t2i.notes !== undefined : i2i.notes !== undefined;
+  const notes = hasModeNotes
+    ? mode === "text_to_image"
+      ? t2iNotes
+      : i2iNotes
+    : legacyNotes;
 
   if (mode === "text_to_image") {
     return {

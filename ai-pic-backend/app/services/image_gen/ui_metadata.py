@@ -65,28 +65,42 @@ def build_image_gen_ui_metadata(
         ),
     }
 
-    notes: list[str] = []
-    if not text_to_image["supports_negative_prompt"] and provider_key in {
-        "openai",
-        "google",
-        "volcengine",
-    }:
-        notes.append(
-            "该提供商不支持 negative_prompt：常用约束需写入 prompt（模板已内置 Constraints）"
-        )
+    def _append_note(target: list[str], note: str) -> None:
+        if note and note not in target:
+            target.append(note)
+
+    text_notes: list[str] = []
+    image_notes: list[str] = []
+
+    negative_prompt_note = (
+        "该提供商不支持 negative_prompt：常用约束需写入 prompt（模板已内置 Constraints）"
+    )
+    if provider_key in {"openai", "google", "volcengine"}:
+        if not text_to_image["supports_negative_prompt"]:
+            _append_note(text_notes, negative_prompt_note)
+        if supports_reference_image and not image_to_image["supports_negative_prompt"]:
+            _append_note(image_notes, negative_prompt_note)
+
     if provider_key == "keling" and supports_reference_image:
-        notes.append("可灵图生图不支持 negative_prompt：请将约束写入 prompt")
-    if provider_key == "volcengine" and (
-        text_to_image["supports_cfg_scale"] or image_to_image["supports_cfg_scale"]
-    ):
-        notes.append("火山引擎 cfg_scale 会映射到 guidance_scale（有效范围约 1-10）")
+        _append_note(image_notes, "可灵图生图不支持 negative_prompt：请将约束写入 prompt")
+
+    volc_cfg_note = "火山引擎 cfg_scale 会映射到 guidance_scale（有效范围约 1-10）"
+    if provider_key == "volcengine":
+        if text_to_image["supports_cfg_scale"]:
+            _append_note(text_notes, volc_cfg_note)
+        if supports_reference_image and image_to_image["supports_cfg_scale"]:
+            _append_note(image_notes, volc_cfg_note)
 
     payload: dict[str, Any] = {
         "version": 1,
-        "text_to_image": text_to_image,
-        "image_to_image": image_to_image,
+        "text_to_image": {**text_to_image, "notes": text_notes},
+        "image_to_image": {**image_to_image, "notes": image_notes},
     }
-    if notes:
-        payload["notes"] = notes
+
+    legacy_notes: list[str] = []
+    for note in [*text_notes, *image_notes]:
+        _append_note(legacy_notes, note)
+    if legacy_notes:
+        payload["notes"] = legacy_notes
 
     return {"image_gen": payload}
