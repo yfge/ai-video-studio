@@ -139,7 +139,7 @@ class ModelUiMixin:
         elif provider == "google":
             supports_aspect_ratio = True
 
-        return {
+        ui: Dict[str, Any] = {
             "size_options": size_options,
             "aspect_ratio_options": aspect_options,
             "supports_aspect_ratio": supports_aspect_ratio,
@@ -147,3 +147,18 @@ class ModelUiMixin:
             or "image_to_image" in provider
             or provider == "keling",
         }
+
+        try:
+            from app.services.image_gen.ui_metadata import build_image_gen_ui_metadata
+
+            ui.update(
+                build_image_gen_ui_metadata(
+                    provider=provider,
+                    model_id=model_id,
+                    caps=caps,
+                )
+            )
+        except Exception:
+            pass
+
+        return ui
