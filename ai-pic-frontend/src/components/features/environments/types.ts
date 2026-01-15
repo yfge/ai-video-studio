@@ -18,6 +18,7 @@ export type GenerationFormState = {
   count: number;
   size: string;
   aspect_ratio: string;
+  reference_images: string[];
   seed?: number;
   steps?: number;
   cfg_scale?: number;
@@ -41,5 +42,6 @@ export const EMPTY_GENERATION: GenerationFormState = {
   count: 1,
   size: "",
   aspect_ratio: "",
+  reference_images: [],
   style: "realistic",
 };

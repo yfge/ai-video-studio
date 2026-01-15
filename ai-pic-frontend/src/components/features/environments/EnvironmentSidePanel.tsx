@@ -75,6 +75,10 @@ export function EnvironmentSidePanel({
           cfg_scale: generation.cfg_scale,
           negative_prompt: generation.negative_prompt || undefined,
           style: generation.style || undefined,
+          reference_images:
+            generation.reference_images.length > 0
+              ? generation.reference_images
+              : undefined,
         },
       );
       if (res.success) {
@@ -129,6 +133,7 @@ export function EnvironmentSidePanel({
           </p>
         </div>
         <EnvironmentGenerationFields
+          envKey={envKey}
           generation={generation}
           setGeneration={setGeneration}
           showToggle={false}

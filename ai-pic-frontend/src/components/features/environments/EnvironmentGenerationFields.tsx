@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   GenerationProfileSelect,
   ImageGenAdvancedFields,
@@ -8,9 +8,12 @@ import {
   MultiModelSelector,
 } from "@/components/shared";
 import { AIModelType, type AIModel } from "@/utils/api";
+import { extractImageGenUi } from "@/utils/modelUi";
 import type { GenerationFormState } from "./types";
+import { EnvironmentReferenceImagesField } from "./EnvironmentReferenceImagesField";
 
 interface EnvironmentGenerationFieldsProps {
+  envKey: string;
   generation: GenerationFormState;
   setGeneration: Dispatch<SetStateAction<GenerationFormState>>;
   showToggle?: boolean;
@@ -19,6 +22,7 @@ interface EnvironmentGenerationFieldsProps {
 }
 
 export function EnvironmentGenerationFields({
+  envKey,
   generation,
   setGeneration,
   showToggle = true,
@@ -30,6 +34,11 @@ export function EnvironmentGenerationFields({
     () => availableModels.find((model) => model.model_id === generation.model),
     [availableModels, generation.model],
   );
+  const imageGenUi = useMemo(
+    () => extractImageGenUi(selectedModel, "text_to_image"),
+    [selectedModel],
+  );
+  const supportsReferenceImages = Boolean(envKey) && imageGenUi.supportsExtraImages;
   const showFields = showToggle ? generation.enabled : true;
 
   const updateField = <K extends keyof GenerationFormState>(
@@ -38,6 +47,12 @@ export function EnvironmentGenerationFields({
   ) => {
     setGeneration((prev) => ({ ...prev, [key]: value }));
   };
+
+  useEffect(() => {
+    if (supportsReferenceImages) return;
+    if (generation.reference_images.length === 0) return;
+    setGeneration((prev) => ({ ...prev, reference_images: [] }));
+  }, [generation.reference_images.length, setGeneration, supportsReferenceImages]);
 
   return (
     <div className={`${withDivider ? "border-t pt-4" : ""} space-y-4`}>
@@ -67,6 +82,13 @@ export function EnvironmentGenerationFields({
               placeholder="不填则使用环境名称/描述生成"
             />
           </div>
+          {supportsReferenceImages ? (
+            <EnvironmentReferenceImagesField
+              envKey={envKey}
+              value={generation.reference_images}
+              onChange={(next) => updateField("reference_images", next)}
+            />
+          ) : null}
           <div>
             <MultiModelSelector
               label="AI 模型"

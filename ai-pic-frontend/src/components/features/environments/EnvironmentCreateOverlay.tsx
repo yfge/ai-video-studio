@@ -212,6 +212,7 @@ export function EnvironmentCreateOverlay({
         </div>
 
         <EnvironmentGenerationFields
+          envKey=""
           generation={generation}
           setGeneration={setGeneration}
         />

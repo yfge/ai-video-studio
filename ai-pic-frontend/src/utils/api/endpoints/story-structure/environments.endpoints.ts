@@ -99,6 +99,7 @@ export async function generateEnvironmentImages(
     count?: number;
     size?: string;
     aspect_ratio?: string;
+    reference_images?: string[];
     seed?: number;
     steps?: number;
     cfg_scale?: number;
@@ -164,6 +165,7 @@ export async function generateEnvironmentImagesAsync(
     count?: number;
     size?: string;
     aspect_ratio?: string;
+    reference_images?: string[];
     seed?: number;
     steps?: number;
     cfg_scale?: number;
