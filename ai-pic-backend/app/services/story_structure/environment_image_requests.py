@@ -29,6 +29,7 @@ class EnvironmentTextToImageRequest:
     steps: int | None
     cfg_scale: float | None
     negative_prompt: str | None
+    reference_images: list[str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +85,7 @@ def resolve_environment_text_to_image_request(
     negative_prompt_value = clean_str(
         value_from_payload(payload, "negative_prompt", negative_prompt)
     )
+    reference_images = coerce_str_list(payload.get("reference_images") or [])
 
     style_hint = clean_str(payload.get("style")) or "realistic"
     style_preset_id_value = clean_str(payload.get("style_preset_id"))
@@ -103,6 +105,7 @@ def resolve_environment_text_to_image_request(
         steps=steps_int,
         cfg_scale=cfg_scale_value,
         negative_prompt=negative_prompt_value,
+        reference_images=reference_images,
     )
 
 
@@ -210,6 +213,7 @@ def build_environment_text_to_image_task_payload(
         "steps": request.steps,
         "cfg_scale": request.cfg_scale,
         "negative_prompt": request.negative_prompt,
+        "reference_images": request.reference_images or None,
         "prompt_template": build_prompt_template_audit(
             PromptTemplate.ENVIRONMENT_IMAGE.value
         ),

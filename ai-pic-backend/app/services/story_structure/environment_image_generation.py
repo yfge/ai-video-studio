@@ -63,6 +63,8 @@ async def generate_environment_images(
             steps=request.steps,
             cfg_scale=request.cfg_scale,
             negative_prompt=request.negative_prompt,
+            reference_images=request.reference_images,
+            backend_base=_get_backend_base(),
         ),
         strict=False,
     )
