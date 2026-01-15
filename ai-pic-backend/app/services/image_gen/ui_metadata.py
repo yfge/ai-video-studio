@@ -45,9 +45,7 @@ def build_image_gen_ui_metadata(
         "supports_cfg_scale": _bool(supports_cfg_scale_t2i),
         "supports_negative_prompt": _bool("negative_prompt" in text_keys),
         "supports_reference_images": _bool(
-            "reference_images" in text_keys
-            or "extra_images" in text_keys
-            or supports_reference_image
+            "reference_images" in text_keys or "extra_images" in text_keys
         ),
     }
 
