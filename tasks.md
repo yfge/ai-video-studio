@@ -207,8 +207,10 @@
 - [x] 后端：文生图 `reference_images` → provider-safe 参数透传（Google/Volcengine 等支持者）
 - [x] 后端：UI 元数据按能力生成提示（negative_prompt 等）并修正 `supports_reference_images` 判定（避免 OpenAI/DALL·E 误展示）
 - [x] 后端：环境文生图支持 `reference_images`（含 task payload 透传与 URL 归一化）
+- [x] 后端：虚拟 IP 文生图支持 `reference_images`（含 task payload 透传与 URL 归一化）
 - [x] 前端：环境文生图表单按所选模型动态加载 `reference_images` 选择器并随任务提交
-- [ ] 前端：将 `reference_images` 动态输入扩展到虚拟 IP 文生图/分镜文生图等入口（按 model 能力隐藏/显示）
+- [x] 前端：虚拟 IP 文生图表单按所选模型动态加载 `reference_images` 选择器并随任务提交
+- [ ] 前端：将 `reference_images` 动态输入扩展到分镜文生图等入口（按 model 能力隐藏/显示）
 - [ ] 验证：补齐 provider×domain 参数兼容矩阵与端到端用例（Chrome 记录关键请求与结果）
 
 ## Feature: 任务队列与 Agent 执行落库（高优）
