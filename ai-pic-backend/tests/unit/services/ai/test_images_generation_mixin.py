@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from app.core.config import settings
 from app.prompts.manager import prompt_manager
 from app.services.ai.images_generation import ImageGenerationMixin
 
@@ -111,3 +112,34 @@ async def test_virtual_ip_text_to_image_ai_manager_uses_base_prompt(monkeypatch)
     assert result["model_used"] == "doubao-seedream-4-5-251128"
     assert result["provider_used"] == "volcengine"
     assert "STYLE_SPEC =>" in result["prompt"]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_virtual_ip_text_to_image_ai_manager_passes_reference_images(monkeypatch):
+    manager = _DummyManager(
+        _DummyResponse(
+            success=True,
+            data={"images": ["https://example.com/out.png"]},
+            provider="google",
+            model="gemini-2.0-flash-image-exp",
+        )
+    )
+    service = _DummyService(ai_manager=manager)
+    monkeypatch.setattr(prompt_manager, "render_prompt", lambda *_args, **_kwargs: "P0")
+
+    result = await service.generate_virtual_ip_image(
+        ip_name="TestIP",
+        description="desc",
+        model="google:gemini-2.0-flash-image-exp",
+        reference_images=["/uploads/ref.png"],
+    )
+
+    assert manager.last_kwargs is not None
+    backend_base = (
+        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+    ).rstrip("/")
+    assert manager.last_kwargs["reference_images"] == [f"{backend_base}/uploads/ref.png"]
+
+    assert result is not None
+    assert result["provider_used"] == "google"

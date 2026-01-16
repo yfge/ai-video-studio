@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
 from app.prompts.manager import prompt_manager
 from app.prompts.template_audit import build_prompt_template_audit, sha256_text
 from app.prompts.templates import PromptTemplate
@@ -14,6 +15,12 @@ from app.services.image_gen import (
 )
 from app.services.storage.oss_service import oss_service
 from app.utils.model_utils import parse_model_and_provider
+
+
+def _get_backend_base() -> str:
+    return (
+        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+    ).rstrip("/")
 
 
 class ImageGenerationMixin:
@@ -37,6 +44,7 @@ class ImageGenerationMixin:
         steps: int | None = None,
         cfg_scale: float | None = None,
         negative_prompt: str | None = None,
+        reference_images: list[str] | None = None,
     ) -> Optional[Dict[str, Any]]:
         """为虚拟IP生成图像"""
 
@@ -134,6 +142,8 @@ class ImageGenerationMixin:
                     steps=steps,
                     cfg_scale=cfg_scale,
                     negative_prompt=negative_prompt,
+                    reference_images=reference_images or [],
+                    backend_base=_get_backend_base(),
                 ),
                 strict=False,
             )

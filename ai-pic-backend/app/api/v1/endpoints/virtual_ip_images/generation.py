@@ -12,16 +12,18 @@ from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.virtual_ip import VirtualIPImageResponse
+from app.services.ai_service import ai_service
+from app.services.image_gen.coerce import coerce_str_list
 from app.services.task_worker import virtual_ip_image_generate_task
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from .generation_helpers import (
+    build_virtual_ip_appearance_description,
     build_virtual_ip_image_payload,
     persist_virtual_ip_image,
     read_request_payload,
     resolve_virtual_ip_image_params,
-    run_virtual_ip_image_generation,
 )
 from .helpers import get_owned_virtual_ip
 
@@ -52,6 +54,7 @@ async def generate_virtual_ip_image(
     """Generate virtual IP image using AI (sync path, kept for compatibility)."""
     virtual_ip = get_owned_virtual_ip(db, current_user, virtual_ip_id)
     payload = await read_request_payload(request)
+    reference_images = coerce_str_list(payload.get("reference_images") or [])
     params = resolve_virtual_ip_image_params(
         payload,
         style=style,
@@ -70,7 +73,29 @@ async def generate_virtual_ip_image(
         generation_profile=generation_profile,
     )
 
-    result = await run_virtual_ip_image_generation(virtual_ip_id, virtual_ip, params)
+    aggregated_description = build_virtual_ip_appearance_description(virtual_ip)
+    result = await ai_service.generate_virtual_ip_image(
+        ip_name=virtual_ip.name,
+        description=aggregated_description,
+        style=params["style"],
+        style_preset_id=params.get("style_preset_id"),
+        style_spec=params.get("style_spec"),
+        category=params["category"],
+        model=params["model"],
+        additional_prompts=params.get("additional_prompts") or [],
+        background_story=None,
+        count=params["count"],
+        size=params.get("size"),
+        aspect_ratio=params.get("aspect_ratio"),
+        generation_profile=params.get("generation_profile"),
+        seed=params.get("seed"),
+        steps=params.get("steps"),
+        cfg_scale=params.get("cfg_scale"),
+        negative_prompt=params.get("negative_prompt"),
+        reference_images=reference_images or None,
+    )
+    if not result:
+        raise HTTPException(status_code=500, detail="AI图像生成失败")
     db_image = persist_virtual_ip_image(db, virtual_ip, result, params)
     return VirtualIPImageResponse.from_orm(db_image)
 
@@ -99,6 +124,7 @@ async def generate_virtual_ip_image_async(
     """Generate virtual IP image asynchronously via Celery."""
     virtual_ip = get_owned_virtual_ip(db, current_user, virtual_ip_id)
     payload_body = await read_request_payload(request)
+    reference_images = coerce_str_list(payload_body.get("reference_images") or [])
     params = resolve_virtual_ip_image_params(
         payload_body,
         style=style,
@@ -117,6 +143,7 @@ async def generate_virtual_ip_image_async(
         generation_profile=generation_profile,
     )
     payload = build_virtual_ip_image_payload(virtual_ip, params)
+    payload["reference_images"] = reference_images or None
 
     # Create task
     task = Task(

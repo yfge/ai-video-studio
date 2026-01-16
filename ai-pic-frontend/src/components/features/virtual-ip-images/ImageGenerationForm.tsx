@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
+
 import type { AIModel } from "@/utils/api";
 import { AIModelType, aiAPI } from "@/utils/api";
 import {
@@ -8,10 +10,12 @@ import {
   ModelUiFields,
   MultiModelSelector,
 } from "@/components/shared";
+import { extractImageGenUi } from "@/utils/modelUi";
 import type { ImageGenerationFormState } from "@/hooks/useVirtualIPImages";
 
 import { ImageGenerationOptionsFields } from "./ImageGenerationOptionsFields";
 import { ImageGenerationStyleFields } from "./ImageGenerationStyleFields";
+import { VirtualIPReferenceImagesField } from "./VirtualIPReferenceImagesField";
 
 interface StylePreset {
   preset_id: string;
@@ -47,6 +51,23 @@ export function ImageGenerationForm({
   onGenerate,
   onCancel,
 }: ImageGenerationFormProps) {
+  const imageGenUi = useMemo(
+    () => extractImageGenUi(selectedModel, "text_to_image"),
+    [selectedModel],
+  );
+  const supportsReferenceImages =
+    Boolean(virtualIPId) && imageGenUi.supportsExtraImages;
+
+  useEffect(() => {
+    if (supportsReferenceImages) return;
+    if ((generateForm.reference_images || []).length === 0) return;
+    setGenerateForm((prev) => ({ ...prev, reference_images: [] }));
+  }, [
+    generateForm.reference_images,
+    setGenerateForm,
+    supportsReferenceImages,
+  ]);
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
       <h3 className="text-lg font-semibold mb-4">AI 图片生成</h3>
@@ -114,6 +135,17 @@ export function ImageGenerationForm({
           stylePresets={stylePresets}
           selectedStylePreset={selectedStylePreset}
         />
+
+        {supportsReferenceImages ? (
+          <VirtualIPReferenceImagesField
+            virtualIPId={virtualIPId || 0}
+            value={generateForm.reference_images || []}
+            onChange={(next) =>
+              setGenerateForm((prev) => ({ ...prev, reference_images: next }))
+            }
+            disabled={generating}
+          />
+        ) : null}
 
         <div>
           <ModelUiFields

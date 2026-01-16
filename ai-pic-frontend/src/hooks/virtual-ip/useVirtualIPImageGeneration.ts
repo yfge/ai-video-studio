@@ -38,6 +38,7 @@ export function useVirtualIPImageGeneration({
     is_default: false,
     count: 1,
     aspect_ratio: undefined,
+    reference_images: [],
   });
 
   const fetchModels = useCallback(
@@ -162,6 +163,7 @@ export function useVirtualIPImageGeneration({
           aspect_ratio: imageUi.supportsAspectRatio
             ? imageUi.defaultAspectRatio || undefined
             : undefined,
+          reference_images: [],
         });
         showAlert({
           title: "图片生成任务已创建",

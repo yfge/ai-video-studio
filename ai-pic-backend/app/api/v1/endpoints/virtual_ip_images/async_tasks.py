@@ -63,6 +63,7 @@ def process_virtual_ip_image_task(
                 steps=payload.get("steps"),
                 cfg_scale=payload.get("cfg_scale"),
                 negative_prompt=payload.get("negative_prompt"),
+                reference_images=payload.get("reference_images") or None,
             )
             if not result:
                 raise RuntimeError("AI图像生成失败")
