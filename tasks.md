@@ -198,6 +198,19 @@
 - 后端在 `generate_image` / `image_to_image` 中按模型映射规范化参数并记录实际下发规格，前端补齐图生图弹窗的尺寸/比例限制
 - 增补模型×分辨率测试与 Ark 调试说明，校验文档覆盖背面照/全身照等变体
 
+## Feature: 图像生成提示词/参数规范化（provider-aware）
+
+:information_source: 背景：不同 provider 对文生图/图生图参数差异很大（negative_prompt、reference_images、多图条件等）。需要统一提示词模板语义、参数归一化与 UI 动态表单，避免“输入展示了但提交被丢弃/被忽略”。
+
+### 进度（功能→后端→前端→验证）
+
+- [x] 后端：文生图 `reference_images` → provider-safe 参数透传（Google/Volcengine 等支持者）
+- [x] 后端：UI 元数据按能力生成提示（negative_prompt 等）并修正 `supports_reference_images` 判定（避免 OpenAI/DALL·E 误展示）
+- [x] 后端：环境文生图支持 `reference_images`（含 task payload 透传与 URL 归一化）
+- [x] 前端：环境文生图表单按所选模型动态加载 `reference_images` 选择器并随任务提交
+- [ ] 前端：将 `reference_images` 动态输入扩展到虚拟 IP 文生图/分镜文生图等入口（按 model 能力隐藏/显示）
+- [ ] 验证：补齐 provider×domain 参数兼容矩阵与端到端用例（Chrome 记录关键请求与结果）
+
 ## Feature: 任务队列与 Agent 执行落库（高优）
 
 :information_source: 背景：已有 Task 表与 Story/Episode/Script 异步生成入口（`/generate-async`）、前端任务管理页 `/tasks`，但任务执行目前依赖 `BackgroundTasks`、散落在各 endpoint 中，LangGraph Agents（故事/剧集/剧本）也未统一落库运行轨迹，难以在任务层面排查与审计。
@@ -228,8 +241,10 @@
 
 - [x] 功能/需求：定义环境/场景资产与分镜/角色绑定（environments 表、角色锚点），现支持分镜页绑定环境与镜头绑定角色
 - [x] 后端：已落地 environments 表与 `scenes.environment_id` / `shots.character_ids` 迁移；环境文生图/图生图已上线用于手动生成参考图
+- [x] 后端：环境文生图支持 `reference_images`（支持的 provider 才会透传到调用层）
 - [ ] 后端：`generate_storyboard_images` 已聚合 `scene.environment_id` + `shot.character_ids` 并注入 `image_to_image`；仍需在分镜帧结构中持久化 `environment_id/character_ids` 并复用到视频生成路径
 - [x] 前端：提供环境资产管理页（上传/生成/变体/删除参考图），在 `/stories/[id]` 分镜/剧集界面支持环境选择与标签筛选
+- [x] 前端：环境文生图表单按模型动态展示参考图选择器并提交 `reference_images`
 - [ ] 验证：待补端到端用例，验证选择环境+角色后分镜帧能稳定生成对应图像；在 `TESTING_GUIDE.md` 记录并为环境表/关联补迁移回归用例
 
 ### 下一步
