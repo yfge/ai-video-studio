@@ -33,5 +33,5 @@ def test_storyboard_keyframe_template_forbids_collage():
     )
 
     assert "只生成单幅画面" in prompt
+    assert "剪辑备注" in prompt
     assert "首帧" in prompt
-

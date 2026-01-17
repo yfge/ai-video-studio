@@ -212,6 +212,8 @@
 - [x] 前端：虚拟 IP 文生图表单按所选模型动态加载 `reference_images` 选择器并随任务提交
 - [x] 后端：当 provider 不支持 `negative_prompt`/`reference_images` 时做降级处理（`negative_prompt` 合并进 prompt、`reference_images` 丢弃）并记录 `audit.dropped_fields`
 - [x] 后端：Storyboard refs 在 provider 支持 txt2img `reference_images` 且未显式设置 `strength` 时优先走 `TEXT_TO_IMAGE + reference_images`（否则保持 img2img base+extra_images）
+- [x] 后端：补齐 `STORYBOARD_KEYFRAME` 提示词对“转场/镜头切换”等词的语义约束（剪辑备注，不要在一张图里表现多个镜头）
+- [x] 后端：增强通用 `no collage` 约束（补充 `no split-screen/multi-panel/contact sheet`）
 - [x] 前端：分镜图生图弹窗展示「模型提示」（`image_gen` notes）并在不支持多参考图时自动裁剪为 1 张（其余选择替换/忽略）
 - [ ] 前端：将 `reference_images` 动态输入扩展到分镜文生图等入口（按 model 能力隐藏/显示）
 - [ ] 验证：补齐 provider×domain 参数兼容矩阵与端到端用例（Chrome 记录关键请求与结果；见 `docs/image-gen-provider-matrix.md`）
