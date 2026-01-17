@@ -1,11 +1,9 @@
 "use client";
-
 import { useMemo } from "react";
-
 import { useStylePresets } from "@/hooks/useStylePresets";
 import { extractImageUi } from "@/utils/modelUi";
 import { AIModelType } from "@/utils/api";
-
+import { GenerationAuditWarnings } from "../GenerationAuditWarnings";
 import { ImageGenAdvancedFields } from "../ImageGenAdvancedFields";
 import { ImageToImageReferencePicker } from "./image-to-image/ImageToImageReferencePicker";
 import { ImageToImagePreviewOverlay } from "./image-to-image/ImageToImagePreviewOverlay";
@@ -13,6 +11,7 @@ import { ImageToImageSettingsForm } from "./image-to-image/ImageToImageSettingsF
 import { buildLabeledReferences } from "./image-to-image/referenceUtils";
 import type { ImageToImageModalProps } from "./image-to-image/types";
 import { useImageToImageModalState } from "./image-to-image/useImageToImageModalState";
+import { useReferenceSelection } from "./image-to-image/useReferenceSelection";
 
 export function ImageToImageModal({
   open,
@@ -86,7 +85,6 @@ export function ImageToImageModal({
     defaultStyleSpec,
     defaultAdvancedValue,
   });
-
   const { presets: stylePresets } = useStylePresets({
     enabled: showStylePreset,
   });
@@ -94,21 +92,19 @@ export function ImageToImageModal({
     if (!stylePresetId) return undefined;
     return stylePresets.find((p) => p.preset_id === stylePresetId);
   }, [stylePresets, stylePresetId]);
-
   const imageUi = useMemo(() => extractImageUi(selectedModel), [selectedModel]);
   const supportsAspectRatio = imageUi.supportsAspectRatio;
-
-  const toggleReference = (url: string) => {
-    if (lockSelection) return;
-    setSelectedRefs((prev) =>
-      prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url],
-    );
-  };
-
+  const { genMode, notes: modalNotes, toggleReference } =
+    useReferenceSelection({
+      modelType,
+      model: selectedModel,
+      referenceSectionsLength: referenceSections.length,
+      selectedRefs,
+      setSelectedRefs,
+    });
   const handleSubmit = async () => {
     const refs = referenceSections.length > 0 ? selectedRefs : [];
     const labeledRefs = buildLabeledReferences(refs, referenceSections);
-
     await onSubmit({
       prompt: prompt.trim(),
       model: modelIds[0],
@@ -132,9 +128,7 @@ export function ImageToImageModal({
       human_fidelity: advanced.human_fidelity,
     });
   };
-
   if (!open) return null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3 py-6">
       <div className="w-full max-w-5xl overflow-auto rounded-xl bg-white p-5 shadow-2xl max-h-full">
@@ -158,7 +152,7 @@ export function ImageToImageModal({
           referenceSections={referenceSections}
           selectedRefs={selectedRefs}
           lockSelection={lockSelection}
-          onToggle={toggleReference}
+          onToggle={(url) => toggleReference(url, { disabled: lockSelection })}
           onPreview={setPreviewImage}
         />
 
@@ -198,10 +192,18 @@ export function ImageToImageModal({
           }}
         />
 
+        {modalNotes.length > 0 ? (
+          <GenerationAuditWarnings
+            title="模型提示"
+            warnings={modalNotes}
+            className="mt-4"
+          />
+        ) : null}
+
         {showAdvancedParams ? (
           <div className="mt-4 border-t pt-4">
             <ImageGenAdvancedFields
-              mode="image_to_image"
+              mode={genMode}
               model={selectedModel}
               value={advanced}
               onChange={setAdvanced}
