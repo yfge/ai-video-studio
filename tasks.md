@@ -249,7 +249,7 @@
 - [x] 功能/需求：定义环境/场景资产与分镜/角色绑定（environments 表、角色锚点），现支持分镜页绑定环境与镜头绑定角色
 - [x] 后端：已落地 environments 表与 `scenes.environment_id` / `shots.character_ids` 迁移；环境文生图/图生图已上线用于手动生成参考图
 - [x] 后端：环境文生图支持 `reference_images`（支持的 provider 才会透传到调用层）
-- [ ] 后端：`generate_storyboard_images` 已聚合 `scene.environment_id` + `shot.character_ids` 并注入 `image_to_image`；仍需在分镜帧结构中持久化 `environment_id/character_ids` 并复用到视频生成路径
+- [x] 后端：`generate_storyboard_images` 已聚合 `scene.environment_id` + `shot.character_ids` 并注入 `image_to_image`
 - [x] 前端：提供环境资产管理页（上传/生成/变体/删除参考图），在 `/stories/[id]` 分镜/剧集界面支持环境选择与标签筛选
 - [x] 前端：环境文生图表单按模型动态展示参考图选择器并提交 `reference_images`
 - [ ] 验证：待补端到端用例，验证选择环境+角色后分镜帧能稳定生成对应图像；在 `TESTING_GUIDE.md` 记录并为环境表/关联补迁移回归用例
