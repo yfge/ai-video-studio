@@ -127,3 +127,84 @@ async def test_storyboard_image_to_image_preserves_extra_images_for_supported_pr
     assert result["image_gen"]["image_fidelity"] == 0.5
     assert result["image_gen"]["human_fidelity"] == 0.45
     assert result["image_gen"]["reference_images_count"] == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_storyboard_refs_use_text_to_image_when_provider_supports_reference_images():
+    ai_service = _DummyAIService(
+        _DummyResponse(
+            success=True,
+            data={"images": ["https://example.com/out.png"]},
+            provider="google",
+            model="gemini-2.0-flash-image-exp",
+        )
+    )
+
+    result = await generate_storyboard_image_urls(
+        prompt="test prompt",
+        refs=[
+            "http://backend.local/uploads/ref-1.png",
+            "http://backend.local/uploads/ref-2.png",
+        ],
+        model="google:gemini-2.0-flash-image-exp",
+        count=1,
+        size="1024x1024",
+        aspect_ratio="1:1",
+        width=1024,
+        height=1024,
+        style="realistic",
+        style_preset_id=None,
+        style_spec=None,
+        ai_service=ai_service,
+        backend_base="http://backend.local",
+    )
+
+    method, kwargs = ai_service.ai_manager.last_call or ("", {})
+    assert method == "generate_image"
+    assert kwargs["prefer_provider"] == "google"
+    assert kwargs["model"] == "gemini-2.0-flash-image-exp"
+    assert kwargs["reference_images"] == [
+        "http://backend.local/uploads/ref-1.png",
+        "http://backend.local/uploads/ref-2.png",
+    ]
+    assert "image_url" not in kwargs
+    assert result["image_gen"]["mode"] == "text_to_image"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_storyboard_strength_forces_image_to_image_even_when_provider_supports_reference_images():
+    ai_service = _DummyAIService(
+        _DummyResponse(
+            success=True,
+            data={"images": ["https://example.com/out.png"]},
+            provider="google",
+            model="gemini-2.0-flash-image-exp",
+        )
+    )
+
+    await generate_storyboard_image_urls(
+        prompt="test prompt",
+        refs=[
+            "http://backend.local/uploads/ref-1.png",
+            "http://backend.local/uploads/ref-2.png",
+        ],
+        model="google:gemini-2.0-flash-image-exp",
+        count=1,
+        size="1024x1024",
+        aspect_ratio="1:1",
+        width=1024,
+        height=1024,
+        style="realistic",
+        style_preset_id=None,
+        style_spec=None,
+        strength=0.5,
+        ai_service=ai_service,
+        backend_base="http://backend.local",
+    )
+
+    method, kwargs = ai_service.ai_manager.last_call or ("", {})
+    assert method == "image_to_image"
+    assert kwargs["image_url"] == "http://backend.local/uploads/ref-1.png"
+    assert kwargs["extra_images"] == ["http://backend.local/uploads/ref-2.png"]

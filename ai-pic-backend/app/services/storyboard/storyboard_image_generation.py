@@ -12,7 +12,9 @@ from app.services.image_gen import (
     build_ai_manager_call,
     normalize_image_gen_request,
 )
+from app.services.image_gen.provider_params import supported_ai_manager_keys
 from app.services.image_gen.refs import hash_reference_images
+from app.utils.model_utils import infer_provider_from_model, parse_model_and_provider
 
 
 def _get_backend_base() -> str:
@@ -52,6 +54,19 @@ def _dedupe_urls(urls: Sequence[str]) -> list[str]:
     return deduped
 
 
+def _supports_text_to_image_reference_images(provider: str | None) -> bool:
+    keys = supported_ai_manager_keys(provider or "", ImageGenMode.TEXT_TO_IMAGE)
+    return "reference_images" in keys or "extra_images" in keys
+
+
+def _resolve_provider(model: str | None) -> str | None:
+    clean_model, provider_hint = parse_model_and_provider(model)
+    provider = provider_hint or (
+        infer_provider_from_model(clean_model or "") if clean_model else None
+    )
+    return provider.lower() if provider else None
+
+
 async def generate_storyboard_image_urls(
     *,
     prompt: str,
@@ -78,9 +93,21 @@ async def generate_storyboard_image_urls(
     backend = (backend_base or _get_backend_base()).rstrip("/") or _get_backend_base()
     cleaned_refs = [r for r in refs or [] if isinstance(r, str) and r.strip()]
 
-    mode = ImageGenMode.IMAGE_TO_IMAGE if cleaned_refs else ImageGenMode.TEXT_TO_IMAGE
-    base_image = cleaned_refs[0] if cleaned_refs else None
-    extra_images = cleaned_refs[1:] if len(cleaned_refs) > 1 else []
+    provider = _resolve_provider(model)
+    wants_image_to_image = strength is not None
+    supports_t2i_refs = _supports_text_to_image_reference_images(provider)
+
+    # Storyboard reference images are usually identity/style anchors (character/environment),
+    # so prefer txt2img reference_images when the provider supports it. If the caller
+    # explicitly supplies img2img params (e.g. strength), keep the img2img path.
+    if cleaned_refs and not wants_image_to_image and supports_t2i_refs:
+        mode = ImageGenMode.TEXT_TO_IMAGE
+        base_image = None
+        extra_images = cleaned_refs
+    else:
+        mode = ImageGenMode.IMAGE_TO_IMAGE if cleaned_refs else ImageGenMode.TEXT_TO_IMAGE
+        base_image = cleaned_refs[0] if cleaned_refs else None
+        extra_images = cleaned_refs[1:] if len(cleaned_refs) > 1 else []
 
     normalized = normalize_image_gen_request(
         ImageGenRequest(
