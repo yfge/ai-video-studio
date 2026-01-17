@@ -17,6 +17,7 @@ from .normalize_helpers import (
     resolve_dimensions,
 )
 from .policies import get_policy
+from .provider_params import supported_ai_manager_keys
 from .profiles import resolve_image_gen_profile
 from .refs import normalize_reference_images, resolve_base_image
 from .types import (
@@ -26,6 +27,16 @@ from .types import (
     ImageGenNormalized,
     ImageGenRequest,
 )
+
+
+def _append_negative_prompt_to_prompt(prompt: str, negative_prompt: str) -> str:
+    cleaned = (negative_prompt or "").strip()
+    if not cleaned:
+        return prompt
+    suffix = f"Avoid: {cleaned}"
+    if not prompt.strip():
+        return suffix
+    return f"{prompt.rstrip()}\n\n{suffix}"
 
 
 def normalize_image_gen_request(
@@ -211,17 +222,29 @@ def normalize_image_gen_request(
     )
 
     backend_base = (req.backend_base or "").rstrip("/") or None
-    extra_images = (
-        normalize_reference_images(
-            req.reference_images, backend_base=backend_base or ""
-        )
-        if backend_base
-        else []
-    )
-    if req.reference_images and not backend_base:
-        audit.warnings.append(
-            "backend_base is missing; reference_images not normalized"
-        )
+    supports_reference_images = False
+    if req.mode == ImageGenMode.TEXT_TO_IMAGE:
+        text_keys = supported_ai_manager_keys(provider or "", ImageGenMode.TEXT_TO_IMAGE)
+        supports_reference_images = "reference_images" in text_keys or "extra_images" in text_keys
+    else:
+        image_keys = supported_ai_manager_keys(provider or "", ImageGenMode.IMAGE_TO_IMAGE)
+        supports_reference_images = "extra_images" in image_keys or "reference_images" in image_keys
+
+    extra_images: list[str] = []
+    if req.reference_images:
+        if not backend_base:
+            audit.warnings.append(
+                "backend_base is missing; reference_images not normalized"
+            )
+        elif not supports_reference_images:
+            audit.warnings.append(
+                f"reference_images ignored (unsupported provider '{provider or 'unknown'}')"
+            )
+            audit.dropped_fields.append("reference_images")
+        else:
+            extra_images = normalize_reference_images(
+                req.reference_images, backend_base=backend_base
+            )
 
     base_image_url = None
     if req.mode == ImageGenMode.IMAGE_TO_IMAGE:
@@ -241,6 +264,17 @@ def normalize_image_gen_request(
     prompt = (req.prompt or "").strip()
     if not prompt:
         audit.warnings.append("empty prompt")
+
+    supports_negative_prompt = "negative_prompt" in supported_ai_manager_keys(
+        provider or "", req.mode
+    )
+    if negative_prompt and not supports_negative_prompt:
+        prompt = _append_negative_prompt_to_prompt(prompt, negative_prompt)
+        audit.warnings.append(
+            f"negative_prompt not supported by provider '{provider or 'unknown'}'; merged into prompt"
+        )
+        audit.dropped_fields.append("negative_prompt")
+        negative_prompt = None
 
     return ImageGenNormalized(
         domain=req.domain,

@@ -258,6 +258,37 @@ def test_profile_defaults_applied_for_volcengine_seedream3_text_to_image():
 
 
 @pytest.mark.unit
+def test_negative_prompt_merged_into_prompt_when_provider_unsupported():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="A cozy room",
+        model="openai:dall-e-3",
+        negative_prompt="text, watermark",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.negative_prompt is None
+    assert "Avoid:" in normalized.prompt
+    assert "text, watermark" in normalized.prompt
+    assert any("negative_prompt not supported" in w for w in normalized.audit.warnings)
+
+
+@pytest.mark.unit
+def test_reference_images_dropped_with_warning_when_provider_unsupported():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="A cozy room",
+        model="openai:dall-e-3",
+        reference_images=["/uploads/ref.png"],
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.extra_images == []
+    assert any("reference_images ignored" in w for w in normalized.audit.warnings)
+
+
+@pytest.mark.unit
 def test_profile_defaults_applied_for_volcengine_seededit3_img2img():
     req = ImageGenRequest(
         domain=ImageGenDomain.ENVIRONMENT,
