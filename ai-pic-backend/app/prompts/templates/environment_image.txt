@@ -5,4 +5,14 @@
 {%- set focus = '室内布局、光线、材质细节' -%}
 {%- endif -%}
 {%- import "fragments/image_macros.txt" as img -%}
-Environment: {{ environment_name }} | Category: {{ category | default('indoor') }} | Overall-to-detail: 开场远景交代空间 -> 中景展示主要区域 -> 近景刻画关键道具/纹理；Environment focus: {{ focus }}；保持真实光影和透视，色彩和风格统一。重要：只生成环境本身，不要出现人物/角色/动物。{% if tags %} | Tags: {{ tags }}{% endif %}{% if description %} | Description: {{ description }}{% endif %}{% if additional_prompts %} | {{ additional_prompts }}{% endif %} | {{ prompt }} | Quality: {{ img.quality_high(subject="scene") }} | Constraints: {{ img.constraint_environment_clean() }}, {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_low_quality() }}
+Environment: {{ environment_name }}
+Category: {{ category | default('indoor') }}
+Composition: 单幅画面内包含远景/中景/近景层次（仍为单帧，不要拼接/分屏/多格）。
+Focus: {{ focus }}；保持真实光影和透视，色彩与风格统一。
+Important: 只生成环境本身，不要出现人物/角色/动物。
+{% if tags %}Tags: {{ tags }}{% endif %}
+{% if description %}Description: {{ description }}{% endif %}
+{% if additional_prompts %}Extra: {{ additional_prompts }}{% endif %}
+Prompt: {{ prompt }}
+Quality: {{ img.quality_high(subject="scene") }}
+Constraints: {{ img.constraint_environment_clean() }}, {{ img.constraint_no_collage() }}, {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_low_quality() }}
