@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { AIModel } from "@/utils/api";
 import { extractImageGenUi, type ImageGenMode } from "@/utils/modelUi";
@@ -19,6 +19,40 @@ interface ImageGenAdvancedFieldsProps {
   className?: string;
 }
 
+const pruneAdvancedValue = (
+  value: ImageGenAdvancedValue,
+  ui: ReturnType<typeof extractImageGenUi>,
+): ImageGenAdvancedValue => {
+  const next: ImageGenAdvancedValue = {};
+
+  if (ui.supportsSeed && value.seed !== undefined) next.seed = value.seed;
+  if (ui.supportsSteps && value.steps !== undefined) next.steps = value.steps;
+  if (ui.supportsCfgScale && value.cfg_scale !== undefined)
+    next.cfg_scale = value.cfg_scale;
+  if (ui.supportsNegativePrompt && value.negative_prompt)
+    next.negative_prompt = value.negative_prompt;
+  if (ui.supportsStrength && value.strength !== undefined)
+    next.strength = value.strength;
+  if (ui.supportsImageReference && value.image_reference)
+    next.image_reference = value.image_reference;
+  if (ui.supportsImageFidelity && value.image_fidelity !== undefined)
+    next.image_fidelity = value.image_fidelity;
+  if (ui.supportsHumanFidelity && value.human_fidelity !== undefined)
+    next.human_fidelity = value.human_fidelity;
+
+  return next;
+};
+
+const isSameAdvancedValue = (left: ImageGenAdvancedValue, right: ImageGenAdvancedValue) =>
+  left.seed === right.seed &&
+  left.steps === right.steps &&
+  left.cfg_scale === right.cfg_scale &&
+  left.negative_prompt === right.negative_prompt &&
+  left.strength === right.strength &&
+  left.image_reference === right.image_reference &&
+  left.image_fidelity === right.image_fidelity &&
+  left.human_fidelity === right.human_fidelity;
+
 export function ImageGenAdvancedFields({
   mode,
   model,
@@ -30,6 +64,13 @@ export function ImageGenAdvancedFields({
 }: ImageGenAdvancedFieldsProps) {
   const ui = useMemo(() => extractImageGenUi(model, mode), [mode, model]);
   const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    const pruned = pruneAdvancedValue(value, ui);
+    if (!isSameAdvancedValue(value, pruned)) {
+      onChange(pruned);
+    }
+  }, [onChange, ui, value]);
 
   const hasAnyField =
     ui.supportsSeed ||
