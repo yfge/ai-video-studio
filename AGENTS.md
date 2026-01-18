@@ -20,7 +20,7 @@ This document is the single source of truth for every coding assistant (Claude C
 ai-video-studio is an AI-powered virtual IP production platform composed of:
 
 - `ai-pic-backend/`: FastAPI + SQLAlchemy service orchestrating AI image/video generation, story workflows, and OSS persistence.
-- `ai-pic-frontend/`: Next.js 15 (App Router) application for operators to manage virtual IPs, galleries, stories, episodes, and scripts.
+- `ai-pic-frontend/`: Next.js 16 (App Router) application for operators to manage virtual IPs, galleries, stories, episodes, and scripts.
 
 The codebase must remain production-grade, auditable, and reproducible. Every meaningful code change needs traceable documentation, automated validation, and a matching ledger entry.
 
@@ -233,7 +233,7 @@ class ConcreteProvider(BaseProvider):
 
 ## Frontend-Specific Architecture Standards (CRITICAL)
 
-**Current State**: Next.js 15 App Router with significant violations requiring immediate attention in future work.
+**Current State**: Next.js 16 App Router with significant violations requiring immediate attention in future work.
 
 ### Page Component Size Limits
 
@@ -553,7 +553,7 @@ We adopt a strict workflow similar to the reference projects:
 
 ## Frontend Workflow (`ai-pic-frontend/`)
 
-1. Node.js 20 LTS + npm.
+1. Node.js 22.20.0 + npm.
 2. Install dependencies: `cd ai-pic-frontend && npm install`.
 3. Validate UI work:
    - `npm run lint`

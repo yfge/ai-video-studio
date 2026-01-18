@@ -5,7 +5,7 @@
 ## 仓库结构
 
 - `ai-pic-backend/`：FastAPI + SQLAlchemy + Alembic + Celery（MySQL/Redis）
-- `ai-pic-frontend/`：Next.js 15（App Router）+ TypeScript + Tailwind
+- `ai-pic-frontend/`：Next.js 16（App Router）+ TypeScript + Tailwind
 - `docker/`：本地开发/生产 Docker 编排与 Nginx 入口
 - `docs/`：设计/接口/测试指南索引（见 `docs/README.md`）
 - `tasks.md`：项目任务看板（唯一权威）

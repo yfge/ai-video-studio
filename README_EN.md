@@ -5,7 +5,7 @@ An AI-powered, **virtual-IP–centric** content production platform that covers 
 ## Repository layout
 
 - `ai-pic-backend/`: FastAPI + SQLAlchemy + Alembic + Celery (MySQL/Redis)
-- `ai-pic-frontend/`: Next.js 15 (App Router) + TypeScript + Tailwind
+- `ai-pic-frontend/`: Next.js 16 (App Router) + TypeScript + Tailwind
 - `docker/`: Docker dev/prod stacks + Nginx entrypoint
 - `docs/`: design/API/testing docs index (see `docs/README.md`)
 - `tasks.md`: canonical task board
