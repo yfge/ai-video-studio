@@ -23,6 +23,7 @@
 - [x] 后端：LangGraph Script Agent 增加超时保护（120s）；无 `scene_budgets` 时默认禁用 duration 控制，超时后自动回退 direct
 - [x] 测试：新增单元测试覆盖 fallback/max_tokens/timeout
 - [x] 前端：Episode workspace 再生成剧本轮询 task，完成后自动切换到新 scriptId（URL 同步）
+- [x] 前端：Episode workspace 概览“场景数”展示所选剧本的实际场景数（避免 `episode.scene_count` 滞后导致误读）
 - [x] 验证：Chrome 端到端在 Episode workspace 重新生成剧本，产出 `v1.1 (Script ID: 83)`，7 场景，`ai_model=ai_manager_minimax`
 
 ## Feature: 短剧微类型与投流驱动创作闭环（故事→剧本→时间线→分镜）🔥
