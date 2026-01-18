@@ -31,6 +31,8 @@ export type ImageGenUiOptions = {
   supportsSteps: boolean;
   supportsCfgScale: boolean;
   supportsNegativePrompt: boolean;
+  supportsStylePreset: boolean;
+  supportsStyleSpec: boolean;
   supportsStrength: boolean;
   supportsImageReference: boolean;
   supportsImageFidelity: boolean;
@@ -66,6 +68,8 @@ type ModelUiMetadata = {
       supports_steps?: boolean;
       supports_cfg_scale?: boolean;
       supports_negative_prompt?: boolean;
+      supports_style_preset_id?: boolean;
+      supports_style_spec?: boolean;
       supports_reference_images?: boolean;
       max_reference_images?: number;
       notes?: string[];
@@ -75,6 +79,8 @@ type ModelUiMetadata = {
       supports_steps?: boolean;
       supports_cfg_scale?: boolean;
       supports_negative_prompt?: boolean;
+      supports_style_preset_id?: boolean;
+      supports_style_spec?: boolean;
       supports_strength?: boolean;
       supports_image_reference?: boolean;
       supports_image_fidelity?: boolean;
@@ -192,6 +198,8 @@ export const extractImageGenUi = (
       supportsSteps: Boolean(t2i.supports_steps),
       supportsCfgScale: Boolean(t2i.supports_cfg_scale),
       supportsNegativePrompt: Boolean(t2i.supports_negative_prompt),
+      supportsStylePreset: Boolean(t2i.supports_style_preset_id),
+      supportsStyleSpec: Boolean(t2i.supports_style_spec),
       supportsStrength: false,
       supportsImageReference: false,
       supportsImageFidelity: false,
@@ -220,6 +228,8 @@ export const extractImageGenUi = (
     supportsSteps: Boolean(i2i.supports_steps),
     supportsCfgScale: Boolean(i2i.supports_cfg_scale),
     supportsNegativePrompt: Boolean(i2i.supports_negative_prompt),
+    supportsStylePreset: Boolean(i2i.supports_style_preset_id),
+    supportsStyleSpec: Boolean(i2i.supports_style_spec),
     supportsStrength: Boolean(i2i.supports_strength),
     supportsImageReference: Boolean(i2i.supports_image_reference),
     supportsImageFidelity: Boolean(i2i.supports_image_fidelity),

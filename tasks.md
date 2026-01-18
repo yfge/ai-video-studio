@@ -223,6 +223,8 @@
 - [x] 后端：Google/Gemini 文生图参考图 413 风险治理（限制张数/压缩/提示）
 - [x] 后端：补齐文生图 `max_reference_images` UI 元数据（Google=4、可灵=1）并用于前端动态表单
 - [x] 前端：环境/虚拟 IP 文生图参考图选择器按 `max_reference_images` 自动裁剪（超过上限替换最早选择）
+- [x] 后端：补齐 `image_gen` UI 元数据：`supports_style_preset_id` / `supports_style_spec`（provider-aware）
+- [x] 前端：按模型能力动态隐藏并清理无效的 `style_preset_id` / `style_spec`（避免“选了但不生效”）
 - [x] 后端：Storyboard refs 在 provider 支持 txt2img `reference_images` 且未显式设置 `strength` 时优先走 `TEXT_TO_IMAGE + reference_images`（否则保持 img2img base+extra_images）
 - [x] 后端：补齐 `STORYBOARD_KEYFRAME` 提示词对“转场/镜头切换”等词的语义约束（剪辑备注，不要在一张图里表现多个镜头）
 - [x] 后端：增强通用 `no collage` 约束（补充 `no split-screen/multi-panel/contact sheet`）

@@ -115,6 +115,7 @@ export function EnvironmentVariantModal({
       defaultCount={1}
       modelType={AIModelType.ImageToImage}
       modelCacheKey="environment-img2img"
+      showStylePreset={false}
       showAdvancedParams
       submitting={submitting}
       onSubmit={handleSubmit}

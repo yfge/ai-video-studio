@@ -37,19 +37,20 @@
 
 - “✅/❌”以当前 `supported_ai_manager_keys()` 白名单为准（`ai-pic-backend/app/services/image_gen/provider_params.py`）。
 - `cfg_scale` 对火山引擎会映射为 `guidance_scale`，且仅部分模型支持（见 UI notes）。
+- `style_preset_id` / `style_spec` 仅部分 provider 支持；Environment domain 会强制禁用二者（见下方 Domain 差异）。
 
-| provider | mode | `reference_images`（list） | `extra_images`（img2img） | `negative_prompt` | `seed` | `steps` | `cfg_scale` | `strength` | 备注 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OpenAI | text_to_image | ❌ | n/a | ❌ | ❌ | ❌ | ❌ | n/a | DALL·E 2/3 主要用 `size`/`style` |
-| OpenAI | image_to_image | n/a | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 仅支持单 base image（variations/inpainting） |
-| Google | text_to_image | ✅ | n/a | ❌ | ❌ | ❌ | ❌ | n/a | 支持 `reference_images`（建议≤4张；过大将自动压缩）；`aspect_ratio` 可用 |
-| Google | image_to_image | n/a | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | 支持多参考图（base + extra） |
-| Volcengine | text_to_image | ✅ | n/a | ❌ | ❌ | ❌ | ⚠️ | n/a | `cfg_scale→guidance_scale`（部分模型） |
-| Volcengine | image_to_image | n/a | ✅ | ❌ | ❌ | ❌ | ⚠️ | ❌ | 支持多参考图（base + extra） |
-| 可灵（Keling） | text_to_image | ✅（仅 1 张） | n/a | ⚠️ | ❌ | ❌ | ❌ | n/a | `reference_images[0]→image`；有参考图时 `negative_prompt` 会合并进 prompt；支持 `image_reference/image_fidelity/human_fidelity` |
-| 可灵（Keling） | image_to_image | n/a | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | img2img 不支持 `negative_prompt`（需写入 prompt） |
-| 即梦（Jimeng） | text_to_image | ❌ | n/a | ✅ | ✅ | ✅ | ✅ | n/a | 支持 `width/height`（由 `size` 归一化） |
-| 即梦（Jimeng） | image_to_image | n/a | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | 支持 `strength`（显式走 img2img） |
+| provider | mode | `reference_images`（list） | `extra_images`（img2img） | `negative_prompt` | `style_preset_id` | `style_spec` | `seed` | `steps` | `cfg_scale` | `strength` | 备注 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| OpenAI | text_to_image | ❌ | n/a | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | n/a | DALL·E 2/3 主要用 `size`/`style` |
+| OpenAI | image_to_image | n/a | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 仅支持单 base image（variations/inpainting） |
+| Google | text_to_image | ✅ | n/a | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | n/a | 支持 `reference_images`（建议≤4张；过大将自动压缩）；`aspect_ratio` 可用 |
+| Google | image_to_image | n/a | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 支持多参考图（base + extra） |
+| Volcengine | text_to_image | ✅ | n/a | ❌ | ✅ | ✅ | ❌ | ❌ | ⚠️ | n/a | `cfg_scale→guidance_scale`（部分模型） |
+| Volcengine | image_to_image | n/a | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ❌ | 支持多参考图（base + extra） |
+| 可灵（Keling） | text_to_image | ✅（仅 1 张） | n/a | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ | n/a | `reference_images[0]→image`；有参考图时 `negative_prompt` 会合并进 prompt；支持 `image_reference/image_fidelity/human_fidelity` |
+| 可灵（Keling） | image_to_image | n/a | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | img2img 不支持 `negative_prompt`（需写入 prompt） |
+| 即梦（Jimeng） | text_to_image | ❌ | n/a | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | n/a | 支持 `width/height`（由 `size` 归一化） |
+| 即梦（Jimeng） | image_to_image | n/a | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | 支持 `strength`（显式走 img2img） |
 
 ## Domain 行为差异（与矩阵的关系）
 
@@ -61,7 +62,7 @@
 ### Environment
 
 - 目标：环境资产，不被角色/镜头风格污染。
-- policy 会禁用 `style_spec/style_preset`（只保留必要的 `style`）。
+- policy 会禁用 `style_spec/style_preset_id`（只保留必要的 `style`）。
 
 ### Storyboard（分镜）
 

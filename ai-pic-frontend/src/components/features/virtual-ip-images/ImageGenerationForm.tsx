@@ -58,6 +58,8 @@ export function ImageGenerationForm({
   const supportsReferenceImages =
     Boolean(virtualIPId) && imageGenUi.supportsExtraImages;
   const maxReferenceImages = imageGenUi.maxReferenceImages;
+  const supportsStylePreset = imageGenUi.supportsStylePreset;
+  const supportsStyleSpec = imageGenUi.supportsStyleSpec;
 
   useEffect(() => {
     if (supportsReferenceImages) return;
@@ -68,6 +70,19 @@ export function ImageGenerationForm({
     setGenerateForm,
     supportsReferenceImages,
   ]);
+
+  useEffect(() => {
+    if (supportsStylePreset) return;
+    if (!generateForm.style_preset_id) return;
+    setGenerateForm((prev) => ({ ...prev, style_preset_id: "" }));
+  }, [generateForm.style_preset_id, setGenerateForm, supportsStylePreset]);
+
+  useEffect(() => {
+    if (supportsStyleSpec) return;
+    const styleSpec = generateForm.style_spec || {};
+    if (Object.keys(styleSpec).length === 0) return;
+    setGenerateForm((prev) => ({ ...prev, style_spec: {} }));
+  }, [generateForm.style_spec, setGenerateForm, supportsStyleSpec]);
 
   useEffect(() => {
     if (!supportsReferenceImages) return;
@@ -151,6 +166,8 @@ export function ImageGenerationForm({
           setGenerateForm={setGenerateForm}
           stylePresets={stylePresets}
           selectedStylePreset={selectedStylePreset}
+          showStylePreset={supportsStylePreset}
+          showStyleSpec={supportsStyleSpec}
         />
 
         {supportsReferenceImages ? (

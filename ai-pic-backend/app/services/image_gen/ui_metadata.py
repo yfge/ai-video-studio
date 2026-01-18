@@ -50,6 +50,8 @@ def build_image_gen_ui_metadata(
         "supports_steps": _bool("steps" in text_keys),
         "supports_cfg_scale": _bool(supports_cfg_scale_t2i),
         "supports_negative_prompt": _bool("negative_prompt" in text_keys),
+        "supports_style_preset_id": _bool("style_preset_id" in text_keys),
+        "supports_style_spec": _bool("style_spec" in text_keys),
         "supports_reference_images": _bool(
             "reference_images" in text_keys
             or "extra_images" in text_keys
@@ -68,6 +70,8 @@ def build_image_gen_ui_metadata(
         "supports_steps": _bool("steps" in image_keys),
         "supports_cfg_scale": _bool(supports_cfg_scale_i2i),
         "supports_negative_prompt": _bool("negative_prompt" in image_keys),
+        "supports_style_preset_id": _bool("style_preset_id" in image_keys),
+        "supports_style_spec": _bool("style_spec" in image_keys),
         "supports_strength": _bool("strength" in image_keys),
         "supports_image_reference": _bool("image_reference" in image_keys),
         "supports_image_fidelity": _bool("image_fidelity" in image_keys),

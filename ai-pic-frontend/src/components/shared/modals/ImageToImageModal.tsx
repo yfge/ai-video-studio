@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import { useStylePresets } from "@/hooks/useStylePresets";
-import { extractImageUi } from "@/utils/modelUi";
+import { extractImageGenUi, extractImageUi } from "@/utils/modelUi";
 import { AIModelType } from "@/utils/api";
 import { GenerationAuditWarnings } from "../GenerationAuditWarnings";
 import { ImageGenAdvancedFields } from "../ImageGenAdvancedFields";
@@ -87,8 +87,21 @@ export function ImageToImageModal({
     defaultStyleSpec,
     defaultAdvancedValue,
   });
+  const { genMode, notes: modalNotes, toggleReference } = useReferenceSelection({
+    modelType,
+    model: selectedModel,
+    referenceSectionsLength: referenceSections.length,
+    selectedRefs,
+    setSelectedRefs,
+  });
+  const imageGenUi = extractImageGenUi(selectedModel, genMode);
+  const effectiveShowStylePreset =
+    showStylePreset && imageGenUi.supportsStylePreset;
+  const effectiveStyleSpecFields = imageGenUi.supportsStyleSpec
+    ? styleSpecFields
+    : undefined;
   const { presets: stylePresets } = useStylePresets({
-    enabled: showStylePreset,
+    enabled: effectiveShowStylePreset,
   });
   const selectedStylePreset = useMemo(() => {
     if (!stylePresetId) return undefined;
@@ -96,14 +109,6 @@ export function ImageToImageModal({
   }, [stylePresets, stylePresetId]);
   const imageUi = useMemo(() => extractImageUi(selectedModel), [selectedModel]);
   const supportsAspectRatio = imageUi.supportsAspectRatio;
-  const { genMode, notes: modalNotes, toggleReference } =
-    useReferenceSelection({
-      modelType,
-      model: selectedModel,
-      referenceSectionsLength: referenceSections.length,
-      selectedRefs,
-      setSelectedRefs,
-    });
   const handleSubmit = async () => {
     const refs = referenceSections.length > 0 ? selectedRefs : [];
     const labeledRefs = buildLabeledReferences(refs, referenceSections);
@@ -115,9 +120,8 @@ export function ImageToImageModal({
       size: size || undefined,
       aspect_ratio: supportsAspectRatio ? aspectRatio || undefined : undefined,
       style: style || undefined,
-      style_preset_id: stylePresetId || undefined,
-      style_spec:
-        styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
+      style_preset_id: effectiveShowStylePreset ? stylePresetId || undefined : undefined,
+      style_spec: imageGenUi.supportsStyleSpec && styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
       referenceImages: refs,
       labeledReferences: labeledRefs.length > 0 ? labeledRefs : undefined,
       seed: advanced.seed,
@@ -149,7 +153,6 @@ export function ImageToImageModal({
             关闭
           </button>
         </div>
-
         <ImageToImageReferencePicker
           referenceSections={referenceSections}
           selectedRefs={selectedRefs}
@@ -157,7 +160,6 @@ export function ImageToImageModal({
           onToggle={(url) => toggleReference(url, { disabled: lockSelection })}
           onPreview={setPreviewImage}
         />
-
         <ImageToImageSettingsForm
           prompt={prompt}
           onPromptChange={setPrompt}
@@ -177,12 +179,12 @@ export function ImageToImageModal({
           style={style}
           onStyleChange={setStyle}
           styleOptions={styleOptions}
-          showStylePreset={showStylePreset}
+          showStylePreset={effectiveShowStylePreset}
           stylePresets={stylePresets}
           stylePresetId={stylePresetId}
           onStylePresetIdChange={setStylePresetId}
           selectedStylePreset={selectedStylePreset}
-          styleSpecFields={styleSpecFields}
+          styleSpecFields={effectiveStyleSpecFields}
           styleSpec={styleSpec}
           onStyleSpecChange={setStyleSpec}
           size={size}
@@ -193,7 +195,6 @@ export function ImageToImageModal({
               setAspectRatio(next.aspect_ratio || undefined);
           }}
         />
-
         {modalNotes.length > 0 ? (
           <GenerationAuditWarnings
             title="模型提示"
@@ -201,7 +202,6 @@ export function ImageToImageModal({
             className="mt-4"
           />
         ) : null}
-
         {showAdvancedParams ? (
           <div className="mt-4 border-t pt-4">
             <ImageGenAdvancedFields
@@ -213,11 +213,9 @@ export function ImageToImageModal({
             />
           </div>
         ) : null}
-
         {extraContent ? (
           <div className="mt-4 border-t pt-4">{extraContent}</div>
         ) : null}
-
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
@@ -240,7 +238,6 @@ export function ImageToImageModal({
           </button>
         </div>
       </div>
-
       <ImageToImagePreviewOverlay
         src={previewImage}
         onClose={() => setPreviewImage(null)}
