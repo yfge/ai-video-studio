@@ -93,6 +93,8 @@ async def generate_virtual_ip_image_variants(
         generation_params["size"] = normalized.size
     if normalized.aspect_ratio is not None:
         generation_params["aspect_ratio"] = normalized.aspect_ratio
+    generation_params["width"] = normalized.width
+    generation_params["height"] = normalized.height
     for key in (
         "generation_profile",
         "seed",
@@ -121,6 +123,8 @@ async def generate_virtual_ip_image_variants(
         "generation_profile": normalized.generation_profile,
         "size": normalized.size,
         "aspect_ratio": normalized.aspect_ratio,
+        "width": normalized.width,
+        "height": normalized.height,
         "seed": normalized.seed,
         "steps": normalized.steps,
         "cfg_scale": normalized.cfg_scale,

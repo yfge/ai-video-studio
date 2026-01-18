@@ -167,6 +167,8 @@ async def generate_storyboard_image_urls(
         "generation_profile": normalized.generation_profile,
         "size": normalized.size,
         "aspect_ratio": normalized.aspect_ratio,
+        "width": normalized.width,
+        "height": normalized.height,
         "seed": normalized.seed,
         "steps": normalized.steps,
         "cfg_scale": normalized.cfg_scale,

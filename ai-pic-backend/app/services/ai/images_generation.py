@@ -227,7 +227,10 @@ class ImageGenerationMixin:
                                 else None
                             ),
                             "style_spec_resolution": style_spec_resolution,
-                            "aspect_ratio": aspect_ratio,
+                            "size": normalized.size,
+                            "aspect_ratio": normalized.aspect_ratio,
+                            "width": normalized.width,
+                            "height": normalized.height,
                             "provider": provider_used,
                             "model": model_used,
                             "prompt_template": prompt_template,
