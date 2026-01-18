@@ -1,0 +1,134 @@
+你是一个专业的短剧分集编剧，擅长把故事概要拆成“每集必有爽点 + 结尾卡点”的短剧追更结构。请基于以下故事信息生成{{ episode_count }}集的短剧剧集规划：
+
+## 故事信息
+故事标题：{{ story.title }}
+类型：{{ story.genre }}
+{% if story.market_region -%}
+目标市场：{{ story.market_region }}
+{% endif -%}
+{% if story.micro_genre -%}
+微类型：{{ story.micro_genre }}
+{% endif -%}
+{% if story.theme -%}
+主题：{{ story.theme }}
+{% endif -%}
+{% if story.synopsis -%}
+故事概要：{{ story.synopsis }}
+{% endif -%}
+{% if story.main_conflict -%}
+主要冲突：{{ story.main_conflict }}
+{% endif -%}
+{% if story.resolution -%}
+解决方案：{{ story.resolution }}
+{% endif -%}
+{% if story.hook_plan -%}
+爽点节奏：{{ story.hook_plan | tojson }}
+{% endif -%}
+{% if story.twist_density -%}
+反转密度：{{ story.twist_density }}
+{% endif -%}
+{% if story.cliffhanger_plan -%}
+悬念卡点：{{ story.cliffhanger_plan | join('；') }}
+{% endif -%}
+{% if story.ad_snippets -%}
+投流素材建议：{{ story.ad_snippets | tojson }}
+{% endif -%}
+
+## 主要角色
+{% if story.main_characters -%}
+{% for character in story.main_characters %}
+- {{ character.name }}: {{ character.description or character.role }}
+{% endfor %}
+{% endif -%}
+
+## 剧集参数（短剧）
+总集数：{{ episode_count }}集
+{% if episode_duration -%}
+每集时长：{{ episode_duration }}分钟
+{% else -%}
+建议每集时长：2-4分钟（短剧默认）
+{% endif -%}
+情节复杂度：{{ plot_complexity }}
+节奏控制：{{ pacing }}
+
+{% if focus_characters -%}
+## 重点角色
+{% for character in focus_characters %}
+- {{ character.name }}: {{ character.description }}
+{% endfor %}
+{% endif -%}
+
+{% if additional_requirements -%}
+## 特殊要求
+{{ additional_requirements }}
+{% endif -%}
+
+{% if style_preferences -%}
+## 风格偏好
+{{ style_preferences | join(', ') }}
+{% endif -%}
+
+## 【短剧硬性规则】每集必有爽点 + 结尾卡点
+为每一集都满足以下结构（不要出现“这一集主要铺垫、没有爽点”的情况）：
+
+1. **开场钩子**：第1场景/前10秒必须有冲突或信息爆点（抓奸/背叛/翻车/身份暴露/突发危机）。
+2. **升级推进**：中段快速升级（误会扩大、反派施压、证据出现、关系撕裂）。
+3. **爽点落点**：末段必须发生1个明确可拍的爽点事件（打脸/反击/揭露/惩罚/逆转/救援/告白）。
+4. **卡点悬念**：结尾留下更大危机或反转，必须能驱动下一集（cliffhanger 不为空）。
+5. **低成本可拍**：每集 3-6 场景为宜，优先复用 1-2 个主要地点。
+6. **可剪投流**：每集提供至少 1 条 15 秒投流素材建议（钩子台词 + 画面摘要）。
+
+## 输出格式
+请以JSON格式返回，包含episodes数组，每集必须包含：
+
+1. **episode_number**: 集数
+2. **title**: 剧集标题
+3. **summary**: 本集概要（100-200字，强调冲突与爽点）
+4. **plot_points**: 主要情节点列表（至少 4 条，含开场钩子/升级/爽点/卡点）
+5. **scene_count**: 预估场景数量（建议 3-6）
+6. **cliffhanger**: 本集结尾卡点（必填）
+7. **hook_plan**: 本集爽点/钩子节奏规划（必填）
+8. **twist_density**: 本集反转密度目标（必填，可用“高/中/低 + 说明”）
+9. **cliffhanger_plan**: 本集悬念/卡点列表（至少 2 条）
+10. **ad_snippets**: 本集投流素材建议（至少 1 条，含 hook 与 visual_summary）
+11. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary；其中爽点场景的 summary 请以“爽点：...”开头
+
+{
+    "episodes": [
+        {
+            "episode_number": 1,
+            "title": "...",
+            "summary": "...",
+            "plot_points": [
+                { "sequence": 1, "description": "开场钩子：...", "timing": "开场" },
+                { "sequence": 2, "description": "升级推进：...", "timing": "中段" },
+                { "sequence": 3, "description": "爽点落点：...", "timing": "后段" },
+                { "sequence": 4, "description": "结尾卡点：...", "timing": "结尾" }
+            ],
+            "scene_count": 5,
+            "cliffhanger": "...",
+            "hook_plan": { "opening_hook": "...", "escalation_plan": "...", "payoff_plan": "..." },
+            "twist_density": "高：每集至少一次反转或身份信息揭露",
+            "cliffhanger_plan": ["...", "..."],
+            "ad_snippets": [
+                { "duration_seconds": 15, "hook": "...", "visual_summary": "...", "call_to_action": "..." }
+            ],
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "slug_line": "INT. ... - 日",
+                    "location": "...",
+                    "time_of_day": "day",
+                    "summary": "开场钩子：..."
+                },
+                {
+                    "scene_number": 4,
+                    "slug_line": "INT. ... - 夜",
+                    "location": "...",
+                    "time_of_day": "night",
+                    "summary": "爽点：...（明确事件）"
+                }
+            ]
+        }
+    ]
+}

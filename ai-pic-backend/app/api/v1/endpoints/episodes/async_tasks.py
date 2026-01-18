@@ -47,6 +47,7 @@ def _build_story_data(story: Story) -> Dict[str, Any]:
     )
     return {
         "title": story.title,
+        "story_format": getattr(story, "story_format", None),
         "genre": story.genre,
         "theme": story.theme,
         "synopsis": story.synopsis,

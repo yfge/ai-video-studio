@@ -1,0 +1,177 @@
+你是一个专业的短剧剧本编剧，擅长把分集规划转化为“高信息密度 + 强冲突 + 每集必有爽点 + 结尾卡点”的可拍摄短剧剧本。请基于以下信息生成完整的{{ format_type }}格式剧本（短剧单集）。
+
+## 故事背景
+故事标题：{{ story.title }}
+类型：{{ story.genre }}
+{% if story.market_region -%}
+目标市场：{{ story.market_region }}
+{% endif -%}
+{% if story.micro_genre -%}
+微类型：{{ story.micro_genre }}
+{% endif -%}
+{% if story.world_building -%}
+世界观：{{ story.world_building }}
+{% endif -%}
+{% if story.setting_time -%}
+时间设定：{{ story.setting_time }}
+{% endif -%}
+{% if story.setting_location -%}
+地点设定：{{ story.setting_location }}
+{% endif -%}
+{% if story.hook_plan -%}
+全剧爽点节奏：{{ story.hook_plan | tojson }}
+{% endif -%}
+{% if story.twist_density -%}
+全剧反转密度：{{ story.twist_density }}
+{% endif -%}
+{% if story.cliffhanger_plan -%}
+全剧悬念卡点：{{ story.cliffhanger_plan | join('；') }}
+{% endif -%}
+{% if story.ad_snippets -%}
+全剧投流素材：{{ story.ad_snippets | tojson }}
+{% endif -%}
+
+## 本集信息
+剧集标题：第{{ episode.episode_number }}集 - {{ episode.title }}
+{% if episode.summary -%}
+剧集概要：{{ episode.summary }}
+{% endif -%}
+{% if episode.duration_minutes -%}
+预计时长：{{ episode.duration_minutes }}分钟
+{% endif -%}
+{% if episode.scene_count -%}
+场景数量：{{ episode.scene_count }}个
+{% endif -%}
+{% if episode.hook_plan -%}
+本集爽点节奏：{{ episode.hook_plan | tojson }}
+{% endif -%}
+{% if episode.cliffhanger_plan -%}
+本集悬念卡点：{{ episode.cliffhanger_plan | join('；') }}
+{% endif -%}
+{% if episode.ad_snippets -%}
+本集投流素材：{{ episode.ad_snippets | tojson }}
+{% endif -%}
+
+{% if episode.scenes -%}
+## 预设场景（来自剧集规划）
+请围绕以下场景编号展开剧本，保持顺序与编号一致；如需调整请在描述中说明。
+{% for sc in episode.scenes %}
+- 场景 {{ sc.scene_number }}：{{ sc.slug_line or sc.title or sc.summary or '待定场景' }}
+  {% if sc.summary %}概要：{{ sc.summary }}{% endif %}
+  {% if sc.location or sc.time_of_day %}设定：{{ sc.location or '地点待定' }} / {{ sc.time_of_day or '时间待定' }}{% endif %}
+{% endfor %}
+{% endif -%}
+
+## 前情提要
+{% if story.previous_episode_summaries -%}
+{% for prev in story.previous_episode_summaries %}
+- 第{{ prev.episode_number }}集《{{ prev.title }}》：{{ prev.summary or '暂无概要' }}
+  {% if prev.plot_points -%}
+  关键事件：
+  {% for point in prev.plot_points %}
+  · {{ point.description if point.description is defined else point }}{% if point.timing is defined and point.timing %}（{{ point.timing }}）{% endif %}
+  {% endfor %}
+  {% endif -%}
+{% endfor %}
+{% else -%}
+暂无前情信息，可直接聚焦本集。
+{% endif -%}
+
+## 角色设定
+{% if story.character_profiles -%}
+{% for character in story.character_profiles %}
+- {{ character.name }}{% if character.role %}（{{ character.role }}）{% endif %}
+  {% if character.description %}背景/定位：{{ character.description }}{% endif %}
+  {% if character.personality %}性格特质：{{ character.personality }}{% endif %}
+  {% if character.motivation %}目标动机：{{ character.motivation }}{% endif %}
+  {% if character.arc %}角色弧线：{{ character.arc }}{% endif %}
+{% endfor %}
+{% elif story.main_characters -%}
+{% for character in story.main_characters %}
+- {{ character.name if character.name is defined else character }}：{{ character.description if character.description is defined else character.role if character.role is defined else '' }}
+{% endfor %}
+{% else -%}
+暂无角色资料，请根据设定保持人物一致性。
+{% endif -%}
+
+## 剧本参数
+格式类型：{{ format_type }}
+语言：{{ language }}
+对话风格：{{ dialogue_style }}
+场景描述详细程度：{{ scene_detail_level }}
+
+{% if additional_requirements -%}
+## 特殊要求
+{{ additional_requirements }}
+{% endif -%}
+
+{% if style_preferences -%}
+## 风格偏好
+{{ style_preferences | join(', ') }}
+{% endif -%}
+
+## 【短剧硬性规则】每集必有爽点 + 结尾卡点
+你必须在本集剧本中明确实现：
+
+1. **开场钩子（前10秒）**：第一场景必须有冲突/爆点/信息揭露。
+2. **中段升级**：快速升级冲突，不要大量铺垫对白。
+3. **爽点落点（必有）**：至少 1 个“明确可拍”的爽点事件（打脸/反击/揭露/惩罚/逆转/救援/告白）。
+4. **结尾卡点（必有）**：最后一个场景必须留下悬念或更大危机升级。
+5. **低成本可拍**：尽量复用地点与人物，避免大规模群演与复杂特效。
+
+## 生成要求
+请生成一个完整的可拍摄短剧剧本，并以JSON格式返回：
+
+- `content`：完整剧本正文（符合{{ format_type }}格式）
+- `scenes`：场景列表（建议 3-6 个）；爽点场景在 `notes` 标注 `PAYOFF`，结尾卡点场景标注 `CLIFFHANGER`
+- `dialogues`：对白列表（信息密度高，避免空话套话；不要用“……”省略台词）
+- `stage_directions`：舞台指示/动作（帮助拍摄与表演）
+- `metadata`：包含 market_region/micro_genre/hook_plan/twist_density/cliffhanger_plan/ad_snippets，并与本集内容一致
+
+## 输出格式
+{
+    "content": "完整的剧本内容，使用{{ format_type }}标准格式",
+    "scenes": [
+        {
+            "scene_number": 1,
+            "location": "拍摄地点",
+            "time": "时间（日/夜/黄昏等）",
+            "description": "场景描述（含冲突推进）",
+            "characters": ["出场角色"],
+            "props": ["需要的道具"],
+            "notes": "拍摄注意事项（可标注 HOOK/PAYOFF/CLIFFHANGER）"
+        }
+    ],
+    "dialogues": [
+        {
+            "scene_number": 1,
+            "character": "角色名",
+            "content": "对话内容",
+            "emotion": "情感状态",
+            "action": "伴随动作",
+            "notes": "表演提示"
+        }
+    ],
+    "stage_directions": [
+        {
+            "scene_number": 1,
+            "timing": "对话前/对话中/对话后",
+            "content": "舞台指示内容",
+            "type": "动作/表情/环境/效果"
+        }
+    ],
+    "metadata": {
+        "total_scenes": 0,
+        "total_dialogues": 0,
+        "estimated_duration": "{{ episode.duration_minutes or 3 }}分钟",
+        "shooting_locations": [],
+        "main_characters": [],
+        "special_effects": [],
+        "market_region": "{{ story.market_region or episode.market_region or '' }}",
+        "micro_genre": "{{ story.micro_genre or episode.micro_genre or '' }}",
+        "hook_plan": {{ (story.hook_plan or episode.hook_plan or {}) | tojson }},
+        "twist_density": "{{ story.twist_density or episode.twist_density or '' }}",
+        "cliffhanger_plan": {{ (story.cliffhanger_plan or episode.cliffhanger_plan or []) | tojson }},
+        "ad_snippets": {{ (story.ad_snippets or episode.ad_snippets or []) | tojson }}
+    }
+}

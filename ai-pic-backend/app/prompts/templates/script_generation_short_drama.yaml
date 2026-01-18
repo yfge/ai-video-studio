@@ -1,0 +1,64 @@
+name: script_generation_short_drama
+description: "剧本生成提示词模板（短剧）"
+category: script
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-18"
+updated_at: "2026-01-18"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息对象"
+
+  episode:
+    type: dict
+    required: true
+    description: "剧集信息对象"
+
+  format_type:
+    type: string
+    required: true
+    description: "剧本格式类型"
+    default: "teleplay"
+    enum: ["screenplay", "teleplay", "stage", "audio", "animation"]
+
+  language:
+    type: string
+    required: false
+    description: "剧本语言"
+    default: "zh-CN"
+
+  dialogue_style:
+    type: string
+    required: false
+    description: "对话风格"
+    default: "dramatic"
+    enum: ["natural", "formal", "casual", "dramatic", "comedic"]
+
+  scene_detail_level:
+    type: string
+    required: false
+    description: "场景描述详细程度"
+    default: "medium"
+    enum: ["minimal", "medium", "detailed", "cinematic"]
+
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外要求"
+    max_length: 1000
+
+  style_preferences:
+    type: list
+    required: false
+    description: "风格偏好列表"
+
+output_format: "JSON"
+expected_fields:
+  - content
+  - scenes
+  - dialogues
+  - stage_directions
+  - metadata

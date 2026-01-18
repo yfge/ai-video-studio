@@ -41,6 +41,8 @@
 - [x] 后端：扩展 Episode/Script 生成 schema，支持市场/微类型/钩子/投流素材字段
 - [x] 后端：更新 story outline prompt 模板，注入微类型与 hook 规则
 - [x] 后端：更新 episode/script/storyboard prompt 模板，注入微类型与 hook 规则
+- [x] 后端：新增 `short_drama` prompt 变体（`story_outline`/`episode_generation`/`episode_from_outline`/`episode_duration_reject`/`script_generation`）
+- [x] 后端：episode async 生成上下文补齐 `story_format`，确保 Episode Agent 模板分流
 - [ ] 后端：新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）
 - [ ] 后端：实现 HookScore/ScriptScore agent 与“投流表生成”service，接入生成链路，低分触发修订或给出改写建议
 - [x] 后端：故事生成在 `extra_metadata` 落库 hook 计划与投流素材（hook_plan/twist_density/cliffhanger_plan/ad_snippets）
@@ -50,6 +52,8 @@
 - [x] 前端：新增“爽点评分/风险提示/投流表”视图，支持导出素材清单
 - [ ] 前端：在分镜/时间线 UI 标注与 hook 节点/投流素材对应的镜头与时间点
 
+- [x] 验证：short_drama prompt 变体单元测试（`template_resolver` + prompt 渲染）
+- [x] 验证：Chrome E2E（deepseek 文生文/剧集/剧本；google 文生图；google 文生视频）
 - [ ] 验证：新增 schema 与 prompt 单元测试，覆盖 hook 计划/评分结构
 - [ ] 验证：E2E 路径（选择微类型→生成故事/剧集/剧本→投流表→分镜/时间线标注），Chrome 记录验证
 

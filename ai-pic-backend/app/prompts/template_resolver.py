@@ -9,10 +9,13 @@ _FORMAT_AWARE_TEMPLATES = {
     "system_prompt_story",
     "system_prompt_script",
     "episode_generation",
+    "episode_from_outline",
+    "episode_duration_reject",
+    "script_generation",
     "script_scenes",
 }
 
-_SUPPORTED_STORY_FORMATS = {"tv_series", "film"}
+_SUPPORTED_STORY_FORMATS = {"tv_series", "film", "short_drama"}
 
 
 def _extract_story_format(variables: Mapping[str, Any]) -> Optional[str]:
@@ -51,4 +54,3 @@ def resolve_template_name(
         return candidate
 
     return template_name
-
