@@ -97,6 +97,12 @@ def build_image_gen_ui_metadata(
             "可灵文生图参考图仅支持 1 张；使用参考图时 negative_prompt 会合并进 prompt",
         )
 
+    if provider_key == "google" and text_to_image["supports_reference_images"]:
+        _append_note(
+            text_notes,
+            "Google/Gemini 参考图会以内联方式上传：为避免 413，建议≤4张且尽量小图（后台会自动压缩）",
+        )
+
     payload: dict[str, Any] = {
         "version": 1,
         "text_to_image": {**text_to_image, "notes": text_notes},

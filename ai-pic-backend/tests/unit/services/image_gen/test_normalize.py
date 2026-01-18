@@ -59,6 +59,33 @@ def test_keling_txt2img_reference_images_use_first_and_merge_negative_prompt():
 
 
 @pytest.mark.unit
+def test_google_txt2img_reference_images_limited_to_4():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="google:gemini-2.5-flash-image",
+        reference_images=[
+            "/uploads/ref-1.png",
+            "/uploads/ref-2.png",
+            "/uploads/ref-3.png",
+            "/uploads/ref-4.png",
+            "/uploads/ref-5.png",
+        ],
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.extra_images == [
+        "http://localhost:8000/uploads/ref-1.png",
+        "http://localhost:8000/uploads/ref-2.png",
+        "http://localhost:8000/uploads/ref-3.png",
+        "http://localhost:8000/uploads/ref-4.png",
+    ]
+    assert "reference_images" in normalized.audit.dropped_fields
+    assert any("limited to 4" in w for w in normalized.audit.warnings)
+
+
+@pytest.mark.unit
 def test_openai_drops_aspect_ratio_and_defaults_size_on_invalid():
     req = ImageGenRequest(
         domain=ImageGenDomain.VIRTUAL_IP,

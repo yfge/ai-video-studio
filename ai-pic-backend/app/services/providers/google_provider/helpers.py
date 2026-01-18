@@ -12,6 +12,53 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import httpx
 
 
+def maybe_compress_inline_image(
+    raw: bytes,
+    *,
+    content_type: str,
+    target_max_bytes: int = 220_000,
+    max_side: int = 512,
+) -> Tuple[bytes, str]:
+    """Downscale + re-encode reference images for inline/base64 transport."""
+    if not raw or len(raw) <= target_max_bytes:
+        return raw, (content_type or "image/png").split(";", 1)[0].strip()
+
+    try:
+        from io import BytesIO
+
+        from PIL import Image, ImageOps
+
+        img = Image.open(BytesIO(raw))
+        img = ImageOps.exif_transpose(img)
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+
+        width, height = img.size
+        max_current = max(width, height) if width and height else 0
+        if max_current and max_current > max_side:
+            scale = max_side / float(max_current)
+            new_w = max(1, int(round(width * scale)))
+            new_h = max(1, int(round(height * scale)))
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+
+        for quality in (85, 75, 65):
+            buf = BytesIO()
+            img.save(buf, format="JPEG", quality=quality, optimize=True)
+            out = buf.getvalue()
+            if out and len(out) <= target_max_bytes:
+                return out, "image/jpeg"
+
+        buf = BytesIO()
+        img.save(buf, format="JPEG", quality=60, optimize=True)
+        out = buf.getvalue()
+        if out:
+            return out, "image/jpeg"
+    except Exception:
+        pass
+
+    return raw, (content_type or "image/png").split(";", 1)[0].strip()
+
+
 def clean_model_id(model: Optional[str]) -> Optional[str]:
     """Clean model ID, removing possible provider prefix (e.g., 'google:')."""
     if not model:
@@ -157,5 +204,9 @@ async def fetch_inline_image(image_url: str, timeout: Any) -> Dict[str, str]:
         resp = await client.get(download_url)
         resp.raise_for_status()
         mime = resp.headers.get("Content-Type", "image/png")
-        b64 = base64.b64encode(resp.content).decode("ascii")
+        content, mime = maybe_compress_inline_image(
+            resp.content,
+            content_type=mime,
+        )
+        b64 = base64.b64encode(content).decode("ascii")
         return {"mimeType": mime, "data": b64}

@@ -295,6 +295,18 @@ def normalize_image_gen_request(
             audit.dropped_fields.append("negative_prompt")
             negative_prompt = None
 
+    if (
+        provider == "google"
+        and req.mode == ImageGenMode.TEXT_TO_IMAGE
+        and extra_images
+        and len(extra_images) > 4
+    ):
+        audit.warnings.append(
+            "google/gemini text_to_image reference_images limited to 4 to reduce 413 risk; using the first 4"
+        )
+        audit.dropped_fields.append("reference_images")
+        extra_images = extra_images[:4]
+
     supports_negative_prompt = "negative_prompt" in supported_ai_manager_keys(
         provider or "", req.mode
     )
