@@ -81,7 +81,7 @@ export function ImageGenerationForm({
             }
             modelType="image"
             fetcher={() =>
-              aiAPI.getAvailableModels({ type: AIModelType.ImageToImage })
+              aiAPI.getAvailableModels({ type: AIModelType.Image })
             }
             cacheKey={`virtual-ip-image:${virtualIPId}`}
             allowAuto={false}

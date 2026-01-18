@@ -42,7 +42,7 @@ export function useVirtualIPImageGeneration({
   });
 
   const fetchModels = useCallback(
-    () => aiAPI.getAvailableModels({ type: AIModelType.ImageToImage }),
+    () => aiAPI.getAvailableModels({ type: AIModelType.Image }),
     [],
   );
   const { models: availableModels, defaultModel: recommendedModel } =
