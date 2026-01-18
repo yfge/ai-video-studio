@@ -216,6 +216,11 @@
 - [x] 前端：环境文生图表单按所选模型动态加载 `reference_images` 选择器并随任务提交
 - [x] 前端：虚拟 IP 文生图表单按所选模型动态加载 `reference_images` 选择器并随任务提交
 - [x] 后端：当 provider 不支持 `negative_prompt`/`reference_images` 时做降级处理（`negative_prompt` 合并进 prompt、`reference_images` 丢弃）并记录 `audit.dropped_fields`
+- [x] 后端：可灵文生图支持 `reference_images`（映射到 `image`，仅 1 张）；使用参考图时合并 `negative_prompt` 进 prompt
+- [x] 后端：火山图生图 count 参数对齐（img2img `n` → `count`）
+- [x] 前端：虚拟 IP 文生图模型列表拉取 `text_to_image`（修复误用 `image_to_image`）
+- [x] 后端：环境文生图模板明确单帧语义并补 `no collage` 约束
+- [ ] 后端：Google/Gemini 文生图参考图 413 风险治理（限制张数/压缩/提示）
 - [x] 后端：Storyboard refs 在 provider 支持 txt2img `reference_images` 且未显式设置 `strength` 时优先走 `TEXT_TO_IMAGE + reference_images`（否则保持 img2img base+extra_images）
 - [x] 后端：补齐 `STORYBOARD_KEYFRAME` 提示词对“转场/镜头切换”等词的语义约束（剪辑备注，不要在一张图里表现多个镜头）
 - [x] 后端：增强通用 `no collage` 约束（补充 `no split-screen/multi-panel/contact sheet`）
