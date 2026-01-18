@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from .environment_image_prompts import (
     DEFAULT_ENV_VARIANT_EXTRA_PROMPT,
     compose_environment_prompt,
+    compose_environment_variant_prompt,
 )
 from .environment_image_requests import (
     EnvironmentImageVariantRequest,
@@ -133,8 +134,10 @@ async def generate_environment_image_variants(
         raise RuntimeError("缺少基准图像")
 
     prompt_hint = request.prompt or DEFAULT_ENV_VARIANT_EXTRA_PROMPT
-    final_prompt = compose_environment_prompt(env, prompt_hint)
-    prompt_template = build_prompt_template_audit(PromptTemplate.ENVIRONMENT_IMAGE.value)
+    final_prompt = compose_environment_variant_prompt(env, prompt_hint)
+    prompt_template = build_prompt_template_audit(
+        PromptTemplate.ENVIRONMENT_IMAGE_VARIANT.value
+    )
     prompt_sha256 = sha256_text(final_prompt)
 
     normalized = normalize_image_gen_request(

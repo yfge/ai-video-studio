@@ -248,7 +248,7 @@ def build_environment_variant_task_payload(
         "human_fidelity": request.human_fidelity,
         "reference_images": request.reference_images,
         "prompt_template": build_prompt_template_audit(
-            PromptTemplate.ENVIRONMENT_IMAGE.value
+            PromptTemplate.ENVIRONMENT_IMAGE_VARIANT.value
         ),
     }
     return {k: v for k, v in payload.items() if v is not None}

@@ -235,6 +235,7 @@
 - [x] 后端：即梦图生图透传 `size` 并在 provider 侧映射为 `width/height`（避免 UI 选项被静默丢弃）
 - [x] 前端：虚拟 IP 文生图模型列表拉取 `text_to_image`（修复误用 `image_to_image`）
 - [x] 后端：环境文生图模板明确单帧语义并补 `no collage` 约束
+- [x] 后端：环境图生图变体使用独立提示词模板 `environment_image_variant`（保留空间布局/镜头视角，仅按变体要求调整）
 - [x] 后端：Google/Gemini 文生图参考图 413 风险治理（限制张数/压缩/提示）
 - [x] 后端：补齐文生图 `max_reference_images` UI 元数据（Google=4、可灵=1）并用于前端动态表单
 - [x] 前端：环境/虚拟 IP 文生图参考图选择器按 `max_reference_images` 自动裁剪（超过上限替换最早选择）

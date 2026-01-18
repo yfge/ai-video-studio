@@ -62,6 +62,7 @@ class PromptTemplate(Enum):
     PORTRAIT_GENERATION = "portrait_generation"
     SCENE_IMAGE = "scene_image"
     ENVIRONMENT_IMAGE = "environment_image"  # 环境图像
+    ENVIRONMENT_IMAGE_VARIANT = "environment_image_variant"  # 环境图像图生图变体
     VIRTUAL_IP_IMAGE = "virtual_ip_image"  # 虚拟IP文生图
     VIRTUAL_IP_IMAGE_VARIANT = "virtual_ip_image_variant"  # 虚拟IP图生图
 
@@ -162,6 +163,7 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.PORTRAIT_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.SCENE_IMAGE: PromptCategory.IMAGE,
     PromptTemplate.ENVIRONMENT_IMAGE: PromptCategory.IMAGE,
+    PromptTemplate.ENVIRONMENT_IMAGE_VARIANT: PromptCategory.IMAGE,
     PromptTemplate.VIRTUAL_IP_IMAGE: PromptCategory.IMAGE,
     PromptTemplate.VIRTUAL_IP_IMAGE_VARIANT: PromptCategory.IMAGE,
 

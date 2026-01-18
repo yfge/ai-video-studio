@@ -1,0 +1,18 @@
+{%- set cat = (category | default('indoor')) | lower -%}
+{%- if 'outdoor' in cat or cat in ['outdoor', 'outside', 'exterior', '室外', '户外'] -%}
+{%- set focus = '室外空间、天气、周边环境' -%}
+{%- else -%}
+{%- set focus = '室内布局、光线、材质细节' -%}
+{%- endif -%}
+{%- import "fragments/image_macros.txt" as img -%}
+Environment Variant: {{ environment_name }}
+Category: {{ category | default('indoor') }}
+Composition: 单幅画面内包含远景/中景/近景层次（仍为单帧，不要拼接/分屏/多格）。
+Focus: {{ focus }}；保持真实光影和透视，色彩与风格统一。
+Important: 只生成环境本身，不要出现人物/角色/动物。
+{% if tags %}Tags: {{ tags }}{% endif %}
+{% if description %}Description: {{ description }}{% endif %}
+{% if base_prompt %}Base Prompt: {{ base_prompt }}{% endif %}
+Variant Instructions: {{ variant_prompt }}
+Quality: {{ img.quality_high(subject="scene") }}
+Constraints: preserve the same spatial layout and camera viewpoint unless requested, keep lighting style coherent, only change what variant instructions specify, {{ img.constraint_environment_clean() }}, {{ img.constraint_no_collage() }}, {{ img.constraint_no_text_artifacts() }}, {{ img.constraint_no_low_quality() }}

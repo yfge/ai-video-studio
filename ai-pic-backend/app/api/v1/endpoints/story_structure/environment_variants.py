@@ -18,7 +18,7 @@ from app.services.story_structure.environment_image_generation import (
     generate_environment_image_variants as generate_environment_image_variants_service,
 )
 from app.services.story_structure.environment_image_prompts import (
-    compose_environment_prompt,
+    compose_environment_variant_prompt,
 )
 from app.services.story_structure.environment_image_requests import (
     build_environment_variant_task_payload,
@@ -174,7 +174,7 @@ async def generate_environment_image_variants_async(
         title=f"环境图生图 - 环境{env_id}",
         description="异步生成环境图像变体",
         task_type=TaskType.IMAGE_GENERATION,
-        prompt=compose_environment_prompt(env, req.prompt),
+        prompt=compose_environment_variant_prompt(env, req.prompt),
         parameters=json.dumps(payload, ensure_ascii=False),
         user_id=current_user.id,
     )

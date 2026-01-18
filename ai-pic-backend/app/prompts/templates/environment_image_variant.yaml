@@ -1,0 +1,49 @@
+name: environment_image_variant
+description: "环境图像图生图变体提示词（直接用于图像模型）"
+category: image
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-18"
+updated_at: "2026-01-18"
+
+variables:
+  environment_name:
+    type: string
+    required: true
+    description: "环境名称"
+    min_length: 1
+
+  category:
+    type: string
+    required: false
+    description: "环境类别（indoor/outdoor/…）"
+    default: "indoor"
+
+  tags:
+    type: string
+    required: false
+    description: "标签（逗号分隔）"
+
+  description:
+    type: string
+    required: false
+    description: "环境描述（可选）"
+
+  base_prompt:
+    type: string
+    required: false
+    description: "基础环境提示词（来自环境描述/名称或用户补充）"
+
+  variant_prompt:
+    type: string
+    required: true
+    description: "变体要求（例如：改为夜景/雨天/更冷色调/更明亮灯光等）"
+    min_length: 1
+
+usage_examples:
+  - environment_name: "跨境峰会会场"
+    category: "indoor"
+    tags: "会场, 现代, 科技"
+    description: "宽阔会议厅、LED大屏、冷色灯光"
+    base_prompt: "现代科技风会议厅，宽阔空间与LED大屏"
+    variant_prompt: "改为夜景，增加雨夜玻璃反射与更强对比度灯光"

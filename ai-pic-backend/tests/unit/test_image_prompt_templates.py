@@ -62,6 +62,26 @@ def test_environment_image_prompt_template_renders_constraints():
     assert "no watermark" in prompt.lower()
 
 
+def test_environment_image_variant_prompt_template_renders_instructions():
+    prompt = prompt_manager.render_prompt(
+        "environment_image_variant",
+        {
+            "environment_name": "未来科技办公室",
+            "category": "indoor",
+            "tags": "科幻, 办公室, 未来",
+            "description": "悬浮屏幕、玻璃隔断、冷色调灯光",
+            "base_prompt": "冷色调科幻办公室，玻璃隔断与悬浮屏幕",
+            "variant_prompt": "改为夜景，增加玻璃反射与更强对比度灯光",
+        },
+    )
+
+    assert "Environment Variant:" in prompt
+    assert "Variant Instructions:" in prompt
+    assert "Constraints:" in prompt
+    assert "no watermark" in prompt.lower()
+    assert "no collage" in prompt.lower()
+
+
 def test_storyboard_image_prompt_template_includes_quality_and_constraints():
     prompt = prompt_manager.render_prompt(
         "storyboard_image_prompt",
