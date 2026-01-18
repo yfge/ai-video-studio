@@ -14,6 +14,16 @@
 - [x] 前端：升级 Node 到 22.20.0（本地/生产镜像一致）
 - [x] 前端：升级 Next.js 到 16.1.3（同步调整 eslint/lint 脚本）
 
+## Fix: 剧本生成稳定性（避免 mock 回退）
+
+### 进度（后端→测试→验证）
+
+- [x] 后端：episode outline fallback 从 beats 生成 `plot_points/scenes`（上限 12），避免兜底只落 1 场景 summary
+- [x] 后端：AI 管理器 direct 剧本生成显式传 `max_tokens` + JSON 修复，缓解 MiniMax 默认 256 tokens 截断导致解析失败→mock 回退
+- [x] 后端：LangGraph Script Agent 增加超时保护（120s）；无 `scene_budgets` 时默认禁用 duration 控制，超时后自动回退 direct
+- [x] 测试：新增单元测试覆盖 fallback/max_tokens/timeout
+- [x] 验证：Chrome 端到端在 Episode workspace 重新生成剧本，产出 `v1.1 (Script ID: 83)`，7 场景，`ai_model=ai_manager_minimax`
+
 ## Feature: 短剧微类型与投流驱动创作闭环（故事→剧本→时间线→分镜）🔥
 
 :information_source: 背景：短剧出海的核心是微类型定位与爽点密度，投流素材反向驱动创作与修订。本功能把“市场/类型/节奏/投流素材”前置到故事与剧本生成链路，并形成评分与修订闭环。

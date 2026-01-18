@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+import asyncio
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.utils.json_utils import extract_json_block
+
+if TYPE_CHECKING:
+    from app.services.duration_orchestrator.state import SceneBudget
+
+_SCRIPT_AGENT_TIMEOUT_SECONDS = 120
 
 
 class ScriptGenerationMixin:
@@ -19,13 +25,14 @@ class ScriptGenerationMixin:
         model: Optional[str] = None,
         prefer_provider: Optional[str] = None,
         temperature: float = 0.7,
-        scene_budgets: Optional[List["SceneBudget"]] = None,
+        scene_budgets: Optional[List[SceneBudget]] = None,
     ) -> Optional[Dict[str, Any]]:
         """基于剧集信息生成详细剧本"""
         # 1) LangGraph agent
         if self.script_agent:
             try:
-                lg = await self.script_agent.generate(
+                duration_minutes = None if scene_budgets else 0
+                coro = self.script_agent.generate(
                     episode=episode,
                     story=story,
                     format_type=format_type,
@@ -38,7 +45,9 @@ class ScriptGenerationMixin:
                     prefer_provider=prefer_provider,
                     temperature=temperature,
                     scene_budgets=scene_budgets,
+                    duration_minutes=duration_minutes,
                 )
+                lg = await asyncio.wait_for(coro, timeout=_SCRIPT_AGENT_TIMEOUT_SECONDS)
                 if lg and lg.get("content"):
                     # 组装 content 文本
                     assembled = self._build_script_text(
@@ -50,6 +59,10 @@ class ScriptGenerationMixin:
                     )
                     lg["content"]["content"] = assembled
                     return lg
+            except asyncio.TimeoutError:
+                self.logger.warning(
+                    "LangGraph script agent timed out, falling back to direct generation"
+                )
             except Exception as exc:
                 self.logger.warning(f"LangGraph script agent failed: {exc}")
 
@@ -71,7 +84,9 @@ class ScriptGenerationMixin:
             # 尝试解析填充 content 以便前端展示
             parsed = direct.get("normalized") if isinstance(direct, dict) else None
             if not parsed:
-                raw_content = direct.get("content") if isinstance(direct, dict) else None
+                raw_content = (
+                    direct.get("content") if isinstance(direct, dict) else None
+                )
                 if isinstance(raw_content, dict):
                     parsed = raw_content
                 elif isinstance(raw_content, str):
