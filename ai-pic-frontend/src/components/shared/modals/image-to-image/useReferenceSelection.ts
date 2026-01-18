@@ -28,14 +28,22 @@ export function useReferenceSelection({
     [genMode, model],
   );
 
+  const maxRefs = imageGenUi.maxReferenceImages;
   const allowMultipleRefs =
-    genMode !== "image_to_image" || imageGenUi.supportsExtraImages;
+    maxRefs !== undefined
+      ? maxRefs > 1
+      : genMode !== "image_to_image" || imageGenUi.supportsExtraImages;
 
   useEffect(() => {
-    if (allowMultipleRefs) return;
-    if (selectedRefs.length <= 1) return;
-    setSelectedRefs([selectedRefs[0]]);
-  }, [allowMultipleRefs, selectedRefs, setSelectedRefs]);
+    if (maxRefs === undefined) {
+      if (allowMultipleRefs) return;
+      if (selectedRefs.length <= 1) return;
+      setSelectedRefs([selectedRefs[0]]);
+      return;
+    }
+    if (selectedRefs.length <= maxRefs) return;
+    setSelectedRefs(selectedRefs.slice(-maxRefs));
+  }, [allowMultipleRefs, maxRefs, selectedRefs, setSelectedRefs]);
 
   const notes = useMemo(() => {
     const next: string[] = [...(imageGenUi.notes || [])];
@@ -44,8 +52,18 @@ export function useReferenceSelection({
         "该模型不支持多参考图：将只使用 1 张参考图（其余选择会被替换/忽略）",
       );
     }
+    if (
+      referenceSectionsLength > 0 &&
+      maxRefs !== undefined &&
+      maxRefs > 1 &&
+      !next.some((note) => note.includes(`${maxRefs} 张参考图`))
+    ) {
+      next.unshift(
+        `该模型最多支持 ${maxRefs} 张参考图：超过上限会自动替换最早选择的参考图`,
+      );
+    }
     return next;
-  }, [allowMultipleRefs, imageGenUi.notes, referenceSectionsLength]);
+  }, [allowMultipleRefs, imageGenUi.notes, maxRefs, referenceSectionsLength]);
 
   const toggleReference = (url: string, options: { disabled: boolean }) => {
     if (options.disabled) return;
@@ -53,7 +71,9 @@ export function useReferenceSelection({
       if (prev.includes(url)) {
         return prev.filter((item) => item !== url);
       }
-      return allowMultipleRefs ? [...prev, url] : [url];
+      if (!allowMultipleRefs) return [url];
+      if (maxRefs === undefined) return [...prev, url];
+      return [...prev, url].slice(-maxRefs);
     });
   };
 

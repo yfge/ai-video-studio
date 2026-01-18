@@ -57,6 +57,7 @@ export function ImageGenerationForm({
   );
   const supportsReferenceImages =
     Boolean(virtualIPId) && imageGenUi.supportsExtraImages;
+  const maxReferenceImages = imageGenUi.maxReferenceImages;
 
   useEffect(() => {
     if (supportsReferenceImages) return;
@@ -64,6 +65,22 @@ export function ImageGenerationForm({
     setGenerateForm((prev) => ({ ...prev, reference_images: [] }));
   }, [
     generateForm.reference_images,
+    setGenerateForm,
+    supportsReferenceImages,
+  ]);
+
+  useEffect(() => {
+    if (!supportsReferenceImages) return;
+    if (typeof maxReferenceImages !== "number" || maxReferenceImages <= 0) return;
+    const current = generateForm.reference_images || [];
+    if (current.length <= maxReferenceImages) return;
+    setGenerateForm((prev) => ({
+      ...prev,
+      reference_images: (prev.reference_images || []).slice(-maxReferenceImages),
+    }));
+  }, [
+    generateForm.reference_images,
+    maxReferenceImages,
     setGenerateForm,
     supportsReferenceImages,
   ]);
@@ -140,9 +157,13 @@ export function ImageGenerationForm({
           <VirtualIPReferenceImagesField
             virtualIPId={virtualIPId || 0}
             value={generateForm.reference_images || []}
-            onChange={(next) =>
-              setGenerateForm((prev) => ({ ...prev, reference_images: next }))
-            }
+            maxSelection={maxReferenceImages}
+            onChange={(next) => {
+              const max = maxReferenceImages;
+              const clamped =
+                typeof max === "number" && max > 0 ? next.slice(-max) : next;
+              setGenerateForm((prev) => ({ ...prev, reference_images: clamped }));
+            }}
             disabled={generating}
           />
         ) : null}

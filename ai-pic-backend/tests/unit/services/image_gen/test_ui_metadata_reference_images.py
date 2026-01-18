@@ -19,6 +19,7 @@ def test_ui_metadata_txt2img_reference_images_true_for_google():
         caps=["text_to_image"],
     )
     assert meta["image_gen"]["text_to_image"]["supports_reference_images"] is True
+    assert meta["image_gen"]["text_to_image"].get("max_reference_images") == 4
 
 
 @pytest.mark.unit
@@ -29,3 +30,4 @@ def test_ui_metadata_txt2img_reference_images_true_for_keling():
         caps=["text_to_image"],
     )
     assert meta["image_gen"]["text_to_image"]["supports_reference_images"] is True
+    assert meta["image_gen"]["text_to_image"].get("max_reference_images") == 1

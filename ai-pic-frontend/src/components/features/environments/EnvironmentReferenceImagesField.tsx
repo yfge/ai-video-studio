@@ -11,6 +11,7 @@ interface EnvironmentReferenceImagesFieldProps {
   value: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
+  maxSelection?: number;
 }
 
 const resolveImageSrc = (url: string): string => {
@@ -25,6 +26,7 @@ export function EnvironmentReferenceImagesField({
   value,
   onChange,
   disabled = false,
+  maxSelection,
 }: EnvironmentReferenceImagesFieldProps) {
   const [images, setImages] = useState<EnvironmentImage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,12 @@ export function EnvironmentReferenceImagesField({
     const next = new Set(value);
     if (next.has(url)) next.delete(url);
     else next.add(url);
-    onChange(Array.from(next));
+    const list = Array.from(next);
+    if (typeof maxSelection === "number" && maxSelection > 0) {
+      onChange(list.slice(-maxSelection));
+      return;
+    }
+    onChange(list);
   };
 
   return (
@@ -67,6 +74,9 @@ export function EnvironmentReferenceImagesField({
           </label>
           <p className="text-xs text-gray-500">
             仅对支持 reference_images 的模型生效（将作为参考而非基准图）
+            {typeof maxSelection === "number" && maxSelection > 0
+              ? `；最多 ${maxSelection} 张（超过会自动替换最早选择）`
+              : null}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -130,4 +140,3 @@ export function EnvironmentReferenceImagesField({
     </div>
   );
 }
-

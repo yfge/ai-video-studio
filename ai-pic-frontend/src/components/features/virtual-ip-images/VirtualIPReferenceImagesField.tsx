@@ -11,6 +11,7 @@ interface VirtualIPReferenceImagesFieldProps {
   value: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
+  maxSelection?: number;
 }
 
 const resolveReferenceValue = (image: VirtualIPImage): string => {
@@ -23,6 +24,7 @@ export function VirtualIPReferenceImagesField({
   value,
   onChange,
   disabled = false,
+  maxSelection,
 }: VirtualIPReferenceImagesFieldProps) {
   const [images, setImages] = useState<VirtualIPImage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,7 +52,12 @@ export function VirtualIPReferenceImagesField({
     const next = new Set(value);
     if (next.has(ref)) next.delete(ref);
     else next.add(ref);
-    onChange(Array.from(next));
+    const list = Array.from(next);
+    if (typeof maxSelection === "number" && maxSelection > 0) {
+      onChange(list.slice(-maxSelection));
+      return;
+    }
+    onChange(list);
   };
 
   return (
@@ -62,6 +69,9 @@ export function VirtualIPReferenceImagesField({
           </label>
           <p className="text-xs text-gray-500">
             仅对支持 reference_images 的模型生效（将作为风格/构图参考）
+            {typeof maxSelection === "number" && maxSelection > 0
+              ? `；最多 ${maxSelection} 张（超过会自动替换最早选择）`
+              : null}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -130,4 +140,3 @@ export function VirtualIPReferenceImagesField({
     </div>
   );
 }
-

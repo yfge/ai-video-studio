@@ -221,6 +221,8 @@
 - [x] 前端：虚拟 IP 文生图模型列表拉取 `text_to_image`（修复误用 `image_to_image`）
 - [x] 后端：环境文生图模板明确单帧语义并补 `no collage` 约束
 - [x] 后端：Google/Gemini 文生图参考图 413 风险治理（限制张数/压缩/提示）
+- [x] 后端：补齐文生图 `max_reference_images` UI 元数据（Google=4、可灵=1）并用于前端动态表单
+- [x] 前端：环境/虚拟 IP 文生图参考图选择器按 `max_reference_images` 自动裁剪（超过上限替换最早选择）
 - [x] 后端：Storyboard refs 在 provider 支持 txt2img `reference_images` 且未显式设置 `strength` 时优先走 `TEXT_TO_IMAGE + reference_images`（否则保持 img2img base+extra_images）
 - [x] 后端：补齐 `STORYBOARD_KEYFRAME` 提示词对“转场/镜头切换”等词的语义约束（剪辑备注，不要在一张图里表现多个镜头）
 - [x] 后端：增强通用 `no collage` 约束（补充 `no split-screen/multi-panel/contact sheet`）

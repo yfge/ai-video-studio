@@ -39,6 +39,12 @@ def build_image_gen_ui_metadata(
     # Some providers expose img2img as a capability on text_to_image models.
     supports_reference_image = "image_to_image" in caps_list
 
+    max_reference_images_t2i: int | None = None
+    if provider_key == "keling":
+        max_reference_images_t2i = 1
+    if provider_key == "google":
+        max_reference_images_t2i = 4
+
     text_to_image = {
         "supports_seed": _bool("seed" in text_keys),
         "supports_steps": _bool("steps" in text_keys),
@@ -50,6 +56,12 @@ def build_image_gen_ui_metadata(
             or "image" in text_keys
         ),
     }
+
+    if (
+        max_reference_images_t2i is not None
+        and text_to_image["supports_reference_images"]
+    ):
+        text_to_image["max_reference_images"] = max_reference_images_t2i
 
     image_to_image = {
         "supports_seed": _bool("seed" in image_keys),

@@ -36,6 +36,7 @@ export type ImageGenUiOptions = {
   supportsImageFidelity: boolean;
   supportsHumanFidelity: boolean;
   supportsExtraImages: boolean;
+  maxReferenceImages?: number;
   notes: string[];
 };
 
@@ -66,6 +67,7 @@ type ModelUiMetadata = {
       supports_cfg_scale?: boolean;
       supports_negative_prompt?: boolean;
       supports_reference_images?: boolean;
+      max_reference_images?: number;
       notes?: string[];
     };
     image_to_image?: {
@@ -78,6 +80,7 @@ type ModelUiMetadata = {
       supports_image_fidelity?: boolean;
       supports_human_fidelity?: boolean;
       supports_extra_images?: boolean;
+      max_reference_images?: number;
       notes?: string[];
     };
     notes?: string[];
@@ -182,6 +185,7 @@ export const extractImageGenUi = (
     : legacyNotes;
 
   if (mode === "text_to_image") {
+    const maxReferenceImages = Number(t2i.max_reference_images);
     return {
       version,
       supportsSeed: Boolean(t2i.supports_seed),
@@ -193,9 +197,22 @@ export const extractImageGenUi = (
       supportsImageFidelity: false,
       supportsHumanFidelity: false,
       supportsExtraImages: Boolean(t2i.supports_reference_images),
+      maxReferenceImages:
+        Number.isFinite(maxReferenceImages) && maxReferenceImages > 0
+          ? maxReferenceImages
+          : undefined,
       notes,
     };
   }
+
+  const supportsExtraImages = Boolean(i2i.supports_extra_images);
+  const rawMaxReferenceImages = Number(i2i.max_reference_images);
+  const maxReferenceImages =
+    Number.isFinite(rawMaxReferenceImages) && rawMaxReferenceImages > 0
+      ? rawMaxReferenceImages
+      : supportsExtraImages
+        ? undefined
+        : 1;
 
   return {
     version,
@@ -207,7 +224,8 @@ export const extractImageGenUi = (
     supportsImageReference: Boolean(i2i.supports_image_reference),
     supportsImageFidelity: Boolean(i2i.supports_image_fidelity),
     supportsHumanFidelity: Boolean(i2i.supports_human_fidelity),
-    supportsExtraImages: Boolean(i2i.supports_extra_images),
+    supportsExtraImages,
+    maxReferenceImages,
     notes,
   };
 };

@@ -39,6 +39,7 @@ export function EnvironmentGenerationFields({
     [selectedModel],
   );
   const supportsReferenceImages = Boolean(envKey) && imageGenUi.supportsExtraImages;
+  const maxReferenceImages = imageGenUi.maxReferenceImages;
   const showFields = showToggle ? generation.enabled : true;
 
   const updateField = <K extends keyof GenerationFormState>(
@@ -53,6 +54,21 @@ export function EnvironmentGenerationFields({
     if (generation.reference_images.length === 0) return;
     setGeneration((prev) => ({ ...prev, reference_images: [] }));
   }, [generation.reference_images.length, setGeneration, supportsReferenceImages]);
+
+  useEffect(() => {
+    if (!supportsReferenceImages) return;
+    if (typeof maxReferenceImages !== "number" || maxReferenceImages <= 0) return;
+    if (generation.reference_images.length <= maxReferenceImages) return;
+    setGeneration((prev) => ({
+      ...prev,
+      reference_images: prev.reference_images.slice(-maxReferenceImages),
+    }));
+  }, [
+    generation.reference_images,
+    maxReferenceImages,
+    setGeneration,
+    supportsReferenceImages,
+  ]);
 
   return (
     <div className={`${withDivider ? "border-t pt-4" : ""} space-y-4`}>
@@ -86,7 +102,13 @@ export function EnvironmentGenerationFields({
             <EnvironmentReferenceImagesField
               envKey={envKey}
               value={generation.reference_images}
-              onChange={(next) => updateField("reference_images", next)}
+              maxSelection={maxReferenceImages}
+              onChange={(next) => {
+                const max = maxReferenceImages;
+                const clamped =
+                  typeof max === "number" && max > 0 ? next.slice(-max) : next;
+                updateField("reference_images", clamped);
+              }}
             />
           ) : null}
           <div>
