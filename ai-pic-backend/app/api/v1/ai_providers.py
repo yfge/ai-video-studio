@@ -133,6 +133,8 @@ async def generate_text(
         else:
             raise HTTPException(status_code=400, detail=response.error)
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文本生成失败: {str(e)}")
 
@@ -170,6 +172,8 @@ async def generate_image(
         else:
             raise HTTPException(status_code=400, detail=response.error)
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"图像生成失败: {str(e)}")
 
@@ -245,6 +249,8 @@ async def generate_video(
         else:
             raise HTTPException(status_code=400, detail=response.error)
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"视频生成失败: {str(e)}")
 
@@ -279,6 +285,8 @@ async def generate_speech(
         else:
             raise HTTPException(status_code=400, detail=response.error)
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"语音生成失败: {str(e)}")
 
