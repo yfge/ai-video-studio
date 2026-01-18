@@ -94,6 +94,7 @@ IMAGE_TO_IMAGE_KEYS_BY_PROVIDER: dict[str, set[str]] = {
         "prompt",
         "model",
         "prefer_provider",
+        "size",
         "strength",
         "steps",
         "cfg_scale",
@@ -152,13 +153,9 @@ def supported_ai_manager_keys(provider: str, mode: ImageGenMode) -> set[str]:
     provider_key = (provider or "").lower()
     if mode == ImageGenMode.TEXT_TO_IMAGE:
         return set(
-            TEXT_TO_IMAGE_KEYS_BY_PROVIDER.get(
-                provider_key, FALLBACK_TEXT_TO_IMAGE_KEYS
-            )
+            TEXT_TO_IMAGE_KEYS_BY_PROVIDER.get(provider_key, FALLBACK_TEXT_TO_IMAGE_KEYS)
         )
-    return set(
-        IMAGE_TO_IMAGE_KEYS_BY_PROVIDER.get(provider_key, FALLBACK_IMAGE_TO_IMAGE_KEYS)
-    )
+    return set(IMAGE_TO_IMAGE_KEYS_BY_PROVIDER.get(provider_key, FALLBACK_IMAGE_TO_IMAGE_KEYS))
 
 
 def build_ai_manager_call(normalized: ImageGenNormalized) -> Dict[str, Any]:
@@ -221,17 +218,13 @@ def build_ai_manager_call(normalized: ImageGenNormalized) -> Dict[str, Any]:
 def _filter_text_to_image(provider: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     if provider == "openai":
         payload["style"] = normalize_openai_image_style(payload.get("style"))
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE)
-        )
+        return _keep(payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE))
 
     if provider == "jimeng":
         dims = size_to_dimensions(payload.get("size") or "")
         if dims:
             payload["width"], payload["height"] = dims
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE)
-        )
+        return _keep(payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE))
 
     if provider == "keling":
         refs = payload.get("reference_images")
@@ -243,49 +236,17 @@ def _filter_text_to_image(provider: str, payload: Dict[str, Any]) -> Dict[str, A
                 first = refs
             if isinstance(first, str) and first:
                 payload["image"] = first
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE)
-        )
+        return _keep(payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE))
 
-    if provider == "volcengine":
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE)
-        )
+    if provider in TEXT_TO_IMAGE_KEYS_BY_PROVIDER:
+        return _keep(payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE))
 
-    if provider == "google":
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE)
-        )
-
-    # Fallback: keep safe common subset
     return _keep(payload, FALLBACK_TEXT_TO_IMAGE_KEYS)
 
 
 def _filter_image_to_image(provider: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    if provider == "openai":
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.IMAGE_TO_IMAGE)
-        )
-
-    if provider == "jimeng":
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.IMAGE_TO_IMAGE)
-        )
-
-    if provider == "keling":
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.IMAGE_TO_IMAGE)
-        )
-
-    if provider == "volcengine":
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.IMAGE_TO_IMAGE)
-        )
-
-    if provider == "google":
-        return _keep(
-            payload, supported_ai_manager_keys(provider, ImageGenMode.IMAGE_TO_IMAGE)
-        )
+    if provider in IMAGE_TO_IMAGE_KEYS_BY_PROVIDER:
+        return _keep(payload, supported_ai_manager_keys(provider, ImageGenMode.IMAGE_TO_IMAGE))
 
     return _keep(payload, FALLBACK_IMAGE_TO_IMAGE_KEYS)
 

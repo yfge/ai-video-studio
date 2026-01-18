@@ -257,6 +257,28 @@ class JimengProvider(BaseProvider):
     ) -> AIResponse:
         """即梦图生图"""
         try:
+            size_value = kwargs.pop("size", None)
+            width = None
+            height = None
+            if size_value is not None:
+                try:
+                    normalized_size, _, _ = normalize_image_params(
+                        self.name, model, size_value, None
+                    )
+                except ValueError as exc:
+                    return AIResponse(
+                        success=False,
+                        error=str(exc),
+                        provider=self.name,
+                        model=model,
+                        task_type=AITaskType.SCENE_GENERATION,
+                        model_type=AIModelType.IMAGE_TO_IMAGE,
+                    )
+                if normalized_size:
+                    dims = size_to_dimensions(normalized_size)
+                    if dims:
+                        width, height = dims
+
             client = await self.get_client()
 
             request_data = {
@@ -267,6 +289,9 @@ class JimengProvider(BaseProvider):
                 "cfg_scale": cfg_scale,
                 **kwargs,
             }
+            if width is not None and height is not None:
+                request_data["width"] = width
+                request_data["height"] = height
 
             if prompt:
                 request_data["prompt"] = prompt
@@ -295,6 +320,8 @@ class JimengProvider(BaseProvider):
                         metadata={
                             "task_id": task_id,
                             "init_image": image_url,
+                            "width": width,
+                            "height": height,
                             "strength": strength,
                             "steps": steps,
                             "cfg_scale": cfg_scale,
@@ -311,6 +338,8 @@ class JimengProvider(BaseProvider):
                     model_type=AIModelType.IMAGE_TO_IMAGE,
                     metadata={
                         "init_image": image_url,
+                        "width": width,
+                        "height": height,
                         "strength": strength,
                         "steps": steps,
                         "cfg_scale": cfg_scale,

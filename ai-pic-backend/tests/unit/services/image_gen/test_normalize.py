@@ -153,6 +153,24 @@ def test_build_ai_manager_call_filters_jimeng_aspect_ratio():
 
 
 @pytest.mark.unit
+def test_build_ai_manager_call_keeps_jimeng_img2img_size():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.VIRTUAL_IP,
+        mode=ImageGenMode.IMAGE_TO_IMAGE,
+        prompt="test",
+        model="jimeng:jimeng-img2img",
+        base_image="http://example.com/base.png",
+        size="1024x1024",
+        aspect_ratio="16:9",
+    )
+    normalized = normalize_image_gen_request(req)
+    call = build_ai_manager_call(normalized)
+    assert call["prefer_provider"] == "jimeng"
+    assert call["size"] == "1024x1024"
+    assert "aspect_ratio" not in call
+
+
+@pytest.mark.unit
 def test_build_ai_manager_call_keeps_extra_images_without_provider():
     req = ImageGenRequest(
         domain=ImageGenDomain.ENVIRONMENT,
