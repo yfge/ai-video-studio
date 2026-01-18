@@ -36,6 +36,13 @@ def build_image_gen_ui_metadata(
         supports_cfg_scale_t2i = supports_cfg
         supports_cfg_scale_i2i = supports_cfg
 
+    max_count_t2i = 4 if "n" in text_keys else 1
+    max_count_i2i = 4 if "count" in image_keys else 1
+    if provider_key == "openai" and "dall-e-3" in mid.lower():
+        # DALL·E 3 only supports n=1 in practice (and image_to_image is unsupported).
+        max_count_t2i = 1
+        max_count_i2i = 1
+
     # Some providers expose img2img as a capability on text_to_image models.
     supports_reference_image = "image_to_image" in caps_list
 
@@ -52,6 +59,7 @@ def build_image_gen_ui_metadata(
         "supports_negative_prompt": _bool("negative_prompt" in text_keys),
         "supports_style_preset_id": _bool("style_preset_id" in text_keys),
         "supports_style_spec": _bool("style_spec" in text_keys),
+        "max_count": max_count_t2i,
         "supports_reference_images": _bool(
             "reference_images" in text_keys
             or "extra_images" in text_keys
@@ -76,6 +84,7 @@ def build_image_gen_ui_metadata(
         "supports_image_reference": _bool("image_reference" in image_keys),
         "supports_image_fidelity": _bool("image_fidelity" in image_keys),
         "supports_human_fidelity": _bool("human_fidelity" in image_keys),
+        "max_count": max_count_i2i,
         "supports_extra_images": _bool(
             "extra_images" in image_keys or "reference_images" in image_keys
         ),

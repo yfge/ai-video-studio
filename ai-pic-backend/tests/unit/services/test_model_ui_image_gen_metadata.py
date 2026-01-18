@@ -21,6 +21,7 @@ def test_model_ui_image_gen_openai_has_no_negative_prompt():
     assert image_gen["text_to_image"]["supports_negative_prompt"] is False
     assert image_gen["text_to_image"]["supports_steps"] is False
     assert image_gen["text_to_image"]["supports_cfg_scale"] is False
+    assert image_gen["text_to_image"]["max_count"] == 1
 
 
 def test_model_ui_image_gen_jimeng_supports_steps_cfg_seed():
@@ -102,3 +103,27 @@ def test_model_ui_image_gen_volcengine_cfg_scale_model_specific():
         }
     )
     assert unsupported["text_to_image"]["supports_cfg_scale"] is False
+
+
+def test_model_ui_image_gen_max_count_is_provider_aware():
+    google = _extract_image_gen(
+        {
+            "id": "gemini-2.0-flash-exp",
+            "type": "text_to_image",
+            "provider": "google",
+            "capabilities": ["text_to_image", "image_to_image"],
+        }
+    )
+    assert google["text_to_image"]["max_count"] == 1
+    assert google["image_to_image"]["max_count"] == 1
+
+    volc = _extract_image_gen(
+        {
+            "id": "seedream-4.5",
+            "type": "text_to_image",
+            "provider": "volcengine",
+            "capabilities": ["text_to_image", "image_to_image"],
+        }
+    )
+    assert volc["text_to_image"]["max_count"] == 4
+    assert volc["image_to_image"]["max_count"] == 4
