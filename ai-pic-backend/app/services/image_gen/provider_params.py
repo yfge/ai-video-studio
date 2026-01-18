@@ -110,7 +110,6 @@ IMAGE_TO_IMAGE_KEYS_BY_PROVIDER: dict[str, set[str]] = {
         "style",
         "style_preset_id",
         "style_spec",
-        "extra_images",
         "image_reference",
         "image_fidelity",
         "human_fidelity",

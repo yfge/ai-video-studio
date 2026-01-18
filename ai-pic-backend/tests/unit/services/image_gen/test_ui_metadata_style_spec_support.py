@@ -16,6 +16,7 @@ def test_ui_metadata_reports_style_spec_support_for_keling():
     i2i = meta["image_gen"]["image_to_image"]
     assert i2i["supports_style_preset_id"] is True
     assert i2i["supports_style_spec"] is True
+    assert i2i["supports_extra_images"] is False
 
 
 @pytest.mark.unit
@@ -33,4 +34,4 @@ def test_ui_metadata_reports_no_style_spec_support_for_google():
     i2i = meta["image_gen"]["image_to_image"]
     assert i2i["supports_style_preset_id"] is False
     assert i2i["supports_style_spec"] is False
-
+    assert i2i["supports_extra_images"] is True

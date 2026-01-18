@@ -218,6 +218,7 @@
 - [x] 后端：当 provider 不支持 `negative_prompt`/`reference_images` 时做降级处理（`negative_prompt` 合并进 prompt、`reference_images` 丢弃）并记录 `audit.dropped_fields`
 - [x] 后端：可灵文生图支持 `reference_images`（映射到 `image`，仅 1 张）；使用参考图时合并 `negative_prompt` 进 prompt
 - [x] 后端：火山图生图 count 参数对齐（img2img `n` → `count`）
+- [x] 后端：修正可灵图生图仅支持 1 张基准图（禁用 img2img `extra_images`）并同步 UI 元数据
 - [x] 前端：虚拟 IP 文生图模型列表拉取 `text_to_image`（修复误用 `image_to_image`）
 - [x] 后端：环境文生图模板明确单帧语义并补 `no collage` 约束
 - [x] 后端：Google/Gemini 文生图参考图 413 风险治理（限制张数/压缩/提示）

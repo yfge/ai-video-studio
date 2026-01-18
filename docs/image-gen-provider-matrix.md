@@ -48,7 +48,7 @@
 | Volcengine | text_to_image | ✅ | n/a | ❌ | ✅ | ✅ | ❌ | ❌ | ⚠️ | n/a | `cfg_scale→guidance_scale`（部分模型） |
 | Volcengine | image_to_image | n/a | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ❌ | 支持多参考图（base + extra） |
 | 可灵（Keling） | text_to_image | ✅（仅 1 张） | n/a | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ | n/a | `reference_images[0]→image`；有参考图时 `negative_prompt` 会合并进 prompt；支持 `image_reference/image_fidelity/human_fidelity` |
-| 可灵（Keling） | image_to_image | n/a | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | img2img 不支持 `negative_prompt`（需写入 prompt） |
+| 可灵（Keling） | image_to_image | n/a | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | 仅支持 1 张基准图（extra_images 会被忽略）；img2img 不支持 `negative_prompt`（需写入 prompt） |
 | 即梦（Jimeng） | text_to_image | ❌ | n/a | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | n/a | 支持 `width/height`（由 `size` 归一化） |
 | 即梦（Jimeng） | image_to_image | n/a | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | 支持 `strength`（显式走 img2img） |
 

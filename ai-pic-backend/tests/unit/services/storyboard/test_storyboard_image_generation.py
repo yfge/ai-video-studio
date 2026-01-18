@@ -83,7 +83,7 @@ async def test_storyboard_text_to_image_uses_provider_safe_kwargs():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_storyboard_image_to_image_preserves_extra_images_for_supported_provider():
+async def test_storyboard_image_to_image_omits_extra_images_for_keling():
     ai_service = _DummyAIService(
         _DummyResponse(
             success=True,
@@ -119,14 +119,14 @@ async def test_storyboard_image_to_image_preserves_extra_images_for_supported_pr
     assert kwargs["model"] == "kling-image-v2"
     assert kwargs["count"] == 3
     assert kwargs["image_url"] == "https://example.com/base.png"
-    assert kwargs["extra_images"] == ["https://example.com/extra.png"]
+    assert "extra_images" not in kwargs
     assert "width" not in kwargs
     assert "height" not in kwargs
     assert result["urls"] == ["https://example.com/out-1.png"]
     assert result["image_gen"]["generation_profile"] == "balanced"
     assert result["image_gen"]["image_fidelity"] == 0.5
     assert result["image_gen"]["human_fidelity"] == 0.45
-    assert result["image_gen"]["reference_images_count"] == 1
+    assert result["image_gen"]["reference_images_count"] == 0
 
 
 @pytest.mark.unit
