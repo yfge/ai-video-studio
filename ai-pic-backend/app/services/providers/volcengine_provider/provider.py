@@ -216,7 +216,8 @@ class VolcengineProvider(BaseProvider):
         image_url: str,
         prompt: str,
         model: Optional[str] = None,
-        count: int = 1,
+        n: int = 1,
+        count: int | None = None,
         size: Optional[str] = None,
         style: Optional[str] = None,
         style_preset_id: Optional[str] = None,
@@ -225,6 +226,7 @@ class VolcengineProvider(BaseProvider):
         **kwargs,
     ) -> AIResponse:
         """Generate image variants using Seedream API (image-to-image)."""
+        effective_count = count if count is not None else n
         client = await self.get_client()
         return await image_module.image_to_image(
             client=client,
@@ -233,7 +235,7 @@ class VolcengineProvider(BaseProvider):
             image_url=image_url,
             prompt=prompt,
             model=model,
-            count=count,
+            count=effective_count,
             size=size,
             style=style,
             style_preset_id=style_preset_id,
