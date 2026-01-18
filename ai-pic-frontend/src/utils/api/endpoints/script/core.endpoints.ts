@@ -77,6 +77,12 @@ export interface ScriptRegenerateRequest {
   model?: string; // Format: "provider:model_id"
 }
 
+export interface ScriptRegenerateTaskResponse {
+  task_id: number;
+  status: string;
+  message?: string;
+}
+
 /**
  * Regenerate a script.
  * @param idOrBusinessId - Script ID or business ID
@@ -85,8 +91,8 @@ export interface ScriptRegenerateRequest {
 export async function regenerateScript(
   idOrBusinessId: number | string,
   options?: ScriptRegenerateRequest
-): Promise<ApiResponse<Script>> {
-  return httpClient<Script>(scriptPath(idOrBusinessId, '/regenerate'), {
+): Promise<ApiResponse<ScriptRegenerateTaskResponse>> {
+  return httpClient<ScriptRegenerateTaskResponse>(scriptPath(idOrBusinessId, '/regenerate'), {
     method: 'POST',
     body: options ? JSON.stringify(options) : undefined,
     headers: options ? { 'Content-Type': 'application/json' } : undefined,
@@ -118,4 +124,3 @@ export async function exportScript(
     method: 'POST',
   });
 }
-

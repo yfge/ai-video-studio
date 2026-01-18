@@ -2,15 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { episodeAPI, scriptAPI, taskAPI } from "@/utils/api";
-import type {
-  Episode,
-  Script,
-  ScriptGenerationRequest,
-  Task,
-} from "@/utils/api";
+import type { ScriptGenerationRequest } from "@/utils/api";
+import type { Episode, Script, Task } from "@/utils/api/types";
 import { useNormalizedScenes } from "@/hooks/useNormalizedScenes";
 import { useTaskPolling, type TaskPollPair } from "@/hooks/useTaskPolling";
 import { useEpisodeMetadata } from "@/hooks/useEpisodeMetadata";
+import { sortScriptsNewestFirst } from "@/hooks/episode/scriptSort";
 import { SCRIPT_GENERATION_DEFAULTS } from "@/utils/scriptGenerationDefaults";
 
 export {
@@ -89,7 +86,7 @@ export function useEpisodeDetail({ episodeKey, showAlert }: UseEpisodeDetailOpti
         setEpisode(episodeResponse.data);
       }
       if (scriptsResponse.success && scriptsResponse.data) {
-        setScripts(scriptsResponse.data);
+        setScripts(sortScriptsNewestFirst(scriptsResponse.data));
       }
     } catch (error) {
       console.error("加载数据失败:", error);
@@ -127,12 +124,6 @@ export function useEpisodeDetail({ episodeKey, showAlert }: UseEpisodeDetailOpti
       setGenerateForm((prev) => ({ ...prev, episode_id: episode.id }));
     }
   }, [episode?.id]);
-
-  useEffect(() => {
-    if (selectedScriptId) return;
-    if (scripts.length === 0) return;
-    setSelectedScriptId(scripts[0].id);
-  }, [scripts, selectedScriptId]);
 
   useEffect(() => {
     if (sceneAudioTask?.status !== "completed") return;

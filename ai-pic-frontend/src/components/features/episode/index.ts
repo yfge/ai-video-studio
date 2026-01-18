@@ -7,5 +7,6 @@ export { EpisodeWorkspaceHeader, type WorkflowStatus } from "./EpisodeWorkspaceH
 export { EpisodeWorkflowSteps, type WorkflowStepStatus, type WorkflowStep } from "./EpisodeWorkflowSteps";
 export { WorkspaceOverviewTabContent } from "./WorkspaceOverviewTabContent";
 export { WorkspaceScriptTabContent } from "./WorkspaceScriptTabContent";
+export { WorkspaceScriptSelector } from "./WorkspaceScriptSelector";
 export { WorkspaceTimelineTabContent } from "./WorkspaceTimelineTabContent";
 export { WorkspaceStoryboardTabContent } from "./WorkspaceStoryboardTabContent";
