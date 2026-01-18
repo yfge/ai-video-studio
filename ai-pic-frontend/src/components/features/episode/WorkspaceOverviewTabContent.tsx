@@ -14,10 +14,12 @@ interface Conflict {
 
 interface WorkspaceOverviewTabContentProps {
   episode: Episode;
+  scriptSceneCount?: number;
 }
 
 export function WorkspaceOverviewTabContent({
   episode,
+  scriptSceneCount,
 }: WorkspaceOverviewTabContentProps) {
   // Parse plot_points
   const plotPoints: PlotPoint[] = Array.isArray(episode.plot_points)
@@ -39,6 +41,10 @@ export function WorkspaceOverviewTabContent({
 
   // Parse character_arcs
   const characterArcs = episode.character_arcs || {};
+  const sceneCount =
+    typeof scriptSceneCount === "number" && scriptSceneCount >= 0
+      ? scriptSceneCount
+      : episode.scene_count;
 
   return (
     <div className="space-y-6">
@@ -56,7 +62,7 @@ export function WorkspaceOverviewTabContent({
           </div>
           <div>
             <span className="text-sm text-gray-500">场景数</span>
-            <p className="text-lg font-medium">{episode.scene_count || "—"} 个</p>
+            <p className="text-lg font-medium">{sceneCount || "—"} 个</p>
           </div>
           <div>
             <span className="text-sm text-gray-500">状态</span>

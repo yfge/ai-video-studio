@@ -68,6 +68,9 @@ export default function EpisodeWorkspacePage() {
   }, [searchParams]);
 
   const mainScript = selectedScript;
+  const mainScriptSceneCount = Array.isArray(mainScript?.scenes)
+    ? mainScript?.scenes.length
+    : undefined;
 
   // Calculate workflow status based on data
   const workflowStatus: WorkflowStatus = useMemo(() => {
@@ -147,7 +150,10 @@ export default function EpisodeWorkspacePage() {
         />
         <div className="mt-6">
           {activeTab === "overview" && episode && (
-            <WorkspaceOverviewTabContent episode={episode} />
+            <WorkspaceOverviewTabContent
+              episode={episode}
+              scriptSceneCount={mainScriptSceneCount}
+            />
           )}
           {activeTab === "script" && (
             <WorkspaceScriptTabContent
