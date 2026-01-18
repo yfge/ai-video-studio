@@ -45,7 +45,9 @@ def build_image_gen_ui_metadata(
         "supports_cfg_scale": _bool(supports_cfg_scale_t2i),
         "supports_negative_prompt": _bool("negative_prompt" in text_keys),
         "supports_reference_images": _bool(
-            "reference_images" in text_keys or "extra_images" in text_keys
+            "reference_images" in text_keys
+            or "extra_images" in text_keys
+            or "image" in text_keys
         ),
     }
 
@@ -88,6 +90,12 @@ def build_image_gen_ui_metadata(
             _append_note(text_notes, volc_cfg_note)
         if supports_reference_image and image_to_image["supports_cfg_scale"]:
             _append_note(image_notes, volc_cfg_note)
+
+    if provider_key == "keling" and text_to_image["supports_reference_images"]:
+        _append_note(
+            text_notes,
+            "可灵文生图参考图仅支持 1 张；使用参考图时 negative_prompt 会合并进 prompt",
+        )
 
     payload: dict[str, Any] = {
         "version": 1,

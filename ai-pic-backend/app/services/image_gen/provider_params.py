@@ -192,6 +192,9 @@ def build_ai_manager_call(normalized: ImageGenNormalized) -> Dict[str, Any]:
             "size": normalized.size,
             "aspect_ratio": normalized.aspect_ratio,
             "reference_images": list(normalized.extra_images or []),
+            "image_reference": normalized.image_reference,
+            "image_fidelity": normalized.image_fidelity,
+            "human_fidelity": normalized.human_fidelity,
             "seed": normalized.seed,
             "steps": normalized.steps,
             "cfg_scale": normalized.cfg_scale,
@@ -232,6 +235,15 @@ def _filter_text_to_image(provider: str, payload: Dict[str, Any]) -> Dict[str, A
         )
 
     if provider == "keling":
+        refs = payload.get("reference_images")
+        if refs and not payload.get("image"):
+            first = None
+            if isinstance(refs, list):
+                first = refs[0] if refs else None
+            elif isinstance(refs, str):
+                first = refs
+            if isinstance(first, str) and first:
+                payload["image"] = first
         return _keep(
             payload, supported_ai_manager_keys(provider, ImageGenMode.TEXT_TO_IMAGE)
         )

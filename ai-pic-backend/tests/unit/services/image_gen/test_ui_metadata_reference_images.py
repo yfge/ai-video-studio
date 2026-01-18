@@ -20,3 +20,12 @@ def test_ui_metadata_txt2img_reference_images_true_for_google():
     )
     assert meta["image_gen"]["text_to_image"]["supports_reference_images"] is True
 
+
+@pytest.mark.unit
+def test_ui_metadata_txt2img_reference_images_true_for_keling():
+    meta = build_image_gen_ui_metadata(
+        provider="keling",
+        model_id="kling-v2-1",
+        caps=["text_to_image"],
+    )
+    assert meta["image_gen"]["text_to_image"]["supports_reference_images"] is True

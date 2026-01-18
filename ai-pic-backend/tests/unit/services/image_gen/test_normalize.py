@@ -38,6 +38,27 @@ def test_parse_provider_prefix_and_infer_provider():
 
 
 @pytest.mark.unit
+def test_keling_txt2img_reference_images_use_first_and_merge_negative_prompt():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.STORYBOARD,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="keling:kling-v2-1",
+        reference_images=["/uploads/ref-1.png", "/uploads/ref-2.png"],
+        negative_prompt="no text, watermark",
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.extra_images == ["http://localhost:8000/uploads/ref-1.png"]
+    assert normalized.negative_prompt is None
+    assert "Avoid:" in normalized.prompt
+    assert any(
+        "supports only 1 reference image" in w for w in normalized.audit.warnings
+    )
+    assert any("merged into prompt" in w for w in normalized.audit.warnings)
+
+
+@pytest.mark.unit
 def test_openai_drops_aspect_ratio_and_defaults_size_on_invalid():
     req = ImageGenRequest(
         domain=ImageGenDomain.VIRTUAL_IP,

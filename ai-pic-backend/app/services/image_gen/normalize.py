@@ -224,11 +224,21 @@ def normalize_image_gen_request(
     backend_base = (req.backend_base or "").rstrip("/") or None
     supports_reference_images = False
     if req.mode == ImageGenMode.TEXT_TO_IMAGE:
-        text_keys = supported_ai_manager_keys(provider or "", ImageGenMode.TEXT_TO_IMAGE)
-        supports_reference_images = "reference_images" in text_keys or "extra_images" in text_keys
+        text_keys = supported_ai_manager_keys(
+            provider or "", ImageGenMode.TEXT_TO_IMAGE
+        )
+        supports_reference_images = (
+            "reference_images" in text_keys
+            or "extra_images" in text_keys
+            or "image" in text_keys
+        )
     else:
-        image_keys = supported_ai_manager_keys(provider or "", ImageGenMode.IMAGE_TO_IMAGE)
-        supports_reference_images = "extra_images" in image_keys or "reference_images" in image_keys
+        image_keys = supported_ai_manager_keys(
+            provider or "", ImageGenMode.IMAGE_TO_IMAGE
+        )
+        supports_reference_images = (
+            "extra_images" in image_keys or "reference_images" in image_keys
+        )
 
     extra_images: list[str] = []
     if req.reference_images:
@@ -264,6 +274,26 @@ def normalize_image_gen_request(
     prompt = (req.prompt or "").strip()
     if not prompt:
         audit.warnings.append("empty prompt")
+
+    if (
+        provider == "keling"
+        and req.mode == ImageGenMode.TEXT_TO_IMAGE
+        and extra_images
+    ):
+        if len(extra_images) > 1:
+            audit.warnings.append(
+                "keling text_to_image supports only 1 reference image; using the first"
+            )
+            audit.dropped_fields.append("reference_images")
+            extra_images = extra_images[:1]
+
+        if negative_prompt:
+            prompt = _append_negative_prompt_to_prompt(prompt, negative_prompt)
+            audit.warnings.append(
+                "keling text_to_image ignores negative_prompt when reference images are provided; merged into prompt"
+            )
+            audit.dropped_fields.append("negative_prompt")
+            negative_prompt = None
 
     supports_negative_prompt = "negative_prompt" in supported_ai_manager_keys(
         provider or "", req.mode

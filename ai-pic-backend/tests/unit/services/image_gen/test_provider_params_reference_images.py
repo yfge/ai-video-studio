@@ -28,3 +28,19 @@ def test_build_ai_manager_call_passes_reference_images_for_text_to_image(model: 
     normalized = normalize_image_gen_request(req)
     call = build_ai_manager_call(normalized)
     assert call["reference_images"] == ["http://localhost:8000/uploads/ref.png"]
+
+
+@pytest.mark.unit
+def test_build_ai_manager_call_maps_reference_images_to_keling_image_param():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.STORYBOARD,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="test",
+        model="keling:kling-v2-1",
+        reference_images=["/uploads/ref.png"],
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    call = build_ai_manager_call(normalized)
+    assert call["image"] == "http://localhost:8000/uploads/ref.png"
+    assert "reference_images" not in call
