@@ -27,6 +27,9 @@
 - 兼容策略：当 provider+mode 不支持多参考图时：
   - 前端应限制只选 1 张（避免“选了但被忽略”）
   - 后端会丢弃 `reference_images` 并记录 `audit.dropped_fields += ["reference_images"]`
+- 已知约束：
+  - Google/Gemini（text_to_image）：为降低 413 风险，后端会将 `reference_images` **截断为最多 4 张**（并在 provider 内联上传前自动压缩）。
+  - 可灵（text_to_image）：仅使用第 1 张参考图（映射到 provider 的 `image` 字段）。
 
 ## provider×mode 参数能力矩阵
 
@@ -39,11 +42,11 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | OpenAI | text_to_image | ❌ | n/a | ❌ | ❌ | ❌ | ❌ | n/a | DALL·E 2/3 主要用 `size`/`style` |
 | OpenAI | image_to_image | n/a | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 仅支持单 base image（variations/inpainting） |
-| Google | text_to_image | ✅ | n/a | ❌ | ❌ | ❌ | ❌ | n/a | 支持 `reference_images`；`aspect_ratio` 可用 |
+| Google | text_to_image | ✅ | n/a | ❌ | ❌ | ❌ | ❌ | n/a | 支持 `reference_images`（建议≤4张；过大将自动压缩）；`aspect_ratio` 可用 |
 | Google | image_to_image | n/a | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | 支持多参考图（base + extra） |
 | Volcengine | text_to_image | ✅ | n/a | ❌ | ❌ | ❌ | ⚠️ | n/a | `cfg_scale→guidance_scale`（部分模型） |
 | Volcengine | image_to_image | n/a | ✅ | ❌ | ❌ | ❌ | ⚠️ | ❌ | 支持多参考图（base + extra） |
-| 可灵（Keling） | text_to_image | ❌ | n/a | ✅ | ❌ | ❌ | ❌ | n/a | 支持 `image_reference/image_fidelity/human_fidelity`（单图输入） |
+| 可灵（Keling） | text_to_image | ✅（仅 1 张） | n/a | ⚠️ | ❌ | ❌ | ❌ | n/a | `reference_images[0]→image`；有参考图时 `negative_prompt` 会合并进 prompt；支持 `image_reference/image_fidelity/human_fidelity` |
 | 可灵（Keling） | image_to_image | n/a | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | img2img 不支持 `negative_prompt`（需写入 prompt） |
 | 即梦（Jimeng） | text_to_image | ❌ | n/a | ✅ | ✅ | ✅ | ✅ | n/a | 支持 `width/height`（由 `size` 归一化） |
 | 即梦（Jimeng） | image_to_image | n/a | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | 支持 `strength`（显式走 img2img） |
@@ -67,3 +70,7 @@
   - refs 存在，且 provider 支持 txt2img `reference_images`，并且未显式设置 `strength`：优先 `TEXT_TO_IMAGE + reference_images`（把 refs 当 conditioning）
   - 否则：`IMAGE_TO_IMAGE`（base=第 1 张 ref，extra=其余 refs；若 provider 不支持 extra，前端应限制只选 1 张）
 
+## E2E Quick Checks（Chrome）
+
+- Environment：进入任一环境详情页，选择 Google/Gemini 模型，确认「模型提示」中出现“参考图内联上传/413 风险/建议≤4张”等提示。
+- Storyboard：进入分镜页，打开「选择参考图生成关键帧」弹窗，确认可选择「火山引擎」等 txt2img 模型，且 helperText 为“仅展示支持参考图文生图的模型”。

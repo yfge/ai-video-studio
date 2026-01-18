@@ -220,13 +220,13 @@
 - [x] 后端：火山图生图 count 参数对齐（img2img `n` → `count`）
 - [x] 前端：虚拟 IP 文生图模型列表拉取 `text_to_image`（修复误用 `image_to_image`）
 - [x] 后端：环境文生图模板明确单帧语义并补 `no collage` 约束
-- [ ] 后端：Google/Gemini 文生图参考图 413 风险治理（限制张数/压缩/提示）
+- [x] 后端：Google/Gemini 文生图参考图 413 风险治理（限制张数/压缩/提示）
 - [x] 后端：Storyboard refs 在 provider 支持 txt2img `reference_images` 且未显式设置 `strength` 时优先走 `TEXT_TO_IMAGE + reference_images`（否则保持 img2img base+extra_images）
 - [x] 后端：补齐 `STORYBOARD_KEYFRAME` 提示词对“转场/镜头切换”等词的语义约束（剪辑备注，不要在一张图里表现多个镜头）
 - [x] 后端：增强通用 `no collage` 约束（补充 `no split-screen/multi-panel/contact sheet`）
 - [x] 前端：分镜图生图弹窗展示「模型提示」（`image_gen` notes）并在不支持多参考图时自动裁剪为 1 张（其余选择替换/忽略）
-- [ ] 前端：将 `reference_images` 动态输入扩展到分镜文生图等入口（按 model 能力隐藏/显示）
-- [ ] 验证：补齐 provider×domain 参数兼容矩阵与端到端用例（Chrome 记录关键请求与结果；见 `docs/image-gen-provider-matrix.md`）
+- [x] 前端：将 `reference_images` 动态输入扩展到分镜文生图等入口（按 model 能力隐藏/显示）
+- [x] 验证：补齐 provider×domain 参数兼容矩阵与端到端用例（Chrome 记录关键请求与结果；见 `docs/image-gen-provider-matrix.md`）
 
 ## Feature: 任务队列与 Agent 执行落库（高优）
 
