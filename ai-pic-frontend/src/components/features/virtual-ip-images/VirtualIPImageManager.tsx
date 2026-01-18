@@ -50,15 +50,12 @@ export function VirtualIPImageManager({
     setShowGenerateForm,
     generateForm,
     setGenerateForm,
-    stylePresets,
-    selectedStylePreset,
-    selectedModel,
-    supportsAspectRatio,
-    resolutionOptions,
-    aspectRatioOptions,
-    uploadForm,
-    setUploadForm,
-    variantTarget,
+	    stylePresets,
+	    selectedStylePreset,
+	    selectedModel,
+	    uploadForm,
+	    setUploadForm,
+	    variantTarget,
     variantPrompt,
     variantModalOpen,
     setVariantModalOpen,
@@ -103,22 +100,19 @@ export function VirtualIPImageManager({
             onViewTasks={() => router.push("/tasks")}
           />
 
-          {showGenerateForm ? (
-            <ImageGenerationForm
-              virtualIPId={virtualIPId}
-              generateForm={generateForm}
-              setGenerateForm={setGenerateForm}
-              stylePresets={stylePresets}
-              selectedStylePreset={selectedStylePreset}
-              selectedModel={selectedModel}
-              supportsAspectRatio={supportsAspectRatio}
-              resolutionOptions={resolutionOptions}
-              aspectRatioOptions={aspectRatioOptions}
-              generating={generating}
-              onGenerate={handleGenerateImage}
-              onCancel={() => setShowGenerateForm(false)}
-            />
-          ) : (
+	          {showGenerateForm ? (
+	            <ImageGenerationForm
+	              virtualIPId={virtualIPId}
+	              generateForm={generateForm}
+	              setGenerateForm={setGenerateForm}
+	              stylePresets={stylePresets}
+	              selectedStylePreset={selectedStylePreset}
+	              selectedModel={selectedModel}
+	              generating={generating}
+	              onGenerate={handleGenerateImage}
+	              onCancel={() => setShowGenerateForm(false)}
+	            />
+	          ) : (
             <ImageUploadForm
               uploadForm={uploadForm}
               setUploadForm={setUploadForm}

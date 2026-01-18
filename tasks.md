@@ -247,7 +247,7 @@
 - [x] 前端：将 `reference_images` 动态输入扩展到分镜文生图等入口（按 model 能力隐藏/显示）
 - [x] 验证：补齐 provider×domain 参数兼容矩阵与端到端用例（Chrome 记录关键请求与结果；见 `docs/image-gen-provider-matrix.md`）
 - [x] 后端：补齐 `image_gen` UI 元数据 `max_count`（provider-aware；Google/即梦=1，火山/可灵/OpenAI DALL·E2=≤4）
-- [ ] 前端：文生图/图生图表单按 `max_count` 动态限制生成张数并展示提示（含超限自动裁剪与文案）
+- [x] 前端：文生图/图生图表单按 `max_count` 动态限制生成张数并展示提示（含超限自动裁剪与文案）
 
 ## Feature: 任务队列与 Agent 执行落库（高优）
 

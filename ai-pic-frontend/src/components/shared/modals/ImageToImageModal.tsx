@@ -95,6 +95,7 @@ export function ImageToImageModal({
     setSelectedRefs,
   });
   const imageGenUi = extractImageGenUi(selectedModel, genMode);
+  const effectiveMaxCount = imageGenUi.maxCount ?? maxCount;
   const effectiveShowStylePreset =
     showStylePreset && imageGenUi.supportsStylePreset;
   const effectiveStyleSpecFields = imageGenUi.supportsStyleSpec
@@ -116,7 +117,7 @@ export function ImageToImageModal({
       prompt: prompt.trim(),
       model: modelIds[0],
       generation_profile: generationProfile || undefined,
-      count: Math.max(minCount, Math.min(maxCount, count || minCount)),
+      count: Math.max(minCount, Math.min(effectiveMaxCount, count || minCount)),
       size: size || undefined,
       aspect_ratio: supportsAspectRatio ? aspectRatio || undefined : undefined,
       style: style || undefined,
@@ -175,7 +176,7 @@ export function ImageToImageModal({
           count={count}
           onCountChange={setCount}
           minCount={minCount}
-          maxCount={maxCount}
+          maxCount={effectiveMaxCount}
           style={style}
           onStyleChange={setStyle}
           styleOptions={styleOptions}

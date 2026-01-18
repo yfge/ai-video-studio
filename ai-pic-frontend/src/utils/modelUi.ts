@@ -39,6 +39,7 @@ export type ImageGenUiOptions = {
   supportsHumanFidelity: boolean;
   supportsExtraImages: boolean;
   maxReferenceImages?: number;
+  maxCount?: number;
   notes: string[];
 };
 
@@ -72,6 +73,7 @@ type ModelUiMetadata = {
       supports_style_spec?: boolean;
       supports_reference_images?: boolean;
       max_reference_images?: number;
+      max_count?: number;
       notes?: string[];
     };
     image_to_image?: {
@@ -87,6 +89,7 @@ type ModelUiMetadata = {
       supports_human_fidelity?: boolean;
       supports_extra_images?: boolean;
       max_reference_images?: number;
+      max_count?: number;
       notes?: string[];
     };
     notes?: string[];
@@ -192,6 +195,7 @@ export const extractImageGenUi = (
 
   if (mode === "text_to_image") {
     const maxReferenceImages = Number(t2i.max_reference_images);
+    const maxCount = Number(t2i.max_count);
     return {
       version,
       supportsSeed: Boolean(t2i.supports_seed),
@@ -209,6 +213,7 @@ export const extractImageGenUi = (
         Number.isFinite(maxReferenceImages) && maxReferenceImages > 0
           ? maxReferenceImages
           : undefined,
+      maxCount: Number.isFinite(maxCount) && maxCount > 0 ? maxCount : undefined,
       notes,
     };
   }
@@ -221,6 +226,7 @@ export const extractImageGenUi = (
       : supportsExtraImages
         ? undefined
         : 1;
+  const maxCount = Number(i2i.max_count);
 
   return {
     version,
@@ -236,6 +242,7 @@ export const extractImageGenUi = (
     supportsHumanFidelity: Boolean(i2i.supports_human_fidelity),
     supportsExtraImages,
     maxReferenceImages,
+    maxCount: Number.isFinite(maxCount) && maxCount > 0 ? maxCount : undefined,
     notes,
   };
 };

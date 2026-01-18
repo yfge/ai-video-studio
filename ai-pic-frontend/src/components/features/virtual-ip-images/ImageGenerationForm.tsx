@@ -1,6 +1,5 @@
 "use client";
-
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import type { AIModel } from "@/utils/api";
 import { AIModelType, aiAPI } from "@/utils/api";
@@ -12,7 +11,6 @@ import {
 } from "@/components/shared";
 import { extractImageGenUi } from "@/utils/modelUi";
 import type { ImageGenerationFormState } from "@/hooks/useVirtualIPImages";
-
 import { ImageGenerationOptionsFields } from "./ImageGenerationOptionsFields";
 import { ImageGenerationStyleFields } from "./ImageGenerationStyleFields";
 import { VirtualIPReferenceImagesField } from "./VirtualIPReferenceImagesField";
@@ -32,9 +30,6 @@ interface ImageGenerationFormProps {
   stylePresets: StylePreset[];
   selectedStylePreset: StylePreset | undefined;
   selectedModel: AIModel | undefined;
-  supportsAspectRatio?: boolean;
-  resolutionOptions?: { value: string; label: string }[];
-  aspectRatioOptions?: string[];
   generating: boolean;
   onGenerate: () => void;
   onCancel: () => void;
@@ -51,25 +46,19 @@ export function ImageGenerationForm({
   onGenerate,
   onCancel,
 }: ImageGenerationFormProps) {
-  const imageGenUi = useMemo(
-    () => extractImageGenUi(selectedModel, "text_to_image"),
-    [selectedModel],
-  );
+  const imageGenUi = extractImageGenUi(selectedModel, "text_to_image");
   const supportsReferenceImages =
     Boolean(virtualIPId) && imageGenUi.supportsExtraImages;
   const maxReferenceImages = imageGenUi.maxReferenceImages;
   const supportsStylePreset = imageGenUi.supportsStylePreset;
   const supportsStyleSpec = imageGenUi.supportsStyleSpec;
+  const maxCount = imageGenUi.maxCount;
 
   useEffect(() => {
     if (supportsReferenceImages) return;
     if ((generateForm.reference_images || []).length === 0) return;
     setGenerateForm((prev) => ({ ...prev, reference_images: [] }));
-  }, [
-    generateForm.reference_images,
-    setGenerateForm,
-    supportsReferenceImages,
-  ]);
+  }, [generateForm.reference_images, setGenerateForm, supportsReferenceImages]);
 
   useEffect(() => {
     if (supportsStylePreset) return;
@@ -85,6 +74,13 @@ export function ImageGenerationForm({
   }, [generateForm.style_spec, setGenerateForm, supportsStyleSpec]);
 
   useEffect(() => {
+    if (typeof maxCount !== "number" || maxCount <= 0) return;
+    const current = generateForm.count ?? 1;
+    if (current <= maxCount) return;
+    setGenerateForm((prev) => ({ ...prev, count: maxCount }));
+  }, [generateForm.count, maxCount, setGenerateForm]);
+
+  useEffect(() => {
     if (!supportsReferenceImages) return;
     if (typeof maxReferenceImages !== "number" || maxReferenceImages <= 0) return;
     const current = generateForm.reference_images || [];
@@ -93,12 +89,7 @@ export function ImageGenerationForm({
       ...prev,
       reference_images: (prev.reference_images || []).slice(-maxReferenceImages),
     }));
-  }, [
-    generateForm.reference_images,
-    maxReferenceImages,
-    setGenerateForm,
-    supportsReferenceImages,
-  ]);
+  }, [generateForm.reference_images, maxReferenceImages, setGenerateForm, supportsReferenceImages]);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -213,6 +204,7 @@ export function ImageGenerationForm({
         <ImageGenerationOptionsFields
           generateForm={generateForm}
           setGenerateForm={setGenerateForm}
+          maxCount={maxCount}
         />
 
         <div className="md:col-span-3">

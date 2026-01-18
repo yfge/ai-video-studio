@@ -5,12 +5,21 @@ import type { ImageGenerationFormState } from "@/hooks/useVirtualIPImages";
 interface ImageGenerationOptionsFieldsProps {
   generateForm: ImageGenerationFormState;
   setGenerateForm: React.Dispatch<React.SetStateAction<ImageGenerationFormState>>;
+  maxCount?: number;
 }
 
 export function ImageGenerationOptionsFields({
   generateForm,
   setGenerateForm,
+  maxCount,
 }: ImageGenerationOptionsFieldsProps) {
+  const effectiveMaxCount =
+    typeof maxCount === "number" && maxCount > 0 ? maxCount : 4;
+  const countOptions = Array.from(
+    { length: effectiveMaxCount },
+    (_, index) => index + 1,
+  );
+
   return (
     <>
       <div>
@@ -41,18 +50,23 @@ export function ImageGenerationOptionsFields({
           onChange={(e) =>
             setGenerateForm((prev) => ({
               ...prev,
-              count: Number(e.target.value) || 1,
+              count: Math.min(
+                effectiveMaxCount,
+                Math.max(1, Number(e.target.value) || 1),
+              ),
             }))
           }
+          disabled={effectiveMaxCount <= 1}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value={1}>1 张</option>
-          <option value={2}>2 张</option>
-          <option value={3}>3 张</option>
-          <option value={4}>4 张</option>
+          {countOptions.map((value) => (
+            <option key={value} value={value}>
+              {value} 张
+            </option>
+          ))}
         </select>
         <p className="mt-1 text-xs text-gray-500">
-          部分模型一次会返回多张候选图片。
+          一次最多 {effectiveMaxCount} 张，部分模型会返回多张候选图片。
         </p>
       </div>
 
@@ -93,4 +107,3 @@ export function ImageGenerationOptionsFields({
     </>
   );
 }
-

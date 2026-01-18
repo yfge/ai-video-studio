@@ -40,6 +40,13 @@ export function EnvironmentGenerationFields({
   );
   const supportsReferenceImages = Boolean(envKey) && imageGenUi.supportsExtraImages;
   const maxReferenceImages = imageGenUi.maxReferenceImages;
+  const maxCount = imageGenUi.maxCount;
+  const effectiveMaxCount =
+    typeof maxCount === "number" && maxCount > 0 ? maxCount : 4;
+  const countOptions = useMemo(
+    () => Array.from({ length: effectiveMaxCount }, (_, index) => index + 1),
+    [effectiveMaxCount],
+  );
   const showFields = showToggle ? generation.enabled : true;
 
   const updateField = <K extends keyof GenerationFormState>(
@@ -69,6 +76,12 @@ export function EnvironmentGenerationFields({
     setGeneration,
     supportsReferenceImages,
   ]);
+
+  useEffect(() => {
+    if (typeof maxCount !== "number" || maxCount <= 0) return;
+    if (generation.count <= maxCount) return;
+    setGeneration((prev) => ({ ...prev, count: maxCount }));
+  }, [generation.count, maxCount, setGeneration]);
 
   return (
     <div className={`${withDivider ? "border-t pt-4" : ""} space-y-4`}>
@@ -165,15 +178,26 @@ export function EnvironmentGenerationFields({
             <select
               value={generation.count}
               onChange={(e) =>
-                updateField("count", Number(e.target.value) || 1)
+                updateField(
+                  "count",
+                  Math.min(
+                    effectiveMaxCount,
+                    Math.max(1, Number(e.target.value) || 1),
+                  ),
+                )
               }
+              disabled={effectiveMaxCount <= 1}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value={1}>1 张</option>
-              <option value={2}>2 张</option>
-              <option value={3}>3 张</option>
-              <option value={4}>4 张</option>
+              {countOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value} 张
+                </option>
+              ))}
             </select>
+            <p className="mt-1 text-xs text-gray-500">
+              一次最多 {effectiveMaxCount} 张，部分模型会返回多张候选图片。
+            </p>
           </div>
           <div className="md:col-span-2">
             <ModelUiFields
