@@ -5,6 +5,7 @@ from dataclasses import replace
 from app.utils.model_utils import infer_provider_from_model, parse_model_and_provider
 
 from .coerce import clean_str
+from .normalize_capabilities import apply_capability_drops
 from .normalize_helpers import (
     clamp_count,
     normalize_size_ratio,
@@ -200,6 +201,34 @@ def normalize_image_gen_request(
         audit.dropped_fields.append("negative_prompt")
         negative_prompt = None
 
+    style_preset_id = clean_str(req.style_preset_id)
+    style_spec = req.style_spec if policy.allow_style_spec else None
+    (
+        seed,
+        steps,
+        cfg_scale,
+        strength,
+        image_reference,
+        image_fidelity,
+        human_fidelity,
+        style_preset_id,
+        style_spec,
+    ) = apply_capability_drops(
+        provider=provider,
+        model_id=clean_model,
+        mode=req.mode,
+        audit=audit,
+        seed=seed,
+        steps=steps,
+        cfg_scale=cfg_scale,
+        strength=strength,
+        image_reference=image_reference,
+        image_fidelity=image_fidelity,
+        human_fidelity=human_fidelity,
+        style_preset_id=style_preset_id,
+        style_spec=style_spec,
+    )
+
     return ImageGenNormalized(
         domain=req.domain,
         mode=req.mode,
@@ -208,8 +237,8 @@ def normalize_image_gen_request(
         generation_profile=generation_profile,
         prompt=prompt,
         style=style,
-        style_preset_id=clean_str(req.style_preset_id),
-        style_spec=req.style_spec if policy.allow_style_spec else None,
+        style_preset_id=style_preset_id,
+        style_spec=style_spec,
         size=normalized_size,
         aspect_ratio=normalized_ratio,
         width=width,

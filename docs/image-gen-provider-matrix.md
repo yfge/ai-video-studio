@@ -37,6 +37,7 @@
 
 - “✅/❌”以当前 `supported_ai_manager_keys()` 白名单为准（`ai-pic-backend/app/services/image_gen/provider_params.py`）。
 - `cfg_scale` 对火山引擎会映射为 `guidance_scale`，且仅部分模型支持（见 UI notes）。
+- 除 `negative_prompt` / `reference_images` 外，其它不支持参数（如 `seed/steps/cfg_scale/strength/style_preset_id/style_spec`）也会在 normalize 阶段被丢弃，并写入 `audit.warnings`（避免“填了但静默无效”）。
 - `style_preset_id` / `style_spec` 仅部分 provider 支持；Environment domain 会强制禁用二者（见下方 Domain 差异）。
 
 | provider | mode | `reference_images`（list） | `extra_images`（img2img） | `negative_prompt` | `style_preset_id` | `style_spec` | `seed` | `steps` | `cfg_scale` | `strength` | 备注 |
