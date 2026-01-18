@@ -44,6 +44,8 @@ export function ImageToImageModal({
   onClose,
   onSubmit,
 }: ImageToImageModalProps) {
+  const submitLabel =
+    modelType === AIModelType.ImageToImage ? "提交图生图任务" : "提交生成任务";
   const {
     selectedModel,
     handleModelsLoaded,
@@ -234,7 +236,7 @@ export function ImageToImageModal({
             }
             className="px-4 py-2 text-sm font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {submitting ? "提交中..." : "提交图生图任务"}
+            {submitting ? "提交中..." : submitLabel}
           </button>
         </div>
       </div>

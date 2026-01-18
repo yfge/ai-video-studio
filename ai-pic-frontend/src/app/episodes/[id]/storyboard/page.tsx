@@ -3206,8 +3206,8 @@ export default function EpisodeStoryboardPage() {
         }
         defaultPrompt={edgeModalPrompt}
         defaultCount={4}
-        modelType={AIModelType.ImageToImage}
-        modelCacheKey="storyboard-img2img"
+        modelType={AIModelType.Image}
+        modelCacheKey="storyboard-t2i-refs"
         styleSpecFields={STORYBOARD_STYLE_SPEC_FIELDS}
         submitting={edgeModalSubmitting || edgeModalLoading}
         onSubmit={handleConfirmEdgeGeneration}
@@ -3280,8 +3280,8 @@ export default function EpisodeStoryboardPage() {
         }
         defaultPrompt={imageModalPrompt}
         defaultCount={4}
-        modelType={AIModelType.ImageToImage}
-        modelCacheKey="storyboard-img2img"
+        modelType={AIModelType.Image}
+        modelCacheKey="storyboard-t2i-refs"
         styleSpecFields={STORYBOARD_STYLE_SPEC_FIELDS}
         submitting={imageModalSubmitting || imageModalLoading}
         onSubmit={handleConfirmGenerateFrameImage}

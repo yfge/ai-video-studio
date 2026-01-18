@@ -5,7 +5,15 @@ import { GenerationProfileSelect } from "@/components/shared/GenerationProfileSe
 import { ModelUiFields } from "@/components/shared/ModelUiFields";
 import { MultiModelSelector } from "@/components/shared/MultiModelSelector";
 import type { StyleSpecField } from "@/components/shared/StyleSpecAdvancedPanel";
-import type { AIModel, ApiResponse, AvailableModelsResponse, StylePreset, StyleSpec } from "@/utils/api";
+import { AIModelType } from "@/utils/api";
+import type {
+  AIModel,
+  ApiResponse,
+  AvailableModelsResponse,
+  StylePreset,
+  StyleSpec,
+} from "@/utils/api";
+import { extractImageGenUi, type ImageGenMode } from "@/utils/modelUi";
 import { supportsReferenceImage } from "@/utils/modelSupport";
 
 import { ImageToImageStyleFields } from "./ImageToImageStyleFields";
@@ -90,6 +98,22 @@ export function ImageToImageSettingsForm({
     [styleOptions],
   );
 
+  const genMode: ImageGenMode =
+    modelType === AIModelType.ImageToImage ? "image_to_image" : "text_to_image";
+
+  const supportsTextToImageReferenceImages = (model: AIModel) =>
+    extractImageGenUi(model, "text_to_image").supportsExtraImages;
+
+  const filterModels =
+    genMode === "image_to_image"
+      ? supportsReferenceImage
+      : supportsTextToImageReferenceImages;
+
+  const modelHelperText =
+    genMode === "image_to_image"
+      ? "仅展示支持参考图图生图的模型（不支持的将隐藏）"
+      : "仅展示支持参考图文生图的模型（不支持的将隐藏）";
+
   return (
     <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div className="space-y-3">
@@ -119,10 +143,10 @@ export function ImageToImageSettingsForm({
             allowAuto={false}
             autoSelectDefault
             fetcher={modelFetcher}
-            helperText="仅展示支持参考图图生图的模型（不支持的将隐藏）"
-            filterModels={supportsReferenceImage}
+            helperText={modelHelperText}
+            filterModels={filterModels}
             onModelsLoaded={(models, defaultModelId) => {
-              const supported = models.filter(supportsReferenceImage);
+              const supported = models.filter(filterModels);
               const supportedIds = new Set(supported.map((m) => m.model_id));
               const nextDefault =
                 (defaultModelId && supportedIds.has(defaultModelId)
@@ -146,7 +170,7 @@ export function ImageToImageSettingsForm({
 
         <GenerationProfileSelect
           modelId={modelIds[0]}
-          mode="image_to_image"
+          mode={genMode}
           value={generationProfile || undefined}
           onChange={(next) => onGenerationProfileChange(next || "")}
         />
