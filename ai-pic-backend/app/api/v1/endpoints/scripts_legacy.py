@@ -359,6 +359,7 @@ def _build_episode_data(episode: Episode) -> Dict[str, Any]:
     return {
         "episode_number": episode.episode_number,
         "title": episode.title,
+        "story_format": getattr(getattr(episode, "story", None), "story_format", None),
         "summary": episode.summary,
         "plot_points": episode.plot_points,
         "character_arcs": episode.character_arcs,
@@ -423,6 +424,7 @@ def _build_story_data(
     )
     return {
         "title": story.title,
+        "story_format": getattr(story, "story_format", None),
         "genre": story.genre,
         "theme": story.theme,
         "synopsis": story.synopsis,
