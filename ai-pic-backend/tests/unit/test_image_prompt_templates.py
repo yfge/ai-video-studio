@@ -94,6 +94,7 @@ def test_storyboard_image_prompt_template_includes_quality_and_constraints():
     assert "Quality:" in prompt
     assert "Constraints:" in prompt
     assert "no watermark" in prompt.lower()
+    assert "no readable text" in prompt.lower()
     assert "no split-screen" in prompt.lower()
     assert "no multiple faces" not in prompt.lower()
 

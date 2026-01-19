@@ -35,3 +35,17 @@ def test_storyboard_keyframe_template_forbids_collage():
     assert "只生成单幅画面" in prompt
     assert "剪辑备注" in prompt
     assert "首帧" in prompt
+
+
+def test_storyboard_scene_template_forbids_on_screen_text():
+    prompt = prompt_manager.render_prompt(
+        "storyboard_scene",
+        {
+            "scene_plan_json": '{"scene_number": 1, "target_frames": 3, "frames": []}',
+            "script_brief_json": '{"story": {"title": "测试"}, "scenes": []}',
+            "max_frames": None,
+        },
+    )
+
+    assert "不要包含任何“画面中出现的文字内容”" in prompt
+    assert "无可读文字" in prompt

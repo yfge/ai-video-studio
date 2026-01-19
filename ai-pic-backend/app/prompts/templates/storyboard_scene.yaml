@@ -1,10 +1,10 @@
 name: storyboard_scene
 description: "分镜规划场景展开提示词模板"
 category: storyboard
-version: "1.0"
+version: "1.2"
 author: "AI Video Studio"
 created_at: "2025-12-19"
-updated_at: "2025-12-19"
+updated_at: "2026-01-19"
 
 variables:
   scene_plan_json:

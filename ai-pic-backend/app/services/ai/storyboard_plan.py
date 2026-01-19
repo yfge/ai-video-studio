@@ -9,6 +9,70 @@ from app.schemas.generation import StoryboardModel, StoryboardPlanModel, Storybo
 from app.utils.json_utils import extract_json_block
 
 
+def _coerce_reference_images(value: Any) -> list[str] | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        url = value.strip()
+        return [url] if url else None
+    if isinstance(value, list):
+        urls: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                url = item.strip()
+                if url:
+                    urls.append(url)
+        return urls or None
+    return None
+
+
+def _coerce_ad_snippet(value: Any) -> dict[str, Any] | None:
+    """Coerce model outputs into AdSnippet-shaped dict for StoryboardFrame validation."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        return {"hook": text}
+    if isinstance(value, dict):
+        hook = value.get("hook")
+        if not isinstance(hook, str) or not hook.strip():
+            # Best-effort fallback for common model variants.
+            for key in ("text", "summary", "ad_snippet", "snippet", "content"):
+                alt = value.get(key)
+                if isinstance(alt, str) and alt.strip():
+                    hook = alt
+                    break
+        if not isinstance(hook, str) or not hook.strip():
+            return None
+        out: dict[str, Any] = {"hook": hook.strip()}
+        for key in ("duration_seconds", "visual_summary", "call_to_action"):
+            if key in value and value[key] is not None:
+                out[key] = value[key]
+        return out
+    return None
+
+
+def _normalize_storyboard_payload(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    frames = value.get("frames")
+    if not isinstance(frames, list):
+        return None
+    for frame in frames:
+        if not isinstance(frame, dict):
+            continue
+        frame["reference_images"] = _coerce_reference_images(
+            frame.get("reference_images")
+        )
+        frame["ad_snippet"] = _coerce_ad_snippet(frame.get("ad_snippet"))
+        hook_tag = frame.get("hook_tag")
+        if hook_tag is not None and not isinstance(hook_tag, str):
+            frame["hook_tag"] = str(hook_tag)
+    return value
+
+
 class StoryboardPlanMixin:
     async def generate_storyboard_plan(
         self,
@@ -121,7 +185,8 @@ class StoryboardPlanMixin:
                 content_text = (
                     response.data if isinstance(response.data, str) else str(response.data)
                 )
-                data = extract_json_block(content_text)
+                raw = extract_json_block(content_text)
+                data = _normalize_storyboard_payload(raw)
                 if not data:
                     return None
                 try:
