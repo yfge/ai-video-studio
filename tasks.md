@@ -43,6 +43,7 @@
 - [x] 后端：更新 episode/script/storyboard prompt 模板，注入微类型与 hook 规则
 - [x] 后端：新增 `short_drama` prompt 变体（`story_outline`/`episode_generation`/`episode_from_outline`/`episode_duration_reject`/`script_generation`）
 - [x] 后端：episode async 生成上下文补齐 `story_format`，确保 Episode Agent 模板分流
+- [ ] 后端：新增短剧故事模板与剧本模板（每集强爽点/反转/收获点/结尾钩子），并针对 deepseek-chat 做指令优化
 - [ ] 后端：新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）
 - [ ] 后端：实现 HookScore/ScriptScore agent 与“投流表生成”service，接入生成链路，低分触发修订或给出改写建议
 - [x] 后端：故事生成在 `extra_metadata` 落库 hook 计划与投流素材（hook_plan/twist_density/cliffhanger_plan/ad_snippets）
@@ -56,6 +57,7 @@
 - [x] 验证：Chrome E2E（deepseek 文生文/剧集/剧本；google 文生图；google 文生视频）
 - [ ] 验证：新增 schema 与 prompt 单元测试，覆盖 hook 计划/评分结构
 - [ ] 验证：E2E 路径（选择微类型→生成故事/剧集/剧本→投流表→分镜/时间线标注），Chrome 记录验证
+- [ ] 验证：短剧全流程 E2E（IP→环境→故事→剧本→分镜图→分镜视频），逐张下载抽检并在 `agent_chats` 记录
 
 ## Feature: Duration Orchestrator Agent（端到端时长闭环验证）🔥
 
@@ -288,8 +290,11 @@
 - [x] 后端：已落地 environments 表与 `scenes.environment_id` / `shots.character_ids` 迁移；环境文生图/图生图已上线用于手动生成参考图
 - [x] 后端：环境文生图支持 `reference_images`（支持的 provider 才会透传到调用层）
 - [x] 后端：`generate_storyboard_images` 已聚合 `scene.environment_id` + `shot.character_ids` 并注入 `image_to_image`
+- [x] 后端：修复 Google Veo 分镜视频生成 image-to-video 图像入参（`bytesBase64Encoded`），支持异步轮询并回填可下载链接
 - [x] 前端：提供环境资产管理页（上传/生成/变体/删除参考图），在 `/stories/[id]` 分镜/剧集界面支持环境选择与标签筛选
 - [x] 前端：环境文生图表单按模型动态展示参考图选择器并提交 `reference_images`
+- [ ] 前端：修复分镜“生成视频”弹窗无尾帧候选时强制勾选尾帧导致无法提交（允许仅首帧生成）
+- [x] 验证：Chrome E2E 分镜页生成 Veo 3.1 视频并下载抽帧检查（scriptId=103 frame=0）
 - [ ] 验证：待补端到端用例，验证选择环境+角色后分镜帧能稳定生成对应图像；在 `TESTING_GUIDE.md` 记录并为环境表/关联补迁移回归用例
 
 ### 下一步
