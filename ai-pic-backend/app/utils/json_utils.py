@@ -18,22 +18,54 @@ def _extract_json_like_substring(text: str) -> str:
     if not stripped:
         return ""
 
-    left = stripped.lstrip()
-    if left.startswith("{") or left.startswith("["):
-        return left
+    # Prefer the first balanced JSON object/array in the text, rather than
+    # slicing to the *last* closing brace which can be polluted by extra
+    # reminders like `只输出严格JSON：{"frames":[...]}` appended by models.
+    start = None
+    for idx, ch in enumerate(stripped):
+        if ch in "{[":
+            start = idx
+            break
 
-    brace_start = stripped.find("{")
-    bracket_start = stripped.find("[")
-    start_candidates = [pos for pos in (brace_start, bracket_start) if pos != -1]
-    if not start_candidates:
+    if start is None:
         return stripped
 
-    start = min(start_candidates)
-    open_char = stripped[start]
-    close_char = "}" if open_char == "{" else "]"
-    end = stripped.rfind(close_char)
-    if end != -1 and end > start:
-        return stripped[start : end + 1]
+    stack: list[str] = []
+    in_string = False
+    escape = False
+    for idx in range(start, len(stripped)):
+        ch = stripped[idx]
+
+        if in_string:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+            continue
+
+        if ch in "{[":
+            stack.append(ch)
+            continue
+
+        if ch in "}]":
+            if not stack:
+                continue
+            open_ch = stack[-1]
+            if (open_ch == "{" and ch == "}") or (open_ch == "[" and ch == "]"):
+                stack.pop()
+                if not stack:
+                    return stripped[start : idx + 1]
+            continue
+
+    # Fallback: return from first brace/bracket onward (best effort).
     return stripped[start:]
 
 

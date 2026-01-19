@@ -20,6 +20,20 @@ Extra text that should be ignored.
     }
 
 
+def test_extract_json_block_ignores_trailing_json_examples_inside_code_fence():
+    payload = """
+```json
+{
+  "premise": "P",
+  "synopsis": "S"
+}
+只输出严格JSON：{"frames":[...]}
+```
+"""
+    parsed = extract_json_block(payload)
+    assert parsed == {"premise": "P", "synopsis": "S"}
+
+
 def test_extract_json_block_trims_non_json_wrappers():
     payload = 'Result => {"premise": "P", "synopsis": "S"} Thanks!'
     parsed = extract_json_block(payload)
