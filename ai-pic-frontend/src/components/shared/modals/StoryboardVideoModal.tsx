@@ -214,7 +214,7 @@ export function StoryboardVideoModal({
     setWatermark(
       defaults.supportsWatermark ? defaults.defaultWatermark : false,
     );
-    if (!defaults.supportsEndFrame) {
+    if (!defaults.supportsEndFrame || endList.length === 0) {
       setUseEndFrame(false);
       setEndSelected("");
     } else if (useEndFrame && !endSelected) {
