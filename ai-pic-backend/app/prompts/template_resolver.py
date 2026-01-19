@@ -13,6 +13,7 @@ _FORMAT_AWARE_TEMPLATES = {
     "episode_duration_reject",
     "script_generation",
     "script_scenes",
+    "script_dialogues",
 }
 
 _SUPPORTED_STORY_FORMATS = {"tv_series", "film", "short_drama"}

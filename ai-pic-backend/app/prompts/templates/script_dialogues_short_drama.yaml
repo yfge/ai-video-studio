@@ -1,0 +1,62 @@
+name: script_dialogues_short_drama
+description: "剧本对白与舞台指示生成提示词模板（短剧：高冲突/高爽点/强卡点）"
+category: script
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-19"
+updated_at: "2026-01-19"
+
+variables:
+  language:
+    type: string
+    required: false
+    description: "对白语言"
+    default: "zh-CN"
+    enum: ["zh-CN", "en-US", "ja-JP", "ko-KR"]
+
+  dialogue_style:
+    type: string
+    required: false
+    description: "对白风格"
+    default: "natural"
+    enum: ["natural", "formal", "casual", "dramatic", "comedic"]
+
+  format_type:
+    type: string
+    required: false
+    description: "剧本格式"
+    default: "screenplay"
+    enum: ["screenplay", "teleplay", "stage", "audio", "animation"]
+
+  story:
+    type: dict
+    required: false
+    description: "故事概要信息"
+
+  episode:
+    type: dict
+    required: false
+    description: "剧集信息"
+
+  scenes:
+    type: list
+    required: true
+    description: "场景列表（scene_number/slug_line/summary 等）"
+    min_length: 1
+
+usage_examples:
+  - language: "zh-CN"
+    dialogue_style: "natural"
+    format_type: "screenplay"
+    story: {title: "反击人生", story_format: "short_drama", genre: "都市爽剧"}
+    episode: {episode_number: 1, title: "抓奸现场"}
+    scenes:
+      - scene_number: 1
+        slug_line: "INT. 卧室 - 夜"
+        summary: "开场钩子：女主撞见背叛"
+      - scene_number: 2
+        slug_line: "INT. 卧室 - 夜"
+        summary: "爽点：女主当场反击并留下证据"
+      - scene_number: 3
+        slug_line: "INT. 走廊 - 夜"
+        summary: "卡点：反派亮出更大把柄"

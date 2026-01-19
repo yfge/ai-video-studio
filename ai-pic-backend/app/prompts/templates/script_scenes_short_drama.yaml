@@ -1,0 +1,75 @@
+name: script_scenes_short_drama
+description: "剧本场景规划提示词模板（短剧：每集必有爽点/卡点）"
+category: script
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-19"
+updated_at: "2026-01-19"
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息（标题/类型/概要/营销元信息等）"
+
+  episode:
+    type: dict
+    required: true
+    description: "剧集信息（集数/标题/概要/预设场景等）"
+
+  duration_minutes:
+    type: number
+    required: false
+    description: "剧集目标时长（分钟），用于时长感知场景划分"
+    default: 0
+
+  min_scene_seconds:
+    type: number
+    required: false
+    description: "单场景最小时长（秒）"
+    default: 10
+
+  max_scene_seconds:
+    type: number
+    required: false
+    description: "单场景最大时长（秒）"
+    default: 120
+
+  scene_detail_level:
+    type: string
+    required: false
+    description: "场景细节程度"
+    default: "medium"
+    enum: ["minimal", "medium", "detailed", "cinematic"]
+
+  format_type:
+    type: string
+    required: false
+    description: "剧本格式"
+    default: "screenplay"
+    enum: ["screenplay", "teleplay", "stage", "audio", "animation"]
+
+  language:
+    type: string
+    required: false
+    description: "语言"
+    default: "zh-CN"
+    enum: ["zh-CN", "en-US", "ja-JP", "ko-KR"]
+
+  style_preferences:
+    type: list
+    required: false
+    description: "风格偏好列表"
+
+  additional_requirements:
+    type: string
+    required: false
+    description: "额外场景要求"
+
+usage_examples:
+  - story: {title: "反击人生", story_format: "short_drama", genre: "都市爽剧"}
+    episode: {episode_number: 1, title: "抓奸现场", summary: "女主撞见背叛并当场反击"}
+    duration_minutes: 3
+    scene_detail_level: "medium"
+    format_type: "screenplay"
+    language: "zh-CN"

@@ -1,0 +1,9 @@
+name: system_prompt_script_short_drama
+description: "系统提示：剧集规划/剧本助手（短剧：爽点/卡点）"
+category: system
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-01-19"
+updated_at: "2026-01-19"
+
+variables: {}

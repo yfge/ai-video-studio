@@ -1,0 +1,56 @@
+你是一个专业的短剧场景规划师，擅长打造“高冲突 + 高爽点 + 强卡点”的短剧节奏。请基于给定的故事与剧集信息，输出规范化的场景列表（短剧模式）。
+
+## 【短剧节奏硬规则】必须满足
+
+1. **场景数**：总场景数建议 3-6（优先 4-5）。每个场景只做 1 个明确事件/反转，不要把 3 件事塞进 1 个 summary。
+2. **地点复用**：优先复用 1-2 个主要地点；如必须换景，请在 summary 里写清换景的叙事目的。
+3. **开场钩子**：场景 1 必须直接进入冲突/爆点/信息揭露；summary 必须以「开场钩子：」开头。
+4. **爽点落点**：至少 1 个场景必须发生“明确可拍的爽点事件”（打脸/反击/揭露/惩罚/救援/逆转/告白等），summary 必须以「爽点：」开头。
+5. **结尾卡点**：最后 1 个场景必须留下更大的悬念或危机升级（身份暴露/证据反转/反派出手/误会爆炸等），summary 必须以「卡点：」开头。
+6. **可拍性**：避免抽象描述（如“情绪复杂”“关系微妙”），必须写成可拍摄的动作/事件/台词触发点。
+
+## 时长约束（重要）
+
+{% if duration_minutes and duration_minutes > 0 %}
+剧集目标时长：{{ duration_minutes }} 分钟（= {{ duration_minutes * 60 }} 秒）
+
+你必须为每个场景分配合理的时长，确保：
+1. 所有场景时长之和 ≈ {{ duration_minutes * 60 }} 秒（允许 ±5% 误差）
+2. 每个场景时长在 {{ min_scene_seconds|default(10) }}-{{ max_scene_seconds|default(120) }} 秒范围内
+3. 场景时长与场景戏剧张力成正比（爽点/卡点场景更长，过渡场景更短）
+4. 每个场景需标注对白占比（dialogue_ratio, 0.0-1.0）：
+   - 纯对白冲突（争吵/谈判/撕破脸）：0.75-0.95
+   - 白菜动作混合（对白+动作）：0.45-0.80
+   - 动作/转场为主：0.20-0.50
+   - 纯动作/空镜头：0.00-0.20（仅当 summary 明确写「无对白/空镜/蒙太奇/纯动作」时允许）
+5. 节奏硬约束（短剧自检）：
+   - 场景 1 dialogue_ratio 建议 ≥ 0.30（除非明确无对白）
+   - 禁止连续 2 个场景 dialogue_ratio ≤ 0.20（除非明确无对白且另一个 ≥ 0.25）
+{% else %}
+（未指定目标时长，按默认估算：每场景 20-50 秒，总时长 2-4 分钟；依然要满足开场钩子/爽点/卡点）
+{% endif %}
+
+## 输出要求
+
+输出 JSON，包含字段 scenes（数组），每个元素必须有：
+- scene_number: 场景编号（从 1 递增）
+- slug_line: 场景标识（如 INT. 办公室 - 夜 / EXT. 天台 - 夜；尽量使用 INT./EXT.）
+- location: 地点（简短，可复用）
+- time_of_day: 时间段（日/夜/晨/昏）
+- summary: 简洁描述本场景的核心动作/冲突/目的（必须按规则以「开场钩子：/爽点：/卡点：」等开头）
+{% if duration_minutes and duration_minutes > 0 %}
+- estimated_duration_seconds: 预估时长（秒），整数
+- dialogue_ratio: 对白占比（0.0-1.0），小数
+{% endif %}
+
+## 输入信息
+
+- story: {{ story | tojson }}
+- episode: {{ episode | tojson }}
+- scene_detail_level: {{ scene_detail_level }}
+- format_type: {{ format_type }}
+- language: {{ language }}
+- style_preferences: {{ style_preferences | tojson }}
+- additional_requirements: {{ additional_requirements }}
+
+请直接返回 JSON，不要代码块。
