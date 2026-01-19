@@ -73,7 +73,7 @@
 
 1. **开场钩子**：第1场景/前10秒必须有冲突或信息爆点（抓奸/背叛/翻车/身份暴露/突发危机）。
 2. **升级推进**：中段快速升级（误会扩大、反派施压、证据出现、关系撕裂）。
-3. **爽点落点**：末段必须发生1个明确可拍的爽点事件（打脸/反击/揭露/惩罚/逆转/救援/告白）。
+3. **爽点落点（=收获点）**：末段必须发生 1 个明确可拍的爽点事件（打脸/反击/揭露/惩罚/逆转/救援/告白），且主角必须“得到/赢到”一个具体收获（证据/资源/盟友/职位/金钱/身份优势/舆论等），不能只是抽象情绪。
 4. **卡点悬念**：结尾留下更大危机或反转，必须能驱动下一集（cliffhanger 不为空）。
 5. **低成本可拍**：每集 3-6 场景为宜，优先复用 1-2 个主要地点。
 6. **可剪投流**：每集提供至少 1 条 15 秒投流素材建议（钩子台词 + 画面摘要）。
@@ -83,15 +83,18 @@
 
 1. **episode_number**: 集数
 2. **title**: 剧集标题
-3. **summary**: 本集概要（100-200字，强调冲突与爽点）
+3. **summary**: 本集概要（100-200字，强调冲突与爽点/收获点）
 4. **plot_points**: 主要情节点列表（至少 4 条，含开场钩子/升级/爽点/卡点）
-5. **scene_count**: 预估场景数量（建议 3-6）
-6. **cliffhanger**: 本集结尾卡点（必填）
-7. **hook_plan**: 本集爽点/钩子节奏规划（必填）
-8. **twist_density**: 本集反转密度目标（必填，可用“高/中/低 + 说明”）
-9. **cliffhanger_plan**: 本集悬念/卡点列表（至少 2 条）
-10. **ad_snippets**: 本集投流素材建议（至少 1 条，含 hook 与 visual_summary）
-11. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary；其中爽点场景的 summary 请以“爽点：...”开头
+5. **character_arcs**: 本集角色推进（至少主角 1 条，简短即可）
+6. **conflicts**: 本集冲突（至少 1 条，必须为数组，元素为对象）
+7. **scene_count**: 预估场景数量（建议 3-6）
+8. **cliffhanger**: 本集结尾卡点（必填）
+9. **payoff**: 本集爽点/收获点（必填，单句，必须“具体可拍”）
+10. **hook_plan**: 本集爽点/钩子节奏规划（必填）
+11. **twist_density**: 本集反转密度目标（必填，可用“高/中/低 + 说明”）
+12. **cliffhanger_plan**: 本集悬念/卡点列表（至少 2 条）
+13. **ad_snippets**: 本集投流素材建议（至少 1 条，含 hook 与 visual_summary）
+14. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary；其中爽点场景的 summary 必须以“爽点：...”开头，最后一个场景 summary 必须以“卡点：...”开头
 
 {
     "episodes": [
@@ -102,11 +105,16 @@
             "plot_points": [
                 { "sequence": 1, "description": "开场钩子：...", "timing": "开场" },
                 { "sequence": 2, "description": "升级推进：...", "timing": "中段" },
-                { "sequence": 3, "description": "爽点落点：...", "timing": "后段" },
+                { "sequence": 3, "description": "爽点落点（收获点）：...", "timing": "后段" },
                 { "sequence": 4, "description": "结尾卡点：...", "timing": "结尾" }
+            ],
+            "character_arcs": { "主角": "本集角色推进（简短）" },
+            "conflicts": [
+                { "type": "人际冲突/利益冲突/身份冲突/价值观冲突", "description": "...", "intensity": "low/medium/high" }
             ],
             "scene_count": 5,
             "cliffhanger": "...",
+            "payoff": "一句话说明主角本集赢到了什么（具体可拍）",
             "hook_plan": { "opening_hook": "...", "escalation_plan": "...", "payoff_plan": "..." },
             "twist_density": "高：每集至少一次反转或身份信息揭露",
             "cliffhanger_plan": ["...", "..."],
@@ -127,6 +135,13 @@
                     "location": "...",
                     "time_of_day": "night",
                     "summary": "爽点：...（明确事件）"
+                },
+                {
+                    "scene_number": 5,
+                    "slug_line": "INT. ... - 夜",
+                    "location": "...",
+                    "time_of_day": "night",
+                    "summary": "卡点：...（更大危机/反转）"
                 }
             ]
         }

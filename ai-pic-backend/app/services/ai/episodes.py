@@ -74,35 +74,55 @@ class EpisodeGenerationMixin:
                 print(f"AI服务管理器剧集生成失败: {exc}")
 
         # 如果AI服务管理器失败，尝试传统方法
-        try:
-            prompt = self._build_episode_generation_prompt(
-                story,
-                episode_count,
-                episode_duration,
-                focus_characters,
-                plot_complexity,
-                pacing,
-                additional_requirements,
-                style_preferences,
+        if prefer_provider or model:
+            self.logger.warning(
+                "Episode generation failed for explicit provider/model; skip legacy fallback",
+                extra={
+                    "prefer_provider": prefer_provider,
+                    "model": model,
+                    "story_format": story.get("story_format") if isinstance(story, dict) else None,
+                },
             )
+        else:
+            try:
+                prompt = self._build_episode_generation_prompt(
+                    story,
+                    episode_count,
+                    episode_duration,
+                    focus_characters,
+                    plot_complexity,
+                    pacing,
+                    additional_requirements,
+                    style_preferences,
+                )
 
-            result = await self._call_text_generation_service(
-                prompt, "episode_generation", story_format=story.get("story_format")
-            )
-            if result:
-                return {
-                    "content": result,
-                    "prompt": prompt,
-                    "generation_method": "ai_fallback",
-                    "template_used": "manual_prompt",
-                    "provider_used": "fallback",
-                    "model_used": "unknown",
-                    "usage": {},
-                }
-        except Exception as exc:
-            print(f"传统剧集生成方法失败: {exc}")
+                result = await self._call_text_generation_service(
+                    prompt, "episode_generation", story_format=story.get("story_format")
+                )
+                if result:
+                    return {
+                        "content": result,
+                        "prompt": prompt,
+                        "generation_method": "ai_fallback",
+                        "template_used": "manual_prompt",
+                        "provider_used": "fallback",
+                        "model_used": "unknown",
+                        "usage": {},
+                    }
+            except Exception as exc:
+                print(f"传统剧集生成方法失败: {exc}")
 
         # 最终回退到模拟服务
+        if prefer_provider or model:
+            self.logger.warning(
+                "Episode generation failed for explicit provider/model; skip mock fallback",
+                extra={
+                    "prefer_provider": prefer_provider,
+                    "model": model,
+                    "story_format": story.get("story_format") if isinstance(story, dict) else None,
+                },
+            )
+            return None
         return await self._generate_mock_episodes(
             story, episode_count, episode_duration
         )

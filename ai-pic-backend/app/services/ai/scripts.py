@@ -106,6 +106,17 @@ class ScriptGenerationMixin:
             return direct
 
         # 3) Mock 回退
+        if prefer_provider or model:
+            self.logger.warning(
+                "Script generation failed for explicit provider/model; skip mock fallback",
+                extra={
+                    "prefer_provider": prefer_provider,
+                    "model": model,
+                    "story_format": story.get("story_format") if isinstance(story, dict) else None,
+                    "episode_number": episode.get("episode_number") if isinstance(episode, dict) else None,
+                },
+            )
+            return None
         return await self._generate_mock_script(
             episode=episode,
             story=story,

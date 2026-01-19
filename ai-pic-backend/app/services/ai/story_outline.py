@@ -193,7 +193,18 @@ class StoryOutlineMixin:
                 except Exception as exc:
                     self.logger.warning(f"AI服务管理器故事生成失败，尝试回退: {exc}")
 
-            # 兜底：使用文本生成服务链（最终会回退到mock）
+            # 兜底：使用文本生成服务链（最终会回退到 mock）；若用户显式指定 provider/model，则直接失败，避免“扯淡”内容落库。
+            if prefer_provider or model:
+                self.logger.warning(
+                    "Story outline generation failed for explicit provider/model; skip mock fallback",
+                    extra={
+                        "prefer_provider": prefer_provider,
+                        "model": model,
+                        "story_format": story_format,
+                    },
+                )
+                return None
+
             fallback_content = await self._call_text_generation_service(
                 prompt, "story_outline", story_format=story_format
             )
