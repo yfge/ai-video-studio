@@ -48,7 +48,7 @@ Veo 3.1 represents Google's most advanced model for generating high-fidelity 8-s
 | `video` | Video to extend. | Video object | Yes | No | No |
 | `aspectRatio` | Video aspect ratio: "16:9" (default) or "9:16" | string | Yes | Yes | Yes |
 | `resolution` | Output resolution: "720p" (default) or "1080p" | string | Yes | Yes | Limited |
-| `durationSeconds` | Video length: "4", "6", or "8" seconds | string | Yes | Yes | Yes |
+| `durationSeconds` | Video length: 4, 6, or 8 seconds | number | Yes | Yes | Yes |
 | `personGeneration` | Control person generation. Regional restrictions apply. | string | Limited | Limited | Limited |
 
 ## Code Examples
@@ -278,6 +278,32 @@ ai.files.download({
     downloadPath: "veo3_with_image_input.mp4",
 });
 console.log(`Generated video saved to veo3_with_image_input.mp4`);
+```
+
+### REST API - Image-to-Video Generation (bytesBase64Encoded)
+
+> Note: When calling `:predictLongRunning` directly via REST, the image payload uses `bytesBase64Encoded` (base64 string). Some SDK examples expose this as `imageBytes` and handle conversion internally.
+
+```bash
+#!/bin/bash
+BASE_URL="https://generativelanguage.googleapis.com/v1beta"
+
+# Prepare a small PNG/JPEG and base64-encode it as a single line (no newlines).
+IMAGE_B64=$(base64 -w 0 ./start_frame.jpg)
+
+operation_name=$(curl -s "${BASE_URL}/models/veo-3.1-generate-preview:predictLongRunning" \
+  -H "x-goog-api-key: $GEMINI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -X "POST" \
+  -d \"{
+    \\\"instances\\\": [{
+      \\\"prompt\\\": \\\"A cinematic shot of a woman walking into a dimly lit office.\\\",
+      \\\"image\\\": {\\\"mimeType\\\": \\\"image/jpeg\\\", \\\"bytesBase64Encoded\\\": \\\"${IMAGE_B64}\\\"}
+    }],
+    \\\"parameters\\\": {\\\"aspectRatio\\\": \\\"16:9\\\", \\\"resolution\\\": \\\"720p\\\", \\\"durationSeconds\\\": 6}
+  }\" | jq -r .name)
+
+echo \"operation: ${operation_name}\"
 ```
 
 ## Reference Images Feature

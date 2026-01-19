@@ -34,6 +34,7 @@ from .models import (
 from . import image as image_module
 from . import text as text_module
 from . import video as video_module
+from . import video_tasks as video_tasks_module
 
 logger = get_logger(__name__)
 
@@ -251,15 +252,34 @@ class GoogleProvider(BaseProvider):
     ) -> AIResponse:
         """Submit async video generation task using Veo.
 
-        Delegates to generate_video since Veo API is synchronous polling-based.
+        Returns a provider `task_id` (Google long-running operation name) for polling.
         """
-        return await self.generate_video(
+        client = await self.get_client()
+        return await video_tasks_module.submit_video_task(
+            client=client,
+            base_url=self.base_url,
+            provider_name=self.name,
+            api_key=self.config.api_key,
+            config_timeout=self.config.timeout,
             prompt=prompt,
             image_url=image_url,
             end_image_url=end_image_url,
             model=model,
             duration=duration,
             resolution=resolution,
-            aspect_ratio=ratio,
+            ratio=ratio,
+            format_error=self.format_error,
             **kwargs,
+        )
+
+    async def fetch_video_task_status(self, task_id: str) -> AIResponse:
+        """Fetch async video task status from Google Veo."""
+        client = await self.get_client()
+        return await video_tasks_module.fetch_video_task_status(
+            client=client,
+            base_url=self.base_url,
+            provider_name=self.name,
+            api_key=self.config.api_key,
+            task_id=task_id,
+            format_error=self.format_error,
         )

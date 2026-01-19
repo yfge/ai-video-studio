@@ -180,7 +180,7 @@ def image_bytes_from_data_url(data_url: str) -> Optional[Dict[str, str]]:
     if not isinstance(data_url, str) or not data_url:
         return None
     mime_type, b64_data = split_data_url(data_url)
-    return {"mimeType": mime_type, "imageBytes": b64_data}
+    return {"mimeType": mime_type, "bytesBase64Encoded": b64_data}
 
 
 async def fetch_image_bytes(image_url: str, timeout: Any) -> Dict[str, str]:
@@ -190,7 +190,10 @@ async def fetch_image_bytes(image_url: str, timeout: Any) -> Dict[str, str]:
         if result:
             return result
     inline = await fetch_inline_image(image_url, timeout)
-    return {"mimeType": inline.get("mimeType", "image/png"), "imageBytes": inline["data"]}
+    return {
+        "mimeType": inline.get("mimeType", "image/png"),
+        "bytesBase64Encoded": inline["data"],
+    }
 
 
 async def fetch_inline_image(image_url: str, timeout: Any) -> Dict[str, str]:
