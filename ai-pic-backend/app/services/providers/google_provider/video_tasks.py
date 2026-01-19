@@ -18,6 +18,7 @@ from .helpers import clean_model_id, fetch_image_bytes
 from .video_helpers import (
     append_api_key,
     extract_video_uri,
+    format_http_status_error,
     normalize_operation_path,
     normalize_ratio,
     normalize_resolution,
@@ -109,7 +110,11 @@ async def submit_video_task(
         if resolved_resolution:
             parameters["resolution"] = resolved_resolution
 
-        resolved_duration = resolve_duration(model_id, duration or kwargs.get("durationSeconds"))
+        resolved_duration = resolve_duration(
+            model_id,
+            duration or kwargs.get("durationSeconds"),
+            resolution=resolved_resolution,
+        )
         if resolved_duration:
             parameters["durationSeconds"] = resolved_duration
 
@@ -173,6 +178,9 @@ async def submit_video_task(
             metadata={"task_id": operation_name},
         )
     except Exception as exc:
+        if isinstance(exc, httpx.HTTPStatusError):
+            formatted = format_http_status_error(exc, label="Google Veo")
+            exc = RuntimeError(formatted)
         return AIResponse(
             success=False,
             error=format_error(exc),
@@ -255,6 +263,9 @@ async def fetch_video_task_status(
             metadata={"task_id": task_id},
         )
     except Exception as exc:
+        if isinstance(exc, httpx.HTTPStatusError):
+            formatted = format_http_status_error(exc, label="Google Veo")
+            exc = RuntimeError(formatted)
         return AIResponse(
             success=False,
             error=format_error(exc),
@@ -264,4 +275,3 @@ async def fetch_video_task_status(
             model_type=AIModelType.IMAGE_TO_VIDEO,
             metadata={"task_id": task_id},
         )
-

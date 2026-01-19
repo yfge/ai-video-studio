@@ -7,6 +7,8 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+import httpx
+
 
 def normalize_operation_path(name: str) -> str:
     op = (name or "").lstrip("/")
@@ -44,7 +46,12 @@ def normalize_resolution(resolution: Optional[str]) -> Optional[str]:
     return None
 
 
-def resolve_duration(model_id: str, duration: Optional[int]) -> Optional[int]:
+def resolve_duration(
+    model_id: str,
+    duration: Optional[int],
+    *,
+    resolution: Optional[str] = None,
+) -> Optional[int]:
     if duration is None:
         return None
     try:
@@ -52,8 +59,9 @@ def resolve_duration(model_id: str, duration: Optional[int]) -> Optional[int]:
     except (TypeError, ValueError):
         return None
     mid = (model_id or "").lower()
+    res = normalize_resolution(resolution) if resolution else None
     if "veo-3.1" in mid:
-        options = [4, 6, 8]
+        options = [8] if res == "1080p" else [4, 6, 8]
     elif "veo-3.0" in mid:
         options = [8]
     elif "veo-2.0" in mid:
@@ -100,3 +108,54 @@ def extract_video_uri(response: Dict[str, Any]) -> Optional[str]:
     if isinstance(first, dict):
         return first.get("uri") or first.get("url")
     return None
+
+
+def _truncate_one_line(value: str, max_chars: int) -> str:
+    if not value:
+        return ""
+    compact = " ".join(str(value).split())
+    if max_chars > 0 and len(compact) > max_chars:
+        return compact[:max_chars] + "…"
+    return compact
+
+
+def _extract_google_error_message(payload: Any) -> Optional[str]:
+    if not isinstance(payload, dict):
+        return None
+    err = payload.get("error")
+    if isinstance(err, dict):
+        status = err.get("status")
+        message = err.get("message")
+        if status and message:
+            return f"{status}: {message}"
+        if message:
+            return str(message)
+        if status:
+            return str(status)
+    message = payload.get("message")
+    if message:
+        return str(message)
+    return None
+
+
+def format_http_status_error(
+    exc: httpx.HTTPStatusError,
+    *,
+    label: str = "Google API",
+    max_body_chars: int = 800,
+) -> str:
+    response = exc.response
+    detail = None
+    try:
+        detail = _extract_google_error_message(response.json())
+    except Exception:
+        detail = None
+
+    if not detail:
+        body = (response.text or "").strip()
+        if body:
+            detail = body
+
+    if detail:
+        return f"{label} HTTP {response.status_code}: {_truncate_one_line(detail, max_body_chars)}"
+    return f"{label} HTTP {response.status_code}: {str(exc)}"

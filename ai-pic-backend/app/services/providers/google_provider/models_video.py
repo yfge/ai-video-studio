@@ -33,6 +33,10 @@ def get_video_models() -> List[ModelInfo]:
                     "ratio_options": ["16:9", "9:16"],
                     "resolution_options": ["720P", "1080P"],
                     "duration_options": [4, 6, 8],
+                    "duration_options_by_resolution": {
+                        "720P": [4, 6, 8],
+                        "1080P": [8],
+                    },
                     "supports_end_frame": True,
                     "default_ratio": "16:9",
                     "default_resolution": "720P",
@@ -60,6 +64,10 @@ def get_video_models() -> List[ModelInfo]:
                     "ratio_options": ["16:9", "9:16"],
                     "resolution_options": ["720P", "1080P"],
                     "duration_options": [4, 6, 8],
+                    "duration_options_by_resolution": {
+                        "720P": [4, 6, 8],
+                        "1080P": [8],
+                    },
                     "supports_end_frame": True,
                     "default_ratio": "16:9",
                     "default_resolution": "720P",

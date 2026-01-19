@@ -1,4 +1,5 @@
 import pytest
+import httpx
 
 from app.services.providers.google_provider import GoogleProvider
 from app.services.providers.google_provider import video_tasks as video_tasks_module
@@ -35,6 +36,23 @@ class _DummyClient:
         return _DummyResponse(200, self.get_payload)
 
 
+class _HTTPXClient:
+    def __init__(self, *, post_response: httpx.Response, get_response: httpx.Response | None = None):
+        self.post_response = post_response
+        self.get_response = get_response
+        self.last_post = None
+        self.last_get = None
+
+    async def post(self, url, json):
+        self.last_post = {"url": url, "json": json}
+        return self.post_response
+
+    async def get(self, url):
+        self.last_get = {"url": url}
+        assert self.get_response is not None
+        return self.get_response
+
+
 @pytest.mark.asyncio
 async def test_submit_video_task_returns_task_id(monkeypatch):
     provider = GoogleProvider(ProviderConfig(name="google", api_key="test-key"))
@@ -66,6 +84,57 @@ async def test_submit_video_task_returns_task_id(monkeypatch):
         == "AAA"
     )
     assert dummy_client.last_post["json"]["parameters"]["aspectRatio"] == "9:16"
+
+
+@pytest.mark.asyncio
+async def test_submit_video_task_surfaces_http_error_body(monkeypatch):
+    provider = GoogleProvider(ProviderConfig(name="google", api_key="test-key"))
+    request = httpx.Request("POST", "https://example.com/v1beta/models/veo:predictLongRunning")
+    response = httpx.Response(
+        400,
+        json={"error": {"status": "INVALID_ARGUMENT", "message": "bad request"}},
+        request=request,
+    )
+    dummy_client = _HTTPXClient(post_response=response)
+
+    async def _fake_client():
+        return dummy_client
+
+    monkeypatch.setattr(provider, "get_client", _fake_client)
+
+    resp = await provider.submit_video_task(
+        prompt="test video",
+        model="veo-3.1-generate-preview",
+    )
+
+    assert resp.success is False
+    assert resp.error is not None
+    assert "Google Veo HTTP 400" in resp.error
+    assert "INVALID_ARGUMENT" in resp.error
+    assert "bad request" in resp.error
+
+
+@pytest.mark.asyncio
+async def test_submit_video_task_1080p_requires_8s(monkeypatch):
+    provider = GoogleProvider(ProviderConfig(name="google", api_key="test-key"))
+    dummy_client = _DummyClient(post_payload={"name": "operations/abc"})
+
+    async def _fake_client():
+        return dummy_client
+
+    monkeypatch.setattr(provider, "get_client", _fake_client)
+
+    resp = await provider.submit_video_task(
+        prompt="test video",
+        model="veo-3.1-generate-preview",
+        duration=6,
+        resolution="1080p",
+    )
+
+    assert resp.success is True
+    assert dummy_client.last_post is not None
+    assert dummy_client.last_post["json"]["parameters"]["resolution"] == "1080p"
+    assert dummy_client.last_post["json"]["parameters"]["durationSeconds"] == 8
 
 
 @pytest.mark.asyncio
