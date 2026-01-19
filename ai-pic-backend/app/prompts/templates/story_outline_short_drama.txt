@@ -56,6 +56,26 @@
 内容限制：{{ content_restrictions | join(', ') }}
 {% endif -%}
 
+{% if pacing_template or hook_plan or twist_density or cliffhanger_plan or ad_snippets -%}
+## 预设节奏/投流模板（可选）
+以下信息来自“节奏模板/投流模板”或人工预设；如提供，请在生成时优先遵守，并确保输出字段与之兼容：
+{% if pacing_template -%}
+- pacing_template: {{ pacing_template }}
+{% endif -%}
+{% if hook_plan -%}
+- 预设 hook_plan: {{ hook_plan | tojson }}
+{% endif -%}
+{% if twist_density -%}
+- 预设 twist_density: {{ twist_density }}
+{% endif -%}
+{% if cliffhanger_plan -%}
+- 预设 cliffhanger_plan: {{ cliffhanger_plan | tojson }}
+{% endif -%}
+{% if ad_snippets -%}
+- 预设 ad_snippets: {{ ad_snippets | tojson }}
+{% endif -%}
+{% endif -%}
+
 ## 【短剧硬性要求】每集必有爽点
 请将整部短剧设计为“每集必有爽点 + 结尾卡点”的连续追更结构：
 

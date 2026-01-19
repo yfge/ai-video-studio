@@ -17,6 +17,15 @@ def build_story_outline_preview_prompt(request: StoryGenerationRequest) -> str:
         "characters": characters,
         "market_region": request.market_region,
         "micro_genre": request.micro_genre,
+        "pacing_template": request.pacing_template,
+        "hook_plan": request.hook_plan.model_dump() if request.hook_plan else None,
+        "twist_density": request.twist_density,
+        "cliffhanger_plan": request.cliffhanger_plan or [],
+        "ad_snippets": (
+            [snippet.model_dump() for snippet in request.ad_snippets]
+            if request.ad_snippets
+            else []
+        ),
         "theme": request.theme,
         "target_audience": request.target_audience,
         "duration_minutes": request.duration_minutes,

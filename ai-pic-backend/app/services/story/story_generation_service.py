@@ -108,6 +108,12 @@ class StoryGenerationService:
         characters: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         prefer_provider, model_id = self._resolve_model(request.model)
+        hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
+        ad_snippets_payload = (
+            [snippet.model_dump() for snippet in request.ad_snippets]
+            if request.ad_snippets
+            else None
+        )
         result = await ai_service.generate_story_outline(
             title=request.title,
             story_format=request.story_format,
@@ -115,6 +121,11 @@ class StoryGenerationService:
             characters=characters,
             market_region=request.market_region,
             micro_genre=request.micro_genre,
+            pacing_template=request.pacing_template,
+            hook_plan=hook_plan_payload,
+            twist_density=request.twist_density,
+            cliffhanger_plan=request.cliffhanger_plan,
+            ad_snippets=ad_snippets_payload,
             theme=request.theme,
             target_audience=request.target_audience,
             duration_minutes=request.duration_minutes,
@@ -168,6 +179,16 @@ class StoryGenerationService:
             extra_metadata["market_region"] = request.market_region
         if request.micro_genre and "micro_genre" not in extra_metadata:
             extra_metadata["micro_genre"] = request.micro_genre
+        if request.pacing_template and "pacing_template" not in extra_metadata:
+            extra_metadata["pacing_template"] = request.pacing_template
+        if request.hook_plan and "hook_plan" not in extra_metadata:
+            extra_metadata["hook_plan"] = request.hook_plan.model_dump()
+        if request.twist_density and "twist_density" not in extra_metadata:
+            extra_metadata["twist_density"] = request.twist_density
+        if request.cliffhanger_plan and "cliffhanger_plan" not in extra_metadata:
+            extra_metadata["cliffhanger_plan"] = request.cliffhanger_plan
+        if request.ad_snippets and "ad_snippets" not in extra_metadata:
+            extra_metadata["ad_snippets"] = [s.model_dump() for s in request.ad_snippets]
         if agent_run:
             extra_metadata = {**extra_metadata, "agent_run": agent_run}
 
@@ -199,6 +220,15 @@ class StoryGenerationService:
                 "story_format": request.story_format,
                 "market_region": request.market_region,
                 "micro_genre": request.micro_genre,
+                "pacing_template": request.pacing_template,
+                "hook_plan": request.hook_plan.model_dump() if request.hook_plan else None,
+                "twist_density": request.twist_density,
+                "cliffhanger_plan": request.cliffhanger_plan,
+                "ad_snippets": (
+                    [s.model_dump() for s in request.ad_snippets]
+                    if request.ad_snippets
+                    else None
+                ),
                 "additional_requirements": request.additional_requirements,
                 "style_preferences": request.style_preferences,
                 "content_restrictions": request.content_restrictions,
