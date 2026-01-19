@@ -33,7 +33,7 @@
 
 - dialogues: 每个元素包含 scene_number, character, content, emotion（可选）, action（可选）。
   - 你必须覆盖所有场景（scene_number 与 scenes 列表一致），每条对白都必须带准确的 scene_number（整数，不可为空/不可越界）。
-  - 每场对白建议 8-25 句，必要时更多；对白条数应服从后续附加的“各场景字数/时长约束”。
+  - 控制输出规模：每场对白建议 4-12 句（爽点/高潮场景可 12-18 句），句子尽量短；避免长段独白导致 JSON 过长被截断。
   - 角色名尽量从 story.character_profiles / story.main_characters 提取，保证一致性。
 
 - stage_directions: 每个元素包含 scene_number, timing（如 intro/mid/outro），content，type（如 action/camera/light/sfx 等）。

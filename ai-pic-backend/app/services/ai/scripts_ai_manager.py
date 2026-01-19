@@ -27,6 +27,35 @@ _DIALOGUE_REPAIR_HINT = '{"dialogues":[{"scene_number":1,"character":"角色","c
 _SCENE_PLAN_MAX_TOKENS = 2048
 _DIALOGUE_MAX_TOKENS = 4096
 _REPAIR_MAX_TOKENS = 4096
+_MAX_DIALOGUE_SCENES = 20
+_MAX_EPISODE_SCENES_SAMPLE = 10
+
+
+def _minify_episode_for_prompt(episode: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(episode, dict):
+        return {}
+
+    cloned = dict(episode)
+    scenes = cloned.get("scenes")
+    if not isinstance(scenes, list) or len(scenes) <= _MAX_EPISODE_SCENES_SAMPLE:
+        return cloned
+
+    samples: list[dict[str, Any]] = []
+    for raw in scenes[:_MAX_EPISODE_SCENES_SAMPLE]:
+        if not isinstance(raw, dict):
+            continue
+        samples.append(
+            {
+                "scene_number": raw.get("scene_number"),
+                "slug_line": raw.get("slug_line"),
+                "summary": raw.get("summary") or raw.get("description"),
+            }
+        )
+
+    cloned["scenes_total"] = len(scenes)
+    cloned["scenes_sample"] = samples
+    cloned["scenes"] = []
+    return cloned
 
 
 class ScriptManagerMixin:
@@ -88,9 +117,13 @@ class ScriptManagerMixin:
         if not isinstance(scenes, list):
             scenes = []
 
+        episode_prompt = _minify_episode_for_prompt(episode)
+
+        duration_minutes = episode.get("duration_minutes") or 0
+        should_plan_scenes = len(scenes) < 2 or len(scenes) > _MAX_DIALOGUE_SCENES
+
         scene_plan_prompt = ""
-        if len(scenes) < 2:
-            duration_minutes = episode.get("duration_minutes") or 0
+        if should_plan_scenes:
             min_scene_seconds = 10
             max_scene_seconds = 120
             if duration_minutes and duration_minutes >= 20:
@@ -100,16 +133,24 @@ class ScriptManagerMixin:
                 min_scene_seconds = 15
                 max_scene_seconds = 180
 
+            scene_plan_additional_requirements = additional_requirements or ""
+            if len(scenes) > _MAX_DIALOGUE_SCENES:
+                scene_plan_additional_requirements = (
+                    f"{scene_plan_additional_requirements}\n\n"
+                    f"重要：当前 episode.scenes 数量为 {len(scenes)}，过多会导致对白 JSON 过长。"
+                    f"请重新规划并压缩场景数量，不超过 {_MAX_DIALOGUE_SCENES} 个。"
+                ).strip()
+
             scene_plan_prompt = prompt_manager.render_prompt(
                 PromptTemplate.SCRIPT_SCENES.value,
                 {
-                    "episode": episode,
+                    "episode": episode_prompt,
                     "story": story,
                     "scene_detail_level": scene_detail_level,
                     "format_type": format_type,
                     "language": language,
                     "style_preferences": style_preferences or [],
-                    "additional_requirements": additional_requirements or "",
+                    "additional_requirements": scene_plan_additional_requirements,
                     "duration_minutes": duration_minutes,
                     "min_scene_seconds": min_scene_seconds,
                     "max_scene_seconds": max_scene_seconds,
@@ -144,7 +185,7 @@ class ScriptManagerMixin:
         prompt = prompt_manager.render_prompt(
             PromptTemplate.SCRIPT_DIALOGUES.value,
             {
-                "episode": episode,
+                "episode": episode_prompt,
                 "story": story,
                 "scenes": scenes,
                 "dialogue_style": dialogue_style,

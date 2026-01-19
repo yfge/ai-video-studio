@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from app.services.ai.scripts_ai_manager import (
     _DIALOGUE_MAX_TOKENS,
+    _MAX_DIALOGUE_SCENES,
     _REPAIR_MAX_TOKENS,
     _SCENE_PLAN_MAX_TOKENS,
     ScriptManagerMixin,
@@ -133,3 +134,74 @@ async def test_call_ai_manager_script_passes_max_tokens_and_repairs_json():
     assert manager.calls[0]["stream"] is False
     assert manager.calls[1]["stream"] is False
     assert manager.calls[2]["stream"] is False
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_call_ai_manager_script_replans_when_episode_scenes_too_many():
+    original_scenes = [
+        {
+            "scene_number": idx,
+            "slug_line": f"INT. S{idx} - day",
+            "location": "room",
+            "time_of_day": "day",
+            "summary": f"beat {idx}",
+        }
+        for idx in range(1, _MAX_DIALOGUE_SCENES + 6)
+    ]
+
+    planned_scenes = [
+        {
+            "scene_number": 1,
+            "slug_line": "INT. Room - day",
+            "location": "room",
+            "time_of_day": "day",
+            "summary": "condensed",
+            "estimated_duration_seconds": 60,
+            "dialogue_ratio": 0.7,
+        }
+    ]
+
+    manager = _DummyManager(
+        [
+            _DummyResponse(success=True, data={"scenes": planned_scenes}),
+            _DummyResponse(
+                success=True,
+                data={
+                    "scenes": planned_scenes,
+                    "dialogues": [
+                        {
+                            "scene_number": 1,
+                            "character": "A",
+                            "content": "hi",
+                            "emotion": None,
+                            "action": None,
+                        }
+                    ],
+                    "stage_directions": [],
+                },
+            ),
+        ]
+    )
+    service = _DummyService(ai_manager=manager)
+
+    result = await service._call_ai_manager_script(
+        episode={"duration_minutes": 30, "scenes": original_scenes},
+        story={"title": "T"},
+        format_type="short_video",
+        language="zh",
+        dialogue_style="natural",
+        scene_detail_level="medium",
+        additional_requirements=None,
+        style_preferences=None,
+        model="minimax:abab",
+        prefer_provider="minimax",
+        temperature=0.7,
+    )
+
+    assert result is not None
+    assert len(manager.calls) == 2
+    assert manager.calls[0]["max_tokens"] == _SCENE_PLAN_MAX_TOKENS
+    assert manager.calls[1]["max_tokens"] == _DIALOGUE_MAX_TOKENS
+    assert manager.calls[0]["json_schema"]["name"] == "script_scenes"
+    assert manager.calls[1]["json_schema"]["name"] == "script_dialogues"
