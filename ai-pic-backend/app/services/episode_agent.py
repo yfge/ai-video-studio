@@ -143,6 +143,7 @@ class EpisodeLangGraphAgent:
             "step_outlines_raw": outline_result.raw_text,
             "step_outline_prompt": outline_result.prompt,
             "prompt": outline_result.prompt,
+            "continuity_ledger": episode_result.continuity_ledger,
             "generation_method": "langgraph_episode_step_outline",
             "template_used": PromptTemplate.EPISODE_FROM_OUTLINE.value,
             "provider_used": episode_result.provider,

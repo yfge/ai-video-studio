@@ -179,8 +179,9 @@ def build_story_data(
     Returns:
         Story data dict
     """
+    extra_meta = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
     marketing_meta = merge_marketing_meta(
-        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
+        extra_meta,
         story.generation_params if isinstance(story.generation_params, dict) else {},
     )
     return {
@@ -198,5 +199,10 @@ def build_story_data(
         "setting_location": story.setting_location,
         "previous_episode_summaries": previous_episode_summaries,
         "character_profiles": character_profiles,
+        "continuity_ledger": (
+            extra_meta.get("continuity_ledger")
+            if isinstance(extra_meta.get("continuity_ledger"), dict)
+            else None
+        ),
         **marketing_meta,
     }

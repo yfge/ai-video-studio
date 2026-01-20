@@ -75,6 +75,13 @@ Logline：{{ outline.logline or '无' }}
 - （无前序集）
 {% endif %}
 
+## 连贯性账本（continuity_ledger）
+{% if continuity_ledger %}
+{{ continuity_ledger | tojson }}
+{% else %}
+- （暂无账本；请在本集内保持自洽，并为下一集留下可更新的连贯性信息）
+{% endif %}
+
 ## 重新生成要求（第 {{ attempt_number }} 次尝试）
 
 **必须达到以下标准，否则将再次被驳回：**
@@ -85,6 +92,7 @@ Logline：{{ outline.logline or '无' }}
 4. **结构要完整**：开场、发展、高潮、结尾都要有
 {% if plot_complexity %}- 保持 {{ plot_complexity }} 复杂度{% endif %}
 {% if pacing %}- 保持 {{ pacing }} 节奏{% endif %}
+5. **一致性**：必须遵守前序集与 continuity_ledger；不要为了补时长引入与主线无关的随机场景/跳跃时间线；涉及姓名/身份首次点名时必须写清“如何得知”。
 
 **对白示例**（正确写法）：
 错误：「角色A和角色B交谈，讨论了问题。」

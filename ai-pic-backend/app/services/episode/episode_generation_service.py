@@ -11,9 +11,11 @@ from app.models.virtual_ip import VirtualIP
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation_requests import EpisodeGenerationRequest
-from app.services.ai_service import ai_service
+from app.services import ai_service as ai_service_module
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
+
+ai_service = ai_service_module.ai_service
 
 from .episode_generation_persistence import create_episode_models, persist_step_outline_beats
 from .episode_generation_utils import (
@@ -56,8 +58,9 @@ class EpisodeGenerationService:
         return focus_characters
 
     def _build_story_data(self, story: Story) -> Dict[str, Any]:
+        extra_meta = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
         marketing_meta = merge_marketing_meta(
-            story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
+            extra_meta,
             story.generation_params if isinstance(story.generation_params, dict) else {},
         )
         return {
@@ -73,6 +76,9 @@ class EpisodeGenerationService:
             "world_building": story.world_building,
             "setting_time": story.setting_time,
             "setting_location": story.setting_location,
+            "continuity_ledger": (
+                extra_meta.get("continuity_ledger") if isinstance(extra_meta.get("continuity_ledger"), dict) else None
+            ),
             **marketing_meta,
         }
 
@@ -213,6 +219,10 @@ class EpisodeGenerationService:
             hook_plan_payload=hook_plan_payload,
             ad_snippets_payload=ad_snippets_payload,
         )
+        continuity_ledger = result_payload.get("continuity_ledger")
+        if isinstance(continuity_ledger, dict) and continuity_ledger:
+            extra_meta = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
+            story.extra_metadata = {**extra_meta, "continuity_ledger": continuity_ledger}
         self.db.commit()
 
         if step_outlines and created_episodes:

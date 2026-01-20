@@ -31,6 +31,7 @@ def init_continuity_ledger(*, story_payload: Dict[str, Any]) -> Dict[str, Any]:
         "facts": [],
         "timeline": [],
         "characters": characters,
+        "info_acquisition_events": [],
         "open_threads": [],
         "resolved_threads": [],
     }
@@ -165,12 +166,14 @@ def compact_ledger_for_prompt(ledger: Dict[str, Any]) -> Dict[str, Any]:
     open_threads = _truncate_list(base.get("open_threads"), 25)
     resolved_threads = _truncate_list(base.get("resolved_threads"), 25)
     timeline = _truncate_list(base.get("timeline"), 30)
+    info_events = _truncate_list(base.get("info_acquisition_events"), 60)
 
     return {
         "version": int(base.get("version") or 1),
         "facts": facts,
         "timeline": timeline,
         "characters": characters,
+        "info_acquisition_events": info_events,
         "open_threads": open_threads,
         "resolved_threads": resolved_threads,
     }

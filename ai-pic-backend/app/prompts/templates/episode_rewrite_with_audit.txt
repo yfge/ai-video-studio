@@ -1,0 +1,28 @@
+你是该剧的分集主编。你会收到“本集 Episode Plan（草稿）”和“一致性审校问题清单”。任务：在尽量保留原有结构/因果链/节奏的前提下，修复问题并输出新的 Episode Plan。
+
+## 修复原则（必须遵守）
+1) **最小改动优先**：优先通过补一句交代、调整称谓、补时间/地点过渡、延后信息揭示等方式修复；避免推翻重写。
+2) **禁止为了修复而引入随机新支线/新地点**：除非审校问题明确指出必须新增，并且你能写清新增内容的因果与叙事目的。
+3) **知识门控（重点）**：
+   - 角色不得在未获得信息前引用该信息。
+   - 若本集第一次让某角色“知道某人名字/身份/关键事实”，必须在本集的场景 summary 或 plot_points 或对白/动作中明确写出“得知方式”（自报/他人介绍/工牌/手机备注/目击/推断等）；否则就先用模糊称呼（她/那个人/新来的同事）直到合理揭示。
+4) **时间轴与地点过渡**：跨时间/地点切换必须用一句话交代；避免“突然跳场”。
+5) **保持可拍性**：地点选择要合理；敏感/私密信息交流应在更合理的场合发生（或给出合理掩护与因果）。
+{% if story.story_format == "short_drama" %}
+6) **短剧结构硬规则**：必须保留“开场钩子（前10秒）/爽点落点/结尾卡点”追更结构，且不要把爽点/卡点删掉或改成纯铺垫。
+{% endif %}
+
+## 输入信息
+- story: {{ story | tojson }}
+- outline: {{ outline | tojson }}
+- previous_episodes_context: {{ previous_episodes_context | tojson }}
+- continuity_ledger: {{ continuity_ledger | tojson }}
+- episode_plan_draft: {{ episode_plan | tojson }}
+- audit_issues: {{ audit_issues | tojson }}
+
+## 输出要求
+- 仅输出严格 JSON（不要代码块/解释），符合 EpisodePlanModel，且 `episodes` **只能包含 1 条**。
+- `episode_number` 必须等于 {{ outline.episode_number }}。
+- 维持原有场景数量与顺序的“整体轮廓”优先（除非为修复必须调整），并确保 scenes 的 scene_number 仍从 1 递增且不缺失。
+
+只输出 JSON。

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import EpisodePlanModel
+from app.services.continuity.episode_plan_postprocess import postprocess_episode_plan_list
 from app.services.episode_agent import EpisodeGenerationCallbacks
 from app.utils.json_utils import extract_json_block
 
@@ -202,12 +203,25 @@ class EpisodeGenerationMixin:
                     "model_used": response.model,
                     "usage": response.usage,
                 }
+            episodes = normalized.get("episodes") if isinstance(normalized, dict) else None
+            if isinstance(episodes, list):
+                updated, ledger, rewritten_text = await postprocess_episode_plan_list(
+                    ai_manager=self.ai_manager,
+                    story=story,
+                    episodes=episodes,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    temperature=temperature,
+                )
+                normalized["episodes"] = updated
+                content_text = rewritten_text
             return {
                 "content": content_text,
                 "normalized": normalized,
                 "prompt": prompt,
                 "generation_method": f"ai_{response.provider}",
                 "template_used": PromptTemplate.EPISODE_GENERATION.value,
+                "continuity_ledger": ledger if isinstance(episodes, list) else None,
                 "provider_used": response.provider,
                 "model_used": response.model,
                 "usage": response.usage,

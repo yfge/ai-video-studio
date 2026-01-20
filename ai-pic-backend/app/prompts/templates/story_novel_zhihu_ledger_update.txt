@@ -23,7 +23,15 @@ chapter_title: {{ chapter_title }}
   "ledger": {
     "version": 1,
     "facts": ["已确认事实（短句）"],
-    "timeline": [{"chapter": 1, "events": ["事件要点"]}],
+    "timeline": [
+      {
+        "chapter": 1,
+        "time_anchor": "时间锚点（同一天/第二天/一周后/具体日期等；可为空）",
+        "location_anchor": "地点锚点（城市/区域/关键主要地点；可为空）",
+        "events": ["事件要点"],
+        "reveals": ["本章揭示的信息（短句，可为空）"]
+      }
+    ],
     "characters": {
       "角色名": {
         "status": "当前状态/处境（短句）",
@@ -31,6 +39,15 @@ chapter_title: {{ chapter_title }}
         "relationships": {"他人": "关系变化（短句）"}
       }
     },
+    "info_acquisition_events": [
+      {
+        "chapter": 1,
+        "who": "谁获得信息（角色名/叙述者/观众）",
+        "what": "获得的信息（姓名/身份/事实/动机等）",
+        "how": "获得方式（自报/他人介绍/工牌/手机备注/目击/推断等）",
+        "evidence": "证据片段/引用（可选）"
+      }
+    ],
     "open_threads": ["未解决线索/悬念（短句）"],
     "resolved_threads": ["已收束线索（短句）"]
   },
@@ -41,7 +58,8 @@ chapter_title: {{ chapter_title }}
 规则：
 - ledger 必须在 previous_ledger 基础上“增量更新”，不要无中生有改写已发生事实。
 - 列表长度要受控：facts/open_threads/resolved_threads 各最多 25 条；timeline 最多 30 条；每个 events 最多 8 条。
+- 时间/地点锚点：尽量从正文中抽取；若正文未明确，可用“当晚/第二天/几天后”等低假设锚点，以及“公司/家/医院/街上”等粗粒度地点锚点；避免与正文矛盾。
+- 信息获得事件：把“首次得知姓名/身份/关键事实”的节点写入 info_acquisition_events，并写清 how；避免重复写入同一事件（可合并/去重）。
 - chapter_summary 必须忠实反映本章发生的事件与人物变化，不要泛泛而谈。
 - chapter_cliffhanger 必须承接本章结尾制造悬念，不要剧透下一章全部内容。
 - 仅输出 JSON；JSON 字符串中禁止出现真实换行符；需要换行请写成 \\n。
-

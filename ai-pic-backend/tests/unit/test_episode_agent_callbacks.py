@@ -69,6 +69,20 @@ def make_response(data: str) -> AIResponse:
         metadata={},
     )
 
+def make_audit_pass_response() -> AIResponse:
+    return make_response(json.dumps({"verdict": "pass", "issues": []}))
+
+
+def make_ledger_update_response(episode_number: int) -> AIResponse:
+    return make_response(
+        json.dumps(
+            {
+                "ledger": {},
+                "episode_snapshot": {"episode_number": episode_number},
+            }
+        )
+    )
+
 
 @pytest.mark.asyncio
 async def test_episode_agent_callbacks_emit_and_fallback(monkeypatch):
@@ -97,7 +111,10 @@ async def test_episode_agent_callbacks_emit_and_fallback(monkeypatch):
         [
             make_response(json.dumps(outline)),
             make_response(json.dumps(episode_ok)),
+            make_audit_pass_response(),
+            make_ledger_update_response(1),
             make_response("not-json"),  # triggers outline-based fallback for episode 2
+            make_ledger_update_response(2),
         ]
     )
 

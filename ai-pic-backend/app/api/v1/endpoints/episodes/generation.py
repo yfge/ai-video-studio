@@ -18,6 +18,9 @@ from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.schemas.script import EpisodeResponse
 from app.services.episode.episode_generation_service import EpisodeGenerationService
 
+# Backward-compat export for tests/legacy callers (they monkeypatch this name).
+ai_service = None  # type: ignore[assignment]
+
 router = APIRouter()
 
 

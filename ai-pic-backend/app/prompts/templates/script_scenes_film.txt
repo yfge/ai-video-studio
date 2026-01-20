@@ -32,6 +32,18 @@
 - dialogue_ratio: 对白占比（0.0-1.0），小数
 {% endif %}
 
+## 连贯性账本（continuity_ledger）
+{% if story.continuity_ledger %}
+{{ story.continuity_ledger | tojson }}
+{% else %}
+- （暂无账本；请在本集内保持自洽，并为后续段落留下可更新的锚点）
+{% endif %}
+
+## 一致性要求（必须遵守）
+1. **时间轴/转场**：场景之间的时间推进要合理；跨时间/地点切换请在 summary 中用一句话交代。
+2. **地点合理性**：地点选择要服务叙事目的；敏感/私密信息交流应在更合理的场合发生（或给出合理掩护与因果）。
+3. **信息揭示安排**：若本段落需要首次点名/首次揭示姓名/身份/关键事实，请在对应场景 summary 中体现“如何得知”（自报/他人介绍/工牌/手机备注/目击/推断等），避免凭空知道。
+
 ## 输入信息
 
 - story: {{ story | tojson }}
@@ -43,4 +55,3 @@
 - additional_requirements: {{ additional_requirements }}
 
 请直接返回 JSON，不要代码块。
-

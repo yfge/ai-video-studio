@@ -43,9 +43,21 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
 {% if previous_episodes and previous_episodes|length > 0 -%}
 {% for prev in previous_episodes %}
 - 第{{ prev.episode_number }}集：{{ prev.title or '' }} — {{ prev.logline or '无概述' }}
+  {% if prev.time_anchor or prev.location_anchor or prev.end_state or prev.reveals %}
+  · 时间锚点：{{ prev.time_anchor or '未知' }}；地点锚点：{{ prev.location_anchor or '未知' }}
+  · 结尾状态：{{ prev.end_state or '未知' }}
+  · 已揭示信息：{{ (prev.reveals or []) | tojson }}
+  {% endif %}
 {% endfor %}
 {% else %}
 - （无前序集）
+{% endif %}
+
+## 连贯性账本（continuity_ledger）
+{% if continuity_ledger %}
+{{ continuity_ledger | tojson }}
+{% else %}
+- （暂无账本；从本集开始建立）
 {% endif %}
 
 ## 生成要求
@@ -60,6 +72,12 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
 {% if story.hook_plan or story.cliffhanger_plan %}- 场景安排需匹配爽点/卡点节奏{% endif %}
 {% if style_preferences %}- 风格偏好：{{ style_preferences | join(', ') }}{% endif %}
 {% if additional_requirements %}- 额外要求：{{ additional_requirements }}{% endif %}
+
+## 一致性硬规则（必须满足）
+1. **知识门控**：角色不得在未获得信息前引用该信息（姓名/身份/证据/过去事件等）。
+2. **姓名/身份首次出现**：若本集首次点名/首次揭示，必须在 scenes.summary 或 plot_points 或对白/动作中写清“如何得知”（自报/他人介绍/工牌/手机备注/目击/推断等）；不适合点名时先用模糊称呼直到合理揭示。
+3. **时间轴/转场**：跨时间/地点切换必须用一句话交代（如“第二天”“傍晚”“回到公司”），避免突然跳场。
+4. **地点合理性**：地点选择要服务叙事目的；敏感/私密信息交流需在更合理的场合发生（或给出合理掩护与因果）。
 
 ## 输出格式
 仅返回 JSON，符合 EpisodePlanModel，但 episodes 只能有 1 条：

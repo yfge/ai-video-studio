@@ -67,6 +67,20 @@ def make_response(data: str) -> AIResponse:
         metadata={},
     )
 
+def make_audit_pass_response() -> AIResponse:
+    return make_response(json.dumps({"verdict": "pass", "issues": []}))
+
+
+def make_ledger_update_response(episode_number: int) -> AIResponse:
+    return make_response(
+        json.dumps(
+            {
+                "ledger": {},
+                "episode_snapshot": {"episode_number": episode_number},
+            }
+        )
+    )
+
 
 @pytest.mark.asyncio
 async def test_outline_logline_only(monkeypatch):
@@ -90,6 +104,8 @@ async def test_outline_logline_only(monkeypatch):
         [
             make_response(json.dumps(outline)),
             make_response(json.dumps(episode)),
+            make_audit_pass_response(),
+            make_ledger_update_response(1),
         ]
     )
 
@@ -144,6 +160,8 @@ async def test_outline_missing_logline_triggers_repair(monkeypatch):
             make_response(json.dumps(outline_bad)),
             make_response(json.dumps(outline_fixed)),  # repair
             make_response(json.dumps(episode)),
+            make_audit_pass_response(),
+            make_ledger_update_response(1),
         ]
     )
 

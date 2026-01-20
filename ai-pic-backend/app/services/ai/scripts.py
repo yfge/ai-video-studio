@@ -3,6 +3,10 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from app.services.continuity.script_continuity import (
+    run_script_continuity_audit,
+    run_script_dialogues_rewrite_with_audit,
+)
 from app.utils.json_utils import extract_json_block
 
 if TYPE_CHECKING:
@@ -28,6 +32,86 @@ class ScriptGenerationMixin:
         scene_budgets: Optional[List[SceneBudget]] = None,
     ) -> Optional[Dict[str, Any]]:
         """基于剧集信息生成详细剧本"""
+        continuity_ledger = (
+            story.get("continuity_ledger") if isinstance(story, dict) else None
+        )
+
+        async def _maybe_apply_script_continuity_rewrite(payload: Dict[str, Any]) -> None:
+            ai_manager = getattr(self, "ai_manager", None)
+            if not ai_manager:
+                return
+            scenes = payload.get("scenes") if isinstance(payload.get("scenes"), list) else []
+            dialogues = (
+                payload.get("dialogues") if isinstance(payload.get("dialogues"), list) else []
+            )
+            stage_directions = (
+                payload.get("stage_directions")
+                if isinstance(payload.get("stage_directions"), list)
+                else []
+            )
+            if not scenes:
+                return
+            try:
+                audit, _ = await run_script_continuity_audit(
+                    ai_manager=ai_manager,
+                    story=story,
+                    episode=episode,
+                    continuity_ledger=continuity_ledger,
+                    scenes=scenes,
+                    dialogues=dialogues,
+                    stage_directions=stage_directions,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    temperature=temperature,
+                )
+                if audit.verdict != "fail" or not audit.issues:
+                    return
+                rewrite_payload, _ = await run_script_dialogues_rewrite_with_audit(
+                    ai_manager=ai_manager,
+                    story=story,
+                    episode=episode,
+                    continuity_ledger=continuity_ledger,
+                    scenes=scenes,
+                    dialogues=dialogues,
+                    stage_directions=stage_directions,
+                    audit_issues=[issue.model_dump() for issue in audit.issues],
+                    model=model,
+                    prefer_provider=prefer_provider,
+                    temperature=temperature,
+                )
+                new_dialogues = (
+                    rewrite_payload.get("dialogues")
+                    if isinstance(rewrite_payload.get("dialogues"), list)
+                    else None
+                )
+                new_stage = (
+                    rewrite_payload.get("stage_directions")
+                    if isinstance(rewrite_payload.get("stage_directions"), list)
+                    else None
+                )
+                new_scenes = (
+                    rewrite_payload.get("scenes")
+                    if isinstance(rewrite_payload.get("scenes"), list)
+                    else None
+                )
+                if new_scenes is not None:
+                    payload["scenes"] = new_scenes
+                if new_dialogues is not None:
+                    payload["dialogues"] = new_dialogues
+                if new_stage is not None:
+                    payload["stage_directions"] = new_stage
+                payload.setdefault("metadata", {})
+                if isinstance(payload["metadata"], dict):
+                    payload["metadata"]["continuity_rewrite"] = {
+                        "verdict": audit.verdict,
+                        "issue_count": len(audit.issues),
+                    }
+            except Exception as exc:
+                self.logger.warning(
+                    "Script continuity rewrite failed",
+                    extra={"error": str(exc)},
+                )
+
         # 1) LangGraph agent
         if self.script_agent:
             try:
@@ -49,6 +133,7 @@ class ScriptGenerationMixin:
                 )
                 lg = await asyncio.wait_for(coro, timeout=_SCRIPT_AGENT_TIMEOUT_SECONDS)
                 if lg and lg.get("content"):
+                    await _maybe_apply_script_continuity_rewrite(lg["content"])
                     # 组装 content 文本
                     assembled = self._build_script_text(
                         lg["content"].get("scenes") or [],
@@ -93,6 +178,7 @@ class ScriptGenerationMixin:
                     parsed = extract_json_block(raw_content)
 
             if isinstance(parsed, dict):
+                await _maybe_apply_script_continuity_rewrite(parsed)
                 assembled = self._build_script_text(
                     parsed.get("scenes") or [],
                     parsed.get("dialogues") or [],
