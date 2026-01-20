@@ -66,6 +66,8 @@ class VideoTaskDispatcher:
         **kwargs: Any,
     ) -> AIResponse:
         last_model_used = model
+        last_response: Optional[AIResponse] = None
+        errors: list[str] = []
         for _ in range(self.ai_manager.config.max_retries):
             result = await self._submit_once(
                 available,
@@ -83,14 +85,32 @@ class VideoTaskDispatcher:
             if not result:
                 break
             response, provider_model, provider_name = result
+            last_response = response
             if provider_model:
                 last_model_used = provider_model
+            if not response.success:
+                errors.append(f"{provider_name}: {response.error or 'unknown error'}")
             if response.success or not self.ai_manager.config.enable_fallback:
                 return response
             if provider_name in available:
                 available.remove(provider_name)
+            if not available:
+                break
+        if last_response:
+            if errors and self.ai_manager.config.enable_fallback:
+                error_details = self.ai_manager._truncate("; ".join(errors), 800)
+                return self._build_failure_response(
+                    f"所有视频生成提供商都失败了: {error_details}",
+                    last_response.provider or "ai_service_manager",
+                    last_model_used,
+                    model_type,
+                )
+            return last_response
         return self._build_failure_response(
-            "所有视频生成提供商都失败了", "ai_service_manager", last_model_used, model_type
+            "所有视频生成提供商都失败了",
+            "ai_service_manager",
+            last_model_used,
+            model_type,
         )
 
     def _resolve_model_type(self, image_url: Optional[str]) -> AIModelType:
