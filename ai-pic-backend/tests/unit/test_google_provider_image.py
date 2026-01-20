@@ -148,4 +148,4 @@ async def test_image_to_image_uses_reference(monkeypatch):
     # 验证 responseModalities 字段已正确设置
     assert "generationConfig" in dummy_client.last_request["json"]
     assert "responseModalities" in dummy_client.last_request["json"]["generationConfig"]
-    assert dummy_client.last_request["json"]["generationConfig"]["responseModalities"] == ["TEXT", "IMAGE"]
+    assert dummy_client.last_request["json"]["generationConfig"]["responseModalities"] == ["IMAGE"]

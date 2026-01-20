@@ -97,7 +97,9 @@ def parse_images(payload: Dict[str, Any]) -> List[str]:
 
 def normalize_response_modalities(raw: Any) -> List[str]:
     """Normalize response modalities for Gemini image generation."""
-    default = ["TEXT", "IMAGE"]
+    # Prefer image-only responses for image generation; callers can still request
+    # TEXT+IMAGE explicitly via `responseModalities`.
+    default = ["IMAGE"]
     if not raw:
         return default
     if isinstance(raw, str):

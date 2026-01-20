@@ -14,7 +14,7 @@ high quality, ultra detailed, sharp focus, professional lighting, fine texture d
 
 {%- macro quality_storyboard() -%}cinematic movie still, cohesive color grading, clear composition, realistic perspective{%- endmacro -%}
 
-{%- macro constraint_no_text_artifacts() -%}no text, no readable text, no letters, no words, no numbers, no Chinese characters, no subtitles, no watermark, no logo, no UI, no frame, no border, no signage text (keep signs blank or blurred){%- endmacro -%}
+{%- macro constraint_no_text_artifacts() -%}no text, no readable text, no letters, no words, no numbers, no Chinese characters, no subtitles, no captions, no labels, no watermark, no logo, no UI, no frame, no border, no signage text (keep signs blank or blurred){%- endmacro -%}
 {%- macro constraint_no_collage() -%}no collage, no split-screen, no multi-panel, no contact sheet{%- endmacro -%}
 {%- macro constraint_no_collage_storyboard() -%}no collage, no split-screen, no multi-panel, no contact sheet{%- endmacro -%}
 {%- macro constraint_single_character_identity() -%}single character only, single subject, consistent identity and facial features{%- endmacro -%}
