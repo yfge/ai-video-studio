@@ -8,37 +8,20 @@ Documentation:
 - Image generation: https://ai.google.dev/gemini-api/docs/image-generation
 - Video generation: https://ai.google.dev/gemini-api/docs/video
 """
-
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-
 import httpx
-
 from app.core.logging import get_logger
-
-from ..base import (
-    AIModelType,
-    AIResponse,
-    BaseProvider,
-    ModelInfo,
-    ProviderConfig,
-)
+from ..base import AIModelType, AIResponse, BaseProvider, ModelInfo, ProviderConfig
 from ..image_param_utils import compute_image_ui as compute_image_ui_rules
-from .models import (
-    dedupe,
-    fallback_models,
-    from_payload,
-    get_available_models,
-)
+from .models import dedupe, fallback_models, from_payload, get_available_models
 from . import image as image_module
 from . import text as text_module
 from . import video as video_module
 from . import video_tasks as video_tasks_module
-
+from .vertex_auth import build_vertex_access_token_provider
 logger = get_logger(__name__)
-
-
 class GoogleProvider(BaseProvider):
     """Google Gemini text and image generation provider."""
 
@@ -53,7 +36,23 @@ class GoogleProvider(BaseProvider):
         self.vertex_project_id = config.vertex_project_id
         self.vertex_location = config.vertex_location
         self.vertex_access_token = config.vertex_access_token
+        self._vertex_token_provider = build_vertex_access_token_provider(
+            service_account_json=config.vertex_service_account_json,
+            service_account_path=config.vertex_service_account_path,
+            logger=logger,
+        )
 
+    def _should_use_vertex(self) -> bool:
+        return bool(self.vertex_project_id and self.vertex_location)
+
+    async def _get_vertex_access_token(self) -> Optional[str]:
+        if self.vertex_access_token:
+            return self.vertex_access_token
+        if not self._should_use_vertex():
+            return None
+        if not self._vertex_token_provider:
+            return None
+        return await self._vertex_token_provider.get_token()
     @property
     def supported_model_types(self) -> List[AIModelType]:
         return [
@@ -229,6 +228,7 @@ class GoogleProvider(BaseProvider):
     ) -> AIResponse:
         """Generate videos using Veo (text-to-video / image-to-video)."""
         client = await self.get_client()
+        access_token = await self._get_vertex_access_token()
         return await video_module.generate_video(
             client=client,
             base_url=self.video_base_url,
@@ -240,7 +240,7 @@ class GoogleProvider(BaseProvider):
             model=model,
             vertex_project_id=self.vertex_project_id,
             vertex_location=self.vertex_location,
-            access_token=self.vertex_access_token,
+            access_token=access_token,
             format_error=self.format_error,
             **kwargs,
         )
@@ -262,6 +262,7 @@ class GoogleProvider(BaseProvider):
         Returns a provider `task_id` (Google long-running operation name) for polling.
         """
         client = await self.get_client()
+        access_token = await self._get_vertex_access_token()
         return await video_tasks_module.submit_video_task(
             client=client,
             base_url=self.video_base_url,
@@ -277,7 +278,7 @@ class GoogleProvider(BaseProvider):
             ratio=ratio,
             vertex_project_id=self.vertex_project_id,
             vertex_location=self.vertex_location,
-            access_token=self.vertex_access_token,
+            access_token=access_token,
             format_error=self.format_error,
             **kwargs,
         )
@@ -285,12 +286,13 @@ class GoogleProvider(BaseProvider):
     async def fetch_video_task_status(self, task_id: str) -> AIResponse:
         """Fetch async video task status from Google Veo."""
         client = await self.get_client()
+        access_token = await self._get_vertex_access_token()
         return await video_tasks_module.fetch_video_task_status(
             client=client,
             base_url=self.video_base_url,
             provider_name=self.name,
             api_key=self.config.api_key,
             task_id=task_id,
-            access_token=self.vertex_access_token,
+            access_token=access_token,
             format_error=self.format_error,
         )

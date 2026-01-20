@@ -98,6 +98,8 @@ class ProviderConfig(BaseModel):
     vertex_project_id: Optional[str] = None
     vertex_location: Optional[str] = None
     vertex_access_token: Optional[str] = None
+    vertex_service_account_json: Optional[str] = None
+    vertex_service_account_path: Optional[str] = None
     timeout: int = 180
     max_retries: int = 3
     rate_limit: Dict[str, int] = {}

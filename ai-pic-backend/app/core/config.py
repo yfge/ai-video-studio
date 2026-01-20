@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     GOOGLE_VERTEX_PROJECT_ID: Optional[str] = None
     GOOGLE_VERTEX_LOCATION: Optional[str] = None
     GOOGLE_VERTEX_ACCESS_TOKEN: Optional[str] = None
+    GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON: Optional[str] = None
+    GOOGLE_VERTEX_SERVICE_ACCOUNT_PATH: Optional[str] = None
     
     # 阿里云OSS配置
     ALIYUN_ACCESS_KEY_ID: Optional[str] = None
@@ -116,6 +118,12 @@ settings.GOOGLE_VIDEO_BASE_URL = _normalize_optional_str(settings.GOOGLE_VIDEO_B
 settings.GOOGLE_VERTEX_PROJECT_ID = _normalize_optional_str(settings.GOOGLE_VERTEX_PROJECT_ID)
 settings.GOOGLE_VERTEX_LOCATION = _normalize_optional_str(settings.GOOGLE_VERTEX_LOCATION)
 settings.GOOGLE_VERTEX_ACCESS_TOKEN = _normalize_optional_str(settings.GOOGLE_VERTEX_ACCESS_TOKEN)
+settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON = _normalize_optional_str(
+    settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON
+)
+settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_PATH = _normalize_optional_str(
+    settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_PATH
+)
 settings.STABILITY_API_KEY = _normalize_optional_str(settings.STABILITY_API_KEY)
 settings.KELING_API_KEY = _normalize_optional_str(settings.KELING_API_KEY)
 settings.KELING_SECRET_KEY = _normalize_optional_str(settings.KELING_SECRET_KEY)

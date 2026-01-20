@@ -172,6 +172,8 @@ class AIServiceBase:
                     vertex_project_id=settings.GOOGLE_VERTEX_PROJECT_ID,
                     vertex_location=settings.GOOGLE_VERTEX_LOCATION,
                     vertex_access_token=settings.GOOGLE_VERTEX_ACCESS_TOKEN,
+                    vertex_service_account_json=settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON,
+                    vertex_service_account_path=settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_PATH,
                     timeout=120.0,
                     default_model=settings.GOOGLE_DEFAULT_MODEL,
                 )
