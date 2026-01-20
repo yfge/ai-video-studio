@@ -3,6 +3,7 @@
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import { scriptAPI } from "@/utils/api";
 import type { ScriptGenerationRequest } from "@/utils/api";
+import { ShortDramaScriptTemplateSelector } from "./ShortDramaScriptTemplateSelector";
 
 interface ScriptGenerationFormProps {
   generateForm: ScriptGenerationRequest;
@@ -128,6 +129,8 @@ export function ScriptGenerationForm({
         title="市场/微类型/节奏模板"
         idPrefix="script"
       />
+
+      <ShortDramaScriptTemplateSelector setGenerateForm={setGenerateForm} />
 
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
