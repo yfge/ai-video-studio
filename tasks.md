@@ -252,6 +252,7 @@
 - [x] 后端：Storyboard refs 在 provider 支持 txt2img `reference_images` 且未显式设置 `strength` 时优先走 `TEXT_TO_IMAGE + reference_images`（否则保持 img2img base+extra_images）
 - [x] 后端：补齐 `STORYBOARD_KEYFRAME` 提示词对“转场/镜头切换”等词的语义约束（剪辑备注，不要在一张图里表现多个镜头）
 - [x] 后端：增强通用 `no collage` 约束（补充 `no split-screen/multi-panel/contact sheet`）
+- [x] 后端：分镜生图强化“禁止 contact sheet/帧号/字幕/标签”等约束，并将 Google 图片生成默认输出改为 image-only（`responseModalities=["IMAGE"]`）
 - [x] 前端：分镜图生图弹窗展示「模型提示」（`image_gen` notes）并在不支持多参考图时自动裁剪为 1 张（其余选择替换/忽略）
 - [x] 前端：将 `reference_images` 动态输入扩展到分镜文生图等入口（按 model 能力隐藏/显示）
 - [x] 验证：补齐 provider×domain 参数兼容矩阵与端到端用例（Chrome 记录关键请求与结果；见 `docs/image-gen-provider-matrix.md`）
@@ -291,6 +292,7 @@
 - [x] 后端：环境文生图支持 `reference_images`（支持的 provider 才会透传到调用层）
 - [x] 后端：`generate_storyboard_images` 已聚合 `scene.environment_id` + `shot.character_ids` 并注入 `image_to_image`
 - [x] 后端：修复 Google Veo 分镜视频生成 image-to-video 图像入参（`bytesBase64Encoded`），支持异步轮询并回填可下载链接
+- [ ] 后端：Google Veo `429 RESOURCE_EXHAUSTED` 时提供清晰报错与退避策略（避免反复失败/误判为系统异常），并支持可配置 fallback（如临时切换 provider/model）
 - [x] 前端：提供环境资产管理页（上传/生成/变体/删除参考图），在 `/stories/[id]` 分镜/剧集界面支持环境选择与标签筛选
 - [x] 前端：环境文生图表单按模型动态展示参考图选择器并提交 `reference_images`
 - [ ] 前端：修复分镜“生成视频”弹窗无尾帧候选时强制勾选尾帧导致无法提交（允许仅首帧生成）
