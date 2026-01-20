@@ -7,6 +7,12 @@ from app.services.video.video_generation_service import (
     VideoGenerationService,
     get_video_generation_service,
 )
+from app.services.video.video_upload_utils import (
+    get_oss_url_or_original,
+    upload_video_last_frame_to_oss,
+    upload_video_thumbnail_to_oss,
+    upload_video_url_to_oss,
+)
 
 
 class TestVideoGenerationService:
@@ -27,7 +33,7 @@ class TestVideoGenerationService:
     def test_get_oss_url_or_original_with_success(self):
         """Test URL extraction when OSS upload succeeds."""
         oss_result = {"success": True, "file_url": "https://cdn.example.com/video.mp4"}
-        result = VideoGenerationService._get_oss_url_or_original(
+        result = get_oss_url_or_original(
             oss_result, "https://original.example.com/video.mp4"
         )
         assert result == "https://cdn.example.com/video.mp4"
@@ -35,14 +41,14 @@ class TestVideoGenerationService:
     def test_get_oss_url_or_original_with_failure(self):
         """Test URL extraction when OSS upload fails."""
         oss_result = {"success": False}
-        result = VideoGenerationService._get_oss_url_or_original(
+        result = get_oss_url_or_original(
             oss_result, "https://original.example.com/video.mp4"
         )
         assert result == "https://original.example.com/video.mp4"
 
     def test_get_oss_url_or_original_with_none(self):
         """Test URL extraction when OSS result is None."""
-        result = VideoGenerationService._get_oss_url_or_original(
+        result = get_oss_url_or_original(
             None, "https://original.example.com/video.mp4"
         )
         assert result == "https://original.example.com/video.mp4"
@@ -106,7 +112,7 @@ class TestGenerateVideo:
 
         service = VideoGenerationService(ai_manager=mock_manager)
 
-        with patch("app.services.video.video_generation_service.oss_service", None):
+        with patch("app.services.video.video_upload_utils.oss_service", None):
             result = await service.generate_video(
                 prompt="A beautiful sunset",
                 duration=5,
@@ -134,7 +140,7 @@ class TestGenerateVideo:
 
         service = VideoGenerationService(ai_manager=mock_manager)
 
-        with patch("app.services.video.video_generation_service.oss_service", None):
+        with patch("app.services.video.video_upload_utils.oss_service", None):
             result = await service.generate_video(
                 image_url="https://example.com/source.jpg",
                 duration=10,
@@ -201,7 +207,7 @@ class TestGenerateVideo:
 
         service = VideoGenerationService(ai_manager=mock_manager)
 
-        with patch("app.services.video.video_generation_service.oss_service", mock_oss):
+        with patch("app.services.video.video_upload_utils.oss_service", mock_oss):
             result = await service.generate_video(prompt="Test prompt")
 
         assert result["video_url"] == "https://cdn.example.com/video.mp4"
@@ -221,7 +227,7 @@ class TestGenerateVideo:
 
         service = VideoGenerationService(ai_manager=mock_manager)
 
-        with patch("app.services.video.video_generation_service.oss_service", None):
+        with patch("app.services.video.video_upload_utils.oss_service", None):
             await service.generate_video(prompt="Test")
 
         # Check that return_last_frame was passed as True
@@ -241,19 +247,18 @@ class TestOSSUploadMethods:
             "file_url": "https://cdn.example.com/video.mp4",
         })
 
-        service = VideoGenerationService()
-
-        with patch("app.services.video.video_generation_service.oss_service", mock_oss):
-            result = await service._upload_video_to_oss(
-                video_url="https://example.com/video.mp4",
-                prompt="Test prompt",
-                duration=5,
-                fps=24,
-                resolution="1280x720",
-                end_image_url=None,
-                provider="keling",
-                model="kling-video",
-            )
+        result = await upload_video_url_to_oss(
+            video_url="https://example.com/video.mp4",
+            prompt="Test prompt",
+            duration=5,
+            fps=24,
+            resolution="1280x720",
+            end_image_url=None,
+            provider="keling",
+            model="kling-video",
+            logger=MagicMock(),
+            oss_service_override=mock_oss,
+        )
 
         assert result["success"] is True
         assert result["file_url"] == "https://cdn.example.com/video.mp4"
@@ -261,9 +266,7 @@ class TestOSSUploadMethods:
     @pytest.mark.asyncio
     async def test_upload_video_to_oss_no_url(self):
         """Test OSS upload with no video URL."""
-        service = VideoGenerationService()
-
-        result = await service._upload_video_to_oss(
+        result = await upload_video_url_to_oss(
             video_url=None,
             prompt="Test",
             duration=5,
@@ -272,6 +275,7 @@ class TestOSSUploadMethods:
             end_image_url=None,
             provider="keling",
             model="kling-video",
+            logger=MagicMock(),
         )
 
         assert result is None
@@ -279,10 +283,8 @@ class TestOSSUploadMethods:
     @pytest.mark.asyncio
     async def test_upload_video_to_oss_no_service(self):
         """Test OSS upload with no OSS service."""
-        service = VideoGenerationService()
-
-        with patch("app.services.video.video_generation_service.oss_service", None):
-            result = await service._upload_video_to_oss(
+        with patch("app.services.video.video_upload_utils.oss_service", None):
+            result = await upload_video_url_to_oss(
                 video_url="https://example.com/video.mp4",
                 prompt="Test",
                 duration=5,
@@ -291,6 +293,7 @@ class TestOSSUploadMethods:
                 end_image_url=None,
                 provider="keling",
                 model="kling-video",
+                logger=MagicMock(),
             )
 
         assert result is None
@@ -304,14 +307,13 @@ class TestOSSUploadMethods:
             "file_url": "https://cdn.example.com/thumb.jpg",
         })
 
-        service = VideoGenerationService()
-
-        with patch("app.services.video.video_generation_service.oss_service", mock_oss):
-            result = await service._upload_thumbnail_to_oss(
-                thumbnail_url="https://example.com/thumb.jpg",
-                prompt="Test prompt",
-                provider="keling",
-            )
+        result = await upload_video_thumbnail_to_oss(
+            thumbnail_url="https://example.com/thumb.jpg",
+            prompt="Test prompt",
+            provider="keling",
+            logger=MagicMock(),
+            oss_service_override=mock_oss,
+        )
 
         assert result["success"] is True
 
@@ -324,13 +326,12 @@ class TestOSSUploadMethods:
             "file_url": "https://cdn.example.com/last.jpg",
         })
 
-        service = VideoGenerationService()
-
-        with patch("app.services.video.video_generation_service.oss_service", mock_oss):
-            result = await service._upload_last_frame_to_oss(
-                last_frame_url="https://example.com/last.jpg",
-                prompt="Test prompt",
-                provider="keling",
-            )
+        result = await upload_video_last_frame_to_oss(
+            last_frame_url="https://example.com/last.jpg",
+            prompt="Test prompt",
+            provider="keling",
+            logger=MagicMock(),
+            oss_service_override=mock_oss,
+        )
 
         assert result["success"] is True

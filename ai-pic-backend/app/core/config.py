@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: Optional[str] = None
     GOOGLE_DEFAULT_MODEL: Optional[str] = "gemini-3-pro-preview"
     GOOGLE_BASE_URL: Optional[str] = None
+    GOOGLE_VIDEO_BASE_URL: Optional[str] = None
+    GOOGLE_VERTEX_PROJECT_ID: Optional[str] = None
+    GOOGLE_VERTEX_LOCATION: Optional[str] = None
+    GOOGLE_VERTEX_ACCESS_TOKEN: Optional[str] = None
     
     # 阿里云OSS配置
     ALIYUN_ACCESS_KEY_ID: Optional[str] = None
@@ -108,6 +112,10 @@ settings.GOOGLE_API_KEY = _normalize_optional_str(settings.GOOGLE_API_KEY)
 settings.OPENAI_API_KEY = _normalize_optional_str(settings.OPENAI_API_KEY)
 settings.OPENAI_BASE_URL = _normalize_optional_str(settings.OPENAI_BASE_URL)
 settings.GOOGLE_BASE_URL = _normalize_optional_str(settings.GOOGLE_BASE_URL)
+settings.GOOGLE_VIDEO_BASE_URL = _normalize_optional_str(settings.GOOGLE_VIDEO_BASE_URL)
+settings.GOOGLE_VERTEX_PROJECT_ID = _normalize_optional_str(settings.GOOGLE_VERTEX_PROJECT_ID)
+settings.GOOGLE_VERTEX_LOCATION = _normalize_optional_str(settings.GOOGLE_VERTEX_LOCATION)
+settings.GOOGLE_VERTEX_ACCESS_TOKEN = _normalize_optional_str(settings.GOOGLE_VERTEX_ACCESS_TOKEN)
 settings.STABILITY_API_KEY = _normalize_optional_str(settings.STABILITY_API_KEY)
 settings.KELING_API_KEY = _normalize_optional_str(settings.KELING_API_KEY)
 settings.KELING_SECRET_KEY = _normalize_optional_str(settings.KELING_SECRET_KEY)

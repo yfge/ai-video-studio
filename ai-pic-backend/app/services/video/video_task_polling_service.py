@@ -114,14 +114,16 @@ class VideoTaskPollingService:
         processor: VideoGenerationService,
         now: datetime,
     ) -> None:
-        video_url = (response.data or {}).get("video_url")
-        if not video_url:
+        payload = response.data or {}
+        video_url = payload.get("video_url")
+        video_bytes_base64 = payload.get("video_bytes_base64")
+        if not (video_url or video_bytes_base64):
             self._mark_failed(
                 item,
                 response,
                 now,
                 VideoGenerationTaskStatus.FAILED,
-                error_override="任务完成但未返回视频URL",
+                error_override="任务完成但未返回视频内容",
             )
             return
 
@@ -181,6 +183,8 @@ class VideoTaskPollingService:
                 "download_url": (response.data or {}).get("download_url"),
                 "thumbnail_url": (response.data or {}).get("thumbnail_url"),
                 "last_frame_url": (response.data or {}).get("last_frame_url"),
+                "video_bytes_base64": (response.data or {}).get("video_bytes_base64"),
+                "video_mime_type": (response.data or {}).get("video_mime_type"),
             },
             provider=item.provider,
             model=item.model or "unknown",

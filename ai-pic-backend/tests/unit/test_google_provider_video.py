@@ -24,8 +24,8 @@ class _DummyClient:
         self.payload = payload
         self.last_request = None
 
-    async def post(self, url, json):
-        self.last_request = {"url": url, "json": json}
+    async def post(self, url, json, headers=None):
+        self.last_request = {"url": url, "json": json, "headers": headers}
         return _DummyResponse(200, self.payload)
 
 
@@ -49,7 +49,7 @@ async def test_generate_video_uses_ratio_alias(monkeypatch):
         }
 
     monkeypatch.setattr(provider, "get_client", _fake_client)
-    monkeypatch.setattr(video_module, "_poll_operation", _fake_poll_operation)
+    monkeypatch.setattr(video_module, "poll_veo_operation", _fake_poll_operation)
 
     resp = await provider.generate_video(
         prompt="test video",

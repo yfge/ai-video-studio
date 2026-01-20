@@ -49,9 +49,7 @@ class AIRequest(BaseModel):
     parameters: Dict[str, Any] = {}
     metadata: Dict[str, Any] = {}
 
-    model_config = {
-        "protected_namespaces": (),
-    }
+    model_config = {"protected_namespaces": ()}
 
 
 class AIResponse(BaseModel):
@@ -68,9 +66,7 @@ class AIResponse(BaseModel):
     metadata: Dict[str, Any] = {}
     timestamp: datetime = datetime.now()
 
-    model_config = {
-        "protected_namespaces": (),
-    }
+    model_config = {"protected_namespaces": ()}
 
 
 class ModelInfo(BaseModel):
@@ -86,9 +82,7 @@ class ModelInfo(BaseModel):
     capabilities: List[str] = []
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
-    model_config = {
-        "protected_namespaces": (),
-    }
+    model_config = {"protected_namespaces": ()}
 
 
 class ProviderConfig(BaseModel):
@@ -100,16 +94,17 @@ class ProviderConfig(BaseModel):
     group_id: Optional[str] = None
     region: Optional[str] = None
     base_url: Optional[str] = None
+    video_base_url: Optional[str] = None
+    vertex_project_id: Optional[str] = None
+    vertex_location: Optional[str] = None
+    vertex_access_token: Optional[str] = None
     timeout: int = 180
     max_retries: int = 3
     rate_limit: Dict[str, int] = {}
     enabled: bool = True
     default_model: Optional[str] = None
 
-    model_config = {
-        "protected_namespaces": (),
-        "extra": "ignore",
-    }
+    model_config = {"protected_namespaces": (), "extra": "ignore"}
 
 
 class BaseProvider(ABC):

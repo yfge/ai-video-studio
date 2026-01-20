@@ -3,6 +3,7 @@ import httpx
 
 from app.services.providers.google_provider import GoogleProvider
 from app.services.providers.google_provider import video_tasks as video_tasks_module
+from app.services.providers.google_provider import video_request as video_request_module
 from app.services.providers.base import ProviderConfig
 
 
@@ -27,8 +28,8 @@ class _DummyClient:
         self.last_post = None
         self.last_get = None
 
-    async def post(self, url, json):
-        self.last_post = {"url": url, "json": json}
+    async def post(self, url, json, headers=None):
+        self.last_post = {"url": url, "json": json, "headers": headers}
         return _DummyResponse(200, self.post_payload)
 
     async def get(self, url):
@@ -43,8 +44,8 @@ class _HTTPXClient:
         self.last_post = None
         self.last_get = None
 
-    async def post(self, url, json):
-        self.last_post = {"url": url, "json": json}
+    async def post(self, url, json, headers=None):
+        self.last_post = {"url": url, "json": json, "headers": headers}
         return self.post_response
 
     async def get(self, url):
@@ -65,7 +66,7 @@ async def test_submit_video_task_returns_task_id(monkeypatch):
         return {"mimeType": "image/png", "bytesBase64Encoded": "AAA"}
 
     monkeypatch.setattr(provider, "get_client", _fake_client)
-    monkeypatch.setattr(video_tasks_module, "fetch_image_bytes", _fake_fetch_image_bytes)
+    monkeypatch.setattr(video_request_module, "fetch_image_bytes", _fake_fetch_image_bytes)
 
     resp = await provider.submit_video_task(
         prompt="test video",
@@ -181,3 +182,47 @@ async def test_fetch_video_task_status_failed_maps_error(monkeypatch):
     assert resp.success is True
     assert (resp.data or {}).get("status") == "failed"
     assert (resp.data or {}).get("error") == "boom"
+
+
+@pytest.mark.asyncio
+async def test_fetch_video_task_status_vertex_returns_base64(monkeypatch):
+    provider = GoogleProvider(
+        ProviderConfig(
+            name="google",
+            api_key="test-key",
+            vertex_access_token="token",
+        )
+    )
+    dummy_client = _DummyClient(
+        post_payload={
+            "done": True,
+            "response": {
+                "videos": [
+                    {"bytesBase64Encoded": "AAAA", "mimeType": "video/mp4"}
+                ]
+            },
+        }
+    )
+
+    async def _fake_client():
+        return dummy_client
+
+    monkeypatch.setattr(provider, "get_client", _fake_client)
+
+    task_id = (
+        "projects/p1/locations/us-central1/publishers/google/models/"
+        "veo-3.1-generate-preview/operations/op1"
+    )
+    resp = await provider.fetch_video_task_status(task_id)
+
+    assert resp.success is True
+    assert (resp.data or {}).get("status") == "success"
+    assert (resp.data or {}).get("video_url") is None
+    assert (resp.data or {}).get("download_url") is None
+    assert (resp.data or {}).get("video_bytes_base64") == "AAAA"
+    assert (resp.data or {}).get("video_mime_type") == "video/mp4"
+
+    assert dummy_client.last_post is not None
+    assert dummy_client.last_post["url"].endswith(":fetchPredictOperation")
+    assert dummy_client.last_post["json"] == {"operationName": task_id}
+    assert dummy_client.last_post["headers"] == {"Authorization": "Bearer token"}

@@ -11,43 +11,19 @@ from typing import Any, Callable, Dict, List, Optional
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
-from ..polling_utils import TaskPoller, google_operation_status_mapper
-from .helpers import clean_model_id, fetch_image_bytes
+from .helpers import clean_model_id
+from .video_request import build_veo_request_body
 from .video_helpers import (
     append_api_key,
     extract_video_uri,
     format_http_status_error,
-    normalize_operation_path,
-    normalize_ratio,
-    normalize_resolution,
-    resolve_duration,
-    supports_reference_images,
 )
-
-
-async def _poll_operation(
-    client: httpx.AsyncClient,
-    base_url: str,
-    operation_name: str,
-) -> Optional[Dict[str, Any]]:
-    op_path = normalize_operation_path(operation_name)
-
-    async def poll_fn() -> Dict[str, Any]:
-        resp = await client.get(f"{base_url.rstrip('/')}/v1beta/{op_path}")
-        resp.raise_for_status()
-        return resp.json()
-
-    poller = TaskPoller(
-        poll_fn=poll_fn,
-        status_mapper=google_operation_status_mapper,
-        result_extractor=lambda data: data,
-        max_attempts=180,
-        initial_delay=10.0,
-        task_id=operation_name,
-        task_type="video",
-    )
-    return await poller.poll()
-
+from .video_vertex import (
+    build_vertex_predict_long_running_url,
+    extract_video_bytes_base64,
+    extract_video_mime_type,
+    poll_veo_operation,
+)
 
 async def generate_video(
     client: httpx.AsyncClient,
@@ -65,6 +41,9 @@ async def generate_video(
     end_image_url: Optional[str] = None,
     reference_images: Optional[List[Any]] = None,
     person_generation: Optional[str] = None,
+    vertex_project_id: Optional[str] = None,
+    vertex_location: Optional[str] = None,
+    access_token: Optional[str] = None,
     format_error: Callable = str,
     **kwargs: Any,
 ) -> AIResponse:
@@ -92,8 +71,16 @@ async def generate_video(
         )
 
     model_id = clean_model_id(model) or default_model
+    use_vertex = bool(vertex_project_id and vertex_location)
     endpoint = (
-        f"{base_url.rstrip('/')}/v1beta/models/{model_id}:predictLongRunning"
+        build_vertex_predict_long_running_url(
+            base_url,
+            project_id=vertex_project_id or "",
+            location=vertex_location or "",
+            model_id=model_id,
+        )
+        if use_vertex
+        else f"{base_url.rstrip('/')}/v1beta/models/{model_id}:predictLongRunning"
     )
 
     if not prompt and not image_url:
@@ -107,85 +94,33 @@ async def generate_video(
         )
 
     try:
-        instance: Dict[str, Any] = {}
-        if prompt:
-            instance["prompt"] = prompt
-        if image_url:
-            instance["image"] = await fetch_image_bytes(image_url, config_timeout)
-        if end_image_url:
-            instance["lastFrame"] = await fetch_image_bytes(
-                end_image_url, config_timeout
-            )
-
-        body: Dict[str, Any] = {"instances": [instance]}
-        parameters: Dict[str, Any] = {}
-
-        resolved_ratio = normalize_ratio(
-            aspect_ratio
-            or kwargs.get("aspectRatio")
-            # Our internal API uses `ratio` for video aspect ratio; keep backward-compatible
-            # with provider-specific `aspectRatio`.
-            or kwargs.get("ratio")
+        build_kwargs = dict(kwargs)
+        raw_ratio = aspect_ratio or build_kwargs.get("ratio")
+        build_kwargs.pop("ratio", None)
+        body, resolved = await build_veo_request_body(
+            prompt=prompt,
+            image_url=image_url,
+            end_image_url=end_image_url,
+            config_timeout=config_timeout,
+            model_id=model_id,
+            duration=duration,
+            resolution=resolution,
+            ratio=raw_ratio,
+            negative_prompt=negative_prompt,
+            reference_images=reference_images,
+            person_generation=person_generation,
+            **build_kwargs,
         )
-        if resolved_ratio:
-            parameters["aspectRatio"] = resolved_ratio
+        resolved_ratio = resolved.get("aspect_ratio")
+        resolved_resolution = resolved.get("resolution")
+        resolved_duration = resolved.get("duration")
 
-        resolved_resolution = normalize_resolution(
-            resolution or kwargs.get("resolution")
+        headers = (
+            {"Authorization": f"Bearer {access_token}"}
+            if use_vertex and access_token
+            else None
         )
-        if resolved_resolution:
-            parameters["resolution"] = resolved_resolution
-
-        resolved_duration = resolve_duration(
-            model_id,
-            duration or kwargs.get("durationSeconds"),
-            resolution=resolved_resolution,
-        )
-        if resolved_duration:
-            parameters["durationSeconds"] = resolved_duration
-
-        resolved_negative = negative_prompt or kwargs.get("negativePrompt")
-        if resolved_negative:
-            parameters["negativePrompt"] = resolved_negative
-
-        if person_generation:
-            parameters["personGeneration"] = person_generation
-
-        if reference_images and supports_reference_images(model_id):
-            refs: List[Dict[str, Any]] = []
-            for item in reference_images[:3]:
-                if isinstance(item, str):
-                    image_payload = await fetch_image_bytes(item, config_timeout)
-                    refs.append(
-                        {"image": image_payload, "referenceType": "asset"}
-                    )
-                elif isinstance(item, dict):
-                    image_value = (
-                        item.get("image")
-                        or item.get("image_url")
-                        or item.get("url")
-                    )
-                    if not image_value:
-                        continue
-                    image_payload = await fetch_image_bytes(image_value, config_timeout)
-                    reference_type = (
-                        item.get("reference_type")
-                        or item.get("referenceType")
-                        or "asset"
-                    )
-                    refs.append(
-                        {
-                            "image": image_payload,
-                            "referenceType": reference_type,
-                        }
-                    )
-            if refs:
-                parameters["referenceImages"] = refs
-
-        if parameters:
-            body["parameters"] = parameters
-
-        resp = await client.post(endpoint, json=body)
+        resp = await client.post(endpoint, json=body, headers=headers)
         resp.raise_for_status()
         create_payload = resp.json()
         operation_name = create_payload.get("name")
@@ -204,7 +139,12 @@ async def generate_video(
                 metadata={"raw": create_payload},
             )
 
-        operation = await _poll_operation(client, base_url, operation_name)
+        operation = await poll_veo_operation(
+            client=client,
+            base_url=base_url,
+            operation_name=operation_name,
+            access_token=access_token,
+        )
         if not operation:
             return AIResponse(
                 success=False,
@@ -221,10 +161,12 @@ async def generate_video(
             )
 
         video_uri = extract_video_uri(operation)
-        if not video_uri:
+        video_bytes = extract_video_bytes_base64(operation)
+        video_mime_type = extract_video_mime_type(operation)
+        if not (video_uri or video_bytes):
             return AIResponse(
                 success=False,
-                error="Google Veo 响应未返回视频地址",
+                error="Google Veo 响应未返回视频内容",
                 provider=provider_name,
                 model=model_id,
                 task_type=AITaskType.VIDEO_GENERATION,
@@ -236,12 +178,14 @@ async def generate_video(
                 metadata={"operation_name": operation_name},
             )
 
-        download_url = append_api_key(video_uri, api_key)
+        download_url = append_api_key(video_uri, api_key) if video_uri else None
         return AIResponse(
             success=True,
             data={
                 "video_url": video_uri,
                 "download_url": download_url,
+                "video_bytes_base64": video_bytes,
+                "video_mime_type": video_mime_type,
                 "duration": resolved_duration,
                 "resolution": resolved_resolution,
                 "aspect_ratio": resolved_ratio,

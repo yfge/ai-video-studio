@@ -168,6 +168,10 @@ class AIServiceBase:
                     api_key=settings.GOOGLE_API_KEY,
                     # 默认使用 Generative Language API，可通过 GOOGLE_BASE_URL 覆盖
                     base_url=google_base,
+                    video_base_url=settings.GOOGLE_VIDEO_BASE_URL,
+                    vertex_project_id=settings.GOOGLE_VERTEX_PROJECT_ID,
+                    vertex_location=settings.GOOGLE_VERTEX_LOCATION,
+                    vertex_access_token=settings.GOOGLE_VERTEX_ACCESS_TOKEN,
                     timeout=120.0,
                     default_model=settings.GOOGLE_DEFAULT_MODEL,
                 )

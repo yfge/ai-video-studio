@@ -14,16 +14,20 @@ import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
 from ..polling_utils import TaskStatus, google_operation_status_mapper
-from .helpers import clean_model_id, fetch_image_bytes
+from .helpers import clean_model_id
+from .video_request import build_veo_request_body
 from .video_helpers import (
     append_api_key,
     extract_video_uri,
     format_http_status_error,
     normalize_operation_path,
-    normalize_ratio,
-    normalize_resolution,
-    resolve_duration,
-    supports_reference_images,
+)
+from .video_vertex import (
+    build_vertex_fetch_predict_operation_url,
+    build_vertex_predict_long_running_url,
+    extract_video_bytes_base64,
+    extract_video_mime_type,
+    parse_vertex_operation_name,
 )
 
 
@@ -44,6 +48,9 @@ async def submit_video_task(
     negative_prompt: Optional[str] = None,
     reference_images: Optional[List[Any]] = None,
     person_generation: Optional[str] = None,
+    vertex_project_id: Optional[str] = None,
+    vertex_location: Optional[str] = None,
+    access_token: Optional[str] = None,
     format_error: Callable = str,
     **kwargs: Any,
 ) -> AIResponse:
@@ -71,7 +78,17 @@ async def submit_video_task(
         )
 
     model_id = clean_model_id(model) or default_model
-    endpoint = f"{base_url.rstrip('/')}/v1beta/models/{model_id}:predictLongRunning"
+    use_vertex = bool(vertex_project_id and vertex_location)
+    endpoint = (
+        build_vertex_predict_long_running_url(
+            base_url,
+            project_id=vertex_project_id or "",
+            location=vertex_location or "",
+            model_id=model_id,
+        )
+        if use_vertex
+        else f"{base_url.rstrip('/')}/v1beta/models/{model_id}:predictLongRunning"
+    )
 
     if not prompt and not image_url:
         return AIResponse(
@@ -84,67 +101,30 @@ async def submit_video_task(
         )
 
     try:
-        instance: Dict[str, Any] = {}
-        if prompt:
-            instance["prompt"] = prompt
-        if image_url:
-            instance["image"] = await fetch_image_bytes(image_url, config_timeout)
-        if end_image_url:
-            instance["lastFrame"] = await fetch_image_bytes(
-                end_image_url, config_timeout
-            )
-
-        body: Dict[str, Any] = {"instances": [instance]}
-        parameters: Dict[str, Any] = {}
-
-        resolved_ratio = normalize_ratio(
-            ratio
-            or kwargs.get("aspectRatio")
-            or kwargs.get("aspect_ratio")
-            or kwargs.get("ratio")
+        body, resolved = await build_veo_request_body(
+            prompt=prompt,
+            image_url=image_url,
+            end_image_url=end_image_url,
+            config_timeout=config_timeout,
+            model_id=model_id,
+            duration=duration,
+            resolution=resolution,
+            ratio=ratio,
+            negative_prompt=negative_prompt,
+            reference_images=reference_images,
+            person_generation=person_generation,
+            **kwargs,
         )
-        if resolved_ratio:
-            parameters["aspectRatio"] = resolved_ratio
+        resolved_ratio = resolved.get("aspect_ratio")
+        resolved_resolution = resolved.get("resolution")
+        resolved_duration = resolved.get("duration")
 
-        resolved_resolution = normalize_resolution(resolution or kwargs.get("resolution"))
-        if resolved_resolution:
-            parameters["resolution"] = resolved_resolution
-
-        resolved_duration = resolve_duration(
-            model_id,
-            duration or kwargs.get("durationSeconds"),
-            resolution=resolved_resolution,
+        headers = (
+            {"Authorization": f"Bearer {access_token}"}
+            if use_vertex and access_token
+            else None
         )
-        if resolved_duration:
-            parameters["durationSeconds"] = resolved_duration
-
-        resolved_negative = negative_prompt or kwargs.get("negativePrompt")
-        if resolved_negative:
-            parameters["negativePrompt"] = resolved_negative
-
-        if person_generation:
-            parameters["personGeneration"] = person_generation
-
-        if reference_images and supports_reference_images(model_id):
-            refs: List[Dict[str, Any]] = []
-            for item in reference_images[:3]:
-                if isinstance(item, str):
-                    image_payload = await fetch_image_bytes(item, config_timeout)
-                    refs.append({"image": image_payload, "referenceType": "asset"})
-                elif isinstance(item, dict):
-                    image_value = item.get("image") or item.get("image_url") or item.get("url")
-                    if not image_value:
-                        continue
-                    image_payload = await fetch_image_bytes(image_value, config_timeout)
-                    reference_type = item.get("reference_type") or item.get("referenceType") or "asset"
-                    refs.append({"image": image_payload, "referenceType": reference_type})
-            if refs:
-                parameters["referenceImages"] = refs
-
-        if parameters:
-            body["parameters"] = parameters
-
-        resp = await client.post(endpoint, json=body)
+        resp = await client.post(endpoint, json=body, headers=headers)
         resp.raise_for_status()
         create_payload = resp.json()
         operation_name = create_payload.get("name")
@@ -200,6 +180,7 @@ async def fetch_video_task_status(
     provider_name: str,
     api_key: str,
     task_id: str,
+    access_token: Optional[str] = None,
     format_error: Callable = str,
 ) -> AIResponse:
     """Fetch Veo long-running operation status by `task_id`."""
@@ -225,19 +206,38 @@ async def fetch_video_task_status(
             metadata={"task_id": task_id},
         )
 
-    op_path = normalize_operation_path(task_id)
     try:
-        resp = await client.get(f"{base_url.rstrip('/')}/v1beta/{op_path}")
+        vertex = parse_vertex_operation_name(task_id)
+        if vertex:
+            endpoint = build_vertex_fetch_predict_operation_url(
+                base_url,
+                project_id=vertex["project_id"],
+                location=vertex["location"],
+                model_id=vertex["model_id"],
+            )
+            headers = {"Authorization": f"Bearer {access_token}"} if access_token else None
+            resp = await client.post(
+                endpoint,
+                json={"operationName": task_id},
+                headers=headers,
+            )
+        else:
+            op_path = normalize_operation_path(task_id)
+            resp = await client.get(f"{base_url.rstrip('/')}/v1beta/{op_path}")
         resp.raise_for_status()
         payload = resp.json()
 
         status = google_operation_status_mapper(payload)
         video_url = None
         download_url = None
+        video_bytes = None
+        video_mime_type = None
         error_message = None
 
         if status in (TaskStatus.SUCCESS, TaskStatus.COMPLETED):
             video_url = extract_video_uri(payload)
+            video_bytes = extract_video_bytes_base64(payload)
+            video_mime_type = extract_video_mime_type(payload)
             if video_url:
                 download_url = append_api_key(video_url, api_key)
         elif status == TaskStatus.FAILED:
@@ -253,6 +253,8 @@ async def fetch_video_task_status(
                 "status": status.value,
                 "video_url": video_url,
                 "download_url": download_url,
+                "video_bytes_base64": video_bytes,
+                "video_mime_type": video_mime_type,
                 "error": error_message,
                 "raw": payload,
             },

@@ -79,6 +79,8 @@ def append_api_key(url: str, api_key: str) -> str:
     if not url or not api_key:
         return url
     parsed = urlparse(url)
+    if parsed.scheme and parsed.scheme not in {"http", "https"}:
+        return url
     query = dict(parse_qsl(parsed.query))
     if "key" not in query:
         query["key"] = api_key
@@ -87,6 +89,11 @@ def append_api_key(url: str, api_key: str) -> str:
 
 def extract_video_uri(response: Dict[str, Any]) -> Optional[str]:
     root = response.get("response") or {}
+    videos = root.get("videos")
+    if isinstance(videos, list) and videos:
+        first = videos[0] if isinstance(videos[0], dict) else None
+        if first:
+            return first.get("gcsUri") or first.get("gcs_uri")
     generate = root.get("generateVideoResponse") or root.get("generate_video_response")
     if not generate:
         generate = root

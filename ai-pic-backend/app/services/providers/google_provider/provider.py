@@ -48,7 +48,11 @@ class GoogleProvider(BaseProvider):
         self.base_url = (
             config.base_url or "https://generativelanguage.googleapis.com"
         ).rstrip("/")
+        self.video_base_url = (config.video_base_url or self.base_url).rstrip("/")
         self.default_model = config.default_model or "gemini-3-pro-preview"
+        self.vertex_project_id = config.vertex_project_id
+        self.vertex_location = config.vertex_location
+        self.vertex_access_token = config.vertex_access_token
 
     @property
     def supported_model_types(self) -> List[AIModelType]:
@@ -227,13 +231,16 @@ class GoogleProvider(BaseProvider):
         client = await self.get_client()
         return await video_module.generate_video(
             client=client,
-            base_url=self.base_url,
+            base_url=self.video_base_url,
             provider_name=self.name,
             api_key=self.config.api_key,
             config_timeout=self.config.timeout,
             prompt=prompt,
             image_url=image_url,
             model=model,
+            vertex_project_id=self.vertex_project_id,
+            vertex_location=self.vertex_location,
+            access_token=self.vertex_access_token,
             format_error=self.format_error,
             **kwargs,
         )
@@ -257,7 +264,7 @@ class GoogleProvider(BaseProvider):
         client = await self.get_client()
         return await video_tasks_module.submit_video_task(
             client=client,
-            base_url=self.base_url,
+            base_url=self.video_base_url,
             provider_name=self.name,
             api_key=self.config.api_key,
             config_timeout=self.config.timeout,
@@ -268,6 +275,9 @@ class GoogleProvider(BaseProvider):
             duration=duration,
             resolution=resolution,
             ratio=ratio,
+            vertex_project_id=self.vertex_project_id,
+            vertex_location=self.vertex_location,
+            access_token=self.vertex_access_token,
             format_error=self.format_error,
             **kwargs,
         )
@@ -277,9 +287,10 @@ class GoogleProvider(BaseProvider):
         client = await self.get_client()
         return await video_tasks_module.fetch_video_task_status(
             client=client,
-            base_url=self.base_url,
+            base_url=self.video_base_url,
             provider_name=self.name,
             api_key=self.config.api_key,
             task_id=task_id,
+            access_token=self.vertex_access_token,
             format_error=self.format_error,
         )
