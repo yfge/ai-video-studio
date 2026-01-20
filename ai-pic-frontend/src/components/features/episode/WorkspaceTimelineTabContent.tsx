@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { NormalizedScene, Script } from "@/utils/api";
 import { scriptAPI } from "@/utils/api";
 import { AudioTimelineSection } from "./AudioTimelineSection";
@@ -40,10 +40,14 @@ export function WorkspaceTimelineTabContent({
   setTimingModel,
   showAlert,
 }: WorkspaceTimelineTabContentProps) {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const [pipelineBusy, setPipelineBusy] = useState(false);
   const [pipelineTaskId, setPipelineTaskId] = useState<number | null>(null);
   const [useDurationControl, setUseDurationControl] = useState(false);
+
+  const autoTimelinePipelineRunId = searchParams.get("autoTimelinePipeline");
 
   const handleGenerateTimelinePipeline = useCallback(async () => {
     if (!selectedScriptId) {
@@ -80,6 +84,34 @@ export function WorkspaceTimelineTabContent({
       setPipelineBusy(false);
     }
   }, [selectedScriptId, timingModel, useDurationControl, showAlert]);
+
+  useEffect(() => {
+    if (!autoTimelinePipelineRunId || pipelineBusy || !selectedScriptId) return;
+
+    try {
+      const storageKey = `autoTimelinePipeline:${selectedScriptId}`;
+      const lastRunId = window.sessionStorage.getItem(storageKey);
+      if (lastRunId === autoTimelinePipelineRunId) return;
+      window.sessionStorage.setItem(storageKey, autoTimelinePipelineRunId);
+    } catch {
+      // ignore
+    }
+
+    void handleGenerateTimelinePipeline();
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("autoTimelinePipeline");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [
+    autoTimelinePipelineRunId,
+    handleGenerateTimelinePipeline,
+    pathname,
+    pipelineBusy,
+    router,
+    searchParams,
+    selectedScriptId,
+  ]);
 
   const handleNavigateToTasks = useCallback(() => {
     router.push("/tasks");

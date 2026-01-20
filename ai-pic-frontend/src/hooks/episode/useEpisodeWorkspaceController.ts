@@ -61,11 +61,20 @@ export function useEpisodeWorkspaceController(args: {
   }, [initialTab]);
 
   const buildUrl = useCallback(
-    (tab: TabKey, scriptId: number | null) => {
+    (
+      tab: TabKey,
+      scriptId: number | null,
+      extraParams?: Record<string, string>,
+    ) => {
       const params = new URLSearchParams();
       params.set("tab", tab);
       if (scriptId) {
         params.set("scriptId", String(scriptId));
+      }
+      if (extraParams) {
+        Object.entries(extraParams).forEach(([key, value]) => {
+          params.set(key, value);
+        });
       }
       return `/episodes/${episodeKey}/workspace?${params.toString()}`;
     },
@@ -156,7 +165,9 @@ export function useEpisodeWorkspaceController(args: {
 
   const handleGenerateTimeline = useCallback(() => {
     setActiveTab("timeline");
-    router.replace(buildUrl("timeline", selectedScriptId), { scroll: false });
+    router.replace(buildUrl("timeline", selectedScriptId, { autoTimelinePipeline: String(Date.now()) }), {
+      scroll: false,
+    });
   }, [buildUrl, router, selectedScriptId]);
 
   const handleGenerateStoryboard = useCallback(() => {
