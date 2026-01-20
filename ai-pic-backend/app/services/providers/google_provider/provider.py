@@ -1,17 +1,10 @@
-"""
-Google AI / Gemini service provider.
-
-Supports Gemini text/image generation and Veo video generation.
-
-Documentation:
-- Text generation: docs/api/google-text-api.md
-- Image generation: https://ai.google.dev/gemini-api/docs/image-generation
-- Video generation: https://ai.google.dev/gemini-api/docs/video
-"""
+"""Google AI / Gemini provider for text/image and Veo video generation."""
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+
 import httpx
+
 from app.core.logging import get_logger
 from ..base import AIModelType, AIResponse, BaseProvider, ModelInfo, ProviderConfig
 from ..image_param_utils import compute_image_ui as compute_image_ui_rules
@@ -21,13 +14,15 @@ from . import text as text_module
 from . import video as video_module
 from . import video_tasks as video_tasks_module
 from .vertex_auth import build_vertex_access_token_provider
+
 logger = get_logger(__name__)
+
+
 class GoogleProvider(BaseProvider):
     """Google Gemini text and image generation provider."""
 
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
-        # Support custom base_url for proxy gateways
         self.base_url = (
             config.base_url or "https://generativelanguage.googleapis.com"
         ).rstrip("/")
@@ -36,6 +31,7 @@ class GoogleProvider(BaseProvider):
         self.vertex_project_id = config.vertex_project_id
         self.vertex_location = config.vertex_location
         self.vertex_access_token = config.vertex_access_token
+        self.vertex_api_key = config.vertex_api_key
         self._vertex_token_provider = build_vertex_access_token_provider(
             service_account_json=config.vertex_service_account_json,
             service_account_path=config.vertex_service_account_path,
@@ -53,6 +49,7 @@ class GoogleProvider(BaseProvider):
         if not self._vertex_token_provider:
             return None
         return await self._vertex_token_provider.get_token()
+
     @property
     def supported_model_types(self) -> List[AIModelType]:
         return [
@@ -138,15 +135,19 @@ class GoogleProvider(BaseProvider):
 
     async def _initialize_client(self):
         """Initialize HTTP client."""
-        if not self.config.api_key:
+        has_vertex_auth = bool(
+            self.vertex_access_token or self.vertex_api_key or self._vertex_token_provider
+        )
+        if not self.config.api_key and not has_vertex_auth:
             self._client = None  # type: ignore[assignment]
             return
 
         headers = {
             "Content-Type": "application/json",
-            "x-goog-api-key": self.config.api_key,
             "x-goog-api-client": "ai-video-studio-gemini",
         }
+        if self.config.api_key:
+            headers["x-goog-api-key"] = self.config.api_key
         self._client = httpx.AsyncClient(timeout=self.config.timeout, headers=headers)
 
     async def generate_text(
@@ -241,6 +242,7 @@ class GoogleProvider(BaseProvider):
             vertex_project_id=self.vertex_project_id,
             vertex_location=self.vertex_location,
             access_token=access_token,
+            vertex_api_key=self.vertex_api_key,
             format_error=self.format_error,
             **kwargs,
         )
@@ -257,10 +259,7 @@ class GoogleProvider(BaseProvider):
         ratio: Optional[str] = None,
         **kwargs: Any,
     ) -> AIResponse:
-        """Submit async video generation task using Veo.
-
-        Returns a provider `task_id` (Google long-running operation name) for polling.
-        """
+        """Submit async Veo task and return a provider task_id for polling."""
         client = await self.get_client()
         access_token = await self._get_vertex_access_token()
         return await video_tasks_module.submit_video_task(
@@ -279,6 +278,7 @@ class GoogleProvider(BaseProvider):
             vertex_project_id=self.vertex_project_id,
             vertex_location=self.vertex_location,
             access_token=access_token,
+            vertex_api_key=self.vertex_api_key,
             format_error=self.format_error,
             **kwargs,
         )
@@ -294,5 +294,6 @@ class GoogleProvider(BaseProvider):
             api_key=self.config.api_key,
             task_id=task_id,
             access_token=access_token,
+            vertex_api_key=self.vertex_api_key,
             format_error=self.format_error,
         )

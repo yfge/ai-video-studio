@@ -158,7 +158,17 @@ class AIServiceBase:
                 )
 
             # Google Gemini / Vertex AI 文本模型
-            if settings.GOOGLE_API_KEY:
+            google_vertex_enabled = bool(
+                settings.GOOGLE_VERTEX_PROJECT_ID
+                and settings.GOOGLE_VERTEX_LOCATION
+                and (
+                    settings.GOOGLE_VERTEX_ACCESS_TOKEN
+                    or settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON
+                    or settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_PATH
+                    or settings.GOOGLE_VERTEX_API_KEY
+                )
+            )
+            if settings.GOOGLE_API_KEY or google_vertex_enabled:
                 google_base = (
                     settings.GOOGLE_BASE_URL
                     or "https://generativelanguage.googleapis.com"
@@ -172,6 +182,7 @@ class AIServiceBase:
                     vertex_project_id=settings.GOOGLE_VERTEX_PROJECT_ID,
                     vertex_location=settings.GOOGLE_VERTEX_LOCATION,
                     vertex_access_token=settings.GOOGLE_VERTEX_ACCESS_TOKEN,
+                    vertex_api_key=settings.GOOGLE_VERTEX_API_KEY,
                     vertex_service_account_json=settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON,
                     vertex_service_account_path=settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_PATH,
                     timeout=120.0,

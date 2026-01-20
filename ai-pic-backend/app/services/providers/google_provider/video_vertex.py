@@ -82,12 +82,25 @@ def build_vertex_fetch_predict_operation_url(
     )
 
 
+def build_vertex_headers(
+    access_token: Optional[str],
+    api_key: Optional[str],
+) -> Optional[Dict[str, str]]:
+    headers: Dict[str, str] = {}
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    if api_key:
+        headers["x-goog-api-key"] = api_key
+    return headers or None
+
+
 async def poll_veo_operation(
     *,
     client: httpx.AsyncClient,
     base_url: str,
     operation_name: str,
     access_token: Optional[str] = None,
+    api_key: Optional[str] = None,
     max_attempts: int = 180,
     initial_delay: float = 10.0,
 ) -> Optional[Dict[str, Any]]:
@@ -102,13 +115,11 @@ async def poll_veo_operation(
                 location=vertex["location"],
                 model_id=vertex["model_id"],
             )
-            headers: Dict[str, str] = {}
-            if access_token:
-                headers["Authorization"] = f"Bearer {access_token}"
+            headers = build_vertex_headers(access_token, api_key)
             resp = await client.post(
                 endpoint,
                 json={"operationName": operation_name},
-                headers=headers or None,
+                headers=headers,
             )
         else:
             op_path = normalize_operation_path(operation_name)
@@ -182,4 +193,3 @@ def extract_video_mime_type(response: Dict[str, Any]) -> Optional[str]:
             if isinstance(video, dict):
                 return video.get("mimeType") or video.get("mime_type")
     return None
-

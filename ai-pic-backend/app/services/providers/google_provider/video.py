@@ -19,6 +19,7 @@ from .video_helpers import (
     format_http_status_error,
 )
 from .video_vertex import (
+    build_vertex_headers,
     build_vertex_predict_long_running_url,
     extract_video_bytes_base64,
     extract_video_mime_type,
@@ -44,6 +45,7 @@ async def generate_video(
     vertex_project_id: Optional[str] = None,
     vertex_location: Optional[str] = None,
     access_token: Optional[str] = None,
+    vertex_api_key: Optional[str] = None,
     format_error: Callable = str,
     **kwargs: Any,
 ) -> AIResponse:
@@ -115,11 +117,7 @@ async def generate_video(
         resolved_resolution = resolved.get("resolution")
         resolved_duration = resolved.get("duration")
 
-        headers = (
-            {"Authorization": f"Bearer {access_token}"}
-            if use_vertex and access_token
-            else None
-        )
+        headers = build_vertex_headers(access_token, vertex_api_key) if use_vertex else None
         resp = await client.post(endpoint, json=body, headers=headers)
         resp.raise_for_status()
         create_payload = resp.json()
@@ -144,6 +142,7 @@ async def generate_video(
             base_url=base_url,
             operation_name=operation_name,
             access_token=access_token,
+            api_key=vertex_api_key,
         )
         if not operation:
             return AIResponse(

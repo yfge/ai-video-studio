@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     GOOGLE_VERTEX_PROJECT_ID: Optional[str] = None
     GOOGLE_VERTEX_LOCATION: Optional[str] = None
     GOOGLE_VERTEX_ACCESS_TOKEN: Optional[str] = None
+    GOOGLE_VERTEX_API_KEY: Optional[str] = None
     GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON: Optional[str] = None
     GOOGLE_VERTEX_SERVICE_ACCOUNT_PATH: Optional[str] = None
     
@@ -118,6 +119,7 @@ settings.GOOGLE_VIDEO_BASE_URL = _normalize_optional_str(settings.GOOGLE_VIDEO_B
 settings.GOOGLE_VERTEX_PROJECT_ID = _normalize_optional_str(settings.GOOGLE_VERTEX_PROJECT_ID)
 settings.GOOGLE_VERTEX_LOCATION = _normalize_optional_str(settings.GOOGLE_VERTEX_LOCATION)
 settings.GOOGLE_VERTEX_ACCESS_TOKEN = _normalize_optional_str(settings.GOOGLE_VERTEX_ACCESS_TOKEN)
+settings.GOOGLE_VERTEX_API_KEY = _normalize_optional_str(settings.GOOGLE_VERTEX_API_KEY)
 settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON = _normalize_optional_str(
     settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON
 )

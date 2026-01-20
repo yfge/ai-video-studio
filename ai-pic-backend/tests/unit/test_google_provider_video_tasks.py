@@ -226,3 +226,40 @@ async def test_fetch_video_task_status_vertex_returns_base64(monkeypatch):
     assert dummy_client.last_post["url"].endswith(":fetchPredictOperation")
     assert dummy_client.last_post["json"] == {"operationName": task_id}
     assert dummy_client.last_post["headers"] == {"Authorization": "Bearer token"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_video_task_status_vertex_uses_api_key(monkeypatch):
+    provider = GoogleProvider(
+        ProviderConfig(
+            name="google",
+            api_key="gemini-key",
+            vertex_api_key="vertex-key",
+        )
+    )
+    dummy_client = _DummyClient(
+        post_payload={
+            "done": True,
+            "response": {
+                "videos": [
+                    {"bytesBase64Encoded": "BBBB", "mimeType": "video/mp4"}
+                ]
+            },
+        }
+    )
+
+    async def _fake_client():
+        return dummy_client
+
+    monkeypatch.setattr(provider, "get_client", _fake_client)
+
+    task_id = (
+        "projects/p1/locations/us-central1/publishers/google/models/"
+        "veo-3.1-generate-preview/operations/op1"
+    )
+    resp = await provider.fetch_video_task_status(task_id)
+
+    assert resp.success is True
+    assert (resp.data or {}).get("video_bytes_base64") == "BBBB"
+    assert dummy_client.last_post is not None
+    assert dummy_client.last_post["headers"] == {"x-goog-api-key": "vertex-key"}

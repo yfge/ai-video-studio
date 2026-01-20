@@ -23,6 +23,7 @@ from .video_helpers import (
     normalize_operation_path,
 )
 from .video_vertex import (
+    build_vertex_headers,
     build_vertex_fetch_predict_operation_url,
     build_vertex_predict_long_running_url,
     extract_video_bytes_base64,
@@ -51,6 +52,7 @@ async def submit_video_task(
     vertex_project_id: Optional[str] = None,
     vertex_location: Optional[str] = None,
     access_token: Optional[str] = None,
+    vertex_api_key: Optional[str] = None,
     format_error: Callable = str,
     **kwargs: Any,
 ) -> AIResponse:
@@ -119,11 +121,7 @@ async def submit_video_task(
         resolved_resolution = resolved.get("resolution")
         resolved_duration = resolved.get("duration")
 
-        headers = (
-            {"Authorization": f"Bearer {access_token}"}
-            if use_vertex and access_token
-            else None
-        )
+        headers = build_vertex_headers(access_token, vertex_api_key) if use_vertex else None
         resp = await client.post(endpoint, json=body, headers=headers)
         resp.raise_for_status()
         create_payload = resp.json()
@@ -181,6 +179,7 @@ async def fetch_video_task_status(
     api_key: str,
     task_id: str,
     access_token: Optional[str] = None,
+    vertex_api_key: Optional[str] = None,
     format_error: Callable = str,
 ) -> AIResponse:
     """Fetch Veo long-running operation status by `task_id`."""
@@ -215,7 +214,7 @@ async def fetch_video_task_status(
                 location=vertex["location"],
                 model_id=vertex["model_id"],
             )
-            headers = {"Authorization": f"Bearer {access_token}"} if access_token else None
+            headers = build_vertex_headers(access_token, vertex_api_key)
             resp = await client.post(
                 endpoint,
                 json={"operationName": task_id},

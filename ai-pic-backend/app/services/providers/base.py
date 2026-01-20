@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 
 class AIModelType(Enum):
     """AI模型类型枚举"""
-
     TEXT_GENERATION = "text_generation"  # 文本生成
     TEXT_TO_IMAGE = "text_to_image"  # 文生图
     IMAGE_TO_IMAGE = "image_to_image"  # 图生图
@@ -29,7 +28,6 @@ class AIModelType(Enum):
 
 class AITaskType(Enum):
     """AI任务类型枚举"""
-
     STORY_GENERATION = "story_generation"  # 故事生成
     CHARACTER_CREATION = "character_creation"  # 角色创建
     EPISODE_PLANNING = "episode_planning"  # 剧集规划
@@ -42,7 +40,6 @@ class AITaskType(Enum):
 
 class AIRequest(BaseModel):
     """AI请求基类"""
-
     task_type: AITaskType
     model_type: AIModelType
     prompt: str
@@ -54,7 +51,6 @@ class AIRequest(BaseModel):
 
 class AIResponse(BaseModel):
     """AI响应基类"""
-
     success: bool
     data: Optional[Any] = None
     error: Optional[str] = None
@@ -98,6 +94,7 @@ class ProviderConfig(BaseModel):
     vertex_project_id: Optional[str] = None
     vertex_location: Optional[str] = None
     vertex_access_token: Optional[str] = None
+    vertex_api_key: Optional[str] = None
     vertex_service_account_json: Optional[str] = None
     vertex_service_account_path: Optional[str] = None
     timeout: int = 180
