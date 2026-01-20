@@ -25,6 +25,14 @@ export function VideoModelUiFields({
   const mergeResolutionAndRatio =
     videoUi.resolutionOptions.length > 0 && videoUi.ratioOptions.length > 0;
 
+  const activeResolution =
+    value.resolution || videoUi.defaultResolution || videoUi.resolutionOptions[0];
+  const durationOptions = useMemo(() => {
+    const key = (activeResolution || "").toLowerCase();
+    const mapped = key ? videoUi.durationOptionsByResolution?.[key] : undefined;
+    return mapped && mapped.length ? mapped : videoUi.durationOptions;
+  }, [activeResolution, videoUi.durationOptions, videoUi.durationOptionsByResolution]);
+
   const mergedValue = useMemo(() => {
     if (!mergeResolutionAndRatio) return "";
     const resolution = value.resolution || videoUi.defaultResolution || "";
@@ -41,14 +49,13 @@ export function VideoModelUiFields({
 
   useEffect(() => {
     const updates: ModelUiValue = {};
-    const resolutionValid =
-      !videoUi.defaultResolution ||
-      !value.resolution ||
-      videoUi.resolutionOptions.includes(value.resolution);
-    if (!resolutionValid && videoUi.defaultResolution)
-      updates.resolution = videoUi.defaultResolution;
-    if (!value.resolution && videoUi.defaultResolution)
-      updates.resolution = videoUi.defaultResolution;
+    const nextResolution =
+      value.resolution && videoUi.resolutionOptions.includes(value.resolution)
+        ? value.resolution
+        : videoUi.defaultResolution;
+    if (nextResolution && nextResolution !== value.resolution) {
+      updates.resolution = nextResolution;
+    }
 
     const ratioValid =
       !videoUi.defaultRatio ||
@@ -56,11 +63,17 @@ export function VideoModelUiFields({
       videoUi.ratioOptions.includes(value.ratio);
     if (!ratioValid && videoUi.defaultRatio) updates.ratio = videoUi.defaultRatio;
     if (!value.ratio && videoUi.defaultRatio) updates.ratio = videoUi.defaultRatio;
-    if (
-      (value.duration == null || Number.isNaN(value.duration)) &&
-      videoUi.durationOptions.length > 0
-    ) {
-      updates.duration = videoUi.durationOptions[0];
+    const nextDurationOptions = (() => {
+      const key = (nextResolution || value.resolution || "").toLowerCase();
+      const mapped = key ? videoUi.durationOptionsByResolution?.[key] : undefined;
+      return mapped && mapped.length ? mapped : videoUi.durationOptions;
+    })();
+    if (nextDurationOptions.length > 0) {
+      if (value.duration == null || Number.isNaN(value.duration)) {
+        updates.duration = nextDurationOptions[0];
+      } else if (!nextDurationOptions.includes(value.duration)) {
+        updates.duration = nextDurationOptions[0];
+      }
     }
     if (value.watermark == null && videoUi.defaultWatermark !== undefined) {
       updates.watermark = videoUi.defaultWatermark;
@@ -68,6 +81,18 @@ export function VideoModelUiFields({
     if (Object.keys(updates).length > 0) onChange({ ...value, ...updates });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model]);
+
+  useEffect(() => {
+    if (!durationOptions.length) return;
+    if (value.duration == null || Number.isNaN(value.duration)) {
+      onChange({ ...value, duration: durationOptions[0] });
+      return;
+    }
+    if (!durationOptions.includes(value.duration)) {
+      onChange({ ...value, duration: durationOptions[0] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeResolution, model]);
 
   return (
     <div className="space-y-3">
@@ -161,19 +186,19 @@ export function VideoModelUiFields({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             时长（秒）
           </label>
-          {videoUi.durationOptions.length > 0 ? (
+          {durationOptions.length > 0 ? (
             <select
               disabled={disabled}
-              value={value.duration ?? videoUi.durationOptions[0]}
+              value={value.duration ?? durationOptions[0]}
               onChange={(event) =>
                 onChange({
                   ...value,
-                  duration: Number(event.target.value) || videoUi.durationOptions[0],
+                  duration: Number(event.target.value) || durationOptions[0],
                 })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              {videoUi.durationOptions.map((opt) => (
+              {durationOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}s
                 </option>
