@@ -52,7 +52,7 @@
 
 - [x] 前端：故事/剧集/剧本生成入口新增“市场/微类型/节奏模板”选择与预览说明
 - [x] 前端：新增“爽点评分/风险提示/投流表”视图，支持导出素材清单
-- [ ] 前端：在分镜/时间线 UI 标注与 hook 节点/投流素材对应的镜头与时间点
+- [x] 前端：在分镜/时间线 UI 标注与 hook 节点/投流素材对应的镜头与时间点（HookTagBadge/AdSnippetCard/HookPlanPanel 组件）
 
 - [x] 验证：short_drama prompt 变体单元测试（`template_resolver` + prompt 渲染）
 - [x] 验证：Chrome E2E（deepseek 文生文/剧集/剧本；google 文生图；google 文生视频）
