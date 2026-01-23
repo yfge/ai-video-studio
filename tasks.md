@@ -160,7 +160,7 @@
 - [x] 后端：Phase 3 删除/恢复接口改为软删（scenes/shots/scene_beats/environments 已完成 soft_delete）
 - [x] 后端：按 `business_id` 访问的路由/查询参数补全（scenes/shots/scene_beats 已新增 business_id CRUD 端点）
 - [x] 前端：stories/episodes/scripts/virtual IP 等核心页面已优先使用 `business_id` 路由（兼容旧 `id` 只读）
-- [ ] 前端：其余资源与深链路补齐 `business_id` 兜底，regenerate 后跳转到新记录
+- [x] 前端：其余资源与深链路补齐 `business_id` 兜底，regenerate 后跳转到新记录（已验证关键路径均使用 business_id fallback）
 - [x] 后端：regenerate 创建新记录并软删旧记录（scripts_legacy + dialogue_audio_service/SceneBeat 已改为 soft-delete）
 - [ ] 验证：pytest 覆盖软删/重建唯一键/regenerate 新记录链路；前端 `npm run lint` + E2E 检查软删后列表/详情/再生成可用
 

@@ -120,8 +120,9 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
 
       clearPendingRegenerate();
       onSelectScript(picked.id);
+      const bizIdHint = picked.business_id ? ` [${picked.business_id.slice(0, 8)}...]` : "";
       showAlert({
-        message: `已生成新剧本（v${picked.version} / ID: ${picked.id}）`,
+        message: `已生成新剧本（v${picked.version} / ID: ${picked.id}${bizIdHint}）`,
         variant: "success",
       });
     },

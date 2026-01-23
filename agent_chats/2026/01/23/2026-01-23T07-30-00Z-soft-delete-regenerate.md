@@ -7,8 +7,9 @@ tags: [backend, soft_delete, regenerate, script]
 related_paths:
   - ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py
   - ai-pic-backend/app/services/dialogue_audio_service.py
+  - ai-pic-frontend/src/hooks/episode/useEpisodeWorkspaceRegenerateScript.ts
   - tasks.md
-summary: "将 scripts regenerate 和 SceneBeat overwrite 改为 soft-delete 模式"
+summary: "将 scripts regenerate 和 SceneBeat overwrite 改为 soft-delete 模式；前端 regenerate 成功消息增加 business_id"
 ---
 
 ## User Prompt
@@ -66,18 +67,42 @@ if overwrite_beats:
         beat.soft_delete(reason="dialogue_audio_overwrite")
 ```
 
+### useEpisodeWorkspaceRegenerateScript.ts - 前端 business_id 展示
+
+Regenerate 成功消息增加 business_id 前缀提示：
+
+```typescript
+const bizIdHint = picked.business_id ? ` [${picked.business_id.slice(0, 8)}...]` : "";
+showAlert({
+  message: `已生成新剧本（v${picked.version} / ID: ${picked.id}${bizIdHint}）`,
+  variant: "success",
+});
+```
+
+### 前端 business_id fallback 验证
+
+已验证关键路径均使用 `business_id || id` fallback 模式：
+- `WorkspaceTimelineTabContent.tsx:122` - `selectedScript.business_id || selectedScript.id`
+- `storyboard/page.tsx:135` - `episode?.business_id || episodeKey`
+- `scripts/[id]/page.tsx:86,90,98` - `episode_business_id || episode_id`
+
 ## Validation
 
 ```bash
+# Backend tests
 cd ai-pic-backend && python -m pytest tests/unit tests/test_story_structure_endpoints.py tests/test_story_structure_service.py -v --tb=short -q
 # 结果：822 passed, 1 skipped
+
+# Frontend lint
+cd ai-pic-frontend && npm run lint
+# 结果：0 errors, 7 warnings (既有 warnings)
 ```
 
 ## Next Steps
 
-1. **前端深链路** - 其余资源与深链路补齐 business_id 兜底，regenerate 后跳转到新记录
-2. **E2E 验证** - Chrome 验证软删后列表/详情/再生成可用
+1. **E2E 验证** - Chrome 验证软删后列表/详情/再生成可用
 
 ## Linked Commits
 
-- `691e9cb` feat(backend): change regenerate operations to soft-delete pattern
+- `41375a1` feat(backend): change regenerate operations to soft-delete pattern
+- `4601a8f` feat(frontend): enhance regenerate script success message with business_id
