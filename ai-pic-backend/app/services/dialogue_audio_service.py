@@ -1204,11 +1204,18 @@ async def generate_scene_dialogue_audio(
         if not oss_result.get("success") or not oss_result.get("file_url"):
             raise RuntimeError(f"OSS 上传失败: {oss_result}")
 
-        # Persist beats into scene_beats
+        # Persist beats into scene_beats (soft-delete old, create new)
         if overwrite_beats:
-            db.query(SceneBeat).filter(SceneBeat.scene_id == scene.id).delete(
-                synchronize_session=False
+            existing_beats = (
+                db.query(SceneBeat)
+                .filter(
+                    SceneBeat.scene_id == scene.id,
+                    SceneBeat.is_deleted == False,  # noqa: E712
+                )
+                .all()
             )
+            for beat in existing_beats:
+                beat.soft_delete(reason="dialogue_audio_overwrite")
 
         start_ms = 0
         for idx, beat in enumerate(beats, start=1):

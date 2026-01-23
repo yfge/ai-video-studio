@@ -1686,8 +1686,15 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
         db.commit()
         db.refresh(new_script)
 
+        # 软删除旧剧本，保留历史记录但从列表隐藏
+        script.soft_delete(
+            user_id=user_id,
+            reason=f"regenerated_to_script_{new_script.id}",
+        )
+        db.commit()
+
         logger.info(
-            "剧本重新生成: 创建新版本",
+            "剧本重新生成: 创建新版本并软删除旧版本",
             extra={
                 "old_script_id": script.id,
                 "new_script_id": new_script.id,

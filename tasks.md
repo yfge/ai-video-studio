@@ -161,13 +161,13 @@
 - [x] 后端：按 `business_id` 访问的路由/查询参数补全（scenes/shots/scene_beats 已新增 business_id CRUD 端点）
 - [x] 前端：stories/episodes/scripts/virtual IP 等核心页面已优先使用 `business_id` 路由（兼容旧 `id` 只读）
 - [ ] 前端：其余资源与深链路补齐 `business_id` 兜底，regenerate 后跳转到新记录
-- [ ] 后端：regenerate 创建新记录并软删旧记录（episodes 已完成，scripts_legacy 仍为原地更新）
+- [x] 后端：regenerate 创建新记录并软删旧记录（scripts_legacy + dialogue_audio_service/SceneBeat 已改为 soft-delete）
 - [ ] 验证：pytest 覆盖软删/重建唯一键/regenerate 新记录链路；前端 `npm run lint` + E2E 检查软删后列表/详情/再生成可用
 
 ### 下一步
 
-- 补齐 `is_deleted=false` 默认过滤与 `business_id` 双写/优先读，复核并恢复唯一约束策略（含 `is_deleted` 复合唯一）
-- 将 scripts regenerate 改为“新记录 + 旧记录软删”，并补齐派生数据重建/软删策略（scenes/scene_beats/shots 等），前端继续切换 business_id 路由
+- 前端：其余资源与深链路补齐 `business_id` 兜底，regenerate 后跳转到新记录
+- 验证：E2E 检查软删后列表/详情/再生成可用
 
 ## Feature: 叙事结构与数据模型对齐
 
