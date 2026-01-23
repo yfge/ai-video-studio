@@ -12,6 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.middleware import get_current_active_user
+from app.models.user import User
 from app.schemas.story_structure import (
     SceneBeatResponse,
     SceneCreate,
@@ -80,6 +82,30 @@ async def create_scene_for_script(
     return SceneResponse.model_validate(obj)
 
 
+@router.get("/scenes/{scene_id}", response_model=SceneResponse)
+async def get_scene(
+    scene_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get scene by numeric id."""
+    scene = svc.get_scene(db, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="scene not found")
+    return SceneResponse.model_validate(scene)
+
+
+@router.get("/scenes/business/{scene_business_id}", response_model=SceneResponse)
+async def get_scene_by_business_id(
+    scene_business_id: str,
+    db: Session = Depends(get_db),
+):
+    """Get scene by business_id."""
+    scene = svc.get_scene_by_business_id(db, scene_business_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="scene not found")
+    return SceneResponse.model_validate(scene)
+
+
 @router.put("/scenes/{scene_id}", response_model=SceneResponse)
 async def update_scene(
     scene_id: int,
@@ -97,9 +123,50 @@ async def update_scene(
     return SceneResponse.model_validate(obj)
 
 
+@router.put("/scenes/business/{scene_business_id}", response_model=SceneResponse)
+async def update_scene_by_business_id(
+    scene_business_id: str,
+    body: SceneUpdate,
+    db: Session = Depends(get_db),
+):
+    """Update scene by business_id."""
+    scene = svc.get_scene_by_business_id(db, scene_business_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="scene not found")
+    try:
+        obj = svc.update_scene(db, scene.id, body.model_dump(exclude_none=True))
+    except ValueError as exc:
+        if str(exc) == "environment_not_found":
+            raise HTTPException(status_code=404, detail="environment not found")
+        raise
+    if not obj:
+        raise HTTPException(status_code=404, detail="scene not found")
+    return SceneResponse.model_validate(obj)
+
+
 @router.delete("/scenes/{scene_id}", status_code=204)
-async def delete_scene(scene_id: int, db: Session = Depends(get_db)):
-    ok = svc.delete_scene(db, scene_id)
+async def delete_scene(
+    scene_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    ok = svc.delete_scene(db, scene_id, user_id=current_user.id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="scene not found")
+    return None
+
+
+@router.delete("/scenes/business/{scene_business_id}", status_code=204)
+async def delete_scene_by_business_id(
+    scene_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Delete scene by business_id (soft delete)."""
+    scene = svc.get_scene_by_business_id(db, scene_business_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="scene not found")
+    ok = svc.delete_scene(db, scene.id, user_id=current_user.id)
     if not ok:
         raise HTTPException(status_code=404, detail="scene not found")
     return None

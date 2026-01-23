@@ -154,13 +154,14 @@
 
 - [x] 功能/需求：完成全局软删 + business_id 设计稿，落于 `docs/soft-delete-business-id.md`
 - [x] 后端：Phase 1 已新增 `business_id`/软删字段与索引并回填（核心表已覆盖）
-- [ ] 后端：Phase 1 统一查询默认过滤 `is_deleted=false`（stories/episodes/virtual IP 已接入，其余端点待补）
+- [x] 后端：Phase 1 统一查询默认过滤 `is_deleted=false`（stories/episodes/virtual IP/story_structure 全覆盖）
 - [x] 后端：Phase 2 已为子表补充 `*_business_id` 并回填（story_structure/virtual_ip_images/tasks 等）
 - [ ] 后端：Phase 2 唯一约束改为含 `is_deleted` 的复合唯一，服务层双写/优先读 `business_id`（目前 business_id 索引为非唯一）
-- [ ] 后端：Phase 3 删除/恢复接口改为软删，regenerate 创建新记录并软删旧记录（episodes 已完成，scripts_legacy 仍为原地更新）
-- [ ] 后端：按 `business_id` 访问的路由/查询参数补全（stories/episodes/scripts/virtual IP 已接入，其余端点待补）
+- [x] 后端：Phase 3 删除/恢复接口改为软删（scenes/shots/scene_beats/environments 已完成 soft_delete）
+- [x] 后端：按 `business_id` 访问的路由/查询参数补全（scenes/shots/scene_beats 已新增 business_id CRUD 端点）
 - [x] 前端：stories/episodes/scripts/virtual IP 等核心页面已优先使用 `business_id` 路由（兼容旧 `id` 只读）
 - [ ] 前端：其余资源与深链路补齐 `business_id` 兜底，regenerate 后跳转到新记录
+- [ ] 后端：regenerate 创建新记录并软删旧记录（episodes 已完成，scripts_legacy 仍为原地更新）
 - [ ] 验证：pytest 覆盖软删/重建唯一键/regenerate 新记录链路；前端 `npm run lint` + E2E 检查软删后列表/详情/再生成可用
 
 ### 下一步

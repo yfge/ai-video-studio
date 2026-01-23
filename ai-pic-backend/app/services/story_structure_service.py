@@ -125,6 +125,96 @@ def list_scenes_by_script(db: Session, script_id: int) -> List[Scene]:
     )
 
 
+def get_scene(db: Session, scene_id: int) -> Optional[Scene]:
+    """Get scene by numeric id."""
+    return _not_deleted(db.query(Scene), Scene).filter(Scene.id == scene_id).first()
+
+
+def get_scene_by_business_id(db: Session, business_id: str) -> Optional[Scene]:
+    """Get scene by business_id."""
+    return (
+        _not_deleted(db.query(Scene), Scene)
+        .filter(Scene.business_id == business_id)
+        .first()
+    )
+
+
+def resolve_scene(db: Session, identifier: int | str | None) -> Optional[Scene]:
+    """Resolve scene by id or business_id."""
+    if identifier is None:
+        return None
+    if isinstance(identifier, int):
+        return get_scene(db, identifier)
+    try:
+        int_id = int(str(identifier))
+        scene = get_scene(db, int_id)
+        if scene:
+            return scene
+    except ValueError:
+        pass
+    return get_scene_by_business_id(db, str(identifier))
+
+
+def get_shot(db: Session, shot_id: int) -> Optional[Shot]:
+    """Get shot by numeric id."""
+    return _not_deleted(db.query(Shot), Shot).filter(Shot.id == shot_id).first()
+
+
+def get_shot_by_business_id(db: Session, business_id: str) -> Optional[Shot]:
+    """Get shot by business_id."""
+    return (
+        _not_deleted(db.query(Shot), Shot)
+        .filter(Shot.business_id == business_id)
+        .first()
+    )
+
+
+def resolve_shot(db: Session, identifier: int | str | None) -> Optional[Shot]:
+    """Resolve shot by id or business_id."""
+    if identifier is None:
+        return None
+    if isinstance(identifier, int):
+        return get_shot(db, identifier)
+    try:
+        int_id = int(str(identifier))
+        shot = get_shot(db, int_id)
+        if shot:
+            return shot
+    except ValueError:
+        pass
+    return get_shot_by_business_id(db, str(identifier))
+
+
+def get_scene_beat(db: Session, beat_id: int) -> Optional[SceneBeat]:
+    """Get scene beat by numeric id."""
+    return _not_deleted(db.query(SceneBeat), SceneBeat).filter(SceneBeat.id == beat_id).first()
+
+
+def get_scene_beat_by_business_id(db: Session, business_id: str) -> Optional[SceneBeat]:
+    """Get scene beat by business_id."""
+    return (
+        _not_deleted(db.query(SceneBeat), SceneBeat)
+        .filter(SceneBeat.business_id == business_id)
+        .first()
+    )
+
+
+def resolve_scene_beat(db: Session, identifier: int | str | None) -> Optional[SceneBeat]:
+    """Resolve scene beat by id or business_id."""
+    if identifier is None:
+        return None
+    if isinstance(identifier, int):
+        return get_scene_beat(db, identifier)
+    try:
+        int_id = int(str(identifier))
+        beat = get_scene_beat(db, int_id)
+        if beat:
+            return beat
+    except ValueError:
+        pass
+    return get_scene_beat_by_business_id(db, str(identifier))
+
+
 def get_script_structure(db: Session, script_id: int) -> Optional[List[Dict[str, Any]]]:
     script = _not_deleted(db.query(Script), Script).filter(Script.id == script_id).first()
     if not script:
@@ -198,12 +288,12 @@ def list_beats_by_scene(db: Session, scene_id: int) -> List[SceneBeat]:
 
 
 def create_scene_beat(db: Session, data: SceneBeatCreate) -> SceneBeat:
-    scene = db.query(Scene).filter(Scene.id == data.scene_id).first()
+    scene = _not_deleted(db.query(Scene), Scene).filter(Scene.id == data.scene_id).first()
     if not scene:
         raise ValueError("scene_not_found")
-    # enforce unique order_index within scene
+    # enforce unique order_index within scene (only among non-deleted beats)
     existing = (
-        db.query(SceneBeat)
+        _not_deleted(db.query(SceneBeat), SceneBeat)
         .filter(SceneBeat.scene_id == data.scene_id, SceneBeat.order_index == data.order_index)
         .first()
     )
@@ -218,7 +308,7 @@ def create_scene_beat(db: Session, data: SceneBeatCreate) -> SceneBeat:
 
 def list_shots_by_scene(db: Session, scene_id: int) -> List[Shot]:
     return (
-        db.query(Shot)
+        _not_deleted(db.query(Shot), Shot)
         .filter(Shot.scene_id == scene_id)
         .order_by(Shot.shot_number.asc())
         .all()
@@ -226,19 +316,19 @@ def list_shots_by_scene(db: Session, scene_id: int) -> List[Shot]:
 
 
 def create_shot(db: Session, data: ShotCreate) -> Shot:
-    scene = db.query(Scene).filter(Scene.id == data.scene_id).first()
+    scene = _not_deleted(db.query(Scene), Scene).filter(Scene.id == data.scene_id).first()
     if not scene:
         raise ValueError("scene_not_found")
-    # enforce shot_number uniqueness per scene
+    # enforce shot_number uniqueness per scene (only among non-deleted shots)
     exists = (
-        db.query(Shot)
+        _not_deleted(db.query(Shot), Shot)
         .filter(Shot.scene_id == data.scene_id, Shot.shot_number == data.shot_number)
         .first()
     )
     if exists:
         raise ValueError("duplicate_shot_number")
     if data.scene_beat_id:
-        beat = db.query(SceneBeat).filter(SceneBeat.id == data.scene_beat_id).first()
+        beat = _not_deleted(db.query(SceneBeat), SceneBeat).filter(SceneBeat.id == data.scene_beat_id).first()
         if not beat or beat.scene_id != data.scene_id:
             raise ValueError("beat_scene_mismatch")
     obj = Shot(**data.model_dump())
@@ -256,7 +346,7 @@ def create_scene_with_children(
 ) -> Dict[str, Any]:
     """Create scene plus optional beats/shots in one transaction."""
     if scene_data.environment_id:
-        env = db.query(Environment).filter(Environment.id == scene_data.environment_id).first()
+        env = _not_deleted(db.query(Environment), Environment).filter(Environment.id == scene_data.environment_id).first()
         if not env:
             raise ValueError("environment_not_found")
     scene = Scene(**scene_data.model_dump())
@@ -323,11 +413,11 @@ def create_scene_with_children(
 
 
 def update_scene(db: Session, scene_id: int, payload: Dict[str, Any]) -> Optional[Scene]:
-    obj = db.query(Scene).filter(Scene.id == scene_id).first()
+    obj = _not_deleted(db.query(Scene), Scene).filter(Scene.id == scene_id).first()
     if not obj:
         return None
     if "environment_id" in payload and payload["environment_id"]:
-        env = db.query(Environment).filter(Environment.id == payload["environment_id"]).first()
+        env = _not_deleted(db.query(Environment), Environment).filter(Environment.id == payload["environment_id"]).first()
         if not env:
             raise ValueError("environment_not_found")
     for field, value in payload.items():
@@ -338,27 +428,32 @@ def update_scene(db: Session, scene_id: int, payload: Dict[str, Any]) -> Optiona
     return obj
 
 
-def delete_scene(db: Session, scene_id: int) -> bool:
-    obj = db.query(Scene).filter(Scene.id == scene_id).first()
+def delete_scene(
+    db: Session, scene_id: int, *, user_id: int | None = None, reason: str | None = None
+) -> bool:
+    """Soft delete a scene and its children (shots, scene_beats)."""
+    obj = _not_deleted(db.query(Scene), Scene).filter(Scene.id == scene_id).first()
     if not obj:
         return False
-    # Explicitly delete children to avoid ORM nulling FKs in SQLite
-    db.query(Shot).filter(Shot.scene_id == scene_id).delete(synchronize_session=False)
-    db.query(SceneBeat).filter(SceneBeat.scene_id == scene_id).delete(synchronize_session=False)
-    db.delete(obj)
+    # Soft delete children
+    for shot in _not_deleted(db.query(Shot), Shot).filter(Shot.scene_id == scene_id).all():
+        shot.soft_delete(user_id=user_id, reason=reason or "parent_scene_deleted")
+    for beat in _not_deleted(db.query(SceneBeat), SceneBeat).filter(SceneBeat.scene_id == scene_id).all():
+        beat.soft_delete(user_id=user_id, reason=reason or "parent_scene_deleted")
+    obj.soft_delete(user_id=user_id, reason=reason)
     db.commit()
     return True
 
 
 def update_scene_beat(db: Session, beat_id: int, payload: Dict[str, Any]) -> Optional[SceneBeat]:
-    obj = db.query(SceneBeat).filter(SceneBeat.id == beat_id).first()
+    obj = _not_deleted(db.query(SceneBeat), SceneBeat).filter(SceneBeat.id == beat_id).first()
     if not obj:
         return None
-    # handle order_index conflict
+    # handle order_index conflict (only among non-deleted beats)
     new_order = payload.get("order_index")
     if new_order is not None and new_order != obj.order_index:
         conflict = (
-            db.query(SceneBeat)
+            _not_deleted(db.query(SceneBeat), SceneBeat)
             .filter(SceneBeat.scene_id == obj.scene_id, SceneBeat.order_index == new_order)
             .first()
         )
@@ -372,31 +467,33 @@ def update_scene_beat(db: Session, beat_id: int, payload: Dict[str, Any]) -> Opt
     return obj
 
 
-def delete_scene_beat(db: Session, beat_id: int) -> bool:
-    obj = db.query(SceneBeat).filter(SceneBeat.id == beat_id).first()
+def delete_scene_beat(
+    db: Session, beat_id: int, *, user_id: int | None = None, reason: str | None = None
+) -> bool:
+    """Soft delete a scene beat."""
+    obj = _not_deleted(db.query(SceneBeat), SceneBeat).filter(SceneBeat.id == beat_id).first()
     if not obj:
         return False
-    # shots referencing this beat will set FK to NULL (ondelete=SET NULL)
-    db.delete(obj)
+    obj.soft_delete(user_id=user_id, reason=reason)
     db.commit()
     return True
 
 
 def update_shot(db: Session, shot_id: int, payload: Dict[str, Any]) -> Optional[Shot]:
-    obj = db.query(Shot).filter(Shot.id == shot_id).first()
+    obj = _not_deleted(db.query(Shot), Shot).filter(Shot.id == shot_id).first()
     if not obj:
         return None
     new_number = payload.get("shot_number")
     if new_number and new_number != obj.shot_number:
         conflict = (
-            db.query(Shot)
+            _not_deleted(db.query(Shot), Shot)
             .filter(Shot.scene_id == obj.scene_id, Shot.shot_number == new_number)
             .first()
         )
         if conflict:
             raise ValueError("duplicate_shot_number")
     if "scene_beat_id" in payload and payload["scene_beat_id"]:
-        beat = db.query(SceneBeat).filter(SceneBeat.id == payload["scene_beat_id"]).first()
+        beat = _not_deleted(db.query(SceneBeat), SceneBeat).filter(SceneBeat.id == payload["scene_beat_id"]).first()
         if not beat or beat.scene_id != obj.scene_id:
             raise ValueError("beat_scene_mismatch")
     for field, value in payload.items():
@@ -407,11 +504,14 @@ def update_shot(db: Session, shot_id: int, payload: Dict[str, Any]) -> Optional[
     return obj
 
 
-def delete_shot(db: Session, shot_id: int) -> bool:
-    obj = db.query(Shot).filter(Shot.id == shot_id).first()
+def delete_shot(
+    db: Session, shot_id: int, *, user_id: int | None = None, reason: str | None = None
+) -> bool:
+    """Soft delete a shot."""
+    obj = _not_deleted(db.query(Shot), Shot).filter(Shot.id == shot_id).first()
     if not obj:
         return False
-    db.delete(obj)
+    obj.soft_delete(user_id=user_id, reason=reason)
     db.commit()
     return True
 
@@ -481,11 +581,14 @@ def update_environment(
     return env
 
 
-def delete_environment(db: Session, env_id: int | str) -> bool:
+def delete_environment(
+    db: Session, env_id: int | str, *, user_id: int | None = None, reason: str | None = None
+) -> bool:
+    """Soft delete an environment."""
     env = resolve_environment(db, env_id)
     if not env:
         return False
-    db.delete(env)
+    env.soft_delete(user_id=user_id, reason=reason)
     db.commit()
     return True
 
@@ -518,14 +621,14 @@ def seed_scenes_from_script_json(
 
     Returns number of prepared/inserted rows.
     """
-    script = db.query(Script).filter(Script.id == script_id).first()
+    script = _not_deleted(db.query(Script), Script).filter(Script.id == script_id).first()
     if not script:
         return 0
     source_scenes: List[dict[str, Any]] = list(script.scenes or [])  # type: ignore
     if not source_scenes:
         return 0
 
-    existing = db.query(Scene).filter(Scene.script_id == script_id).all()
+    existing = _not_deleted(db.query(Scene), Scene).filter(Scene.script_id == script_id).all()
     existing_keys = {(s.scene_number) for s in existing}
 
     to_insert: List[Scene] = []

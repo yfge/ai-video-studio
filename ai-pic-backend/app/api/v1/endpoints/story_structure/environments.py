@@ -105,7 +105,7 @@ async def delete_environment(
     ):
         ok = False
     else:
-        ok = svc.delete_environment(db, env_id)
+        ok = svc.delete_environment(db, env_id, user_id=current_user.id)
     if not ok:
         raise HTTPException(status_code=404, detail="environment not found")
     return None

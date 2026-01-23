@@ -1,11 +1,28 @@
 from __future__ import annotations
 
 from app.core.database import Base, get_db
+from app.core.middleware import get_current_active_user
 from app.main import app
 from app.models.script import Episode, Script, Story
+from app.models.user import User
 from app.schemas.story_structure import SceneBeatCreate, SceneCreate, ShotCreate
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+
+
+def _create_test_user(db: Session) -> User:
+    user = User(
+        username="test_user",
+        email="test_user@example.com",
+        hashed_password="x",
+        is_active=True,
+        is_approved=True,
+        email_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def _bootstrap_script(db: Session) -> Script:
@@ -22,7 +39,9 @@ def test_scene_crud_with_children(db_session: Session):
     # ensure tables exist for this session
     Base.metadata.create_all(bind=db_session.get_bind())
 
+    user = _create_test_user(db_session)
     app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_current_active_user] = lambda: user
     client = TestClient(app)
 
     script = _bootstrap_script(db_session)
