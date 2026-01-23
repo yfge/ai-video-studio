@@ -1,0 +1,111 @@
+name: traffic_sheet_generation
+description: 投流表生成模板，从剧本中提炼 15/30/60 秒投流素材
+category: marketing
+version: "1.0"
+
+variables:
+  story:
+    type: object
+    description: 故事上下文（标题、类型、市场、微类型）
+    required: false
+  episode_id:
+    type: integer
+    description: 剧集 ID
+    required: false
+  episode_number:
+    type: integer
+    description: 剧集编号
+    required: true
+  episode_title:
+    type: string
+    description: 剧集标题
+    required: false
+  episode_summary:
+    type: string
+    description: 剧集概要
+    required: false
+  script_id:
+    type: integer
+    description: 剧本 ID
+    required: false
+  script_content:
+    type: string
+    description: 剧本正文内容
+    required: true
+  scenes:
+    type: array
+    description: 场景列表
+    required: false
+  dialogues:
+    type: array
+    description: 对白列表
+    required: false
+  hook_plan:
+    type: object
+    description: 爽点/钩子规划
+    required: false
+  current_time:
+    type: string
+    description: 当前时间（ISO 格式）
+    required: false
+
+output_format: json
+output_schema:
+  type: object
+  properties:
+    episode_id:
+      type: integer
+    script_id:
+      type: integer
+    market_region:
+      type: string
+    micro_genre:
+      type: string
+    assets:
+      type: array
+      items:
+        type: object
+        properties:
+          asset_id:
+            type: string
+          duration_seconds:
+            type: integer
+            enum: [15, 30, 60]
+          market_region:
+            type: string
+          micro_genre:
+            type: string
+          hook_type:
+            type: string
+            enum: [betrayal, reveal, revenge, reunion, threat, taboo, power-shift]
+          source_episode:
+            type: integer
+          source_timecode_start:
+            type: string
+          source_timecode_end:
+            type: string
+          key_line:
+            type: string
+          visual_hook:
+            type: string
+          shot_list:
+            type: array
+            items:
+              type: string
+          cliff_or_cta:
+            type: string
+          music_reference:
+            type: string
+          compliance_flags:
+            type: array
+            items:
+              type: string
+    generated_at:
+      type: string
+      format: date-time
+
+tags:
+  - short_drama
+  - marketing
+  - traffic
+  - ad_material

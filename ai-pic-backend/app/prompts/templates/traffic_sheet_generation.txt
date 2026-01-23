@@ -1,0 +1,118 @@
+你是一个专业的短剧投流素材策划师，擅长从剧本中提炼高转化率的投流素材（15/30/60秒）。请根据以下剧本信息生成投流表（Traffic Sheet）。
+
+## 投流素材规范
+
+每条素材必须包含：
+- **asset_id**: 唯一标识（格式：ep{集数}_asset{序号}_{时长}s）
+- **duration_seconds**: 时长（15/30/60）
+- **hook_type**: 钩子类型（betrayal/reveal/revenge/reunion/threat/taboo/power-shift）
+- **source_episode**: 来源集数
+- **source_timecode_start/end**: 素材时间段
+- **key_line**: 字幕锚点（最吸睛的一句台词）
+- **visual_hook**: 首帧动作（吸引点击的画面）
+- **shot_list**: 关键镜头列表（1-5个）
+- **cliff_or_cta**: 卡点或 CTA 文案
+
+## 素材数量目标
+
+每 10 集应产出：
+- 15s 素材：12-20 条
+- 30s 素材：6-10 条
+- 60s 素材：2-4 条
+
+当前为第 {{ episode_number }} 集，请按比例产出（单集约 15s: 1-2条，30s: 1条，60s: 0-1条）。
+
+## 剧本信息
+
+{% if story %}
+### 故事背景
+- 标题：{{ story.title }}
+- 类型：{{ story.genre }}
+{% if story.market_region %}- 目标市场：{{ story.market_region }}{% endif %}
+{% if story.micro_genre %}- 微类型：{{ story.micro_genre }}{% endif %}
+{% endif %}
+
+### 剧集信息
+- 集数：第 {{ episode_number }} 集
+{% if episode_title %}- 标题：{{ episode_title }}{% endif %}
+{% if episode_summary %}- 概要：{{ episode_summary }}{% endif %}
+
+### 剧本内容
+```
+{{ script_content }}
+```
+
+{% if scenes %}
+### 场景列表（含时间码估算）
+{% for scene in scenes %}
+- 场景 {{ scene.scene_number }}：{{ scene.location or '地点待定' }} / {{ scene.time or '时间待定' }}
+  {{ scene.description or '' }}
+  {% if scene.notes %}标注：{{ scene.notes }}{% endif %}
+  {% if scene.estimated_timecode %}时间码：{{ scene.estimated_timecode }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if dialogues %}
+### 高亮对白（按场景）
+{% for dialogue in dialogues %}
+- [场景{{ dialogue.scene_number }}] {{ dialogue.character }}：{{ dialogue.content }}
+  {% if dialogue.emotion %}情绪：{{ dialogue.emotion }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if hook_plan %}
+### 已标注的爽点/钩子
+- 开场钩子：{{ hook_plan.opening_hook or '未指定' }}
+- 情绪节奏：{{ hook_plan.escalation_plan or '未指定' }}
+- 释放节点：{{ hook_plan.payoff_plan or '未指定' }}
+{% if hook_plan.key_reversals %}
+关键反转：
+{% for rev in hook_plan.key_reversals %}
+  · {{ rev.description }}（{{ rev.timing or '时机待定' }}，强度：{{ rev.intensity or 'medium' }}）
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## 生成要求
+
+请为本集剧本生成投流表，以 JSON 格式返回：
+
+```json
+{
+    "episode_id": {{ episode_id or 'null' }},
+    "script_id": {{ script_id or 'null' }},
+    "market_region": "{{ story.market_region if story and story.market_region else '' }}",
+    "micro_genre": "{{ story.micro_genre if story and story.micro_genre else '' }}",
+    "assets": [
+        {
+            "asset_id": "ep{{ episode_number }}_asset01_15s",
+            "duration_seconds": 15,
+            "market_region": "NA",
+            "micro_genre": "Mafia romance revenge",
+            "hook_type": "betrayal",
+            "source_episode": {{ episode_number }},
+            "source_timecode_start": "00:00:05",
+            "source_timecode_end": "00:00:20",
+            "key_line": "你以为我不知道你和他的事？",
+            "visual_hook": "女主摔门而入，怒视男主",
+            "shot_list": [
+                "特写：女主愤怒的眼神",
+                "中景：男主惊慌失措",
+                "近景：手中的证据"
+            ],
+            "cliff_or_cta": "她会如何反击？点击观看",
+            "music_reference": "紧张悬疑BGM",
+            "compliance_flags": []
+        }
+    ],
+    "generated_at": "{{ current_time }}"
+}
+```
+
+注意：
+- **key_line** 必须是剧本中的原台词，不要杜撰
+- **visual_hook** 必须是可拍摄的具体动作/画面
+- **shot_list** 控制在 1-5 个关键镜头
+- **hook_type** 必须从规定类型中选择
+- 优先选择 PAYOFF/CLIFFHANGER 标注的场景
+- 15s 素材聚焦单一爆点，30s 素材完整冲突升级，60s 素材串联多个爆点

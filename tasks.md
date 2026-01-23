@@ -43,9 +43,10 @@
 - [x] 后端：更新 episode/script/storyboard prompt 模板，注入微类型与 hook 规则
 - [x] 后端：新增 `short_drama` prompt 变体（`story_outline`/`episode_generation`/`episode_from_outline`/`episode_duration_reject`/`script_generation`）
 - [x] 后端：episode async 生成上下文补齐 `story_format`，确保 Episode Agent 模板分流
-- [ ] 后端：新增短剧故事模板与剧本模板（每集强爽点/反转/收获点/结尾钩子），并针对 deepseek-chat 做指令优化
-- [ ] 后端：新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）
-- [ ] 后端：实现 HookScore/ScriptScore agent 与“投流表生成”service，接入生成链路，低分触发修订或给出改写建议
+- [x] 后端：新增短剧故事模板与剧本模板（每集强爽点/反转/收获点/结尾钩子），并针对 deepseek-chat 做指令优化（优化 system_prompt_story/script_short_drama.txt JSON 输出规范）
+- [x] 后端：新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）（traffic_sheet_generation.txt/yaml）
+- [x] 后端：实现 HookScore/ScriptScore agent 与"投流表生成"service（app/services/scoring/），接入 API 端点（/api/v1/scoring/）
+- [ ] 后端：HookScore/ScriptScore 接入生成链路，低分触发修订或给出改写建议
 - [x] 后端：故事生成在 `extra_metadata` 落库 hook 计划与投流素材（hook_plan/twist_density/cliffhanger_plan/ad_snippets）
 - [ ] 后端：在 Task `parameters.agent_run` 中落库评分报告、投流表、素材标签
 
@@ -55,7 +56,7 @@
 
 - [x] 验证：short_drama prompt 变体单元测试（`template_resolver` + prompt 渲染）
 - [x] 验证：Chrome E2E（deepseek 文生文/剧集/剧本；google 文生图；google 文生视频）
-- [ ] 验证：新增 schema 与 prompt 单元测试，覆盖 hook 计划/评分结构
+- [x] 验证：新增 schema 与 prompt 单元测试，覆盖 hook 计划/评分结构（tests/unit/services/scoring/ 21 tests）
 - [ ] 验证：E2E 路径（选择微类型→生成故事/剧集/剧本→投流表→分镜/时间线标注），Chrome 记录验证
 - [ ] 验证：短剧全流程 E2E（IP→环境→故事→剧本→分镜图→分镜视频），逐张下载抽检并在 `agent_chats` 记录
 

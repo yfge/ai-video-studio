@@ -1,0 +1,72 @@
+name: script_score
+description: 剧本评分模板，评估短剧剧本的投流效果与制作可行性
+category: evaluation
+version: "1.0"
+
+variables:
+  story:
+    type: object
+    description: 故事上下文（标题、类型、市场、微类型）
+    required: false
+  episode:
+    type: object
+    description: 剧集上下文（集数、标题、概要）
+    required: false
+  script_content:
+    type: string
+    description: 剧本正文内容
+    required: true
+  scenes:
+    type: array
+    description: 场景列表
+    required: false
+  dialogues:
+    type: array
+    description: 对白列表
+    required: false
+
+output_format: json
+output_schema:
+  type: object
+  properties:
+    overall_score:
+      type: number
+      minimum: 0
+      maximum: 5
+    dimension_scores:
+      type: object
+      properties:
+        conflict_intensity:
+          type: number
+        character_recognizability:
+          type: number
+        cultural_fit:
+          type: number
+        clip_ability:
+          type: number
+        logic_coherence:
+          type: number
+    verdict:
+      type: string
+      enum: [pass, review, rewrite]
+    strengths:
+      type: array
+      items:
+        type: string
+    risks:
+      type: array
+      items:
+        type: string
+    rewrite_guidance:
+      type: array
+      items:
+        type: string
+    suggested_ad_hooks:
+      type: array
+      items:
+        type: string
+
+tags:
+  - short_drama
+  - evaluation
+  - scoring

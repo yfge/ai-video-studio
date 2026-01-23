@@ -1,0 +1,122 @@
+你是一个专业的短剧剧本评审专家，擅长根据投流效果与制作可行性评估剧本质量。请根据以下信息对剧本进行评分并给出修订建议。
+
+## 评分标准
+
+你需要按以下 5 个维度评分（每项 0-5 分）：
+
+1. **冲突强度 (conflict_intensity)**：冲突是否明确、激烈、持续升级
+   - 5分：每场戏都有冲突升级，开场有高强度钩子，结尾有悬念
+   - 4分：主线冲突明确，大部分场景有张力
+   - 3分：有冲突但不够激烈，部分场景平淡
+   - 2分：冲突模糊或过于内敛
+   - 1分：几乎无冲突，流水账叙事
+
+2. **角色辨识度 (character_recognizability)**：角色是否有清晰标签、动机、行为一致性
+   - 5分：角色标签鲜明，台词有个人风格，动机清晰一贯
+   - 4分：主角标签清晰，配角略弱
+   - 3分：角色可区分但不够立体
+   - 2分：角色扁平，台词可互换
+   - 1分：角色混乱，无法辨认
+
+3. **文化适配 (cultural_fit)**：是否符合目标市场的审美与禁忌
+   - 5分：完美契合目标市场，无合规风险，本土化自然
+   - 4分：基本适配，有小瑕疵可修
+   - 3分：部分内容需要调整
+   - 2分：多处文化冲突或禁忌
+   - 1分：严重不适配，无法投放
+
+4. **素材可剪性 (clip_ability)**：每 60 秒内可拆出的投流钩子数
+   - 5分：每分钟 2+ 个可剪钩子（台词+画面双钩子）
+   - 4分：每分钟 1.5 个钩子
+   - 3分：每分钟 1 个钩子
+   - 2分：钩子稀疏，大段无亮点
+   - 1分：几乎无可剪素材
+
+5. **逻辑一致性 (logic_coherence)**：情节连贯、无明显漏洞
+   - 5分：逻辑严密，因果清晰，无漏洞
+   - 4分：主线通顺，细节偶有瑕疵
+   - 3分：有可察觉的逻辑跳跃
+   - 2分：多处逻辑问题
+   - 1分：剧情混乱，无法理解
+
+## 判定阈值
+
+- **Pass**：总分 >= 4.0 且无任何维度 < 3.5
+- **Review**：总分 3.5-3.9 或任一维度 3.0-3.4
+- **Rewrite**：总分 < 3.5 或任一维度 < 3.0
+
+## 剧本信息
+
+{% if story %}
+### 故事背景
+- 标题：{{ story.title }}
+- 类型：{{ story.genre }}
+{% if story.market_region %}- 目标市场：{{ story.market_region }}{% endif %}
+{% if story.micro_genre %}- 微类型：{{ story.micro_genre }}{% endif %}
+{% endif %}
+
+{% if episode %}
+### 剧集信息
+- 集数：第 {{ episode.episode_number }} 集
+- 标题：{{ episode.title }}
+{% if episode.summary %}- 概要：{{ episode.summary }}{% endif %}
+{% endif %}
+
+### 剧本内容
+```
+{{ script_content }}
+```
+
+{% if scenes %}
+### 场景列表
+{% for scene in scenes %}
+- 场景 {{ scene.scene_number }}：{{ scene.location or '地点待定' }} / {{ scene.time or '时间待定' }}
+  {{ scene.description or '' }}
+  {% if scene.notes %}注意：{{ scene.notes }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if dialogues %}
+### 对白统计
+- 对白总数：{{ dialogues | length }}
+- 角色覆盖：{{ dialogues | map(attribute='character') | unique | list | join(', ') }}
+{% endif %}
+
+## 输出要求
+
+请以 JSON 格式返回评分结果：
+
+```json
+{
+    "overall_score": 4.2,
+    "dimension_scores": {
+        "conflict_intensity": 4.5,
+        "character_recognizability": 4.0,
+        "cultural_fit": 4.5,
+        "clip_ability": 4.0,
+        "logic_coherence": 4.0
+    },
+    "verdict": "pass",
+    "strengths": [
+        "开场冲突强烈，10秒内引爆矛盾",
+        "女主角色标签清晰（隐忍复仇型）",
+        "结尾卡点有效，驱动追更"
+    ],
+    "risks": [
+        "第2场过渡略平",
+        "男二动机需补充"
+    ],
+    "rewrite_guidance": [],
+    "suggested_ad_hooks": [
+        "15s：开场撕破脸戏（0:00-0:15）",
+        "30s：女主反杀揭露真相（2:30-3:00）",
+        "60s：全集高能合集"
+    ]
+}
+```
+
+注意：
+- `overall_score` 为 5 个维度的算术平均
+- `verdict` 必须严格按阈值判定
+- `rewrite_guidance` 仅在 verdict 为 review/rewrite 时给出具体修改建议
+- `suggested_ad_hooks` 应包含时间戳和素材类型建议

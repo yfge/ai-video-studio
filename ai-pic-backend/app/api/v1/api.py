@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     image_gen_profiles,
     migrations,
     prompts,
+    scoring,
     scripts,
     stories,
     story_structure,
@@ -67,3 +68,6 @@ api_router.include_router(diagnostic.router, prefix="/diagnostic", tags=["diagno
 
 # 任务相关路由
 api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
+
+# 剧本评分与投流表相关路由
+api_router.include_router(scoring.router, prefix="/scoring", tags=["scoring"])
