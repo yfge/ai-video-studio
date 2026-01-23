@@ -98,4 +98,5 @@ cd ai-pic-backend && python -m pytest tests/unit tests/test_story_structure_endp
 
 ## Linked Commits
 
-- `eba067e` feat(backend): add soft delete filtering and business_id routes for story structure
+- `3b4ba39` feat(backend): add soft delete filtering and business_id routes for story structure
+- 待提交: feat(backend): add alembic migration for composite unique constraints with is_deleted
