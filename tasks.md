@@ -285,6 +285,8 @@
 
 - [ ] 功能/需求：统一 Story/Episode/Script/图像等任务到 Task 队列，使用 Celery Worker 处理，Agent 每次执行结果在 Task 与目标实体（Story/Episode/Script）上都可追踪
 - [x] 后端：补全 `TaskType` 枚举（story/episode/script/dialogue-audio/timeline/storyboard/video/text…），并把 Story/Episode/Script 等生成入口的 `task_type` 从兜底的 `image_generation` 改为正确类型
+- [x] 后端：提供历史任务 `TaskType` 回填脚本 `ai-pic-backend/scripts/backfill_task_types.py`（将 legacy `IMAGE_GENERATION` 按 title/prompt 纠正为正确类型）
+- [ ] 生产：执行一次历史任务 `TaskType` 回填（建议先 `--dry-run`，并按 user/时间范围分批）
 - [ ] 后端：提炼 `task_runner` / `task_worker`，改造 `/stories/episodes/scripts/*/generate-async` 统一走 Celery worker（替换 `BackgroundTasks`），并完善 `Task.status` / `result_file_path` / `error_message` 回写
 - [ ] 后端：在 Task 的 `parameters.agent_run` 中落库 agent 输入/输出（prompt、normalized 结构、provider/model、usage、reasoning），保证每次 LangGraph 执行有完整轨迹
 - [x] 后端：在 Story/Episode/Script 的 `extra_metadata.agent_run` 中写入 LangGraph/AI 管理器的运行信息，覆盖同步与 `/generate-async` 路径
