@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.script import Story, Episode
-from app.models.task import Task, TaskStatus
+from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.prompts.templates import PromptTemplate
@@ -588,7 +588,7 @@ async def generate_episodes_async(
     t = Task(
         title=f"生成剧集 - 故事{request.story_id}",
         description="异步剧集生成",
-        task_type="image_generation",
+        task_type=TaskType.EPISODE_GENERATION,
         prompt=f"Episode plan for story {request.story_id}",
         parameters=json.dumps(request.dict(), ensure_ascii=False),
         user_id=current_user.id,

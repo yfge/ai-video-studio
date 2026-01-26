@@ -13,7 +13,7 @@ from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Environment, Scene, SceneBeat, Shot
-from app.models.task import Task, TaskStatus
+from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.prompts.manager import PromptManager, prompt_manager
@@ -1763,7 +1763,7 @@ async def generate_storyboard_from_audio_timeline_async(
     t = Task(
         title=_friendly_task_title("分镜占位生成", script, episode, story),
         description="根据对白时间轴生成分镜帧占位（audio_timeline）",
-        task_type="image_generation",
+        task_type=TaskType.STORYBOARD_GENERATION,
         prompt=f"Storyboard placeholder generation from audio timeline for script {script_id}",
         parameters=json.dumps(params, ensure_ascii=False),
         user_id=current_user.id,
@@ -1854,7 +1854,7 @@ async def generate_script_async(
     t = Task(
         title=f"生成剧本 - 剧集{request.episode_id}",
         description="异步剧本生成",
-        task_type="image_generation",
+        task_type=TaskType.SCRIPT_GENERATION,
         prompt=f"Script for episode {request.episode_id}",
         parameters=json.dumps(request.dict(), ensure_ascii=False),
         user_id=current_user.id,
@@ -2586,7 +2586,7 @@ async def generate_storyboard_async(
     t = Task(
         title=_friendly_task_title("分镜生成", script, script.episode, story),
         description="生成分镜结构（帧列表）",
-        task_type="image_generation",
+        task_type=TaskType.STORYBOARD_GENERATION,
         prompt=f"Storyboard generation for script {script_id}",
         parameters=json.dumps(params, ensure_ascii=False),
         user_id=current_user.id,
@@ -3460,7 +3460,7 @@ async def generate_storyboard_images(
     t = Task(
         title=_friendly_task_title("分镜图像生成", script, episode, story),
         description="根据分镜生成图像",
-        task_type="image_generation",
+        task_type=TaskType.IMAGE_GENERATION,
         prompt=f"Storyboard image generation for script {script_id}",
         parameters=json.dumps(
             {
@@ -3643,7 +3643,7 @@ async def generate_storyboard_video(
     t = Task(
         title=_friendly_task_title("分镜视频生成", script, episode, story),
         description="根据分镜生成视频",
-        task_type="image_generation",
+        task_type=TaskType.VIDEO_GENERATION,
         prompt=f"Storyboard video generation for script {script_id}",
         parameters=json.dumps(
             {
@@ -4145,7 +4145,7 @@ async def regenerate_script_async(
     t = Task(
         title=_friendly_task_title("剧本重新生成", script, episode, story),
         description=f"重新生成剧本 {script.id}（第{episode.episode_number}集）",
-        task_type="image_generation",
+        task_type=TaskType.SCRIPT_GENERATION,
         prompt=f"Script regeneration for script {script.id}",
         parameters=json.dumps(request_dict, ensure_ascii=False),
         user_id=current_user.id,
@@ -4193,7 +4193,7 @@ async def regenerate_script_by_business_id_async(
     t = Task(
         title=_friendly_task_title("剧本重新生成", script, episode, story),
         description=f"重新生成剧本 {script.id}（第{episode.episode_number}集）",
-        task_type="image_generation",
+        task_type=TaskType.SCRIPT_GENERATION,
         prompt=f"Script regeneration for script {script.id}",
         parameters=json.dumps(request_dict, ensure_ascii=False),
         user_id=current_user.id,
@@ -4321,7 +4321,7 @@ async def generate_script_dialogue_audio_async(
     t = Task(
         title=_friendly_task_title("对白音轨生成", script, episode, story),
         description="生成场景对白音轨（scene）",
-        task_type="image_generation",
+        task_type=TaskType.DIALOGUE_AUDIO_GENERATION,
         prompt=f"Dialogue audio generation for script {script_id}",
         parameters=json.dumps(params, ensure_ascii=False),
         user_id=current_user.id,
@@ -4560,7 +4560,7 @@ async def generate_script_audio_timeline_async(
     t = Task(
         title=_friendly_task_title("时间轴生成", script, episode, story),
         description="拼接场景音轨并生成时间轴（episode）",
-        task_type="image_generation",
+        task_type=TaskType.TIMELINE_GENERATION,
         prompt=f"Episode audio timeline generation for script {script_id}",
         parameters=json.dumps(params, ensure_ascii=False),
         user_id=current_user.id,
@@ -4697,7 +4697,7 @@ async def generate_timeline_pipeline_async(
     t = Task(
         title=_friendly_task_title("一键时间轴流水线", script, episode, story),
         description="一键生成对白音轨、时间轴、分镜帧占位",
-        task_type="image_generation",
+        task_type=TaskType.TIMELINE_PIPELINE,
         prompt=f"Timeline pipeline for script {script_id}",
         parameters=json.dumps(params, ensure_ascii=False),
         user_id=current_user.id,

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode
-from app.models.task import Task
+from app.models.task import Task, TaskType
 from app.models.user import User
 from app.services.ai_service import ai_service  # noqa: F401
 from app.services.task_worker import episode_generate_task
@@ -129,7 +129,7 @@ async def regenerate_episode_async(
     task = Task(
         title=f"重新生成剧集 - 第{episode.episode_number}集",
         description=f"重新生成故事{story.id}的第{episode.episode_number}集",
-        task_type="image_generation",
+        task_type=TaskType.EPISODE_GENERATION,
         prompt=f"Regenerate episode {episode.episode_number} for story {story.id}",
         parameters=json.dumps(request_dict, ensure_ascii=False),
         user_id=current_user.id,
@@ -182,7 +182,7 @@ async def regenerate_episode_by_business_id_async(
     task = Task(
         title=f"重新生成剧集 - 第{episode.episode_number}集",
         description=f"重新生成故事{story.id}的第{episode.episode_number}集",
-        task_type="image_generation",
+        task_type=TaskType.EPISODE_GENERATION,
         prompt=f"Regenerate episode {episode.episode_number} for story {story.id}",
         parameters=json.dumps(request_dict, ensure_ascii=False),
         user_id=current_user.id,

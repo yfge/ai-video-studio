@@ -50,3 +50,33 @@ def test_task_list_sorted_desc_and_progress_detail(client):
     ids = [t["id"] for t in data["tasks"]]
     assert ids == sorted(ids, reverse=True)
     assert "progress_detail" in data["tasks"][0]
+
+
+@pytest.mark.unit
+def test_task_list_filters_by_task_type(client):
+    r1 = client.post(
+        "/api/v1/tasks/",
+        json={
+            "title": "Story Task",
+            "description": "story",
+            "task_type": "story_generation",
+            "prompt": "p",
+        },
+    )
+    assert r1.status_code == 200, r1.text
+    r2 = client.post(
+        "/api/v1/tasks/",
+        json={
+            "title": "Script Task",
+            "description": "script",
+            "task_type": "script_generation",
+            "prompt": "p",
+        },
+    )
+    assert r2.status_code == 200, r2.text
+
+    rlist = client.get("/api/v1/tasks?limit=20&skip=0&task_type=story_generation")
+    assert rlist.status_code == 200, rlist.text
+    data = rlist.json()
+    assert data["total"] >= 1
+    assert all(t["task_type"] == "story_generation" for t in data["tasks"])

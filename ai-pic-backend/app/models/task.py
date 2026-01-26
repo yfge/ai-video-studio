@@ -15,6 +15,15 @@ class TaskType(str, enum.Enum):
     IMAGE_GENERATION = "image_generation"
     IMAGE_EDIT = "image_edit"
     IMAGE_ENHANCEMENT = "image_enhancement"
+    STORY_GENERATION = "story_generation"
+    EPISODE_GENERATION = "episode_generation"
+    SCRIPT_GENERATION = "script_generation"
+    DIALOGUE_AUDIO_GENERATION = "dialogue_audio_generation"
+    TIMELINE_GENERATION = "timeline_generation"
+    TIMELINE_PIPELINE = "timeline_pipeline"
+    STORYBOARD_GENERATION = "storyboard_generation"
+    VIDEO_GENERATION = "video_generation"
+    TEXT_GENERATION = "text_generation"
 
 class Task(SoftDeleteBusinessMixin, Base):
     __tablename__ = "tasks"

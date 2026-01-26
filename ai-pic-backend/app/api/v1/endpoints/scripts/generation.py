@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.models.task import Task
+from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.script import ScriptResponse
@@ -71,7 +71,7 @@ async def generate_script_async(
     task = Task(
         title=f"生成剧本 - 剧集{request.episode_id}",
         description="异步剧本生成",
-        task_type="image_generation",
+        task_type=TaskType.SCRIPT_GENERATION,
         prompt=f"Script for episode {request.episode_id}",
         parameters=json.dumps(request.dict(), ensure_ascii=False),
         user_id=current_user.id,

@@ -5,7 +5,7 @@
 ## 状态概览
 
 - ✅ 稳定/收尾：叙事结构与数据模型对齐（迁移验证/权限收口待补）、对白音轨与声音驱动时间轴（主链路已验证，收尾待补）
-- ⏳ 进行中：全局软删除 + business_id 落地、任务队列与 Agent 执行落库、虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐
+- ⏳ 进行中：全局软删除 + business_id 落地、任务队列与 Agent 执行落库、虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐、超大文件拆分（backend `scripts_legacy.py` / frontend storyboard page / `src/utils/api.ts`）
 - 🔥 **高优新增**：Duration Orchestrator Agent（端到端时长闭环验证）、短剧微类型与投流驱动创作闭环（hook/爽点/素材）
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
 
@@ -13,6 +13,24 @@
 
 - [x] 前端：升级 Node 到 22.20.0（本地/生产镜像一致）
 - [x] 前端：升级 Next.js 到 16.1.3（同步调整 eslint/lint 脚本）
+
+## Refactor: 超大文件拆分（AGENTS 规范）🔥
+
+:information_source: 背景：当前仓库仍存在多个超大文件（远超 300/250 行上限），阻碍可维护性与测试；需按领域拆分、抽离服务层与组件/Hook，逐步迁移并保持兼容。
+
+### 进度（后端→前端→验证）
+
+- [x] 后端：已拆出 scripts CRUD/生成到 `ai-pic-backend/app/api/v1/endpoints/scripts/`（legacy 仍需迁移）
+- [ ] 后端：拆分 `ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py`（≈4900 行）到 `app/api/v1/endpoints/scripts/*`（按 storyboard/dialogue-audio/timeline 等域拆分），并逐步下线 legacy 路由
+- [ ] 后端：拆分 `ai-pic-backend/app/services/dialogue_audio_service.py`（≈1600 行）为 `app/services/audio/*`（tts/mix/timeline/persistence），并补单测
+- [ ] 后端：拆分 `ai-pic-backend/app/services/ai_service_manager.py`（≈1480 行）按 provider/domain 拆分，收敛公共重试/鉴权/日志
+- [ ] 后端：统一 voice catalog 单一入口（`ai-pic-backend/app/services/voice_catalog.py` 与 `ai-pic-backend/app/services/audio/voice_catalog.py` 去重）
+- [x] 前端：已落地 `ai-pic-frontend/src/utils/api/{client,endpoints,types}` 目录（迁移进行中）
+- [ ] 前端：迁移并缩减 `ai-pic-frontend/src/utils/api.ts`（≈2750 行），最终仅保留 re-export/兼容层或删除
+- [ ] 前端：拆分 `ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx`（≈3300 行）为 page + hooks + components（页面 < 200 行）
+- [x] 前端：拆分 `ai-pic-frontend/src/app/tasks/page.tsx` 到 `ai-pic-frontend/src/components/features/tasks/*`（页面 < 200 行）
+- [ ] 前端：拆分超大 modal（如 `ai-pic-frontend/src/components/shared/modals/StoryboardVideoModal.tsx`），满足 ≤250 行规范
+- [ ] 验证：后端 `pytest` + 前端 `npm run lint`；Chrome 跑通 1 条 storyboard 主路径并记录到 `agent_chats`
 
 ## Fix: 剧本生成稳定性（避免 mock 回退）
 
@@ -115,7 +133,7 @@
 - [x] 6.1 后端：在 `ScriptDialogueAudioGenerateRequest` 添加 `use_duration_control` 参数
 - [x] 6.2 后端：创建 `duration_controlled_dialogue_service.py` 集成服务
 - [x] 6.3 后端：修改 `_process_script_dialogue_audio_task` 支持分支逻辑
-- [ ] 6.4 后端：实现结果持久化（Scene/SceneBeat 更新）
+- [x] 6.4 后端：实现结果持久化（SceneBeat 写入 + scene `extra_metadata.dialogue_audio` 更新）
 - [x] 6.5 测试：编写 API 集成测试
 
 ### Phase 7: 监控与可观测性（P2，预计 1 天）
@@ -137,12 +155,10 @@
 ### 下一步
 
 1. ✅ Phase 1, 2, 3, 4, 5 已完成（108 tests passing）
-2. ✅ Phase 6 基础集成已完成（使用现有 API + `use_duration_control` 参数）
-   - `dialogue-audio/generate-async` 支持 `use_duration_control=true`
-   - 待完成：结果持久化到 Scene/SceneBeat
-3. 进行 Phase 6 收尾 + Phase 7：
-   - 实现 Duration Orchestrator 结果持久化
+2. ✅ Phase 6 已完成（`dialogue-audio/generate-async` 支持 `use_duration_control=true`，并落库 scene 音轨 + SceneBeat）
+3. 进行 Phase 7：
    - 添加结构化日志和进度回调
+   - 更新 `docs/duration-orchestrator-guide.md`
 
 ---
 
@@ -214,7 +230,7 @@
 - [x] 前端：虚拟 IP 手动上传走统一 OSS（修复上传字段与 FormData 头部）
 - [x] 前端：文生图表单按模型动态限制分辨率选项（含 Seedream/DALL·E 白名单）
 - [x] 前端：统一 `generation_profile`（质量档位）选择与展示，并贯通虚拟IP/环境/分镜图生图请求
-- [ ] 前端：图生图弹窗补齐分辨率/比例限制与错误提示（当前复用文生图已选 `size`）
+- [x] 前端：图生图弹窗补齐分辨率/比例限制与错误提示（当前复用文生图已选 `size`）
 - [ ] 验证：为不同模型+分辨率补齐端到端用例（含 DALL·E 3 官方三种长宽比、DALL·E 2 三种尺寸、Seedream 2K），在 README / TESTING_GUIDE 记录 Ark 凭证、调试与兼容矩阵
 
 ### 下一步
@@ -268,18 +284,20 @@
 ### 进度（功能→后端→前端→验证）
 
 - [ ] 功能/需求：统一 Story/Episode/Script/图像等任务到 Task 队列，使用 Celery Worker 处理，Agent 每次执行结果在 Task 与目标实体（Story/Episode/Script）上都可追踪
-- [ ] 后端：补全 `TaskType` 枚举（如 `story_generation` / `episode_generation` / `script_generation` / `image_generation`），提炼 `task_runner` / `task_worker`，以 Celery 任务消费 Task 表并调用 `AIService` / LangGraph Agents，更新 `Task.status` / `result_file_path` / `error_message`（当前 story/episode/script 仍用 `image_generation`）
+- [x] 后端：补全 `TaskType` 枚举（story/episode/script/dialogue-audio/timeline/storyboard/video/text…），并把 Story/Episode/Script 等生成入口的 `task_type` 从兜底的 `image_generation` 改为正确类型
+- [ ] 后端：提炼 `task_runner` / `task_worker`，改造 `/stories/episodes/scripts/*/generate-async` 统一走 Celery worker（替换 `BackgroundTasks`），并完善 `Task.status` / `result_file_path` / `error_message` 回写
 - [ ] 后端：在 Task 的 `parameters.agent_run` 中落库 agent 输入/输出（prompt、normalized 结构、provider/model、usage、reasoning），保证每次 LangGraph 执行有完整轨迹
 - [x] 后端：在 Story/Episode/Script 的 `extra_metadata.agent_run` 中写入 LangGraph/AI 管理器的运行信息，覆盖同步与 `/generate-async` 路径
 - [x] 后端：为虚拟 IP 图像、环境图像、分镜图像等长耗时图像生成操作提供标准 Task 创建 + Celery 异步处理路径（与现有 `/api/v1/tasks` 结构对齐）
 - [x] 后端：新增 `app/core/celery_app.py` 与 `app/services/task_worker.py`，并在 `docker/docker-compose.prod.yml` 中增加 `ai-video-celery-worker` 服务（与 backend 共用镜像与配置）
 - [x] 后端：修复 OpenAI `response_format=json_schema` 在 `script_dialogues` 场景的 schema 校验 400（完善 item schema + 非 strict schema 自动回退 `json_object`）
-- [ ] 前端：在任务管理页 `/tasks` 中支持按 `task_type` 过滤，并在任务详情中展示 `parameters.agent_run` 的关键信息（provider/model/usage/reasoning）
+- [x] 前端：在任务管理页 `/tasks` 中支持按 `task_type` 过滤
+- [ ] 前端：在任务详情中展示 `parameters.agent_run` 的关键信息（provider/model/usage/reasoning）
 - [ ] 验证：为 Story/Episode/Script/图像任务增加集成测试（任务创建 → Celery handler 执行 → Task 状态与目标实体写入校验），并在 `TESTING_GUIDE.md` 中记录 Celery 本地运行与调试流程
 
 ### 下一步
 
-- 补全 `TaskType` 与统一 `process_task` 执行入口，改造 `/stories/episodes/scripts/*/generate-async` 使用正确的 task_type 并走 Celery worker
+- 统一 `process_task` 执行入口，改造 `/stories/episodes/scripts/*/generate-async` 走 Celery worker（替换 `BackgroundTasks`）
 - 在 Task `parameters.agent_run` 落库 LangGraph 轨迹，并在 `/tasks` UI 展示关键信息（provider/model/usage/reasoning）
 - 补测试与 `TESTING_GUIDE.md`：记录 Celery 本地运行/调试流程与任务链路验证路径
 
@@ -297,7 +315,7 @@
 - [ ] 后端：Google Veo `429 RESOURCE_EXHAUSTED` 时提供清晰报错与退避策略（避免反复失败/误判为系统异常），并支持可配置 fallback（如临时切换 provider/model）
 - [x] 前端：提供环境资产管理页（上传/生成/变体/删除参考图），在 `/stories/[id]` 分镜/剧集界面支持环境选择与标签筛选
 - [x] 前端：环境文生图表单按模型动态展示参考图选择器并提交 `reference_images`
-- [ ] 前端：修复分镜“生成视频”弹窗无尾帧候选时强制勾选尾帧导致无法提交（允许仅首帧生成）
+- [x] 前端：修复分镜“生成视频”弹窗无尾帧候选时强制勾选尾帧导致无法提交（允许仅首帧生成）
 - [x] 验证：Chrome E2E 分镜页生成 Veo 3.1 视频并下载抽帧检查（scriptId=103 frame=0）
 - [ ] 验证：待补端到端用例，验证选择环境+角色后分镜帧能稳定生成对应图像；在 `TESTING_GUIDE.md` 记录并为环境表/关联补迁移回归用例
 
@@ -316,7 +334,7 @@
 
 - [ ] 功能/需求：统一分镜生成模型为“带规划的 LangGraph 管线”，默认每个选定场景至少生成 `frames_per_scene` 帧，帧结构必须满足 `StoryboardModel` JSON Schema
 - [ ] 后端：实现 `StoryboardLangGraphAgent`（或扩展现有 `StoryboardReActReasoner`），graph 中包括：场景选择节点 → 帧规划节点（`StoryboardPlanModel`）→ 帧细化节点（`StoryboardModel`）→ 校验/数量检查节点 → 修复节点（在帧数不足或结构不合法时 ReAct 重试）
-- [ ] 后端：收敛 `AIService.generate_storyboard*` 接口与 `scripts.py` 中分镜生成逻辑，统一通过 LangGraph agent 入口，保留本地 fallback 作为最后兜底；确保同步/异步（`/storyboard/generate`、`/storyboard/generate-async`）走同一套管线
+- [ ] 后端：收敛 `AIService.generate_storyboard*` 接口与 `scripts_legacy.py`/`app/api/v1/endpoints/scripts/*` 中分镜生成逻辑，统一通过 LangGraph agent 入口，保留本地 fallback 作为最后兜底；确保同步/异步（`/storyboard/generate`、`/storyboard/generate-async`）走同一套管线
 - [ ] 后端：在分镜生成 Task 与 `script.extra_metadata.storyboard` 中落库完整 agent 运行轨迹（plan、frames、provider/model、usage、reasoning_trace），支持后续审计与问题回溯
 - [ ] 前端：分镜工作台按钮统一切换到 `*-async` 路径，默认 `use_plan=true`，不再显式暴露“规划”动作，仅在高级视图中展示 `storyboard_plan` 与 ReAct 轨迹
 - [ ] 验证：补充端到端测试（长剧集、多场景、多次生成叠加），重点覆盖：帧数量检查与自动补齐、JSON 结构校验与修复、与环境/角色资产联动后的分镜稳定性

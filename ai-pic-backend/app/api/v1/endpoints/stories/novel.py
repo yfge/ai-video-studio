@@ -134,7 +134,7 @@ async def generate_story_novel_async(
     task = Task(
         title=f"导出知乎体小说 - {story.title}",
         description="等待生成…",
-        task_type=TaskType.IMAGE_GENERATION,
+        task_type=TaskType.TEXT_GENERATION,
         prompt=f"Zhihu novel export: {story.title}",
         parameters=json.dumps(request.model_dump(), ensure_ascii=False),
         user_id=current_user.id,

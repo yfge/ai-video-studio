@@ -59,7 +59,7 @@ async def generate_story_async(
     task = Task(
         title=f"生成故事 - {request.title}",
         description="异步故事生成",
-        task_type=TaskType.IMAGE_GENERATION,
+        task_type=TaskType.STORY_GENERATION,
         prompt=f"Story outline: {request.title}",
         parameters=json.dumps(request.dict(), ensure_ascii=False),
         user_id=current_user.id,
