@@ -5,6 +5,7 @@ export const TASK_TYPE_OPTIONS: TaskTypeOption[] = [
   { value: 'story_generation', label: '故事生成' },
   { value: 'episode_generation', label: '剧集生成' },
   { value: 'script_generation', label: '剧本生成' },
+  { value: 'script_review', label: '剧本质检' },
   { value: 'dialogue_audio_generation', label: '对白音轨生成' },
   { value: 'timeline_generation', label: '时间轴生成' },
   { value: 'timeline_pipeline', label: '一键时间轴流水线' },
@@ -19,4 +20,3 @@ export const TASK_TYPE_OPTIONS: TaskTypeOption[] = [
 export const TASK_TYPE_LABELS = Object.fromEntries(
   TASK_TYPE_OPTIONS.filter((opt) => opt.value).map((opt) => [opt.value, opt.label]),
 ) as Record<string, string>
-

@@ -29,12 +29,13 @@ from app.api.v1.endpoints.scripts_legacy import router as legacy_router  # noqa:
 # Imported for test monkeypatching consistency across endpoint modules.
 from app.services.ai_service import ai_service  # noqa: F401
 
-# New refactored routers will be added here as migration progresses
-# from app.api.v1.endpoints.scripts.crud import router as crud_router
-# from app.api.v1.endpoints.scripts.generation import router as generation_router
+# New script QC endpoints (kept out of scripts_legacy.py)
+from app.api.v1.endpoints.scripts.quality import router as quality_router
 
-# For now, use the legacy router to maintain all functionality
-# Once all endpoints are migrated, we'll switch to using the new routers
+# Mount non-legacy routers onto legacy_router (legacy contains "" paths and cannot be wrapped).
+legacy_router.include_router(quality_router)
+
+# For now, expose the legacy router as the scripts router.
 router = legacy_router
 
 __all__ = [

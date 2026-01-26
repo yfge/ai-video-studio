@@ -44,6 +44,11 @@
 - [x] 前端：Episode workspace 概览“场景数”展示所选剧本的实际场景数（避免 `episode.scene_count` 滞后导致误读）
 - [x] 验证：Chrome 端到端在 Episode workspace 重新生成剧本，产出 `v1.1 (Script ID: 83)`，7 场景，`ai_model=ai_manager_minimax`
 
+## Fix: Scripts 列表查询 500（MySQL sort buffer）
+
+- [ ] 后端：优化 `/api/v1/scripts` 列表查询（避免排序大行：只选必要字段/补索引/分页策略），修复 MySQL `Out of sort memory (1038)` 导致的 500
+- [ ] 验证：Chrome 访问脚本列表与 `/api/v1/scripts?limit=5` 均正常
+
 ## Feature: 短剧微类型与投流驱动创作闭环（故事→剧本→时间线→分镜）🔥
 
 :information_source: 背景：短剧出海的核心是微类型定位与爽点密度，投流素材反向驱动创作与修订。本功能把“市场/类型/节奏/投流素材”前置到故事与剧本生成链路，并形成评分与修订闭环。
@@ -433,6 +438,12 @@
   - 是否需要与 Git 等外部版本工具同步
 
 ### 进度（功能→后端→前端→验证）
+
+- [x] 后端：新增 deterministic 剧本质检（lint 规则+评分）与同步/异步 API（`/api/v1/scripts/{id}/quality-check(-async)`）
+- [x] 后端：扩展 TaskType `script_review`，新增 Celery 任务 `tasks.script_quality_check`，结果落库到 `Task.parameters.result` 与 `Script.extra_metadata.script_quality`
+- [x] 前端：/tasks 支持 `script_review` 类型筛选与展示
+- [x] 测试：新增 `ai-pic-backend/tests/test_script_quality_lint.py`
+- [x] 验证：Chrome E2E 跑通“触发 script_review → 任务完成 → 拉取 result / script_quality”路径并记录到 `agent_chats`
 
 - [ ] 功能/需求：定义 Draft / Blue / Pink 等版本流程与审批角色
 - [ ] 后端：实现 `script_versions`、`scene_revisions`、`review_notes` 表及关联

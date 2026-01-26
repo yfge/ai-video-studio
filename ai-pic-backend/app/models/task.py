@@ -18,6 +18,7 @@ class TaskType(str, enum.Enum):
     STORY_GENERATION = "story_generation"
     EPISODE_GENERATION = "episode_generation"
     SCRIPT_GENERATION = "script_generation"
+    SCRIPT_REVIEW = "script_review"
     DIALOGUE_AUDIO_GENERATION = "dialogue_audio_generation"
     TIMELINE_GENERATION = "timeline_generation"
     TIMELINE_PIPELINE = "timeline_pipeline"
