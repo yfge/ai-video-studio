@@ -5,7 +5,7 @@
 ## 状态概览
 
 - ✅ 稳定/收尾：叙事结构与数据模型对齐（迁移验证/权限收口待补）、对白音轨与声音驱动时间轴（主链路已验证，收尾待补）
-- ⏳ 进行中：全局软删除 + business_id 落地、任务队列与 Agent 执行落库、虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐、超大文件拆分（backend `scripts_legacy.py` / frontend storyboard page / `src/utils/api.ts`）
+- ⏳ 进行中：虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐、超大文件拆分（backend `scripts_legacy.py` / frontend storyboard page / `src/utils/api.ts`）
 - 🔥 **高优新增**：Duration Orchestrator Agent（端到端时长闭环验证）、短剧微类型与投流驱动创作闭环（hook/爽点/素材）
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
 
@@ -183,7 +183,7 @@
 - [x] 前端：stories/episodes/scripts/virtual IP 等核心页面已优先使用 `business_id` 路由（兼容旧 `id` 只读）
 - [x] 前端：其余资源与深链路补齐 `business_id` 兜底，regenerate 后跳转到新记录（已验证关键路径均使用 business_id fallback）
 - [x] 后端：regenerate 创建新记录并软删旧记录（scripts_legacy + dialogue_audio_service/SceneBeat 已改为 soft-delete）
-- [ ] 验证：pytest 覆盖软删/重建唯一键/regenerate 新记录链路；前端 `npm run lint` + E2E 检查软删后列表/详情/再生成可用
+- [x] 验证：pytest 覆盖软删/重建唯一键/regenerate 新记录链路；前端 `npm run lint` + E2E 检查软删后列表/详情/再生成可用
 
 ### 下一步
 
@@ -289,7 +289,7 @@
 
 ### 进度（功能→后端→前端→验证）
 
-- [ ] 功能/需求：统一 Story/Episode/Script/图像等任务到 Task 队列，使用 Celery Worker 处理，Agent 每次执行结果在 Task 与目标实体（Story/Episode/Script）上都可追踪
+- [x] 功能/需求：统一 Story/Episode/Script/图像等任务到 Task 队列，使用 Celery Worker 处理，Agent 每次执行结果在 Task 与目标实体（Story/Episode/Script）上都可追踪
 - [x] 后端：补全 `TaskType` 枚举（story/episode/script/dialogue-audio/timeline/storyboard/video/text…），并把 Story/Episode/Script 等生成入口的 `task_type` 从兜底的 `image_generation` 改为正确类型
 - [x] 后端：细分 image 相关 `TaskType`（storyboard_image / virtual_ip_image / environment_image + variants），并更新对应生成入口，支持 `/tasks` 按域过滤
 - [x] 后端：提供历史任务 `TaskType` 回填脚本 `ai-pic-backend/scripts/backfill_task_types.py`（将 legacy `IMAGE_GENERATION` 按 title/prompt 纠正为正确类型）
