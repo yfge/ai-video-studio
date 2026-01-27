@@ -1330,11 +1330,12 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
 
         import anyio
 
+        prefer_provider = None
+        model_id = request_dict.get("model")
+        if model_id and ":" in model_id:
+            prefer_provider, model_id = model_id.split(":", 1)
+
         async def _run():
-            prefer_provider = None
-            model_id = request_dict.get("model")
-            if model_id and ":" in model_id:
-                prefer_provider, model_id = model_id.split(":", 1)
             return await ai_service.generate_script(
                 episode=episode_data,
                 story=story_data,
@@ -1409,6 +1410,36 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         )
         if marketing_defaults:
             extra_meta = {**extra_meta, **marketing_defaults}
+
+        if marketing_defaults:
+            try:
+                from app.services.scoring.artifacts import generate_scoring_artifacts
+
+                async def _run_scoring():
+                    episode_ctx = dict(episode_data or {})
+                    episode_ctx.setdefault("episode_number", episode.episode_number)
+                    episode_ctx.setdefault("title", episode.title)
+                    episode_ctx.setdefault("summary", episode.summary)
+                    return await generate_scoring_artifacts(
+                        ai_service=ai_service,
+                        script_content=script_content,
+                        story=story_data,
+                        episode=episode_ctx,
+                        scenes=scenes,
+                        dialogues=dialogues,
+                        hook_plan=marketing_defaults.get("hook_plan"),
+                        prefer_provider=prefer_provider,
+                        prefer_model=model_id,
+                    )
+
+                scoring_artifacts = anyio.run(_run_scoring)
+                extra_meta = {**(extra_meta or {}), "scoring": scoring_artifacts}
+                if agent_run:
+                    agent_run = {**agent_run, "scoring": scoring_artifacts}
+            except Exception:
+                logger.warning("生成评分/投流表失败（generate-async）", exc_info=True)
+                if agent_run is not None:
+                    agent_run = {**agent_run, "scoring_error": "failed_to_generate"}
         if agent_run:
             extra_meta = {
                 **(extra_meta or {}),
@@ -1566,11 +1597,12 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
 
         import anyio
 
+        prefer_provider = None
+        model_id = request_dict.get("model")
+        if model_id and ":" in model_id:
+            prefer_provider, model_id = model_id.split(":", 1)
+
         async def _run():
-            prefer_provider = None
-            model_id = request_dict.get("model")
-            if model_id and ":" in model_id:
-                prefer_provider, model_id = model_id.split(":", 1)
             return await ai_service.generate_script(
                 episode=episode_data,
                 story=story_data,
@@ -1655,6 +1687,36 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
         )
         if marketing_defaults:
             new_meta = {**new_meta, **marketing_defaults}
+
+        if marketing_defaults:
+            try:
+                from app.services.scoring.artifacts import generate_scoring_artifacts
+
+                async def _run_scoring():
+                    episode_ctx = dict(episode_data or {})
+                    episode_ctx.setdefault("episode_number", episode.episode_number)
+                    episode_ctx.setdefault("title", episode.title)
+                    episode_ctx.setdefault("summary", episode.summary)
+                    return await generate_scoring_artifacts(
+                        ai_service=ai_service,
+                        script_content=script_content,
+                        story=story_data,
+                        episode=episode_ctx,
+                        scenes=scenes,
+                        dialogues=dialogues,
+                        hook_plan=marketing_defaults.get("hook_plan"),
+                        prefer_provider=prefer_provider,
+                        prefer_model=model_id,
+                    )
+
+                scoring_artifacts = anyio.run(_run_scoring)
+                new_meta = {**new_meta, "scoring": scoring_artifacts}
+                if agent_run:
+                    agent_run = {**agent_run, "scoring": scoring_artifacts}
+            except Exception:
+                logger.warning("生成评分/投流表失败（regenerate-async）", exc_info=True)
+                if agent_run is not None:
+                    agent_run = {**agent_run, "scoring_error": "failed_to_generate"}
         if agent_run:
             new_meta["agent_run"] = agent_run
 

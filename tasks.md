@@ -71,9 +71,9 @@
 - [x] 后端：新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）（traffic_sheet_generation.txt/yaml）
 - [x] 后端：实现 HookScore/ScriptScore agent 与"投流表生成"service（app/services/scoring/），接入 API 端点（/api/v1/scoring/）
 - [x] 后端：修复 `/api/v1/scoring/score/{script_id}` 与 `/api/v1/scoring/traffic-sheet/{script_id}`（从 DB 读取当前字段 + 统一走 `ai_manager.generate_text`），避免运行时报错
-- [ ] 后端：HookScore/ScriptScore 接入生成链路，低分触发修订或给出改写建议
+- [x] 后端：HookScore/ScriptScore 接入生成链路，生成评分/投流表并输出改写建议（`rewrite_guidance`）
 - [x] 后端：故事生成在 `extra_metadata` 落库 hook 计划与投流素材（hook_plan/twist_density/cliffhanger_plan/ad_snippets）
-- [ ] 后端：在 Task `parameters.agent_run` 中落库评分报告、投流表、素材标签
+- [x] 后端：在 Task `parameters.agent_run` 中落库评分报告、投流表、素材标签（脚本生成/再生成任务）
 
 - [x] 前端：故事/剧集/剧本生成入口新增“市场/微类型/节奏模板”选择与预览说明
 - [x] 前端：新增“爽点评分/风险提示/投流表”视图，支持导出素材清单

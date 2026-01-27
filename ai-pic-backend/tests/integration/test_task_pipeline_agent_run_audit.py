@@ -128,7 +128,11 @@ def test_story_episode_script_generate_async_persists_task_agent_run(
 
     script_resp = client.post(
         "/api/v1/scripts/generate-async",
-        json={"episode_id": episode_id},
+        json={
+            "episode_id": episode_id,
+            "market_region": "SEA",
+            "micro_genre": "test",
+        },
     )
     assert script_resp.status_code == 200, script_resp.text
     script_task_id = script_resp.json()["data"]["task_id"]
@@ -146,6 +150,11 @@ def test_story_episode_script_generate_async_persists_task_agent_run(
         script_params = _load_task_parameters(script_task)
         script_agent_run = script_params.get("agent_run")
         assert isinstance(script_agent_run, dict)
+        scoring = script_agent_run.get("scoring")
+        assert isinstance(scoring, dict)
+        assert "script_score" in scoring
+        assert "traffic_sheet" in scoring
+        assert "asset_tags" in scoring
         script_id = (script_agent_run.get("result_ref") or {}).get("script_id")
         assert isinstance(script_id, int)
 
