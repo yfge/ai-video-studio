@@ -298,6 +298,8 @@
 - [x] 生产：执行一次历史任务 `TaskType` 回填（先 `--dry-run`，并按 user/时间范围分批）
 - [x] 后端：提炼 `task_worker`，改造 `/stories/episodes/scripts/*/generate-async` 统一走 Celery worker（替换 `BackgroundTasks`），并完善 `Task.status` / `result_file_path` / `error_message` 回写
 - [x] 后端：在 Task 的 `parameters.agent_run` 中落库 agent 关键信息（prompt、provider/model、usage、reasoning、result_ref），保证每次执行可在 Task 层审计
+- [x] 后端：提供历史任务 `parameters.agent_run` 回填脚本 `ai-pic-backend/scripts/backfill_task_agent_runs.py`（默认 dry-run；支持按 user/时间分批；FAILED/CANCELLED 补 error context）
+- [ ] 生产：执行一次历史任务 `parameters.agent_run` 回填（先 `--dry-run`，再按 user/时间范围分批 `--apply`）
 - [x] 后端：在 Story/Episode/Script 的 `extra_metadata.agent_run` 中写入 LangGraph/AI 管理器的运行信息，覆盖同步与 `/generate-async` 路径
 - [x] 后端：为虚拟 IP 图像、环境图像、分镜图像等长耗时图像生成操作提供标准 Task 创建 + Celery 异步处理路径（与现有 `/api/v1/tasks` 结构对齐）
 - [x] 后端：新增 `app/core/celery_app.py` 与 `app/services/task_worker.py`，并在 `docker/docker-compose.prod.yml` 中增加 `ai-video-celery-worker` 服务（与 backend 共用镜像与配置）
