@@ -69,6 +69,7 @@
 - [x] 后端：新增短剧故事模板与剧本模板（每集强爽点/反转/收获点/结尾钩子），并针对 deepseek-chat 做指令优化（优化 system_prompt_story/script_short_drama.txt JSON 输出规范）
 - [x] 后端：新增投流素材生成模板（15/30/60 秒素材、标题、字幕钩子）（traffic_sheet_generation.txt/yaml）
 - [x] 后端：实现 HookScore/ScriptScore agent 与"投流表生成"service（app/services/scoring/），接入 API 端点（/api/v1/scoring/）
+- [x] 后端：修复 `/api/v1/scoring/score/{script_id}` 与 `/api/v1/scoring/traffic-sheet/{script_id}`（从 DB 读取当前字段 + 统一走 `ai_manager.generate_text`），避免运行时报错
 - [ ] 后端：HookScore/ScriptScore 接入生成链路，低分触发修订或给出改写建议
 - [x] 后端：故事生成在 `extra_metadata` 落库 hook 计划与投流素材（hook_plan/twist_density/cliffhanger_plan/ad_snippets）
 - [ ] 后端：在 Task `parameters.agent_run` 中落库评分报告、投流表、素材标签

@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.core.logging import get_logger
@@ -87,16 +88,30 @@ class ScriptScoreService:
         )
 
         # 调用 AI 服务
-        response = await self.ai_service.generate_text(
+        ai_manager = getattr(self.ai_service, "ai_manager", None)
+        if not ai_manager:
+            logger.warning("AI manager unavailable, returning default score result")
+            return self._default_score_result()
+
+        schema = ScriptScoreResult.model_json_schema()
+        resp = await ai_manager.generate_text(
             prompt=prompt,
             prefer_provider=prefer_provider,
-            prefer_model=prefer_model,
+            model=prefer_model,
             max_tokens=2000,
             temperature=0.3,  # 低温度以保持评分一致性
+            json_schema={"name": "script_score", "schema": schema},
+            stream=False,
         )
 
+        response_text = resp.data
+        if isinstance(response_text, dict):
+            response_text = json.dumps(response_text, ensure_ascii=False)
+        if not isinstance(response_text, str):
+            response_text = ""
+
         # 解析响应
-        result = self._parse_score_response(response)
+        result = self._parse_score_response(response_text)
 
         logger.info(
             "Script scored",
@@ -105,6 +120,8 @@ class ScriptScoreService:
                 "verdict": result.verdict,
                 "strengths_count": len(result.strengths),
                 "risks_count": len(result.risks),
+                "provider_used": getattr(resp, "provider", None),
+                "model_used": getattr(resp, "model", None),
             },
         )
 
@@ -221,34 +238,24 @@ async def score_script_from_db(
         ScriptScoreResult: 评分结果
     """
     from app.models.script import Script
-    from app.models.episode import Episode
-    from app.models.story import Story
 
-    # 加载剧本
     script = db_session.query(Script).filter(Script.id == script_id).first()
     if not script:
         raise ValueError(f"Script {script_id} not found")
 
     # 加载关联的剧集和故事
-    episode = None
-    story = None
-    if script.episode_id:
-        episode = db_session.query(Episode).filter(Episode.id == script.episode_id).first()
-        if episode and episode.story_id:
-            story = db_session.query(Story).filter(Story.id == episode.story_id).first()
+    episode = getattr(script, "episode", None)
+    story = getattr(episode, "story", None) if episode else None
 
     # 构建上下文
     story_ctx = None
     if story:
+        extra = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
         story_ctx = {
             "title": story.title,
             "genre": story.genre,
-            "market_region": story.extra_metadata.get("market_region")
-            if story.extra_metadata
-            else None,
-            "micro_genre": story.extra_metadata.get("micro_genre")
-            if story.extra_metadata
-            else None,
+            "market_region": extra.get("market_region"),
+            "micro_genre": extra.get("micro_genre"),
         }
 
     episode_ctx = None
@@ -260,10 +267,9 @@ async def score_script_from_db(
         }
 
     # 解析剧本数据
-    script_data = script.script_data or {}
-    scenes = script_data.get("scenes", [])
-    dialogues = script_data.get("dialogues", [])
-    content = script_data.get("content", "")
+    scenes = script.scenes or []
+    dialogues = script.dialogues or []
+    content = script.content or ""
 
     # 评分
     service = ScriptScoreService(ai_service)

@@ -7,6 +7,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from app.schemas.generation import TrafficSheet, TrafficSheetAsset
+from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.scoring.traffic_sheet_service import TrafficSheetService
 
 
@@ -17,7 +18,8 @@ class TestTrafficSheetService:
     def mock_ai_service(self):
         """Create a mock AI service."""
         service = MagicMock()
-        service.generate_text = AsyncMock()
+        service.ai_manager = MagicMock()
+        service.ai_manager.generate_text = AsyncMock()
         return service
 
     @pytest.fixture
@@ -134,7 +136,9 @@ class TestTrafficSheetService:
         self, traffic_service, mock_ai_service
     ):
         """Test successful traffic sheet generation."""
-        mock_ai_service.generate_text.return_value = '''
+        mock_ai_service.ai_manager.generate_text.return_value = AIResponse(
+            success=True,
+            data='''
         ```json
         {
             "assets": [
@@ -151,7 +155,12 @@ class TestTrafficSheetService:
             ]
         }
         ```
-        '''
+        ''',
+            provider="mock",
+            model="mock",
+            task_type=AITaskType.SCRIPT_WRITING,
+            model_type=AIModelType.TEXT_GENERATION,
+        )
 
         result = await traffic_service.generate_traffic_sheet(
             script_content="Test script",
@@ -162,7 +171,7 @@ class TestTrafficSheetService:
         assert len(result.assets) == 1
         assert result.assets[0].duration_seconds == 15
         assert result.assets[0].hook_type == "betrayal"
-        mock_ai_service.generate_text.assert_called_once()
+        mock_ai_service.ai_manager.generate_text.assert_called_once()
 
 
 class TestTrafficSheetAsset:

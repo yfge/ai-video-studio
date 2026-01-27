@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -97,17 +98,38 @@ class TrafficSheetService:
         )
 
         # 调用 AI 服务
-        response = await self.ai_service.generate_text(
+        ai_manager = getattr(self.ai_service, "ai_manager", None)
+        if not ai_manager:
+            logger.warning("AI manager unavailable, returning empty traffic sheet")
+            return TrafficSheet(
+                episode_id=episode_id,
+                script_id=script_id,
+                market_region=story.get("market_region") if story else None,
+                micro_genre=story.get("micro_genre") if story else None,
+                assets=[],
+                generated_at=datetime.utcnow(),
+            )
+
+        schema = TrafficSheet.model_json_schema()
+        resp = await ai_manager.generate_text(
             prompt=prompt,
             prefer_provider=prefer_provider,
-            prefer_model=prefer_model,
+            model=prefer_model,
             max_tokens=3000,
             temperature=0.5,
+            json_schema={"name": "traffic_sheet_generation", "schema": schema},
+            stream=False,
         )
+
+        response_text = resp.data
+        if isinstance(response_text, dict):
+            response_text = json.dumps(response_text, ensure_ascii=False)
+        if not isinstance(response_text, str):
+            response_text = ""
 
         # 解析响应
         result = self._parse_traffic_sheet_response(
-            response,
+            response_text,
             episode_id=episode_id,
             script_id=script_id,
             story=story,
@@ -204,56 +226,51 @@ async def generate_traffic_sheet_from_db(
         TrafficSheet: 投流表
     """
     from app.models.script import Script
-    from app.models.episode import Episode
-    from app.models.story import Story
+    from app.utils.marketing_meta import merge_marketing_meta
 
-    # 加载剧本
     script = db_session.query(Script).filter(Script.id == script_id).first()
     if not script:
         raise ValueError(f"Script {script_id} not found")
 
     # 加载关联的剧集和故事
-    episode = None
-    story = None
-    if script.episode_id:
-        episode = db_session.query(Episode).filter(Episode.id == script.episode_id).first()
-        if episode and episode.story_id:
-            story = db_session.query(Story).filter(Story.id == episode.story_id).first()
+    episode = getattr(script, "episode", None)
+    story = getattr(episode, "story", None) if episode else None
 
     # 构建上下文
     story_ctx = None
     if story:
+        marketing_meta = merge_marketing_meta(
+            story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
+            script.extra_metadata if isinstance(script.extra_metadata, dict) else {},
+            script.generation_params if isinstance(script.generation_params, dict) else {},
+        )
         story_ctx = {
             "title": story.title,
             "genre": story.genre,
-            "market_region": story.extra_metadata.get("market_region")
-            if story.extra_metadata
-            else None,
-            "micro_genre": story.extra_metadata.get("micro_genre")
-            if story.extra_metadata
-            else None,
+            "market_region": marketing_meta.get("market_region"),
+            "micro_genre": marketing_meta.get("micro_genre"),
         }
 
-    # 解析剧本数据
-    script_data = script.script_data or {}
-    scenes = script_data.get("scenes", [])
-    dialogues = script_data.get("dialogues", [])
-    content = script_data.get("content", "")
-    metadata = script_data.get("metadata", {})
-    hook_plan = metadata.get("hook_plan")
+    marketing_meta = merge_marketing_meta(
+        story.extra_metadata if story and isinstance(story.extra_metadata, dict) else {},
+        episode.extra_metadata if episode and isinstance(episode.extra_metadata, dict) else {},
+        script.extra_metadata if isinstance(script.extra_metadata, dict) else {},
+        script.generation_params if isinstance(script.generation_params, dict) else {},
+    )
+    hook_plan = marketing_meta.get("hook_plan")
 
     # 生成投流表
     service = TrafficSheetService(ai_service)
     return await service.generate_traffic_sheet(
-        script_content=content,
+        script_content=script.content or "",
         episode_number=episode.episode_number if episode else 1,
         story=story_ctx,
         episode_id=episode.id if episode else None,
         episode_title=episode.title if episode else None,
         episode_summary=episode.summary if episode else None,
         script_id=script_id,
-        scenes=scenes,
-        dialogues=dialogues,
+        scenes=script.scenes or [],
+        dialogues=script.dialogues or [],
         hook_plan=hook_plan,
         prefer_provider=prefer_provider,
         prefer_model=prefer_model,

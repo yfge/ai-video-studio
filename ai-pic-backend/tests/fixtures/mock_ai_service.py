@@ -51,6 +51,65 @@ def mock_ai_service(monkeypatch):
                         usage={},
                     )
 
+                async def generate_text(self, prompt: str, **_: str):
+                    from app.services.providers.base import (
+                        AIModelType,
+                        AIResponse,
+                        AITaskType,
+                    )
+
+                    if "投流表" in prompt or "Traffic Sheet" in prompt:
+                        payload = {
+                            "episode_id": 1,
+                            "script_id": 1,
+                            "market_region": "NA",
+                            "micro_genre": "test",
+                            "assets": [
+                                {
+                                    "asset_id": "ep1_asset01_15s",
+                                    "duration_seconds": 15,
+                                    "market_region": "NA",
+                                    "micro_genre": "test",
+                                    "hook_type": "reveal",
+                                    "source_episode": 1,
+                                    "source_timecode_start": "00:00:00",
+                                    "source_timecode_end": "00:00:15",
+                                    "key_line": "mock line",
+                                    "visual_hook": "mock visual",
+                                    "shot_list": ["shot 1"],
+                                    "cliff_or_cta": "mock cta",
+                                    "music_reference": None,
+                                    "compliance_flags": [],
+                                }
+                            ],
+                        }
+                    else:
+                        payload = {
+                            "overall_score": 4.2,
+                            "dimension_scores": {
+                                "conflict_intensity": 4.5,
+                                "character_recognizability": 4.0,
+                                "cultural_fit": 4.5,
+                                "clip_ability": 4.0,
+                                "logic_coherence": 4.0,
+                            },
+                            "verdict": "pass",
+                            "strengths": ["mock strength"],
+                            "risks": [],
+                            "rewrite_guidance": [],
+                            "suggested_ad_hooks": ["mock hook"],
+                        }
+
+                    return AIResponse(
+                        success=True,
+                        data=json.dumps(payload, ensure_ascii=False),
+                        provider="mock-provider",
+                        model="mock-model",
+                        task_type=AITaskType.STORY_GENERATION,
+                        model_type=AIModelType.TEXT_GENERATION,
+                        usage={},
+                    )
+
             self.ai_manager = _MockAIManager()
             self.logger = _Logger()
 

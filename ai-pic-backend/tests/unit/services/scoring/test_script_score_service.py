@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.schemas.generation import ScriptScoreDimensions, ScriptScoreResult
+from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.scoring.script_score_service import (
     ScriptScoreService,
     PASS_OVERALL_THRESHOLD,
@@ -22,7 +23,8 @@ class TestScriptScoreService:
     def mock_ai_service(self):
         """Create a mock AI service."""
         service = MagicMock()
-        service.generate_text = AsyncMock()
+        service.ai_manager = MagicMock()
+        service.ai_manager.generate_text = AsyncMock()
         return service
 
     @pytest.fixture
@@ -167,7 +169,9 @@ class TestScriptScoreService:
     @pytest.mark.asyncio
     async def test_score_script_success(self, score_service, mock_ai_service):
         """Test successful script scoring."""
-        mock_ai_service.generate_text.return_value = '''
+        mock_ai_service.ai_manager.generate_text.return_value = AIResponse(
+            success=True,
+            data='''
         ```json
         {
             "overall_score": 4.5,
@@ -185,7 +189,12 @@ class TestScriptScoreService:
             "suggested_ad_hooks": ["15s: Opening scene"]
         }
         ```
-        '''
+        ''',
+            provider="mock",
+            model="mock",
+            task_type=AITaskType.SCRIPT_WRITING,
+            model_type=AIModelType.TEXT_GENERATION,
+        )
 
         result = await score_service.score_script(
             script_content="Test script content",
@@ -195,7 +204,7 @@ class TestScriptScoreService:
 
         assert result.overall_score == 4.5
         assert result.verdict == "pass"
-        mock_ai_service.generate_text.assert_called_once()
+        mock_ai_service.ai_manager.generate_text.assert_called_once()
 
 
 class TestScoreThresholds:

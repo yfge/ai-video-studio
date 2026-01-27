@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.schemas.generation import ScriptScoreResult, TrafficSheet
-from app.services.ai_service import AIService
 from app.services.scoring import ScriptScoreService, TrafficSheetService
 
 logger = get_logger()
@@ -85,7 +84,8 @@ async def score_script(
             detail="必须提供 script_id 或 script_content",
         )
 
-    ai_service = AIService(db)
+    from app.services.ai_service import ai_service
+
     score_service = ScriptScoreService(ai_service)
 
     # 如果提供了 script_id，从数据库加载
@@ -161,7 +161,8 @@ async def generate_traffic_sheet(
             detail="必须提供 script_id 或 script_content",
         )
 
-    ai_service = AIService(db)
+    from app.services.ai_service import ai_service
+
     traffic_service = TrafficSheetService(ai_service)
 
     # 如果提供了 script_id，从数据库加载
@@ -218,8 +219,7 @@ async def get_script_score(
     根据剧本 ID 获取评分（便捷接口）。
     """
     from app.services.scoring import score_script_from_db
-
-    ai_service = AIService(db)
+    from app.services.ai_service import ai_service
 
     try:
         result = await score_script_from_db(
@@ -248,8 +248,7 @@ async def get_traffic_sheet(
     根据剧本 ID 生成投流表（便捷接口）。
     """
     from app.services.scoring import generate_traffic_sheet_from_db
-
-    ai_service = AIService(db)
+    from app.services.ai_service import ai_service
 
     try:
         result = await generate_traffic_sheet_from_db(
