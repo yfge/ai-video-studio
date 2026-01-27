@@ -23,7 +23,7 @@ def persist_task_agent_run(
     request_dict: Optional[Dict[str, Any]] = None,
     db_session=None,
 ) -> None:
-    """Persist agent_run into Task.parameters for a completed task."""
+    """Persist agent_run into Task.parameters for a terminal task (completed/failed/cancelled)."""
 
     from app.models.task import Task, TaskStatus
 
@@ -39,12 +39,19 @@ def persist_task_agent_run(
         task: Task | None = db.query(Task).filter(Task.id == task_id).first()
         if not task:
             return
-        if task.status != TaskStatus.COMPLETED:
+        terminal_statuses = {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED}
+        if task.status not in terminal_statuses:
             return
 
         agent_run = build_agent_run(
             db, task, user_id=user_id, kind=kind, request_dict=request_dict
         )
+        if not agent_run and task.status == TaskStatus.COMPLETED:
+            return
+
+        if task.status in {TaskStatus.FAILED, TaskStatus.CANCELLED}:
+            agent_run = _enrich_with_failure_context(task, kind=kind, agent_run=agent_run)
+
         if not agent_run:
             return
 
@@ -54,9 +61,41 @@ def persist_task_agent_run(
             db.close()
 
 
+def _enrich_with_failure_context(task, *, kind: str, agent_run: Dict[str, Any]) -> Dict[str, Any]:
+    enriched: Dict[str, Any] = dict(agent_run or {})
+    if not enriched.get("generation_method") and kind:
+        enriched["generation_method"] = kind
+    if not enriched.get("prompt") and getattr(task, "prompt", None):
+        enriched["prompt"] = task.prompt
+    enriched["task_status"] = getattr(task.status, "value", str(task.status))
+
+    error_message = getattr(task, "error_message", None)
+    if isinstance(error_message, str) and error_message.strip():
+        enriched["error"] = {"message": error_message.strip()}
+
+    if not enriched.get("result_ref"):
+        result_ref = _best_effort_result_ref(task)
+        if result_ref:
+            enriched["result_ref"] = result_ref
+
+    return enriched
+
+
+def _best_effort_result_ref(task) -> Dict[str, Any]:
+    params = loads_task_parameters(getattr(task, "parameters", None))
+    keys = (
+        "story_id",
+        "episode_id",
+        "script_id",
+        "virtual_ip_id",
+        "env_id",
+        "environment_id",
+    )
+    return {key: params[key] for key in keys if key in params}
+
+
 def _patch_task_parameters(db, task, patch: Dict[str, Any]) -> None:
     base = loads_task_parameters(task.parameters)
     merged = deep_merge_dict(base, patch)
     task.parameters = json.dumps(merged, ensure_ascii=False)
     db.commit()
-

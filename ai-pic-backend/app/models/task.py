@@ -10,6 +10,7 @@ class TaskStatus(str, enum.Enum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 class TaskType(str, enum.Enum):
     IMAGE_GENERATION = "image_generation"

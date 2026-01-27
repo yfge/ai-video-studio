@@ -25,7 +25,7 @@ def _serialize_task(task: Task) -> TaskResponse:
             params = None
 
     progress_detail = task.description or None
-    if task.status == TaskStatus.FAILED and task.error_message:
+    if task.status in {TaskStatus.FAILED, TaskStatus.CANCELLED} and task.error_message:
         progress_detail = task.error_message
 
     return TaskResponse(

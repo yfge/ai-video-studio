@@ -220,10 +220,16 @@ class VideoTaskPollingService:
             for t in tasks
         ):
             task.status = TaskStatus.FAILED
+            if not task.error_message:
+                for sub in tasks:
+                    sub_err = getattr(sub, "error_message", None)
+                    if isinstance(sub_err, str) and sub_err.strip():
+                        task.error_message = sub_err.strip()
+                        break
         else:
             task.status = TaskStatus.COMPLETED
         self.db.commit()
-        if task.status == TaskStatus.COMPLETED:
+        if task.status in {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED}:
             persist_task_agent_run(
                 task_id=task.id,
                 user_id=task.user_id,

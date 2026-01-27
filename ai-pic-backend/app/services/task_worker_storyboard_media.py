@@ -106,10 +106,19 @@ def storyboard_video_generate_task(
         "return_last_frame": payload.get("return_last_frame"),
         "camera_control": payload.get("camera_control"),
     }
-    _process_storyboard_video_task(
-        task_id,
-        script_id,
-        frame_indexes,
-        selections,
-        options=options,
-    )
+    try:
+        _process_storyboard_video_task(
+            task_id,
+            script_id,
+            frame_indexes,
+            selections,
+            options=options,
+        )
+    finally:
+        from app.services.task_agent_run_persistence import persist_task_agent_run
+
+        persist_task_agent_run(
+            task_id=task_id,
+            user_id=user_id,
+            kind="video_generation",
+        )
