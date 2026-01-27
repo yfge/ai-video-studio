@@ -24,7 +24,12 @@ from app.schemas.generation import (
     StoryboardPlanScene,
 )
 from app.schemas.generation_requests import ScriptGenerationRequest
-from app.schemas.script import ScriptCreate, ScriptResponse, ScriptUpdate
+from app.schemas.script import (
+    ScriptCreate,
+    ScriptListItemResponse,
+    ScriptResponse,
+    ScriptUpdate,
+)
 from app.schemas.story_structure import SceneCreate, ShotCreate
 from app.schemas.style import StyleSpec
 from app.services import story_structure_service as story_structure_svc
@@ -59,7 +64,7 @@ from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_
 from app.utils.script_parser import extract_script_structure
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 
 def _now_iso() -> str:
@@ -3702,7 +3707,7 @@ async def generate_storyboard_video(
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 
-@router.get("/", response_model=List[ScriptResponse])
+@router.get("/", response_model=List[ScriptListItemResponse])
 async def get_scripts(
     episode_id: Optional[int] = Query(None),
     episode_business_id: Optional[str] = Query(None),
@@ -3714,8 +3719,27 @@ async def get_scripts(
     db: Session = Depends(get_db),
 ):
     """获取剧本列表"""
+    list_columns = (
+        Script.id,
+        Script.business_id,
+        Script.episode_id,
+        Script.episode_business_id,
+        Script.title,
+        Script.format_type,
+        Script.language,
+        Script.status,
+        Script.version,
+        Script.tags,
+        Script.page_count,
+        Script.word_count,
+        Script.character_count,
+        Script.ai_model,
+        Script.created_at,
+        Script.updated_at,
+    )
     query = (
         _not_deleted(db.query(Script), Script)
+        .options(load_only(*list_columns))
         .join(Episode, Script.episode_id == Episode.id)
         .join(Story, Episode.story_id == Story.id)
         .filter(Episode.is_deleted.is_(False))
@@ -3737,11 +3761,12 @@ async def get_scripts(
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(Story.user_id == current_user.id)
 
-    scripts = query.order_by(Script.created_at.desc()).offset(skip).limit(limit).all()
-    return [ScriptResponse.from_orm(script) for script in scripts]
+    # Avoid MySQL sort buffer exhaustion by ordering on indexed primary key.
+    scripts = query.order_by(Script.id.desc()).offset(skip).limit(limit).all()
+    return [ScriptListItemResponse.from_orm(script) for script in scripts]
 
 
-@router.get("", response_model=List[ScriptResponse], include_in_schema=False)
+@router.get("", response_model=List[ScriptListItemResponse], include_in_schema=False)
 async def get_scripts_no_slash(
     episode_id: Optional[int] = Query(None),
     episode_business_id: Optional[str] = Query(None),
@@ -3881,7 +3906,7 @@ async def delete_script_by_business_id(
     return {"message": "剧本删除成功"}
 
 
-@router.get("/episode/{episode_id}", response_model=List[ScriptResponse])
+@router.get("/episode/{episode_id}", response_model=List[ScriptListItemResponse])
 async def get_episode_scripts(
     episode_id: int,
     episode_business_id: Optional[str] = Query(None),
@@ -3905,6 +3930,26 @@ async def get_episode_scripts(
     # 让前端默认使用最新一条。
     scripts = (
         _not_deleted(db.query(Script), Script)
+        .options(
+            load_only(
+                Script.id,
+                Script.business_id,
+                Script.episode_id,
+                Script.episode_business_id,
+                Script.title,
+                Script.format_type,
+                Script.language,
+                Script.status,
+                Script.version,
+                Script.tags,
+                Script.page_count,
+                Script.word_count,
+                Script.character_count,
+                Script.ai_model,
+                Script.created_at,
+                Script.updated_at,
+            )
+        )
         .filter(Script.episode_id == episode_id)
         .limit(50)
         .all()
@@ -3912,11 +3957,11 @@ async def get_episode_scripts(
     scripts_sorted = sorted(
         scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
     )
-    return [ScriptResponse.from_orm(script) for script in scripts_sorted]
+    return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
 
 
 @router.get(
-    "/episode/business/{episode_business_id}", response_model=List[ScriptResponse]
+    "/episode/business/{episode_business_id}", response_model=List[ScriptListItemResponse]
 )
 async def get_episode_scripts_by_business_id(
     episode_business_id: str,
@@ -3935,6 +3980,26 @@ async def get_episode_scripts_by_business_id(
 
     scripts = (
         _not_deleted(db.query(Script), Script)
+        .options(
+            load_only(
+                Script.id,
+                Script.business_id,
+                Script.episode_id,
+                Script.episode_business_id,
+                Script.title,
+                Script.format_type,
+                Script.language,
+                Script.status,
+                Script.version,
+                Script.tags,
+                Script.page_count,
+                Script.word_count,
+                Script.character_count,
+                Script.ai_model,
+                Script.created_at,
+                Script.updated_at,
+            )
+        )
         .filter(Script.episode_id == episode.id)
         .limit(50)
         .all()
@@ -3942,7 +4007,7 @@ async def get_episode_scripts_by_business_id(
     scripts_sorted = sorted(
         scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
     )
-    return [ScriptResponse.from_orm(script) for script in scripts_sorted]
+    return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
 
 
 async def _regenerate_script_instance(

@@ -231,6 +231,30 @@ class ScriptResponse(ScriptBase):
         from_attributes = True
 
 
+class ScriptListItemResponse(BaseModel):
+    """Lightweight script response for list endpoints (no content/scenes/dialogues)."""
+
+    id: int
+    business_id: str
+    episode_id: int
+    episode_business_id: Optional[str] = None
+    title: str
+    format_type: str
+    language: str
+    status: str
+    version: str
+    tags: Optional[List[str]] = None
+    page_count: Optional[int] = None
+    word_count: Optional[int] = None
+    character_count: Optional[int] = None
+    ai_model: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # 模板相关schemas
 class ScriptTemplateBase(BaseModel):
     name: str = Field(..., max_length=255)
