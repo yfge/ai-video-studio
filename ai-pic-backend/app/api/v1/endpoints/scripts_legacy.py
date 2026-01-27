@@ -3735,9 +3735,8 @@ async def get_scripts(
         Script.created_at,
         Script.updated_at,
     )
-    query = (
+    base_query = (
         _not_deleted(db.query(Script), Script)
-        .options(load_only(*list_columns))
         .join(Episode, Script.episode_id == Episode.id)
         .join(Story, Episode.story_id == Story.id)
         .filter(Episode.is_deleted.is_(False))
@@ -3745,22 +3744,35 @@ async def get_scripts(
     )
 
     if episode_id:
-        query = query.filter(Script.episode_id == episode_id)
+        base_query = base_query.filter(Script.episode_id == episode_id)
     if episode_business_id:
-        query = query.filter(Episode.business_id == episode_business_id)
+        base_query = base_query.filter(Episode.business_id == episode_business_id)
 
     if status:
-        query = query.filter(Script.status == status)
+        base_query = base_query.filter(Script.status == status)
 
     if format_type:
-        query = query.filter(Script.format_type == format_type)
+        base_query = base_query.filter(Script.format_type == format_type)
 
     # 只允许访问当前用户故事下的剧本
     if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(Story.user_id == current_user.id)
+        base_query = base_query.filter(Story.user_id == current_user.id)
 
     # Avoid MySQL sort buffer exhaustion by ordering on indexed primary key.
-    scripts = query.order_by(Script.id.desc()).offset(skip).limit(limit).all()
+    id_subquery = (
+        base_query.with_entities(Script.id)
+        .order_by(Script.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .subquery()
+    )
+    scripts = (
+        _not_deleted(db.query(Script), Script)
+        .options(load_only(*list_columns))
+        .join(id_subquery, Script.id == id_subquery.c.id)
+        .order_by(Script.id.desc())
+        .all()
+    )
     return [ScriptListItemResponse.from_orm(script) for script in scripts]
 
 

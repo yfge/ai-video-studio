@@ -47,6 +47,7 @@
 ## Fix: Scripts 列表查询 500（MySQL sort buffer）
 
 - [x] 后端：优化 `/api/v1/scripts` 列表查询（lite 列表项 + `ORDER BY id DESC`），修复 MySQL `Out of sort memory (1038)` 导致的 500
+- [x] 后端：进一步加固（先查 `id` 再 `load_only` 拉取列表字段），降低 join/filter 下 MySQL filesort 的 sort buffer 风险
 - [x] 验证：Chrome 访问 `/api/v1/scripts?limit=5` 返回 200
 
 ## Feature: 短剧微类型与投流驱动创作闭环（故事→剧本→时间线→分镜）🔥
