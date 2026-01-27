@@ -62,7 +62,7 @@ from app.services.task_worker import (
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.script_parser import extract_script_structure
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, load_only
 
@@ -1852,7 +1852,6 @@ def _process_script_audio_storyboard_task(
 @router.post("/generate-async")
 async def generate_script_async(
     request: ScriptGenerationRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -3429,7 +3428,6 @@ class StoryboardImageRequest(BaseModel):
 async def generate_storyboard_images(
     script_id: int,
     body: StoryboardImageRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):

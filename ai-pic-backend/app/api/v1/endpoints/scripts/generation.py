@@ -7,7 +7,7 @@ synchronous generation, async generation, and prompt preview.
 
 import json
 from typing import Optional
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -58,7 +58,6 @@ async def generate_script(
 @router.post("/generate-async")
 async def generate_script_async(
     request: ScriptGenerationRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):

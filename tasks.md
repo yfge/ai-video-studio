@@ -285,6 +285,7 @@
 ## Feature: 任务队列与 Agent 执行落库（高优）
 
 :information_source: 背景：已有 Task 表与 Story/Episode/Script 异步生成入口（`/generate-async`）、前端任务管理页 `/tasks`，但任务执行目前依赖 `BackgroundTasks`、散落在各 endpoint 中，LangGraph Agents（故事/剧集/剧本）也未统一落库运行轨迹，难以在任务层面排查与审计。
+:information_source: 背景：已有 Task 表与 Story/Episode/Script 异步生成入口（`/generate-async`）、前端任务管理页 `/tasks`；任务执行已统一走 Celery worker，但 Task 层缺少 `parameters.agent_run` 审计信息，导致排查需跳转到目标实体或日志，审计不直观。
 
 ### 进度（功能→后端→前端→验证）
 
@@ -292,21 +293,21 @@
 - [x] 后端：补全 `TaskType` 枚举（story/episode/script/dialogue-audio/timeline/storyboard/video/text…），并把 Story/Episode/Script 等生成入口的 `task_type` 从兜底的 `image_generation` 改为正确类型
 - [x] 后端：提供历史任务 `TaskType` 回填脚本 `ai-pic-backend/scripts/backfill_task_types.py`（将 legacy `IMAGE_GENERATION` 按 title/prompt 纠正为正确类型）
 - [ ] 生产：执行一次历史任务 `TaskType` 回填（建议先 `--dry-run`，并按 user/时间范围分批）
-- [ ] 后端：提炼 `task_runner` / `task_worker`，改造 `/stories/episodes/scripts/*/generate-async` 统一走 Celery worker（替换 `BackgroundTasks`），并完善 `Task.status` / `result_file_path` / `error_message` 回写
-- [ ] 后端：在 Task 的 `parameters.agent_run` 中落库 agent 输入/输出（prompt、normalized 结构、provider/model、usage、reasoning），保证每次 LangGraph 执行有完整轨迹
+- [x] 后端：提炼 `task_worker`，改造 `/stories/episodes/scripts/*/generate-async` 统一走 Celery worker（替换 `BackgroundTasks`），并完善 `Task.status` / `result_file_path` / `error_message` 回写
+- [x] 后端：在 Task 的 `parameters.agent_run` 中落库 agent 关键信息（prompt、provider/model、usage、reasoning、result_ref），保证每次执行可在 Task 层审计
 - [x] 后端：在 Story/Episode/Script 的 `extra_metadata.agent_run` 中写入 LangGraph/AI 管理器的运行信息，覆盖同步与 `/generate-async` 路径
 - [x] 后端：为虚拟 IP 图像、环境图像、分镜图像等长耗时图像生成操作提供标准 Task 创建 + Celery 异步处理路径（与现有 `/api/v1/tasks` 结构对齐）
 - [x] 后端：新增 `app/core/celery_app.py` 与 `app/services/task_worker.py`，并在 `docker/docker-compose.prod.yml` 中增加 `ai-video-celery-worker` 服务（与 backend 共用镜像与配置）
 - [x] 后端：修复 OpenAI `response_format=json_schema` 在 `script_dialogues` 场景的 schema 校验 400（完善 item schema + 非 strict schema 自动回退 `json_object`）
 - [x] 前端：在任务管理页 `/tasks` 中支持按 `task_type` 过滤
-- [ ] 前端：在任务详情中展示 `parameters.agent_run` 的关键信息（provider/model/usage/reasoning）
+- [x] 前端：在任务详情中展示 `parameters.agent_run` 的关键信息（provider/model/usage/reasoning/prompt）
 - [ ] 验证：为 Story/Episode/Script/图像任务增加集成测试（任务创建 → Celery handler 执行 → Task 状态与目标实体写入校验），并在 `TESTING_GUIDE.md` 中记录 Celery 本地运行与调试流程
 
 ### 下一步
 
-- 统一 `process_task` 执行入口，改造 `/stories/episodes/scripts/*/generate-async` 走 Celery worker（替换 `BackgroundTasks`）
-- 在 Task `parameters.agent_run` 落库 LangGraph 轨迹，并在 `/tasks` UI 展示关键信息（provider/model/usage/reasoning）
-- 补测试与 `TESTING_GUIDE.md`：记录 Celery 本地运行/调试流程与任务链路验证路径
+- 生产：执行一次历史任务 `TaskType` 回填（建议先 `--dry-run`，并按 user/时间范围分批）
+- 验证：补齐 Story/Episode/Script/图像任务集成测试（任务创建 → handler 执行 → Task/目标实体写入校验）
+- 文档：在 `TESTING_GUIDE.md` 记录 Celery 本地运行/调试与任务链路验证路径
 
 ## Feature: 场景/环境资产与分镜联动
 

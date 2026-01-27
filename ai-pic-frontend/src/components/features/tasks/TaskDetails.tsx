@@ -3,7 +3,7 @@
 import type { Task as APITask } from '@/utils/api'
 
 import type { PersistedStyleInfo } from './utils'
-import { renderJson } from './utils'
+import { asRecord, renderJson } from './utils'
 
 type TaskDetailsProps = {
   task: APITask
@@ -12,6 +12,9 @@ type TaskDetailsProps = {
 }
 
 export function TaskDetails({ task, persistedStyle, persistedLoading }: TaskDetailsProps) {
+  const params = asRecord(task.parameters) ?? ({} as Record<string, unknown>)
+  const agentRun = params.agent_run
+
   return (
     <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 space-y-3">
       <div className="flex flex-wrap items-center gap-4">
@@ -21,6 +24,82 @@ export function TaskDetails({ task, persistedStyle, persistedLoading }: TaskDeta
         ) : null}
       </div>
 
+      {(() => {
+        const run = asRecord(agentRun)
+        if (!run) return null
+
+        const outline = asRecord(run.outline)
+        const episodes = Array.isArray(run.episodes) ? run.episodes : null
+
+        const renderRun = (label: string, value: unknown) => {
+          const record = asRecord(value)
+          if (!record) return null
+          const prompt = typeof record.prompt === 'string' ? record.prompt : null
+          const provider = record.provider_used
+          const model = record.model_used
+          const usage = record.usage
+          const reasoning = record.reasoning
+          const method = record.generation_method
+
+          return (
+            <div className="rounded border border-gray-200 bg-white p-2">
+              <div className="font-medium text-gray-800">{label}</div>
+              <div className="mt-1 break-all">provider：{String(provider || '—')}</div>
+              <div className="mt-1 break-all">model：{String(model || '—')}</div>
+              {method ? <div className="mt-1 break-all">method：{String(method)}</div> : null}
+              {usage ? (
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-gray-700">usage</summary>
+                  <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-gray-50 p-2 border border-gray-200">
+                    {renderJson(usage)}
+                  </pre>
+                </details>
+              ) : null}
+              {reasoning ? (
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-gray-700">reasoning</summary>
+                  <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-gray-50 p-2 border border-gray-200">
+                    {renderJson(reasoning)}
+                  </pre>
+                </details>
+              ) : null}
+              {prompt ? (
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-gray-700">prompt</summary>
+                  <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-gray-50 p-2 border border-gray-200">
+                    {prompt}
+                  </pre>
+                </details>
+              ) : null}
+            </div>
+          )
+        }
+
+        return (
+          <div>
+            <div className="font-medium text-gray-800">Agent 执行轨迹</div>
+            <div className="mt-2 space-y-2">
+              {outline ? renderRun('大纲', outline) : renderRun('本次执行', run)}
+              {episodes && episodes.length ? (
+                <details>
+                  <summary className="cursor-pointer text-gray-700">
+                    剧集执行（{episodes.length}）
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    {episodes.map((item, idx) => {
+                      const rec = asRecord(item)
+                      const epNum = rec?.episode_number
+                      const label = epNum ? `第${String(epNum)}集` : `第${idx + 1}条`
+                      return <div key={idx}>{renderRun(label, item)}</div>
+                    })}
+                  </div>
+                </details>
+              ) : null}
+            </div>
+          </div>
+        )
+      })()}
+
       <div>
         <div className="font-medium text-gray-800">参数</div>
         <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-white p-2 border border-gray-200">
@@ -29,7 +108,6 @@ export function TaskDetails({ task, persistedStyle, persistedLoading }: TaskDeta
       </div>
 
       {(() => {
-        const params = (task.parameters || {}) as Record<string, unknown>
         const presetId = params.style_preset_id
         const spec = params.style_spec
         if (!presetId && !spec) return null
@@ -65,4 +143,3 @@ export function TaskDetails({ task, persistedStyle, persistedLoading }: TaskDeta
     </div>
   )
 }
-

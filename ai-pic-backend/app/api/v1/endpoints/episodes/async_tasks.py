@@ -7,7 +7,7 @@ Handles asynchronous episode generation via Celery workers.
 import json
 from typing import Any, Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, Depends
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -580,7 +580,6 @@ def _process_fallback_result(
 @router.post("/generate-async")
 async def generate_episodes_async(
     request: EpisodeGenerationRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
