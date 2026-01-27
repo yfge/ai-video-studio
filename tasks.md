@@ -301,13 +301,12 @@
 - [x] 后端：修复 OpenAI `response_format=json_schema` 在 `script_dialogues` 场景的 schema 校验 400（完善 item schema + 非 strict schema 自动回退 `json_object`）
 - [x] 前端：在任务管理页 `/tasks` 中支持按 `task_type` 过滤
 - [x] 前端：在任务详情中展示 `parameters.agent_run` 的关键信息（provider/model/usage/reasoning/prompt）
-- [ ] 验证：为 Story/Episode/Script/图像任务增加集成测试（任务创建 → Celery handler 执行 → Task 状态与目标实体写入校验），并在 `TESTING_GUIDE.md` 中记录 Celery 本地运行与调试流程
+- [x] 验证：为 Story/Episode/Script/图像任务增加集成测试（任务创建 → handler 执行 → Task 状态与目标实体写入校验），并在 `TESTING_GUIDE.md` 中记录 Celery 本地运行与调试流程
 
 ### 下一步
 
 - 生产：执行一次历史任务 `TaskType` 回填（建议先 `--dry-run`，并按 user/时间范围分批）
-- 验证：补齐 Story/Episode/Script/图像任务集成测试（任务创建 → handler 执行 → Task/目标实体写入校验）
-- 文档：在 `TESTING_GUIDE.md` 记录 Celery 本地运行/调试与任务链路验证路径
+- 后端：补齐 dialogue-audio/timeline/storyboard/video 等任务的 `parameters.agent_run` 审计（统一到 Task 层）
 
 ## Feature: 场景/环境资产与分镜联动
 

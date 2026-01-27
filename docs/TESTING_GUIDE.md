@@ -83,6 +83,34 @@
   - DALL·E 报 400/500：
     - 优先检查 `size` 是否在官方允许列表中，再检查密钥/配额。
 
+## 任务队列与可审计性验证（/tasks + Celery）
+
+> 适用于所有走异步任务的入口：故事/剧集/剧本/文生图/图生图/分镜图像/分镜视频等。目标是在 `/tasks` 中可直接查看每个任务的 `task_type` 与 `Agent 执行轨迹（parameters.agent_run）`。
+
+### Celery worker 运行确认
+
+1. 启动开发环境（如已启动可跳过）：
+   - `cd docker && docker compose -f docker-compose.dev.yml up -d --build`
+2. 确认 worker/beat 正常运行：
+   - `docker ps | rg \"ai-video-(celery-worker|celery-beat)\"`
+   - 观察日志：`docker logs -f ai-video-celery-worker`
+3. 代码改动后如任务未执行/仍跑旧逻辑，重启 worker/beat：
+   - `docker restart ai-video-celery-worker ai-video-celery-beat`
+
+### Chrome 端到端用例：故事异步生成 → 任务审计
+
+1. 登录后打开故事页：`http://localhost:8089/stories`，点击「AI生成故事」。
+2. 在生成弹窗中：
+   - 选择至少 1 个虚拟 IP
+   - 开启「异步生成」（useAsync）
+   - 提交生成
+3. 打开任务页：`http://localhost:8089/tasks`：
+   - 使用 `task_type` 过滤选择 `story_generation`
+   - 找到刚生成的任务，展开详情
+4. 期望结果：
+   - `task_type` 正确显示为 `story_generation`（不再是兜底 `image_generation`）
+   - 详情中可见 `Agent 执行轨迹`，包含至少 `prompt` 与 `result_ref`（story_id 等）；如有 usage/reasoning 也应可展开查看
+
 ## 在 agent_chats 中记录验证
 
 每次对虚拟 IP 图像生成 / 图生图流程进行改动时，`agent_chats/YYYY/MM/DD/*.md` 的 `## Validation` 段应至少包含：
@@ -93,4 +121,3 @@
   - 使用了哪些模型 / 分辨率（例如「Seedream 4.5 2K，图生图生成数量=2」）。
   - 前端 UI 行为（新图是否出现在网格、是否仍有自动下载/新窗口等）。
 - 遇到的错误与解决方式（如 Ark 尺寸错误、DALL·E 接口报错等）。 
-
