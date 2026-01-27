@@ -138,7 +138,7 @@ async def generate_environment_images_async(
     task = Task(
         title=f"环境文生图 - 环境{env_id}",
         description="异步生成环境图像",
-        task_type=TaskType.IMAGE_GENERATION,
+        task_type=TaskType.ENVIRONMENT_IMAGE_GENERATION,
         prompt=compose_environment_prompt(env, req.prompt),
         parameters=json.dumps(payload, ensure_ascii=False),
         user_id=current_user.id,

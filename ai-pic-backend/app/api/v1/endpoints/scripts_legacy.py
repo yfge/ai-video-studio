@@ -3463,7 +3463,7 @@ async def generate_storyboard_images(
     t = Task(
         title=_friendly_task_title("分镜图像生成", script, episode, story),
         description="根据分镜生成图像",
-        task_type=TaskType.IMAGE_GENERATION,
+        task_type=TaskType.STORYBOARD_IMAGE_GENERATION,
         prompt=f"Storyboard image generation for script {script_id}",
         parameters=json.dumps(
             {

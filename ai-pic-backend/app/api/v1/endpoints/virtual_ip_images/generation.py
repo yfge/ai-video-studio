@@ -149,7 +149,7 @@ async def generate_virtual_ip_image_async(
     task = Task(
         title=f"虚拟IP文生图 - {virtual_ip.name}",
         description="异步生成虚拟IP图像",
-        task_type=TaskType.IMAGE_GENERATION,
+        task_type=TaskType.VIRTUAL_IP_IMAGE_GENERATION,
         prompt=f"VirtualIP image gen for {virtual_ip.name}",
         parameters=json.dumps(payload, ensure_ascii=False),
         user_id=current_user.id,

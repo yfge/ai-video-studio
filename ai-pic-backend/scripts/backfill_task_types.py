@@ -132,6 +132,44 @@ def _rules() -> list[BackfillRule]:
             ),
         ),
         BackfillRule(
+            label="storyboard_image_generation",
+            target=TaskType.STORYBOARD_IMAGE_GENERATION,
+            condition=or_(
+                Task.title.like("分镜图像生成%"),
+                Task.prompt.like("Storyboard image generation for script %"),
+            ),
+        ),
+        BackfillRule(
+            label="virtual_ip_image_generation",
+            target=TaskType.VIRTUAL_IP_IMAGE_GENERATION,
+            condition=or_(
+                Task.title.like("虚拟IP文生图%"),
+                Task.prompt.like("VirtualIP image gen for %"),
+            ),
+        ),
+        BackfillRule(
+            label="virtual_ip_image_variant_generation",
+            target=TaskType.VIRTUAL_IP_IMAGE_VARIANT_GENERATION,
+            condition=or_(
+                Task.title.like("虚拟IP图生图%"),
+                Task.prompt.like("VirtualIP img2img for image %"),
+            ),
+        ),
+        BackfillRule(
+            label="environment_image_generation",
+            target=TaskType.ENVIRONMENT_IMAGE_GENERATION,
+            condition=or_(
+                Task.title.like("环境文生图%"),
+            ),
+        ),
+        BackfillRule(
+            label="environment_image_variant_generation",
+            target=TaskType.ENVIRONMENT_IMAGE_VARIANT_GENERATION,
+            condition=or_(
+                Task.title.like("环境图生图%"),
+            ),
+        ),
+        BackfillRule(
             label="video_generation",
             target=TaskType.VIDEO_GENERATION,
             condition=or_(
@@ -241,4 +279,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

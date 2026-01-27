@@ -91,7 +91,7 @@ export interface Task {
   task_type?: string;
   prompt?: string;
   parameters?: Record<string, unknown> | null;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   progress_detail?: string;
   created_at: string;
   updated_at?: string;
