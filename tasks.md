@@ -82,7 +82,7 @@
 - [x] 验证：short_drama prompt 变体单元测试（`template_resolver` + prompt 渲染）
 - [x] 验证：Chrome E2E（deepseek 文生文/剧集/剧本；google 文生图；google 文生视频）
 - [x] 验证：新增 schema 与 prompt 单元测试，覆盖 hook 计划/评分结构（tests/unit/services/scoring/ 21 tests）
-- [ ] 验证：E2E 路径（选择微类型→生成故事/剧集/剧本→投流表→分镜/时间线标注），Chrome 记录验证
+- [x] 验证：E2E 路径（选择微类型→生成故事/剧集/剧本→投流表→分镜/时间线标注），Chrome 记录验证
 - [ ] 验证：短剧全流程 E2E（IP→环境→故事→剧本→分镜图→分镜视频），逐张下载抽检并在 `agent_chats` 记录
 
 ## Feature: Duration Orchestrator Agent（端到端时长闭环验证）🔥

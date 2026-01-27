@@ -18,6 +18,7 @@ interface ScriptTrafficTabProps {
 export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
   const extra = asRecord(script.extra_metadata) ?? {};
   const params = asRecord(script.generation_params) ?? {};
+  const scoring = asRecord(extra.scoring) ?? {};
 
   const marketRegion = getValue(extra, params, "market_region") as string | undefined;
   const microGenre = getValue(extra, params, "micro_genre") as string | undefined;
@@ -33,7 +34,8 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
   const scorecard =
     asRecord(getValue(extra, params, "scorecard")) ||
     asRecord(getValue(extra, params, "script_score")) ||
-    asRecord(getValue(extra, params, "hook_score"));
+    asRecord(getValue(extra, params, "hook_score")) ||
+    asRecord(scoring.script_score);
 
   const overallScore = toNumber(
     scorecard?.overall_score ??
