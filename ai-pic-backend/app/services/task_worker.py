@@ -16,6 +16,14 @@ from app.services.task_worker_storyboard_media import (  # noqa: F401
     storyboard_video_generate_task,
 )
 
+# Re-export asset/image tasks for legacy imports (e.g. scripts_legacy.py).
+from app.services.task_worker_assets import (  # noqa: F401
+    environment_image_generate_task,
+    environment_image_variant_task,
+    virtual_ip_image_generate_task,
+    virtual_ip_image_variant_task,
+)
+
 
 @celery_app.task(name="tasks.story_generate")
 def story_generate_task(
@@ -47,6 +55,13 @@ def story_novel_generate_task(
     from app.api.v1.endpoints.stories import process_story_novel_export_task
 
     process_story_novel_export_task(task_id, payload, user_id)
+    from app.services.task_agent_run_persistence import persist_task_agent_run
+
+    persist_task_agent_run(
+        task_id=task_id,
+        user_id=user_id,
+        kind="text_generation",
+    )
 
 
 @celery_app.task(name="tasks.episode_generate")
@@ -111,6 +126,13 @@ def script_dialogue_audio_generate_task(
     from app.api.v1.endpoints.scripts import _process_script_dialogue_audio_task
 
     _process_script_dialogue_audio_task(task_id, payload, user_id)
+    from app.services.task_agent_run_persistence import persist_task_agent_run
+
+    persist_task_agent_run(
+        task_id=task_id,
+        user_id=user_id,
+        kind="dialogue_audio",
+    )
 
 
 @celery_app.task(name="tasks.script_audio_timeline_generate")
@@ -121,6 +143,13 @@ def script_audio_timeline_generate_task(
     from app.api.v1.endpoints.scripts import _process_script_audio_timeline_task
 
     _process_script_audio_timeline_task(task_id, payload, user_id)
+    from app.services.task_agent_run_persistence import persist_task_agent_run
+
+    persist_task_agent_run(
+        task_id=task_id,
+        user_id=user_id,
+        kind="timeline_generation",
+    )
 
 
 @celery_app.task(name="tasks.script_audio_storyboard_generate")
@@ -131,50 +160,13 @@ def script_audio_storyboard_generate_task(
     from app.api.v1.endpoints.scripts import _process_script_audio_storyboard_task
 
     _process_script_audio_storyboard_task(task_id, payload, user_id)
+    from app.services.task_agent_run_persistence import persist_task_agent_run
 
-
-@celery_app.task(name="tasks.virtual_ip_image_generate")
-def virtual_ip_image_generate_task(
-    task_id: int, payload: Dict[str, Any], user_id: int
-) -> None:
-    """异步虚拟 IP 文生图任务入口。"""
-    from app.api.v1.endpoints.virtual_ip_images import process_virtual_ip_image_task
-
-    process_virtual_ip_image_task(task_id, payload, user_id)
-
-
-@celery_app.task(name="tasks.virtual_ip_image_variant")
-def virtual_ip_image_variant_task(
-    task_id: int, payload: Dict[str, Any], user_id: int
-) -> None:
-    """异步虚拟 IP 图生图任务入口。"""
-    from app.api.v1.endpoints.virtual_ip_images import (
-        process_virtual_ip_image_variant_task,
+    persist_task_agent_run(
+        task_id=task_id,
+        user_id=user_id,
+        kind="storyboard_from_audio_timeline",
     )
-
-    process_virtual_ip_image_variant_task(task_id, payload, user_id)
-
-
-@celery_app.task(name="tasks.environment_image_generate")
-def environment_image_generate_task(
-    task_id: int, payload: Dict[str, Any], user_id: int
-) -> None:
-    """异步环境文生图任务入口。"""
-    from app.api.v1.endpoints.story_structure import process_environment_image_task
-
-    process_environment_image_task(task_id, payload, user_id)
-
-
-@celery_app.task(name="tasks.environment_image_variant")
-def environment_image_variant_task(
-    task_id: int, payload: Dict[str, Any], user_id: int
-) -> None:
-    """异步环境图生图任务入口。"""
-    from app.api.v1.endpoints.story_structure import (
-        process_environment_image_variant_task,
-    )
-
-    process_environment_image_variant_task(task_id, payload, user_id)
 
 
 @celery_app.task(name="tasks.storyboard_generate")
@@ -185,6 +177,13 @@ def storyboard_generate_task(
     from app.api.v1.endpoints.scripts import _process_storyboard_generation_task
 
     _process_storyboard_generation_task(task_id, payload, user_id)
+    from app.services.task_agent_run_persistence import persist_task_agent_run
+
+    persist_task_agent_run(
+        task_id=task_id,
+        user_id=user_id,
+        kind="storyboard_generation",
+    )
 
 
 @celery_app.task(name="tasks.timeline_pipeline_generate")
@@ -195,6 +194,13 @@ def timeline_pipeline_generate_task(
     from app.api.v1.endpoints.scripts_legacy import _process_timeline_pipeline_task
 
     _process_timeline_pipeline_task(task_id, payload, user_id)
+    from app.services.task_agent_run_persistence import persist_task_agent_run
+
+    persist_task_agent_run(
+        task_id=task_id,
+        user_id=user_id,
+        kind="timeline_pipeline",
+    )
 
 
 @celery_app.task(name="tasks.video_generation_poll")

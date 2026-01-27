@@ -72,6 +72,13 @@ def storyboard_image_generate_task(
         start_enabled=payload.get("start_enabled", True),
         end_enabled=payload.get("end_enabled", True),
     )
+    from app.services.task_agent_run_persistence import persist_task_agent_run
+
+    persist_task_agent_run(
+        task_id=task_id,
+        user_id=user_id,
+        kind="storyboard_images",
+    )
 
 
 @celery_app.task(name="tasks.storyboard_video_generate")
@@ -106,4 +113,3 @@ def storyboard_video_generate_task(
         selections,
         options=options,
     )
-

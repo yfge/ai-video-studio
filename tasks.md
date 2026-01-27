@@ -306,7 +306,7 @@
 ### 下一步
 
 - 生产：执行一次历史任务 `TaskType` 回填（建议先 `--dry-run`，并按 user/时间范围分批）
-- 后端：补齐 dialogue-audio/timeline/storyboard/video 等任务的 `parameters.agent_run` 审计（统一到 Task 层）
+- [x] 后端：补齐 dialogue-audio/timeline/storyboard/video/text/image 等任务的 `parameters.agent_run` 审计（统一到 Task 层）
 
 ## Feature: 场景/环境资产与分镜联动
 

@@ -23,6 +23,7 @@ from app.services.video.video_task_utils import (
     map_provider_status,
 )
 from app.services.video.video_task_polling_logging import log_pending_tasks
+from app.services.task_agent_run_persistence import persist_task_agent_run
 
 
 class VideoTaskPollingService:
@@ -222,6 +223,13 @@ class VideoTaskPollingService:
         else:
             task.status = TaskStatus.COMPLETED
         self.db.commit()
+        if task.status == TaskStatus.COMPLETED:
+            persist_task_agent_run(
+                task_id=task.id,
+                user_id=task.user_id,
+                kind="video_generation",
+                db_session=self.db,
+            )
 
     def _mark_timeout(self, item: VideoGenerationTask, now: datetime) -> None:
         item.status = VideoGenerationTaskStatus.TIMEOUT
