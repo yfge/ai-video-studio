@@ -293,7 +293,7 @@
 - [x] 后端：补全 `TaskType` 枚举（story/episode/script/dialogue-audio/timeline/storyboard/video/text…），并把 Story/Episode/Script 等生成入口的 `task_type` 从兜底的 `image_generation` 改为正确类型
 - [x] 后端：细分 image 相关 `TaskType`（storyboard_image / virtual_ip_image / environment_image + variants），并更新对应生成入口，支持 `/tasks` 按域过滤
 - [x] 后端：提供历史任务 `TaskType` 回填脚本 `ai-pic-backend/scripts/backfill_task_types.py`（将 legacy `IMAGE_GENERATION` 按 title/prompt 纠正为正确类型）
-- [ ] 生产：执行一次历史任务 `TaskType` 回填（建议先 `--dry-run`，并按 user/时间范围分批）
+- [x] 生产：执行一次历史任务 `TaskType` 回填（先 `--dry-run`，并按 user/时间范围分批）
 - [x] 后端：提炼 `task_worker`，改造 `/stories/episodes/scripts/*/generate-async` 统一走 Celery worker（替换 `BackgroundTasks`），并完善 `Task.status` / `result_file_path` / `error_message` 回写
 - [x] 后端：在 Task 的 `parameters.agent_run` 中落库 agent 关键信息（prompt、provider/model、usage、reasoning、result_ref），保证每次执行可在 Task 层审计
 - [x] 后端：在 Story/Episode/Script 的 `extra_metadata.agent_run` 中写入 LangGraph/AI 管理器的运行信息，覆盖同步与 `/generate-async` 路径
@@ -306,7 +306,6 @@
 
 ### 下一步
 
-- 生产：执行一次历史任务 `TaskType` 回填（建议先 `--dry-run`，并按 user/时间范围分批）
 - [x] 后端：补齐 dialogue-audio/timeline/storyboard/video/text/image 等任务的 `parameters.agent_run` 审计（统一到 Task 层）
 
 ## Feature: 场景/环境资产与分镜联动

@@ -145,6 +145,8 @@ def _rules() -> list[BackfillRule]:
             condition=or_(
                 Task.title.like("虚拟IP文生图%"),
                 Task.prompt.like("VirtualIP image gen for %"),
+                Task.prompt.like('为虚拟IP "%'),
+                Task.prompt.like('为虚拟IP %生成%图像%'),
             ),
         ),
         BackfillRule(
