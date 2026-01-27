@@ -229,7 +229,7 @@
 - [x] 后端：模型注册表已提供 `size_options` / `aspect_ratio_options`（OpenAI/Seedream 等）
 - [x] 后端：引入图像生成参数 `generation_profile`（按 provider+model+mode 默认 `steps/cfg_scale/negative_prompt`），并提供 `GET /api/v1/image-gen/profiles`
 - [x] 后端：环境/分镜/图生图落盘 `size` / `width` / `height` / `aspect_ratio`
-- [ ] 后端：虚拟 IP 文生图落盘 `size` / `width` / `height` / `aspect_ratio`（generation_params/metadata 统一用 normalized 值）
+- [x] 后端：虚拟 IP 文生图落盘 `size` / `width` / `height` / `aspect_ratio`（generation_params/metadata 统一用 normalized 值）
 - [x] 前端：虚拟 IP 图像页支持基于已有图像的变体生成（`/api/v1/virtual-ips/{id}/images/{image_id}/variants`），含模型选择与生成数量，变体会保存为新的虚拟 IP 图像资产
 - [x] 前端：虚拟 IP 更新请求类型补齐 `voice_config`，修复 `next build` 类型检查失败
 - [x] 前端：虚拟 IP 手动上传走统一 OSS（修复上传字段与 FormData 头部）

@@ -69,6 +69,9 @@ async def test_virtual_ip_text_to_image_openai_normalizes_size(monkeypatch):
 
     assert result is not None
     assert result["model_used"] == "dall-e-3"
+    assert result["size"] == "1024x1024"
+    assert result["width"] == 1024
+    assert result["height"] == 1024
 
     (prompt_arg, *_), kwargs = service._generate_with_openai_dalle.call_args
     assert prompt_arg.count("STYLE_SPEC =>") == 1
@@ -112,6 +115,9 @@ async def test_virtual_ip_text_to_image_ai_manager_uses_base_prompt(monkeypatch)
     assert result["model_used"] == "doubao-seedream-4-5-251128"
     assert result["provider_used"] == "volcengine"
     assert "STYLE_SPEC =>" in result["prompt"]
+    assert result["size"] == "2K"
+    assert result["width"] == 2048
+    assert result["height"] == 2048
 
 
 @pytest.mark.unit

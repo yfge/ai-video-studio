@@ -93,9 +93,8 @@ def process_virtual_ip_image_task(
             file_size = os.path.getsize(local_file_path)
             filename = os.path.basename(local_file_path)
             relative_path = result.get("relative_path") or f"/uploads/{filename}"
-            oss_url = result.get("oss_url") or result.get("oss_upload", {}).get(
-                "file_url"
-            )
+            oss_upload = result.get("oss_upload") or {}
+            oss_url = result.get("oss_url") or oss_upload.get("file_url")
 
             generation_params = dict(result.get("usage") or {})
             if result.get("style_preset_id") is not None:
@@ -106,10 +105,26 @@ def process_virtual_ip_image_task(
                 generation_params["style_spec_resolution"] = result.get(
                     "style_spec_resolution"
                 )
-            if payload.get("size") is not None:
-                generation_params["size"] = payload.get("size")
-            if payload.get("aspect_ratio") is not None:
-                generation_params["aspect_ratio"] = payload.get("aspect_ratio")
+            normalized_size = None
+            if "size" in result:
+                normalized_size = result.get("size")
+            elif payload.get("size") is not None:
+                normalized_size = payload.get("size")
+            if normalized_size is not None or "size" in result:
+                generation_params["size"] = normalized_size
+
+            normalized_aspect_ratio = None
+            if "aspect_ratio" in result:
+                normalized_aspect_ratio = result.get("aspect_ratio")
+            elif payload.get("aspect_ratio") is not None:
+                normalized_aspect_ratio = payload.get("aspect_ratio")
+            if normalized_aspect_ratio is not None or "aspect_ratio" in result:
+                generation_params["aspect_ratio"] = normalized_aspect_ratio
+
+            for dim_key in ("width", "height"):
+                dim_value = result.get(dim_key)
+                if dim_value is not None:
+                    generation_params[dim_key] = dim_value
             prompt_template = result.get("prompt_template") or payload.get(
                 "prompt_template"
             )
@@ -148,6 +163,10 @@ def process_virtual_ip_image_task(
                     "prompt_sha256": result.get("prompt_sha256"),
                     "style": result["style"],
                     "additional_prompts": additional_prompts_list,
+                    "size": normalized_size,
+                    "aspect_ratio": normalized_aspect_ratio,
+                    "width": result.get("width"),
+                    "height": result.get("height"),
                     "original_openai_url": result.get("original_image_url", ""),
                     "local_file_path": local_file_path,
                     "oss_upload": result.get("oss_upload"),

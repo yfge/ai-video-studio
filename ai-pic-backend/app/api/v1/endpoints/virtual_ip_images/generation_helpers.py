@@ -212,7 +212,8 @@ def resolve_local_image_info(result: Dict[str, Any]) -> Dict[str, Any]:
     file_size = os.path.getsize(local_file_path)
     filename = os.path.basename(local_file_path)
     relative_path = result.get("relative_path") or f"/uploads/{filename}"
-    oss_url = result.get("oss_url") or result.get("oss_upload", {}).get("file_url")
+    oss_upload = result.get("oss_upload") or {}
+    oss_url = result.get("oss_url") or oss_upload.get("file_url")
     return {
         "local_file_path": local_file_path,
         "file_size": file_size,
@@ -235,10 +236,20 @@ def build_generation_params(
         params["style_spec"] = result.get("style_spec")
     if result.get("style_spec_resolution") is not None:
         params["style_spec_resolution"] = result.get("style_spec_resolution")
-    if size_value is not None:
+    if "size" in result:
+        params["size"] = result.get("size")
+    elif size_value is not None:
         params["size"] = size_value
-    if aspect_ratio_value is not None:
+
+    if "aspect_ratio" in result:
+        params["aspect_ratio"] = result.get("aspect_ratio")
+    elif aspect_ratio_value is not None:
         params["aspect_ratio"] = aspect_ratio_value
+
+    for dim_key in ("width", "height"):
+        dim_value = result.get(dim_key)
+        if dim_value is not None:
+            params[dim_key] = dim_value
     if result.get("prompt_template") is not None:
         params["prompt_template"] = result.get("prompt_template")
     if result.get("prompt_sha256") is not None:
