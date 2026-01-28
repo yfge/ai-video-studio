@@ -29,7 +29,9 @@ def test_persist_task_agent_run_story(db_session):
         title="Test Story",
         genre="Drama",
         story_format="short_drama",
-        extra_metadata={"agent_run": {"provider_used": "openai", "model_used": "gpt-4"}},
+        extra_metadata={
+            "agent_run": {"provider_used": "openai", "model_used": "gpt-4"}
+        },
         generation_prompt="story prompt",
     )
     db_session.add(story)
@@ -75,7 +77,12 @@ def test_persist_task_agent_run_episode(db_session):
         extra_metadata={
             "episode_step_outlines": {
                 "prompt": "outline prompt",
-                "agent_run": {"provider_used": "deepseek", "model_used": "deepseek-chat"},
+                "agent_run": {
+                    "provider_used": "deepseek",
+                    "model_used": "deepseek-chat",
+                    "raw_content": "outline raw",
+                    "normalized": {"episodes": [{"episode_number": 1}]},
+                },
             }
         },
     )
@@ -87,14 +94,28 @@ def test_persist_task_agent_run_episode(db_session):
         story_id=story.id,
         episode_number=1,
         title="Ep1",
-        extra_metadata={"agent_run": {"provider_used": "deepseek", "model_used": "m1"}},
+        extra_metadata={
+            "agent_run": {
+                "provider_used": "deepseek",
+                "model_used": "m1",
+                "raw_content": "ep1 raw",
+                "normalized": {"episode_number": 1},
+            }
+        },
         generation_prompt="ep1 prompt",
     )
     ep2 = Episode(
         story_id=story.id,
         episode_number=2,
         title="Ep2",
-        extra_metadata={"agent_run": {"provider_used": "deepseek", "model_used": "m2"}},
+        extra_metadata={
+            "agent_run": {
+                "provider_used": "deepseek",
+                "model_used": "m2",
+                "raw_content": "ep2 raw",
+                "normalized": {"episode_number": 2},
+            }
+        },
         generation_prompt="ep2 prompt",
     )
     db_session.add_all([ep1, ep2])
@@ -127,11 +148,15 @@ def test_persist_task_agent_run_episode(db_session):
     agent_run = params["agent_run"]
     assert agent_run["outline"]["prompt"] == "outline prompt"
     assert agent_run["outline"]["provider_used"] == "deepseek"
+    assert agent_run["outline"]["raw_content"] == "outline raw"
+    assert agent_run["outline"]["normalized"]
 
     episodes = agent_run["episodes"]
     assert len(episodes) == 2
     assert {ep["episode_number"] for ep in episodes} == {1, 2}
     assert episodes[0]["prompt"]
+    assert episodes[0]["raw_content"] == "ep1 raw"
+    assert episodes[0]["normalized"]["episode_number"] == 1
 
 
 def test_persist_task_agent_run_script(db_session):
@@ -163,7 +188,9 @@ def test_persist_task_agent_run_script(db_session):
         scenes=[],
         dialogues=[],
         stage_directions=[],
-        extra_metadata={"agent_run": {"provider_used": "minimax", "model_used": "abab"}},
+        extra_metadata={
+            "agent_run": {"provider_used": "minimax", "model_used": "abab"}
+        },
         generation_prompt="script prompt",
     )
     db_session.add(script)
@@ -194,4 +221,3 @@ def test_persist_task_agent_run_script(db_session):
     assert params["agent_run"]["provider_used"] == "minimax"
     assert params["agent_run"]["prompt"] == "script prompt"
     assert params["agent_run"]["result_ref"]["script_id"] == script.id
-

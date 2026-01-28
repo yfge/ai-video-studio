@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import HTTPException
-from sqlalchemy.orm import Session
-
 from app.models.script import Episode, Story
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
@@ -14,16 +11,22 @@ from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import ai_service as ai_service_module
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
-ai_service = ai_service_module.ai_service
-
-from .episode_generation_persistence import create_episode_models, persist_step_outline_beats
+from .episode_generation_persistence import (
+    create_episode_models,
+    persist_step_outline_beats,
+)
 from .episode_generation_utils import (
+    build_agent_run_info,
     build_stub_episodes_from_outlines,
     not_deleted,
     parse_step_outlines,
     persist_story_outlines,
 )
+
+ai_service = ai_service_module.ai_service
 
 
 class EpisodeGenerationService:
@@ -58,10 +61,16 @@ class EpisodeGenerationService:
         return focus_characters
 
     def _build_story_data(self, story: Story) -> Dict[str, Any]:
-        extra_meta = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
+        extra_meta = (
+            story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
+        )
         marketing_meta = merge_marketing_meta(
             extra_meta,
-            story.generation_params if isinstance(story.generation_params, dict) else {},
+            (
+                story.generation_params
+                if isinstance(story.generation_params, dict)
+                else {}
+            ),
         )
         return {
             "title": story.title,
@@ -77,7 +86,9 @@ class EpisodeGenerationService:
             "setting_time": story.setting_time,
             "setting_location": story.setting_location,
             "continuity_ledger": (
-                extra_meta.get("continuity_ledger") if isinstance(extra_meta.get("continuity_ledger"), dict) else None
+                extra_meta.get("continuity_ledger")
+                if isinstance(extra_meta.get("continuity_ledger"), dict)
+                else None
             ),
             **marketing_meta,
         }
@@ -89,23 +100,12 @@ class EpisodeGenerationService:
             return prefer_provider, resolved
         return None, model_id
 
-    @staticmethod
-    def _build_agent_run_info(result: Dict[str, Any]) -> Dict[str, Any]:
-        if not isinstance(result, dict):
-            return {}
-        return {
-            "generation_method": result.get("generation_method"),
-            "template_used": result.get("template_used"),
-            "provider_used": result.get("provider_used"),
-            "model_used": result.get("model_used"),
-            "usage": result.get("usage"),
-            "reasoning": result.get("reasoning"),
-        }
-
     def build_preview_prompt(self, request: EpisodeGenerationRequest) -> str:
         story = self._get_story(request.story_id)
         story_data = self._build_story_data(story)
-        hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
+        hook_plan_payload = (
+            request.hook_plan.model_dump() if request.hook_plan else None
+        )
         ad_snippets_payload = (
             [snippet.model_dump() for snippet in request.ad_snippets]
             if request.ad_snippets
@@ -133,14 +133,19 @@ class EpisodeGenerationService:
             "additional_requirements": request.additional_requirements,
             "style_preferences": request.style_preferences or [],
         }
-        return PromptManager().render_prompt(PromptTemplate.EPISODE_GENERATION.value, variables)
+        return PromptManager().render_prompt(
+            PromptTemplate.EPISODE_GENERATION.value, variables
+        )
 
-    async def generate_episodes(self, request: EpisodeGenerationRequest) -> List[Episode]:
+    async def generate_episodes(
+        self, request: EpisodeGenerationRequest
+    ) -> List[Episode]:
         story = self._get_story(request.story_id)
         focus_characters = self._get_focus_characters(request.focus_characters)
-
         story_data = self._build_story_data(story)
-        hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
+        hook_plan_payload = (
+            request.hook_plan.model_dump() if request.hook_plan else None
+        )
         ad_snippets_payload = (
             [snippet.model_dump() for snippet in request.ad_snippets]
             if request.ad_snippets
@@ -157,7 +162,6 @@ class EpisodeGenerationService:
                 "ad_snippets": ad_snippets_payload,
             },
         )
-
         prefer_provider, model_id = self._split_model(request.model)
         result = await ai_service.generate_episodes(
             story=story_data,
@@ -174,8 +178,7 @@ class EpisodeGenerationService:
         )
         if not result:
             raise HTTPException(status_code=500, detail="AI剧集生成失败")
-
-        agent_run = self._build_agent_run_info(result)
+        agent_run = build_agent_run_info(result)
         raw_step_outlines = None
         if isinstance(result, dict):
             raw_step_outlines = result.get("step_outlines") or result.get(
@@ -190,10 +193,13 @@ class EpisodeGenerationService:
             persist_story_outlines(
                 story,
                 step_outlines,
-                prompt=(result.get("step_outline_prompt") if isinstance(result, dict) else None),
+                prompt=(
+                    result.get("step_outline_prompt")
+                    if isinstance(result, dict)
+                    else None
+                ),
                 agent_run=agent_run,
             )
-
         normalized = result.get("normalized") if isinstance(result, dict) else None
         ai_content = normalized or extract_json_block(
             result.get("content") if isinstance(result, dict) else None
@@ -206,7 +212,6 @@ class EpisodeGenerationService:
             agent_run = {**agent_run, "fallback_from_outline": True}
         if not episodes_data:
             raise HTTPException(status_code=500, detail="AI生成内容格式错误")
-
         result_payload = result if isinstance(result, dict) else {}
         created_episodes = create_episode_models(
             db=self.db,
@@ -221,8 +226,13 @@ class EpisodeGenerationService:
         )
         continuity_ledger = result_payload.get("continuity_ledger")
         if isinstance(continuity_ledger, dict) and continuity_ledger:
-            extra_meta = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
-            story.extra_metadata = {**extra_meta, "continuity_ledger": continuity_ledger}
+            extra_meta = (
+                story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
+            )
+            story.extra_metadata = {
+                **extra_meta,
+                "continuity_ledger": continuity_ledger,
+            }
         self.db.commit()
 
         if step_outlines and created_episodes:

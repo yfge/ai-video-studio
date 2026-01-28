@@ -3,16 +3,47 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from pydantic import ValidationError
-
 from app.models.script import Story
 from app.schemas.generation import EpisodeStepOutlineModel
 from app.schemas.story_structure import StoryStepOutlineCreate
 from app.utils.json_utils import extract_json_block
+from pydantic import ValidationError
 
 
 def not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
+
+
+def build_agent_run_info(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Build an audit payload from ai_service result for agent_run persistence."""
+    if not isinstance(result, dict):
+        return {}
+    payload: Dict[str, Any] = {
+        "generation_method": result.get("generation_method"),
+        "template_used": result.get("template_used"),
+        "provider_used": result.get("provider_used"),
+        "model_used": result.get("model_used"),
+        "usage": result.get("usage"),
+        "reasoning": result.get("reasoning"),
+    }
+
+    raw_content = result.get("content")
+    if isinstance(raw_content, str) and raw_content.strip():
+        payload["raw_content"] = raw_content
+    normalized = result.get("normalized")
+    if isinstance(normalized, dict) and normalized:
+        payload["normalized"] = normalized
+    validation_errors = result.get("validation_errors")
+    if validation_errors:
+        payload["validation_errors"] = validation_errors
+    repair_attempts = result.get("repair_attempts")
+    if repair_attempts:
+        payload["repair_attempts"] = repair_attempts
+    first_attempt = result.get("first_attempt")
+    if first_attempt:
+        payload["first_attempt"] = first_attempt
+
+    return {k: v for k, v in payload.items() if v is not None}
 
 
 def is_episode_payload_valid(episode_data: Dict[str, Any]) -> bool:
@@ -70,7 +101,9 @@ def persist_story_outlines(
     prompt: Optional[str],
     agent_run: Dict[str, Any],
 ) -> None:
-    existing_meta = dict(story.extra_metadata) if isinstance(story.extra_metadata, dict) else {}
+    existing_meta = (
+        dict(story.extra_metadata) if isinstance(story.extra_metadata, dict) else {}
+    )
     existing_meta["episode_step_outlines"] = {
         "episodes": outlines.get("episodes", []),
         "prompt": prompt,
@@ -86,7 +119,9 @@ def build_stub_episodes_from_outlines(
     if not outlines:
         return []
     episodes: list[Dict[str, Any]] = []
-    for idx, outline in enumerate(outlines.get("episodes", [])[:episode_count], start=1):
+    for idx, outline in enumerate(
+        outlines.get("episodes", [])[:episode_count], start=1
+    ):
         logline = (outline.get("logline") or "").strip()
         if not logline:
             continue

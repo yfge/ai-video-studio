@@ -96,12 +96,12 @@
 
 ### Phase 1: 严格结构化输出 + repair（P0）
 
-- [ ] 后端：抽出通用的 JSON 解析/校验/repair 组件（story_outline、episode_plan 共用），标准化 `normalized` 产物与错误结构（validation_errors/repair_attempts）
-- [ ] 后端：故事生成强制通过 `StoryOutlineModel` 校验后才允许落库；收敛/移除 `extract_outline_from_text` 这类“宽松兜底落库”路径
-- [ ] 后端：剧集生成强制通过 `EpisodePlanModel` 校验（episodes 数量 == episode_count、必填字段齐全）；失败走 repair；最终失败不创建 Episode
-- [ ] 后端：把 prompt、raw content、normalized、校验错误与 repair 过程写入 `Task.parameters.agent_run`（便于排障与复现）
-- [ ] 测试：新增单元测试覆盖（parse fail → repair success/failed、episodes 数量修复、必填字段补齐、错误落库结构）
-- [ ] 验证：Chrome E2E（生成故事→生成剧集）至少 2 个 case，并在 `agent_chats` 记录（含失败 case 的可追溯性）
+- [x] 后端：抽出通用的 JSON 解析/校验/repair 组件（story_outline、episode_plan 共用），标准化 `normalized` 产物与错误结构（validation_errors/repair_attempts）
+- [x] 后端：故事生成强制通过 `StoryOutlineModel` 校验后才允许落库；收敛/移除 `extract_outline_from_text` 这类“宽松兜底落库”路径
+- [x] 后端：剧集生成强制通过 `EpisodePlanModel` 校验（episodes 数量 == episode_count、必填字段齐全）；失败走 repair；最终失败不创建 Episode
+- [x] 后端：把 prompt、raw content、normalized、校验错误与 repair 过程写入 `Task.parameters.agent_run`（便于排障与复现）
+- [x] 测试：新增单元测试覆盖（parse fail → repair success/failed、episodes 数量修复、必填字段补齐、错误落库结构）
+- [x] 验证：Chrome E2E（生成故事→生成剧集）至少 2 个 case，并在 `agent_chats` 记录（含失败 case 的可追溯性）
 
 ### Phase 2: 上下文管理（Context Pack）（P0/P1）
 

@@ -7,33 +7,33 @@ Handles asynchronous episode generation via Celery workers.
 import json
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends
-from pydantic import ValidationError
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.models.script import Story, Episode
+from app.models.script import Episode, Story
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import EpisodePlanItem
 from app.schemas.generation_requests import EpisodeGenerationRequest
+from app.services import story_structure_service
 from app.services.ai_service import ai_service
 from app.services.episode_agent import EpisodeGenerationCallbacks
 from app.services.task_worker import episode_generate_task
-from app.services import story_structure_service
-from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.json_utils import extract_json_block
+from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
+from fastapi import APIRouter, Depends
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
+
 from .helpers import (
+    build_outline_rows,
+    build_stub_episodes_from_outlines,
+    ensure_scenes,
     is_episode_payload_valid,
     parse_step_outlines,
     persist_story_outlines,
-    build_outline_rows,
-    build_stub_episodes_from_outlines,
     update_task_progress,
-    ensure_scenes,
 )
 
 router = APIRouter()
@@ -60,34 +60,6 @@ def _build_story_data(story: Story) -> Dict[str, Any]:
         "setting_location": story.setting_location,
         **marketing_meta,
     }
-
-
-def _coerce_episode_payload(
-    episode_data: Dict[str, Any], outline: Dict[str, Any] | None
-) -> Dict[str, Any]:
-    """Coerce episode payload to ensure required fields exist."""
-    coerced = dict(episode_data or {})
-    ep_num = coerced.get("episode_number") or (
-        outline.get("episode_number") if isinstance(outline, dict) else None
-    )
-    if ep_num:
-        coerced["episode_number"] = ep_num
-    if not (coerced.get("title") or "").strip():
-        coerced["title"] = f"第{coerced.get('episode_number') or 1}集"
-    summary = (coerced.get("summary") or "").strip()
-    if not summary:
-        logline = (outline.get("logline") or "").strip() if outline else ""
-        coerced["summary"] = logline or "本集推进主线冲突，并留下钩子。"
-    conflicts = coerced.get("conflicts")
-    if (
-        not conflicts
-        or not isinstance(conflicts, list)
-        or not any(isinstance(c, dict) for c in conflicts)
-    ):
-        coerced["conflicts"] = [
-            {"description": coerced["summary"], "intensity": "medium"}
-        ]
-    return coerced
 
 
 def process_episode_generation_task(task_id: int, request_dict: dict, user_id: int):
@@ -163,6 +135,10 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
                 "usage": meta.get("usage"),
                 "reasoning": meta.get("reasoning"),
             }
+            raw = meta.get("raw")
+            if isinstance(raw, str) and raw.strip():
+                outline_agent_run["raw_content"] = raw
+            outline_agent_run["normalized"] = outlines
             persist_story_outlines(
                 story,
                 outlines,
@@ -200,8 +176,14 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
 
             outline = meta.get("outline") if isinstance(meta, dict) else None
             outline_dict = outline if isinstance(outline, dict) else None
-            coerced = _coerce_episode_payload(episode_data, outline_dict)
-            episode_number = coerced.get("episode_number")
+            payload = dict(episode_data or {})
+            if (
+                outline_dict
+                and outline_dict.get("episode_number")
+                and not payload.get("episode_number")
+            ):
+                payload["episode_number"] = outline_dict["episode_number"]
+            episode_number = payload.get("episode_number")
             if not episode_number:
                 return
 
@@ -210,6 +192,7 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
                 .filter(
                     Episode.story_id == story.id,
                     Episode.episode_number == episode_number,
+                    Episode.is_deleted.is_(False),
                 )
                 .first()
             )
@@ -218,11 +201,19 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
                 return
 
             try:
-                EpisodePlanItem.model_validate(coerced)
-            except ValidationError:
-                _progress(f"生成第{episode_number}集：schema异常，兜底写入")
+                EpisodePlanItem.model_validate(payload)
+            except ValidationError as exc:
+                _progress(f"生成第{episode_number}集：schema校验失败")
+                raise RuntimeError(
+                    f"生成第{episode_number}集失败：输出不符合 EpisodePlanItem schema"
+                ) from exc
+            if not is_episode_payload_valid(payload):
+                _progress(f"生成第{episode_number}集：内容校验失败")
+                raise RuntimeError(
+                    f"生成第{episode_number}集失败：输出不符合最小内容约束"
+                )
 
-            scenes, scene_count = ensure_scenes(coerced)
+            scenes, scene_count = ensure_scenes(payload)
             known_keys = {
                 "episode_number",
                 "title",
@@ -232,7 +223,7 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
                 "conflicts",
                 "scene_count",
             }
-            extra_meta = {k: v for k, v in coerced.items() if k not in known_keys} or {}
+            extra_meta = {k: v for k, v in payload.items() if k not in known_keys} or {}
             if scenes and "scenes" not in extra_meta:
                 extra_meta["scenes"] = scenes
             marketing_defaults = merge_marketing_meta(story_data, marketing_overrides)
@@ -246,15 +237,22 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
                 "model_used": meta.get("model"),
                 "usage": meta.get("usage"),
                 "fallback_from_outline": meta.get("fallback_from_outline"),
+                "react_attempts": meta.get("react_attempts"),
+                "duration_accepted": meta.get("duration_accepted"),
+                "continuity_snapshot": meta.get("continuity_snapshot"),
             }
+            raw = meta.get("raw")
+            if isinstance(raw, str) and raw.strip():
+                episode_agent_run["raw_content"] = raw
+            episode_agent_run["normalized"] = payload
             ep = Episode(
                 story_id=story.id,
                 episode_number=episode_number,
-                title=coerced.get("title", f"第{episode_number}集"),
-                summary=coerced.get("summary"),
-                plot_points=coerced.get("plot_points"),
-                character_arcs=coerced.get("character_arcs"),
-                conflicts=coerced.get("conflicts"),
+                title=payload.get("title", f"第{episode_number}集"),
+                summary=payload.get("summary"),
+                plot_points=payload.get("plot_points"),
+                character_arcs=payload.get("character_arcs"),
+                conflicts=payload.get("conflicts"),
                 duration_minutes=request_dict.get("episode_duration"),
                 scene_count=scene_count,
                 generation_prompt=meta.get("prompt"),
@@ -351,6 +349,28 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
 
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
+            expected_count = request_dict.get("episode_count")
+            if expected_count:
+                rows = (
+                    db.query(Episode.episode_number)
+                    .filter(
+                        Episode.story_id == story.id,
+                        Episode.is_deleted.is_(False),
+                    )
+                    .all()
+                )
+                existing_numbers = {
+                    row[0] for row in rows if row and isinstance(row[0], int)
+                }
+                missing_numbers = [
+                    idx
+                    for idx in range(1, expected_count + 1)
+                    if idx not in existing_numbers
+                ]
+                if missing_numbers:
+                    raise RuntimeError(
+                        f"剧集生成失败：缺少第 {missing_numbers} 集（期望 1..{expected_count}）"
+                    )
             task.status = TaskStatus.COMPLETED
             task.result_file_path = f"episodes:{','.join(map(str, created_ids))}"
             final_desc = (
@@ -360,6 +380,20 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
             )
             update_task_progress(db, task, final_desc)
     except Exception as e:
+        if created_ids:
+            try:
+                for ep in db.query(Episode).filter(Episode.id.in_(created_ids)).all():
+                    ep.soft_delete(user_id=user_id, reason="episode_generation_failed")
+                db.commit()
+            except Exception as cleanup_exc:
+                ai_service.logger.warning(
+                    "Failed to cleanup episodes after failure",
+                    extra={
+                        "error": str(cleanup_exc),
+                        "episode_ids": created_ids,
+                        "task_id": task_id,
+                    },
+                )
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
             task.status = TaskStatus.FAILED
@@ -394,9 +428,7 @@ def _process_fallback_result(
 
     content = (
         result.get("normalized") if isinstance(result, dict) else None
-    ) or extract_json_block(
-        result.get("content") if isinstance(result, dict) else None
-    )
+    ) or extract_json_block(result.get("content") if isinstance(result, dict) else None)
     episodes_data = content.get("episodes", []) if content else []
 
     agent_run: Dict[str, Any] = {}
@@ -409,6 +441,21 @@ def _process_fallback_result(
             "usage": result.get("usage"),
             "reasoning": result.get("reasoning"),
         }
+        raw_content = result.get("content")
+        if isinstance(raw_content, str) and raw_content.strip():
+            agent_run["raw_content"] = raw_content
+        normalized = result.get("normalized")
+        if isinstance(normalized, dict) and normalized:
+            agent_run["normalized"] = normalized
+        validation_errors = result.get("validation_errors")
+        if validation_errors:
+            agent_run["validation_errors"] = validation_errors
+        repair_attempts = result.get("repair_attempts")
+        if repair_attempts:
+            agent_run["repair_attempts"] = repair_attempts
+        first_attempt = result.get("first_attempt")
+        if first_attempt:
+            agent_run["first_attempt"] = first_attempt
     raw_step_outlines = None
     if isinstance(result, dict):
         raw_step_outlines = result.get("step_outlines") or result.get(
@@ -425,9 +472,7 @@ def _process_fallback_result(
             story,
             parsed_outlines,
             prompt=(
-                result.get("step_outline_prompt")
-                if isinstance(result, dict)
-                else None
+                result.get("step_outline_prompt") if isinstance(result, dict) else None
             ),
             agent_run=agent_run,
         )
@@ -442,6 +487,10 @@ def _process_fallback_result(
         progress_fn("模型输出无效，使用大纲兜底生成")
     if not episodes_data:
         raise RuntimeError("AI生成内容格式错误")
+    if len(episodes_data) < episode_count:
+        raise RuntimeError(
+            f"AI生成剧集数量不足：期望 {episode_count} 集，实际 {len(episodes_data)} 集"
+        )
 
     created_episodes: list[Episode] = []
     for i, ep_data in enumerate(episodes_data[:episode_count]):
@@ -452,6 +501,7 @@ def _process_fallback_result(
             .filter(
                 Episode.story_id == story.id,
                 Episode.episode_number == episode_number,
+                Episode.is_deleted.is_(False),
             )
             .first()
         )
@@ -460,12 +510,14 @@ def _process_fallback_result(
 
         try:
             EpisodePlanItem.model_validate(ep_data)
-        except ValidationError:
+        except ValidationError as exc:
             progress_fn(f"生成第{episode_number}集：schema校验失败")
-            continue
+            raise RuntimeError(
+                f"生成第{episode_number}集失败：输出不符合 EpisodePlanItem schema"
+            ) from exc
         if not is_episode_payload_valid(ep_data):
             progress_fn(f"生成第{episode_number}集：内容校验失败")
-            continue
+            raise RuntimeError(f"生成第{episode_number}集失败：输出不符合最小内容约束")
 
         scenes, scene_count = ensure_scenes(ep_data)
         known_keys = {
@@ -477,9 +529,7 @@ def _process_fallback_result(
             "conflicts",
             "scene_count",
         }
-        extra_meta = {
-            k: v for k, v in ep_data.items() if k not in known_keys
-        } or {}
+        extra_meta = {k: v for k, v in ep_data.items() if k not in known_keys} or {}
         if scenes and "scenes" not in extra_meta:
             extra_meta["scenes"] = scenes
         marketing_defaults = merge_marketing_meta(story_data, marketing_overrides)
@@ -500,9 +550,7 @@ def _process_fallback_result(
                 result.get("prompt") if isinstance(result, dict) else None
             ),
             ai_model=(
-                result.get("generation_method")
-                if isinstance(result, dict)
-                else None
+                result.get("generation_method") if isinstance(result, dict) else None
             ),
             generation_params={
                 k: request_dict.get(k)
@@ -551,14 +599,10 @@ def _process_fallback_result(
                         if isinstance(result, dict)
                         else None
                     ),
-                    "agent_generation_method": agent_run.get(
-                        "generation_method"
-                    ),
+                    "agent_generation_method": agent_run.get("generation_method"),
                 },
             )
-            episode_id_map = {
-                ep.episode_number: ep.id for ep in created_episodes
-            }
+            episode_id_map = {ep.episode_number: ep.id for ep in created_episodes}
             outline_rows = build_outline_rows(
                 outlines=parsed_outlines,
                 treatment=treatment,
@@ -567,9 +611,7 @@ def _process_fallback_result(
                 agent_run=agent_run,
             )
             if outline_rows:
-                story_structure_service.bulk_create_step_outlines(
-                    db, outline_rows
-                )
+                story_structure_service.bulk_create_step_outlines(db, outline_rows)
         except Exception as exc:
             ai_service.logger.warning(
                 "Failed to persist step outlines in async task",
