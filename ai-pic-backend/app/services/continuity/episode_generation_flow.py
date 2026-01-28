@@ -6,7 +6,6 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import EpisodePlanItem, EpisodePlanModel
-from app.utils.json_utils import extract_json_block
 from app.services.continuity.episode_continuity import (
     build_previous_episodes_context,
     extract_single_episode,
@@ -20,6 +19,9 @@ from app.services.episode_agent_episode_utils import (
     validate_episode_duration,
     validate_episode_payload,
 )
+from app.utils.json_utils import extract_json_block
+
+
 @dataclass(slots=True)
 class EpisodeReactOutput:
     episode: Dict[str, Any]
@@ -32,6 +34,8 @@ class EpisodeReactOutput:
     react_attempts: int
     duration_accepted: bool
     continuity_ledger: Dict[str, Any]
+
+
 async def generate_episode_with_continuity_react(
     *,
     ai_manager: Any,
@@ -74,7 +78,9 @@ async def generate_episode_with_continuity_react(
         is_regeneration = react_attempt > 1
 
         if is_regeneration and episode_obj and last_rejection_reason == "duration":
-            _, cur_secs, tgt_secs = validate_episode_duration(episode_obj, episode_duration)
+            _, cur_secs, tgt_secs = validate_episode_duration(
+                episode_obj, episode_duration
+            )
             rejection_reason = (
                 "duration_too_short" if cur_secs < tgt_secs else "duration_too_long"
             )
@@ -105,14 +111,18 @@ async def generate_episode_with_continuity_react(
                 },
             )
         elif is_regeneration and episode_obj and last_rejection_reason == "continuity":
-            await progress(f"生成第{ep_num}集：一致性审校驳回，尝试修订（第{react_attempt}次）")
+            await progress(
+                f"生成第{ep_num}集：一致性审校驳回，尝试修订（第{react_attempt}次）"
+            )
             reasoning.append(
                 f"episode_react_reject_{ep_num}_attempt{react_attempt - 1}_continuity"
             )
+            story_for_prompt = dict(story or {})
+            story_for_prompt.pop("context_pack", None)
             prompt = prompt_manager.render_prompt(
                 "episode_rewrite_with_audit",
                 {
-                    "story": story,
+                    "story": story_for_prompt,
                     "outline": outline,
                     "previous_episodes_context": previous_eps,
                     "continuity_ledger": continuity_ledger,
@@ -163,7 +173,9 @@ async def generate_episode_with_continuity_react(
             if isinstance(content, str)
             else (content if isinstance(content, dict) else None)
         )
-        episode_obj = extract_single_episode(parsed) if isinstance(parsed, dict) else None
+        episode_obj = (
+            extract_single_episode(parsed) if isinstance(parsed, dict) else None
+        )
 
         if not episode_obj:
             fallback_used = True
@@ -190,17 +202,27 @@ async def generate_episode_with_continuity_react(
             break
 
         if episode_duration:
-            dur_valid, cur_secs, _ = validate_episode_duration(episode_obj, episode_duration)
+            dur_valid, cur_secs, _ = validate_episode_duration(
+                episode_obj, episode_duration
+            )
             if dur_valid:
                 duration_accepted = True
-                reasoning.append(f"episode_duration_ok_{ep_num}_attempt{react_attempt}_{cur_secs}s")
+                reasoning.append(
+                    f"episode_duration_ok_{ep_num}_attempt{react_attempt}_{cur_secs}s"
+                )
                 await progress(f"生成第{ep_num}集：时长验证通过（{cur_secs}秒）")
             else:
-                reasoning.append(f"episode_duration_bad_{ep_num}_attempt{react_attempt}_{cur_secs}s")
+                reasoning.append(
+                    f"episode_duration_bad_{ep_num}_attempt{react_attempt}_{cur_secs}s"
+                )
                 last_rejection_reason = "duration"
                 if react_attempt >= MAX_REACT_REGENERATE_ATTEMPTS:
-                    reasoning.append(f"episode_duration_accepted_after_max_attempts_{ep_num}_{cur_secs}s")
-                    await progress(f"生成第{ep_num}集：达到最大重试次数，接受当前时长（{cur_secs}秒）")
+                    reasoning.append(
+                        f"episode_duration_accepted_after_max_attempts_{ep_num}_{cur_secs}s"
+                    )
+                    await progress(
+                        f"生成第{ep_num}集：达到最大重试次数，接受当前时长（{cur_secs}秒）"
+                    )
                     break
                 continue
 
@@ -253,15 +275,25 @@ async def generate_episode_with_continuity_react(
                             temperature=temperature,
                         )
                         if audit_after.verdict != "fail":
-                            reasoning.append(f"episode_continuity_rewrite_ok_{ep_num}_attempt{react_attempt}")
+                            reasoning.append(
+                                f"episode_continuity_rewrite_ok_{ep_num}_attempt{react_attempt}"
+                            )
                             break
-                        last_audit_issues = [issue.model_dump() for issue in audit_after.issues]
-                        reasoning.append(f"episode_continuity_rewrite_still_fail_{ep_num}_attempt{react_attempt}")
+                        last_audit_issues = [
+                            issue.model_dump() for issue in audit_after.issues
+                        ]
+                        reasoning.append(
+                            f"episode_continuity_rewrite_still_fail_{ep_num}_attempt{react_attempt}"
+                        )
                 except Exception:
-                    reasoning.append(f"episode_continuity_rewrite_invalid_{ep_num}_attempt{react_attempt}")
+                    reasoning.append(
+                        f"episode_continuity_rewrite_invalid_{ep_num}_attempt{react_attempt}"
+                    )
 
             if react_attempt >= MAX_REACT_REGENERATE_ATTEMPTS:
-                reasoning.append(f"episode_continuity_accepted_after_max_attempts_{ep_num}")
+                reasoning.append(
+                    f"episode_continuity_accepted_after_max_attempts_{ep_num}"
+                )
                 break
             continue
 

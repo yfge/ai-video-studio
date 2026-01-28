@@ -38,6 +38,11 @@
 投流素材建议：{{ story.ad_snippets | tojson }}
 {% endif -%}
 
+{% if story.context_pack -%}
+## Context Pack（必须遵守，禁止与之矛盾）
+{{ story.context_pack | tojson }}
+{% endif -%}
+
 ## 主要角色
 {% if story.main_characters -%}
 {% for character in story.main_characters %}
@@ -123,4 +128,3 @@
         }
     ]
 }
-

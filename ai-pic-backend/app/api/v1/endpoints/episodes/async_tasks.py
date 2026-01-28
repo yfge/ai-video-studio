@@ -14,10 +14,14 @@ from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.prompts.templates import PromptTemplate
+from app.schemas.context_pack import ContextPackBudget
 from app.schemas.generation import EpisodePlanItem
 from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import story_structure_service
 from app.services.ai_service import ai_service
+from app.services.context_pack.story_context_pack_builder import (
+    build_story_context_pack,
+)
 from app.services.episode_agent import EpisodeGenerationCallbacks
 from app.services.task_worker import episode_generate_task
 from app.utils.json_utils import extract_json_block
@@ -41,16 +45,19 @@ router = APIRouter()
 
 def _build_story_data(story: Story) -> Dict[str, Any]:
     """Build story data dict for AI generation."""
-    marketing_meta = merge_marketing_meta(
-        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
-        story.generation_params if isinstance(story.generation_params, dict) else {},
+    extra_meta = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
+    generation_params = (
+        story.generation_params if isinstance(story.generation_params, dict) else {}
     )
+    marketing_meta = merge_marketing_meta(extra_meta, generation_params)
     return {
         "title": story.title,
         "story_format": getattr(story, "story_format", None),
         "genre": story.genre,
         "theme": story.theme,
+        "default_aspect_ratio": getattr(story, "default_aspect_ratio", None),
         "synopsis": story.synopsis,
+        "premise": story.premise,
         "main_conflict": story.main_conflict,
         "resolution": story.resolution,
         "main_characters": story.main_characters,
@@ -58,6 +65,11 @@ def _build_story_data(story: Story) -> Dict[str, Any]:
         "world_building": story.world_building,
         "setting_time": story.setting_time,
         "setting_location": story.setting_location,
+        "continuity_ledger": (
+            extra_meta.get("continuity_ledger")
+            if isinstance(extra_meta.get("continuity_ledger"), dict)
+            else None
+        ),
         **marketing_meta,
     }
 
@@ -105,6 +117,31 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
         }
         apply_marketing_overrides(story_data, marketing_overrides)
 
+        used_context: Dict[str, Any] | None = None
+        try:
+            used_context = build_story_context_pack(
+                db=db,
+                story_id=story.id,
+                story_snapshot=story_data,
+                continuity_ledger=(
+                    story_data.get("continuity_ledger")
+                    if isinstance(story_data.get("continuity_ledger"), dict)
+                    else None
+                ),
+                generation_params=(
+                    story.generation_params
+                    if isinstance(story.generation_params, dict)
+                    else None
+                ),
+                budget=ContextPackBudget(),
+            )
+            story_data["context_pack"] = used_context
+        except Exception as exc:
+            ai_service.logger.warning(
+                "Failed to build StoryContextPack for episode generation; continue",
+                extra={"error": str(exc), "story_id": story.id},
+            )
+
         focus_characters = []
         for cid in request_dict.get("focus_characters") or []:
             vip = (
@@ -139,6 +176,8 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
             if isinstance(raw, str) and raw.strip():
                 outline_agent_run["raw_content"] = raw
             outline_agent_run["normalized"] = outlines
+            if used_context:
+                outline_agent_run["used_context"] = used_context
             persist_story_outlines(
                 story,
                 outlines,
@@ -425,6 +464,30 @@ def _process_fallback_result(
         "ad_snippets": request_dict.get("ad_snippets"),
     }
     apply_marketing_overrides(story_data, marketing_overrides)
+    used_context: Dict[str, Any] | None = None
+    try:
+        used_context = build_story_context_pack(
+            db=db,
+            story_id=story.id,
+            story_snapshot=story_data,
+            continuity_ledger=(
+                story_data.get("continuity_ledger")
+                if isinstance(story_data.get("continuity_ledger"), dict)
+                else None
+            ),
+            generation_params=(
+                story.generation_params
+                if isinstance(story.generation_params, dict)
+                else None
+            ),
+            budget=ContextPackBudget(),
+        )
+        story_data["context_pack"] = used_context
+    except Exception as exc:
+        ai_service.logger.warning(
+            "Failed to build StoryContextPack for episode fallback; continue",
+            extra={"error": str(exc), "story_id": story.id},
+        )
 
     content = (
         result.get("normalized") if isinstance(result, dict) else None
@@ -456,6 +519,8 @@ def _process_fallback_result(
         first_attempt = result.get("first_attempt")
         if first_attempt:
             agent_run["first_attempt"] = first_attempt
+    if used_context:
+        agent_run["used_context"] = used_context
     raw_step_outlines = None
     if isinstance(result, dict):
         raw_step_outlines = result.get("step_outlines") or result.get(

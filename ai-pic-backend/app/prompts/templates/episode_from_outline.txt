@@ -14,6 +14,11 @@
 {% if story.cliffhanger_plan %}悬念卡点：{{ story.cliffhanger_plan | join('；') }}{% endif %}
 {% if story.ad_snippets %}投流素材：{{ story.ad_snippets | tojson }}{% endif %}
 
+{% if story.context_pack %}
+## Context Pack（必须遵守，禁止与之矛盾）
+{{ story.context_pack | tojson }}
+{% endif %}
+
 ## 当前集的 Step Outline
 目标集数：{{ outline.episode_number }}
 集标题：{{ outline.title or '待定' }}

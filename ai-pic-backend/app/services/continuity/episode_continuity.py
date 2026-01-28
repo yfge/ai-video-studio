@@ -57,24 +57,18 @@ def compact_continuity_ledger_for_prompt(ledger: Dict[str, Any]) -> Dict[str, An
         :30
     ]
     open_threads = (
-        (base.get("open_threads") if isinstance(base.get("open_threads"), list) else [])[
-            :25
-        ]
-    )
+        base.get("open_threads") if isinstance(base.get("open_threads"), list) else []
+    )[:25]
     resolved_threads = (
-        (
-            base.get("resolved_threads")
-            if isinstance(base.get("resolved_threads"), list)
-            else []
-        )[:25]
-    )
+        base.get("resolved_threads")
+        if isinstance(base.get("resolved_threads"), list)
+        else []
+    )[:25]
     events = (
-        (
-            base.get("info_acquisition_events")
-            if isinstance(base.get("info_acquisition_events"), list)
-            else []
-        )[:60]
-    )
+        base.get("info_acquisition_events")
+        if isinstance(base.get("info_acquisition_events"), list)
+        else []
+    )[:60]
     characters = (
         base.get("characters") if isinstance(base.get("characters"), dict) else {}
     )
@@ -96,7 +90,9 @@ def build_previous_episodes_context(
     current_episode_number: int,
 ) -> List[Dict[str, Any]]:
     """Merge step outline info with continuity snapshots for prompt context."""
-    timeline = ledger.get("timeline") if isinstance(ledger.get("timeline"), list) else []
+    timeline = (
+        ledger.get("timeline") if isinstance(ledger.get("timeline"), list) else []
+    )
     timeline_by_ep = {
         int(item.get("episode_number") or 0): item
         for item in timeline
@@ -139,13 +135,17 @@ async def run_episode_continuity_audit(
     temperature: float,
 ) -> Tuple[ContinuityAuditResult, Any]:
     schema = ContinuityAuditResult.model_json_schema()
+    story_for_prompt = dict(story or {})
+    story_for_prompt.pop("context_pack", None)
     prompt = prompt_manager.render_prompt(
         "episode_continuity_audit",
         {
-            "story": story,
+            "story": story_for_prompt,
             "outline": outline,
             "previous_episodes_context": previous_episodes_context,
-            "continuity_ledger": compact_continuity_ledger_for_prompt(continuity_ledger),
+            "continuity_ledger": compact_continuity_ledger_for_prompt(
+                continuity_ledger
+            ),
             "episode_plan": episode_plan,
         },
     )
@@ -192,13 +192,17 @@ async def run_episode_rewrite_with_audit(
     temperature: float,
 ) -> Tuple[Dict[str, Any], Any]:
     schema = EpisodePlanModel.model_json_schema()
+    story_for_prompt = dict(story or {})
+    story_for_prompt.pop("context_pack", None)
     prompt = prompt_manager.render_prompt(
         "episode_rewrite_with_audit",
         {
-            "story": story,
+            "story": story_for_prompt,
             "outline": outline,
             "previous_episodes_context": previous_episodes_context,
-            "continuity_ledger": compact_continuity_ledger_for_prompt(continuity_ledger),
+            "continuity_ledger": compact_continuity_ledger_for_prompt(
+                continuity_ledger
+            ),
             "episode_plan": episode_plan_draft,
             "audit_issues": audit_issues,
         },
@@ -227,11 +231,13 @@ async def run_episode_ledger_update(
     prefer_provider: Optional[str],
 ) -> Tuple[EpisodeContinuityUpdatePayload, Any]:
     schema = EpisodeContinuityUpdatePayload.model_json_schema()
+    story_for_prompt = dict(story or {})
+    story_for_prompt.pop("context_pack", None)
     prompt = prompt_manager.render_prompt(
         "episode_continuity_ledger_update",
         {
             "previous_ledger": compact_continuity_ledger_for_prompt(previous_ledger),
-            "story": story,
+            "story": story_for_prompt,
             "outline": outline,
             "episode_plan": episode_plan,
         },
@@ -269,4 +275,3 @@ def extract_single_episode(plan_payload: Dict[str, Any]) -> Optional[Dict[str, A
         return None
     first = episodes[0] if isinstance(episodes[0], dict) else None
     return first
-
