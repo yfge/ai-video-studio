@@ -105,8 +105,9 @@
 
 ### Phase 2: 上下文管理（Context Pack）（P0/P1）
 
-- [ ] 功能/需求：定义 `StoryContextPack` / `EpisodeContextPack` 字段清单（角色卡/世界观/关系/禁区/continuity_ledger/最近 N 集摘要/画幅与风格偏好等）
-- [ ] 后端：实现 context pack builder（从 DB 组装 + token 预算裁剪），并提供 preview/debug 能力（只读接口或内部工具）
+- [x] 功能/需求：定义 `StoryContextPack` / `EpisodeContextPack` 字段清单（角色卡/世界观/关系/禁区/continuity_ledger/最近 N 集摘要/画幅与风格偏好等）
+- [x] 后端：实现 context pack builder（从 DB 组装 + token/字符预算裁剪），并补单测
+- [ ] 后端：新增 context pack preview/debug API（只读接口或内部工具）
 - [ ] 后端：Episode 生成 prompt/agent 输入改为显式注入 context pack（并把 used_context 写入 agent_run）
 - [ ] 后端：新增/补齐“每集摘要”产物（episode_summary）用于后续生成连续性（可在 episode 生成后自动回填）
 - [ ] 前端：在“生成剧集/再生成”弹窗提供上下文预览与开关（如：仅最近 N 集/包含 continuity ledger/包含角色卡）
