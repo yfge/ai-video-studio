@@ -83,17 +83,19 @@ def build_story_context_pack(
         .all()
     )
     recent_eps: list[EpisodeSummary] = []
-    for ep in recent_rows[-budget.max_recent_episode_summaries :]:
-        extra = ep.extra_metadata if isinstance(ep.extra_metadata, dict) else {}
-        summary = extra.get("episode_summary") or ep.summary
-        recent_eps.append(
-            EpisodeSummary(
-                episode_id=ep.id,
-                episode_number=ep.episode_number,
-                title=ep.title,
-                summary=truncate_text(summary, budget.max_field_chars),
+    max_recent = budget.max_recent_episode_summaries
+    if max_recent > 0:
+        for ep in recent_rows[-max_recent:]:
+            extra = ep.extra_metadata if isinstance(ep.extra_metadata, dict) else {}
+            summary = extra.get("episode_summary") or ep.summary
+            recent_eps.append(
+                EpisodeSummary(
+                    episode_id=ep.id,
+                    episode_number=ep.episode_number,
+                    title=ep.title,
+                    summary=truncate_text(summary, budget.max_field_chars),
+                )
             )
-        )
 
     if not isinstance(generation_params, dict):
         generation_params = (

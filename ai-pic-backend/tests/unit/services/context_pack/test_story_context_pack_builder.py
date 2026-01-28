@@ -118,6 +118,21 @@ def test_build_story_context_pack_includes_core_fields_and_trims(db_session) -> 
     assert pack["recent_episodes"][0]["episode_number"] == 2
     assert pack["recent_episodes"][0]["summary"]  # falls back to Episode.summary
 
+    pack_no_recent = build_story_context_pack(
+        db=db_session,
+        story_id=story.id,
+        story_snapshot=snapshot,
+        continuity_ledger=story.extra_metadata.get("continuity_ledger"),
+        generation_params=story.generation_params,
+        budget=ContextPackBudget(
+            max_total_chars=1000,
+            max_field_chars=200,
+            max_character_cards=5,
+            max_recent_episode_summaries=0,
+        ),
+    )
+    assert pack_no_recent["recent_episodes"] == []
+
     assert pack["meta"]["budget"]["max_total_chars"] == 1000
     assert pack["meta"]["estimated_chars"] > 0
     assert pack["meta"]["trims"]  # at least one shrink action happened
