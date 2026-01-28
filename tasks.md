@@ -85,6 +85,41 @@
 - [x] 验证：E2E 路径（选择微类型→生成故事/剧集/剧本→投流表→分镜/时间线标注），Chrome 记录验证
 - [ ] 验证：短剧全流程 E2E（IP→环境→故事→剧本→分镜图→分镜视频），逐张下载抽检并在 `agent_chats` 记录
 
+## Feature: 故事/剧集生成质量闭环（严格校验 + 上下文 + 就绪检查）🔥
+
+:information_source: 背景：当前 story/episode 生成链路仍偏“拼 prompt → 调模型 → 宽松解析 → 落库”，缺少统一的上下文管理与严格校验/验正，容易产生结构不合规、集数不匹配、角色设定漂移等问题；需要建立可追溯、可修复、可阻断的质量闭环。
+:triangular_flag_on_post: 决策点：
+
+- 解析/校验失败时是否允许落库（建议：失败不落库，任务标记 FAILED 并保留原始产物用于排查）
+- repair 次数与策略（建议：最多 2 次，第二次强制 strict JSON；仍失败则终止）
+- 上下文包（Context Pack）字段清单与 token 预算策略（按 story_format/模型差异适配）
+
+### Phase 1: 严格结构化输出 + repair（P0）
+
+- [ ] 后端：抽出通用的 JSON 解析/校验/repair 组件（story_outline、episode_plan 共用），标准化 `normalized` 产物与错误结构（validation_errors/repair_attempts）
+- [ ] 后端：故事生成强制通过 `StoryOutlineModel` 校验后才允许落库；收敛/移除 `extract_outline_from_text` 这类“宽松兜底落库”路径
+- [ ] 后端：剧集生成强制通过 `EpisodePlanModel` 校验（episodes 数量 == episode_count、必填字段齐全）；失败走 repair；最终失败不创建 Episode
+- [ ] 后端：把 prompt、raw content、normalized、校验错误与 repair 过程写入 `Task.parameters.agent_run`（便于排障与复现）
+- [ ] 测试：新增单元测试覆盖（parse fail → repair success/failed、episodes 数量修复、必填字段补齐、错误落库结构）
+- [ ] 验证：Chrome E2E（生成故事→生成剧集）至少 2 个 case，并在 `agent_chats` 记录（含失败 case 的可追溯性）
+
+### Phase 2: 上下文管理（Context Pack）（P0/P1）
+
+- [ ] 功能/需求：定义 `StoryContextPack` / `EpisodeContextPack` 字段清单（角色卡/世界观/关系/禁区/continuity_ledger/最近 N 集摘要/画幅与风格偏好等）
+- [ ] 后端：实现 context pack builder（从 DB 组装 + token 预算裁剪），并提供 preview/debug 能力（只读接口或内部工具）
+- [ ] 后端：Episode 生成 prompt/agent 输入改为显式注入 context pack（并把 used_context 写入 agent_run）
+- [ ] 后端：新增/补齐“每集摘要”产物（episode_summary）用于后续生成连续性（可在 episode 生成后自动回填）
+- [ ] 前端：在“生成剧集/再生成”弹窗提供上下文预览与开关（如：仅最近 N 集/包含 continuity ledger/包含角色卡）
+- [ ] 验证：同一 Story 连续生成/再生成 2 次 episode，抽检关键设定一致性与 ledger 更新是否符合预期（Chrome 记录）
+
+### Phase 3: 生成前就绪检查（P0/P1）
+
+- [ ] 后端：Story→Episode readiness 检查（必填字段/长度阈值/角色存在与归属/marketing meta 完整性）；输出可读的 blocking issues + 建议修复项
+- [ ] 后端：新增 readiness/preview API（用于前端在生成前校验，并支持“一键补齐 story outline 再生成 episode”的流程）
+- [ ] 前端：生成按钮前展示 readiness 结果；存在 blocking issues 时阻断生成，并提供一键修复/补齐入口
+- [ ] 测试：readiness 规则单测 + API 集成测试（阻断/允许/一键修复）
+- [ ] 验证：Chrome E2E 覆盖“story 缺字段被阻断→一键补齐→生成 episode 成功”的完整链路
+
 ## Feature: Duration Orchestrator Agent（端到端时长闭环验证）🔥
 
 :information_source: 背景：当前从剧集到时间轴/对白到分镜的时长对不齐。Episode Agent 的 `estimated_duration_seconds` 是 LLM 估算，与 TTS 实际时长差异可达 50%+；Script Agent 不知道场景目标时长，对白长度随机；Timeline Agent 只能通过 GAP 微调，无法拯救大偏差。需要构建端到端闭环验证系统。
