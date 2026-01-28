@@ -111,6 +111,26 @@
    - `task_type` 正确显示为 `story_generation`（不再是兜底 `image_generation`）
    - 详情中可见 `Agent 执行轨迹`，包含至少 `prompt` 与 `result_ref`（story_id 等）；如有 usage/reasoning 也应可展开查看
 
+## 场景/环境资产 + 角色锚点 → 分镜图像生成验证（storyboard_image_generation）
+
+> 目标：在不显式提交 `reference_images` 的情况下，后端能自动把 `scene.environment_id` 的环境参考图、以及 `shot.character_ids` 对应的虚拟 IP 图像注入到分镜图像生成中，保证人物与场景一致性；并在前端可直观看到「已绑定参考图：N 张」。
+
+1. 登录后打开分镜页：`http://localhost:8089/episodes/124/storyboard`。
+2. 确认页面已加载出场景/分镜帧（如无数据，可先在页面中执行一次「生成分镜」）。
+3. 绑定环境：
+   - 在「绑定环境」区域选择一个已有参考图的环境（例如 `会议室`），点击「保存」。
+   - 期望看到成功提示（环境绑定已更新）。
+4. 绑定角色（镜头参与角色）：
+   - 在当前场景的「涉及角色」中勾选角色（例如 `老拐`、`文闻`），点击「保存配置」。
+   - 期望看到成功提示（镜头角色已更新）。
+5. 在该场景执行批量生图：
+   - 点击「为此场景批量生成图像」（默认首/尾帧 keyframe 模式）。
+   - 等待任务完成，分镜帧卡片中出现关键帧预览图（首帧/尾帧）。
+6. 期望结果：
+   - 每个生成成功的帧卡片显示「已绑定参考图：N 张」（`N > 0`）。
+   - 生成结果的画面风格/人物/场景应与所选环境与角色大体一致（至少不应出现完全无关的环境/人物）。
+   - （可选）打开任务页 `http://localhost:8089/tasks`，用 `task_type=storyboard_image_generation` 过滤，找到对应任务并确认详情中存在 `parameters.agent_run`。
+
 ## 在 agent_chats 中记录验证
 
 每次对虚拟 IP 图像生成 / 图生图流程进行改动时，`agent_chats/YYYY/MM/DD/*.md` 的 `## Validation` 段应至少包含：
