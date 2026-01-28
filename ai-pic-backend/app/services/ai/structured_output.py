@@ -110,6 +110,9 @@ async def generate_with_repair(
     repair_system_prompt: Optional[str] = None,
     pydantic_model: Type[TModel],
     extractor: Optional[Callable[[Any], Dict[str, Any]]] = None,
+    extra_validator: Optional[
+        Callable[[Dict[str, Any]], Optional[List[Dict[str, Any]]]]
+    ] = None,
     max_repairs: int = 2,
 ) -> Dict[str, Any]:
     """
@@ -135,6 +138,11 @@ async def generate_with_repair(
     normalized, errors, raw_json = validate_payload(
         pydantic_model, content_text, extractor=extractor
     )
+    if normalized is not None and extra_validator is not None:
+        extra_errors = extra_validator(normalized)
+        if extra_errors:
+            normalized = None
+            errors = extra_errors
 
     first_attempt = {
         "success": bool(getattr(response, "success", False)),
@@ -176,6 +184,11 @@ async def generate_with_repair(
         normalized, errors, raw_json = validate_payload(
             pydantic_model, content_text, extractor=extractor
         )
+        if normalized is not None and extra_validator is not None:
+            extra_errors = extra_validator(normalized)
+            if extra_errors:
+                normalized = None
+                errors = extra_errors
         repair_attempts.append(
             {
                 "success": bool(getattr(repair, "success", False)),
