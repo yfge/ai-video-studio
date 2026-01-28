@@ -1,5 +1,9 @@
 import type { AIModel } from "@/utils/api";
 
+import {
+  filterAspectRatios,
+  normalizeAspectRatioDefault,
+} from "./aspectRatios";
 import type { ModelMetadata, ModelUiMetadata } from "./modelUiTypes";
 
 export type ImageUiOptions = {
@@ -15,15 +19,16 @@ export const extractImageUi = (model?: AIModel): ImageUiOptions => {
     {}) as ModelUiMetadata;
   const sizeOptions =
     (ui.size_options as string[] | undefined)?.filter(Boolean) ?? [];
-  const aspectRatioOptions =
-    (ui.aspect_ratio_options as string[] | undefined)?.filter(Boolean) ?? [];
   const supportsAspectRatio = Boolean(ui.supports_aspect_ratio);
+  const rawAspectRatios =
+    (ui.aspect_ratio_options as string[] | undefined)?.filter(Boolean) ?? [];
+  const aspectRatioOptions = supportsAspectRatio
+    ? filterAspectRatios(rawAspectRatios)
+    : [];
   const defaultSize = (ui.default_size as string | undefined) || sizeOptions[0];
-  const defaultAspectRatio =
-    (ui.default_aspect_ratio as string | undefined) ||
-    (supportsAspectRatio && aspectRatioOptions.length > 0
-      ? aspectRatioOptions[0]
-      : undefined);
+  const defaultAspectRatio = supportsAspectRatio
+    ? normalizeAspectRatioDefault(ui.default_aspect_ratio, aspectRatioOptions)
+    : undefined;
 
   return {
     sizeOptions,
@@ -33,4 +38,3 @@ export const extractImageUi = (model?: AIModel): ImageUiOptions => {
     defaultAspectRatio,
   };
 };
-

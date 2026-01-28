@@ -1,5 +1,9 @@
 import type { AIModel } from "@/utils/api";
 
+import {
+  filterAspectRatios,
+  normalizeAspectRatioDefault,
+} from "./aspectRatios";
 import type { ModelMetadata, ModelUiMetadata } from "./modelUiTypes";
 
 export type VideoUiOptions = {
@@ -43,12 +47,14 @@ export const extractVideoUi = (model?: AIModel): VideoUiOptions => {
     "720p",
     "1080p",
   ];
-  const ratioOptions = (ui.ratio_options as string[] | undefined) ?? [
-    "16:9",
-    "9:16",
-    "1:1",
-    "4:3",
-  ];
+  const ratioOptions = filterAspectRatios(
+    (ui.ratio_options as string[] | undefined) ?? [
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:3",
+    ],
+  );
   const durationOptions = (ui.duration_options as number[] | undefined) ?? [
     5, 10,
   ];
@@ -60,8 +66,10 @@ export const extractVideoUi = (model?: AIModel): VideoUiOptions => {
     (ui.default_resolution as string | undefined) ||
     resolutionOptions[0] ||
     "720p";
-  const defaultRatio =
-    (ui.default_ratio as string | undefined) || ratioOptions[0] || "16:9";
+  const defaultRatio = normalizeAspectRatioDefault(
+    ui.default_ratio,
+    ratioOptions,
+  );
 
   return {
     supportsEndFrame: Boolean(ui.supports_end_frame ?? true),
@@ -79,4 +87,3 @@ export const extractVideoUi = (model?: AIModel): VideoUiOptions => {
     cameraControlSchema: ui.camera_control_schema,
   };
 };
-
