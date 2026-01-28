@@ -1,9 +1,14 @@
 import json
+
 import pytest
+from app.services.storyboard_reasoner import (
+    LANGGRAPH_AVAILABLE,
+    StoryboardReActReasoner,
+)
 
-from app.services.storyboard_reasoner import StoryboardReActReasoner, LANGGRAPH_AVAILABLE
-
-pytestmark = pytest.mark.skipif(not LANGGRAPH_AVAILABLE, reason="LangGraph not installed")
+pytestmark = pytest.mark.skipif(
+    not LANGGRAPH_AVAILABLE, reason="LangGraph not installed"
+)
 
 
 class DummyService:
@@ -16,7 +21,9 @@ class DummyService:
     async def generate_storyboard_plan(self, **_: object):
         return self.plan_payload
 
-    async def generate_storyboard_from_plan_for_scene(self, *, scene_plan, **_: object):  # noqa: ANN001
+    async def generate_storyboard_from_plan_for_scene(
+        self, *, scene_plan, **_: object
+    ):  # noqa: ANN001
         self.collected_scene_plans.append(scene_plan.model_dump())
         return self.frames_map.get(scene_plan.scene_number)
 
@@ -29,8 +36,18 @@ def _get_duplicate_plan():
                     "scene_number": 1,
                     "target_frames": 2,
                     "frames": [
-                        {"shot_type": "中景", "camera_movement": "固定", "composition": "三分法", "intent": "对话"},
-                        {"shot_type": "中景", "camera_movement": "固定", "composition": "三分法", "intent": "对话"},
+                        {
+                            "shot_type": "中景",
+                            "camera_movement": "固定",
+                            "composition": "三分法",
+                            "intent": "对话",
+                        },
+                        {
+                            "shot_type": "中景",
+                            "camera_movement": "固定",
+                            "composition": "三分法",
+                            "intent": "对话",
+                        },
                     ],
                 }
             ]
@@ -75,7 +92,17 @@ async def test_reasoner_returns_frames_with_trace():
                 "duration_seconds": 4,
                 "ai_prompt": "test",
                 "reference_images": [],
-            }
+            },
+            {
+                "scene_number": 1,
+                "shot_type": "近景",
+                "camera_movement": "拉",
+                "composition": "对称",
+                "description": "角色特写",
+                "duration_seconds": 3,
+                "ai_prompt": "test 2",
+                "reference_images": [],
+            },
         ]
     }
     service = DummyService(plan_payload=_get_duplicate_plan(), frames_map=frames_map)
@@ -94,8 +121,18 @@ async def test_reasoner_returns_frames_with_trace():
     assert result is not None
     payload = json.loads(result["content"])
     assert payload["frames"], "frames should be present"
-    assert result["reasoning_trace"] == ["plan_ready", "plan_reviewed", "frames_ready"]
-    assert service.collected_scene_plans and len(service.collected_scene_plans[0]["frames"]) == 2
+    assert result["reasoning_trace"] == [
+        "scenes_selected",
+        "plan_ready",
+        "plan_reviewed",
+        "frames_generated",
+        "frames_valid",
+        "frames_ready",
+    ]
+    assert (
+        service.collected_scene_plans
+        and len(service.collected_scene_plans[0]["frames"]) == 2
+    )
 
 
 @pytest.mark.asyncio

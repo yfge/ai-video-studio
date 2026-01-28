@@ -344,11 +344,11 @@
 
 ### 进度（功能→后端→前端→验证）
 
-- [ ] 功能/需求：统一分镜生成模型为“带规划的 LangGraph 管线”，默认每个选定场景至少生成 `frames_per_scene` 帧，帧结构必须满足 `StoryboardModel` JSON Schema
-- [ ] 后端：实现 `StoryboardLangGraphAgent`（或扩展现有 `StoryboardReActReasoner`），graph 中包括：场景选择节点 → 帧规划节点（`StoryboardPlanModel`）→ 帧细化节点（`StoryboardModel`）→ 校验/数量检查节点 → 修复节点（在帧数不足或结构不合法时 ReAct 重试）
-- [ ] 后端：收敛 `AIService.generate_storyboard*` 接口与 `scripts_legacy.py`/`app/api/v1/endpoints/scripts/*` 中分镜生成逻辑，统一通过 LangGraph agent 入口，保留本地 fallback 作为最后兜底；确保同步/异步（`/storyboard/generate`、`/storyboard/generate-async`）走同一套管线
-- [ ] 后端：在分镜生成 Task 与 `script.extra_metadata.storyboard` 中落库完整 agent 运行轨迹（plan、frames、provider/model、usage、reasoning_trace），支持后续审计与问题回溯
-- [ ] 前端：分镜工作台按钮统一切换到 `*-async` 路径，默认 `use_plan=true`，不再显式暴露“规划”动作，仅在高级视图中展示 `storyboard_plan` 与 ReAct 轨迹
+- [x] 功能/需求：统一分镜生成模型为“带规划的 LangGraph 管线”，默认每个选定场景至少生成 `frames_per_scene` 帧，帧结构必须满足 `StoryboardModel` JSON Schema
+- [x] 后端：实现 `StoryboardLangGraphAgent`（或扩展现有 `StoryboardReActReasoner`），graph 中包括：场景选择节点 → 帧规划节点（`StoryboardPlanModel`）→ 帧细化节点（`StoryboardModel`）→ 校验/数量检查节点 → 修复节点（在帧数不足或结构不合法时 ReAct 重试）
+- [x] 后端：收敛 `AIService.generate_storyboard*` 接口与 `scripts_legacy.py`/`app/api/v1/endpoints/scripts/*` 中分镜生成逻辑，统一通过 LangGraph agent 入口，保留本地 fallback 作为最后兜底；确保同步/异步（`/storyboard/generate`、`/storyboard/generate-async`）走同一套管线
+- [x] 后端：在分镜生成 Task 与 `script.extra_metadata.storyboard` 中落库完整 agent 运行轨迹（plan、frames、provider/model、usage、reasoning_trace），支持后续审计与问题回溯
+- [x] 前端：分镜工作台按钮统一切换到 `*-async` 路径，默认 `use_plan=true`，不再显式暴露“规划”动作，仅在高级视图中展示 `storyboard_plan` 与 ReAct 轨迹
 - [ ] 验证：补充端到端测试（长剧集、多场景、多次生成叠加），重点覆盖：帧数量检查与自动补齐、JSON 结构校验与修复、与环境/角色资产联动后的分镜稳定性
 
 ### 下一步

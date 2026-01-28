@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, Optional
 
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.services.storyboard_reasoner import (
+from app.services.storyboard.langgraph_utils import (
     COMPOSITION_CYCLE,
     MOVEMENT_CYCLE,
     SHOT_CYCLE,

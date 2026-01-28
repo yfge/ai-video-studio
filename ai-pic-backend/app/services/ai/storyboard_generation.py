@@ -22,6 +22,7 @@ class StoryboardGenerationMixin:
         temperature: float = 0.7,
         frames_per_scene: int = 3,
         max_frames: Optional[int] = None,
+        selected_scenes: Optional[List[int]] = None,
         prefer_graph: bool = True,
     ) -> Optional[Dict[str, Any]]:
         """基于剧本信息生成分镜（Storyboard）"""
@@ -35,7 +36,7 @@ class StoryboardGenerationMixin:
                     model=model,
                     prefer_provider=prefer_provider,
                     temperature=temperature,
-                    selected_scenes=None,
+                    selected_scenes=selected_scenes,
                 )
                 if graph_result and graph_result.get("content"):
                     content_raw = graph_result.get("content")
@@ -98,7 +99,9 @@ class StoryboardGenerationMixin:
                 )
                 if response.success:
                     content_text = (
-                        response.data if isinstance(response.data, str) else str(response.data)
+                        response.data
+                        if isinstance(response.data, str)
+                        else str(response.data)
                     )
                     normalized = extract_json_block(content_text)
                     if normalized:

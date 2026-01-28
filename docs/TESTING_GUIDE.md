@@ -111,6 +111,19 @@
    - `task_type` 正确显示为 `story_generation`（不再是兜底 `image_generation`）
    - 详情中可见 `Agent 执行轨迹`，包含至少 `prompt` 与 `result_ref`（story_id 等）；如有 usage/reasoning 也应可展开查看
 
+## 分镜 LangGraph 规划+生成验证（storyboard_generation）
+
+> 目标：分镜生成统一走 LangGraph“规划 → 生成 → 校验/修复”管线，并在任务页可审计 plan/frames/reasoning_trace。
+
+1. 登录后打开分镜页：`http://localhost:8089/episodes/124/storyboard`。
+2. 选择一个已有剧本，点击「生成分镜」（默认走 `generate-async` + `use_plan=true`）。
+3. 等待任务完成后刷新分镜页：
+   - 分镜应落库到 `script.extra_metadata.storyboard`，且 `meta.reasoning_trace` 不为空。
+   - 若开启 `frames_per_scene`，每个场景帧数不低于该阈值。
+4. 打开任务页：`http://localhost:8089/tasks`，筛选 `task_type=storyboard_generation`：
+   - 展开详情，确认 `Agent 执行轨迹` 中包含 `plan`/`frames`/`reasoning_trace`/`usage`。
+   - 若 `plan_fixes` 有值，应可展开查看修正记录。
+
 ## 场景/环境资产 + 角色锚点 → 分镜图像生成验证（storyboard_image_generation）
 
 > 目标：在不显式提交 `reference_images` 的情况下，后端能自动把 `scene.environment_id` 的环境参考图、以及 `shot.character_ids` 对应的虚拟 IP 图像注入到分镜图像生成中，保证人物与场景一致性；并在前端可直观看到「已绑定参考图：N 张」。
@@ -140,4 +153,4 @@
   - 哪个虚拟 IP（例如「ID=1，角色：老拐」）。
   - 使用了哪些模型 / 分辨率（例如「Seedream 4.5 2K，图生图生成数量=2」）。
   - 前端 UI 行为（新图是否出现在网格、是否仍有自动下载/新窗口等）。
-- 遇到的错误与解决方式（如 Ark 尺寸错误、DALL·E 接口报错等）。 
+- 遇到的错误与解决方式（如 Ark 尺寸错误、DALL·E 接口报错等）。

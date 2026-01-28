@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.services.task_agent_run.utils import (
     loads_task_parameters,
@@ -24,7 +24,9 @@ def _load_script_owned(db, *, script_id: int, user_id: int):
 
 
 def _resolve_script_id(task) -> int | None:
-    script_id_str = parse_result_id(getattr(task, "result_file_path", None), prefix="script")
+    script_id_str = parse_result_id(
+        getattr(task, "result_file_path", None), prefix="script"
+    )
     if script_id_str:
         token = script_id_str.split(":", 1)[0]
         script_id = maybe_int(token)
@@ -115,14 +117,19 @@ def build_storyboard_generation_agent_run(db, task, *, user_id: int) -> Dict[str
         return {}
 
     meta = {}
+    storyboard = {}
     if isinstance(getattr(script, "extra_metadata", None), dict):
         storyboard = safe_dict(script.extra_metadata.get("storyboard"))
         meta = safe_dict(storyboard.get("meta"))
+    frames = storyboard.get("frames")
+    plan = storyboard.get("plan")
 
     payload: Dict[str, Any] = {
         "generation_method": meta.get("generation_method"),
         "provider_used": meta.get("provider"),
         "model_used": meta.get("generation_model"),
+        "usage": meta.get("usage"),
+        "reasoning_trace": meta.get("reasoning_trace"),
         "prompt": getattr(task, "prompt", None),
         "result_ref": {
             "script_id": getattr(script, "id", None),
@@ -132,13 +139,22 @@ def build_storyboard_generation_agent_run(db, task, *, user_id: int) -> Dict[str
             "storyboard_version": getattr(script, "storyboard_version", None),
         },
     }
+    if isinstance(frames, list):
+        payload["frames"] = frames
+    if isinstance(plan, dict):
+        payload["plan"] = plan
+    plan_fixes = meta.get("plan_fixes")
+    if isinstance(plan_fixes, list):
+        payload["plan_fixes"] = plan_fixes
     scene_scope = meta.get("scene_scope")
     if scene_scope is not None:
         payload["scene_scope"] = scene_scope
     return payload
 
 
-def build_storyboard_from_audio_timeline_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
+def build_storyboard_from_audio_timeline_agent_run(
+    db, task, *, user_id: int
+) -> Dict[str, Any]:
     script_id = _resolve_script_id(task)
     if script_id is None:
         return {}
@@ -218,7 +234,11 @@ def build_storyboard_image_agent_run(db, task, *, user_id: int) -> Dict[str, Any
 
     requested_model = params.get("model")
     provider_used, model_used = split_provider_model(requested_model)
-    if model_used is None and isinstance(requested_model, str) and requested_model.strip():
+    if (
+        model_used is None
+        and isinstance(requested_model, str)
+        and requested_model.strip()
+    ):
         model_used = requested_model.strip()
 
     frames = params.get("frames") or []
@@ -231,7 +251,11 @@ def build_storyboard_image_agent_run(db, task, *, user_id: int) -> Dict[str, Any
         "generation_method": "storyboard_image",
         "provider_used": provider_used,
         "model_used": model_used,
-        "prompt": prompt_override if isinstance(prompt_override, str) else getattr(task, "prompt", None),
+        "prompt": (
+            prompt_override
+            if isinstance(prompt_override, str)
+            else getattr(task, "prompt", None)
+        ),
         "result_ref": {
             "script_id": getattr(script, "id", None),
             "script_business_id": getattr(script, "business_id", None),
@@ -247,4 +271,3 @@ def build_storyboard_image_agent_run(db, task, *, user_id: int) -> Dict[str, Any
     if isinstance(generation_profile, str) and generation_profile.strip():
         payload["generation_profile"] = generation_profile
     return payload
-

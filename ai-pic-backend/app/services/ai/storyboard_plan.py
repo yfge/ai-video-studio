@@ -5,7 +5,11 @@ from typing import Any, Dict, List, Optional
 
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.schemas.generation import StoryboardModel, StoryboardPlanModel, StoryboardPlanScene
+from app.schemas.generation import (
+    StoryboardModel,
+    StoryboardPlanModel,
+    StoryboardPlanScene,
+)
 from app.utils.json_utils import extract_json_block
 
 
@@ -117,7 +121,9 @@ class StoryboardPlanMixin:
             )
             if response.success:
                 content_text = (
-                    response.data if isinstance(response.data, str) else str(response.data)
+                    response.data
+                    if isinstance(response.data, str)
+                    else str(response.data)
                 )
                 data = extract_json_block(content_text)
                 if not data:
@@ -150,23 +156,33 @@ class StoryboardPlanMixin:
         if not self.ai_manager:
             return None
         try:
+            scenes = (script or {}).get("scenes") or []
+            scene_indices = (script or {}).get("scene_indices") or []
+            scene_payload = None
+            if isinstance(scene_indices, list) and scene_indices:
+                try:
+                    mapped_index = scene_indices.index(scene_plan.scene_number)
+                    if 0 <= mapped_index < len(scenes):
+                        scene_payload = scenes[mapped_index]
+                except ValueError:
+                    scene_payload = None
+            if scene_payload is None and scenes:
+                if 0 < scene_plan.scene_number <= len(scenes):
+                    scene_payload = scenes[scene_plan.scene_number - 1]
             script_brief = {
                 "story": (script or {}).get("story"),
                 "episode": (script or {}).get("episode"),
-                "scene": (
-                    (script or {}).get("scenes")[scene_plan.scene_number - 1]
-                    if (script or {}).get("scenes")
-                    and 0 < scene_plan.scene_number <= len((script or {}).get("scenes"))
-                    else None
-                ),
+                "scene": scene_payload,
             }
             prompt = prompt_manager.render_prompt(
                 PromptTemplate.STORYBOARD_SCENE.value,
                 {
-                    "scene_plan_json": json.dumps(scene_plan.dict(), ensure_ascii=False),
-                    "script_brief_json": json.dumps(
-                        script_brief, ensure_ascii=False
-                    )[:1500],
+                    "scene_plan_json": json.dumps(
+                        scene_plan.dict(), ensure_ascii=False
+                    ),
+                    "script_brief_json": json.dumps(script_brief, ensure_ascii=False)[
+                        :1500
+                    ],
                     "max_frames": max_frames,
                 },
             )
@@ -183,7 +199,9 @@ class StoryboardPlanMixin:
             )
             if response.success:
                 content_text = (
-                    response.data if isinstance(response.data, str) else str(response.data)
+                    response.data
+                    if isinstance(response.data, str)
+                    else str(response.data)
                 )
                 raw = extract_json_block(content_text)
                 data = _normalize_storyboard_payload(raw)

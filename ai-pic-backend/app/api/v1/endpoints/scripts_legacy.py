@@ -18,11 +18,7 @@ from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.prompts.manager import PromptManager, prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.schemas.generation import (
-    StoryboardModel,
-    StoryboardPlanModel,
-    StoryboardPlanScene,
-)
+from app.schemas.generation import StoryboardModel
 from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.script import (
     ScriptCreate,
@@ -2078,7 +2074,7 @@ async def generate_storyboard(
     scene_numbers: str | None = Query(
         None, description="逗号分隔的场景编号列表，如 1,3,4"
     ),
-    use_plan: bool = Query(False, description="是否先使用分镜规划，再逐场景生成"),
+    use_plan: bool = Query(True, description="是否先使用分镜规划，再逐场景生成"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -2181,130 +2177,41 @@ async def generate_storyboard(
     scene_map = {idx: sc for idx, sc in enumerate(all_scenes, start=1)}
     existing_frames = _load_existing_frames(script)
 
-    reasoner_result = None
-    if getattr(ai_service, "storyboard_reasoner", None) and use_plan:
-        try:
-            reasoner_result = await ai_service.storyboard_reasoner.generate(
-                script=script_data,
-                frames_per_scene=frames_per_scene,
-                max_frames=max_frames,
-                model=model_id,
-                prefer_provider=prefer_provider,
-                temperature=temperature,
-                selected_scenes=selected_scenes,
-            )
-            if reasoner_result and reasoner_result.get("reasoning_trace"):
-                try:
-                    logger.info(
-                        f"Storyboard Reasoner trace: {reasoner_result['reasoning_trace']}"
-                    )
-                except Exception:
-                    pass
-        except Exception as exc:
-            logger.warning(f"Storyboard LangGraph reasoner failed: {exc}")
-
     frames_generated: List[Dict[str, Any]] = []
     generation_method = "direct"
     generation_source = f"ai:{prefer_provider or 'auto'}"
     generation_model = model_id
     provider_used: Optional[str] = prefer_provider
+    reasoning_trace: Optional[List[str]] = None
+    agent_usage: Optional[Dict[str, Any]] = None
+    plan_data: Optional[Dict[str, Any]] = None
+    plan_fixes: Optional[List[str]] = None
 
-    if reasoner_result and reasoner_result.get("content"):
+    result = await ai_service.generate_storyboard(
+        script=script_data,
+        model=model_id,
+        prefer_provider=prefer_provider,
+        temperature=temperature,
+        frames_per_scene=frames_per_scene,
+        max_frames=max_frames,
+        selected_scenes=selected_scenes,
+        prefer_graph=use_plan,
+    )
+    if result:
         try:
-            reasoned_raw = reasoner_result.get("content")
-            reasoned_payload = (
-                reasoned_raw
-                if isinstance(reasoned_raw, dict)
-                else extract_json_block(reasoned_raw)
-            )
-            if not isinstance(reasoned_payload, dict):
-                raise ValueError("Storyboard reasoner returned non-JSON payload")
-            StoryboardModel.model_validate(reasoned_payload)
-            frames_generated = reasoned_payload.get("frames") or []
-            provider_used = reasoner_result.get("provider_used") or prefer_provider
-            generation_model = reasoner_result.get("model_used") or model_id
-            generation_method = (
-                reasoner_result.get("generation_method") or "langgraph_plan"
-            )
-            generation_source = f"langgraph:{provider_used or 'auto'}"
-        except Exception as exc:
-            logger.warning(
-                f"Storyboard reasoner response invalid, fallback to standard pipeline: {exc}"
-            )
-            frames_generated = []
-
-    # 先走规划流程（可选）
-    if not frames_generated and use_plan:
-        plan_resp = await ai_service.generate_storyboard_plan(
-            script=script_data,
-            frames_per_scene=frames_per_scene,
-            selected_scenes=selected_scenes,
-            model=model_id,
-            prefer_provider=prefer_provider,
-            temperature=0.3,
-        )
-        if plan_resp and plan_resp.get("normalized"):
-            try:
-                StoryboardPlanModel.model_validate(plan_resp["normalized"])
-                script.storyboard_plan = plan_resp["normalized"]
-                extra_meta = dict(script.extra_metadata or {})
-                extra_meta["storyboard_plan"] = plan_resp["normalized"]
-                script.extra_metadata = extra_meta
-                generation_method = "plan"
-                provider_used = plan_resp.get("provider_used") or prefer_provider
-                generation_source = f"ai_plan:{provider_used or 'auto'}"
-                generation_model = plan_resp.get("model_used") or model_id
-
-                plan_scenes = plan_resp["normalized"].get("scenes", [])
-                frames_all: List[Dict[str, Any]] = []
-                for sp in plan_scenes:
-                    try:
-                        sp_model = StoryboardPlanScene.model_validate(sp)
-                    except Exception:
-                        continue
-                    frames_scene = (
-                        await ai_service.generate_storyboard_from_plan_for_scene(
-                            script=script_data,
-                            scene_plan=sp_model,
-                            model=model_id,
-                            prefer_provider=prefer_provider,
-                            temperature=temperature,
-                            max_frames=max_frames,
-                        )
-                    )
-                    if frames_scene:
-                        frames_all.extend(frames_scene)
-                if frames_all:
-                    frames_generated = frames_all
-            except Exception as e:
-                logger.warning(f"Storyboard plan validate/apply failed: {e}")
-
-    # 若规划流程未生成结果，则直接调用AI接口
-    if not frames_generated:
-        result = await ai_service.generate_storyboard(
-            script=script_data,
-            model=model_id,
-            prefer_provider=prefer_provider,
-            temperature=temperature,
-            frames_per_scene=frames_per_scene,
-            max_frames=max_frames,
-            # 此处已在上方显式尝试过 LangGraph / 规划管线，这里只作为直连兜底，
-            # 因此关闭 AIService 内部的 LangGraph 优先逻辑，避免重复尝试。
-            prefer_graph=False,
-        )
-        if result:
-            try:
-                raw_text = result.get("content") if isinstance(result, dict) else None
-                if isinstance(raw_text, str):
-                    logger.info(
-                        f"StoryboardGen Raw Response Preview (len={len(raw_text)}): {raw_text[:2000]}"
-                        f"{'...<truncated>' if len(raw_text) > 2000 else ''}"
-                    )
+            raw_text = result.get("content") if isinstance(result, dict) else None
+            if isinstance(raw_text, str):
                 logger.info(
-                    f"StoryboardGen Provider: {result.get('provider_used')} Model: {result.get('model_used')} Usage: {result.get('usage')}"
+                    f"StoryboardGen Raw Response Preview (len={len(raw_text)}): {raw_text[:2000]}"
+                    f"{'...<truncated>' if len(raw_text) > 2000 else ''}"
                 )
-            except Exception:
-                pass
+            logger.info(
+                f"StoryboardGen Provider: {result.get('provider_used')} Model: {result.get('model_used')} Usage: {result.get('usage')}"
+            )
+        except Exception:
+            pass
+        sb_raw = result.get("normalized")
+        if not isinstance(sb_raw, dict):
             try:
                 sb_raw = result.get("content")
                 if not isinstance(sb_raw, dict):
@@ -2312,19 +2219,33 @@ async def generate_storyboard(
             except Exception as exc:
                 logger.warning(f"StoryboardGen JSON parse failed: {exc}")
                 sb_raw = None
-            if isinstance(sb_raw, dict):
-                try:
-                    sb_obj = StoryboardModel.model_validate(sb_raw)
-                    sb_data = sb_obj.model_dump(mode="python")
-                    frames_generated = sb_data.get("frames") or []
-                    provider_used = result.get("provider_used") or prefer_provider
+        if isinstance(sb_raw, dict):
+            try:
+                sb_obj = StoryboardModel.model_validate(sb_raw)
+                sb_data = sb_obj.model_dump(mode="python")
+                frames_generated = sb_data.get("frames") or []
+                provider_used = result.get("provider_used") or prefer_provider
+                generation_model = result.get("model_used") or model_id
+                generation_method = result.get("generation_method") or generation_method
+                if generation_method.startswith("langgraph"):
+                    generation_source = f"langgraph:{provider_used or 'auto'}"
+                else:
                     generation_source = f"ai:{provider_used or 'auto'}"
-                    generation_model = result.get("model_used") or model_id
-                    generation_method = (
-                        result.get("generation_method") or generation_method
-                    )
-                except Exception as exc:
-                    logger.warning(f"StoryboardGen validation failed: {exc}")
+                reasoning_trace = result.get("reasoning_trace")
+                agent_usage = result.get("usage")
+                plan_data = result.get("plan")
+                plan_fixes = result.get("fixes")
+            except Exception as exc:
+                logger.warning(f"StoryboardGen validation failed: {exc}")
+
+    if plan_data:
+        try:
+            script.storyboard_plan = plan_data
+            extra_meta = dict(script.extra_metadata or {})
+            extra_meta["storyboard_plan"] = plan_data
+            script.extra_metadata = extra_meta
+        except Exception:
+            logger.warning("Storyboard plan persistence failed")
 
     # Fallback: 基于剧本快速生成简易分镜
     if not frames_generated:
@@ -2594,9 +2515,16 @@ async def generate_storyboard(
         "provider": provider_used,
         "scene_scope": scene_order if selected_scenes else None,
     }
+    if reasoning_trace:
+        sb_meta["reasoning_trace"] = reasoning_trace
+    if agent_usage:
+        sb_meta["usage"] = agent_usage
+    if plan_fixes:
+        sb_meta["plan_fixes"] = plan_fixes
     sb = {"frames": frames_serialized, "meta": sb_meta}
-    if script.storyboard_plan:
-        sb["plan"] = script.storyboard_plan
+    plan_payload = plan_data or script.storyboard_plan
+    if plan_payload:
+        sb["plan"] = plan_payload
     extra = dict(script.extra_metadata or {})
     extra["storyboard"] = sb
     script.extra_metadata = extra
@@ -2619,7 +2547,7 @@ async def generate_storyboard_async(
     scene_numbers: str | None = Query(
         None, description="逗号分隔的场景编号列表，如 1,3,4"
     ),
-    use_plan: bool = Query(False, description="是否先使用分镜规划，再逐场景生成"),
+    use_plan: bool = Query(True, description="是否先使用分镜规划，再逐场景生成"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -4033,7 +3961,8 @@ async def get_episode_scripts(
 
 
 @router.get(
-    "/episode/business/{episode_business_id}", response_model=List[ScriptListItemResponse]
+    "/episode/business/{episode_business_id}",
+    response_model=List[ScriptListItemResponse],
 )
 async def get_episode_scripts_by_business_id(
     episode_business_id: str,
