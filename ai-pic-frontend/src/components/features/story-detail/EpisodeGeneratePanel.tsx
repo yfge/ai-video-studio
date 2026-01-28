@@ -3,6 +3,10 @@
 import type { VirtualIP } from "@/utils/api";
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import type { EpisodeGenForm } from "@/hooks/useStoryDetail";
+import {
+  EpisodeContextPackPreview,
+  type EpisodeContextPackPreviewProps,
+} from "./EpisodeContextPackPreview";
 
 interface EpisodeGeneratePanelProps {
   genOpen: boolean;
@@ -17,6 +21,7 @@ interface EpisodeGeneratePanelProps {
   promptPreview: string;
   onPreviewPrompt: () => void;
   onGenerate: () => void;
+  contextPackPreviewProps: EpisodeContextPackPreviewProps;
 }
 
 export function EpisodeGeneratePanel({
@@ -32,6 +37,7 @@ export function EpisodeGeneratePanel({
   promptPreview,
   onPreviewPrompt,
   onGenerate,
+  contextPackPreviewProps,
 }: EpisodeGeneratePanelProps) {
   return (
     <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -90,7 +96,10 @@ export function EpisodeGeneratePanel({
               <select
                 value={genForm.plot_complexity}
                 onChange={(e) =>
-                  setGenForm((prev) => ({ ...prev, plot_complexity: e.target.value }))
+                  setGenForm((prev) => ({
+                    ...prev,
+                    plot_complexity: e.target.value,
+                  }))
                 }
                 className="w-full px-3 py-2 border rounded"
               >
@@ -185,7 +194,9 @@ export function EpisodeGeneratePanel({
                     type="checkbox"
                     className="hidden"
                     checked={focusCharacters.includes(v.id)}
-                    onChange={(e) => onToggleFocusCharacter(v.id, e.target.checked)}
+                    onChange={(e) =>
+                      onToggleFocusCharacter(v.id, e.target.checked)
+                    }
                   />
                   {v.name}
                 </label>
@@ -203,6 +214,8 @@ export function EpisodeGeneratePanel({
               异步任务
             </label>
           </div>
+
+          <EpisodeContextPackPreview {...contextPackPreviewProps} />
 
           <div className="flex gap-2">
             <button

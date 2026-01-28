@@ -110,7 +110,7 @@
 - [x] 后端：新增 context pack preview/debug API（只读接口或内部工具）
 - [x] 后端：Episode 生成 prompt/agent 输入改为显式注入 context pack（并把 used_context 写入 agent_run）
 - [x] 后端：新增/补齐“每集摘要”产物（episode_summary）用于后续生成连续性（可在 episode 生成后自动回填）
-- [ ] 前端：在“生成剧集/再生成”弹窗提供上下文预览与开关（如：仅最近 N 集/包含 continuity ledger/包含角色卡）
+- [x] 前端：在“生成剧集/再生成”弹窗提供上下文预览与开关（如：仅最近 N 集/包含 continuity ledger/包含角色卡）
 - [ ] 验证：同一 Story 连续生成/再生成 2 次 episode，抽检关键设定一致性与 ledger 更新是否符合预期（Chrome 记录）
 
 ### Phase 3: 生成前就绪检查（P0/P1）

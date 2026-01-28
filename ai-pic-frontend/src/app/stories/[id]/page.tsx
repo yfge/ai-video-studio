@@ -36,7 +36,17 @@ export default function StoryDetailPage() {
     setUseAsync,
     vips,
     focusCharacters,
+    contextPackPreview,
+    contextPackLoading,
+    contextPackError,
+    includeContinuityLedger,
+    setIncludeContinuityLedger,
+    includeCharacterCards,
+    setIncludeCharacterCards,
+    recentEpisodesCount,
+    setRecentEpisodesCount,
     handlePreviewPrompt,
+    handlePreviewContextPack,
     handleGenerateEpisodes,
     toggleFocusCharacter,
     navigateToStories,
@@ -97,6 +107,18 @@ export default function StoryDetailPage() {
           promptPreview={promptPreview}
           onPreviewPrompt={handlePreviewPrompt}
           onGenerate={handleGenerateEpisodes}
+          contextPackPreviewProps={{
+            includeContinuityLedger,
+            setIncludeContinuityLedger,
+            includeCharacterCards,
+            setIncludeCharacterCards,
+            recentEpisodesCount,
+            setRecentEpisodesCount,
+            contextPackPreview,
+            contextPackLoading,
+            contextPackError,
+            onPreviewContextPack: handlePreviewContextPack,
+          }}
         />
 
         <EpisodeListSection
