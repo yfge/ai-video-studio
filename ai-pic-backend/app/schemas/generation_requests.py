@@ -11,6 +11,9 @@ class StoryGenerationRequest(BaseModel):
         "short_drama",
         description="故事形态：short_drama（短剧）/ tv_series（电视剧/网剧）/ film（电影）",
     )
+    default_aspect_ratio: Literal["9:16", "16:9"] = Field(
+        "9:16", description="默认画幅：9:16/16:9"
+    )
     genre: str = Field(..., max_length=50)
     market_region: Optional[str] = Field(
         None, max_length=50, description="目标市场/地区"
@@ -19,12 +22,20 @@ class StoryGenerationRequest(BaseModel):
         None, max_length=80, description="微类型/细分题材"
     )
     pacing_template: Optional[str] = Field(
-        None, max_length=80, description="节奏模板（前端可用于自动填充 hook_plan 等字段）"
+        None,
+        max_length=80,
+        description="节奏模板（前端可用于自动填充 hook_plan 等字段）",
     )
-    hook_plan: Optional[HookPlan] = Field(None, description="爽点/钩子节奏规划（可选预设）")
+    hook_plan: Optional[HookPlan] = Field(
+        None, description="爽点/钩子节奏规划（可选预设）"
+    )
     twist_density: Optional[str] = Field(None, description="反转密度目标（可选预设）")
-    cliffhanger_plan: Optional[List[str]] = Field(None, description="悬念/卡点规划（可选预设）")
-    ad_snippets: Optional[List[AdSnippet]] = Field(None, description="投流素材建议（可选预设）")
+    cliffhanger_plan: Optional[List[str]] = Field(
+        None, description="悬念/卡点规划（可选预设）"
+    )
+    ad_snippets: Optional[List[AdSnippet]] = Field(
+        None, description="投流素材建议（可选预设）"
+    )
     theme: Optional[str] = Field(None, max_length=255)
     target_audience: Optional[str] = Field(None, max_length=100)
     duration_minutes: Optional[int] = Field(None, ge=1)
@@ -67,7 +78,9 @@ class EpisodeGenerationRequest(BaseModel):
         None, max_length=80, description="微类型/细分题材"
     )
     pacing_template: Optional[str] = Field(
-        None, max_length=80, description="节奏模板（前端可用于自动填充 hook_plan 等字段）"
+        None,
+        max_length=80,
+        description="节奏模板（前端可用于自动填充 hook_plan 等字段）",
     )
     hook_plan: Optional[HookPlan] = Field(None, description="爽点/钩子节奏规划")
     twist_density: Optional[str] = Field(None, description="反转密度目标")
@@ -105,7 +118,9 @@ class ScriptGenerationRequest(BaseModel):
         None, max_length=80, description="微类型/细分题材"
     )
     pacing_template: Optional[str] = Field(
-        None, max_length=80, description="节奏模板（前端可用于自动填充 hook_plan 等字段）"
+        None,
+        max_length=80,
+        description="节奏模板（前端可用于自动填充 hook_plan 等字段）",
     )
     hook_plan: Optional[HookPlan] = Field(None, description="爽点/钩子节奏规划")
     twist_density: Optional[str] = Field(None, description="反转密度目标")

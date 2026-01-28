@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from app.schemas.user import UserSummary
 from pydantic import BaseModel, Field, field_validator
@@ -55,6 +55,9 @@ class StoryBase(BaseModel):
     theme: Optional[str] = Field(None, max_length=255)
     target_audience: Optional[str] = Field(None, max_length=100)
     duration_minutes: Optional[int] = Field(None, ge=1)
+    default_aspect_ratio: Literal["9:16", "16:9"] = Field(
+        "9:16", description="默认画幅：9:16/16:9"
+    )
 
     premise: Optional[str] = None
     synopsis: Optional[str] = None
@@ -97,6 +100,9 @@ class StoryUpdate(BaseModel):
     theme: Optional[str] = Field(None, max_length=255)
     target_audience: Optional[str] = Field(None, max_length=100)
     duration_minutes: Optional[int] = Field(None, ge=1)
+    default_aspect_ratio: Optional[Literal["9:16", "16:9"]] = Field(
+        None, description="默认画幅：9:16/16:9"
+    )
 
     premise: Optional[str] = None
     synopsis: Optional[str] = None

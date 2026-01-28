@@ -3,7 +3,7 @@ import re
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from urllib.parse import urlparse, urlunparse
 from uuid import UUID, uuid4
 
@@ -3370,8 +3370,8 @@ class StoryboardImageRequest(BaseModel):
     style_spec: Optional[StyleSpec] = Field(
         default=None, description="风格 schema（允许只传部分字段）"
     )
-    aspect_ratio: Optional[str] = Field(
-        default=None, description="宽高比（例如 16:9/9:16），部分模型支持"
+    aspect_ratio: Optional[Literal["9:16", "16:9"]] = Field(
+        default=None, description="宽高比（9:16/16:9）"
     )
     seed: Optional[int] = Field(default=None, description="随机种子（可选）")
     steps: Optional[int] = Field(
@@ -3443,6 +3443,9 @@ async def generate_storyboard_images(
     )
     episode = script.episode
     story = episode.story if episode else None
+    aspect_ratio = (
+        body.aspect_ratio or (story.default_aspect_ratio if story else None) or "9:16"
+    )
     # Serialize labeled_references if present
     labeled_refs_payload = None
     if body.labeled_references:
@@ -3467,7 +3470,7 @@ async def generate_storyboard_images(
                 "style": body.style,
                 "style_preset_id": body.style_preset_id,
                 "style_spec": style_spec_payload,
-                "aspect_ratio": body.aspect_ratio,
+                "aspect_ratio": aspect_ratio,
                 "seed": body.seed,
                 "steps": body.steps,
                 "cfg_scale": body.cfg_scale,
@@ -3500,7 +3503,7 @@ async def generate_storyboard_images(
         "style": body.style,
         "style_preset_id": body.style_preset_id,
         "style_spec": style_spec_payload,
-        "aspect_ratio": body.aspect_ratio,
+        "aspect_ratio": aspect_ratio,
         "seed": body.seed,
         "steps": body.steps,
         "cfg_scale": body.cfg_scale,
@@ -3583,8 +3586,8 @@ class StoryboardVideoRequest(BaseModel):
     resolution: Optional[str] = Field(
         default=None, description="可选：输出分辨率（例如 480p/720p/1080p）"
     )
-    ratio: Optional[str] = Field(
-        default=None, description="可选：宽高比（例如 16:9/9:16/adaptive）"
+    ratio: Optional[Literal["9:16", "16:9"]] = Field(
+        default=None, description="可选：宽高比（9:16/16:9）"
     )
     watermark: Optional[bool] = Field(default=None, description="可选：是否包含水印")
     seed: Optional[int] = Field(default=None, description="可选：种子整数")
@@ -3633,6 +3636,7 @@ async def generate_storyboard_video(
 
     episode = script.episode
     story = episode.story if episode else None
+    ratio = body.ratio or (story.default_aspect_ratio if story else None) or "9:16"
     t = Task(
         title=_friendly_task_title("分镜视频生成", script, episode, story),
         description="根据分镜生成视频",
@@ -3651,7 +3655,7 @@ async def generate_storyboard_video(
                 "duration": body.duration,
                 "fps": body.fps,
                 "resolution": body.resolution,
-                "ratio": body.ratio,
+                "ratio": ratio,
                 "watermark": body.watermark,
                 "seed": body.seed,
                 "camera_fixed": body.camera_fixed,
@@ -3681,7 +3685,7 @@ async def generate_storyboard_video(
         "duration": body.duration,
         "fps": body.fps,
         "resolution": body.resolution,
-        "ratio": body.ratio,
+        "ratio": ratio,
         "watermark": body.watermark,
         "seed": body.seed,
         "camera_fixed": body.camera_fixed,

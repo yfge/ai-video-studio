@@ -36,6 +36,12 @@ class Story(SoftDeleteBusinessMixin, Base):
     theme = Column(String(255), comment="故事主题")
     target_audience = Column(String(100), comment="目标受众")
     duration_minutes = Column(Integer, comment="预计总时长（分钟）")
+    default_aspect_ratio = Column(
+        String(8),
+        nullable=False,
+        default="9:16",
+        comment="默认画幅：9:16/16:9",
+    )
 
     # 故事内容
     premise = Column(Text, comment="故事前提")

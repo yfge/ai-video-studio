@@ -28,6 +28,16 @@ export const STORY_FORMATS: Array<{ value: StoryFormat; label: string }> = [
   { value: "film", label: "电影" },
 ];
 
+export type StoryAspectRatio = "9:16" | "16:9";
+
+export const STORY_ASPECT_RATIOS: Array<{
+  value: StoryAspectRatio;
+  label: string;
+}> = [
+  { value: "9:16", label: "9:16 竖屏" },
+  { value: "16:9", label: "16:9 横屏" },
+];
+
 export type StoryGenerationForm = StoryGenerationRequest & {
   story_format: StoryFormat;
 };
@@ -42,6 +52,7 @@ export const STORY_GENERATE_DEFAULTS: StoryGenerationForm = {
   theme: "",
   target_audience: "",
   duration_minutes: 30,
+  default_aspect_ratio: "9:16",
   character_ids: [],
   setting_time: "",
   setting_location: "",

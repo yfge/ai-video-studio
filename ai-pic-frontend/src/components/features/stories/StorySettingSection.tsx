@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { VirtualIP } from "@/utils/api";
 import type { StoryGenerationForm } from "@/utils/storyOptions";
+import { STORY_ASPECT_RATIOS } from "@/utils/storyOptions";
 import { CharacterSelector } from "./CharacterSelector";
 
 interface StorySettingSectionProps {
@@ -46,6 +47,32 @@ export function StorySettingSection({
             placeholder="例如：现代、古代、未来"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            默认画幅
+          </label>
+          <select
+            value={generateForm.default_aspect_ratio}
+            onChange={(e) =>
+              setGenerateForm((prev) => ({
+                ...prev,
+                default_aspect_ratio: e.target
+                  .value as StoryGenerationForm["default_aspect_ratio"],
+              }))
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {STORY_ASPECT_RATIOS.map((ratio) => (
+              <option key={ratio.value} value={ratio.value}>
+                {ratio.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            默认用于分镜图像/视频，生成时可临时覆盖
+          </p>
         </div>
 
         <div>

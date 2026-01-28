@@ -7,6 +7,10 @@ from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.schemas.generation_requests import StoryGenerationRequest
 from app.services.ai_service import ai_service
+from app.services.story.story_generation_utils import (
+    build_agent_run,
+    build_extra_metadata,
+)
 from app.utils.json_utils import extract_json_block
 from app.utils.story_parser import (
     extract_outline_from_text,
@@ -14,21 +18,6 @@ from app.utils.story_parser import (
 )
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-
-_EXTRA_METADATA_EXCLUDE = {
-    "premise",
-    "synopsis",
-    "main_conflict",
-    "resolution",
-    "main_characters",
-    "character_relationships",
-}
-
-
-def _build_extra_metadata(ai_content: dict) -> dict:
-    if not isinstance(ai_content, dict):
-        return {}
-    return {k: v for k, v in ai_content.items() if k not in _EXTRA_METADATA_EXCLUDE}
 
 
 class StoryGenerationService:
@@ -90,25 +79,15 @@ class StoryGenerationService:
             result.get("content") if isinstance(result, dict) else ""
         )
 
-    def _build_agent_run(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        if not isinstance(result, dict):
-            return {}
-        return {
-            "generation_method": result.get("generation_method"),
-            "template_used": result.get("template_used"),
-            "provider_used": result.get("provider_used"),
-            "model_used": result.get("model_used"),
-            "usage": result.get("usage"),
-            "reasoning": result.get("reasoning"),
-        }
-
     async def _run_story_outline(
         self,
         request: StoryGenerationRequest,
         characters: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         prefer_provider, model_id = self._resolve_model(request.model)
-        hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
+        hook_plan_payload = (
+            request.hook_plan.model_dump() if request.hook_plan else None
+        )
         ad_snippets_payload = (
             [snippet.model_dump() for snippet in request.ad_snippets]
             if request.ad_snippets
@@ -174,7 +153,7 @@ class StoryGenerationService:
         agent_run: Dict[str, Any],
         user_id: int,
     ) -> Dict[str, Any]:
-        extra_metadata = _build_extra_metadata(ai_content)
+        extra_metadata = build_extra_metadata(ai_content)
         if request.market_region and "market_region" not in extra_metadata:
             extra_metadata["market_region"] = request.market_region
         if request.micro_genre and "micro_genre" not in extra_metadata:
@@ -188,7 +167,9 @@ class StoryGenerationService:
         if request.cliffhanger_plan and "cliffhanger_plan" not in extra_metadata:
             extra_metadata["cliffhanger_plan"] = request.cliffhanger_plan
         if request.ad_snippets and "ad_snippets" not in extra_metadata:
-            extra_metadata["ad_snippets"] = [s.model_dump() for s in request.ad_snippets]
+            extra_metadata["ad_snippets"] = [
+                s.model_dump() for s in request.ad_snippets
+            ]
         if agent_run:
             extra_metadata = {**extra_metadata, "agent_run": agent_run}
 
@@ -200,6 +181,7 @@ class StoryGenerationService:
             "theme": request.theme,
             "target_audience": request.target_audience,
             "duration_minutes": request.duration_minutes,
+            "default_aspect_ratio": request.default_aspect_ratio,
             "setting_time": request.setting_time,
             "setting_location": request.setting_location,
             "world_building": request.world_building,
@@ -218,10 +200,13 @@ class StoryGenerationService:
             "generation_params": {
                 "character_ids": request.character_ids,
                 "story_format": request.story_format,
+                "default_aspect_ratio": request.default_aspect_ratio,
                 "market_region": request.market_region,
                 "micro_genre": request.micro_genre,
                 "pacing_template": request.pacing_template,
-                "hook_plan": request.hook_plan.model_dump() if request.hook_plan else None,
+                "hook_plan": (
+                    request.hook_plan.model_dump() if request.hook_plan else None
+                ),
                 "twist_density": request.twist_density,
                 "cliffhanger_plan": request.cliffhanger_plan,
                 "ad_snippets": (
@@ -247,7 +232,7 @@ class StoryGenerationService:
         characters = self._build_characters(request.character_ids)
         result = await self._run_story_outline(request, characters)
         ai_content = self._normalize_ai_content(result)
-        agent_run = self._build_agent_run(result)
+        agent_run = build_agent_run(result)
         story_data = self._build_story_data(
             request, ai_content, result, agent_run, self.current_user.id
         )
@@ -260,7 +245,7 @@ class StoryGenerationService:
         characters = self._build_characters(request.character_ids, user_id=user_id)
         result = await self._run_story_outline(request, characters)
         ai_content = self._normalize_ai_content(result)
-        agent_run = self._build_agent_run(result)
+        agent_run = build_agent_run(result)
         story_data = self._build_story_data(
             request, ai_content, result, agent_run, user_id
         )

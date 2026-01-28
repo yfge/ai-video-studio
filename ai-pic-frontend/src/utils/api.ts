@@ -452,6 +452,7 @@ export interface Story {
   theme?: string;
   target_audience?: string;
   duration_minutes?: number;
+  default_aspect_ratio?: "9:16" | "16:9";
   premise?: string;
   synopsis?: string;
   main_conflict?: string;
@@ -711,6 +712,7 @@ export interface StoryGenerationRequest {
   theme?: string;
   target_audience?: string;
   duration_minutes?: number;
+  default_aspect_ratio?: "9:16" | "16:9";
   character_ids: number[];
   setting_time?: string;
   setting_location?: string;

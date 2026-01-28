@@ -72,6 +72,7 @@ interface StoryboardVideoModalProps {
   defaultEnd?: string;
   defaultPrompt?: string;
   defaultDuration?: number;
+  defaultRatio?: "9:16" | "16:9";
   submitting?: boolean;
   onClose: () => void;
   onSubmit: (payload: {
@@ -91,17 +92,19 @@ export function StoryboardVideoModal({
   defaultEnd,
   defaultPrompt = "",
   defaultDuration = 5,
+  defaultRatio,
   submitting = false,
   onClose,
   onSubmit,
 }: StoryboardVideoModalProps) {
+  const preferredRatio = defaultRatio || "9:16";
   const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
   const [loadedDefaultModel, setLoadedDefaultModel] = useState<string>("");
   const [modelId, setModelId] = useState<string>("");
   const [prompt, setPrompt] = useState<string>(defaultPrompt);
   const [duration, setDuration] = useState<number>(defaultDuration);
   const [resolution, setResolution] = useState<string>("720p");
-  const [ratio, setRatio] = useState<string>("16:9");
+  const [ratio, setRatio] = useState<string>(preferredRatio);
   const [watermark, setWatermark] = useState<boolean>(false);
   const [seedInput, setSeedInput] = useState<string>("");
   const [cameraControlText, setCameraControlText] = useState<string>("");
@@ -135,11 +138,13 @@ export function StoryboardVideoModal({
     setCameraControlText("");
     setCameraFixed(false);
     setModelId("");
+    setRatio(preferredRatio);
     setUseEndFrame(true);
   }, [
     defaultDuration,
     defaultEnd,
     defaultPrompt,
+    preferredRatio,
     defaultStart,
     endList,
     open,

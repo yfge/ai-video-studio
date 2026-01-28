@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   AIModelType,
   episodeAPI,
+  storyAPI,
   scriptAPI,
   storyStructureAPI,
   virtualIPAPI,
@@ -13,6 +14,7 @@ import {
 import type {
   Episode,
   Script,
+  Story,
   StoryboardPayload,
   StoryboardFrame,
   StoryboardVideoGenerationMeta,
@@ -100,6 +102,7 @@ export default function EpisodeStoryboardPage() {
   }, [searchParams]);
 
   const [episode, setEpisode] = useState<Episode | null>(null);
+  const [story, setStory] = useState<Story | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
   const [activeScript, setActiveScript] = useState<Script | null>(null);
   const [storyboard, setStoryboard] = useState<StoryboardPayload>({
@@ -338,7 +341,15 @@ export default function EpisodeStoryboardPage() {
         episodeAPI.getEpisode(episodeKey),
         scriptAPI.getEpisodeScripts(episodeKey),
       ]);
-      if (epRes.success && epRes.data) setEpisode(epRes.data);
+      if (epRes.success && epRes.data) {
+        setEpisode(epRes.data);
+        if (epRes.data.story_id) {
+          const storyRes = await storyAPI.getStory(epRes.data.story_id);
+          if (storyRes.success && storyRes.data) {
+            setStory(storyRes.data);
+          }
+        }
+      }
       if (scRes.success && scRes.data) {
         setScripts(scRes.data);
         const selected =
@@ -3257,6 +3268,7 @@ export default function EpisodeStoryboardPage() {
         defaultEnd={videoModalDefaultEnd}
         defaultPrompt={videoModalPrompt}
         defaultDuration={videoModalDuration}
+        defaultRatio={story?.default_aspect_ratio}
         submitting={videoModalSubmitting}
         onSubmit={handleSubmitStoryboardVideo}
       />
