@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from pydantic import ValidationError
-from sqlalchemy.orm import Session
-
 from app.models.script import Episode, Story
 from app.schemas.generation import EpisodePlanItem
 from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import story_structure_service
 from app.services.ai_service import ai_service
 from app.utils.marketing_meta import merge_marketing_meta
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from .episode_generation_utils import build_step_outline_rows, is_episode_payload_valid
+from .episode_summary import build_episode_summary
 
 _KNOWN_EPISODE_KEYS = {
     "episode_number",
@@ -79,7 +79,12 @@ def create_episode_models(
             )
             continue
 
-        extra_meta = {k: v for k, v in episode_data.items() if k not in _KNOWN_EPISODE_KEYS}
+        extra_meta = {
+            k: v for k, v in episode_data.items() if k not in _KNOWN_EPISODE_KEYS
+        }
+        summary = build_episode_summary(episode_data)
+        if summary and not extra_meta.get("episode_summary"):
+            extra_meta["episode_summary"] = summary
         extra_metadata = extra_meta or None
         if marketing_defaults:
             extra_metadata = {**(extra_metadata or {}), **marketing_defaults}

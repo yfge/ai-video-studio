@@ -22,6 +22,7 @@ from app.services.ai_service import ai_service
 from app.services.context_pack.story_context_pack_builder import (
     build_story_context_pack,
 )
+from app.services.episode.episode_summary import build_episode_summary
 from app.services.episode_agent import EpisodeGenerationCallbacks
 from app.services.task_worker import episode_generate_task
 from app.utils.json_utils import extract_json_block
@@ -263,6 +264,9 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
                 "scene_count",
             }
             extra_meta = {k: v for k, v in payload.items() if k not in known_keys} or {}
+            summary = build_episode_summary(payload)
+            if summary and not extra_meta.get("episode_summary"):
+                extra_meta["episode_summary"] = summary
             if scenes and "scenes" not in extra_meta:
                 extra_meta["scenes"] = scenes
             marketing_defaults = merge_marketing_meta(story_data, marketing_overrides)
@@ -595,6 +599,9 @@ def _process_fallback_result(
             "scene_count",
         }
         extra_meta = {k: v for k, v in ep_data.items() if k not in known_keys} or {}
+        summary = build_episode_summary(ep_data)
+        if summary and not extra_meta.get("episode_summary"):
+            extra_meta["episode_summary"] = summary
         if scenes and "scenes" not in extra_meta:
             extra_meta["scenes"] = scenes
         marketing_defaults = merge_marketing_meta(story_data, marketing_overrides)
