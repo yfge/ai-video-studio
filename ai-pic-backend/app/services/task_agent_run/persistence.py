@@ -46,14 +46,10 @@ def persist_task_agent_run(
         agent_run = build_agent_run(
             db, task, user_id=user_id, kind=kind, request_dict=request_dict
         )
-        if not agent_run and task.status == TaskStatus.COMPLETED:
-            return
-
         if task.status in {TaskStatus.FAILED, TaskStatus.CANCELLED}:
             agent_run = _enrich_with_failure_context(task, kind=kind, agent_run=agent_run)
-
-        if not agent_run:
-            return
+        else:
+            agent_run = _enrich_with_terminal_context(task, kind=kind, agent_run=agent_run)
 
         _patch_task_parameters(db, task, {"agent_run": agent_run})
     finally:
@@ -61,7 +57,7 @@ def persist_task_agent_run(
             db.close()
 
 
-def _enrich_with_failure_context(task, *, kind: str, agent_run: Dict[str, Any]) -> Dict[str, Any]:
+def _enrich_with_terminal_context(task, *, kind: str, agent_run: Dict[str, Any]) -> Dict[str, Any]:
     enriched: Dict[str, Any] = dict(agent_run or {})
     if not enriched.get("generation_method") and kind:
         enriched["generation_method"] = kind
@@ -69,14 +65,20 @@ def _enrich_with_failure_context(task, *, kind: str, agent_run: Dict[str, Any]) 
         enriched["prompt"] = task.prompt
     enriched["task_status"] = getattr(task.status, "value", str(task.status))
 
-    error_message = getattr(task, "error_message", None)
-    if isinstance(error_message, str) and error_message.strip():
-        enriched["error"] = {"message": error_message.strip()}
-
     if not enriched.get("result_ref"):
         result_ref = _best_effort_result_ref(task)
         if result_ref:
             enriched["result_ref"] = result_ref
+
+    return enriched
+
+
+def _enrich_with_failure_context(task, *, kind: str, agent_run: Dict[str, Any]) -> Dict[str, Any]:
+    enriched = _enrich_with_terminal_context(task, kind=kind, agent_run=agent_run)
+
+    error_message = getattr(task, "error_message", None)
+    if isinstance(error_message, str) and error_message.strip():
+        enriched["error"] = {"message": error_message.strip()}
 
     return enriched
 

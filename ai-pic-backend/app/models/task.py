@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
+from sqlalchemy.dialects import mysql
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -42,7 +43,7 @@ class Task(SoftDeleteBusinessMixin, Base):
     task_type = Column(Enum(TaskType), nullable=False)
     status = Column(Enum(TaskStatus), default=TaskStatus.PENDING)
     prompt = Column(Text, nullable=True)
-    parameters = Column(Text, nullable=True)  # JSON字符串
+    parameters = Column(Text().with_variant(mysql.LONGTEXT(), "mysql"), nullable=True)  # JSON字符串
     result_file_path = Column(String(512), nullable=True)
     error_message = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
