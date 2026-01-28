@@ -21,7 +21,7 @@ def build_extra_metadata(ai_content: Dict[str, Any]) -> Dict[str, Any]:
 def build_agent_run(result: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(result, dict):
         return {}
-    return {
+    payload: Dict[str, Any] = {
         "generation_method": result.get("generation_method"),
         "template_used": result.get("template_used"),
         "provider_used": result.get("provider_used"),
@@ -29,3 +29,22 @@ def build_agent_run(result: Dict[str, Any]) -> Dict[str, Any]:
         "usage": result.get("usage"),
         "reasoning": result.get("reasoning"),
     }
+
+    # Persist structured output audit trail for tasks UI (Task.parameters.agent_run).
+    raw_content = result.get("content")
+    if isinstance(raw_content, str) and raw_content.strip():
+        payload["raw_content"] = raw_content
+    normalized = result.get("normalized")
+    if isinstance(normalized, dict) and normalized:
+        payload["normalized"] = normalized
+    validation_errors = result.get("validation_errors")
+    if validation_errors:
+        payload["validation_errors"] = validation_errors
+    repair_attempts = result.get("repair_attempts")
+    if repair_attempts:
+        payload["repair_attempts"] = repair_attempts
+    first_attempt = result.get("first_attempt")
+    if first_attempt:
+        payload["first_attempt"] = first_attempt
+
+    return {k: v for k, v in payload.items() if v is not None}

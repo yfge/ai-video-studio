@@ -16,6 +16,7 @@ This directory holds design notes, API references, and testing guides. Keep this
 
 - `docs/design/duration-orchestrator-agent.md` — Duration Orchestrator Agent 设计（端到端时长闭环验证）
 - `docs/design/image-generation-unification.md` — 图像生成统一化设计（Virtual IP / Environment / Storyboard）
+- `docs/design/story-episode-generation-quality.md` — story/episode generation quality (strict validation + repair, audit trail)
 - `docs/image-gen-provider-matrix.md` — provider×mode 参数矩阵与提示词语义（provider-aware）
 
 ## Market Insights

@@ -11,11 +11,7 @@ from app.services.story.story_generation_utils import (
     build_agent_run,
     build_extra_metadata,
 )
-from app.utils.json_utils import extract_json_block
-from app.utils.story_parser import (
-    extract_outline_from_text,
-    extract_story_outline_payload,
-)
+from app.services.story.story_outline_normalizer import normalize_story_outline_strict
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -65,19 +61,6 @@ class StoryGenerationService:
                 }
             )
         return characters
-
-    def _normalize_ai_content(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        normalized = result.get("normalized") if isinstance(result, dict) else None
-        raw = normalized or extract_json_block(
-            result.get("content") if isinstance(result, dict) else None
-        )
-        if raw:
-            extracted = extract_story_outline_payload(raw)
-            if extracted:
-                return extracted
-        return extract_outline_from_text(
-            result.get("content") if isinstance(result, dict) else ""
-        )
 
     async def _run_story_outline(
         self,
@@ -231,7 +214,7 @@ class StoryGenerationService:
 
         characters = self._build_characters(request.character_ids)
         result = await self._run_story_outline(request, characters)
-        ai_content = self._normalize_ai_content(result)
+        ai_content = normalize_story_outline_strict(result)
         agent_run = build_agent_run(result)
         story_data = self._build_story_data(
             request, ai_content, result, agent_run, self.current_user.id
@@ -244,7 +227,7 @@ class StoryGenerationService:
         request = StoryGenerationRequest(**request_dict)
         characters = self._build_characters(request.character_ids, user_id=user_id)
         result = await self._run_story_outline(request, characters)
-        ai_content = self._normalize_ai_content(result)
+        ai_content = normalize_story_outline_strict(result)
         agent_run = build_agent_run(result)
         story_data = self._build_story_data(
             request, ai_content, result, agent_run, user_id

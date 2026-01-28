@@ -6,7 +6,8 @@ from app.prompts.manager import prompt_manager
 from app.prompts.template_resolver import resolve_template_name
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryOutlineModel
-from app.utils.json_utils import extract_json_block
+from app.services.ai.structured_output import generate_with_repair, validate_payload
+from app.utils.story_parser import extract_story_outline_payload
 
 
 class StoryOutlineMixin:
@@ -39,16 +40,6 @@ class StoryOutlineMixin:
         """生成故事概要"""
 
         try:
-
-            def _parse_story_json(payload: str | None) -> Optional[Dict[str, Any]]:
-                try:
-                    data = extract_json_block(payload)
-                    if not data:
-                        return None
-                    StoryOutlineModel.model_validate(data)
-                    return data
-                except Exception:
-                    return None
 
             variables = {
                 "title": title,
@@ -116,95 +107,59 @@ class StoryOutlineMixin:
             # 优先使用新的AI服务管理器；如果失败则尝试兜底。
             if self.ai_manager:
                 try:
-                    response = await self.ai_manager.generate_text(
-                        prompt=prompt,
-                        temperature=temperature,
-                        model=model,
-                        json_schema={"name": "story_outline", "schema": story_schema},
-                        prefer_provider=prefer_provider,
-                        system_prompt=prompt_manager.render_prompt(
-                            PromptTemplate.SYSTEM_PROMPT_STORY.value,
-                            {"story_format": story_format},
-                        ),
+                    system_prompt = prompt_manager.render_prompt(
+                        PromptTemplate.SYSTEM_PROMPT_STORY.value,
+                        {"story_format": story_format},
+                    )
+                    strict_system_prompt = prompt_manager.render_prompt(
+                        PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
                     )
 
-                    if isinstance(response.data, str):
-                        content_text = response.data
-                    elif response.data is not None:
-                        content_text = str(response.data)
-                    else:
-                        content_text = ""
-                    normalized = _parse_story_json(content_text)
+                    output = await generate_with_repair(
+                        ai_manager=self.ai_manager,
+                        base_prompt=prompt,
+                        temperature=temperature,
+                        model=model,
+                        prefer_provider=prefer_provider,
+                        schema_name="story_outline",
+                        schema=story_schema,
+                        system_prompt=system_prompt,
+                        repair_system_prompt=strict_system_prompt,
+                        pydantic_model=StoryOutlineModel,
+                        extractor=extract_story_outline_payload,
+                        max_repairs=2,
+                    )
 
-                    if response.success:
-                        if not normalized:
-                            # 简单重试一次，提示严格JSON
-                            retry_prompt = (
-                                prompt
-                                + "\n\n请严格按JSON Schema返回，且只返回JSON，不要代码块。"
-                            )
-                            retry = await self.ai_manager.generate_text(
-                                prompt=retry_prompt,
-                                temperature=temperature,
-                                model=model,
-                                json_schema={
-                                    "name": "story_outline",
-                                    "schema": story_schema,
-                                },
-                                prefer_provider=prefer_provider,
-                                system_prompt=prompt_manager.render_prompt(
-                                    PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
-                                ),
-                            )
-                            if retry.success:
-                                content_text = (
-                                    retry.data
-                                    if isinstance(retry.data, str)
-                                    else str(retry.data)
-                                )
-                                normalized = _parse_story_json(content_text)
-                                provider_used = retry.provider
-                                model_used = retry.model
-                                usage = retry.usage
-                            else:
-                                provider_used = response.provider
-                                model_used = response.model
-                                usage = response.usage
-                        else:
-                            provider_used = response.provider
-                            model_used = response.model
-                            usage = response.usage
+                    content_text = output.get("content") or ""
+                    normalized = output.get("normalized")
+                    validation_errors = output.get("validation_errors")
+                    repair_attempts = output.get("repair_attempts") or []
+                    first_attempt = output.get("first_attempt") or {}
 
-                        if content_text:
-                            return {
-                                "content": content_text,
-                                "normalized": normalized,
-                                "prompt": prompt,
-                                "generation_method": f"ai_{provider_used}",
-                                "template_used": resolved_template,
-                                "provider_used": provider_used,
-                                "model_used": model_used,
-                                "usage": usage,
-                            }
-                    else:
-                        self.logger.warning(
-                            "AI故事概要生成失败，将尝试回退",
-                            extra={
-                                "provider": response.provider,
-                                "error": response.error or response.data,
-                            },
-                        )
-                        if content_text:
-                            return {
-                                "content": content_text,
-                                "normalized": normalized,
-                                "prompt": prompt,
-                                "generation_method": f"ai_{response.provider}_error",
-                                "template_used": resolved_template,
-                                "provider_used": response.provider,
-                                "model_used": response.model,
-                                "usage": response.usage,
-                            }
+                    last_meta = (
+                        (repair_attempts[-1] if repair_attempts else first_attempt)
+                        if isinstance(first_attempt, dict)
+                        else {}
+                    )
+                    provider_used = last_meta.get("provider_used")
+                    model_used = last_meta.get("model_used")
+                    usage = last_meta.get("usage")
+
+                    if content_text:
+                        generation_suffix = "" if normalized else "_invalid"
+                        return {
+                            "content": content_text,
+                            "normalized": normalized,
+                            "validation_errors": validation_errors,
+                            "repair_attempts": repair_attempts,
+                            "first_attempt": first_attempt,
+                            "prompt": prompt,
+                            "generation_method": f"ai_{provider_used}{generation_suffix}",
+                            "template_used": resolved_template,
+                            "provider_used": provider_used,
+                            "model_used": model_used,
+                            "usage": usage,
+                        }
                 except Exception as exc:
                     self.logger.warning(f"AI服务管理器故事生成失败，尝试回退: {exc}")
 
@@ -224,12 +179,19 @@ class StoryOutlineMixin:
                 prompt, "story_outline", story_format=story_format
             )
             if fallback_content:
-                normalized = _parse_story_json(fallback_content)
+                normalized, validation_errors, _raw_json = validate_payload(
+                    StoryOutlineModel,
+                    fallback_content,
+                    extractor=extract_story_outline_payload,
+                )
                 return {
                     "content": fallback_content,
                     "normalized": normalized,
+                    "validation_errors": validation_errors,
                     "prompt": prompt,
-                    "generation_method": "ai_fallback",
+                    "generation_method": (
+                        "ai_fallback" if normalized else "ai_fallback_invalid"
+                    ),
                     "template_used": resolved_template,
                     "provider_used": "fallback",
                     "model_used": "mock",

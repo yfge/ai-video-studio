@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
 
-from pydantic import BaseModel, ValidationError
-
 from app.utils.json_utils import extract_json_block
+from pydantic import BaseModel, ValidationError
 
 TModel = TypeVar("TModel", bound=BaseModel)
 
@@ -37,7 +36,9 @@ def validate_payload(
     payload: Any,
     *,
     extractor: Optional[Callable[[Any], Dict[str, Any]]] = None,
-) -> Tuple[Optional[Dict[str, Any]], Optional[List[Dict[str, Any]]], Optional[Dict[str, Any]]]:
+) -> Tuple[
+    Optional[Dict[str, Any]], Optional[List[Dict[str, Any]]], Optional[Dict[str, Any]]
+]:
     """
     Validate a provider output against a Pydantic model.
 
@@ -51,7 +52,11 @@ def validate_payload(
         raw_json = extractor(raw_json)
 
     if not isinstance(raw_json, dict) or not raw_json:
-        return None, [{"loc": [], "msg": "missing json object", "type": "value_error"}], raw_json
+        return (
+            None,
+            [{"loc": [], "msg": "missing json object", "type": "value_error"}],
+            raw_json,
+        )
 
     try:
         parsed = model.model_validate(raw_json)
@@ -68,9 +73,7 @@ def build_repair_prompt(
     validation_errors: Optional[List[Dict[str, Any]]],
 ) -> str:
     errors_text = (
-        json.dumps(validation_errors, ensure_ascii=False)
-        if validation_errors
-        else "[]"
+        json.dumps(validation_errors, ensure_ascii=False) if validation_errors else "[]"
     )
     prior = (prior_output or "").strip()
     if len(prior) > 12000:
@@ -104,6 +107,7 @@ async def generate_with_repair(
     schema_name: str,
     schema: Dict[str, Any],
     system_prompt: Optional[str],
+    repair_system_prompt: Optional[str] = None,
     pydantic_model: Type[TModel],
     extractor: Optional[Callable[[Any], Dict[str, Any]]] = None,
     max_repairs: int = 2,
@@ -166,7 +170,7 @@ async def generate_with_repair(
             model=model,
             prefer_provider=prefer_provider,
             json_schema={"name": schema_name, "schema": schema},
-            system_prompt=system_prompt,
+            system_prompt=repair_system_prompt or system_prompt,
         )
         content_text = coerce_text(getattr(repair, "data", None))
         normalized, errors, raw_json = validate_payload(
@@ -202,4 +206,3 @@ async def generate_with_repair(
         "repair_attempts": repair_attempts,
         "first_attempt": first_attempt,
     }
-
