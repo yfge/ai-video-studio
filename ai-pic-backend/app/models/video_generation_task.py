@@ -27,7 +27,7 @@ class VideoGenerationTask(SoftDeleteBusinessMixin, Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     provider = Column(String(64), nullable=False)
-    provider_task_id = Column(String(128), nullable=False, index=True)
+    provider_task_id = Column(String(512), nullable=False, index=True)
     model = Column(String(128), nullable=True)
     model_type = Column(String(32), nullable=False)
     prompt = Column(Text, nullable=True)
