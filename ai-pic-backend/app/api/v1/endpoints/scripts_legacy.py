@@ -2840,7 +2840,23 @@ def _process_storyboard_image_task(
                     except Exception:
                         continue
 
+        # Character registry: prefer explicit shot.character_ids, but always include
+        # Story-level registered characters as a fallback for prompt/name matching.
         all_char_ids = {cid for ids in scene_char_ids.values() for cid in ids}
+        try:
+            from app.services.storyboard.storyboard_character_anchors import (
+                extract_virtual_ip_name_aliases,
+                fallback_virtual_ip_anchor_url,
+                get_story_character_virtual_ip_ids,
+                infer_character_ids_from_text,
+            )
+
+            episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
+            story_id = int(episode.story_id) if episode and episode.story_id else None
+            if story_id:
+                all_char_ids.update(get_story_character_virtual_ip_ids(db, story_id))
+        except Exception:
+            pass
         vip_map: Dict[int, VirtualIP] = {}
         char_image_map: Dict[int, str] = {}
         if all_char_ids:
@@ -2860,6 +2876,17 @@ def _process_storyboard_image_task(
                 url = img.oss_url or img.file_path
                 if url:
                     char_image_map[img.virtual_ip_id] = _abs_url(url)
+
+        name_to_vip_id: Dict[str, int] = {}
+        for vid, vip in vip_map.items():
+            name = getattr(vip, "name", None)
+            try:
+                aliases = extract_virtual_ip_name_aliases(name)
+            except Exception:
+                aliases = [name] if isinstance(name, str) else []
+            for alias in aliases:
+                if isinstance(alias, str) and alias.strip():
+                    name_to_vip_id.setdefault(alias.strip(), int(vid))
 
         from functools import partial as _partial
 
@@ -3013,16 +3040,50 @@ def _process_storyboard_image_task(
 
             # 3) 角色锚点参考图（默认/最新的虚拟 IP 图像）
             char_anchor_refs: List[str] = []
+            candidate_char_ids: list[int] = []
+            source: str | None = None
             if scene_no and scene_no in scene_by_number:
                 sc_obj = scene_by_number.get(scene_no)
-                if sc_obj and sc_obj.id in scene_char_ids:
-                    for cid in scene_char_ids[sc_obj.id]:
-                        name = vip_map.get(cid).name if cid in vip_map else f"角色{cid}"
-                        img_url = char_image_map.get(cid)
-                        if img_url:
-                            # 参考图 URL 通过 ref_images 传给 image_to_image，提示词只保留语义描述，避免在日志中泄露具体地址
-                            reference_notes.append({"type": "character", "name": name})
-                            char_anchor_refs.append(_abs_url(img_url))
+                if sc_obj:
+                    bound_ids = scene_char_ids.get(sc_obj.id) or set()
+                    if bound_ids:
+                        candidate_char_ids = [int(cid) for cid in bound_ids]
+                        source = "shot"
+
+            # Fallback: when Shot bindings are missing, try to infer characters by
+            # matching Story-registered character names in the frame prompt.
+            if not candidate_char_ids and name_to_vip_id:
+                try:
+                    candidate_char_ids = infer_character_ids_from_text(
+                        base_prompt,
+                        name_to_vip_id,
+                        max_matches=4,
+                    )
+                    if candidate_char_ids:
+                        source = "prompt"
+                except Exception:
+                    candidate_char_ids = []
+
+            for cid in candidate_char_ids[:4]:
+                vip = vip_map.get(cid)
+                name = getattr(vip, "name", None) if vip else None
+                if not isinstance(name, str) or not name.strip():
+                    name = f"角色{cid}"
+
+                img_url = char_image_map.get(cid)
+                if not img_url:
+                    try:
+                        img_url = fallback_virtual_ip_anchor_url(vip)
+                    except Exception:
+                        img_url = None
+
+                if img_url:
+                    # 参考图 URL 通过 ref_images 传给 image_to_image，提示词只保留语义描述，避免在日志中泄露具体地址
+                    note = {"type": "character", "name": name}
+                    if source:
+                        note["source"] = source
+                    reference_notes.append(note)
+                    char_anchor_refs.append(_abs_url(img_url))
 
             # 4) 场景环境参考图
             env_refs = _normalize_reference_images(

@@ -141,6 +141,7 @@
    - 等待任务完成，分镜帧卡片中出现关键帧预览图（首帧/尾帧）。
 6. 期望结果：
    - 每个生成成功的帧卡片显示「已绑定参考图：N 张」（`N > 0`）。
+   - 若未显式绑定镜头角色（`shot.character_ids` 为空），但分镜提示词/描述中包含 Story 已注册角色名，后端应回退为“按角色名匹配”注入参考图（`reference_notes.source=prompt`），同样满足 `N > 0`。
    - 生成结果的画面风格/人物/场景应与所选环境与角色大体一致（至少不应出现完全无关的环境/人物）。
    - （可选）打开任务页 `http://localhost:8089/tasks`，用 `task_type=storyboard_image_generation` 过滤，找到对应任务并确认详情中存在 `parameters.agent_run`。
 
