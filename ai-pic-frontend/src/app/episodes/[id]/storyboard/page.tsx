@@ -3268,7 +3268,7 @@ export default function EpisodeStoryboardPage() {
         defaultEnd={videoModalDefaultEnd}
         defaultPrompt={videoModalPrompt}
         defaultDuration={videoModalDuration}
-        defaultRatio={story?.default_aspect_ratio}
+        defaultRatio={episode?.aspect_ratio ?? story?.default_aspect_ratio}
         submitting={videoModalSubmitting}
         onSubmit={handleSubmitStoryboardVideo}
       />

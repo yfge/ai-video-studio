@@ -482,6 +482,7 @@ export interface Episode {
   story_business_id?: string | null;
   episode_number: number;
   title: string;
+  aspect_ratio?: "9:16" | "16:9" | null;
   summary?: string;
   plot_points?: unknown[];
   character_arcs?: Record<string, unknown>;
