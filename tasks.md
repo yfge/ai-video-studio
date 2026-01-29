@@ -20,6 +20,7 @@
 
 ### 2) 生成资产持久化统一抽象（image/video/audio → OSS/CDN）
 
+- [x] 后端：新增 `app/services/media/media_persistence.py`（upload bytes/URL/base64 → OSS/CDN）；已接入分镜视频上传链路
 - [ ] 后端：抽象统一的 media persistence（upload bytes/URL → OSS/CDN，返回 `url/key/metadata`），图片/视频/音频复用同一入口
 - [ ] 后端：统一落库的 generation metadata（provider/model/task_id/width/height/duration/mime/sha256 等），减少 provider 分叉与重复字段
 - [ ] 后端：修复 `video_generation_tasks.provider_task_id` 长度不足导致的 MySQL 1406（Vertex operation name 过长）；补 Alembic 迁移链路与回归测试

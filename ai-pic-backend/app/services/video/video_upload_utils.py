@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-import base64
-from datetime import datetime
 from typing import Any, Dict, Optional
 
+from app.services.media import (
+    build_generation_metadata,
+    upload_base64 as upload_media_base64,
+    upload_from_url as upload_media_from_url,
+)
 from app.services.storage import oss_service
 
 
@@ -26,26 +29,29 @@ async def upload_video_bytes_base64_to_oss(
         return None
 
     try:
-        video_bytes = base64.b64decode(video_bytes_base64)
         ext = ".mp4"
         if isinstance(video_mime_type, str) and "webm" in video_mime_type.lower():
             ext = ".webm"
         filename = f"video{ext}"
-        return await service.upload_file_content(
-            file_content=video_bytes,
+        return await upload_media_base64(
+            base64_payload=video_bytes_base64,
             filename=filename,
-            file_type="video",
+            media_type="video",
             prefix="ai-generated/videos",
-            metadata={
-                "prompt": prompt or "image_to_video",
-                "duration": str(duration),
-                "fps": str(fps),
-                "resolution": resolution,
-                "end_image_url": end_image_url or "",
-                "provider": provider,
-                "model": model,
-                "generation_time": datetime.now().isoformat(),
-            },
+            metadata=build_generation_metadata(
+                provider=provider,
+                model=model,
+                media_type="video",
+                mime_type=video_mime_type,
+                duration_seconds=duration,
+                fps=fps,
+                resolution=resolution,
+                extra={
+                    # Keep this for debugging/tracing; may be truncated/filtered later.
+                    "end_image_url": end_image_url or "",
+                },
+            ),
+            oss_service_override=service,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Video OSS upload (bytes) failed: %s", exc)
@@ -70,20 +76,22 @@ async def upload_video_url_to_oss(
         return None
 
     try:
-        return await service.upload_from_url(
+        return await upload_media_from_url(
             url=video_url,
-            file_type="video",
+            media_type="video",
             prefix="ai-generated/videos",
-            metadata={
-                "prompt": prompt or "image_to_video",
-                "duration": str(duration),
-                "fps": str(fps),
-                "resolution": resolution,
-                "end_image_url": end_image_url or "",
-                "provider": provider,
-                "model": model,
-                "generation_time": datetime.now().isoformat(),
-            },
+            metadata=build_generation_metadata(
+                provider=provider,
+                model=model,
+                media_type="video",
+                duration_seconds=duration,
+                fps=fps,
+                resolution=resolution,
+                extra={
+                    "end_image_url": end_image_url or "",
+                },
+            ),
+            oss_service_override=service,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Video OSS upload failed: %s", exc)
@@ -103,16 +111,17 @@ async def upload_video_thumbnail_to_oss(
         return None
 
     try:
-        return await service.upload_from_url(
+        return await upload_media_from_url(
             url=thumbnail_url,
-            file_type="image",
+            media_type="image",
             prefix="ai-generated/thumbnails",
-            metadata={
-                "type": "video_thumbnail",
-                "prompt": prompt or "image_to_video",
-                "provider": provider,
-                "generation_time": datetime.now().isoformat(),
-            },
+            metadata=build_generation_metadata(
+                provider=provider,
+                model=None,
+                media_type="image",
+                extra={"type": "video_thumbnail"},
+            ),
+            oss_service_override=service,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Thumbnail OSS upload failed: %s", exc)
@@ -132,16 +141,17 @@ async def upload_video_last_frame_to_oss(
         return None
 
     try:
-        return await service.upload_from_url(
+        return await upload_media_from_url(
             url=last_frame_url,
-            file_type="image",
+            media_type="image",
             prefix="ai-generated/video-last-frames",
-            metadata={
-                "type": "video_last_frame",
-                "prompt": prompt or "image_to_video",
-                "provider": provider,
-                "generation_time": datetime.now().isoformat(),
-            },
+            metadata=build_generation_metadata(
+                provider=provider,
+                model=None,
+                media_type="image",
+                extra={"type": "video_last_frame"},
+            ),
+            oss_service_override=service,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Last frame OSS upload failed: %s", exc)
