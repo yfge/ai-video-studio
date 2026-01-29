@@ -17,6 +17,7 @@ from app.repositories.video_generation_task_repository import (
 )
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.video.video_generation_service import VideoGenerationService
+from app.services.video.video_task_generation_metadata import build_video_generation_metadata
 from app.services.video.video_task_storyboard_updater import apply_storyboard_result
 from app.services.video.video_task_utils import (
     load_parameters,
@@ -158,6 +159,9 @@ class VideoTaskPollingService:
         now: datetime,
     ) -> None:
         item.result = json.dumps(result_payload, ensure_ascii=False)
+        item.generation_metadata = build_video_generation_metadata(
+            item.provider, item.model, item.provider_task_id, item.model_type, params, result_payload
+        )
         item.status = VideoGenerationTaskStatus.SUCCEEDED
         item.completed_at = now
         self.db.commit()

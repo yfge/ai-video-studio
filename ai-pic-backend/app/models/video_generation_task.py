@@ -3,6 +3,7 @@ import enum
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.types import JSON
 
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
@@ -33,6 +34,7 @@ class VideoGenerationTask(SoftDeleteBusinessMixin, Base):
     prompt = Column(Text, nullable=True)
     parameters = Column(Text, nullable=True)
     result = Column(Text, nullable=True)
+    generation_metadata = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
     status = Column(
         Enum(

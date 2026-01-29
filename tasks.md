@@ -23,7 +23,7 @@
 - [x] 后端：新增 `app/services/media/media_persistence.py`（upload bytes/URL/base64 → OSS/CDN）；已接入分镜视频上传链路
 - [x] 后端：SpeechService/语音 OSS 上传改用统一 media persistence（metadata 结构对齐）
 - [x] 后端：抽象统一的 media persistence（upload bytes/URL/base64 → OSS/CDN，返回 `url/key/metadata`），图片/视频/音频复用同一入口
-- [ ] 后端：统一落库的 generation metadata（provider/model/task_id/width/height/duration/mime/sha256 等），减少 provider 分叉与重复字段
+- [x] 后端：统一落库的 generation metadata（provider/model/task_id/width/height/duration/mime/sha256 等），减少 provider 分叉与重复字段
 - [x] 后端：修复 `video_generation_tasks.provider_task_id` 长度不足导致的 MySQL 1406（Vertex operation name 过长）；补 Alembic 迁移链路与回归测试
 - [x] 文档：补充 `docs/` 说明生成资产命名规则、字段含义与 OSS/CDN 路径约定
 - [x] 验证：Docker 内跑通视频生成→轮询→上传→回填 URL 的完整链路

@@ -56,7 +56,7 @@ Callsites can add extra ASCII-only keys (examples):
 
 - Audio: `voice_type`, `speed`, `text` (truncated), `text_len`
 - Video: `end_image_url` (optional; may be long)
-- Images: (pending unification; see next steps in `tasks.md`)
+- Images: caller-specific trace fields (e.g. `virtual_ip_id`, `environment_id`)
 
 ## Where Rich (Non-ASCII) Data Should Live
 
@@ -67,6 +67,18 @@ Instead:
 - Store prompts and parameters in DB (`Task.parameters`, `VideoGenerationTask.prompt/parameters/result`, etc.).
 - Persist audit trails to `Task.parameters.agent_run` where applicable.
 
+## DB Generation Metadata (Video Tasks)
+
+Storyboard video generation persists normalized metadata to
+`video_generation_tasks.generation_metadata` (JSON) so consumers do not need to
+parse provider-specific payloads from `result`.
+
+Current fields (best-effort):
+
+- `provider`, `model`, `task_id`/`provider_task_id`, `model_type`
+- `duration_seconds`, `fps`, `resolution`, `ratio`, `width`, `height`
+- `assets.video|thumbnail|last_frame` (URL/object_key/file_size/mime_type/sha256)
+
 ## Expected Flow (Storyboard Video)
 
 For storyboard video generation:
@@ -76,4 +88,3 @@ For storyboard video generation:
 3. Poller detects completion, uploads media to OSS/CDN, and writes the final URLs into:
    - `video_generation_tasks.result` (JSON string)
    - `scripts.extra_metadata.storyboard.frames[*].video_url` (for the relevant frame)
-

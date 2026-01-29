@@ -14,6 +14,7 @@ from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
 from app.services.video.video_task_dispatcher import VideoTaskDispatcher
+from app.services.video.video_task_generation_metadata import build_video_generation_metadata
 from app.services.video.video_task_utils import (
     build_parameters_payload,
     build_selection_map,
@@ -169,9 +170,7 @@ class VideoTaskSubmissionService:
         }
         return anyio.run(self._submit_provider_task_async, payload)
 
-    async def _submit_provider_task_async(
-        self, payload: Dict[str, Any]
-    ) -> Any:
+    async def _submit_provider_task_async(self, payload: Dict[str, Any]) -> Any:
         return await self.dispatcher.submit_video_task(**payload)
 
     def _create_task_record(
@@ -187,19 +186,25 @@ class VideoTaskSubmissionService:
         duration: int,
         opts: Dict[str, Any],
     ) -> None:
+        provider_task_id = str((response.data or {}).get("task_id"))
+        params_payload = build_parameters_payload(prompt, start_url, end_url, duration, opts)
         self.repo.create(
             task_id=task.id,
             script_id=script_id,
             frame_index=frame_index,
             user_id=task.user_id,
             provider=response.provider,
-            provider_task_id=str((response.data or {}).get("task_id")),
+            provider_task_id=provider_task_id,
             model=response.model,
             model_type="image_to_video",
             prompt=prompt,
-            parameters=json.dumps(
-                build_parameters_payload(prompt, start_url, end_url, duration, opts),
-                ensure_ascii=False,
+            parameters=json.dumps(params_payload, ensure_ascii=False),
+            generation_metadata=build_video_generation_metadata(
+                response.provider,
+                response.model,
+                provider_task_id,
+                "image_to_video",
+                params_payload,
             ),
             status=VideoGenerationTaskStatus.SUBMITTED,
             submitted_at=datetime.utcnow(),
