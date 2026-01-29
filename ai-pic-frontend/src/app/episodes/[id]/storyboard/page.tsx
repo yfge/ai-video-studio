@@ -36,7 +36,11 @@ import {
   ImagePreviewCard,
   type StyleSpecField,
 } from "@/components/shared";
-import { Timeline, type TimelineTrack } from "@/components/features";
+import {
+  EpisodeAspectRatioSelect,
+  Timeline,
+  type TimelineTrack,
+} from "@/components/features";
 
 const STORYBOARD_STYLE_SPEC_FIELDS: StyleSpecField[] = [
   { key: "shot_storyboard_style", label: "镜头与分镜风格" },
@@ -1821,6 +1825,12 @@ export default function EpisodeStoryboardPage() {
             </div>
           </div>
           <div className="flex gap-3 items-center">
+            <EpisodeAspectRatioSelect
+              episodeId={episode.id}
+              episodeAspectRatio={episode.aspect_ratio ?? null}
+              storyDefaultAspectRatio={story?.default_aspect_ratio}
+              onUpdated={(updated) => setEpisode(updated)}
+            />
             <span className="px-2 py-1 text-xs rounded border border-blue-200 bg-blue-50 text-blue-700">
               规范化结构已启用
             </span>

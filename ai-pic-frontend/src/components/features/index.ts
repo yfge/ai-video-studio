@@ -21,6 +21,7 @@ export {
 export {
   EpisodeHeader,
   EpisodeDetails,
+  EpisodeAspectRatioSelect,
   AudioTimelineSection,
   ScriptGenerationForm,
   ScriptList,
