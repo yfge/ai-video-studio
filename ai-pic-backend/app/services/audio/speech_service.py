@@ -5,10 +5,13 @@ Provides unified interface for AI-powered text-to-speech generation,
 supporting multiple providers.
 """
 
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from app.core.logging import get_logger
+from app.services.media import (
+    build_generation_metadata,
+    upload_from_url as upload_media_from_url,
+)
 from app.services.storage import oss_service
 
 
@@ -116,25 +119,29 @@ class SpeechService:
         model: str,
     ) -> Optional[Dict[str, Any]]:
         """Upload audio to OSS with metadata."""
-        if not audio_url or not oss_service:
+        service = oss_service
+        if not audio_url or not service:
             return None
 
         try:
-            # Truncate text for metadata to avoid excessive size
+            # Keep previous behavior: include truncated text in OSS metadata (ASCII-only).
             truncated_text = text[:100] + "..." if len(text) > 100 else text
-
-            return await oss_service.upload_from_url(
+            return await upload_media_from_url(
                 url=audio_url,
-                file_type="audio",
+                media_type="audio",
                 prefix="ai-generated/audio",
-                metadata={
-                    "text": truncated_text,
-                    "voice_type": voice_type or "default",
-                    "speed": str(speed),
-                    "provider": provider,
-                    "model": model,
-                    "generation_time": datetime.now().isoformat(),
-                },
+                metadata=build_generation_metadata(
+                    provider=provider,
+                    model=model,
+                    media_type="audio",
+                    extra={
+                        "voice_type": voice_type or "default",
+                        "speed": speed,
+                        "text": truncated_text,
+                        "text_len": len(text or ""),
+                    },
+                ),
+                oss_service_override=service,
             )
         except Exception as e:
             self.logger.warning(f"Audio OSS upload failed: {e}")

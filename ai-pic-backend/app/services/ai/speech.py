@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Dict, Optional
 
+from app.services.media import (
+    build_generation_metadata,
+    upload_from_url as upload_media_from_url,
+)
 from app.services.storage.oss_service import oss_service
 
 
@@ -30,20 +33,22 @@ class SpeechGenerationMixin:
                 audio_oss_result = None
                 if original_audio_url and oss_service:
                     try:
-                        audio_oss_result = await oss_service.upload_from_url(
+                        truncated_text = text[:100] + "..." if len(text) > 100 else text
+                        audio_oss_result = await upload_media_from_url(
                             url=original_audio_url,
-                            file_type="audio",
+                            media_type="audio",
                             prefix="ai-generated/audio",
-                            metadata={
-                                "text": (
-                                    text[:100] + "..." if len(text) > 100 else text
-                                ),  # 限制长度
-                                "voice_type": voice_type or "default",
-                                "speed": str(speed),
-                                "provider": response.provider,
-                                "model": response.model,
-                                "generation_time": datetime.now().isoformat(),
-                            },
+                            metadata=build_generation_metadata(
+                                provider=response.provider,
+                                model=response.model,
+                                media_type="audio",
+                                extra={
+                                    "text": truncated_text,
+                                    "voice_type": voice_type or "default",
+                                    "speed": speed,
+                                },
+                            ),
+                            oss_service_override=oss_service,
                         )
                     except Exception as exc:
                         print(f"音频OSS上传失败: {exc}")
