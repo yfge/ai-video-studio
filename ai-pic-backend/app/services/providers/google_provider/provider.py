@@ -1,18 +1,19 @@
 """Google AI / Gemini provider for text/image and Veo video generation."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
 import httpx
-
 from app.core.logging import get_logger
+
 from ..base import AIModelType, AIResponse, BaseProvider, ModelInfo, ProviderConfig
-from ..image_param_utils import compute_image_ui as compute_image_ui_rules
-from .models import dedupe, fallback_models, from_payload, get_available_models
-from . import image as image_module
+from . import image_routing as image_routing_module
 from . import text as text_module
 from . import video as video_module
 from . import video_tasks as video_tasks_module
+from .model_fetcher import fetch_remote_models as fetch_google_remote_models
+from .models import fallback_models, get_available_models
 from .vertex_auth import build_vertex_access_token_provider
 
 logger = get_logger(__name__)
@@ -71,72 +72,25 @@ class GoogleProvider(BaseProvider):
         self,
         model_type: Optional[AIModelType] = None,
     ) -> List[ModelInfo]:
-        """Fetch models from Google's Generative Language API, fallback to static list."""
         fallback = self._fallback_models(model_type)
-        if not self.config.api_key:
-            return fallback
-
         client = await self.get_client()
-        if client is None:
-            return fallback
-
-        google_base = self.base_url or "https://generativelanguage.googleapis.com"
-        try:
-            resp = await client.get(
-                f"{google_base.rstrip('/')}/v1beta/models",
-                params={"key": self.config.api_key},
-            )
-            body_preview = resp.text[:500]
-            if resp.status_code >= 400:
-                logger.debug(
-                    "GoogleProvider GLM list models failed status=%s url=%s body=%s",
-                    resp.status_code,
-                    f"{google_base.rstrip('/')}/v1beta/models",
-                    body_preview,
-                )
-                return fallback
-            payload = resp.json()
-            server_models = payload.get("models") or []
-            models = from_payload(server_models, model_type, self.supported_model_types)
-            for model in models:
-                if model.model_type not in (
-                    AIModelType.TEXT_TO_IMAGE,
-                    AIModelType.IMAGE_TO_IMAGE,
-                ):
-                    continue
-                if model.metadata:
-                    continue
-                rules = compute_image_ui_rules(self.name, model.model_id)
-                if not (rules.size_options or rules.supports_aspect_ratio):
-                    continue
-                supports_reference_image = (
-                    "image_to_image" in (model.capabilities or [])
-                    or model.model_type == AIModelType.IMAGE_TO_IMAGE
-                )
-                ui_meta = {
-                    "size_options": rules.size_options,
-                    "aspect_ratio_options": rules.aspect_ratio_options,
-                    "supports_aspect_ratio": rules.supports_aspect_ratio,
-                    "default_size": rules.default_size,
-                    "default_aspect_ratio": rules.default_aspect_ratio,
-                    "supports_reference_image": supports_reference_image,
-                }
-                model.metadata = {
-                    "ui": {
-                        key: value
-                        for key, value in ui_meta.items()
-                        if value is not None
-                    }
-                }
-            return dedupe(models) or fallback
-        except Exception as exc:
-            logger.debug("GoogleProvider list models exception: %s", exc)
-            return fallback
+        return await fetch_google_remote_models(
+            client=client,
+            base_url=self.base_url,
+            api_key=self.config.api_key,
+            provider_name=self.name,
+            model_type=model_type,
+            supported_model_types=self.supported_model_types,
+            fallback=fallback,
+            logger=logger,
+        )
 
     async def _initialize_client(self):
         """Initialize HTTP client."""
         has_vertex_auth = bool(
-            self.vertex_access_token or self.vertex_api_key or self._vertex_token_provider
+            self.vertex_access_token
+            or self.vertex_api_key
+            or self._vertex_token_provider
         )
         if not self.config.api_key and not has_vertex_auth:
             self._client = None  # type: ignore[assignment]
@@ -184,9 +138,10 @@ class GoogleProvider(BaseProvider):
         model: str = None,
         **kwargs: Any,
     ) -> AIResponse:
-        """Generate images using Gemini (text-to-image)."""
+        """Generate images (text-to-image). Prefer Vertex AI when configured."""
         client = await self.get_client()
-        return await image_module.generate_image(
+        access_token = await self._get_vertex_access_token()
+        return await image_routing_module.generate_image(
             client=client,
             base_url=self.base_url,
             provider_name=self.name,
@@ -194,6 +149,10 @@ class GoogleProvider(BaseProvider):
             config_timeout=self.config.timeout,
             prompt=prompt,
             model=model,
+            vertex_project_id=self.vertex_project_id,
+            vertex_location=self.vertex_location,
+            access_token=access_token,
+            vertex_api_key=self.vertex_api_key,
             format_error=self.format_error,
             **kwargs,
         )
@@ -205,9 +164,10 @@ class GoogleProvider(BaseProvider):
         model: str = None,
         **kwargs: Any,
     ) -> AIResponse:
-        """Generate images using Gemini (image-to-image with reference)."""
+        """Generate images (image-to-image). Prefer Vertex AI when configured."""
         client = await self.get_client()
-        return await image_module.image_to_image(
+        access_token = await self._get_vertex_access_token()
+        return await image_routing_module.image_to_image(
             client=client,
             base_url=self.base_url,
             provider_name=self.name,
@@ -216,6 +176,10 @@ class GoogleProvider(BaseProvider):
             image_url=image_url,
             prompt=prompt,
             model=model,
+            vertex_project_id=self.vertex_project_id,
+            vertex_location=self.vertex_location,
+            access_token=access_token,
+            vertex_api_key=self.vertex_api_key,
             format_error=self.format_error,
             **kwargs,
         )
