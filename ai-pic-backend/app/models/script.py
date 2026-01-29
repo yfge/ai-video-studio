@@ -110,6 +110,11 @@ class Episode(SoftDeleteBusinessMixin, Base):
     # 技术信息
     duration_minutes = Column(Integer, comment="预计时长（分钟）")
     scene_count = Column(Integer, comment="场景数量")
+    aspect_ratio = Column(
+        String(8),
+        nullable=True,
+        comment="可选画幅覆盖：9:16/16:9（为空则继承 Story.default_aspect_ratio）",
+    )
 
     # AI生成相关
     generation_prompt = Column(Text, comment="生成提示词")

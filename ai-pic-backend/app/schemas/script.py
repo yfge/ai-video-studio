@@ -148,6 +148,9 @@ class EpisodeBase(BaseModel):
     conflicts: Optional[List[Dict[str, Any]]] = None
     duration_minutes: Optional[int] = Field(None, ge=1)
     scene_count: Optional[int] = Field(None, ge=1)
+    aspect_ratio: Optional[Literal["9:16", "16:9"]] = Field(
+        None, description="可选：画幅覆盖（9:16/16:9）；为空则继承 Story.default_aspect_ratio"
+    )
     status: str = Field("draft", description="状态：draft, approved, published")
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
@@ -166,6 +169,9 @@ class EpisodeUpdate(BaseModel):
     conflicts: Optional[List[Dict[str, Any]]] = None
     duration_minutes: Optional[int] = Field(None, ge=1)
     scene_count: Optional[int] = Field(None, ge=1)
+    aspect_ratio: Optional[Literal["9:16", "16:9"]] = Field(
+        None, description="可选：画幅覆盖（9:16/16:9）；为空则继承 Story.default_aspect_ratio"
+    )
     status: Optional[str] = None
     tags: Optional[List[str]] = None
     extra_metadata: Optional[Dict[str, Any]] = None
