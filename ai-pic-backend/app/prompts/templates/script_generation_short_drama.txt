@@ -78,21 +78,34 @@
 {% endif -%}
 
 ## 角色设定
-{% if story.character_profiles -%}
+{% if story.character_profiles %}
 {% for character in story.character_profiles %}
-- {{ character.name }}{% if character.role %}（{{ character.role }}）{% endif %}
-  {% if character.description %}背景/定位：{{ character.description }}{% endif %}
-  {% if character.personality %}性格特质：{{ character.personality }}{% endif %}
-  {% if character.motivation %}目标动机：{{ character.motivation }}{% endif %}
-  {% if character.arc %}角色弧线：{{ character.arc }}{% endif %}
+- {{ character.name }}{{ "（%s）" % character.role if character.role else "" }}
+{% if character.description %}
+  背景/定位：{{ character.description }}
+{% endif %}
+{% if character.personality %}
+  性格特质：{{ character.personality }}
+{% endif %}
+{% if character.motivation %}
+  目标动机：{{ character.motivation }}
+{% endif %}
+{% if character.arc %}
+  角色弧线：{{ character.arc }}
+{% endif %}
 {% endfor %}
-{% elif story.main_characters -%}
+{% elif story.main_characters %}
 {% for character in story.main_characters %}
 - {{ character.name if character.name is defined else character }}：{{ character.description if character.description is defined else character.role if character.role is defined else '' }}
 {% endfor %}
-{% else -%}
+{% else %}
 暂无角色资料，请根据设定保持人物一致性。
-{% endif -%}
+{% endif %}
+
+## 角色约束（重要）
+- **只允许**使用以上“角色设定”中列出的角色名（名称必须一致），**不得新增任何其他有姓名的角色**。
+- 如需一次性工具人/背景人群，只能使用以下泛化小角色称谓：`路人/店员/旁白`（允许 `路人甲/路人乙/店员A` 等后缀），**禁止为其起真实姓名**。
+- 任何对白条目中的 `character` 字段必须为“角色设定”中的角色名或允许的泛化小角色，不要输出别名/昵称到 `character` 字段。
 
 ## 剧本参数
 格式类型：{{ format_type }}

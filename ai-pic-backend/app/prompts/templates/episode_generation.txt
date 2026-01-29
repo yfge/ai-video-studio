@@ -39,12 +39,20 @@
 {{ story.context_pack | tojson }}
 {% endif -%}
 
-## 主要角色
-{% if story.main_characters -%}
+## 主要角色（Story 注册表）
+{% if story.character_profiles %}
+{% for character in story.character_profiles %}
+- {{ character.name }}{{ "（%s）" % character.role if character.role else "" }}
+{% endfor %}
+{% elif story.main_characters %}
 {% for character in story.main_characters %}
 - {{ character.name }}: {{ character.description or character.role }}
 {% endfor %}
-{% endif -%}
+{% endif %}
+
+## 角色约束（重要）
+- **只允许**出现以上“主要角色”列表中的角色（名称必须一致），**不得新增任何其他有姓名的角色**。
+- 如需一次性工具人/背景人群，只能使用以下泛化小角色称谓：`路人/店员/旁白`（允许 `路人甲/路人乙/店员A` 等后缀），**禁止为其起真实姓名**。
 
 ## 角色关系
 {% if story.character_relationships -%}

@@ -6,8 +6,6 @@ Handles AI generation, content parsing, and normalization for scripts.
 
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
-
 from app.core.exceptions import GenerationFailedError, NotFoundError
 from app.core.logging import get_logger
 from app.models.script import Episode, Script, Story
@@ -16,15 +14,17 @@ from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.repositories.script_repository import EpisodeRepository, StoryRepository
 from app.services.ai_service import ai_service
+from app.services.script.scene_utils import to_int
+from app.services.script.script_character_policy import enforce_script_character_policy
 from app.services.script.script_utils import (
     build_character_profiles,
     build_episode_data,
     build_story_data,
     collect_previous_episode_summaries,
-    to_int,
 )
 from app.utils.json_utils import extract_json_block
 from app.utils.script_parser import extract_script_structure
+from sqlalchemy.orm import Session
 
 logger = get_logger()
 
@@ -139,6 +139,17 @@ class ScriptGenerator:
         dialogues, stage_directions = self._populate_missing_parts(
             scenes, dialogues, stage_directions, story
         )
+
+        policy = enforce_script_character_policy(
+            story=story, scenes=scenes, dialogues=dialogues
+        )
+        if policy.unknown_names:
+            raise GenerationFailedError(
+                "检测到未注册角色，已阻断生成。"
+                f" 未注册角色: {policy.unknown_names};"
+                f" 已注册角色: {policy.canonical_names};"
+                " 允许的泛化小角色: ['路人','店员','旁白']"
+            )
 
         # Calculate statistics
         word_count = len(script_content.split()) if script_content else 0

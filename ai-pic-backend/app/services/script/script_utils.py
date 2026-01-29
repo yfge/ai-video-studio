@@ -5,13 +5,14 @@ Provides helper functions for building story/episode data structures,
 normalizing AI-generated content, and extracting script structure.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
+from app.core.validators.character_registry import preferred_display_name
 from app.models.script import Episode, Story
 from app.utils.marketing_meta import merge_marketing_meta
 from sqlalchemy.orm import Session
 
-from .scene_utils import extract_episode_scenes, to_int
+from .scene_utils import extract_episode_scenes
 
 
 def collect_previous_episode_summaries(
@@ -75,37 +76,49 @@ def build_character_profiles(story: Story) -> List[Dict[str, Any]]:
     def _ensure_profile(name: str) -> Dict[str, Any]:
         return profiles.setdefault(name, {"name": name})
 
-    # Process main characters
-    main_chars = (
-        story.main_characters if isinstance(story.main_characters, list) else []
-    )
-    for raw in main_chars:
-        if isinstance(raw, dict):
-            name = raw.get("name") or raw.get("character_name") or raw.get("id")
-            if not name:
-                continue
-            profile = _ensure_profile(str(name))
-            profile.setdefault(
-                "role", raw.get("role") or raw.get("type") or raw.get("role_type")
-            )
-            profile.setdefault(
-                "description", raw.get("description") or raw.get("summary")
-            )
-            profile.setdefault(
-                "personality", raw.get("personality") or raw.get("traits")
-            )
-            profile.setdefault("motivation", raw.get("motivation") or raw.get("goal"))
-            profile.setdefault("arc", raw.get("arc") or raw.get("character_arc"))
-        elif isinstance(raw, str):
-            profile = _ensure_profile(raw)
-            profile.setdefault("description", "主要角色")
-
-    # Process story characters
     story_characters = getattr(story, "story_characters", []) or []
+    has_registry = any(
+        getattr(sc, "is_deleted", False) is False for sc in story_characters
+    )
+    if not has_registry:
+        # Legacy fallback: use story.main_characters when no StoryCharacter registry exists.
+        main_chars = (
+            story.main_characters if isinstance(story.main_characters, list) else []
+        )
+        for raw in main_chars:
+            if isinstance(raw, dict):
+                name = raw.get("name") or raw.get("character_name") or raw.get("id")
+                if not name:
+                    continue
+                profile = _ensure_profile(str(name))
+                profile.setdefault(
+                    "role",
+                    raw.get("role") or raw.get("type") or raw.get("role_type"),
+                )
+                profile.setdefault(
+                    "description", raw.get("description") or raw.get("summary")
+                )
+                profile.setdefault(
+                    "personality", raw.get("personality") or raw.get("traits")
+                )
+                profile.setdefault(
+                    "motivation", raw.get("motivation") or raw.get("goal")
+                )
+                profile.setdefault("arc", raw.get("arc") or raw.get("character_arc"))
+            elif isinstance(raw, str):
+                profile = _ensure_profile(raw)
+                profile.setdefault("description", "主要角色")
+
+    # Process StoryCharacter registry (single source of truth when present).
     for sc in story_characters:
+        if getattr(sc, "is_deleted", False):
+            continue
         name = getattr(sc, "character_name", None)
-        if not name and getattr(sc, "virtual_ip", None):
-            name = getattr(sc.virtual_ip, "name", None)
+        vip = getattr(sc, "virtual_ip", None)
+        if not name and vip:
+            name = preferred_display_name(getattr(vip, "name", None)) or getattr(
+                vip, "name", None
+            )
         if not name:
             continue
         profile = _ensure_profile(str(name))
@@ -117,8 +130,8 @@ def build_character_profiles(story: Story) -> List[Dict[str, Any]]:
         relationships = getattr(sc, "relationships", None)
         if relationships and not profile.get("relationships"):
             profile["relationships"] = relationships
-        if getattr(sc, "virtual_ip", None):
-            vip_desc = getattr(sc.virtual_ip, "description", None)
+        if vip:
+            vip_desc = getattr(vip, "description", None)
             if vip_desc and not profile.get("description"):
                 profile["description"] = vip_desc
 
@@ -161,6 +174,7 @@ def build_episode_data(episode: Episode) -> Dict[str, Any]:
         "scenes": scenes,
         **marketing_meta,
     }
+
 
 def build_story_data(
     story: Story,

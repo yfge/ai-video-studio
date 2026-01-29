@@ -9,22 +9,14 @@ from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import ai_service as ai_service_module
+from app.services.script.script_utils import build_character_profiles
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from .episode_generation_persistence import (
-    create_episode_models,
-    persist_step_outline_beats,
-)
-from .episode_generation_utils import (
-    build_agent_run_info,
-    build_stub_episodes_from_outlines,
-    not_deleted,
-    parse_step_outlines,
-    persist_story_outlines,
-)
+from . import episode_generation_persistence as persistence
+from . import episode_generation_utils as utils
 
 ai_service = ai_service_module.ai_service
 
@@ -35,7 +27,9 @@ class EpisodeGenerationService:
         self.current_user = current_user
 
     def _get_story(self, story_id: int) -> Story:
-        query = not_deleted(self.db.query(Story), Story).filter(Story.id == story_id)
+        query = utils.not_deleted(self.db.query(Story), Story).filter(
+            Story.id == story_id
+        )
         if not self.current_user.is_admin and not self.current_user.is_superuser:
             query = query.filter(Story.user_id == self.current_user.id)
         story = query.first()
@@ -80,6 +74,7 @@ class EpisodeGenerationService:
             "synopsis": story.synopsis,
             "main_conflict": story.main_conflict,
             "resolution": story.resolution,
+            "character_profiles": build_character_profiles(story),
             "main_characters": story.main_characters,
             "character_relationships": story.character_relationships,
             "world_building": story.world_building,
@@ -178,19 +173,19 @@ class EpisodeGenerationService:
         )
         if not result:
             raise HTTPException(status_code=500, detail="AI剧集生成失败")
-        agent_run = build_agent_run_info(result)
+        agent_run = utils.build_agent_run_info(result)
         raw_step_outlines = None
         if isinstance(result, dict):
             raw_step_outlines = result.get("step_outlines") or result.get(
                 "step_outlines_raw"
             )
         step_outlines = (
-            parse_step_outlines(raw_step_outlines, request.episode_count)
+            utils.parse_step_outlines(raw_step_outlines, request.episode_count)
             if raw_step_outlines
             else None
         )
         if step_outlines:
-            persist_story_outlines(
+            utils.persist_story_outlines(
                 story,
                 step_outlines,
                 prompt=(
@@ -206,14 +201,14 @@ class EpisodeGenerationService:
         )
         episodes_data = ai_content.get("episodes", []) if ai_content else []
         if not episodes_data and step_outlines:
-            episodes_data = build_stub_episodes_from_outlines(
+            episodes_data = utils.build_stub_episodes_from_outlines(
                 step_outlines, request.episode_count
             )
             agent_run = {**agent_run, "fallback_from_outline": True}
         if not episodes_data:
             raise HTTPException(status_code=500, detail="AI生成内容格式错误")
         result_payload = result if isinstance(result, dict) else {}
-        created_episodes = create_episode_models(
+        created_episodes = persistence.create_episode_models(
             db=self.db,
             request=request,
             story=story,
@@ -236,7 +231,7 @@ class EpisodeGenerationService:
         self.db.commit()
 
         if step_outlines and created_episodes:
-            persist_step_outline_beats(
+            persistence.persist_step_outline_beats(
                 db=self.db,
                 story=story,
                 step_outlines=step_outlines,

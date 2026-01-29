@@ -1,53 +1,16 @@
 from __future__ import annotations
 
-import re
 from typing import Dict, List, Optional
 
-from sqlalchemy.orm import Session
-
+from app.core.validators.character_registry import extract_name_aliases
 from app.models.script import StoryCharacter
 from app.models.virtual_ip import VirtualIP
-
-
-_NAME_SPLIT_RE = re.compile(r"[\s\-_—|/\\\\]+")
-_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
-_TIMESTAMPISH_RE = re.compile(r"^[0-9T:.]+$")
+from sqlalchemy.orm import Session
 
 
 def extract_virtual_ip_name_aliases(name: str | None) -> List[str]:
-    """Extract reasonable name aliases from a VirtualIP.name for prompt matching.
-
-    Examples:
-      - "短剧E2E女主-林雪-2026-01-19T03-52-25-958Z" -> ["短剧E2E女主-林雪-2026-01-19T03-52-25-958Z", "短剧E2E女主", "林雪"]
-      - "老拐" -> ["老拐"]
-    """
-    if not isinstance(name, str):
-        return []
-    raw = name.strip()
-    if not raw:
-        return []
-
-    aliases: List[str] = [raw]
-    parts = [p.strip() for p in _NAME_SPLIT_RE.split(raw) if p and p.strip()]
-    for part in parts:
-        if part == raw:
-            continue
-        if len(part) > 32:
-            continue
-        if _TIMESTAMPISH_RE.match(part):
-            continue
-        # Prefer human-readable chunks (CJK or pure alpha).
-        if _CJK_RE.search(part) or part.isalpha():
-            aliases.append(part)
-
-    deduped: List[str] = []
-    seen: set[str] = set()
-    for item in aliases:
-        if item in seen:
-            continue
-        seen.add(item)
-        deduped.append(item)
-    return deduped
+    """Backward compatible wrapper for alias extraction."""
+    return extract_name_aliases(name)
 
 
 def get_story_character_virtual_ip_ids(db: Session, story_id: int) -> List[int]:
