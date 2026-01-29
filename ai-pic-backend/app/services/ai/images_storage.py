@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 from typing import Any, Dict, Optional
 
 import httpx
 from app.core.config import settings
+from app.services.media import build_generation_metadata
+from app.services.media import upload_bytes as upload_media_bytes
 from app.services.storage.oss_service import oss_service
 
 
@@ -99,7 +102,8 @@ class ImageStorageMixin:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """将本地已下载的图片上传至 OSS，失败则抛出异常。"""
-        if not oss_service:
+        service = oss_service
+        if not service:
             raise RuntimeError("OSS 服务未配置，无法上传图像")
 
         try:
@@ -109,12 +113,25 @@ class ImageStorageMixin:
             raise RuntimeError(f"读取本地图像失败: {exc}") from exc
 
         filename = os.path.basename(local_file_path)
-        oss_result = await oss_service.upload_file_content(
-            file_content=file_content,
+
+        sha256 = hashlib.sha256(file_content).hexdigest()
+        extra = dict(metadata or {})
+        provider = str(extra.get("provider") or "unknown")
+        model_val = extra.get("model")
+        model = str(model_val) if model_val is not None else None
+        oss_result = await upload_media_bytes(
+            content=file_content,
             filename=filename,
-            file_type="image",
+            media_type="image",
             prefix=prefix,
-            metadata=metadata,
+            metadata=build_generation_metadata(
+                provider=provider,
+                model=model,
+                media_type="image",
+                sha256=sha256,
+                extra=extra,
+            ),
+            oss_service_override=service,
         )
         if not oss_result or not oss_result.get("success"):
             raise RuntimeError(f"OSS 上传失败: {oss_result}")

@@ -125,7 +125,8 @@ async def upload_base64(
     content = base64.b64decode(base64_payload)
     sha256 = hashlib.sha256(content).hexdigest()
     merged = dict(metadata or {})
-    merged.setdefault("sha256", sha256)
+    # Always attach the computed hash to avoid missing/blank values leaking in.
+    merged["sha256"] = sha256
     return await upload_bytes(
         content=content,
         filename=filename,

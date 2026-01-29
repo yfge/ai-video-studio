@@ -290,23 +290,32 @@ class AIServiceManager:
                 mime_type = mime_part.split(":")[1] if ":" in mime_part else "image/png"
                 ext = mime_type.split("/")[1] if "/" in mime_type else "png"
 
-                # 解码 base64
-                image_bytes = base64.b64decode(b64_data)
-
                 # 上传到 OSS
-                upload_result = await oss_service.upload_file_content(
-                    file_content=image_bytes,
+                from app.services.media import build_generation_metadata
+                from app.services.media import upload_base64 as upload_media_base64
+
+                upload_result = await upload_media_base64(
+                    base64_payload=b64_data,
                     filename=f"generated.{ext}",
-                    file_type="image",
+                    media_type="image",
                     prefix=prefix,
+                    metadata=build_generation_metadata(
+                        provider="unknown",
+                        model=None,
+                        media_type="image",
+                        mime_type=mime_type,
+                        extra={"source": "base64"},
+                    ),
+                    oss_service_override=oss_service,
                 )
 
                 if upload_result.get("success"):
                     oss_url = upload_result.get("file_url")
                     result_urls.append(oss_url)
+                    approx_size = len(b64_data) * 3 // 4
                     self.logger.info(
                         "Converted base64 image to OSS URL | size=%d url=%s",
-                        len(image_bytes),
+                        approx_size,
                         oss_url,
                     )
                 else:
