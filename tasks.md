@@ -25,8 +25,8 @@
 - [ ] 后端：抽象统一的 media persistence（upload bytes/URL → OSS/CDN，返回 `url/key/metadata`），图片/视频/音频复用同一入口
 - [ ] 后端：统一落库的 generation metadata（provider/model/task_id/width/height/duration/mime/sha256 等），减少 provider 分叉与重复字段
 - [ ] 后端：修复 `video_generation_tasks.provider_task_id` 长度不足导致的 MySQL 1406（Vertex operation name 过长）；补 Alembic 迁移链路与回归测试
-- [ ] 文档：补充 `docs/` 说明生成资产命名规则、字段含义与 OSS/CDN 路径约定
-- [ ] 验证：Docker 内跑通视频生成→轮询→上传→回填 URL 的完整链路
+- [x] 文档：补充 `docs/` 说明生成资产命名规则、字段含义与 OSS/CDN 路径约定
+- [x] 验证：Docker 内跑通视频生成→轮询→上传→回填 URL 的完整链路
 
 ### 3) 生成质量闭环（上下文/校验/人物集中管理）
 
