@@ -9,6 +9,30 @@
 - 🔥 **高优新增**：Duration Orchestrator Agent（端到端时长闭环验证）、短剧微类型与投流驱动创作闭环（hook/爽点/素材）
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
 
+## P0: 用户本轮需求（画幅/资产/生成质量）🔥
+
+### 1) 画幅规格（Story/Episode，默认 9:16，可临时覆盖）
+
+- [ ] 后端：Episode 增加可选 `aspect_ratio`（`9:16|16:9`），默认继承 Story.`default_aspect_ratio`
+- [ ] 后端：统一画幅解析优先级 `request override > episode > story > "9:16"`；贯通分镜图/分镜视频生成参数
+- [ ] 前端：Story/Episode 设置提供画幅选择（仅 9:16/16:9）；分镜视频生成弹窗允许“临时覆盖（仅本次任务，不落库）”
+- [ ] 验证：Chrome E2E 各生成 1 条 9:16 与 16:9 分镜视频；用 `ffprobe` 校验分辨率/比例与元数据一致
+
+### 2) 生成资产持久化统一抽象（image/video/audio → OSS/CDN）
+
+- [ ] 后端：抽象统一的 media persistence（upload bytes/URL → OSS/CDN，返回 `url/key/metadata`），图片/视频/音频复用同一入口
+- [ ] 后端：统一落库的 generation metadata（provider/model/task_id/width/height/duration/mime/sha256 等），减少 provider 分叉与重复字段
+- [ ] 后端：修复 `video_generation_tasks.provider_task_id` 长度不足导致的 MySQL 1406（Vertex operation name 过长）；补 Alembic 迁移链路与回归测试
+- [ ] 文档：补充 `docs/` 说明生成资产命名规则、字段含义与 OSS/CDN 路径约定
+- [ ] 验证：Docker 内跑通视频生成→轮询→上传→回填 URL 的完整链路
+
+### 3) 生成质量闭环（上下文/校验/人物集中管理）
+
+- [ ] 后端：人物集中管理：Story 级角色注册表作为 episode/script/timeline/storyboard 单一来源；禁止生成链路引入“未知角色”（可 repair 或阻断）
+- [ ] 后端：补齐 readiness 检查（复用下方 `Feature: 故事/剧集生成质量闭环` Phase 3），并输出可读 blocking issues + 一键修复建议
+- [ ] 后端：生成后逻辑校验：episode→script→timeline→storyboard 一致性检查（场景数/角色引用/时长/画幅）；报告写入 `Task.parameters.agent_run`
+- [ ] 验证：全流程 E2E（deepseek 文生文；google banana pro 生图；google veo3 生视频）生成 1 个 Story、1 个 Episode、1 条时间轴/音轨/视频，并抽检图/视频与剧本逻辑一致（Chrome 记录）
+
 ## Chore: 工具链升级
 
 - [x] 前端：升级 Node 到 22.20.0（本地/生产镜像一致）
