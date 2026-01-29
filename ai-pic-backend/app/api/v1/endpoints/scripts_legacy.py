@@ -3443,8 +3443,12 @@ async def generate_storyboard_images(
     )
     episode = script.episode
     story = episode.story if episode else None
-    aspect_ratio = (
-        body.aspect_ratio or (story.default_aspect_ratio if story else None) or "9:16"
+    from app.core.aspect_ratio import resolve_aspect_ratio
+
+    aspect_ratio = resolve_aspect_ratio(
+        request_value=body.aspect_ratio,
+        episode_value=episode.aspect_ratio if episode else None,
+        story_value=story.default_aspect_ratio if story else None,
     )
     # Serialize labeled_references if present
     labeled_refs_payload = None
@@ -3636,7 +3640,13 @@ async def generate_storyboard_video(
 
     episode = script.episode
     story = episode.story if episode else None
-    ratio = body.ratio or (story.default_aspect_ratio if story else None) or "9:16"
+    from app.core.aspect_ratio import resolve_aspect_ratio
+
+    ratio = resolve_aspect_ratio(
+        request_value=body.ratio,
+        episode_value=episode.aspect_ratio if episode else None,
+        story_value=story.default_aspect_ratio if story else None,
+    )
     t = Task(
         title=_friendly_task_title("分镜视频生成", script, episode, story),
         description="根据分镜生成视频",

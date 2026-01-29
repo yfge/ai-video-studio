@@ -14,7 +14,7 @@
 ### 1) 画幅规格（Story/Episode，默认 9:16，可临时覆盖）
 
 - [x] 后端：Episode 增加可选 `aspect_ratio`（`9:16|16:9`），默认继承 Story.`default_aspect_ratio`
-- [ ] 后端：统一画幅解析优先级 `request override > episode > story > "9:16"`；贯通分镜图/分镜视频生成参数
+- [x] 后端：统一画幅解析优先级 `request override > episode > story > "9:16"`；贯通分镜图/分镜视频生成参数
 - [ ] 前端：Story/Episode 设置提供画幅选择（仅 9:16/16:9）；分镜视频生成弹窗允许“临时覆盖（仅本次任务，不落库）”
 - [ ] 验证：Chrome E2E 各生成 1 条 9:16 与 16:9 分镜视频；用 `ffprobe` 校验分辨率/比例与元数据一致
 
