@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.core.config import settings
@@ -36,7 +37,8 @@ def coerce_duration(value: Any) -> int:
         return 5
     if dur <= 0:
         return 5
-    return int(round(dur))
+    # Use ceil so we never request a provider clip shorter than the storyboard target.
+    return int(max(1, math.ceil(dur)))
 
 
 def coerce_int(value: Any, default: int) -> int:

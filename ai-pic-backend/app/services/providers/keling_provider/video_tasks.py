@@ -6,6 +6,7 @@ import httpx
 from app.core.logging import get_logger
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.providers.polling_utils import TaskStatus, keling_status_mapper
+from app.services.video.video_duration import resolve_duration_ceil
 
 logger = get_logger(__name__)
 
@@ -39,9 +40,9 @@ def _normalize_mode(mode: str) -> str:
 def _normalize_duration(duration: int) -> int:
     dur_int = _coerce_duration(duration)
     allowed_durations = [5, 10]
-    if dur_int not in allowed_durations:
-        dur_int = min(allowed_durations, key=lambda d: abs(d - dur_int))
-    return dur_int
+    return resolve_duration_ceil(
+        target_seconds=dur_int, allowed_durations=allowed_durations
+    ).provider_seconds
 
 
 def _apply_optional_fields(

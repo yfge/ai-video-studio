@@ -10,6 +10,8 @@ from typing import Any, Callable, Dict, Optional
 
 from app.services.minimax_client import MinimaxAPIError, MinimaxClient
 
+from app.services.video.video_duration import resolve_duration_ceil
+
 from ..base import AIModelType, AIResponse, AITaskType
 from ..polling_utils import TaskPoller, minimax_status_mapper
 
@@ -53,11 +55,15 @@ async def generate_video(
         AIResponse with video URL or error
     """
     try:
+        dur_int = resolve_duration_ceil(
+            target_seconds=duration, allowed_durations=[6, 10]
+        ).provider_seconds
+
         # Build request payload
         payload = {
             "model": model,
             "first_frame_image": first_frame_image,
-            "duration": duration,
+            "duration": dur_int,
             "resolution": resolution,
             "prompt_optimizer": prompt_optimizer,
             "aigc_watermark": aigc_watermark,
@@ -97,7 +103,7 @@ async def generate_video(
                 data={
                     "video_url": result["video_url"],
                     "file_id": result.get("file_id"),
-                    "duration": duration,
+                    "duration": dur_int,
                     "width": result.get("video_width"),
                     "height": result.get("video_height"),
                 },
@@ -108,7 +114,7 @@ async def generate_video(
                 metadata={
                     "task_id": task_id,
                     "resolution": resolution,
-                    "duration": duration,
+                    "duration": dur_int,
                 },
             )
         else:

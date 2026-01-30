@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import httpx
 
+from app.services.video.video_duration import resolve_duration_ceil
+
 from ..base import AIModelType, AIResponse, AITaskType
 from ..polling_utils import TaskPoller, keling_status_mapper
 
@@ -121,14 +123,16 @@ async def generate_video(
         )
 
     try:
-        # Keling video only supports 5s/10s; clamp to nearest allowed
+        # Keling video only supports 5s/10s; resolve via ceil-to-allowed strategy
         try:
             dur_int = int(duration)
         except (TypeError, ValueError):
             dur_int = 5
         allowed_durations = [5, 10]
-        if dur_int not in allowed_durations:
-            dur_int = min(allowed_durations, key=lambda d: abs(d - dur_int))
+        dur_int = resolve_duration_ceil(
+            target_seconds=dur_int,
+            allowed_durations=allowed_durations,
+        ).provider_seconds
 
         # Build request payload
         mode_used = str(mode or "").strip().lower()

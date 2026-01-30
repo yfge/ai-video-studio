@@ -7,6 +7,7 @@ from app.core.logging import get_logger
 from app.services.minimax_client import MinimaxAPIError, MinimaxClient
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.providers.polling_utils import TaskStatus, minimax_status_mapper
+from app.services.video.video_duration import resolve_duration_ceil
 
 from .video import _retrieve_video_file
 
@@ -36,6 +37,9 @@ def _build_payload(
     aigc_watermark: bool,
 ) -> tuple[Dict[str, Any], int]:
     dur_int = _coerce_duration(duration)
+    dur_int = resolve_duration_ceil(
+        target_seconds=dur_int, allowed_durations=[6, 10]
+    ).provider_seconds
     payload = {
         "model": model,
         "first_frame_image": first_frame_image,
