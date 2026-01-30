@@ -20,6 +20,11 @@ related_paths:
   - ai-pic-backend/app/services/storyboard/recovery/__init__.py
   - ai-pic-backend/app/services/storyboard/recovery/retry_strategy.py
   - ai-pic-backend/app/services/storyboard/recovery/incremental_repair.py
+  - ai-pic-backend/app/api/v1/endpoints/storyboard/__init__.py
+  - ai-pic-backend/app/api/v1/endpoints/storyboard/utils.py
+  - ai-pic-backend/app/api/v1/endpoints/storyboard/retrieval.py
+  - ai-pic-backend/app/api/v1/endpoints/storyboard/generation.py
+  - ai-pic-backend/app/api/v1/endpoints/storyboard/media.py
   - ai-pic-backend/tests/unit/services/storyboard/validators/
   - ai-pic-backend/tests/unit/services/storyboard/sync/
   - ai-pic-backend/tests/unit/services/storyboard/pipeline/
@@ -86,11 +91,28 @@ app/services/storyboard/
    - RetryStrategy: Error categorization, exponential backoff
    - IncrementalRepair: Targeted fixes for validation failures
 
+### New Storyboard API Endpoint Directory
+
+```
+app/api/v1/endpoints/storyboard/
+  __init__.py                  # Router combining all sub-routers (7 routes)
+  utils.py                     # Shared utilities (auth, variety enforcement)
+  retrieval.py                 # GET /storyboard, POST /storyboard/preview
+  generation.py                # POST /generate, /generate-async, /update
+  media.py                     # POST /generate-images, /generate-video
+```
+
+Key improvements:
+- Modular endpoint organization (< 250 lines per file)
+- Shared utilities extracted to utils.py
+- New pipeline integration in generation.py
+- Legacy fallback to scripts_legacy.py for complex operations
+
 ### Test Coverage
 
 - 102 new unit tests for validators, sync, and pipeline
 - All tests passing
-- Full test suite (1031 tests) passes with no regressions
+- Full test suite passes with no regressions
 
 ## Validation
 
@@ -105,7 +127,7 @@ app/services/storyboard/
 2. ~~Add `use_new_pipeline` parameter to scripts_legacy.py~~ ✅
 3. ~~E2E testing with Script 118 as reference~~ ✅
 4. ~~Browser validation using Chrome DevTools~~ ✅
-5. Create storyboard API endpoint directory
+5. ~~Create storyboard API endpoint directory~~ ✅
 
 ## E2E Validation Results (Script 118)
 
