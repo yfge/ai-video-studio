@@ -32,6 +32,9 @@
 
 - [x] 后端：人物集中管理：Story 级角色注册表作为 episode/script/timeline/storyboard 单一来源；禁止生成链路引入“未知角色”（可 repair 或阻断）
 - [x] 后端：修复脚本对白中“旁白 prose 混入多角色台词”导致 TTS 旁白化：在对白音轨生成阶段自动拆分引号台词并映射到已注册角色（跳过 UI/屏幕文本）
+- [ ] 后端：audio_timeline → storyboard：分离“对白/屏幕文字”与视觉提示词（ai_prompt），对 dialogue/action/pause 使用不同模板，强制 no subtitles/no readable text，避免模型生成字幕/读屏
+- [ ] 后端：audio_timeline → storyboard：为每帧注入人物身份提示（Story 角色卡简述），并为 Veo 视频生成传递 reference_images（最多 3 张：人物锚点+环境）提升角色一致性
+- [ ] 验证：抽检至少 2 个 dialogue beat：人物嘴型/说话动作明显，且无字幕/无可读文字
 - [ ] 后端：补齐 readiness 检查（复用下方 `Feature: 故事/剧集生成质量闭环` Phase 3），并输出可读 blocking issues + 一键修复建议
 - [ ] 后端：生成后逻辑校验：episode→script→timeline→storyboard 一致性检查（场景数/角色引用/时长/画幅）；报告写入 `Task.parameters.agent_run`
 - [x] 验证：全流程 E2E（deepseek 文生文；google banana pro 生图；google veo3 生视频）生成 1 个 Story、1 个 Episode、1 条时间轴/音轨/视频，并抽检图/视频与剧本逻辑一致（Chrome MCP Transport closed，改用 API/curl + 下载抽检，并在 agent_chats 记录）
