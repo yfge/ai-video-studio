@@ -4,7 +4,7 @@ Handles synchronous and asynchronous storyboard frame generation.
 Uses the new React validation pipeline when use_new_pipeline=True.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -182,7 +182,7 @@ async def _generate_with_new_pipeline(
     extra = dict(script.extra_metadata or {})
     extra["storyboard"] = sb
     script.extra_metadata = extra
-    script.storyboard_updated_at = datetime.utcnow()
+    script.storyboard_updated_at = datetime.now(timezone.utc)
     script.storyboard_version = (script.storyboard_version or 0) + 1
     db.commit()
     db.refresh(script)
@@ -261,7 +261,7 @@ async def update_storyboard(
     script = get_script_with_auth(db, script_id, current_user)
 
     frames = request.frames
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
 
     # Validate and serialize frames

@@ -8,7 +8,7 @@ and normalized story_structure tables (Scene, SceneBeat).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Sequence
 
 if TYPE_CHECKING:
@@ -306,7 +306,7 @@ class ScriptStructureSync:
             scene.summary = json_scene["description"]
         if json_scene.get("characters"):
             scene.primary_characters = json_scene["characters"]
-        scene.updated_at = datetime.utcnow()
+        scene.updated_at = datetime.now(timezone.utc)
 
     def _create_beat_from_dialogue(
         self,

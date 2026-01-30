@@ -7,7 +7,7 @@ precheck → sync → plan → validate → generate → validate → finalize
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from app.core.logging import get_logger
@@ -245,7 +245,7 @@ class StoryboardPipeline:
 
         # Finalize
         state.phase = PipelinePhase.FINALIZE if not state.has_errors else PipelinePhase.FAILED
-        state.completed_at = datetime.utcnow()
+        state.completed_at = datetime.now(timezone.utc)
 
         return self._format_result({"pipeline_state": state, "context": context})
 
@@ -385,7 +385,7 @@ class StoryboardPipeline:
         else:
             ps.phase = PipelinePhase.COMPLETED
 
-        ps.completed_at = datetime.utcnow()
+        ps.completed_at = datetime.now(timezone.utc)
         ps.add_reasoning("finalized")
         return state_dict
 
@@ -413,7 +413,7 @@ class StoryboardPipeline:
 
     def _format_error(self, state: PipelineState, message: str) -> Dict[str, Any]:
         """Format error result."""
-        state.completed_at = datetime.utcnow()
+        state.completed_at = datetime.now(timezone.utc)
         return {
             "success": False,
             "error": message,

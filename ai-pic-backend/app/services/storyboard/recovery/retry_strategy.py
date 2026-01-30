@@ -9,7 +9,12 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _utcnow() -> datetime:
+    """Return current UTC time with timezone info."""
+    return datetime.now(timezone.utc)
 from enum import Enum
 from typing import Any, Callable, TypeVar
 
@@ -35,7 +40,7 @@ class RetryContext:
     max_attempts: int = 3
     last_error: str | None = None
     error_category: ErrorCategory | None = None
-    started_at: datetime = field(default_factory=datetime.utcnow)
+    started_at: datetime = field(default_factory=_utcnow)
     attempts_history: list[dict[str, Any]] = field(default_factory=list)
 
     # Adaptive parameters
@@ -56,7 +61,7 @@ class RetryContext:
             "success": success,
             "error": error,
             "duration_ms": duration_ms,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         })
         if error:
             self.last_error = error
@@ -217,19 +222,19 @@ class RetryStrategy:
         )
 
         while True:
-            start = datetime.utcnow()
+            start = datetime.now(timezone.utc)
             try:
                 if asyncio.iscoroutinefunction(func):
                     result = await func(*args, **kwargs)
                 else:
                     result = func(*args, **kwargs)
 
-                duration = int((datetime.utcnow() - start).total_seconds() * 1000)
+                duration = int((datetime.now(timezone.utc) - start).total_seconds() * 1000)
                 context.record_attempt(success=True, duration_ms=duration)
                 return result, context
 
             except Exception as e:
-                duration = int((datetime.utcnow() - start).total_seconds() * 1000)
+                duration = int((datetime.now(timezone.utc) - start).total_seconds() * 1000)
                 error_str = str(e)
                 context.record_attempt(
                     success=False, error=error_str, duration_ms=duration

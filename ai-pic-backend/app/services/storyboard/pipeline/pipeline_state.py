@@ -8,8 +8,13 @@ dataclass used throughout the pipeline.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
+
+
+def _utcnow() -> datetime:
+    """Return current UTC time with timezone info."""
+    return datetime.now(timezone.utc)
 from typing import Any
 
 
@@ -50,7 +55,7 @@ class ValidationResult:
     message: str = ""
     details: dict[str, Any] = field(default_factory=dict)
     suggestions: list[str] = field(default_factory=list)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=_utcnow)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -167,7 +172,7 @@ class PipelineState:
     recovery_history: list[dict[str, Any]] = field(default_factory=list)
 
     # Execution metadata
-    started_at: datetime = field(default_factory=datetime.utcnow)
+    started_at: datetime = field(default_factory=_utcnow)
     completed_at: datetime | None = None
     reasoning_trace: list[str] = field(default_factory=list)
 
@@ -208,7 +213,7 @@ class PipelineState:
                 "attempt": self.recovery_attempts,
                 "action": action,
                 "details": details,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
