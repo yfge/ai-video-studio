@@ -35,7 +35,7 @@
 - [x] 后端：audio_timeline → storyboard：分离“对白/屏幕文字”与视觉提示词（ai_prompt），对 dialogue/action/pause 使用不同模板，强制 no subtitles/no readable text，避免模型生成字幕/读屏
 - [x] 后端：audio_timeline → storyboard：注入 Story 角色卡简述 + 自动选取 reference_images（<=3：人物锚点+环境）并贯通 Veo 视频提交，提升角色一致性
 - [x] 后端：audio_timeline → storyboard：基于 scene 对白集合注入 characters 列表（提升多角色出镜一致性/避免漏人）
-- [ ] 验证：抽检至少 2 个 dialogue beat：人物嘴型/说话动作明显，且无字幕/无可读文字
+- [x] 验证：抽检至少 2 个 dialogue beat：人物嘴型/说话动作明显，且无字幕/无可读文字（见 agent_chats/2026/01/30/2026-01-30T14-19-44Z-validate-dialogue-beats.md）
 - [ ] 后端：补齐 readiness 检查（复用下方 `Feature: 故事/剧集生成质量闭环` Phase 3），并输出可读 blocking issues + 一键修复建议
 - [ ] 后端：生成后逻辑校验：episode→script→timeline→storyboard 一致性检查（场景数/角色引用/时长/画幅）；报告写入 `Task.parameters.agent_run`
 - [x] 验证：全流程 E2E（deepseek 文生文；google banana pro 生图；google veo3 生视频）生成 1 个 Story、1 个 Episode、1 条时间轴/音轨/视频，并抽检图/视频与剧本逻辑一致（Chrome MCP Transport closed，改用 API/curl + 下载抽检，并在 agent_chats 记录）
