@@ -1,0 +1,4 @@
+{{ base }}
+{% if character_cards %}角色卡: {{ character_cards | join('；') }}{% endif %}
+{% if environment %}环境锚点: {{ environment }}{% endif %}
+

@@ -71,6 +71,7 @@ class PromptTemplate(Enum):
     )
     STORYBOARD_AUDIO_VISUAL_ACTION = "storyboard_audio_visual_action"
     STORYBOARD_AUDIO_VISUAL_PAUSE = "storyboard_audio_visual_pause"
+    STORYBOARD_AUDIO_VISUAL_CONTEXT = "storyboard_audio_visual_context"
 
     # 图像相关
     IMAGE_GENERATION = "image_generation"
@@ -190,6 +191,7 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.STORYBOARD_AUDIO_VISUAL_DIALOGUE_READ_TEXT: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_AUDIO_VISUAL_ACTION: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_AUDIO_VISUAL_PAUSE: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_AUDIO_VISUAL_CONTEXT: PromptCategory.SCRIPT,
     PromptTemplate.IMAGE_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.PORTRAIT_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.SCENE_IMAGE: PromptCategory.IMAGE,

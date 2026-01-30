@@ -25,6 +25,12 @@ def skip_if_no_oss():
 
 
 def pytest_collection_modifyitems(config, items):
+    run_external = str(getattr(settings, "RUN_EXTERNAL_TESTS", "") or "").strip().lower()
+    run_external_enabled = run_external in {"1", "true", "yes", "on"}
+    skip_external = pytest.mark.skip(
+        reason="external tests disabled (set RUN_EXTERNAL_TESTS=1 to enable)"
+    )
+
     for item in items:
         if "test_diagnostic" in item.nodeid:
             item.add_marker(pytest.mark.diagnostic)
@@ -43,6 +49,9 @@ def pytest_collection_modifyitems(config, items):
         if "e2e" in item.nodeid or "end_to_end" in item.nodeid:
             item.add_marker(pytest.mark.e2e)
             item.add_marker(pytest.mark.slow)
+
+        if not run_external_enabled and "external" in item.keywords:
+            item.add_marker(skip_external)
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):

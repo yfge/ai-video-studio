@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.services.ai_service import AIService
 
 
+@pytest.mark.openai
+@pytest.mark.external
 @pytest.mark.asyncio
 async def test_full_image_generation_workflow(skip_if_no_openai):
     """测试完整的图像生成工作流程"""

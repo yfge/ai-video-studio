@@ -1558,6 +1558,7 @@ def build_storyboard_frames_from_audio_timeline(
                 {
                     "frame_id": str(uuid4()),
                     "frame_number": len(frames) + 1,
+                    "scene_id": scene_id_int,
                     "scene_number": scene_number_int,
                     "scene_index": (
                         scene_index_map.get(scene_id_int)
@@ -1606,6 +1607,7 @@ def build_storyboard_frames_from_audio_timeline(
             {
                 "frame_id": str(uuid4()),
                 "frame_number": len(frames) + 1,
+                "scene_id": scene_id_int,
                 "scene_number": scene_number_int,
                 "scene_index": (
                     scene_index_map.get(scene_id_int)
@@ -1656,6 +1658,18 @@ def generate_storyboard_from_episode_audio_timeline(
     frames = build_storyboard_frames_from_audio_timeline(
         audio_timeline=audio_timeline,
         min_pause_duration_ms=min_pause_duration_ms,
+    )
+    from app.services.storyboard.storyboard_audio_context_enricher import (
+        enrich_storyboard_frames_with_story_context,
+    )
+
+    enrich_storyboard_frames_with_story_context(
+        db,
+        story_id=episode.story_id,
+        script_id=script.id,
+        frames=frames,
+        max_reference_images=3,
+        max_character_cards=3,
     )
     apply_storyboard_prompt_optimizations(frames)
     if not frames:

@@ -83,3 +83,14 @@ def test_storyboard_audio_visual_prompt_templates_exist():
     prompt = prompt_manager.render_prompt("storyboard_audio_visual_pause", {})
     assert "停顿" in prompt
     assert "无字幕" in prompt
+
+    prompt = prompt_manager.render_prompt(
+        "storyboard_audio_visual_context",
+        {
+            "base": "林晚开口说话，嘴型清晰。",
+            "character_cards": ["林晚: 黑长发，米色毛衣", "陈哲: 短发，深色夹克"],
+            "environment": "公寓客厅，夜",
+        },
+    )
+    assert "角色卡" in prompt
+    assert "环境锚点" in prompt
