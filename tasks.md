@@ -478,6 +478,7 @@
 - [ ] 后端：实现渲染任务链路（Task/Celery）：关键帧生成（首尾帧）→ 视频片段生成（image-to-video）→ 拼接剪辑（FFmpeg）→ 上传 OSS/CDN → 回填 RenderJob/Timeline
 - [ ] 前端：新增时间轴页面（列表 + 编辑器 MVP）：clip 列表编排（排序、时长、绑定 shot/storyboard）、单 clip 预览、导出按钮、proxy 播放器
 - [ ] 验证：补 pytest 覆盖（Timeline spec 校验/导出幂等/权限），并在 Chrome 走通端到端用例（创建分镜→生成首尾帧→生成视频片段→导出 proxy/final）
+- [x] 验证：单集样例基于 `storyboard.frames` 生成全帧分镜视频并用 FFmpeg concat 导出 2 版 MP4（Veo 自带音频 / Episode TTS 音轨），产物上传 OSS（episode_id=133, script_id=117）
 
 ### 下一步（拆分工作项）
 
