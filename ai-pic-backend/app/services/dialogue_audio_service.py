@@ -11,16 +11,17 @@ from typing import Any, Sequence
 from uuid import uuid4
 
 import httpx
-from sqlalchemy.orm import Session
-
 from app.core.logging import get_logger
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene, SceneBeat
 from app.services.ai_service import ai_service
-from app.services.audio.dialogue_processor import (
-    plan_scene_segments_intelligent,
+from app.services.audio.dialogue_processing.prose_dialogue_splitter import (
+    repair_scene_dialogues_for_audio,
+    sanitize_stage_directions_for_audio,
 )
+from app.services.audio.dialogue_processor import plan_scene_segments_intelligent
 from app.services.audio.time_stretch import time_stretch_wav_ffmpeg_args
+from app.services.script.script_character_policy import build_story_alias_map
 from app.services.storage.oss_service import oss_service
 from app.services.storyboard.storyboard_prompt_utils import (
     apply_storyboard_prompt_optimizations,
@@ -30,6 +31,7 @@ from app.services.voice_binding_service import (
     ensure_virtual_ip_voice_config,
     get_story_character_map,
 )
+from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -817,6 +819,13 @@ async def generate_scene_dialogue_audio(
         )
 
     story_char_map = get_story_character_map(db, story.id)
+    alias_to_canonical = build_story_alias_map(story)
+    dialogues = repair_scene_dialogues_for_audio(
+        dialogues, alias_to_canonical=alias_to_canonical
+    )
+    stage = sanitize_stage_directions_for_audio(
+        stage, alias_to_canonical=alias_to_canonical
+    )
 
     # Use single temp directory for all phases (TTS generation + assembly)
     with tempfile.TemporaryDirectory(prefix="scene-audio-") as tmp_root:
