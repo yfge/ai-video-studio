@@ -2,9 +2,9 @@
  * Virtual IP Image Management API endpoints.
  */
 
-export * from './virtual-ip-image/crud.endpoints';
-export * from './virtual-ip-image/generation.endpoints';
-export * from './virtual-ip-image/variants.endpoints';
+export * from "./virtual-ip-image/crud.endpoints";
+export * from "./virtual-ip-image/generation.endpoints";
+export * from "./virtual-ip-image/variants.endpoints";
 
 import {
   deleteVirtualIPImage,
@@ -14,16 +14,16 @@ import {
   setDefaultVirtualIPImage,
   updateVirtualIPImage,
   uploadVirtualIPImage,
-} from './virtual-ip-image/crud.endpoints';
+} from "./virtual-ip-image/crud.endpoints";
 import {
   generateVirtualIPImage,
   generateVirtualIPImageAsync,
-} from './virtual-ip-image/generation.endpoints';
+} from "./virtual-ip-image/generation.endpoints";
 import {
   generateVariantAndSave,
   generateVariantAndSaveAsync,
   generateVariantFromImage,
-} from './virtual-ip-image/variants.endpoints';
+} from "./virtual-ip-image/variants.endpoints";
 
 /**
  * Virtual IP Image API namespace.
@@ -35,15 +35,15 @@ export const virtualIPImageAPI = {
   uploadImage: (
     virtualIPId: number,
     file: File,
-    category: string = 'portrait',
-    tags: string = '',
-    isDefault: boolean = false
+    category: string = "portrait",
+    tags: string = "",
+    isDefault: boolean = false,
   ) => {
     const normalizedTags = tags
-      .split(',')
+      .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean)
-      .join(',');
+      .join(",");
     return uploadVirtualIPImage(virtualIPId, file, {
       category,
       tags: normalizedTags,

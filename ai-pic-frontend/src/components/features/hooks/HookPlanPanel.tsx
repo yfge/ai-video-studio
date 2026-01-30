@@ -223,9 +223,11 @@ function HookSection({
   color: "orange" | "blue" | "green";
 }) {
   const colorClasses = {
-    orange: "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800",
+    orange:
+      "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800",
     blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
-    green: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
+    green:
+      "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
   };
 
   return (

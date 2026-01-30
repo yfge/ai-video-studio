@@ -5,6 +5,7 @@
 ## 系统特性
 
 ### 🚀 核心功能
+
 - **扩展Alembic**: 在Alembic基础上增加了更多高级功能
 - **Django风格管理**: 提供类似Django的`manage.py`命令行接口
 - **FastAPI集成**: 完全集成到FastAPI架构中
@@ -15,6 +16,7 @@
 - **实时监控**: 中间件级别的迁移状态监控
 
 ### 🛡️ 安全特性
+
 - **数据完整性检查**: 外键约束和数据一致性验证
 - **自动备份**: MySQL数据库迁移前自动备份
 - **回滚点管理**: 创建和管理迁移回滚点
@@ -85,6 +87,7 @@ python manage.py migration validate
 ```
 
 ### 回滚演练与记录
+
 - 建议每次版本发布前进行一次“升级→验证→回滚”演练，并保存报告/日志：
   1. 备份：`python manage.py migration backup`
   2. 升级：`python manage.py migration upgrade`（或 `alembic upgrade <rev>`）
@@ -251,7 +254,7 @@ def seed_data():
     try:
         # 添加种子数据逻辑
         admin_user, created = get_or_create(
-            db, 
+            db,
             User,
             username="admin",
             defaults={
@@ -261,10 +264,10 @@ def seed_data():
                 "is_superuser": True
             }
         )
-        
+
         db.commit()
         print("种子数据执行成功")
-        
+
     except Exception as e:
         print(f"种子数据执行失败: {e}")
         db.rollback()
@@ -280,7 +283,7 @@ def rollback_data():
         db.query(User).filter_by(username="admin").delete()
         db.commit()
         print("种子数据回滚成功")
-        
+
     except Exception as e:
         db.rollback()
         raise
@@ -364,6 +367,7 @@ app.add_middleware(
 ```
 
 中间件功能：
+
 - **启动时检查**: 应用启动时自动检查迁移状态
 - **响应头注入**: 在HTTP响应中添加迁移状态信息
 - **服务保护**: 可配置在数据库未升级时阻止访问
@@ -392,12 +396,12 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer, primary_key=True),
         sa.Column('name', sa.String(100), nullable=False)
     )
-    
+
     # 安全添加列
-    add_column_if_not_exists('existing_table', 
+    add_column_if_not_exists('existing_table',
         sa.Column('new_column', sa.String(50))
     )
-    
+
     # 安全创建索引
     create_index_if_not_exists('idx_name', 'table_name', ['column1', 'column2'])
 
@@ -450,6 +454,7 @@ python -m pytest tests/test_migration_system.py::TestMigrationManager -v
 ### 生产环境配置
 
 1. **启用中间件保护**:
+
 ```python
 app.add_middleware(
     MigrationCheckMiddleware,
@@ -458,6 +463,7 @@ app.add_middleware(
 ```
 
 2. **配置自动备份**:
+
 ```bash
 # 设置备份目录权限
 mkdir -p /var/backups/ai-video-studio
@@ -468,6 +474,7 @@ echo "0 2 * * 0 /usr/local/bin/cleanup-rollbacks.sh" | crontab -
 ```
 
 3. **监控迁移状态**:
+
 ```bash
 # 健康检查端点
 curl http://localhost:8000/api/v1/migrations/health
@@ -508,6 +515,7 @@ python manage.py dev check
 ### 常见问题
 
 **1. 迁移文件冲突**
+
 ```bash
 # 查看迁移历史
 python manage.py migration history
@@ -517,6 +525,7 @@ python manage.py migration merge
 ```
 
 **2. 数据完整性问题**
+
 ```bash
 # 检查数据完整性
 python manage.py migration validate
@@ -526,6 +535,7 @@ python manage.py migration check-integrity
 ```
 
 **3. 回滚到安全点**
+
 ```bash
 # 列出回滚点
 python manage.py migration rollback-points
@@ -535,6 +545,7 @@ python manage.py migration rollback <rollback_id>
 ```
 
 **4. 种子执行失败**
+
 ```bash
 # 检查种子前置条件
 python seeds/xxx_seed.py
@@ -620,6 +631,7 @@ async def custom_migration_operation():
 ## 更新日志
 
 ### v2.0.0 (当前版本)
+
 - ✨ 全新的迁移系统架构
 - 🛡️ 增强的安全检查机制
 - 🌱 完整的数据种子系统
@@ -628,6 +640,7 @@ async def custom_migration_operation():
 - 🧪 全面的测试覆盖
 
 ### 未来计划
+
 - 🔄 自动迁移调度
 - 📊 迁移性能分析
 - 🌐 分布式迁移支持

@@ -13,16 +13,19 @@ summary: "Expand tasks.parameters to LONGTEXT and complete full agent_run backfi
 ---
 
 ## User Prompt
+
 - "全量回填 吧现在几乎没有什么数据"
 - "把 P0 的都处理"
 - "继续完成 P0 任务"
 
 ## Goals
+
 - Remove MySQL TEXT size limit blocker for task audit backfill.
 - Backfill `parameters.agent_run` for historical tasks (including FAILED/CANCELLED) so /tasks is auditable.
 - Verify in Chrome that /tasks shows agent_run details.
 
 ## Changes
+
 - Added Alembic migration to expand `tasks.parameters` from TEXT to LONGTEXT on MySQL.
 - Updated Task model column to use MySQL LONGTEXT variant.
 - Ensured terminal tasks always receive minimal agent_run context during persistence (completed now also enriched).
@@ -30,6 +33,7 @@ summary: "Expand tasks.parameters to LONGTEXT and complete full agent_run backfi
 - Marked the production backfill task as complete in `tasks.md` and noted LONGTEXT expansion.
 
 ## Validation
+
 - DB migration: `docker exec -i ai-video-backend alembic upgrade head`
 - Backfill run: `docker exec -i ai-video-backend python scripts/backfill_task_agent_runs.py --apply --max-updates 20000`
 - Backfill verification: `docker exec -i ai-video-backend python scripts/backfill_task_agent_runs.py --show-samples 3` (candidates=0)
@@ -38,8 +42,10 @@ summary: "Expand tasks.parameters to LONGTEXT and complete full agent_run backfi
 - Chrome E2E: login `geyunfei` → `/tasks` → expand task details (e.g., storyboard_image_generation and script_generation) to confirm `parameters.agent_run` is present
 
 ## Next Steps
+
 - Investigate and fix failing test `tests/test_api.py::TestVirtualIPAPI::test_create_virtual_ip` (HTTP 200 vs 201).
 - Proceed to remaining P1 items once backend tests are green.
 
 ## Linked Commits
+
 - TBD

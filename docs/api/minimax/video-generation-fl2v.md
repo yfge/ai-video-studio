@@ -34,19 +34,19 @@ paths:
               - application/json
             default: application/json
       requestBody:
-        description: ''
+        description: ""
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VideoGenerationReq'
+              $ref: "#/components/schemas/VideoGenerationReq"
         required: true
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VideoGenerationResp'
+                $ref: "#/components/schemas/VideoGenerationResp"
 components:
   schemas:
     VideoGenerationReq:
@@ -115,9 +115,9 @@ components:
           type: string
           description: 视频生成任务的 ID，用于后续查询任务状态
         base_resp:
-          $ref: '#/components/schemas/BaseResp'
+          $ref: "#/components/schemas/BaseResp"
       example:
-        task_id: '106916112212032'
+        task_id: "106916112212032"
         base_resp:
           status_code: 0
           status_msg: success
@@ -136,7 +136,7 @@ components:
             - 2013：传入参数异常，请检查入参是否按要求填写
             - 2049：无效的api key，请检查api key
 
-            更多内容可查看[错误码列表](/api-reference/errorcode)  
+            更多内容可查看[错误码列表](/api-reference/errorcode)
         status_msg:
           type: string
           description: 具体错误详情
@@ -149,7 +149,6 @@ components:
         `HTTP: Bearer Auth`
          - Security Scheme Type: http
          - HTTP Authorization Scheme: Bearer API_key，用于验证账户信息，可在 [账户管理>接口密钥](https://platform.minimaxi.com/user-center/basic-information/interface-key) 中查看。
-
 ````
 
 ---

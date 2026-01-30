@@ -30,4 +30,3 @@
 - `scenes` 必须保持与输入一致（可原样返回）。
 - `dialogues` 与 `stage_directions` 允许小幅调整，但不得引入与剧情无关的新支线。
 - 只输出 JSON。
-

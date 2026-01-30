@@ -29,11 +29,13 @@ Continue with Phase 2.1.2 of the refactoring plan - create Video Generation Serv
 
 ### New Files Created
 
-1. **ai-pic-backend/app/services/video/__init__.py** (~15 lines)
+1. **ai-pic-backend/app/services/video/**init**.py** (~15 lines)
+
    - Package initialization
    - Exports: `VideoGenerationService`, `get_video_generation_service`
 
 2. **ai-pic-backend/app/services/video/video_generation_service.py** (~240 lines)
+
    - `VideoGenerationService`: Main service class for AI-powered video generation
    - Methods:
      - `generate_video()`: Main generation entry point (text-to-video or image-to-video)
@@ -56,6 +58,7 @@ Continue with Phase 2.1.2 of the refactoring plan - create Video Generation Serv
 ### Test Files Created
 
 4. **tests/unit/services/video/test_video_generation_service.py** (~19 tests)
+
    - Tests for `VideoGenerationService` class
    - Tests for generation success/failure scenarios
    - Tests for OSS upload methods
@@ -68,18 +71,21 @@ Continue with Phase 2.1.2 of the refactoring plan - create Video Generation Serv
 ## Validation
 
 ### Import Tests
+
 ```bash
 python -c "from app.services.video import VideoGenerationService, get_video_generation_service; print('Video Service import OK')"
 # Output: Video Service import OK
 ```
 
 ### Unit Tests
+
 ```bash
 pytest tests/unit/services/video/ -v
 # Result: 37 passed (100%)
 ```
 
 ### Production Build
+
 ```bash
 ./docker/build_prod_images.sh
 # Result: SUCCESS - All images built successfully
@@ -90,6 +96,7 @@ pytest tests/unit/services/video/ -v
 The Video Generation Service follows the same pattern as Image Generation Service:
 
 1. **Service Layer** (`video_generation_service.py`)
+
    - Main generation orchestration
    - Response processing
    - OSS upload coordination
@@ -100,6 +107,7 @@ The Video Generation Service follows the same pattern as Image Generation Servic
    - Provider-specific defaults
 
 Key features:
+
 - Automatic last frame return for video chaining
 - OSS upload for video, thumbnail, and last frame
 - Provider-specific capability detection (Keling, Volcengine, MiniMax)

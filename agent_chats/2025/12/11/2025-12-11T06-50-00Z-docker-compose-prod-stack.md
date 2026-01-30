@@ -60,4 +60,3 @@ summary: "Add production-oriented Docker Compose stack and Dockerfiles for backe
 ## Linked Commits
 
 - pending
-

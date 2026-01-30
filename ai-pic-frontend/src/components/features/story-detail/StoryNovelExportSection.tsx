@@ -18,7 +18,9 @@ interface StoryNovelExportSectionProps {
   story: Story;
 }
 
-export function StoryNovelExportSection({ story }: StoryNovelExportSectionProps) {
+export function StoryNovelExportSection({
+  story,
+}: StoryNovelExportSectionProps) {
   const { showAlert } = useAlertModal();
 
   const [targetWords, setTargetWords] = useState(20000);
@@ -43,7 +45,10 @@ export function StoryNovelExportSection({ story }: StoryNovelExportSectionProps)
 
   const startExport = async () => {
     if (!story.business_id) {
-      showAlert({ message: "缺少故事 business_id，无法导出", variant: "error" });
+      showAlert({
+        message: "缺少故事 business_id，无法导出",
+        variant: "error",
+      });
       return;
     }
     try {
@@ -55,7 +60,10 @@ export function StoryNovelExportSection({ story }: StoryNovelExportSectionProps)
         model: model || undefined,
         temperature,
       };
-      const res = await generateStoryZhihuNovelAsync(story.business_id, payload);
+      const res = await generateStoryZhihuNovelAsync(
+        story.business_id,
+        payload,
+      );
       if (res.success && res.data?.task_id) {
         setTaskId(res.data.task_id);
         setTaskStatus(res.data.status);
@@ -132,7 +140,8 @@ export function StoryNovelExportSection({ story }: StoryNovelExportSectionProps)
     <div className="bg-white rounded-lg shadow p-6 mb-6">
       <h2 className="text-xl font-semibold mb-3">导出知乎体小说</h2>
       <p className="text-sm text-gray-600 mb-4">
-        将当前故事概要扩写为约 1–3 万字的知乎体长文（异步任务生成，可在任务页查看）。
+        将当前故事概要扩写为约 1–3
+        万字的知乎体长文（异步任务生成，可在任务页查看）。
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -37,4 +37,3 @@ summary: "拆分 image_gen normalize.py，降低文件体积并保持现有行�
 ## Linked Commits
 
 - (pending)
-

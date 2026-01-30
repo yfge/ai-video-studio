@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import httpx
-
 from app.core.logging import get_logger
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.providers.polling_utils import TaskStatus, keling_status_mapper
@@ -136,9 +135,7 @@ def _build_request_data(
     return request_data, dur_int, mode_used
 
 
-def _build_error_response(
-    message: str, provider_name: str, model: str
-) -> AIResponse:
+def _build_error_response(message: str, provider_name: str, model: str) -> AIResponse:
     return AIResponse(
         success=False,
         error=message,

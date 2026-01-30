@@ -10,7 +10,6 @@ import json
 from typing import Any, Callable, Dict, List, Optional
 
 import httpx
-
 from app.core.logging import get_logger
 
 from ..base import AIModelType, AIResponse, AITaskType

@@ -118,8 +118,12 @@ export function EnvironmentReferenceImagesField({
                 disabled={disabled}
                 className={[
                   "relative overflow-hidden rounded border",
-                  isSelected ? "border-blue-600 ring-2 ring-blue-200" : "border-gray-200",
-                  disabled ? "opacity-60 cursor-not-allowed" : "hover:border-gray-400",
+                  isSelected
+                    ? "border-blue-600 ring-2 ring-blue-200"
+                    : "border-gray-200",
+                  disabled
+                    ? "opacity-60 cursor-not-allowed"
+                    : "hover:border-gray-400",
                 ].join(" ")}
               >
                 <img

@@ -49,7 +49,9 @@ def _build_updated_frame(
     frame["video_thumbnail_url"] = result_payload.get("thumbnail_url")
     frame["video_thumbnail_url_original"] = result_payload.get("original_thumbnail_url")
     frame["video_last_frame_url"] = result_payload.get("last_frame_url")
-    frame["video_last_frame_url_original"] = result_payload.get("original_last_frame_url")
+    frame["video_last_frame_url_original"] = result_payload.get(
+        "original_last_frame_url"
+    )
 
     frame["video_urls"] = merge_urls(frame.get("video_urls"), frame.get("video_url"))
     frame["video_thumbnail_urls"] = merge_urls(

@@ -58,4 +58,3 @@ summary: "Upgraded frontend to Node 22.20.0 + Next.js 16.1.3, updated lint workf
 ## Linked Commits
 
 - (pending)
-

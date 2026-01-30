@@ -59,4 +59,3 @@ variables:
 output_format: "JSON"
 expected_fields:
   - episodes
-

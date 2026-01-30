@@ -25,15 +25,18 @@ summary: "Added Vertex-aware Veo video handling with shared request builders and
 ---
 
 ## User Prompt
+
 提交现有更改
 
 ## Goals
+
 - Commit current provider-aware video generation updates.
 - Bring oversized files under size limits with minimal refactor.
 - Validate backend tests and required Docker build.
 - Run Chrome E2E smoke validation.
 
 ## Changes
+
 - Added Google video/Vertex config fields and wired them into provider config/AI base.
 - Split Veo request body building and Vertex-specific polling/parsing into dedicated helpers.
 - Supported base64 video payloads from Vertex responses and upload to OSS.
@@ -42,13 +45,16 @@ summary: "Added Vertex-aware Veo video handling with shared request builders and
 - Documented new env vars in `docker/.env.example`.
 
 ## Validation
+
 - `cd ai-pic-backend && pytest` (failed: 92 failed, 7 errors; existing suite failures include missing fixtures and integration/env-dependent tests).
 - `./docker/build_prod_images.sh` (succeeded; images built and pushed, tag `3d48d92`).
 - Chrome MCP E2E: logged in at `http://localhost:8089/login` using `geyunfei` / `Gyf@845261`, redirected to home and saw nav items (e.g., “虚拟IP”).
 
 ## Next Steps
+
 - Investigate and resolve pre-existing failing tests/fixtures if required for CI.
 - Consider pruning unused OSS helper wrappers if no external callers depend on them.
 
 ## Linked Commits
+
 - None (pending commit).

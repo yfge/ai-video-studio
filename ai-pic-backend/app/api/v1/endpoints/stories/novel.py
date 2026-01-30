@@ -4,25 +4,27 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse, Response
-from sqlalchemy.orm import Session
-
 from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db
 from app.core.middleware import get_current_active_user
+from app.models.story_novel_export import StoryNovelExport
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.models.story_novel_export import StoryNovelExport
 from app.schemas.generation_requests import StoryNovelExportRequest
-from app.schemas.story_novel_export import StoryNovelExportListResponse, StoryNovelExportSummary
+from app.schemas.story_novel_export import (
+    StoryNovelExportListResponse,
+    StoryNovelExportSummary,
+)
 from app.services.story.story_novel_export_service import StoryNovelExportService
 from app.services.story.story_novel_export_utils import (
     build_export_result_path,
     parse_export_result_path,
     safe_join_under,
 )
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse, Response
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -102,7 +104,9 @@ def process_story_novel_export_task(
 
             task.status = TaskStatus.COMPLETED
             task.result_file_path = build_export_result_path(result.relative_path)
-            task.description = f"完成：约 {result.total_words} 字（{result.chapter_count} 章）"
+            task.description = (
+                f"完成：约 {result.total_words} 字（{result.chapter_count} 章）"
+            )
             db.commit()
     except Exception as exc:
         error_message = str(exc)
@@ -226,7 +230,5 @@ def list_story_novel_exports(
         query = query.filter(StoryNovelExport.user_id == current_user.id)
 
     resolved_limit = max(1, min(limit, 50))
-    exports = (
-        query.order_by(StoryNovelExport.id.desc()).limit(resolved_limit).all()
-    )
+    exports = query.order_by(StoryNovelExport.id.desc()).limit(resolved_limit).all()
     return {"items": [StoryNovelExportSummary.model_validate(row) for row in exports]}

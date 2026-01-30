@@ -31,7 +31,9 @@ export function ImagePageHeader({
               {showVirtualIPInfo ? `${virtualIP.name} - 图片管理` : "图片管理"}
             </h2>
             {showVirtualIPInfo && virtualIP.description ? (
-              <p className="mt-1 text-sm text-gray-600">{virtualIP.description}</p>
+              <p className="mt-1 text-sm text-gray-600">
+                {virtualIP.description}
+              </p>
             ) : null}
           </div>
           {onBack ? (

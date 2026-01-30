@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import httpx
 import pytest
-
-from app.services.providers.google_provider.text import generate_text, stream_generate_content
+from app.services.providers.google_provider.text import (
+    generate_text,
+    stream_generate_content,
+)
 
 
 class _DummyStreamResponse:
-    def __init__(self, *, status_code: int, lines: list[str], body: bytes = b"") -> None:
+    def __init__(
+        self, *, status_code: int, lines: list[str], body: bytes = b""
+    ) -> None:
         self.status_code = status_code
         self._lines = lines
         self._body = body
@@ -39,7 +43,12 @@ class _DummyPostResponse:
 
 
 class _DummyClient:
-    def __init__(self, *, stream_response: _DummyStreamResponse, post_response: _DummyPostResponse):
+    def __init__(
+        self,
+        *,
+        stream_response: _DummyStreamResponse,
+        post_response: _DummyPostResponse,
+    ):
         self._stream_response = stream_response
         self._post_response = post_response
         self.stream_calls: list[str] = []
@@ -142,7 +151,9 @@ async def test_generate_text_parses_list_payload_from_non_stream_response():
 @pytest.mark.asyncio
 async def test_generate_text_uses_system_instruction_instead_of_system_role():
     client = _DummyClient(
-        stream_response=_DummyStreamResponse(status_code=504, lines=[], body=b"<html>504</html>"),
+        stream_response=_DummyStreamResponse(
+            status_code=504, lines=[], body=b"<html>504</html>"
+        ),
         post_response=_DummyPostResponse(
             {
                 "candidates": [{"content": {"parts": [{"text": "ok"}]}}],
@@ -166,5 +177,6 @@ async def test_generate_text_uses_system_instruction_instead_of_system_role():
         "parts": [{"text": "SYSTEM"}]
     }
     assert client.last_post_json and all(
-        content.get("role") != "system" for content in client.last_post_json.get("contents", [])
+        content.get("role") != "system"
+        for content in client.last_post_json.get("contents", [])
     )

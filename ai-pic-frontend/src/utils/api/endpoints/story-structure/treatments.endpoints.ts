@@ -2,15 +2,15 @@
  * Story Structure treatment endpoints.
  */
 
-import { httpClient } from '../../client';
-import type { ApiResponse } from '../../types/common.types';
+import { httpClient } from "../../client";
+import type { ApiResponse } from "../../types/common.types";
 
 /**
  * Get treatments for a story.
  */
 export async function getStoryTreatments(
   storyId: number,
-  opts?: { latestOnly?: boolean }
+  opts?: { latestOnly?: boolean },
 ): Promise<
   ApiResponse<
     Array<{
@@ -21,8 +21,10 @@ export async function getStoryTreatments(
     }>
   >
 > {
-  const latest = opts?.latestOnly ? '?latest_only=true' : '';
-  return httpClient(`/api/v1/story-structure/stories/${storyId}/treatments${latest}`);
+  const latest = opts?.latestOnly ? "?latest_only=true" : "";
+  return httpClient(
+    `/api/v1/story-structure/stories/${storyId}/treatments${latest}`,
+  );
 }
 
 /**
@@ -35,18 +37,17 @@ export async function createStoryTreatment(
     title: string;
     status?: string;
     logline?: string;
-  }
+  },
 ): Promise<ApiResponse<unknown>> {
   const body = {
     story_id: storyId,
     revision_number: payload.revision_number ?? 1,
     title: payload.title,
-    status: payload.status ?? 'draft',
+    status: payload.status ?? "draft",
     logline: payload.logline,
   };
   return httpClient(`/api/v1/story-structure/stories/${storyId}/treatments`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(body),
   });
 }
-

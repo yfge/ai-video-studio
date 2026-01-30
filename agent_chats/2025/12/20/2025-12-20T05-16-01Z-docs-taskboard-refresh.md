@@ -17,15 +17,19 @@ related_paths:
   - tasks.md
 summary: "Refreshed docs inventory and task board to match current state"
 ---
+
 ## User Prompt
+
 根据项目现状整体梳理 docs 文档，移除不匹配内容；梳理 tasks.md 并移除过期项；更新 AGENTS.md 的文档指向，并提交。
 
 ## Goals
+
 - Clean up docs to reflect the current repo state and add a canonical docs index.
 - Refresh the task board completion status and remove stale items.
 - Update AGENTS.md doc pointers and commit the changes.
 
 ## Changes
+
 - Added `docs/README.md` as the canonical docs index.
 - Updated story-structure API and storyboard integration docs to reflect current endpoints and behavior.
 - Marked the story-structure gap analysis as historical context and aligned task references.
@@ -34,10 +38,13 @@ summary: "Refreshed docs inventory and task board to match current state"
 - Updated `AGENTS.md` to point at the docs index and current doc set.
 
 ## Validation
+
 - `./docker/build_prod_images.sh`
 
 ## Next Steps
+
 - (optional) Align AGENTS build script path with repo layout if needed.
 
 ## Linked Commits
+
 - (pending)

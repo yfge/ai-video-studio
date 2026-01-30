@@ -1,22 +1,23 @@
 """
 测试数据工厂
 """
-import factory
+
 from datetime import datetime
-from sqlalchemy.orm import Session
+
+import factory
+from app.models.script import Episode, Script, ScriptTemplate, Story, StoryCharacter
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
-from app.models.script import Story, Episode, Script, StoryCharacter, ScriptTemplate
-from tests.unit.test_database import test_db
+from sqlalchemy.orm import Session
 
 
 class BaseFactory(factory.alchemy.SQLAlchemyModelFactory):
     """基础工厂类"""
-    
+
     class Meta:
         sqlalchemy_session = None
         sqlalchemy_session_persistence = "commit"
-    
+
     @classmethod
     def _setup_next_sequence(cls):
         """设置序列"""
@@ -25,13 +26,15 @@ class BaseFactory(factory.alchemy.SQLAlchemyModelFactory):
 
 class UserFactory(BaseFactory):
     """用户工厂"""
-    
+
     class Meta:
         model = User
-    
+
     username = factory.Sequence(lambda n: f"user{n}")
     email = factory.LazyAttribute(lambda obj: f"{obj.username}@example.com")
-    hashed_password = factory.LazyFunction(lambda: "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW")  # "secret"
+    hashed_password = factory.LazyFunction(
+        lambda: "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+    )  # "secret"
     full_name = factory.LazyAttribute(lambda obj: f"{obj.username.title()} User")
     is_active = True
     is_superuser = False
@@ -40,16 +43,18 @@ class UserFactory(BaseFactory):
 
 class VirtualIPFactory(BaseFactory):
     """虚拟IP工厂"""
-    
+
     class Meta:
         model = VirtualIP
-    
+
     name = factory.Sequence(lambda n: f"VirtualIP{n}")
     description = factory.Faker("text", max_nb_chars=200)
     tags = factory.LazyFunction(lambda: ["tag1", "tag2"])
     background_story = factory.Faker("text", max_nb_chars=500)
     style_prompt = factory.Faker("sentence")
-    style_reference_images = factory.LazyFunction(lambda: ["http://example.com/image1.jpg"])
+    style_reference_images = factory.LazyFunction(
+        lambda: ["http://example.com/image1.jpg"]
+    )
     default_avatar_url = factory.Faker("image_url")
     is_active = True
     is_public = False
@@ -58,17 +63,19 @@ class VirtualIPFactory(BaseFactory):
 
 class VirtualIPImageFactory(BaseFactory):
     """虚拟IP图像工厂"""
-    
+
     class Meta:
         model = VirtualIPImage
-    
+
     virtual_ip = factory.SubFactory(VirtualIPFactory)
     filename = factory.Sequence(lambda n: f"image_{n}.jpg")
     original_filename = factory.LazyAttribute(lambda obj: obj.filename)
     file_path = factory.LazyAttribute(lambda obj: f"/uploads/{obj.filename}")
     file_size = factory.Faker("random_int", min=1000, max=1000000)
     mime_type = "image/jpeg"
-    category = factory.Faker("random_element", elements=["avatar", "expression", "costume", "scene"])
+    category = factory.Faker(
+        "random_element", elements=["avatar", "expression", "costume", "scene"]
+    )
     subcategory = factory.Faker("word")
     tags = factory.LazyFunction(lambda: ["test", "image"])
     is_default = False
@@ -78,22 +85,32 @@ class VirtualIPImageFactory(BaseFactory):
 
 class StoryFactory(BaseFactory):
     """故事工厂"""
-    
+
     class Meta:
         model = Story
-    
+
     title = factory.Faker("sentence", nb_words=4)
-    genre = factory.Faker("random_element", elements=["Romance", "Action", "Comedy", "Drama"])
+    genre = factory.Faker(
+        "random_element", elements=["Romance", "Action", "Comedy", "Drama"]
+    )
     theme = factory.Faker("sentence", nb_words=6)
-    target_audience = factory.Faker("random_element", elements=["Young Adult", "Adult", "Teen"])
+    target_audience = factory.Faker(
+        "random_element", elements=["Young Adult", "Adult", "Teen"]
+    )
     duration_minutes = factory.Faker("random_int", min=60, max=180)
     premise = factory.Faker("text", max_nb_chars=300)
     synopsis = factory.Faker("text", max_nb_chars=500)
     main_conflict = factory.Faker("text", max_nb_chars=200)
     resolution = factory.Faker("text", max_nb_chars=200)
-    main_characters = factory.LazyFunction(lambda: [{"name": "Character1", "role": "protagonist"}])
-    character_relationships = factory.LazyFunction(lambda: {"Character1": {"Character2": "friend"}})
-    setting_time = factory.Faker("random_element", elements=["Modern", "Medieval", "Future"])
+    main_characters = factory.LazyFunction(
+        lambda: [{"name": "Character1", "role": "protagonist"}]
+    )
+    character_relationships = factory.LazyFunction(
+        lambda: {"Character1": {"Character2": "friend"}}
+    )
+    setting_time = factory.Faker(
+        "random_element", elements=["Modern", "Medieval", "Future"]
+    )
     setting_location = factory.Faker("city")
     world_building = factory.Faker("text", max_nb_chars=300)
     generation_prompt = factory.Faker("text", max_nb_chars=200)
@@ -108,10 +125,10 @@ class StoryFactory(BaseFactory):
 
 class EpisodeFactory(BaseFactory):
     """剧集工厂"""
-    
+
     class Meta:
         model = Episode
-    
+
     story = factory.SubFactory(StoryFactory)
     episode_number = factory.Sequence(lambda n: n)
     title = factory.Faker("sentence", nb_words=3)
@@ -134,10 +151,10 @@ class EpisodeFactory(BaseFactory):
 
 class ScriptFactory(BaseFactory):
     """剧本工厂"""
-    
+
     class Meta:
         model = Script
-    
+
     episode = factory.SubFactory(EpisodeFactory)
     title = factory.Faker("sentence", nb_words=3)
     content = factory.Faker("text", max_nb_chars=1000)
@@ -151,9 +168,7 @@ class ScriptFactory(BaseFactory):
         ]
     )
     dialogues = factory.LazyFunction(
-        lambda: [
-            {"scene_number": 1, "character": "Character1", "content": "Hello!"}
-        ]
+        lambda: [{"scene_number": 1, "character": "Character1", "content": "Hello!"}]
     )
     stage_directions = factory.LazyFunction(
         lambda: [{"scene_number": 1, "direction": "Camera pans across the room."}]
@@ -175,10 +190,10 @@ class ScriptFactory(BaseFactory):
 
 class StoryCharacterFactory(BaseFactory):
     """故事角色工厂"""
-    
+
     class Meta:
         model = StoryCharacter
-    
+
     story = factory.SubFactory(StoryFactory)
     virtual_ip = factory.SubFactory(VirtualIPFactory)
     character_name = factory.Faker("first_name")
@@ -196,15 +211,17 @@ class StoryCharacterFactory(BaseFactory):
 
 class ScriptTemplateFactory(BaseFactory):
     """剧本模板工厂"""
-    
+
     class Meta:
         model = ScriptTemplate
-    
+
     name = factory.Sequence(lambda n: f"Template{n}")
     category = factory.Faker("random_element", elements=["Romance", "Action", "Comedy"])
     template_content = factory.Faker("text", max_nb_chars=500)
     structure = factory.LazyFunction(lambda: {"acts": 3, "scenes_per_act": 3})
-    variables = factory.LazyFunction(lambda: {"character_name": "string", "location": "string"})
+    variables = factory.LazyFunction(
+        lambda: {"character_name": "string", "location": "string"}
+    )
     usage_count = 0
     is_public = True
     created_at = factory.LazyFunction(datetime.utcnow)
@@ -225,40 +242,40 @@ def setup_factories(session: Session):
 def create_test_data(session: Session):
     """创建测试数据"""
     setup_factories(session)
-    
+
     # 创建用户
     user = UserFactory()
-    
+
     # 创建虚拟IP
     virtual_ip = VirtualIPFactory()
-    
+
     # 创建虚拟IP图像
     image = VirtualIPImageFactory(virtual_ip=virtual_ip)
-    
+
     # 创建故事
     story = StoryFactory()
-    
+
     # 创建故事角色
     character = StoryCharacterFactory(story=story, virtual_ip=virtual_ip)
-    
+
     # 创建剧集
     episode = EpisodeFactory(story=story)
-    
+
     # 创建剧本
     script = ScriptFactory(episode=episode)
-    
+
     # 创建剧本模板
     template = ScriptTemplateFactory()
-    
+
     session.commit()
-    
+
     return {
-        'user': user,
-        'virtual_ip': virtual_ip,
-        'image': image,
-        'story': story,
-        'character': character,
-        'episode': episode,
-        'script': script,
-        'template': template
-    } 
+        "user": user,
+        "virtual_ip": virtual_ip,
+        "image": image,
+        "story": story,
+        "character": character,
+        "episode": episode,
+        "script": script,
+        "template": template,
+    }

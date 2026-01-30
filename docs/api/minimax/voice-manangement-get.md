@@ -4,7 +4,7 @@
 
 ## OpenAPI
 
-````yaml api-reference/speech/voice-management/api/openapi.json post /v1/get_voice
+```yaml api-reference/speech/voice-management/api/openapi.json post /v1/get_voice
 openapi: 3.1.0
 info:
   title: MiniMax Voice Management API
@@ -34,19 +34,19 @@ paths:
               - application/json
             default: application/json
       requestBody:
-        description: ''
+        description: ""
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GetVoiceReq'
+              $ref: "#/components/schemas/GetVoiceReq"
         required: true
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetVoiceResp'
+                $ref: "#/components/schemas/GetVoiceResp"
 components:
   schemas:
     GetVoiceReq:
@@ -76,46 +76,46 @@ components:
         system_voice:
           type: array
           items:
-            $ref: '#/components/schemas/SystemVoiceInfo'
+            $ref: "#/components/schemas/SystemVoiceInfo"
           description: 包含系统预定义的音色。
         voice_cloning:
           type: array
           items:
-            $ref: '#/components/schemas/VoiceCloningInfo'
+            $ref: "#/components/schemas/VoiceCloningInfo"
           description: 包含音色快速复刻的音色数据
         voice_generation:
           type: array
           items:
-            $ref: '#/components/schemas/VoiceGenerationInfo'
+            $ref: "#/components/schemas/VoiceGenerationInfo"
           description: 包含音色生成接口产生的音色数据
         base_resp:
-          $ref: '#/components/schemas/BaseResp'
+          $ref: "#/components/schemas/BaseResp"
       example:
         system_voice:
           - voice_id: Chinese (Mandarin)_Reliable_Executive
             description:
               - 一位沉稳可靠的中年男性高管声音，标准普通话，传递出值得信赖的感觉。
             voice_name: 沉稳高管
-            created_time: '1970-01-01'
+            created_time: "1970-01-01"
           - voice_id: Chinese (Mandarin)_News_Anchor
             description:
               - 一位专业、播音腔的中年女性新闻主播，标准普通话。
             voice_name: 新闻女声
-            created_time: '1970-01-01'
+            created_time: "1970-01-01"
         voice_cloning:
           - voice_id: test12345
             description: []
-            created_time: '2025-08-20'
+            created_time: "2025-08-20"
           - voice_id: test12346
             description: []
-            created_time: '2025-08-21'
+            created_time: "2025-08-21"
         voice_generation:
           - voice_id: ttv-voice-2025082011321125-2uEN0X1S
             description: []
-            created_time: '2025-08-20'
+            created_time: "2025-08-20"
           - voice_id: ttv-voice-2025082014225025-ZCQt0U0k
             description: []
-            created_time: '2025-08-20'
+            created_time: "2025-08-20"
         base_resp:
           status_code: 0
           status_msg: success
@@ -187,8 +187,7 @@ components:
         `HTTP: Bearer Auth`
          - Security Scheme Type: http
          - HTTP Authorization Scheme: Bearer API_key，用于验证账户信息，可在 [账户管理>接口密钥](https://platform.minimaxi.com/user-center/basic-information/interface-key) 中查看。
-
-````
+```
 
 ---
 

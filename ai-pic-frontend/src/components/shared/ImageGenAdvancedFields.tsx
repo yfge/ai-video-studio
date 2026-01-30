@@ -43,7 +43,10 @@ const pruneAdvancedValue = (
   return next;
 };
 
-const isSameAdvancedValue = (left: ImageGenAdvancedValue, right: ImageGenAdvancedValue) =>
+const isSameAdvancedValue = (
+  left: ImageGenAdvancedValue,
+  right: ImageGenAdvancedValue,
+) =>
   left.seed === right.seed &&
   left.steps === right.steps &&
   left.cfg_scale === right.cfg_scale &&

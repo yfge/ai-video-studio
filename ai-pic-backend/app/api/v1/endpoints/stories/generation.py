@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.schemas.generation_requests import StoryGenerationRequest
 from app.schemas.script import StoryResponse
-from app.services.story.story_generation_service import StoryGenerationService
 from app.services.story.story_generation_prompt_preview import (
     build_story_outline_preview_prompt,
 )
+from app.services.story.story_generation_service import StoryGenerationService
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 

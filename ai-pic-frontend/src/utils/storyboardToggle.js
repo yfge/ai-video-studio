@@ -44,4 +44,3 @@ export function mapNormalizedSceneToSelected(scene) {
   }
   return 1
 }
-

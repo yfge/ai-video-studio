@@ -51,4 +51,3 @@ summary: "Register Virtual IP image prompt templates in PromptTemplate enum for 
 ## Linked Commits
 
 - (pending)
-

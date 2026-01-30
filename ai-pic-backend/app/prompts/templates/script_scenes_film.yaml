@@ -69,4 +69,3 @@ variables:
 output_format: "JSON"
 expected_fields:
   - scenes
-

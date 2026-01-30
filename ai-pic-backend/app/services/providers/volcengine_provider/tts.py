@@ -7,7 +7,7 @@ Contains TTS functionality with async polling.
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import httpx
 
@@ -148,9 +148,7 @@ async def text_to_speech(
             },
         }
 
-        response = await client.post(
-            f"{base_url}/tts/submit", json=request_data
-        )
+        response = await client.post(f"{base_url}/tts/submit", json=request_data)
         response.raise_for_status()
 
         data = response.json()

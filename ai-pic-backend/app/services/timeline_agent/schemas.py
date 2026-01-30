@@ -30,7 +30,9 @@ class SceneContext(BaseModel):
         False, description="Whether scene has dramatic tension"
     )
     # Enhanced context fields
-    slug_line: Optional[str] = Field(None, description="Scene slug line (e.g., INT. APARTMENT - NIGHT)")
+    slug_line: Optional[str] = Field(
+        None, description="Scene slug line (e.g., INT. APARTMENT - NIGHT)"
+    )
     location: Optional[str] = Field(None, description="Scene location")
     time_of_day: Optional[str] = Field(None, description="Time of day (day/night/etc)")
     summary: Optional[str] = Field(None, description="Scene summary/description")
@@ -61,15 +63,13 @@ class TimingDecision(BaseModel):
     """Single timing decision for a gap/pause."""
 
     segment_index: int = Field(..., ge=0, description="Dialogue segment index")
-    gap_type: Literal[
-        "pre_dialogue", "post_dialogue", "action_pause", "silence"
-    ] = Field("post_dialogue", description="Type of gap")
+    gap_type: Literal["pre_dialogue", "post_dialogue", "action_pause", "silence"] = (
+        Field("post_dialogue", description="Type of gap")
+    )
     base_duration_ms: int = Field(
         300, ge=0, description="Baseline duration before adjustment"
     )
-    adjusted_duration_ms: int = Field(
-        300, ge=0, description="Final adjusted duration"
-    )
+    adjusted_duration_ms: int = Field(300, ge=0, description="Final adjusted duration")
     reasoning: str = Field("", description="Explanation for this decision")
     emotion_factor: float = Field(
         1.0, ge=0.0, le=3.0, description="Emotion-based multiplier"
@@ -95,9 +95,7 @@ class TimingPlan(BaseModel):
         description="Rhythm variety score (0=monotonous, 1=varied)",
     )
     reasoning_summary: str = Field("", description="Overall timing rationale")
-    fallback_used: bool = Field(
-        False, description="Whether fallback logic was used"
-    )
+    fallback_used: bool = Field(False, description="Whether fallback logic was used")
 
 
 class TimelineAgentState(BaseModel):

@@ -45,4 +45,3 @@ summary: "Make GoogleProvider quiet when GOOGLE_API_KEY is effectively unset and
 ## Linked Commits
 
 - （待补充）`fix(backend): normalize google api key and quiet model list errors` 提交记录此更改。
-

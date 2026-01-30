@@ -1,11 +1,10 @@
 import pytest
-
 from app.schemas.style import ColorMood, CompositionStyle, StyleUniverse
 from app.utils.style_utils import (
     DEFAULT_STYLE_SPEC,
     LEGACY_STYLE_PRESET_MAP,
-    build_style_schema_options,
     build_style_prompt,
+    build_style_schema_options,
     derive_legacy_image_style,
     derive_openai_image_style,
     list_style_presets,

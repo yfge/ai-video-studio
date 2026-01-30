@@ -21,6 +21,6 @@ variables:
     description: "场景最大分镜数"
 
 usage_examples:
-  - scene_plan_json: "{\"scene_number\":1,...}"
-    script_brief_json: "{\"story\":{...}}"
+  - scene_plan_json: '{"scene_number":1,...}'
+    script_brief_json: '{"story":{...}}'
     max_frames: 8

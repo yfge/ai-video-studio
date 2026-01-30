@@ -29,7 +29,6 @@ from typing import Iterable, Optional
 
 from sqlalchemy.orm import Session
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -37,7 +36,6 @@ from app.core.database import SessionLocal  # noqa: E402
 from app.models.task import Task, TaskStatus, TaskType  # noqa: E402
 from app.services.task_agent_run.utils import loads_task_parameters  # noqa: E402
 from app.services.task_agent_run_persistence import persist_task_agent_run  # noqa: E402
-
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("backfill_task_agent_runs")
@@ -151,10 +149,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Backfill Task.parameters.agent_run for historical tasks"
     )
-    parser.add_argument("--apply", action="store_true", help="Apply updates (default: dry-run)")
-    parser.add_argument("--user-id", type=int, default=None, help="Only update tasks for user_id")
-    parser.add_argument("--min-id", type=int, default=None, help="Only include tasks with id >= min_id")
-    parser.add_argument("--max-id", type=int, default=None, help="Only include tasks with id <= max_id")
+    parser.add_argument(
+        "--apply", action="store_true", help="Apply updates (default: dry-run)"
+    )
+    parser.add_argument(
+        "--user-id", type=int, default=None, help="Only update tasks for user_id"
+    )
+    parser.add_argument(
+        "--min-id", type=int, default=None, help="Only include tasks with id >= min_id"
+    )
+    parser.add_argument(
+        "--max-id", type=int, default=None, help="Only include tasks with id <= max_id"
+    )
     parser.add_argument(
         "--after",
         type=str,
@@ -245,10 +251,14 @@ def main() -> int:
 
         if not args.apply:
             if args.show_samples:
-                _print_samples(candidates, header="Candidate samples:", limit=args.show_samples)
+                _print_samples(
+                    candidates, header="Candidate samples:", limit=args.show_samples
+                )
                 if unmapped:
                     _print_samples(
-                        unmapped, header="Unmapped task_type samples:", limit=args.show_samples
+                        unmapped,
+                        header="Unmapped task_type samples:",
+                        limit=args.show_samples,
                     )
             return 0
 

@@ -102,12 +102,14 @@ Refactor IMMEDIATELY (before continuing with new features) when ANY of these occ
 ### API Endpoint Organization
 
 **CRITICAL Violations Identified:**
+
 - `scripts.py`: 4,168 lines with 68 functions (14x limit) - handles scripts, episodes, storyboards, dialogue, video generation
 - `episodes.py`: 1,605 lines
 - `virtual_ip_images.py`: 1,364 lines
 - `story_structure.py`: 1,318 lines
 
 **Mandatory Pattern - Thin Controllers:**
+
 - **Route handlers MUST NOT exceed 50 lines**
 - **One route file per resource**: Split by domain (scripts → script_crud.py, script_generation.py, script_export.py)
 - **Extract business logic to services**: No DB queries, AI calls, or complex logic in endpoints
@@ -124,6 +126,7 @@ Refactor IMMEDIATELY (before continuing with new features) when ANY of these occ
   ```
 
 **Refactoring Priority (for future work):**
+
 1. Split `scripts.py` into 8-10 focused endpoint files
 2. Extract business logic from endpoints into dedicated services
 3. Create shared validators for common patterns
@@ -131,12 +134,14 @@ Refactor IMMEDIATELY (before continuing with new features) when ANY of these occ
 ### Service Layer Organization
 
 **CRITICAL Violations Identified:**
+
 - `ai_service.py`: 2,910 lines (God object)
 - `ai_service_manager.py`: 1,301 lines
 - `dialogue_audio_service.py`: 1,261 lines
 - `voice_catalog.py`: 1,171 lines
 
 **Mandatory Service Patterns:**
+
 - **One service per domain entity**: `ScriptService`, `EpisodeService`, `StoryboardService` (not `AIService` for everything)
 - **Service file limit**: 250 lines (stricter than general 300-line limit)
 - **Repository pattern for data access**: Create `repositories/` for DB query encapsulation
@@ -163,6 +168,7 @@ Refactor IMMEDIATELY (before continuing with new features) when ANY of these occ
 Current providers: OpenAI, Google, DeepSeek, MiniMax, Keling, Jimeng, VolcEngine (1,409 lines!), Aliyun OSS
 
 **Mandatory Standards:**
+
 - **All providers MUST extend `BaseProvider`**
 - **Consistent error handling**: Use shared `ProviderError` hierarchy
 - **Shared retry logic**: Extract to `core/retry_utils.py` (max 150 lines)
@@ -172,6 +178,7 @@ Current providers: OpenAI, Google, DeepSeek, MiniMax, Keling, Jimeng, VolcEngine
 - **Provider file limit**: 400 lines (complex integrations allowed slightly larger, but must justify)
 
 **Pattern to follow**:
+
 ```python
 class ConcreteProvider(BaseProvider):
     def __init__(self): pass  # Auth setup
@@ -181,6 +188,7 @@ class ConcreteProvider(BaseProvider):
 ```
 
 **Code Reuse Targets:**
+
 - Auth header construction (duplicated 8x)
 - Request/response logging (duplicated 8x)
 - Retry with exponential backoff (duplicated 8x)
@@ -191,6 +199,7 @@ class ConcreteProvider(BaseProvider):
 **Current State**: 17 files, well-organized but could improve
 
 **Standards**:
+
 - **One model per file** (already followed, good!)
 - **Schema files mirror model files**: `models/script.py` → `schemas/script.py`
 - **Schema file limit**: 300 lines. If exceeded, split into `script_base.py`, `script_create.py`, `script_response.py`
@@ -202,6 +211,7 @@ class ConcreteProvider(BaseProvider):
 **Current Issue**: DB queries scattered across endpoints and services (212+ direct SQLAlchemy calls)
 
 **Mandatory Pattern** (for new code):
+
 - **Create `repositories/` directory**: One repository per model
 - **Encapsulate all DB access**: No `session.query()` outside repositories
 - **Repository interface**:
@@ -222,6 +232,7 @@ class ConcreteProvider(BaseProvider):
 **Current Issue**: 212 `HTTPException` raises scattered across code, no consistency
 
 **Mandatory Standards**:
+
 - **Centralized exception classes**: Create `core/exceptions.py` with domain exceptions
   ```python
   class ScriptNotFoundError(DomainError): pass
@@ -238,18 +249,21 @@ class ConcreteProvider(BaseProvider):
 ### Page Component Size Limits
 
 **CRITICAL Violations Identified:**
+
 - `storyboard/page.tsx`: 3,279 lines with 100+ state variables (13x limit!)
 - `episodes/[id]/page.tsx`: 1,580 lines
 - `virtual-ip/[id]/images/page.tsx`: 1,143 lines
 - `scripts/[id]/page.tsx`: 705 lines
 
 **Mandatory Pattern - Container/Presentation Split:**
+
 - **Page components MUST NOT exceed 200 lines**
 - **Extract feature logic to custom hooks**: `useStoryboard()`, `useEpisodeManager()`
 - **Split into sub-components**: One component per logical section
 - **Page responsibility**: Routing, layout, data fetching coordination ONLY
 
 **Example Refactoring** (for storyboard page):
+
 ```typescript
 // storyboard/page.tsx (< 200 lines)
 export default function StoryboardPage() {
@@ -261,7 +275,7 @@ export default function StoryboardPage() {
         <StoryboardModals />
       </StoryboardLayout>
     </StoryboardProvider>
-  )
+  );
 }
 
 // hooks/useStoryboard.ts (< 250 lines)
@@ -279,6 +293,7 @@ export function useStoryboard() {
 **Current Issue**: 21 components at root of `components/`, no organization
 
 **Mandatory Structure:**
+
 ```
 src/
   components/
@@ -302,6 +317,7 @@ src/
 ```
 
 **Rules:**
+
 - **ui/**: Pure presentational, no business logic, < 150 lines
 - **shared/**: Reusable across features, < 200 lines
 - **features/**: Feature-specific, colocated with domain logic, < 250 lines
@@ -312,6 +328,7 @@ src/
 **Current Issue**: Only 3 hooks, massive opportunity for extraction
 
 **Mandatory Patterns:**
+
 - **Extract repeated useState patterns**: If 3+ components use similar state, create hook
 - **API call hooks**: `useScript()`, `useEpisode()`, `useVirtualIP()`
 - **Form hooks**: `useScriptForm()`, `useGenerationForm()`
@@ -319,6 +336,7 @@ src/
 - **Hook file limit**: 200 lines per hook file
 
 **Common hooks to create:**
+
 - `useApi()`: Wraps fetch with error handling
 - `useAsyncTask()`: Manages loading/error/data state
 - `usePolling()`: Polls backend for task status
@@ -328,9 +346,11 @@ src/
 ### API Client Organization
 
 **CRITICAL Violation:**
+
 - `utils/api.ts`: 2,627 lines with 100+ interface definitions (10x limit!)
 
 **Mandatory Refactoring Pattern:**
+
 ```
 utils/
   api/
@@ -346,6 +366,7 @@ utils/
 ```
 
 **Standards:**
+
 - **Type definitions separate from API calls**
 - **One file per domain resource**
 - **Shared error handling**: Centralized in `client.ts`
@@ -356,12 +377,14 @@ utils/
 **Current Pattern**: Local state with direct API calls (100+ useState in storyboard page)
 
 **Standards for Complex Features:**
+
 - **Use React Context for shared state**: Modal state, alerts, user context
 - **Consider React Query for server state**: Caching, revalidation, background updates
 - **Local state for UI only**: Form inputs, modal open/close, UI toggles
 - **Props drilling limit**: If passing props > 2 levels deep, use Context
 
 **When to use what:**
+
 - Simple forms: Local `useState`
 - Multi-step forms: `useReducer` or form library (React Hook Form)
 - Shared UI state (modals, alerts): Context
@@ -373,17 +396,19 @@ utils/
 **Current Issue**: 5 similar modal components with duplicated structure (UserDetailsModal, UserApprovalModal, etc.)
 
 **Mandatory Pattern:**
+
 ```typescript
 // components/ui/Modal.tsx (base modal, < 100 lines)
-export function Modal({ isOpen, onClose, title, children }) { }
+export function Modal({ isOpen, onClose, title, children }) {}
 
 // components/shared/modals.tsx (specialized modals)
 export function UserDetailsModal() {
-  return <Modal title="User Details">{/* content */}</Modal>
+  return <Modal title="User Details">{/* content */}</Modal>;
 }
 ```
 
 **Rules:**
+
 - **Extract common modal wrapper**: Header, footer, close button, backdrop
 - **Modal content < 150 lines**: If exceeded, split content into separate components
 - **Consistent modal API**: All modals use same open/close/data pattern
@@ -395,6 +420,7 @@ export function UserDetailsModal() {
 ### Backend Testing
 
 **Directory Structure** (mirrors source):
+
 ```
 tests/
   unit/               (Isolated unit tests)
@@ -407,6 +433,7 @@ tests/
 ```
 
 **Standards:**
+
 - **Test file naming**: `test_<module_name>.py` (e.g., `test_script_service.py`)
 - **One test file per source file**: Maintain 1:1 mapping
 - **Use pytest markers**: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.e2e`, `@pytest.mark.slow`
@@ -416,6 +443,7 @@ tests/
 ### Frontend Testing (TODO - Not Implemented)
 
 **Mandatory Setup** (for future implementation):
+
 - **Install testing library**: `@testing-library/react`, `@testing-library/jest-dom`
 - **Test structure**: `src/__tests__/` mirroring `src/` structure
 - **Component tests**: Render + interaction + assertions
@@ -427,6 +455,7 @@ tests/
 **Current State**: `docs/` is the authoritative home for design/testing/provider notes; keep `docs/README.md` current.
 
 ### Docs Index (Authoritative)
+
 - `docs/README.md` — canonical index for all docs (update on add/remove).
 - `docs/TESTING_GUIDE.md` — required browser E2E validation steps.
 - `docs/story-structure-api.md` — normalized story-structure endpoints.
@@ -440,16 +469,19 @@ tests/
 **Mandatory Requirements:**
 
 ### API Documentation
+
 - **Add OpenAPI/Swagger**: Generate from Pydantic schemas (`/docs` endpoint)
 - **Endpoint docstrings**: Include request/response examples
 - **Schema descriptions**: Add `description` field to all Pydantic models
 
 ### Component Documentation
+
 - **JSDoc for public components**: Document props, usage, examples
 - **Storybook** (future): Component library with live examples
 - **README per feature directory**: Explain architecture decisions
 
 ### Architecture Documentation
+
 - **ADR (Architecture Decision Records)**: Document major decisions in `docs/adr/`
 - **Update existing docs**: When changing behavior referenced in docs
 
@@ -458,6 +490,7 @@ tests/
 Before marking work complete and creating ledger entry, verify:
 
 ### Size Compliance
+
 - [ ] No Python file exceeds 300 lines
 - [ ] No TypeScript/TSX file exceeds 250 lines
 - [ ] No service file exceeds 250 lines
@@ -465,22 +498,26 @@ Before marking work complete and creating ledger entry, verify:
 - [ ] No page component exceeds 200 lines
 
 ### Structure Compliance
+
 - [ ] Single responsibility: Each file has one clear purpose
 - [ ] No code duplication: Repeated code (3+ occurrences) extracted to shared utility
 - [ ] Proper layering: API → Service → Repository → Model
 - [ ] No circular dependencies
 
 ### Testing Compliance
+
 - [ ] Test file exists for new source file (backend)
 - [ ] Tests pass: `pytest` for backend, `npm run lint` for frontend
 - [ ] Coverage maintained or improved
 
 ### Documentation Compliance
+
 - [ ] Docstrings added for new public functions/classes
 - [ ] Type hints added (Python) or TypeScript types defined
 - [ ] Updated relevant markdown docs if behavior changed
 
 ### Ledger Compliance
+
 - [ ] Agent chat ledger entry created in `agent_chats/YYYY/MM/DD/`
 - [ ] Frontmatter complete with all required fields
 - [ ] All sections present: User Prompt, Goals, Changes, Validation, Next Steps, Linked Commits
@@ -520,6 +557,7 @@ We operate with the same rigor as the reference repositories (`talkReplay`, `ori
 8. Keep `agent_chats/` clean: no unstaged edits, no binary files, redact secrets, prefer ASCII.
 
 The helper `scripts/check_agent_chats.py` (wired into pre-commit) enforces naming, frontmatter, and section requirements. The hook fails when code changes lack a matching ledger entry or when ledger files are malformed.
+
 - 在提交前执行 `./docker/build_prod_images.sh`，确保生产镜像可构建；构建失败需先修复后再提交。
 
 ## Pre-Commit Gates & Quality Bar
@@ -587,7 +625,7 @@ Before yielding work back to the user:
 
 1. Ensure relevant tests (`pytest`, `npm run lint`, targeted suites) pass locally.
 2. Verify `pre-commit run --all-files` is clean or document any justified skips.
-2.1 Ensure the working tree is clean (no unstaged changes) at commit time.
+   2.1 Ensure the working tree is clean (no unstaged changes) at commit time.
 3. Confirm new/updated `agent_chats` entries satisfy format rules and describe intent, changes, validation, and follow-ups.
 4. For任何涉及前后端联动、登录、AI 调用/图像生成等功能改动，**必须在真实浏览器（推荐 Chrome）中完成至少一次端到端路径验证**，可以通过 DevTools 自动化/远程调试完成；在 `agent_chats` 的 `## Validation` 段中明确记录所走用例（例如使用 Seedream 4.5 在虚拟 IP 图像页生成图片的步骤和结果）。
 5. Summarise remaining risks or TODOs in the agent response。

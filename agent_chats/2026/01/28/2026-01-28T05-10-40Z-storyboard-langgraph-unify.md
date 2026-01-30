@@ -20,14 +20,17 @@ summary: "Unified storyboard LangGraph pipeline with plan/trace audit and tasks 
 ---
 
 ## User Prompt
+
 继续处理 P1 任务，完成「分镜 LangGraph 管线统一（规划+生成）」，要求可审计、任务页可查看，并按规范验证。
 
 ## Goals
+
 - 统一分镜生成走 LangGraph 规划→生成→校验/修复管线，并输出可审计轨迹
 - 同步落库 plan/frames/usage/reasoning_trace，并在任务页展示
 - 更新测试指引与任务看板状态
 
 ## Changes
+
 - 拆出 `langgraph_utils`，复用镜头/运镜/构图循环与计划规范化、缺口检测
 - 重构 `StoryboardReActReasoner` 为 LangGraph 规划→生成→校验→修复→终审流程并输出 trace/plan/usage
 - `generate_storyboard` 默认优先 LangGraph，返回 plan/fixes/trace/usage
@@ -37,6 +40,7 @@ summary: "Unified storyboard LangGraph pipeline with plan/trace audit and tasks 
 - 更新 `TESTING_GUIDE` 与 `tasks.md` 状态
 
 ## Validation
+
 - `cd ai-pic-backend && pytest` ❌ 启动后长时间无进展，已中止（仅看到收集 1070 tests；无完成报告）
 - `cd ai-pic-backend && pytest tests/unit/test_storyboard_reasoner.py` ✅ 3 passed (warnings only)
 - `cd ai-pic-frontend && npm run lint` ✅ (7 warnings, 0 errors)
@@ -45,9 +49,11 @@ summary: "Unified storyboard LangGraph pipeline with plan/trace audit and tasks 
 - Chrome E2E ❌ 尝试 `http://localhost:8089/login` 登录（geyunfei/Gyf@845261），界面提示 “Failed to fetch”，无法进入任务页
 
 ## Next Steps
+
 - 在 Chrome 跑分镜生成 E2E：/episodes/{id}/storyboard → 生成分镜 → /tasks 查看 plan/trace
 - 处理/分流 pre-commit 的全仓 trailing whitespace（单独任务）
 - 逐步修复 pytest 现有失败或拆分成可运行子集
 
 ## Linked Commits
+
 - TBD

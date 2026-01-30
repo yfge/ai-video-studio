@@ -83,9 +83,7 @@ def validate_duration_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 f"强制接受: {budget.actual_duration_seconds:.1f}s / "
                 f"{budget.target_duration_seconds}s ({ratio:.0%})"
             )
-            logger.warning(
-                f"场景 {budget.scene_number} 达到最大重试次数，强制接受"
-            )
+            logger.warning(f"场景 {budget.scene_number} 达到最大重试次数，强制接受")
         else:
             # 生成调整建议
             actual_ms = int(budget.actual_duration_seconds * 1000)
@@ -153,8 +151,7 @@ def check_all_scenes_done(state: Dict[str, Any]) -> str:
         return "done"
 
     all_done = all(
-        b.status in (SceneStatus.COMMITTED, SceneStatus.FAILED)
-        for b in budgets
+        b.status in (SceneStatus.COMMITTED, SceneStatus.FAILED) for b in budgets
     )
 
     return "done" if all_done else "continue"

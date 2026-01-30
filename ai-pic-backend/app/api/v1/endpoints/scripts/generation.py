@@ -6,9 +6,6 @@ synchronous generation, async generation, and prompt preview.
 """
 
 import json
-from typing import Optional
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
@@ -18,7 +15,8 @@ from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.script import ScriptResponse
 from app.services.script import ScriptGenerator, get_script_generator
 from app.services.task_worker import script_generate_task
-
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 

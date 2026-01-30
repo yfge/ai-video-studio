@@ -30,6 +30,7 @@ summary: "当模型 ID 带 provider 前缀时，AIServiceManager 自动锁定对
 文件：`ai-pic-backend/app/services/ai_service_manager.py`
 
 1. 新增 `_resolve_prefer_provider_and_model(model, prefer_provider)`：
+
    - 若 `model` 形如 `"provider:model_id"` 且 `provider` 在已初始化 providers 中：
      - 自动将 `prefer_provider` 设为该前缀；
      - 传递给 provider 的模型为剥离前缀后的 `model_id`；
@@ -41,6 +42,7 @@ summary: "当模型 ID 带 provider 前缀时，AIServiceManager 自动锁定对
    - `image_to_image`（图生图）
 
 效果：
+
 - `model=google:gemini-3-pro-image-preview` 会直接锁定 `google` provider，
   不会再先尝试 `openai` 从而触发 `DALL-E 2 only` 失败。
 
@@ -60,4 +62,3 @@ summary: "当模型 ID 带 provider 前缀时，AIServiceManager 自动锁定对
 ## Linked Commits
 
 - 待提交：`fix(backend): respect provider-prefixed model ids in manager`
-

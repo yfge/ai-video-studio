@@ -80,4 +80,3 @@ async def plan_scene_segments_intelligent(
         )
 
     return segments
-

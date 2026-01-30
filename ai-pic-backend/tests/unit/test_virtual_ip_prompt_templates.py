@@ -1,5 +1,4 @@
 import pytest
-
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 

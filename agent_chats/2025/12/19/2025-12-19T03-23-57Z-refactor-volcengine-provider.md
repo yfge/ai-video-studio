@@ -31,26 +31,32 @@ Continue with Phase 4 provider refactoring (from context continuation).
 ### Created volcengine_provider package structure:
 
 1. **`__init__.py`** (9 lines)
+
    - Package exports: `VolcengineProvider`
 
 2. **`models.py`** (328 lines)
+
    - Model definitions: `get_available_models()` returns list of 15+ ModelInfo
    - Helper functions: `fallback_models`, `infer_model_type`, `infer_capabilities`
 
 3. **`provider.py`** (278 lines)
+
    - Main `VolcengineProvider` class
    - Client initialization, supported_model_types
    - Delegates to specialized modules for each generation type
 
 4. **`text.py`** (175 lines)
+
    - Text generation: `generate_text`, `stream_chat_completion`
    - Doubao chat completion with streaming support
 
 5. **`image.py`** (335 lines)
+
    - Image generation: `generate_image` (text-to-image), `image_to_image`
    - Seedream API integration with style presets
 
 6. **`video.py`** (363 lines)
+
    - Video generation: `generate_video`, `poll_task_status`
    - Seedance API with async polling
    - Prompt flag building for resolution, ratio, duration
@@ -60,9 +66,11 @@ Continue with Phase 4 provider refactoring (from context continuation).
    - 8 predefined voice types
 
 ### Deleted:
+
 - `ai-pic-backend/app/services/providers/volcengine_provider.py` (original 1,409 line monolith)
 
 ### Import compatibility:
+
 - Package `__init__.py` exports `VolcengineProvider`, maintaining API compatibility
 - No changes needed to `ai_service_manager.py` or `providers/__init__.py`
 

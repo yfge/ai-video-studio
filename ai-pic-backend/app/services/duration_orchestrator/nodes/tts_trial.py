@@ -5,10 +5,10 @@ TTS 试跑节点
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from app.services.duration_orchestrator.constants import WORDS_PER_SECOND
-from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
+from app.services.duration_orchestrator.state import SceneBudget
 from app.services.duration_orchestrator.utils import count_dialogue_words
 
 logger = logging.getLogger(__name__)
@@ -147,9 +147,7 @@ async def _run_actual_tts(
     voice_config = state.get("voice_config", {})
 
     if not tts_service:
-        logger.warning(
-            "tts_trial_node: 无 TTS 服务，降级为估算模式"
-        )
+        logger.warning("tts_trial_node: 无 TTS 服务，降级为估算模式")
         return estimate_duration_from_dialogues(dialogues)
 
     # 采样策略：超过 5 条对白时采样 3 条
@@ -189,15 +187,13 @@ async def _run_actual_tts(
 
         if total_sample_chars > 0 and total_sample_duration_ms > 0:
             # 计算实际语速
-            actual_chars_per_second = (
-                total_sample_chars / (total_sample_duration_ms / 1000)
+            actual_chars_per_second = total_sample_chars / (
+                total_sample_duration_ms / 1000
             )
 
             # 用实际语速估算总时长
             total_chars = count_dialogue_words(dialogues)
-            estimated_total_ms = int(
-                total_chars / actual_chars_per_second * 1000
-            )
+            estimated_total_ms = int(total_chars / actual_chars_per_second * 1000)
 
             logger.info(
                 "tts_trial_node: 采样 TTS 完成",

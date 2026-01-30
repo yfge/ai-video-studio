@@ -38,4 +38,3 @@ summary: "Make '生成时间轴' start the timeline pipeline automatically"
 ## Linked Commits
 
 - fix(frontend): auto-run timeline pipeline from workspace header
-

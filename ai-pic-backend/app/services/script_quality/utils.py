@@ -20,4 +20,3 @@ def is_dialogue(line: str) -> tuple[bool, str | None, str | None]:
 
 def collect_tags(line: str) -> list[str]:
     return [m.group(1).strip() for m in TAG_RE.finditer(line)]
-

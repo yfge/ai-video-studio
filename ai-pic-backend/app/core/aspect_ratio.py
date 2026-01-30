@@ -26,4 +26,3 @@ def resolve_aspect_ratio(
             return value  # type: ignore[return-value]
 
     return DEFAULT_ASPECT_RATIO
-

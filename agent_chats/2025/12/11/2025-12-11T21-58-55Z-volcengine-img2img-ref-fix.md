@@ -75,4 +75,3 @@ summary: "Relax Volcengine img2img reference handling and align with Seedream st
 ## Linked Commits
 
 - `fix(backend): relax volcengine img2img refs`
-

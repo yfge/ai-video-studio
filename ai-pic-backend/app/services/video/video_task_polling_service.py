@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 import anyio
-
 from app.core.logging import get_logger
 from app.models.task import Task, TaskStatus
 from app.models.video_generation_task import (
@@ -16,15 +15,14 @@ from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
+from app.services.task_agent_run_persistence import persist_task_agent_run
 from app.services.video.video_generation_service import VideoGenerationService
-from app.services.video.video_task_generation_metadata import build_video_generation_metadata
-from app.services.video.video_task_storyboard_updater import apply_storyboard_result
-from app.services.video.video_task_utils import (
-    load_parameters,
-    map_provider_status,
+from app.services.video.video_task_generation_metadata import (
+    build_video_generation_metadata,
 )
 from app.services.video.video_task_polling_logging import log_pending_tasks
-from app.services.task_agent_run_persistence import persist_task_agent_run
+from app.services.video.video_task_storyboard_updater import apply_storyboard_result
+from app.services.video.video_task_utils import load_parameters, map_provider_status
 
 
 class VideoTaskPollingService:
@@ -104,7 +102,11 @@ class VideoTaskPollingService:
         item.completed_at = now
         error_message = error_override or (response.data or {}).get("error")
         if not error_message:
-            error_message = "任务超时" if status == VideoGenerationTaskStatus.TIMEOUT else "任务失败"
+            error_message = (
+                "任务超时"
+                if status == VideoGenerationTaskStatus.TIMEOUT
+                else "任务失败"
+            )
         item.error_message = error_message
         self.db.commit()
         self._refresh_parent_task_status(item.task_id)
@@ -160,7 +162,12 @@ class VideoTaskPollingService:
     ) -> None:
         item.result = json.dumps(result_payload, ensure_ascii=False)
         item.generation_metadata = build_video_generation_metadata(
-            item.provider, item.model, item.provider_task_id, item.model_type, params, result_payload
+            item.provider,
+            item.model,
+            item.provider_task_id,
+            item.model_type,
+            params,
+            result_payload,
         )
         item.status = VideoGenerationTaskStatus.SUCCEEDED
         item.completed_at = now
@@ -220,7 +227,8 @@ class VideoTaskPollingService:
             return
 
         if any(
-            t.status in {VideoGenerationTaskStatus.FAILED, VideoGenerationTaskStatus.TIMEOUT}
+            t.status
+            in {VideoGenerationTaskStatus.FAILED, VideoGenerationTaskStatus.TIMEOUT}
             for t in tasks
         ):
             task.status = TaskStatus.FAILED
@@ -233,7 +241,11 @@ class VideoTaskPollingService:
         else:
             task.status = TaskStatus.COMPLETED
         self.db.commit()
-        if task.status in {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED}:
+        if task.status in {
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.CANCELLED,
+        }:
             persist_task_agent_run(
                 task_id=task.id,
                 user_id=task.user_id,

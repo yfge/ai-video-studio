@@ -168,7 +168,9 @@ export default function EpisodeWorkspacePage() {
               setPromptPreview={setPromptPreview}
               generating={generating}
               onGenerate={handleGenerateScript}
-              onRegenerateScript={mainScript ? handleRegenerateScript : undefined}
+              onRegenerateScript={
+                mainScript ? handleRegenerateScript : undefined
+              }
               regenerating={regenerating}
             />
           )}

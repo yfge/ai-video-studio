@@ -30,7 +30,11 @@ def test_validate_scene_dialogues_reports_quality_issues():
     repeated = {"明白我们继续"}
     scene_dialogues = [
         {"scene_number": 1, "character": "阿盖儿", "content": "明白，我们继续。"},
-        {"scene_number": 1, "character": "阿盖儿", "content": "明白，这里可以突出冲突或情绪。"},
+        {
+            "scene_number": 1,
+            "character": "阿盖儿",
+            "content": "明白，这里可以突出冲突或情绪。",
+        },
     ]
     issues = validate_scene_dialogues(
         scene_dialogues, min_lines=2, repeated_short_norms=repeated

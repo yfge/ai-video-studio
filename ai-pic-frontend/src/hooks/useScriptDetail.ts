@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authAPI, scriptAPI, storyStructureAPI } from "@/utils/api";
-import type { NormalizedScene, NormalizedShot, SceneBeat, Script, User } from "@/utils/api";
+import type {
+  NormalizedScene,
+  NormalizedShot,
+  SceneBeat,
+  Script,
+  User,
+} from "@/utils/api";
 import { isAdmin } from "@/utils/auth";
 import {
   normalizeDialogues,
@@ -17,22 +23,41 @@ import { useScriptStructure } from "@/hooks/useScriptStructure";
 export type TabId = ScriptTabId;
 export const TABS = SCRIPT_TABS;
 export { formatDate, toSceneNumber } from "@/hooks/scriptDetailUtils";
-export type { ScriptScene, ScriptDialogue, ScriptDirection } from "@/hooks/scriptDetailUtils";
+export type {
+  ScriptScene,
+  ScriptDialogue,
+  ScriptDirection,
+} from "@/hooks/scriptDetailUtils";
 
 export interface UseScriptDetailOptions {
   scriptKey: string;
-  showAlert: (opts: { message: string; variant: "success" | "error" | "warning" | "info" }) => void;
+  showAlert: (opts: {
+    message: string;
+    variant: "success" | "error" | "warning" | "info";
+  }) => void;
 }
 
-export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions) {
+export function useScriptDetail({
+  scriptKey,
+  showAlert,
+}: UseScriptDetailOptions) {
   // Core state
   const [activeTab, setActiveTab] = useState<TabId>("scenes");
   const [script, setScript] = useState<Script | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [sceneBeatsMap, setSceneBeatsMap] = useState<Record<number, SceneBeat[]>>({});
-  const [sceneShotsMap, setSceneShotsMap] = useState<Record<number, NormalizedShot[]>>({});
-  const { normalizedScenes, structuredScenes, setStructuredScenes, structureLoading, structureError } =
-    useScriptStructure(script?.id);
+  const [sceneBeatsMap, setSceneBeatsMap] = useState<
+    Record<number, SceneBeat[]>
+  >({});
+  const [sceneShotsMap, setSceneShotsMap] = useState<
+    Record<number, NormalizedShot[]>
+  >({});
+  const {
+    normalizedScenes,
+    structuredScenes,
+    setStructuredScenes,
+    structureLoading,
+    structureError,
+  } = useScriptStructure(script?.id);
   const [showStructureEditor, setShowStructureEditor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -80,7 +105,10 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
   }, []);
 
   // Computed values
-  const rawScenes = useMemo(() => normalizeScenes(script?.scenes), [script?.scenes]);
+  const rawScenes = useMemo(
+    () => normalizeScenes(script?.scenes),
+    [script?.scenes],
+  );
 
   const structuredSceneViews = useMemo<ScriptScene[]>(() => {
     if (!structuredScenes.length) return [];
@@ -88,16 +116,29 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
       scene_number: toSceneNumber(scene.scene_number) ?? idx + 1,
       location: scene.location,
       time: scene.time_of_day,
-      description: scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
+      description:
+        scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
     }));
   }, [structuredScenes]);
 
-  const scenes = structuredSceneViews.length > 0 ? structuredSceneViews : rawScenes;
-  const dialogues = useMemo(() => normalizeDialogues(script?.dialogues), [script?.dialogues]);
-  const directions = useMemo(() => normalizeDirections(script?.stage_directions), [script?.stage_directions]);
+  const scenes =
+    structuredSceneViews.length > 0 ? structuredSceneViews : rawScenes;
+  const dialogues = useMemo(
+    () => normalizeDialogues(script?.dialogues),
+    [script?.dialogues],
+  );
+  const directions = useMemo(
+    () => normalizeDirections(script?.stage_directions),
+    [script?.stage_directions],
+  );
 
   const activeScene = useMemo(
-    () => (focusedScene ? scenes.find((scene) => toSceneNumber(scene.scene_number) === focusedScene) || null : null),
+    () =>
+      focusedScene
+        ? scenes.find(
+            (scene) => toSceneNumber(scene.scene_number) === focusedScene,
+          ) || null
+        : null,
     [focusedScene, scenes],
   );
 
@@ -112,9 +153,15 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
     return map;
   }, [normalizedScenes]);
 
-  const selectedNormalizedScene = focusedScene ? normalizedSceneMap.get(focusedScene) : undefined;
-  const sceneBeats = selectedNormalizedScene ? sceneBeatsMap[selectedNormalizedScene.id] : undefined;
-  const sceneShots = selectedNormalizedScene ? sceneShotsMap[selectedNormalizedScene.id] : undefined;
+  const selectedNormalizedScene = focusedScene
+    ? normalizedSceneMap.get(focusedScene)
+    : undefined;
+  const sceneBeats = selectedNormalizedScene
+    ? sceneBeatsMap[selectedNormalizedScene.id]
+    : undefined;
+  const sceneShots = selectedNormalizedScene
+    ? sceneShotsMap[selectedNormalizedScene.id]
+    : undefined;
   const scriptIdentifier = script?.business_id || scriptKey;
   const canEditStructure = useMemo(() => isAdmin(currentUser), [currentUser]);
 
@@ -128,10 +175,16 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
           storyStructureAPI.getNormalizedSceneShots(sceneId),
         ]);
         if (beatsRes.success && Array.isArray(beatsRes.data)) {
-          setSceneBeatsMap((prev) => ({ ...prev, [sceneId]: beatsRes.data as SceneBeat[] }));
+          setSceneBeatsMap((prev) => ({
+            ...prev,
+            [sceneId]: beatsRes.data as SceneBeat[],
+          }));
         }
         if (shotsRes.success && Array.isArray(shotsRes.data)) {
-          setSceneShotsMap((prev) => ({ ...prev, [sceneId]: shotsRes.data as NormalizedShot[] }));
+          setSceneShotsMap((prev) => ({
+            ...prev,
+            [sceneId]: shotsRes.data as NormalizedShot[],
+          }));
         }
       } catch (error) {
         console.error("Failed to load scene structure", error);
@@ -159,7 +212,10 @@ export function useScriptDetail({ scriptKey, showAlert }: UseScriptDetailOptions
     try {
       const response = await scriptAPI.exportScript(scriptIdentifier, format);
       if (response.success) {
-        showAlert({ message: `剧本已导出为 ${format.toUpperCase()}`, variant: "success" });
+        showAlert({
+          message: `剧本已导出为 ${format.toUpperCase()}`,
+          variant: "success",
+        });
       } else {
         showAlert({ message: "导出失败", variant: "error" });
       }

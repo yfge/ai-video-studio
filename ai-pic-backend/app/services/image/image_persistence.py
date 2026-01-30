@@ -16,14 +16,12 @@ from urllib.parse import unquote
 
 import aiofiles
 import httpx
-
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.services.media import build_generation_metadata
 from app.services.media import upload_bytes as upload_media_bytes
 from app.services.storage import oss_service
 from app.utils.url_utils import normalize_presigned_url
-
 
 logger = get_logger()
 

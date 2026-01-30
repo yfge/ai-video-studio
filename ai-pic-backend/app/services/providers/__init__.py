@@ -10,25 +10,32 @@ AI服务提供商模块
 - 火山引擎 (文本、图像、视频)
 """
 
-from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
-from .openai_provider import OpenAIProvider
-from .keling_provider import KelingProvider
-from .jimeng_provider import JimengProvider
-from .minimax_provider import MinimaxProvider
+from .base import (
+    AIModelType,
+    AIResponse,
+    AITaskType,
+    BaseProvider,
+    ModelInfo,
+    ProviderConfig,
+)
 from .deepseek_provider import DeepSeekProvider
+from .jimeng_provider import JimengProvider
+from .keling_provider import KelingProvider
+from .minimax_provider import MinimaxProvider
+from .openai_provider import OpenAIProvider
 from .volcengine_provider import VolcengineProvider
 
 __all__ = [
-    'BaseProvider',
-    'AIResponse',
-    'AIModelType', 
-    'AITaskType',
-    'ModelInfo',
-    'ProviderConfig',
-    'OpenAIProvider',
-    'KelingProvider',
-    'JimengProvider',
-    'MinimaxProvider',
-    'DeepSeekProvider',
-    'VolcengineProvider'
+    "BaseProvider",
+    "AIResponse",
+    "AIModelType",
+    "AITaskType",
+    "ModelInfo",
+    "ProviderConfig",
+    "OpenAIProvider",
+    "KelingProvider",
+    "JimengProvider",
+    "MinimaxProvider",
+    "DeepSeekProvider",
+    "VolcengineProvider",
 ]

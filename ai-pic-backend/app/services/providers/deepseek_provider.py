@@ -4,25 +4,35 @@ DeepSeek服务提供商
 专注于高质量文本生成和代码生成
 """
 
-import httpx
 import json
 from typing import List, Optional
+
+import httpx
 from app.core.logging import get_logger
-from .base import BaseProvider, AIResponse, AIModelType, AITaskType, ModelInfo, ProviderConfig
+
+from .base import (
+    AIModelType,
+    AIResponse,
+    AITaskType,
+    BaseProvider,
+    ModelInfo,
+    ProviderConfig,
+)
 
 logger = get_logger(__name__)
 
+
 class DeepSeekProvider(BaseProvider):
     """DeepSeek服务提供商"""
-    
+
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
         self.base_url = config.base_url or "https://api.deepseek.com/v1"
-    
+
     @property
     def supported_model_types(self) -> List[AIModelType]:
         return [AIModelType.TEXT_GENERATION]
-    
+
     @property
     def available_models(self) -> List[ModelInfo]:
         return [
@@ -32,7 +42,7 @@ class DeepSeekProvider(BaseProvider):
                 description="DeepSeek的通用对话模型",
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=32768,
-                capabilities=["chat", "reasoning", "chinese_optimized"]
+                capabilities=["chat", "reasoning", "chinese_optimized"],
             ),
             ModelInfo(
                 model_id="deepseek-coder",
@@ -40,7 +50,7 @@ class DeepSeekProvider(BaseProvider):
                 description="专门用于代码生成和编程的模型",
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=16384,
-                capabilities=["code_generation", "programming", "debugging"]
+                capabilities=["code_generation", "programming", "debugging"],
             ),
             ModelInfo(
                 model_id="deepseek-math",
@@ -48,10 +58,10 @@ class DeepSeekProvider(BaseProvider):
                 description="数学和逻辑推理专用模型",
                 model_type=AIModelType.TEXT_GENERATION,
                 max_tokens=4096,
-                capabilities=["math", "reasoning", "problem_solving"]
-            )
+                capabilities=["math", "reasoning", "problem_solving"],
+            ),
         ]
-    
+
     def _fallback_models(self, model_type: Optional[AIModelType]) -> List[ModelInfo]:
         models = self.available_models
         if model_type:
@@ -112,15 +122,15 @@ class DeepSeekProvider(BaseProvider):
             return models or fallback
         except Exception:
             return fallback
-    
+
     async def _initialize_client(self):
         """初始化HTTP客户端"""
         self._client = httpx.AsyncClient(
             timeout=self.config.timeout,
             headers={
                 "Authorization": f"Bearer {self.config.api_key}",
-                "Content-Type": "application/json"
-            }
+                "Content-Type": "application/json",
+            },
         )
 
     async def _stream_chat_completion(self, payload: dict, model: str):
@@ -165,8 +175,8 @@ class DeepSeekProvider(BaseProvider):
         return "".join(content_parts).strip(), usage, finish_reason
 
     async def generate_text(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         model: str = "deepseek-chat",
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
@@ -174,17 +184,17 @@ class DeepSeekProvider(BaseProvider):
         frequency_penalty: float = 0.0,
         presence_penalty: float = 0.0,
         system_prompt: str = None,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """使用DeepSeek生成文本"""
         try:
             client = await self.get_client()
-            
+
             messages = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
-            
+
             request_data = {
                 "model": model,
                 "messages": messages,
@@ -201,9 +211,11 @@ class DeepSeekProvider(BaseProvider):
 
             if stream:
                 try:
-                    streamed_content, usage, finish_reason = await self._stream_chat_completion(
-                        {**request_data, "stream": True},
-                        model,
+                    streamed_content, usage, finish_reason = (
+                        await self._stream_chat_completion(
+                            {**request_data, "stream": True},
+                            model,
+                        )
                     )
                     if streamed_content:
                         return AIResponse(
@@ -217,21 +229,26 @@ class DeepSeekProvider(BaseProvider):
                             metadata={
                                 "finish_reason": finish_reason,
                                 "stream": True,
-                            }
+                            },
                         )
-                    logger.warning("DeepSeek stream returned empty content; falling back to non-stream.")
+                    logger.warning(
+                        "DeepSeek stream returned empty content; falling back to non-stream."
+                    )
                 except Exception as stream_err:  # noqa: BLE001
-                    logger.warning("DeepSeek stream failed, falling back to non-stream: %s", stream_err, exc_info=True)
-            
+                    logger.warning(
+                        "DeepSeek stream failed, falling back to non-stream: %s",
+                        stream_err,
+                        exc_info=True,
+                    )
+
             response = await client.post(
-                f"{self.base_url}/chat/completions",
-                json=request_data
+                f"{self.base_url}/chat/completions", json=request_data
             )
             response.raise_for_status()
-            
+
             data = response.json()
             content = data["choices"][0]["message"]["content"]
-            
+
             return AIResponse(
                 success=True,
                 data=content,
@@ -243,11 +260,13 @@ class DeepSeekProvider(BaseProvider):
                 metadata={
                     "finish_reason": data["choices"][0].get("finish_reason"),
                     "prompt_tokens": data.get("usage", {}).get("prompt_tokens", 0),
-                    "completion_tokens": data.get("usage", {}).get("completion_tokens", 0),
-                    "total_tokens": data.get("usage", {}).get("total_tokens", 0)
-                }
+                    "completion_tokens": data.get("usage", {}).get(
+                        "completion_tokens", 0
+                    ),
+                    "total_tokens": data.get("usage", {}).get("total_tokens", 0),
+                },
             )
-            
+
         except Exception as e:
             return AIResponse(
                 success=False,
@@ -255,10 +274,12 @@ class DeepSeekProvider(BaseProvider):
                 provider=self.name,
                 model=model,
                 task_type=AITaskType.STORY_GENERATION,
-                model_type=AIModelType.TEXT_GENERATION
+                model_type=AIModelType.TEXT_GENERATION,
             )
-    
-    async def generate_image(self, prompt: str, model: str = None, **kwargs) -> AIResponse:
+
+    async def generate_image(
+        self, prompt: str, model: str = None, **kwargs
+    ) -> AIResponse:
         """DeepSeek不支持图像生成"""
         return AIResponse(
             success=False,
@@ -266,15 +287,15 @@ class DeepSeekProvider(BaseProvider):
             provider=self.name,
             model=model or "unknown",
             task_type=AITaskType.PORTRAIT_GENERATION,
-            model_type=AIModelType.TEXT_TO_IMAGE
+            model_type=AIModelType.TEXT_TO_IMAGE,
         )
-    
+
     async def generate_code(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         language: str = "python",
         model: str = "deepseek-coder",
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """使用DeepSeek生成代码"""
         system_prompt = f"""你是一个专业的{language}程序员。请根据用户的要求生成高质量的代码。
@@ -283,19 +304,13 @@ class DeepSeekProvider(BaseProvider):
 2. 包含必要的注释
 3. 具有良好的可读性
 4. 处理边界情况和错误"""
-        
+
         return await self.generate_text(
-            prompt=prompt,
-            model=model,
-            system_prompt=system_prompt,
-            **kwargs
+            prompt=prompt, model=model, system_prompt=system_prompt, **kwargs
         )
-    
+
     async def solve_math(
-        self, 
-        problem: str, 
-        model: str = "deepseek-math",
-        **kwargs
+        self, problem: str, model: str = "deepseek-math", **kwargs
     ) -> AIResponse:
         """使用DeepSeek解决数学问题"""
         system_prompt = """你是一个数学专家。请仔细分析数学问题，提供详细的解题步骤和最终答案。
@@ -305,20 +320,17 @@ class DeepSeekProvider(BaseProvider):
 3. 详细步骤
 4. 最终答案
 5. 验证过程（如果适用）"""
-        
+
         return await self.generate_text(
-            prompt=problem,
-            model=model,
-            system_prompt=system_prompt,
-            **kwargs
+            prompt=problem, model=model, system_prompt=system_prompt, **kwargs
         )
-    
+
     async def analyze_text(
-        self, 
-        text: str, 
+        self,
+        text: str,
         analysis_type: str = "sentiment",
         model: str = "deepseek-chat",
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """文本分析"""
         analysis_prompts = {
@@ -326,23 +338,16 @@ class DeepSeekProvider(BaseProvider):
             "summary": "请总结以下文本的主要内容：",
             "keywords": "请提取以下文本的关键词和主题：",
             "structure": "请分析以下文本的结构和逻辑：",
-            "style": "请分析以下文本的写作风格和特点："
+            "style": "请分析以下文本的写作风格和特点：",
         }
-        
+
         prompt = analysis_prompts.get(analysis_type, analysis_prompts["sentiment"])
         full_prompt = f"{prompt}\n\n{text}"
-        
-        return await self.generate_text(
-            prompt=full_prompt,
-            model=model,
-            **kwargs
-        )
-    
+
+        return await self.generate_text(prompt=full_prompt, model=model, **kwargs)
+
     async def stream_generate_text(
-        self, 
-        prompt: str, 
-        model: str = "deepseek-chat",
-        **kwargs
+        self, prompt: str, model: str = "deepseek-chat", **kwargs
     ) -> AIResponse:
         """流式文本生成（暂未实现完整流式处理）"""
         # 这里可以实现流式处理逻辑

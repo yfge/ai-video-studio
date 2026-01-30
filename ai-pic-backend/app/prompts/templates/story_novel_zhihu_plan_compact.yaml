@@ -11,4 +11,3 @@ variables:
   chapter_count:
     required: true
     type: number
-

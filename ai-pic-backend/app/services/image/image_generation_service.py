@@ -75,20 +75,29 @@ class ImageGenerationService:
         pure_model = pure_model or "dall-e-3"
 
         # Resolve style specification
-        resolved_style_spec, style_spec_resolution, derived_style, style_prompt, openai_style = (
-            self._resolve_style(style, style_preset_id, style_spec)
-        )
+        (
+            resolved_style_spec,
+            style_spec_resolution,
+            derived_style,
+            style_prompt,
+            openai_style,
+        ) = self._resolve_style(style, style_preset_id, style_spec)
 
         # Build the prompt
         final_prompt = self._build_prompt(
             ip_name, description, derived_style, category, additional_prompts
         )
-        direct_prompt = f"{final_prompt}\n\n{style_prompt}" if style_prompt else final_prompt
+        direct_prompt = (
+            f"{final_prompt}\n\n{style_prompt}" if style_prompt else final_prompt
+        )
 
         self.logger.info(f"Image generation prompt: {final_prompt[:200]}...")
         self.logger.info(
             "Using model: %s (provider_hint=%s), style: %s, category: %s",
-            pure_model, provider_hint, derived_style, category,
+            pure_model,
+            provider_hint,
+            derived_style,
+            category,
         )
 
         # Generate image using appropriate provider
@@ -195,7 +204,13 @@ class ImageGenerationService:
             style_prompt = ""
             openai_style = "natural" if style == "realistic" else "vivid"
 
-        return resolved_style_spec, style_spec_resolution, derived_style, style_prompt, openai_style
+        return (
+            resolved_style_spec,
+            style_spec_resolution,
+            derived_style,
+            style_prompt,
+            openai_style,
+        )
 
     def _build_prompt(
         self,
@@ -207,9 +222,13 @@ class ImageGenerationService:
     ) -> str:
         """Build the generation prompt for virtual IP image."""
         if category == "portrait":
-            final_prompt = f"A professional {style} portrait of {ip_name}, {description}"
+            final_prompt = (
+                f"A professional {style} portrait of {ip_name}, {description}"
+            )
         else:
-            final_prompt = f"A professional {style} {category} of {ip_name}, {description}"
+            final_prompt = (
+                f"A professional {style} {category} of {ip_name}, {description}"
+            )
 
         if additional_prompts:
             final_prompt += f", {', '.join(additional_prompts)}"
@@ -241,7 +260,10 @@ class ImageGenerationService:
         if self._is_keling_model(normalized_model):
             image_url = await generate_with_keling(
                 self.ai_manager,
-                prompt, derived_style, category, pure_model,
+                prompt,
+                derived_style,
+                category,
+                pure_model,
                 style_preset_id=style_preset_id,
                 style_spec=style_spec,
                 aspect_ratio=aspect_ratio,
@@ -257,9 +279,19 @@ class ImageGenerationService:
             generation_method = "openai_dalle"
 
         elif self.ai_manager:
-            image_url, provider_used, generation_method = await self._generate_with_manager(
-                prompt, pure_model, normalized_model, provider_hint, derived_style,
-                style_preset_id, style_spec, size, aspect_ratio, count
+            image_url, provider_used, generation_method = (
+                await self._generate_with_manager(
+                    prompt,
+                    pure_model,
+                    normalized_model,
+                    provider_hint,
+                    derived_style,
+                    style_preset_id,
+                    style_spec,
+                    size,
+                    aspect_ratio,
+                    count,
+                )
             )
 
         else:
@@ -274,9 +306,9 @@ class ImageGenerationService:
     def _is_keling_model(self, model: str) -> bool:
         """Check if model is a Keling model."""
         return (
-            model.startswith("keling-") or
-            model.startswith("kling-") or
-            model in {"keling", "kling"}
+            model.startswith("keling-")
+            or model.startswith("kling-")
+            or model in {"keling", "kling"}
         )
 
     def _is_dalle_model(self, model: str) -> bool:
@@ -299,7 +331,9 @@ class ImageGenerationService:
         """Generate image using AI service manager."""
         prefer_provider = provider_hint
 
-        if normalized_model.startswith("seedream") or normalized_model.startswith("volcengine"):
+        if normalized_model.startswith("seedream") or normalized_model.startswith(
+            "volcengine"
+        ):
             prefer_provider = "volcengine"
         elif normalized_model.startswith("deepseek"):
             prefer_provider = "deepseek"

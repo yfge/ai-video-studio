@@ -30,7 +30,7 @@ summary: "Switched frontend API base URL to relative paths so production uses th
 - 在 `ai-pic-frontend` 目录运行：
   - `npm run build`：Next.js 15 构建完成，类型检查和静态导出全部通过。
 - 手动确认：
-  - `ApiClient` 里使用的 `url = \`\${this.baseURL}\${endpoint}\``，当 `baseURL` 为空字符串、`endpoint` 为 `"/api/v1/..."` 时，会生成相对路径，浏览器请求会落在当前域名的 `/api/...`。
+  - `ApiClient` 里使用的 `url = \`\${this.baseURL}\${endpoint}\``，当 `baseURL` 为空字符串、`endpoint`为`"/api/v1/..."`时，会生成相对路径，浏览器请求会落在当前域名的`/api/...`。
 
 ## Next Steps
 
@@ -40,4 +40,3 @@ summary: "Switched frontend API base URL to relative paths so production uses th
 ## Linked Commits
 
 - （待补充）`fix(frontend): use relative api base` 提交中包含此改动。
-

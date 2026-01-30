@@ -1,12 +1,9 @@
 """Unit tests for SpeechService."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.audio.speech_service import (
-    SpeechService,
-    get_speech_service,
-)
+import pytest
+from app.services.audio.speech_service import SpeechService, get_speech_service
 
 
 class TestSpeechService:
@@ -55,6 +52,7 @@ class TestGetSpeechService:
         """Test that factory creates singleton instance."""
         # Reset global state
         import app.services.audio.speech_service as module
+
         module._speech_service = None
 
         service1 = get_speech_service()
@@ -64,6 +62,7 @@ class TestGetSpeechService:
     def test_get_service_with_manager(self):
         """Test that factory accepts AI manager on first call."""
         import app.services.audio.speech_service as module
+
         module._speech_service = None
 
         mock_manager = MagicMock()
@@ -160,10 +159,12 @@ class TestGenerateSpeech:
         mock_manager.text_to_speech.return_value = mock_response
 
         mock_oss = MagicMock()
-        mock_oss.upload_from_url = AsyncMock(return_value={
-            "success": True,
-            "file_url": "https://cdn.example.com/audio.mp3",
-        })
+        mock_oss.upload_from_url = AsyncMock(
+            return_value={
+                "success": True,
+                "file_url": "https://cdn.example.com/audio.mp3",
+            }
+        )
 
         service = SpeechService(ai_manager=mock_manager)
 
@@ -205,10 +206,12 @@ class TestOSSUploadMethod:
     async def test_upload_audio_to_oss_success(self):
         """Test successful audio OSS upload."""
         mock_oss = MagicMock()
-        mock_oss.upload_from_url = AsyncMock(return_value={
-            "success": True,
-            "file_url": "https://cdn.example.com/audio.mp3",
-        })
+        mock_oss.upload_from_url = AsyncMock(
+            return_value={
+                "success": True,
+                "file_url": "https://cdn.example.com/audio.mp3",
+            }
+        )
 
         service = SpeechService()
 
@@ -262,10 +265,12 @@ class TestOSSUploadMethod:
     async def test_upload_audio_truncates_long_text(self):
         """Test that long text is truncated in OSS metadata."""
         mock_oss = MagicMock()
-        mock_oss.upload_from_url = AsyncMock(return_value={
-            "success": True,
-            "file_url": "https://cdn.example.com/audio.mp3",
-        })
+        mock_oss.upload_from_url = AsyncMock(
+            return_value={
+                "success": True,
+                "file_url": "https://cdn.example.com/audio.mp3",
+            }
+        )
 
         service = SpeechService()
         long_text = "A" * 200

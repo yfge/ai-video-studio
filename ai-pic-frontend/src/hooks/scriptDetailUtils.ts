@@ -36,7 +36,9 @@ export const formatDate = (value?: string): string => {
   }
 };
 
-export const toSceneNumber = (value: number | string | undefined): number | undefined => {
+export const toSceneNumber = (
+  value: number | string | undefined,
+): number | undefined => {
   if (typeof value === "number") return value;
   if (typeof value === "string") {
     const parsed = parseInt(value, 10);
@@ -51,7 +53,10 @@ export const normalizeScenes = (scenes: unknown): ScriptScene[] => {
     if (scene && typeof scene === "object") {
       return scene as ScriptScene;
     }
-    return { scene_number: index + 1, description: typeof scene === "string" ? scene : undefined };
+    return {
+      scene_number: index + 1,
+      description: typeof scene === "string" ? scene : undefined,
+    };
   });
 };
 

@@ -1,17 +1,16 @@
 """Unit tests for image persistence utilities."""
 
 import base64
-import os
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
+import pytest
 from app.services.image.image_persistence import (
     download_image,
-    upload_local_image_to_oss,
-    persist_local_image,
     persist_generated_image,
+    persist_local_image,
     persist_uploaded_image,
     save_base64_image,
+    upload_local_image_to_oss,
 )
 
 
@@ -92,11 +91,13 @@ class TestUploadLocalImageToOSS:
         """Test successful OSS upload."""
         with patch("app.services.image.image_persistence.oss_service") as mock_oss:
             with patch("builtins.open", mock_open(read_data=b"image_content")):
-                mock_oss.upload_file_content = AsyncMock(return_value={
-                    "success": True,
-                    "file_url": "https://cdn.example.com/image.png",
-                    "object_key": "images/image.png",
-                })
+                mock_oss.upload_file_content = AsyncMock(
+                    return_value={
+                        "success": True,
+                        "file_url": "https://cdn.example.com/image.png",
+                        "object_key": "images/image.png",
+                    }
+                )
 
                 result = await upload_local_image_to_oss(
                     "/tmp/image.png",
@@ -128,11 +129,13 @@ class TestPersistLocalImage:
         with patch("app.services.image.image_persistence.oss_service") as mock_oss:
             with patch("os.path.getsize", return_value=1024):
                 with patch("builtins.open", mock_open(read_data=b"image_content")):
-                    mock_oss.upload_file_content = AsyncMock(return_value={
-                        "success": True,
-                        "file_url": "https://cdn.example.com/image.png",
-                        "object_key": "images/image.png",
-                    })
+                    mock_oss.upload_file_content = AsyncMock(
+                        return_value={
+                            "success": True,
+                            "file_url": "https://cdn.example.com/image.png",
+                            "object_key": "images/image.png",
+                        }
+                    )
 
                     result = await persist_local_image(
                         "/tmp/test_image.png",

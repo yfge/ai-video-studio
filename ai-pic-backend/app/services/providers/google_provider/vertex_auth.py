@@ -15,9 +15,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import httpx
-from jose import jwt
-
 from app.core.logging import get_logger
+from jose import jwt
 
 DEFAULT_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
 DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"

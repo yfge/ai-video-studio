@@ -123,8 +123,7 @@ def should_continue_or_assemble(state: Dict[str, Any]) -> str:
 
     # 检查是否还有待处理的场景
     remaining_pending = [
-        b for b in budgets[current_index:]
-        if b.status == SceneStatus.PENDING
+        b for b in budgets[current_index:] if b.status == SceneStatus.PENDING
     ]
 
     if remaining_pending:

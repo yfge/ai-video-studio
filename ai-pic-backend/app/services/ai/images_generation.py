@@ -112,7 +112,9 @@ class ImageGenerationMixin:
             prompt_template = None
             try:
                 template_name = PromptTemplate.VIRTUAL_IP_IMAGE.value
-                base_prompt = prompt_manager.render_prompt(template_name, variables).strip()
+                base_prompt = prompt_manager.render_prompt(
+                    template_name, variables
+                ).strip()
                 prompt_template = build_prompt_template_audit(
                     template_name, variables=variables
                 )

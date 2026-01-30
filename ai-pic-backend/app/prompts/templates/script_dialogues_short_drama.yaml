@@ -48,8 +48,8 @@ usage_examples:
   - language: "zh-CN"
     dialogue_style: "natural"
     format_type: "screenplay"
-    story: {title: "反击人生", story_format: "short_drama", genre: "都市爽剧"}
-    episode: {episode_number: 1, title: "抓奸现场"}
+    story: { title: "反击人生", story_format: "short_drama", genre: "都市爽剧" }
+    episode: { episode_number: 1, title: "抓奸现场" }
     scenes:
       - scene_number: 1
         slug_line: "INT. 卧室 - 夜"

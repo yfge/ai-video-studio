@@ -28,6 +28,7 @@ User reported error "操作失败 创建一键流水线任务失败" when clicki
 Root cause: Module resolution conflict between legacy `api.ts` and new modular `api/endpoints/` structure. The import `@/utils/api` resolved to the legacy file, which was missing `generateTimelinePipelineAsync` method.
 
 Added missing method to ApiClient class (after line 1918):
+
 ```typescript
 async generateTimelinePipelineAsync(
   scriptId: number | string,
@@ -51,6 +52,7 @@ async generateTimelinePipelineAsync(
 ```
 
 Added method binding to scriptAPI export (after line 2400):
+
 ```typescript
 generateTimelinePipelineAsync:
   apiClient.generateTimelinePipelineAsync.bind(apiClient),

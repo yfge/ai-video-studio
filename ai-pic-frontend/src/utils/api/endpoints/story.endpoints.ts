@@ -2,21 +2,25 @@
  * Story API endpoints.
  */
 
-import { httpClient } from '../client';
-import type { Story, StoryCharacter, StoryGenerationRequest } from '../types/story.types';
-import type { ApiResponse } from '../types/common.types';
+import { httpClient } from "../client";
+import type {
+  Story,
+  StoryCharacter,
+  StoryGenerationRequest,
+} from "../types/story.types";
+import type { ApiResponse } from "../types/common.types";
 
 // Helper to check if value is a business ID
 function isBusinessIdentifier(value: number | string): boolean {
-  if (typeof value === 'number') return false;
-  const raw = String(value || '').trim();
+  if (typeof value === "number") return false;
+  const raw = String(value || "").trim();
   if (!raw) return false;
   const isDigitsOnly = /^\d+$/.test(raw);
   return !isDigitsOnly || raw.length >= 16;
 }
 
 // Helper to build story path
-function storyPath(storyIdOrBiz: number | string, suffix: string = ''): string {
+function storyPath(storyIdOrBiz: number | string, suffix: string = ""): string {
   const base = isBusinessIdentifier(storyIdOrBiz)
     ? `/api/v1/stories/business/${storyIdOrBiz}`
     : `/api/v1/stories/${storyIdOrBiz}`;
@@ -33,10 +37,10 @@ export async function getStories(params?: {
   status?: string;
 }): Promise<ApiResponse<Story[]>> {
   const searchParams = new URLSearchParams();
-  if (params?.skip) searchParams.append('skip', params.skip.toString());
-  if (params?.limit) searchParams.append('limit', params.limit.toString());
-  if (params?.genre) searchParams.append('genre', params.genre);
-  if (params?.status) searchParams.append('status', params.status);
+  if (params?.skip) searchParams.append("skip", params.skip.toString());
+  if (params?.limit) searchParams.append("limit", params.limit.toString());
+  if (params?.genre) searchParams.append("genre", params.genre);
+  if (params?.status) searchParams.append("status", params.status);
 
   return httpClient<Story[]>(`/api/v1/stories?${searchParams}`);
 }
@@ -44,16 +48,20 @@ export async function getStories(params?: {
 /**
  * Get a specific story.
  */
-export async function getStory(idOrBusinessId: number | string): Promise<ApiResponse<Story>> {
+export async function getStory(
+  idOrBusinessId: number | string,
+): Promise<ApiResponse<Story>> {
   return httpClient<Story>(storyPath(idOrBusinessId));
 }
 
 /**
  * Generate a new story with AI.
  */
-export async function generateStory(data: StoryGenerationRequest): Promise<ApiResponse<Story>> {
-  return httpClient<Story>('/api/v1/stories/generate', {
-    method: 'POST',
+export async function generateStory(
+  data: StoryGenerationRequest,
+): Promise<ApiResponse<Story>> {
+  return httpClient<Story>("/api/v1/stories/generate", {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }
@@ -62,22 +70,25 @@ export async function generateStory(data: StoryGenerationRequest): Promise<ApiRe
  * Generate story asynchronously (returns task ID).
  */
 export async function generateStoryAsync(
-  data: StoryGenerationRequest
+  data: StoryGenerationRequest,
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
-  return httpClient<{ task_id: number; status: string }>('/api/v1/stories/generate-async', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  return httpClient<{ task_id: number; status: string }>(
+    "/api/v1/stories/generate-async",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
 }
 
 /**
  * Preview story generation prompt.
  */
 export async function previewStoryPrompt(
-  data: StoryGenerationRequest
+  data: StoryGenerationRequest,
 ): Promise<ApiResponse<{ prompt: string }>> {
-  return httpClient<{ prompt: string }>('/api/v1/stories/prompt/preview', {
-    method: 'POST',
+  return httpClient<{ prompt: string }>("/api/v1/stories/prompt/preview", {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }
@@ -87,10 +98,10 @@ export async function previewStoryPrompt(
  */
 export async function updateStory(
   idOrBusinessId: number | string,
-  data: Partial<Story>
+  data: Partial<Story>,
 ): Promise<ApiResponse<Story>> {
   return httpClient<Story>(storyPath(idOrBusinessId), {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -98,17 +109,19 @@ export async function updateStory(
 /**
  * Delete a story.
  */
-export async function deleteStory(idOrBusinessId: number | string): Promise<ApiResponse<void>> {
-  return httpClient<void>(storyPath(idOrBusinessId), { method: 'DELETE' });
+export async function deleteStory(
+  idOrBusinessId: number | string,
+): Promise<ApiResponse<void>> {
+  return httpClient<void>(storyPath(idOrBusinessId), { method: "DELETE" });
 }
 
 /**
  * Get characters in a story.
  */
 export async function getStoryCharacters(
-  storyId: number | string
+  storyId: number | string,
 ): Promise<ApiResponse<StoryCharacter[]>> {
-  return httpClient<StoryCharacter[]>(storyPath(storyId, '/characters'));
+  return httpClient<StoryCharacter[]>(storyPath(storyId, "/characters"));
 }
 
 /**
@@ -117,7 +130,9 @@ export async function getStoryCharacters(
 export async function getStoryGenres(): Promise<
   ApiResponse<Array<{ value: string; label: string }>>
 > {
-  return httpClient<Array<{ value: string; label: string }>>('/api/v1/stories/genres');
+  return httpClient<Array<{ value: string; label: string }>>(
+    "/api/v1/stories/genres",
+  );
 }
 
 /**

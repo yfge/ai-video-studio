@@ -49,4 +49,3 @@ summary: "Align prod docker-compose Celery uploads volume with backend"
 ## Linked Commits
 
 - `chore(docker): share uploads volume to celery worker`
-

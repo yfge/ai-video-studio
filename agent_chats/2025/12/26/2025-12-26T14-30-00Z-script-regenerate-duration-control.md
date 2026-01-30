@@ -43,7 +43,7 @@ async def generate_script(
             )
 ```
 
-### 2. scripts_legacy.py - _build_script_regenerate_request
+### 2. scripts_legacy.py - \_build_script_regenerate_request
 
 **`ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py` (line 3735-3753)**:
 
@@ -62,7 +62,7 @@ def _build_script_regenerate_request(
     }
 ```
 
-### 3. scripts_legacy.py - _process_script_regeneration_task
+### 3. scripts_legacy.py - \_process_script_regeneration_task
 
 **`ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py` (line 1461-1503)**:
 
@@ -102,6 +102,7 @@ return await ai_service.generate_script(
 ## Validation
 
 1. **Import Check**: Both modified modules import successfully
+
    ```bash
    python -c "from app.api.v1.endpoints.scripts_legacy import _build_script_regenerate_request; print('OK')"
    python -c "from app.services.ai_service import AIService; print('OK')"
@@ -116,6 +117,7 @@ return await ai_service.generate_script(
 ## Next Steps
 
 1. When a script is regenerated, if the episode has `duration_minutes` set, the system will:
+
    - Compute `scene_budgets` based on `duration_minutes` and episode scenes
    - Pass `scene_budgets` to `script_agent.generate()` which builds word count constraints in the prompt
    - This ensures regenerated scripts have dialogue content sized appropriately for the target duration

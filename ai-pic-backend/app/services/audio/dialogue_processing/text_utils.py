@@ -125,4 +125,3 @@ def sanitize_dialogue_content(
 
     combined_action = "；".join(actions) if actions else None
     return text, combined_action
-

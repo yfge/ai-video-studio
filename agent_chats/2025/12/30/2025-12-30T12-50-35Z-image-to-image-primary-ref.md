@@ -12,6 +12,7 @@ summary: "Fix image-to-image modal to show clicked candidate image as primary re
 ## User Prompt
 
 从首帧尾帧的图像选择弹出的图生图，应该：
+
 1. 以选择的图片为首要参考图
 2. 带入其他图片，可选可不选
 3. 自定义提示词
@@ -28,16 +29,19 @@ summary: "Fix image-to-image modal to show clicked candidate image as primary re
 **ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx:**
 
 1. Added new state for tracking primary reference image:
+
    ```typescript
    const [imageModalPrimaryRef, setImageModalPrimaryRef] = useState<string>("");
    ```
 
 2. Modified `openImageModalForFrame` to set the primary reference when opening from a candidate image:
+
    ```typescript
    setImageModalPrimaryRef(normalizedPreset);
    ```
 
 3. Updated `imageModalReferenceSections` useMemo to prepend the primary reference as a distinct section:
+
    ```typescript
    if (imageModalPrimaryRef) {
      return [

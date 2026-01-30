@@ -1,20 +1,20 @@
 from datetime import datetime
-from sqlalchemy import (
-    Column,
-    BigInteger,
-    Integer,
-    String,
-    Text,
-    DateTime,
-    Boolean,
-    ForeignKey,
-    JSON,
-    Numeric,
-)
-from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
+from sqlalchemy.orm import relationship
 
 BIGINT_PK = BigInteger().with_variant(Integer, "sqlite")
 

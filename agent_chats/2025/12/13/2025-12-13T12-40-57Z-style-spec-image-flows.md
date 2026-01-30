@@ -66,4 +66,3 @@ summary: "Propagated StyleSpec through txt2img/img2img flows and persisted resol
 ## Linked Commits
 
 - feat(backend): apply style spec across image flows
-

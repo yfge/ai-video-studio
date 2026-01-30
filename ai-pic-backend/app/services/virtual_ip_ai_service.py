@@ -6,13 +6,13 @@ Virtual IP AI Generation Service
 - 不再直接依赖 AsyncOpenAI，而是复用统一的 AIService / AIServiceManager。
 - 文本提示词改为通过 prompt_manager + virtual_ip_creation 模板管理。
 """
+
 import time
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.utils.json_utils import extract_json_block
 from app.services.ai_service import ai_service
 from app.services.virtual_ip.ai_prompt_helpers import (
     build_biography_from_profile,
@@ -21,6 +21,9 @@ from app.services.virtual_ip.ai_prompt_helpers import (
     normalize_suggested_tags,
     sanitize_character_text,
 )
+from app.utils.json_utils import extract_json_block
+
+
 class VirtualIPAIService:
     """虚拟IP AI生成服务"""
 
@@ -31,10 +34,10 @@ class VirtualIPAIService:
         self.logger = get_logger(__name__)
 
     async def generate_complete_ip_with_details(
-        self, 
-        name: str, 
+        self,
+        name: str,
         basic_info: Optional[str] = None,
-        style_preference: Optional[str] = None
+        style_preference: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         根据基本信息生成完整的虚拟IP，包含详细生成信息。
@@ -56,11 +59,13 @@ class VirtualIPAIService:
         if self.ai_manager:
             try:
                 steps.append("正在生成虚拟IP完整设定（描述/背景/小传）...")
-                profile, prompt, model_used, usage = await self._generate_profile_with_ai(
-                    name=name,
-                    basic_info=basic_info,
-                    style_preference=style_preference,
-                    temperature=temperature,
+                profile, prompt, model_used, usage = (
+                    await self._generate_profile_with_ai(
+                        name=name,
+                        basic_info=basic_info,
+                        style_preference=style_preference,
+                        temperature=temperature,
+                    )
                 )
                 content = profile
                 if prompt:
@@ -91,17 +96,19 @@ class VirtualIPAIService:
             "content": content,
             "generation_details": generation_details,
         }
-    
+
     async def generate_complete_ip(
-        self, 
-        name: str, 
+        self,
+        name: str,
         basic_info: Optional[str] = None,
-        style_preference: Optional[str] = None
+        style_preference: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         根据基本信息生成完整的虚拟IP（简化版，保持向后兼容）
         """
-        result = await self.generate_complete_ip_with_details(name, basic_info, style_preference)
+        result = await self.generate_complete_ip_with_details(
+            name, basic_info, style_preference
+        )
         return result["content"]
 
     async def generate_style_prompt(
@@ -109,7 +116,7 @@ class VirtualIPAIService:
         name: str,
         description: str,
         biography: str,
-        image_category: str = "portrait"
+        image_category: str = "portrait",
     ) -> str:
         """
         根据角色信息生成用于AI绘画的风格提示词。
@@ -153,6 +160,7 @@ class VirtualIPAIService:
                 e,
             )
             return generate_template_style_prompt(name, description, image_category)
+
     async def _generate_profile_with_ai(
         self,
         name: str,
@@ -246,5 +254,7 @@ class VirtualIPAIService:
             "tags": tags,
         }
         return content, prompt, response.model or "unknown", response.usage or {}
+
+
 # 全局实例
 virtual_ip_ai_service = VirtualIPAIService()

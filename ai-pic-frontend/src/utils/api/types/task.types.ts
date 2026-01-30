@@ -3,7 +3,12 @@
  */
 
 // Task status enum
-export type TaskStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
+export type TaskStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 // Task entity
 export interface Task {

@@ -15,7 +15,9 @@ class ContinuityTimelineItem(BaseModel):
     )
     events: List[str] = Field(default_factory=list, description="关键事件（短句）")
     end_state: Optional[str] = Field(None, description="本集结尾的关键状态（短句）")
-    reveals: List[str] = Field(default_factory=list, description="本集揭示的信息（短句）")
+    reveals: List[str] = Field(
+        default_factory=list, description="本集揭示的信息（短句）"
+    )
 
 
 class ContinuityInfoAcquisitionEvent(BaseModel):
@@ -23,15 +25,21 @@ class ContinuityInfoAcquisitionEvent(BaseModel):
     scene_number: Optional[int] = Field(None, description="场景号（若适用）")
     who: str = Field(..., description="谁获得信息（角色名/旁白/观众）")
     what: str = Field(..., description="获得的信息（姓名/身份/事实/动机等）")
-    how: str = Field(..., description="获得方式（自报/他人介绍/工牌/手机备注/目击/推断等）")
+    how: str = Field(
+        ..., description="获得方式（自报/他人介绍/工牌/手机备注/目击/推断等）"
+    )
     evidence: Optional[str] = Field(None, description="证据片段/引用（可选）")
 
 
 class ContinuityCharacterState(BaseModel):
     status: Optional[str] = Field(None, description="当前状态/处境（短句）")
     goal: Optional[str] = Field(None, description="当前目标（短句）")
-    relationships: Dict[str, str] = Field(default_factory=dict, description="与他人的关系")
-    known_info: List[str] = Field(default_factory=list, description="角色已知信息（短句）")
+    relationships: Dict[str, str] = Field(
+        default_factory=dict, description="与他人的关系"
+    )
+    known_info: List[str] = Field(
+        default_factory=list, description="角色已知信息（短句）"
+    )
     unknown_info: List[str] = Field(
         default_factory=list, description="角色未知但重要的信息（短句，可为空）"
     )
@@ -40,14 +48,18 @@ class ContinuityCharacterState(BaseModel):
 class ContinuityLedger(BaseModel):
     version: int = Field(1, description="账本版本号")
     facts: List[str] = Field(default_factory=list, description="已确认事实（短句）")
-    timeline: List[ContinuityTimelineItem] = Field(default_factory=list, description="时间线")
+    timeline: List[ContinuityTimelineItem] = Field(
+        default_factory=list, description="时间线"
+    )
     characters: Dict[str, ContinuityCharacterState] = Field(
         default_factory=dict, description="角色状态/关系/知识"
     )
     info_acquisition_events: List[ContinuityInfoAcquisitionEvent] = Field(
         default_factory=list, description="信息获得事件（用于知识门控）"
     )
-    open_threads: List[str] = Field(default_factory=list, description="未解决线索/悬念（短句）")
+    open_threads: List[str] = Field(
+        default_factory=list, description="未解决线索/悬念（短句）"
+    )
     resolved_threads: List[str] = Field(
         default_factory=list, description="已收束线索/悬念（短句）"
     )

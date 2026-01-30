@@ -128,9 +128,7 @@ async def generate_text(
                     exc_info=True,
                 )
 
-        response = await client.post(
-            f"{base_url}/chat/completions", json=request_data
-        )
+        response = await client.post(f"{base_url}/chat/completions", json=request_data)
         response.raise_for_status()
 
         data = response.json()
@@ -158,9 +156,7 @@ async def generate_text(
             metadata={
                 "finish_reason": data["choices"][0].get("finish_reason"),
                 "prompt_tokens": data.get("usage", {}).get("prompt_tokens", 0),
-                "completion_tokens": data.get("usage", {}).get(
-                    "completion_tokens", 0
-                ),
+                "completion_tokens": data.get("usage", {}).get("completion_tokens", 0),
             },
         )
 

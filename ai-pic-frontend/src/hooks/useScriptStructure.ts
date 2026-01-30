@@ -6,7 +6,9 @@ import type { NormalizedScene } from "@/utils/api";
 import type { SceneNode } from "@/components/features";
 
 export function useScriptStructure(scriptId?: number) {
-  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>([]);
+  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>(
+    [],
+  );
   const [structuredScenes, setStructuredScenes] = useState<SceneNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

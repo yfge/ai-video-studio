@@ -11,13 +11,12 @@ from datetime import datetime
 from typing import Any, Sequence
 from uuid import uuid4
 
-from sqlalchemy.orm import Session
-
 from app.models.script import Episode, Script
 from app.models.story_structure import Scene, SceneBeat
 from app.services.storyboard.storyboard_prompt_utils import (
     apply_storyboard_prompt_optimizations,
 )
+from sqlalchemy.orm import Session
 
 
 def utc_now_iso() -> str:
@@ -79,16 +78,18 @@ def build_episode_timeline_beats(
                 if beat.beat_type == "dialogue"
                 else beat.beat_summary
             )
-            merged.append({
-                "scene_id": scene_id,
-                "scene_number": scene_number,
-                "beat_id": int(beat.id),
-                "beat_type": beat.beat_type,
-                "speaker_name": meta.get("speaker_name"),
-                "text": text,
-                "start_ms": offset_ms + start_ms_int,
-                "end_ms": offset_ms + end_ms_int,
-            })
+            merged.append(
+                {
+                    "scene_id": scene_id,
+                    "scene_number": scene_number,
+                    "beat_id": int(beat.id),
+                    "beat_type": beat.beat_type,
+                    "speaker_name": meta.get("speaker_name"),
+                    "text": text,
+                    "start_ms": offset_ms + start_ms_int,
+                    "end_ms": offset_ms + end_ms_int,
+                }
+            )
 
         offset_ms += cursor_ms
 
@@ -185,16 +186,18 @@ def build_storyboard_frames_from_audio_timeline(
                     continue
 
             # No prior frame to merge; emit a short pause frame
-            frames.append(_create_frame(
-                scene_number_int=scene_number_int,
-                scene_id_int=scene_id_int,
-                scene_index_map=scene_index_map,
-                description="（停顿）",
-                duration_ms=duration_ms,
-                start_ms_int=start_ms_int,
-                end_ms_int=end_ms_int,
-                frame_number=len(frames) + 1,
-            ))
+            frames.append(
+                _create_frame(
+                    scene_number_int=scene_number_int,
+                    scene_id_int=scene_id_int,
+                    scene_index_map=scene_index_map,
+                    description="（停顿）",
+                    duration_ms=duration_ms,
+                    start_ms_int=start_ms_int,
+                    end_ms_int=end_ms_int,
+                    frame_number=len(frames) + 1,
+                )
+            )
             continue
 
         # Create frame for dialogue, action, or long pause
@@ -209,16 +212,18 @@ def build_storyboard_frames_from_audio_timeline(
         else:
             description = text or "（动作）"
 
-        frames.append(_create_frame(
-            scene_number_int=scene_number_int,
-            scene_id_int=scene_id_int,
-            scene_index_map=scene_index_map,
-            description=description,
-            duration_ms=duration_ms,
-            start_ms_int=start_ms_int,
-            end_ms_int=end_ms_int,
-            frame_number=len(frames) + 1,
-        ))
+        frames.append(
+            _create_frame(
+                scene_number_int=scene_number_int,
+                scene_id_int=scene_id_int,
+                scene_index_map=scene_index_map,
+                description=description,
+                duration_ms=duration_ms,
+                start_ms_int=start_ms_int,
+                end_ms_int=end_ms_int,
+                frame_number=len(frames) + 1,
+            )
+        )
 
     return frames
 

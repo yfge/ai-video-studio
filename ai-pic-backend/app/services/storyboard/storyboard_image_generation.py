@@ -105,7 +105,9 @@ async def generate_storyboard_image_urls(
         base_image = None
         extra_images = cleaned_refs
     else:
-        mode = ImageGenMode.IMAGE_TO_IMAGE if cleaned_refs else ImageGenMode.TEXT_TO_IMAGE
+        mode = (
+            ImageGenMode.IMAGE_TO_IMAGE if cleaned_refs else ImageGenMode.TEXT_TO_IMAGE
+        )
         base_image = cleaned_refs[0] if cleaned_refs else None
         extra_images = cleaned_refs[1:] if len(cleaned_refs) > 1 else []
 

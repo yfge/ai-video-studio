@@ -22,7 +22,9 @@ class OSSAdminMixin:
                 "object_key": object_key,
             }
 
-    def get_signed_url(self, object_key: str, expires: int = 3600, method: str = "GET") -> str:
+    def get_signed_url(
+        self, object_key: str, expires: int = 3600, method: str = "GET"
+    ) -> str:
         """生成签名URL"""
         try:
             return self.bucket.sign_url(method, object_key, expires)
@@ -34,7 +36,9 @@ class OSSAdminMixin:
     ) -> dict[str, Any]:
         """列出对象"""
         try:
-            result = self.bucket.list_objects(prefix=prefix, max_keys=max_keys, marker=marker)
+            result = self.bucket.list_objects(
+                prefix=prefix, max_keys=max_keys, marker=marker
+            )
             objects = []
             for obj in result.object_list:
                 objects.append(
@@ -82,4 +86,3 @@ class OSSAdminMixin:
                 "error": f"获取对象信息失败: {exc}",
                 "object_key": object_key,
             }
-

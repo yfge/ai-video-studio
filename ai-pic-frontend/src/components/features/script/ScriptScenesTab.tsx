@@ -1,7 +1,16 @@
 "use client";
 
-import type { NormalizedScene, NormalizedShot, SceneBeat, Script } from "@/utils/api";
-import type { ScriptScene, ScriptDialogue, ScriptDirection } from "@/hooks/useScriptDetail";
+import type {
+  NormalizedScene,
+  NormalizedShot,
+  SceneBeat,
+  Script,
+} from "@/utils/api";
+import type {
+  ScriptScene,
+  ScriptDialogue,
+  ScriptDirection,
+} from "@/hooks/useScriptDetail";
 import { toSceneNumber } from "@/hooks/useScriptDetail";
 import { SceneStructurePanel, type SceneNode } from "@/components/features";
 import { formatText } from "@/components/features/StoryboardFrameCard";
@@ -54,7 +63,10 @@ export function ScriptScenesTab({
   const getSceneCharacters = (scene: ScriptScene): string[] => {
     if (!scene.characters) return [];
     if (Array.isArray(scene.characters)) return scene.characters;
-    return String(scene.characters).split(",").map(s => s.trim()).filter(Boolean);
+    return String(scene.characters)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   };
 
   return (
@@ -63,11 +75,15 @@ export function ScriptScenesTab({
       <div className="w-80 flex-shrink-0 rounded-xl bg-white shadow overflow-hidden flex flex-col">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <h3 className="font-semibold text-gray-900">场景列表</h3>
-          <p className="text-xs text-gray-500 mt-0.5">共 {scenes.length} 个场景</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            共 {scenes.length} 个场景
+          </p>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {scenes.length === 0 && (
-            <p className="text-sm text-gray-500 p-4 text-center">暂无场景数据</p>
+            <p className="text-sm text-gray-500 p-4 text-center">
+              暂无场景数据
+            </p>
           )}
           {scenes.map((scene, idx) => {
             const sceneNumber = toSceneNumber(scene.scene_number) ?? idx + 1;
@@ -87,13 +103,21 @@ export function ScriptScenesTab({
               >
                 {/* Scene header */}
                 <div className="flex items-center justify-between">
-                  <span className={`text-sm font-semibold ${isActive ? "text-blue-700" : "text-gray-900"}`}>
+                  <span
+                    className={`text-sm font-semibold ${
+                      isActive ? "text-blue-700" : "text-gray-900"
+                    }`}
+                  >
                     场景 {sceneNumber}
                   </span>
                   {scene.time && (
-                    <span className={`text-xs px-2 py-0.5 rounded ${
-                      isActive ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500"
-                    }`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        isActive
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
                       {scene.time}
                     </span>
                   )}
@@ -101,27 +125,37 @@ export function ScriptScenesTab({
 
                 {/* Location */}
                 {scene.location && (
-                  <div className={`mt-1.5 text-xs ${isActive ? "text-blue-600" : "text-gray-600"}`}>
+                  <div
+                    className={`mt-1.5 text-xs ${
+                      isActive ? "text-blue-600" : "text-gray-600"
+                    }`}
+                  >
                     📍 {scene.location}
                   </div>
                 )}
 
                 {/* Description */}
-                <p className={`mt-2 text-xs leading-relaxed line-clamp-2 ${
-                  isActive ? "text-blue-700" : "text-gray-500"
-                }`}>
+                <p
+                  className={`mt-2 text-xs leading-relaxed line-clamp-2 ${
+                    isActive ? "text-blue-700" : "text-gray-500"
+                  }`}
+                >
                   {formatText(scene.description, "暂无描述", 80)}
                 </p>
 
                 {/* Stats row */}
                 <div className="mt-2 flex items-center gap-3 text-[11px]">
                   {characters.length > 0 && (
-                    <span className={isActive ? "text-blue-500" : "text-gray-400"}>
+                    <span
+                      className={isActive ? "text-blue-500" : "text-gray-400"}
+                    >
                       👤 {characters.length} 角色
                     </span>
                   )}
                   {dialogueCount > 0 && (
-                    <span className={isActive ? "text-blue-500" : "text-gray-400"}>
+                    <span
+                      className={isActive ? "text-blue-500" : "text-gray-400"}
+                    >
                       💬 {dialogueCount} 对白
                     </span>
                   )}
@@ -205,7 +239,9 @@ function SceneDetailPanel({
   const characters = scene.characters
     ? Array.isArray(scene.characters)
       ? scene.characters
-      : String(scene.characters).split(",").map(s => s.trim())
+      : String(scene.characters)
+          .split(",")
+          .map((s) => s.trim())
     : [];
 
   return (
@@ -213,7 +249,9 @@ function SceneDetailPanel({
       {/* Scene header */}
       <div className="border-b border-gray-100 pb-4">
         <div className="flex items-center gap-3">
-          <span className="text-2xl font-bold text-gray-900">场景 {sceneNumber}</span>
+          <span className="text-2xl font-bold text-gray-900">
+            场景 {sceneNumber}
+          </span>
           {scene.time && (
             <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
               {scene.time}
@@ -236,7 +274,8 @@ function SceneDetailPanel({
         </p>
         {scene.notes && (
           <p className="mt-3 text-sm text-gray-500 border-t border-gray-200 pt-3">
-            <span className="font-medium">备注：</span>{scene.notes}
+            <span className="font-medium">备注：</span>
+            {scene.notes}
           </p>
         )}
       </div>
@@ -275,7 +314,10 @@ function SceneDetailPanel({
               <p className="text-sm text-gray-400 text-center py-4">暂无对白</p>
             )}
             {sceneDialogues.map((dialogue, idx) => (
-              <div key={`dialogue-${idx}`} className="bg-gray-50 rounded-lg p-3">
+              <div
+                key={`dialogue-${idx}`}
+                className="bg-gray-50 rounded-lg p-3"
+              >
                 {typeof dialogue === "string" ? (
                   <p className="text-sm text-gray-600">{dialogue}</p>
                 ) : (
@@ -290,9 +332,13 @@ function SceneDetailPanel({
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">{dialogue.content || "..."}</p>
+                    <p className="text-sm text-gray-600">
+                      {dialogue.content || "..."}
+                    </p>
                     {dialogue.action && (
-                      <p className="text-xs text-gray-400 mt-1 italic">({dialogue.action})</p>
+                      <p className="text-xs text-gray-400 mt-1 italic">
+                        ({dialogue.action})
+                      </p>
                     )}
                   </>
                 )}
@@ -313,10 +359,15 @@ function SceneDetailPanel({
           </div>
           <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
             {sceneDirections.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">暂无舞台指令</p>
+              <p className="text-sm text-gray-400 text-center py-4">
+                暂无舞台指令
+              </p>
             )}
             {sceneDirections.map((direction, idx) => (
-              <div key={`direction-${idx}`} className="bg-gray-50 rounded-lg p-3">
+              <div
+                key={`direction-${idx}`}
+                className="bg-gray-50 rounded-lg p-3"
+              >
                 {typeof direction === "string" ? (
                   <p className="text-sm text-gray-600">{direction}</p>
                 ) : (
@@ -326,9 +377,13 @@ function SceneDetailPanel({
                         {direction.type}
                       </span>
                     )}
-                    <p className="text-sm text-gray-600">{direction.content || "..."}</p>
+                    <p className="text-sm text-gray-600">
+                      {direction.content || "..."}
+                    </p>
                     {direction.timing && (
-                      <p className="text-xs text-gray-400 mt-1">时机：{direction.timing}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        时机：{direction.timing}
+                      </p>
                     )}
                   </>
                 )}
@@ -362,34 +417,48 @@ function SceneDetailPanel({
             <div className="grid gap-4 md:grid-cols-2">
               {/* Beats */}
               <div className="bg-gray-50 rounded-lg p-3">
-                <h5 className="text-xs font-semibold text-gray-600 mb-2">节拍</h5>
+                <h5 className="text-xs font-semibold text-gray-600 mb-2">
+                  节拍
+                </h5>
                 <div className="space-y-2">
                   {(beats ?? []).length === 0 && (
                     <p className="text-xs text-gray-400">暂无节拍</p>
                   )}
                   {(beats ?? []).slice(0, 5).map((beat) => (
-                    <div key={beat.id} className="bg-white rounded px-3 py-2 shadow-sm">
-                      <span className="text-xs font-semibold text-blue-600">#{beat.order_index}</span>
+                    <div
+                      key={beat.id}
+                      className="bg-white rounded px-3 py-2 shadow-sm"
+                    >
+                      <span className="text-xs font-semibold text-blue-600">
+                        #{beat.order_index}
+                      </span>
                       <p className="text-xs text-gray-600 mt-0.5">
                         {beat.beat_summary || beat.dialogue_excerpt || "—"}
                       </p>
                     </div>
                   ))}
                   {(beats ?? []).length > 5 && (
-                    <p className="text-xs text-gray-400">还有 {(beats?.length ?? 0) - 5} 个节拍...</p>
+                    <p className="text-xs text-gray-400">
+                      还有 {(beats?.length ?? 0) - 5} 个节拍...
+                    </p>
                   )}
                 </div>
               </div>
 
               {/* Shots */}
               <div className="bg-gray-50 rounded-lg p-3">
-                <h5 className="text-xs font-semibold text-gray-600 mb-2">镜头</h5>
+                <h5 className="text-xs font-semibold text-gray-600 mb-2">
+                  镜头
+                </h5>
                 <div className="space-y-2">
                   {(shots ?? []).length === 0 && (
                     <p className="text-xs text-gray-400">暂无镜头</p>
                   )}
                   {(shots ?? []).slice(0, 5).map((shot) => (
-                    <div key={shot.id} className="bg-white rounded px-3 py-2 shadow-sm">
+                    <div
+                      key={shot.id}
+                      className="bg-white rounded px-3 py-2 shadow-sm"
+                    >
                       <span className="text-xs font-semibold text-purple-600">
                         镜头 {shot.shot_number}
                       </span>
@@ -399,7 +468,9 @@ function SceneDetailPanel({
                     </div>
                   ))}
                   {(shots ?? []).length > 5 && (
-                    <p className="text-xs text-gray-400">还有 {(shots?.length ?? 0) - 5} 个镜头...</p>
+                    <p className="text-xs text-gray-400">
+                      还有 {(shots?.length ?? 0) - 5} 个镜头...
+                    </p>
                   )}
                 </div>
               </div>
@@ -417,7 +488,9 @@ function SceneDetailPanel({
           </div>
         ) : (
           <div className="p-4">
-            <p className="text-sm text-gray-400 text-center">未找到匹配的结构化场景数据</p>
+            <p className="text-sm text-gray-400 text-center">
+              未找到匹配的结构化场景数据
+            </p>
           </div>
         )}
       </div>

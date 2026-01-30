@@ -1,17 +1,12 @@
 列出基础模型。
 
-
-
-
-
 ## 调试
+
 <APILink link="https://api.volcengine.com/api-explorer/?action=ListFoundationModels&groupName=%E7%AE%A1%E7%90%86%E5%9F%BA%E7%A1%80%E6%A8%A1%E5%9E%8B&serviceCode=ark&version=2024-01-01"></APILink>
 
 ## 请求参数
 
 下表仅列出该接口特有的请求参数和部分公共参数。更多信息请见[公共参数](https://www.volcengine.com/docs/6369/67268)。
-
-
 
 ```mixin-react
 const columns = [
@@ -283,9 +278,7 @@ return (<Table
 
 ## 返回参数
 
-
 下表仅列出本接口特有的返回参数。更多信息请参见[返回结构](https://www.volcengine.com/docs/6369/80336)。
-
 
 ```mixin-react
 const columns = [
@@ -553,7 +546,8 @@ return (<Table
 />);
 ```
 
-## 请求示例 
+## 请求示例
+
 ```text
 POST /?Action=ListFoundationModels&Version=2024-01-01 HTTP/1.1
 Host: open.volcengineapi.com
@@ -606,7 +600,9 @@ Authorization: HMAC-SHA256 Credential=Adfks******wekfwe/20240514/cn-beijing/ark/
   ]
 }
 ```
-## 返回示例 
+
+## 返回示例
+
 ```json
 {
   "ResponseMetadata": {
@@ -633,21 +629,11 @@ Authorization: HMAC-SHA256 Credential=Adfks******wekfwe/20240514/cn-beijing/ark/
         },
         "PrimaryVersion": "zYCdJe3n",
         "FoundationModelTag": {
-          "Languages": [
-            "XEQL2sR"
-          ],
-          "TaskTypes": [
-            "ZpMo3"
-          ],
-          "CustomizedTags": [
-            "80woxH8k3Ly"
-          ],
-          "Domains": [
-            "0DQGJbb"
-          ],
-          "UsedLibraries": [
-            "Jijubh2yS"
-          ]
+          "Languages": ["XEQL2sR"],
+          "TaskTypes": ["ZpMo3"],
+          "CustomizedTags": ["80woxH8k3Ly"],
+          "Domains": ["0DQGJbb"],
+          "UsedLibraries": ["Jijubh2yS"]
         },
         "AccessType": "Public",
         "Tags": [
@@ -665,11 +651,9 @@ Authorization: HMAC-SHA256 Credential=Adfks******wekfwe/20240514/cn-beijing/ark/
 }
 ```
 
-
 ## 错误码
+
 您可访问[公共错误码](https://www.volcengine.com/docs/82379/1299023)，获取更多错误码信息。
-
-
 
 <style>
 .volc-md-viewer .arco-table-th {

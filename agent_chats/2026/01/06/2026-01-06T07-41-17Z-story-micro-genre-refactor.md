@@ -47,27 +47,33 @@ summary: "Refactored AI service modules and extended story generation metadata f
 ---
 
 ## User Prompt
+
 - Start the micro-genre and ad-driven creation loop feature, refactor oversized files first, ensure full E2E validation, and keep atomic commits with a clean workspace.
 
 ## Goals
+
 - Split oversized AI service and story endpoints into compliant modules.
 - Add micro-genre, hook plan, cliffhanger, and ad snippet outputs to story generation.
 - Validate via UI flow and API payload inspection.
 
 ## Changes
+
 - Replaced monolithic AI service with a modular package and a thin compatibility wrapper.
 - Split story endpoints into focused modules with shared helper logic.
 - Added story generation service and expanded schema/prompt templates to capture hook plans and ad snippets.
 
 ## Validation
+
 - Chrome MCP: logged into `http://localhost:8089`, generated story "微类型钩子验证", opened story detail page, and confirmed creation succeeded.
 - API check: `GET /api/v1/stories/business/90d90dea749448ffa40bcfdce8bc9711` showed `extra_metadata.hook_plan`, `twist_density`, `cliffhanger_plan`, `ad_snippets`, and `generation_params` containing `micro_genre`/`market_region` fields.
 - `pytest` (ai-pic-backend) failed (89 failed, 13 errors) with missing fixtures and multiple API/model failures.
 - `./docker/build_prod_images.sh` succeeded for backend/frontend images.
 
 ## Next Steps
+
 - Investigate and resolve failing pytest suite (missing fixtures and API expectations).
 - Consider exposing micro-genre and hook/ad metadata in UI if needed.
 
 ## Linked Commits
+
 - TBD

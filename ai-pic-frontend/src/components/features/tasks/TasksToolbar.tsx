@@ -1,14 +1,14 @@
-'use client'
+"use client";
 
-import { TASK_TYPE_OPTIONS } from './taskTypeOptions'
+import { TASK_TYPE_OPTIONS } from "./taskTypeOptions";
 
 type TasksToolbarProps = {
-  poll: boolean
-  onPollChange: (next: boolean) => void
-  onRefresh: () => void
-  taskTypeFilter: string
-  onTaskTypeFilterChange: (next: string) => void
-}
+  poll: boolean;
+  onPollChange: (next: boolean) => void;
+  onRefresh: () => void;
+  taskTypeFilter: string;
+  onTaskTypeFilterChange: (next: string) => void;
+};
 
 export function TasksToolbar({
   poll,
@@ -27,7 +27,7 @@ export function TasksToolbar({
           className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700"
         >
           {TASK_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value || 'all'} value={opt.value}>
+            <option key={opt.value || "all"} value={opt.value}>
               {opt.label}
             </option>
           ))}
@@ -41,10 +41,12 @@ export function TasksToolbar({
         />
         自动刷新
       </label>
-      <button onClick={onRefresh} className="text-sm text-blue-600 hover:text-blue-800">
+      <button
+        onClick={onRefresh}
+        className="text-sm text-blue-600 hover:text-blue-800"
+      >
         刷新
       </button>
     </div>
-  )
+  );
 }
-

@@ -1,5 +1,4 @@
 import pytest
-
 from app.models.script import Story
 from app.models.story_novel_export import StoryNovelExport
 from app.models.task import Task, TaskStatus, TaskType
@@ -52,4 +51,3 @@ def test_story_novel_download_falls_back_to_db(client, db_session):
     assert response.status_code == 200, response.text
     assert "Hello from DB export" in response.text
     assert response.headers.get("content-disposition", "").startswith("attachment;")
-

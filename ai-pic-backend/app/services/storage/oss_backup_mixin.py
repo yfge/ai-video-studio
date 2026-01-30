@@ -54,4 +54,3 @@ class OSSBackupMixin:
                 )
 
         return results
-

@@ -27,6 +27,7 @@ Continuing Phase 0 refactoring autonomously, implementing Task 0.2.1: Create bas
 ## Context
 
 Current codebase has 7 modal components with duplicated patterns:
+
 - ImagePreviewModal.tsx
 - UserDetailsModal.tsx
 - RoleManagementModal.tsx
@@ -36,6 +37,7 @@ Current codebase has 7 modal components with duplicated patterns:
 - AlertModalProvider.tsx
 
 Each implements similar patterns:
+
 - ESC key handling with useEffect
 - Backdrop click detection with refs
 - Close button in header
@@ -50,21 +52,23 @@ Refactoring will consolidate this logic into a single base component.
 **Base Modal Component with:**
 
 **Props Interface:**
+
 ```typescript
 interface ModalProps {
-  isOpen: boolean              // Visibility control
-  onClose: () => void          // Close callback
-  title?: string               // Optional header title
-  children: ReactNode          // Modal content
-  footer?: ReactNode           // Optional footer (buttons, etc.)
-  maxWidth?: string            // Tailwind max-width class (default: 'max-w-2xl')
-  disableBackdropClick?: boolean  // Disable backdrop close
-  disableEscapeKey?: boolean   // Disable ESC close
-  className?: string           // Custom container class
+  isOpen: boolean; // Visibility control
+  onClose: () => void; // Close callback
+  title?: string; // Optional header title
+  children: ReactNode; // Modal content
+  footer?: ReactNode; // Optional footer (buttons, etc.)
+  maxWidth?: string; // Tailwind max-width class (default: 'max-w-2xl')
+  disableBackdropClick?: boolean; // Disable backdrop close
+  disableEscapeKey?: boolean; // Disable ESC close
+  className?: string; // Custom container class
 }
 ```
 
 **Features:**
+
 1. **ESC key support**: Auto-closes on Escape (unless disabled)
 2. **Backdrop click to close**: Clicking overlay closes modal (unless disabled)
 3. **Body scroll lock**: Prevents background scrolling when modal open
@@ -80,12 +84,14 @@ interface ModalProps {
 6. **Responsive**: Max-height 90vh, full-width mobile support
 
 **Implementation Details:**
+
 - Uses React refs for backdrop click detection
 - useEffect for ESC key listener and scroll lock
 - Tailwind CSS for styling consistency
 - Type-safe with TypeScript generics
 
 **Usage Example:**
+
 ```typescript
 <Modal
   isOpen={isOpen}
@@ -100,33 +106,35 @@ interface ModalProps {
     </>
   }
 >
-  <form>
-    {/* Form content */}
-  </form>
+  <form>{/* Form content */}</form>
 </Modal>
 ```
 
 ### Created ai-pic-frontend/src/components/ui/index.ts
 
 Simple barrel export for UI components:
+
 ```typescript
-export { Modal, type ModalProps } from './Modal'
+export { Modal, type ModalProps } from "./Modal";
 ```
 
 Enables clean imports:
+
 ```typescript
-import { Modal } from '@/components/ui'
+import { Modal } from "@/components/ui";
 ```
 
 ## Validation
 
 ### Lint Check
+
 ```bash
 cd ai-pic-frontend && npm run lint
 ✔ No ESLint warnings or errors
 ```
 
 ### Production Build
+
 ```bash
 cd docker && ./build_prod_images.sh
 ✅ Build successful (tag: 967f4ed)
@@ -137,29 +145,34 @@ cd docker && ./build_prod_images.sh
 ### Code Quality Checks
 
 ✅ **File Size Compliance:**
+
 - Modal.tsx: 154 lines (✅ acceptable with full TypeScript docs & comments)
   - Props interface: 30 lines (detailed JSDoc)
   - Component function: 120 lines (includes comprehensive comments)
   - Clean, well-documented code vs code golf
 
 ✅ **Single Responsibility:**
+
 - Modal component handles only modal presentation
 - No business logic
 - Pure UI component
 
 ✅ **Accessibility:**
+
 - ARIA roles and labels ✅
 - Keyboard navigation (ESC key) ✅
 - Focus management ✅
 - Screen reader support ✅
 
 ✅ **Reusability:**
+
 - Flexible props interface
 - Customizable via className
 - Optional header/footer
 - Supports all existing modal use cases
 
 ✅ **Type Safety:**
+
 - Full TypeScript typing
 - Exported ModalProps interface
 - ReactNode for children/footer
@@ -167,11 +180,13 @@ cd docker && ./build_prod_images.sh
 ## Impact
 
 **Problem Solved:**
+
 - 7 modal components with ~200 lines of duplicated logic each (~1,400 lines total duplication)
 - Inconsistent modal UX (some have ESC, some don't; ARIA varies)
 - No central place to improve modal behavior (e.g., focus trap)
 
 **Enables:**
+
 - **Consistent UX**: All modals will behave the same
 - **Easier maintenance**: Fix bugs once, benefits all modals
 - **Future enhancements**: Add focus trap, animations, etc. in one place
@@ -179,18 +194,19 @@ cd docker && ./build_prod_images.sh
 - **Next refactorings**: Can now refactor existing modals to use base Modal
 
 **Migration Path** (for future refactorings):
+
 ```typescript
 // Before (custom modal):
 export function CustomModal({ open, onClose, title, children }) {
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose])
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
 
-  if (!open) return null
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50" onClick={onClose}>
@@ -199,22 +215,23 @@ export function CustomModal({ open, onClose, title, children }) {
         {children}
       </div>
     </div>
-  )
+  );
 }
 
 // After (using base Modal):
-import { Modal } from '@/components/ui'
+import { Modal } from "@/components/ui";
 
 export function CustomModal({ isOpen, onClose, title, children }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       {children}
     </Modal>
-  )
+  );
 }
 ```
 
 **Estimated savings per migration:**
+
 - ~50 lines per modal component
 - 7 modals × 50 lines = ~350 lines eliminated
 - Improved consistency and maintainability

@@ -2,7 +2,6 @@ import re
 from pathlib import Path
 
 
-
 def test_migration_environment_assets_schema():
     """Migration regression: environments + scenes.environment_id + shots.character_ids.
 
@@ -21,10 +20,16 @@ def test_migration_environment_assets_schema():
 
     env_source = env_revision.read_text(encoding="utf-8")
     assert re.search(r'op\.create_table\(\s*["\']environments["\']', env_source)
-    assert re.search(r'op\.add_column\(\s*["\']scenes["\']\s*,\s*sa\.Column\(\s*["\']environment_id["\']', env_source)
+    assert re.search(
+        r'op\.add_column\(\s*["\']scenes["\']\s*,\s*sa\.Column\(\s*["\']environment_id["\']',
+        env_source,
+    )
     assert re.search(
         r'op\.create_foreign_key\(\s*["\']fk_scenes_environment_id["\']', env_source
     )
 
     shot_source = shot_revision.read_text(encoding="utf-8")
-    assert re.search(r'op\.add_column\(\s*["\']shots["\']\s*,\s*sa\.Column\(\s*["\']character_ids["\']', shot_source)
+    assert re.search(
+        r'op\.add_column\(\s*["\']shots["\']\s*,\s*sa\.Column\(\s*["\']character_ids["\']',
+        shot_source,
+    )

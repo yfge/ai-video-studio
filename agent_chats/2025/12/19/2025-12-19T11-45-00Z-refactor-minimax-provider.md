@@ -30,22 +30,27 @@ Continue with Phase 4 provider refactoring (from context continuation).
 ### Created minimax_provider package structure:
 
 1. **`__init__.py`** (9 lines)
+
    - Package exports: `MinimaxProvider`
 
 2. **`models.py`** (230 lines)
+
    - Text generation models: abab6.5s-chat, abab6.5-chat, abab6.5g-chat
    - TTS models: speech-2.6-hd, speech-2.6-turbo, speech-02-hd, speech-02-turbo, speech-01-hd, speech-01-turbo
    - Video models: Hailuo 2.3, Hailuo 2.3 Fast, Hailuo 0.2, I2V-01-Director, I2V-01-live, I2V-01
 
 3. **`provider.py`** (173 lines)
+
    - Main `MinimaxProvider` class
    - Client initialization with MinimaxClient
    - Delegates to text, tts, and video modules
 
 4. **`text.py`** (68 lines)
+
    - Text generation: `generate_text`
 
 5. **`tts.py`** (134 lines)
+
    - Text-to-speech: `text_to_speech`
    - Voice listing: `get_voices`
    - Helper: `_to_int` for parameter conversion
@@ -56,9 +61,11 @@ Continue with Phase 4 provider refactoring (from context continuation).
    - File retrieval: `_retrieve_video_file`
 
 ### Deleted:
+
 - `ai-pic-backend/app/services/providers/minimax_provider.py` (original 678 line monolith)
 
 ### Import compatibility:
+
 - Package `__init__.py` exports `MinimaxProvider`, maintaining API compatibility
 - No changes needed to `ai_service_manager.py` or `providers/__init__.py`
 
@@ -70,6 +77,7 @@ Continue with Phase 4 provider refactoring (from context continuation).
 ## Next Steps
 
 Phase 4 provider refactoring complete. All 5 large providers have been modularized:
+
 - volcengine_provider (1,409 lines -> package)
 - keling_provider (843 lines -> package)
 - openai_provider (774 lines -> package)

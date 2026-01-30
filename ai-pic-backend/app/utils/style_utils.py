@@ -21,7 +21,6 @@ from app.schemas.style import (
     StyleUniverse,
 )
 
-
 STYLE_DIMENSIONS: dict[str, type] = {
     "style_universe": StyleUniverse,
     "character_proportion": CharacterProportion,
@@ -414,9 +413,7 @@ def build_style_schema_options() -> dict[str, list[StyleOption]]:
         for item in enum_cls:  # type: ignore[assignment]
             value = str(item.value)
             label = zh_map.get(value) or humanize_style_value(value)
-            options.append(
-                StyleOption(value=value, label=label)
-            )
+            options.append(StyleOption(value=value, label=label))
         dimensions[key] = options
     return dimensions
 

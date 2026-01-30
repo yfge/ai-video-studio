@@ -38,7 +38,8 @@ export interface EditFormState {
 
 const buildDefaultVoiceSettings = (enums: VoiceEnums): VoiceConfig => {
   const provider = enums.providers?.[0]?.value;
-  const model = enums.defaults?.tts_model || enums.tts_models?.[0]?.value || undefined;
+  const model =
+    enums.defaults?.tts_model || enums.tts_models?.[0]?.value || undefined;
   const voice_id = enums.defaults?.voice_id || undefined;
   const voice_type = enums.voice_types?.[0]?.value || "system";
   return { provider, model, voice_type, voice_id };
@@ -51,19 +52,29 @@ const mergeVoiceSettings = (
 ): VoiceConfig => ({
   provider: incoming?.provider ?? current.provider ?? defaults.provider,
   model: incoming?.model ?? current.model ?? defaults.model,
-  voice_type: incoming?.voice_type ?? current.voice_type ?? defaults.voice_type ?? "system",
+  voice_type:
+    incoming?.voice_type ??
+    current.voice_type ??
+    defaults.voice_type ??
+    "system",
   voice_id: incoming?.voice_id ?? current.voice_id ?? defaults.voice_id,
   display_name: incoming?.display_name ?? current.display_name,
   sample_url: incoming?.sample_url ?? current.sample_url,
 });
 
 export const hexToAudioUrl = (hexString: string): string => {
-  const bytes = new Uint8Array(hexString.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []);
+  const bytes = new Uint8Array(
+    hexString.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [],
+  );
   const blob = new Blob([bytes], { type: "audio/mpeg" });
   return URL.createObjectURL(blob);
 };
 
-export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDetailOptions) {
+export function useVirtualIPDetail({
+  ipKey,
+  showAlert,
+  router,
+}: UseVirtualIPDetailOptions) {
   // Core state
   const [virtualIP, setVirtualIP] = useState<VirtualIP | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,20 +124,26 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
   }, [voicePreviewText]);
 
   // Fetch voice list
-  const fetchVoiceList = useCallback(async (voiceType: string, provider?: string) => {
-    if (!provider) return;
-    try {
-      setVoiceLoading(true);
-      const res = await voiceAPI.getVoices({ voice_type: voiceType, provider });
-      if (res.success && res.data) {
-        setVoiceList(res.data);
+  const fetchVoiceList = useCallback(
+    async (voiceType: string, provider?: string) => {
+      if (!provider) return;
+      try {
+        setVoiceLoading(true);
+        const res = await voiceAPI.getVoices({
+          voice_type: voiceType,
+          provider,
+        });
+        if (res.success && res.data) {
+          setVoiceList(res.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch voice list", error);
+      } finally {
+        setVoiceLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to fetch voice list", error);
-    } finally {
-      setVoiceLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Fetch virtual IP
   const fetchVirtualIP = useCallback(async () => {
@@ -149,11 +166,15 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
         });
         const incomingVoice = response.data.voice_config;
         setVoiceSettings((prev) => {
-          const defaults = voiceEnums ? buildDefaultVoiceSettings(voiceEnums) : prev;
+          const defaults = voiceEnums
+            ? buildDefaultVoiceSettings(voiceEnums)
+            : prev;
           return mergeVoiceSettings(prev, defaults, incomingVoice);
         });
         if (!voicePreviewText) {
-          setVoicePreviewText(`你好，我是${response.data.name}，很高兴认识你。`);
+          setVoicePreviewText(
+            `你好，我是${response.data.name}，很高兴认识你。`,
+          );
         }
       } else {
         console.error("Failed to fetch virtual IP:", response.error);
@@ -181,7 +202,10 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
         setEditing(false);
         showAlert({ message: "更新成功", variant: "success" });
       } else {
-        showAlert({ message: `更新失败：${response.error || "未知错误"}`, variant: "error" });
+        showAlert({
+          message: `更新失败：${response.error || "未知错误"}`,
+          variant: "error",
+        });
       }
     } catch (error) {
       console.error("Error updating virtual IP:", error);
@@ -204,7 +228,10 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
             showAlert({ message: "删除成功", variant: "success" });
             router.push("/virtual-ip");
           } else {
-            showAlert({ message: `删除失败：${response.error || "未知错误"}`, variant: "error" });
+            showAlert({
+              message: `删除失败：${response.error || "未知错误"}`,
+              variant: "error",
+            });
           }
         } catch (error) {
           console.error("Error deleting virtual IP:", error);
@@ -222,7 +249,10 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
   };
 
   const removeTag = (tagToRemove: string) => {
-    setEditForm({ ...editForm, tags: editForm.tags.filter((tag) => tag !== tagToRemove) });
+    setEditForm({
+      ...editForm,
+      tags: editForm.tags.filter((tag) => tag !== tagToRemove),
+    });
   };
 
   // Voice options
@@ -232,7 +262,10 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
       if (!items) return;
       items.forEach((item) => {
         if (item?.voice_id) {
-          options.push({ value: item.voice_id, label: item.voice_name || item.voice_id });
+          options.push({
+            value: item.voice_id,
+            label: item.voice_name || item.voice_id,
+          });
         }
       });
     };
@@ -257,7 +290,10 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
       voiceTypeFilter !== "voice_generation"
     ) {
       voiceEnums.system_voices.forEach((item) => {
-        options.push({ value: item.value, label: item.label_zh || item.label_en || item.value });
+        options.push({
+          value: item.value,
+          label: item.label_zh || item.label_en || item.value,
+        });
       });
     }
     return options;
@@ -266,10 +302,15 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
   // Voice preview
   const handlePreviewVoice = async () => {
     const fallbackModel =
-      voiceSettings.model || voiceEnums?.defaults?.tts_model || voiceEnums?.tts_models?.[0]?.value;
+      voiceSettings.model ||
+      voiceEnums?.defaults?.tts_model ||
+      voiceEnums?.tts_models?.[0]?.value;
     const fallbackVoiceId =
-      voiceSettings.voice_id || voiceEnums?.defaults?.voice_id || voiceOptions[0]?.value;
-    const fallbackProvider = voiceSettings.provider || voiceEnums?.providers?.[0]?.value;
+      voiceSettings.voice_id ||
+      voiceEnums?.defaults?.voice_id ||
+      voiceOptions[0]?.value;
+    const fallbackProvider =
+      voiceSettings.provider || voiceEnums?.providers?.[0]?.value;
 
     if (!fallbackProvider) {
       showAlert({ message: "请先选择服务商", variant: "error" });
@@ -293,7 +334,9 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
       }));
     }
 
-    const text = voicePreviewText || `你好，我是${virtualIP?.name || "角色"}，很高兴认识你。`;
+    const text =
+      voicePreviewText ||
+      `你好，我是${virtualIP?.name || "角色"}，很高兴认识你。`;
     setPreviewLoading(true);
     try {
       const res = await voiceAPI.preview({
@@ -305,7 +348,8 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
       });
       if (res.success && res.data) {
         const audioUrl =
-          res.data.audio_url || (res.data.audio_hex ? hexToAudioUrl(res.data.audio_hex) : null);
+          res.data.audio_url ||
+          (res.data.audio_hex ? hexToAudioUrl(res.data.audio_hex) : null);
         if (audioUrl) {
           if (previewAudioUrl) {
             URL.revokeObjectURL(previewAudioUrl);
@@ -314,7 +358,10 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
         }
         showAlert({ message: "试听已生成", variant: "success" });
       } else {
-        showAlert({ message: `试听失败：${res.error || "未知错误"}`, variant: "error" });
+        showAlert({
+          message: `试听失败：${res.error || "未知错误"}`,
+          variant: "error",
+        });
       }
     } catch (error) {
       console.error("Preview failed", error);
@@ -357,13 +404,19 @@ export function useVirtualIPDetail({ ipKey, showAlert, router }: UseVirtualIPDet
     if (!voiceSettings.voice_id) {
       const first = voiceOptions[0];
       if (first) {
-        setVoiceSettings((prev) => ({ ...prev, voice_id: prev.voice_id || first.value }));
+        setVoiceSettings((prev) => ({
+          ...prev,
+          voice_id: prev.voice_id || first.value,
+        }));
       }
     }
   }, [voiceList, voiceTypeFilter, voiceSettings.voice_id, voiceOptions]);
 
   useEffect(() => {
-    if (voiceSettings.voice_type && voiceSettings.voice_type !== voiceTypeFilter) {
+    if (
+      voiceSettings.voice_type &&
+      voiceSettings.voice_type !== voiceTypeFilter
+    ) {
       setVoiceTypeFilter(voiceSettings.voice_type);
     }
   }, [voiceSettings.voice_type, voiceTypeFilter]);

@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 DIALOGUE_RE = re.compile(
     r"^([\u4e00-\u9fa5A-Z][\u4e00-\u9fa5A-Z\s]{0,20})[：:]\s*(.+)$"
 )
@@ -23,7 +22,9 @@ class PhraseRule:
 
 # “不可拍”/“不可直接拍摄”的常见表述（仅对非对白行做提示）
 UNFILMABLE_PHRASES: list[PhraseRule] = [
-    PhraseRule("他感到", "error", "改为可拍动作：低头、手抠衣角、呼吸急促、眼眶发红等。"),
+    PhraseRule(
+        "他感到", "error", "改为可拍动作：低头、手抠衣角、呼吸急促、眼眶发红等。"
+    ),
     PhraseRule("她感到", "error", "改为可拍动作：后退半步、手指发抖、强撑微笑等。"),
     PhraseRule("感到", "warn", "避免心理描写，改为镜头可见的动作/表情/环境变化。"),
     PhraseRule("觉得", "warn", "避免主观判断，改为镜头可见的动作/物理反馈。"),

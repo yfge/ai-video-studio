@@ -10,7 +10,6 @@ import asyncio
 from typing import Any, Dict, Optional
 
 import httpx
-
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -132,9 +131,7 @@ class MinimaxClient:
             MinimaxAPIError: If API returns error status code
         """
         client = await self.get_client()
-        response = await client.get(
-            self._build_url(path), params=params, **kwargs
-        )
+        response = await client.get(self._build_url(path), params=params, **kwargs)
         response.raise_for_status()
         body = response.json()
         self._raise_for_status(body)

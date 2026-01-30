@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import Link from "next/link"
+import Link from "next/link";
 
 interface EnvironmentDetailHeaderProps {
-  editing: boolean
-  saving: boolean
-  onEdit: () => void
-  onCancel: () => void
-  onSave: () => void
+  editing: boolean;
+  saving: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
 }
 
 export function EnvironmentDetailHeader({
@@ -22,8 +22,16 @@ export function EnvironmentDetailHeader({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 py-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center space-x-6">
-            <Link href="/environments" className="text-gray-500 hover:text-gray-900">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <Link
+              href="/environments"
+              className="text-gray-500 hover:text-gray-900"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -64,5 +72,5 @@ export function EnvironmentDetailHeader({
         </div>
       </div>
     </header>
-  )
+  );
 }

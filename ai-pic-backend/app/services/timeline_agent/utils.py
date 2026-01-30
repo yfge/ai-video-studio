@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from collections import Counter
 from typing import Any, Optional, Sequence
 
@@ -124,14 +123,22 @@ def build_dialogue_contexts(
                 index=idx,
                 speaker=str(dlg.get("character") or "旁白"),
                 content=str(dlg.get("content") or ""),
-                emotion=dlg.get("emotion") if isinstance(dlg.get("emotion"), str) else None,
-                action=dlg.get("action") if isinstance(dlg.get("action"), str) else None,
+                emotion=(
+                    dlg.get("emotion") if isinstance(dlg.get("emotion"), str) else None
+                ),
+                action=(
+                    dlg.get("action") if isinstance(dlg.get("action"), str) else None
+                ),
                 prev_emotion=prev_em if isinstance(prev_em, str) else None,
                 next_emotion=next_em if isinstance(next_em, str) else None,
                 is_first=idx == 0,
                 is_last=idx == n - 1,
-                estimated_duration_ms=int(estimated_duration_ms) if estimated_duration_ms else None,
-                actual_duration_ms=int(actual_duration_ms) if actual_duration_ms else None,
+                estimated_duration_ms=(
+                    int(estimated_duration_ms) if estimated_duration_ms else None
+                ),
+                actual_duration_ms=(
+                    int(actual_duration_ms) if actual_duration_ms else None
+                ),
             )
         )
 
@@ -161,9 +168,7 @@ def build_scene_context(
 
     # Extract characters from dialogues
     dialogue_characters = set(
-        str(d.get("character") or "").strip()
-        for d in dialogues
-        if d.get("character")
+        str(d.get("character") or "").strip() for d in dialogues if d.get("character")
     )
 
     # Merge with primary_characters if available
@@ -281,9 +286,7 @@ def calculate_fallback_timing(
 
     for ctx in dialogue_contexts:
         # Emotion transition factor
-        emotion_factor = get_emotion_transition_weight(
-            ctx.prev_emotion, ctx.emotion
-        )
+        emotion_factor = get_emotion_transition_weight(ctx.prev_emotion, ctx.emotion)
 
         # Calculate adjusted duration
         adjusted = int(base_gap * emotion_factor * pacing_factor * conflict_factor)
@@ -323,7 +326,7 @@ def calculate_rhythm_score(decisions: list[TimingDecision]) -> float:
 
     # Calculate coefficient of variation
     variance = sum((d - mean) ** 2 for d in durations) / len(durations)
-    std_dev = variance ** 0.5
+    std_dev = variance**0.5
     cv = std_dev / mean
 
     # Normalize: CV of 0.3-0.5 is ideal
@@ -363,12 +366,14 @@ def format_dialogue_for_prompt(contexts: list[DialogueContext]) -> str:
             meta_parts.append(duration_str)
 
         lines.append(
-            f"[{ctx.index + 1}] {ctx.speaker}: \"{ctx.content}\" {action_str}\n"
+            f'[{ctx.index + 1}] {ctx.speaker}: "{ctx.content}" {action_str}\n'
             + "\n".join(meta_parts)
         )
 
     # Add total dialogue duration summary if we have duration info
     if total_duration_ms > 0:
-        lines.append(f"\n**对白总时长**: {total_duration_ms}ms ({total_duration_ms / 1000:.1f}秒)")
+        lines.append(
+            f"\n**对白总时长**: {total_duration_ms}ms ({total_duration_ms / 1000:.1f}秒)"
+        )
 
     return "\n".join(filter(None, lines))

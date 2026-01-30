@@ -54,27 +54,52 @@ def compute_video_ui(
 
     # Apply provider-specific defaults
     if provider == "keling":
-        resolution_options, duration_options, supports_end_frame, \
-            supports_camera_control, supports_watermark = _apply_keling_defaults(
-                resolution_options, duration_options, supports_end_frame,
-                supports_camera_control
-            )
+        (
+            resolution_options,
+            duration_options,
+            supports_end_frame,
+            supports_camera_control,
+            supports_watermark,
+        ) = _apply_keling_defaults(
+            resolution_options,
+            duration_options,
+            supports_end_frame,
+            supports_camera_control,
+        )
 
     elif provider == "volcengine":
-        resolution_options, duration_options, supports_end_frame, \
-            supports_camera_control, supports_camera_fixed, supports_watermark = \
-            _apply_volcengine_defaults(
-                resolution_options, duration_options, supports_end_frame,
-                supports_camera_control, supports_camera_fixed, caps
-            )
+        (
+            resolution_options,
+            duration_options,
+            supports_end_frame,
+            supports_camera_control,
+            supports_camera_fixed,
+            supports_watermark,
+        ) = _apply_volcengine_defaults(
+            resolution_options,
+            duration_options,
+            supports_end_frame,
+            supports_camera_control,
+            supports_camera_fixed,
+            caps,
+        )
 
     elif provider == "minimax":
-        resolution_options, duration_options, supports_end_frame, \
-            supports_camera_control, supports_camera_fixed, supports_watermark = \
-            _apply_minimax_defaults(
-                resolution_options, duration_options, supports_end_frame,
-                supports_camera_control, supports_camera_fixed, caps
-            )
+        (
+            resolution_options,
+            duration_options,
+            supports_end_frame,
+            supports_camera_control,
+            supports_camera_fixed,
+            supports_watermark,
+        ) = _apply_minimax_defaults(
+            resolution_options,
+            duration_options,
+            supports_end_frame,
+            supports_camera_control,
+            supports_camera_fixed,
+            caps,
+        )
 
     # Normalize resolution casing
     resolution_options = [r.upper() for r in resolution_options]
@@ -112,8 +137,13 @@ def _apply_keling_defaults(
     supports_end_frame = True
     supports_camera_control = True
     supports_watermark = False
-    return resolution_options, duration_options, supports_end_frame, \
-        supports_camera_control, supports_watermark
+    return (
+        resolution_options,
+        duration_options,
+        supports_end_frame,
+        supports_camera_control,
+        supports_watermark,
+    )
 
 
 def _apply_volcengine_defaults(
@@ -133,8 +163,14 @@ def _apply_volcengine_defaults(
     supports_camera_control = supports_camera_control or supports_camera_fixed
     supports_watermark = True
     supports_end_frame = supports_end_frame or "image_to_video_start_end_frame" in caps
-    return resolution_options, duration_options, supports_end_frame, \
-        supports_camera_control, supports_camera_fixed, supports_watermark
+    return (
+        resolution_options,
+        duration_options,
+        supports_end_frame,
+        supports_camera_control,
+        supports_camera_fixed,
+        supports_watermark,
+    )
 
 
 def _apply_minimax_defaults(
@@ -147,17 +183,24 @@ def _apply_minimax_defaults(
 ) -> tuple:
     """Apply MiniMax provider defaults."""
     if not resolution_options:
-        resolution_options = [
-            cap.upper() for cap in caps if cap.endswith("p")
-        ] or ["720P", "1080P"]
+        resolution_options = [cap.upper() for cap in caps if cap.endswith("p")] or [
+            "720P",
+            "1080P",
+        ]
     if not duration_options:
         duration_options = [6, 10]
     supports_end_frame = supports_end_frame or "first_last_frame" in caps
     supports_camera_fixed = supports_camera_fixed or "camera_control" in caps
     supports_camera_control = supports_camera_control or "camera_control" in caps
     supports_watermark = True
-    return resolution_options, duration_options, supports_end_frame, \
-        supports_camera_control, supports_camera_fixed, supports_watermark
+    return (
+        resolution_options,
+        duration_options,
+        supports_end_frame,
+        supports_camera_control,
+        supports_camera_fixed,
+        supports_watermark,
+    )
 
 
 def compute_image_ui(

@@ -1,22 +1,22 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { virtualIPAPI } from '@/utils/api'
+import React, { useState } from "react";
+import { virtualIPAPI } from "@/utils/api";
 
 interface SmartInputFieldProps {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  placeholder: string
-  type?: 'input' | 'textarea'
-  rows?: number
-  aiSuggestType?: 'description' | 'background_story' | 'biography'
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: "input" | "textarea";
+  rows?: number;
+  aiSuggestType?: "description" | "background_story" | "biography";
   contextData?: {
-    name?: string
-    description?: string
-    basicInfo?: string
-  }
-  showAIAssist?: boolean
+    name?: string;
+    description?: string;
+    basicInfo?: string;
+  };
+  showAIAssist?: boolean;
 }
 
 export default function SmartInputField({
@@ -24,62 +24,62 @@ export default function SmartInputField({
   value,
   onChange,
   placeholder,
-  type = 'input',
+  type = "input",
   rows = 3,
   aiSuggestType,
   contextData,
-  showAIAssist = true
+  showAIAssist = true,
 }: SmartInputFieldProps) {
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [aiSuggestion, setAiSuggestion] = useState('')
-  const [showSuggestion, setShowSuggestion] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState("");
+  const [showSuggestion, setShowSuggestion] = useState(false);
 
   const handleAIAssist = async () => {
-    if (!contextData?.name?.trim() || !aiSuggestType) return
+    if (!contextData?.name?.trim() || !aiSuggestType) return;
 
-    setIsGenerating(true)
+    setIsGenerating(true);
     try {
-      const basicParts: string[] = []
+      const basicParts: string[] = [];
       if (contextData.basicInfo) {
-        basicParts.push(contextData.basicInfo)
+        basicParts.push(contextData.basicInfo);
       }
       if (contextData.description) {
-        basicParts.push(`角色描述：${contextData.description}`)
+        basicParts.push(`角色描述：${contextData.description}`);
       }
       if (value) {
-        basicParts.push(`${label}：${value}`)
+        basicParts.push(`${label}：${value}`);
       }
-      const basicInfo = basicParts.join('\n').trim() || undefined
+      const basicInfo = basicParts.join("\n").trim() || undefined;
 
       const response = await virtualIPAPI.generateAIContent({
         name: contextData.name,
         basic_info: basicInfo,
-        style_preference: '现代风格',
-        image_category: 'portrait'
-      })
+        style_preference: "现代风格",
+        image_category: "portrait",
+      });
 
       if (response.success && response.data) {
-        const suggestion = response.data[aiSuggestType]
-        setAiSuggestion(suggestion)
-        setShowSuggestion(true)
+        const suggestion = response.data[aiSuggestType];
+        setAiSuggestion(suggestion);
+        setShowSuggestion(true);
       }
     } catch (error) {
-      console.error('AI助手失败:', error)
+      console.error("AI助手失败:", error);
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
   const handleAcceptSuggestion = () => {
-    onChange(aiSuggestion)
-    setShowSuggestion(false)
-  }
+    onChange(aiSuggestion);
+    setShowSuggestion(false);
+  };
 
   const handleMergeSuggestion = () => {
-    const merged = value ? `${value}\n\n${aiSuggestion}` : aiSuggestion
-    onChange(merged)
-    setShowSuggestion(false)
-  }
+    const merged = value ? `${value}\n\n${aiSuggestion}` : aiSuggestion;
+    onChange(merged);
+    setShowSuggestion(false);
+  };
 
   return (
     <div className="space-y-2">
@@ -96,16 +96,41 @@ export default function SmartInputField({
           >
             {isGenerating ? (
               <>
-                <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin w-3 h-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 生成中...
               </>
             ) : (
               <>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                  />
                 </svg>
                 AI助手
               </>
@@ -114,7 +139,7 @@ export default function SmartInputField({
         )}
       </div>
 
-      {type === 'textarea' ? (
+      {type === "textarea" ? (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -137,18 +162,40 @@ export default function SmartInputField({
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                <svg
+                  className="w-3 h-3 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                  />
                 </svg>
               </div>
-              <span className="text-sm font-medium text-purple-800">AI建议</span>
+              <span className="text-sm font-medium text-purple-800">
+                AI建议
+              </span>
             </div>
             <button
               onClick={() => setShowSuggestion(false)}
               className="text-gray-400 hover:text-gray-600"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -182,5 +229,5 @@ export default function SmartInputField({
         </div>
       )}
     </div>
-  )
+  );
 }

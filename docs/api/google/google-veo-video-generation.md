@@ -16,40 +16,40 @@ Veo 3.1 represents Google's most advanced model for generating high-fidelity 8-s
 
 ### Current Model Versions
 
-| Model ID | Status | Input Types | Output | Text Limit |
-|----------|--------|-------------|--------|------------|
-| `veo-3.1-generate-preview` | Preview | Text, Images | Video with Audio | 1,024 tokens |
+| Model ID                        | Status  | Input Types  | Output           | Text Limit   |
+| ------------------------------- | ------- | ------------ | ---------------- | ------------ |
+| `veo-3.1-generate-preview`      | Preview | Text, Images | Video with Audio | 1,024 tokens |
 | `veo-3.1-fast-generate-preview` | Preview | Text, Images | Video with Audio | 1,024 tokens |
-| `veo-3.0-generate-001` | Stable | Text, Images | Video with Audio | 1,024 tokens |
-| `veo-3.0-fast-generate-001` | Stable | Text, Images | Video with Audio | 1,024 tokens |
-| `veo-2.0-generate-001` | Stable | Text, Images | Video | Variable |
+| `veo-3.0-generate-001`          | Stable  | Text, Images | Video with Audio | 1,024 tokens |
+| `veo-3.0-fast-generate-001`     | Stable  | Text, Images | Video with Audio | 1,024 tokens |
+| `veo-2.0-generate-001`          | Stable  | Text, Images | Video            | Variable     |
 
 ## Model Features Comparison
 
-| Feature | Veo 3.1 | Veo 3 | Veo 2 |
-|---------|---------|-------|-------|
-| **Audio** | Native generation | Native generation | Muted only |
-| **Input Types** | Text-to-video, Image-to-video, Video-to-video | Text-to-video, Image-to-video | Text-to-video, Image-to-video |
-| **Resolution** | 720p, 1080p (8s only) | 720p, 1080p (16:9 only) | 720p |
-| **Frame Rate** | 24 fps | 24 fps | 24 fps |
-| **Video Duration** | 4s, 6s, 8s | 8s | 5-8s |
-| **Videos Per Request** | 1 | 1 | 1 or 2 |
-| **Status** | Preview | Stable | Stable |
+| Feature                | Veo 3.1                                       | Veo 3                         | Veo 2                         |
+| ---------------------- | --------------------------------------------- | ----------------------------- | ----------------------------- |
+| **Audio**              | Native generation                             | Native generation             | Muted only                    |
+| **Input Types**        | Text-to-video, Image-to-video, Video-to-video | Text-to-video, Image-to-video | Text-to-video, Image-to-video |
+| **Resolution**         | 720p, 1080p (8s only)                         | 720p, 1080p (16:9 only)       | 720p                          |
+| **Frame Rate**         | 24 fps                                        | 24 fps                        | 24 fps                        |
+| **Video Duration**     | 4s, 6s, 8s                                    | 8s                            | 5-8s                          |
+| **Videos Per Request** | 1                                             | 1                             | 1 or 2                        |
+| **Status**             | Preview                                       | Stable                        | Stable                        |
 
 ## API Parameters Reference
 
-| Parameter | Description | Type | Veo 3.1 | Veo 3 | Veo 2 |
-|-----------|-------------|------|---------|-------|-------|
-| `prompt` | Text description of the video. Supports audio prompts. | string | Yes | Yes | Yes |
-| `negativePrompt` | Text describing what should NOT appear in the video. | string | Yes | Yes | Yes |
-| `image` | Initial image to animate. | Image object | Yes | Yes | Yes |
-| `lastFrame` | Final image for interpolation. Must pair with `image`. | Image object | Yes | Yes | Yes |
-| `referenceImages` | Up to 3 images for style/content guidance. | VideoGenerationReferenceImage[] | Yes (3.1 only) | No | No |
-| `video` | Video to extend. | Video object | Yes | No | No |
-| `aspectRatio` | Video aspect ratio: "16:9" (default) or "9:16" | string | Yes | Yes | Yes |
-| `resolution` | Output resolution: "720p" (default) or "1080p" | string | Yes | Yes | Limited |
-| `durationSeconds` | Video length: 4, 6, or 8 seconds | number | Yes | Yes | Yes |
-| `personGeneration` | Control person generation. Regional restrictions apply. | string | Limited | Limited | Limited |
+| Parameter          | Description                                             | Type                            | Veo 3.1        | Veo 3   | Veo 2   |
+| ------------------ | ------------------------------------------------------- | ------------------------------- | -------------- | ------- | ------- |
+| `prompt`           | Text description of the video. Supports audio prompts.  | string                          | Yes            | Yes     | Yes     |
+| `negativePrompt`   | Text describing what should NOT appear in the video.    | string                          | Yes            | Yes     | Yes     |
+| `image`            | Initial image to animate.                               | Image object                    | Yes            | Yes     | Yes     |
+| `lastFrame`        | Final image for interpolation. Must pair with `image`.  | Image object                    | Yes            | Yes     | Yes     |
+| `referenceImages`  | Up to 3 images for style/content guidance.              | VideoGenerationReferenceImage[] | Yes (3.1 only) | No      | No      |
+| `video`            | Video to extend.                                        | Video object                    | Yes            | No      | No      |
+| `aspectRatio`      | Video aspect ratio: "16:9" (default) or "9:16"          | string                          | Yes            | Yes     | Yes     |
+| `resolution`       | Output resolution: "720p" (default) or "1080p"          | string                          | Yes            | Yes     | Limited |
+| `durationSeconds`  | Video length: 4, 6, or 8 seconds                        | number                          | Yes            | Yes     | Yes     |
+| `personGeneration` | Control person generation. Regional restrictions apply. | string                          | Limited        | Limited | Limited |
 
 ## Code Examples
 
@@ -96,23 +96,23 @@ torchlight flickering. A man murmurs, 'This must be it. That's the secret code.'
 The woman looks at him and whispering excitedly, 'What did you find?'`;
 
 let operation = await ai.models.generateVideos({
-    model: "veo-3.1-generate-preview",
-    prompt: prompt,
+  model: "veo-3.1-generate-preview",
+  prompt: prompt,
 });
 
 // Poll the operation status until the video is ready.
 while (!operation.done) {
-    console.log("Waiting for video generation to complete...")
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-    operation = await ai.operations.getVideosOperation({
-        operation: operation,
-    });
+  console.log("Waiting for video generation to complete...");
+  await new Promise((resolve) => setTimeout(resolve, 10000));
+  operation = await ai.operations.getVideosOperation({
+    operation: operation,
+  });
 }
 
 // Download the generated video.
 ai.files.download({
-    file: operation.response.generatedVideos[0].video,
-    downloadPath: "dialogue_example.mp4",
+  file: operation.response.generatedVideos[0].video,
+  downloadPath: "dialogue_example.mp4",
 });
 console.log(`Generated video saved to dialogue_example.mp4`);
 ```
@@ -265,7 +265,7 @@ let operation = await ai.models.generateVideos({
 
 // Poll the operation status until the video is ready
 while (!operation.done) {
-  console.log("Waiting for video generation to complete...")
+  console.log("Waiting for video generation to complete...");
   await new Promise((resolve) => setTimeout(resolve, 10000));
   operation = await ai.operations.getVideosOperation({
     operation: operation,
@@ -274,8 +274,8 @@ while (!operation.done) {
 
 // Download the video
 ai.files.download({
-    file: operation.response.generatedVideos[0].video,
-    downloadPath: "veo3_with_image_input.mp4",
+  file: operation.response.generatedVideos[0].video,
+  downloadPath: "veo3_with_image_input.mp4",
 });
 console.log(`Generated video saved to veo3_with_image_input.mp4`);
 ```
@@ -469,7 +469,7 @@ let operation = await ai.models.generateVideos({
   prompt: "A cinematic shot of a majestic lion in the savannah.",
   config: {
     aspectRatio: "16:9",
-    negativePrompt: "cartoon, drawing, low quality"
+    negativePrompt: "cartoon, drawing, low quality",
   },
 });
 

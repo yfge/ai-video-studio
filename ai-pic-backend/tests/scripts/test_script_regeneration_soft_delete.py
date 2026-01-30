@@ -1,8 +1,13 @@
 import pytest
-
 from app.models.script import Script
 from app.models.task import Task, TaskStatus, TaskType
-from tests.factories import EpisodeFactory, ScriptFactory, StoryFactory, UserFactory, setup_factories
+from tests.factories import (
+    EpisodeFactory,
+    ScriptFactory,
+    StoryFactory,
+    UserFactory,
+    setup_factories,
+)
 
 
 def _patch_session_local(monkeypatch, session_factory):
@@ -65,4 +70,3 @@ def test_script_regeneration_creates_new_script_and_soft_deletes_old(
         assert meta.get("parent_script_business_id") == old_script.business_id
     finally:
         session.close()
-

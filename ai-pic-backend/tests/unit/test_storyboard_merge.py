@@ -1,6 +1,10 @@
 import uuid
 
-from app.api.v1.endpoints.scripts import _augment_frames, _merge_frames, _enforce_storyboard_variety
+from app.api.v1.endpoints.scripts import (
+    _augment_frames,
+    _enforce_storyboard_variety,
+    _merge_frames,
+)
 
 
 def test_merge_frames_preserves_other_scenes():

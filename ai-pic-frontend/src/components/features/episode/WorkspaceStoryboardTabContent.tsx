@@ -12,7 +12,10 @@ interface WorkspaceStoryboardTabContentProps {
   selectedScript: Script | null;
   onSelectScript: (id: number | null) => void;
   hasStoryboard: boolean;
-  showAlert: (options: { message: string; variant: "info" | "success" | "warning" | "error" }) => void;
+  showAlert: (options: {
+    message: string;
+    variant: "info" | "success" | "warning" | "error";
+  }) => void;
 }
 
 // Note: selectedScript and onSelectScript are included for future script selector feature
@@ -22,7 +25,10 @@ const formatMs = (ms: number): string => {
   const totalSeconds = Math.floor(safe / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0",
+  )}`;
 };
 
 export function WorkspaceStoryboardTabContent({
@@ -70,7 +76,9 @@ export function WorkspaceStoryboardTabContent({
       }
     };
     loadStoryboard();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedScriptId]);
 
   const handleOpenFullEditor = useCallback(() => {
@@ -79,7 +87,9 @@ export function WorkspaceStoryboardTabContent({
       params.set("scriptId", String(selectedScriptId));
     }
     const suffix = params.toString();
-    router.push(`/episodes/${episodeKey}/storyboard${suffix ? `?${suffix}` : ""}`);
+    router.push(
+      `/episodes/${episodeKey}/storyboard${suffix ? `?${suffix}` : ""}`,
+    );
   }, [router, episodeKey, selectedScriptId]);
 
   const handleToggleFrame = useCallback((index: number) => {
@@ -113,7 +123,10 @@ export function WorkspaceStoryboardTabContent({
         count: 1,
       });
       if (res.success) {
-        showAlert({ message: `已开始为 ${frameIndices.length} 个分镜帧生成图像`, variant: "info" });
+        showAlert({
+          message: `已开始为 ${frameIndices.length} 个分镜帧生成图像`,
+          variant: "info",
+        });
         // Refresh storyboard after a delay
         setTimeout(async () => {
           const refreshRes = await scriptAPI.getStoryboard(selectedScriptId);
@@ -122,7 +135,10 @@ export function WorkspaceStoryboardTabContent({
           }
         }, 2000);
       } else {
-        showAlert({ message: `生成图像失败：${res.error || "未知错误"}`, variant: "error" });
+        showAlert({
+          message: `生成图像失败：${res.error || "未知错误"}`,
+          variant: "error",
+        });
       }
     } catch (err) {
       console.error("Failed to generate images:", err);
@@ -137,7 +153,9 @@ export function WorkspaceStoryboardTabContent({
     return (
       <div className="bg-white rounded-lg shadow p-8 text-center">
         <h3 className="text-lg font-medium text-gray-900 mb-2">暂无剧本</h3>
-        <p className="text-gray-500 mb-4">请先生成剧本和时间轴，然后才能管理分镜</p>
+        <p className="text-gray-500 mb-4">
+          请先生成剧本和时间轴，然后才能管理分镜
+        </p>
       </div>
     );
   }
@@ -158,8 +176,12 @@ export function WorkspaceStoryboardTabContent({
   }
 
   const frames = storyboard?.frames || [];
-  const framesWithImages = frames.filter((f) => f.start_image_url || f.image_url);
-  const framesWithoutImages = frames.filter((f) => !f.start_image_url && !f.image_url);
+  const framesWithImages = frames.filter(
+    (f) => f.start_image_url || f.image_url,
+  );
+  const framesWithoutImages = frames.filter(
+    (f) => !f.start_image_url && !f.image_url,
+  );
 
   return (
     <div className="space-y-4">
@@ -169,13 +191,16 @@ export function WorkspaceStoryboardTabContent({
           <div>
             <h3 className="text-lg font-medium text-gray-900">分镜帧</h3>
             <p className="text-sm text-gray-500">
-              共 {frames.length} 帧 · {framesWithImages.length} 帧有图像 · {framesWithoutImages.length} 帧待生成
+              共 {frames.length} 帧 · {framesWithImages.length} 帧有图像 ·{" "}
+              {framesWithoutImages.length} 帧待生成
             </p>
           </div>
           <div className="flex items-center gap-2">
             {selectedFrames.size > 0 && (
               <>
-                <span className="text-sm text-gray-500">已选 {selectedFrames.size} 帧</span>
+                <span className="text-sm text-gray-500">
+                  已选 {selectedFrames.size} 帧
+                </span>
                 <button
                   onClick={handleGenerateImages}
                   disabled={generatingImages}
@@ -218,9 +243,7 @@ export function WorkspaceStoryboardTabContent({
 
       {/* Error state */}
       {error && (
-        <div className="bg-red-50 rounded-lg p-4 text-red-700">
-          {error}
-        </div>
+        <div className="bg-red-50 rounded-lg p-4 text-red-700">{error}</div>
       )}
 
       {/* Frame grid */}
@@ -271,16 +294,36 @@ function FrameCard({ frame, index, selected, onToggle }: FrameCardProps) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <svg
+              className="w-12 h-12"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
             </svg>
           </div>
         )}
         {/* Selection indicator */}
         {selected && (
           <div className="absolute top-2 right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
         )}
@@ -301,7 +344,9 @@ function FrameCard({ frame, index, selected, onToggle }: FrameCardProps) {
           {formatMs(startMs)} - {formatMs(endMs)}
         </div>
         {frame.description && (
-          <p className="text-xs text-gray-700 mt-1 line-clamp-2">{frame.description}</p>
+          <p className="text-xs text-gray-700 mt-1 line-clamp-2">
+            {frame.description}
+          </p>
         )}
       </div>
     </div>

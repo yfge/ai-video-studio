@@ -50,4 +50,3 @@ summary: "Fix Google Veo image-to-video requests by using the correct base64 ima
 ## Linked Commits
 
 - (pending) `fix(backend): correct veo image input payload`
-

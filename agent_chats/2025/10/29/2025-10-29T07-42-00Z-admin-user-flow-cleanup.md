@@ -12,23 +12,29 @@ summary: "Simplified admin user hooks and aligned details modal with alert modal
 ---
 
 ## User Prompt
+
 检查tasks.md 规划下一步的工作；及时提交现有更改，保持最小原子提交。
 
 ## Goals
+
 - Remove unused approval helpers and ensure admin effects use stable callbacks.
 - Align user details modal with the new `AlertModalProvider` confirm patterns.
 - Clean up admin layout imports after refactoring approval workflow.
 
 ## Changes
+
 - Converted user list loaders to `useCallback` and dropped unused approval handler state.
 - Updated `UserDetailsModal` to memoize audit log fetches and work with alert-based confirmations.
 - Removed stale imports from `AdminLayout` after role/approval cleanups.
 
 ## Validation
+
 - npm run lint
 
 ## Next Steps
+
 - Explore consolidating admin modal types with the shared API interfaces to avoid duplicate shapes.
 
 ## Linked Commits
+
 N/A

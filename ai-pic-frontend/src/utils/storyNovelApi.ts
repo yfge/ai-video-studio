@@ -30,10 +30,13 @@ export async function generateStoryZhihuNovelAsync(
   payload: StoryNovelExportRequest,
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   const encoded = encodeURIComponent(storyBusinessId);
-  return apiClient.makeRequest(`/api/v1/stories/business/${encoded}/novel/generate-async`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return apiClient.makeRequest(
+    `/api/v1/stories/business/${encoded}/novel/generate-async`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function listStoryNovelExports(
@@ -48,7 +51,9 @@ export async function listStoryNovelExports(
   );
 }
 
-const parseContentDispositionFilename = (value: string | null): string | null => {
+const parseContentDispositionFilename = (
+  value: string | null,
+): string | null => {
   if (!value) return null;
   const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(value);
   if (utf8Match?.[1]) {
@@ -69,7 +74,8 @@ export async function downloadStoryNovel(taskId: number): Promise<{
   const url = `${API_BASE_URL}/api/v1/stories/novel/tasks/${taskId}/download`;
   let token: string | null = null;
   try {
-    token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
   } catch {
     token = null;
   }
@@ -80,7 +86,9 @@ export async function downloadStoryNovel(taskId: number): Promise<{
   if (!resp.ok) {
     try {
       const data = (await resp.json()) as { detail?: string; message?: string };
-      throw new Error(data.detail || data.message || `下载失败: ${resp.status}`);
+      throw new Error(
+        data.detail || data.message || `下载失败: ${resp.status}`,
+      );
     } catch (e) {
       if (e instanceof Error) throw e;
       throw new Error(`下载失败: ${resp.status}`);
@@ -100,7 +108,8 @@ export async function fetchStoryNovelText(taskId: number): Promise<{
   const url = `${API_BASE_URL}/api/v1/stories/novel/tasks/${taskId}/download`;
   let token: string | null = null;
   try {
-    token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
   } catch {
     token = null;
   }
@@ -111,7 +120,9 @@ export async function fetchStoryNovelText(taskId: number): Promise<{
   if (!resp.ok) {
     try {
       const data = (await resp.json()) as { detail?: string; message?: string };
-      throw new Error(data.detail || data.message || `请求失败: ${resp.status}`);
+      throw new Error(
+        data.detail || data.message || `请求失败: ${resp.status}`,
+      );
     } catch (e) {
       if (e instanceof Error) throw e;
       throw new Error(`请求失败: ${resp.status}`);

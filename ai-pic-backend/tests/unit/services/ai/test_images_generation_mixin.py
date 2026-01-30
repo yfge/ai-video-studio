@@ -145,7 +145,9 @@ async def test_virtual_ip_text_to_image_ai_manager_passes_reference_images(monke
     backend_base = (
         getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
     ).rstrip("/")
-    assert manager.last_kwargs["reference_images"] == [f"{backend_base}/uploads/ref.png"]
+    assert manager.last_kwargs["reference_images"] == [
+        f"{backend_base}/uploads/ref.png"
+    ]
 
     assert result is not None
     assert result["provider_used"] == "google"

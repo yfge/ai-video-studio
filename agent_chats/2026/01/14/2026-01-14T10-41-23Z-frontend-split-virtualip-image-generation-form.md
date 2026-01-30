@@ -39,4 +39,3 @@ summary: "Refactor virtual IP text-to-image form into smaller components to stay
 ## Linked Commits
 
 - (pending)
-

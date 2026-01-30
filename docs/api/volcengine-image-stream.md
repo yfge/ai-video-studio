@@ -3,19 +3,19 @@
 
 **不同模型支持的图片生成能力简介**
 
-* **doubao\-seedream\-4.5==^new^==** **、doubao\-seedream\-4.0**
-   * 生成组图（组图：基于您输入的内容，生成的一组内容关联的图片；需配置 **sequential_image_generation ** 为`auto` **）** 
-      * 多图生组图，根据您输入的 **++多张参考图片（2\-14）++ **  +++文本提示词++ 生成一组内容关联的图片（输入的参考图数量+最终生成的图片数量≤15张）。
-      * 单图生组图，根据您输入的 ++单张参考图片+文本提示词++ 生成一组内容关联的图片（最多生成14张图片）。
-      * 文生组图，根据您输入的 ++文本提示词++ 生成一组内容关联的图片（最多生成15张图片）。
-   * 生成单图（配置 **sequential_image_generation ** 为`disabled` **）** 
-      * 多图生图，根据您输入的 **++多张参考图片（2\-14）++ **  +++文本提示词++ 生成单张图片。
-      * 单图生图，根据您输入的 ++单张参考图片+文本提示词++ 生成单张图片。
-      * 文生图，根据您输入的 ++文本提示词++ 生成单张图片。
-* **doubao\-seedream\-3.0\-t2i**
-   * 文生图，根据您输入的 ++文本提示词++ 生成单张图片。
-* **doubao\-seededit\-** **3.0** **\-i2i**
-   * 图生图，根据您输入的 ++单张参考图片+文本提示词++ 生成单张图片。
+- **doubao\-seedream\-4.5==^new^==** **、doubao\-seedream\-4.0**
+  - 生成组图（组图：基于您输入的内容，生成的一组内容关联的图片；需配置 **sequential_image_generation ** 为`auto` **）**
+    - 多图生组图，根据您输入的 **++多张参考图片（2\-14）++ ** +++文本提示词++ 生成一组内容关联的图片（输入的参考图数量+最终生成的图片数量≤15张）。
+    - 单图生组图，根据您输入的 ++单张参考图片+文本提示词++ 生成一组内容关联的图片（最多生成14张图片）。
+    - 文生组图，根据您输入的 ++文本提示词++ 生成一组内容关联的图片（最多生成15张图片）。
+  - 生成单图（配置 **sequential_image_generation ** 为`disabled` **）**
+    - 多图生图，根据您输入的 **++多张参考图片（2\-14）++ ** +++文本提示词++ 生成单张图片。
+    - 单图生图，根据您输入的 ++单张参考图片+文本提示词++ 生成单张图片。
+    - 文生图，根据您输入的 ++文本提示词++ 生成单张图片。
+- **doubao\-seedream\-3.0\-t2i**
+  - 文生图，根据您输入的 ++文本提示词++ 生成单张图片。
+- **doubao\-seededit\-** **3.0** **\-i2i**
+  - 图生图，根据您输入的 ++单张参考图片+文本提示词++ 生成单张图片。
 
 &nbsp;
 
@@ -28,23 +28,22 @@ return (<Tabs>
 `}></RenderMd></Tabs.TabPane></Tabs>);
 ```
 
-
 ---
 
-
 <span id="7thx2dVa"></span>
-## 请求参数 
+
+## 请求参数
+
 <span id="BFVUvDi6"></span>
+
 ### 请求体
 
 ---
-
 
 **model** `string` %%require%%
 本次请求使用模型的 [Model ID](https://www.volcengine.com/docs/82379/1513689) 或[推理接入点](https://www.volcengine.com/docs/82379/1099522) (Endpoint ID)。
 
 ---
-
 
 **prompt ** `string` %%require%%
 用于生成图像的提示词，支持中英文。（查看提示词指南：[Seedream 4.0](https://www.volcengine.com/docs/82379/1829186) 、[Seedream 3.0](https://www.volcengine.com/docs/82379/1795150)）
@@ -52,33 +51,30 @@ return (<Tabs>
 
 ---
 
+**image** `string/array`
 
-**image** `string/array` 
 > doubao\-seededit\-3.0\-t2i 不支持该参数
 
 输入的图片信息，支持 URL 或 Base64 编码。其中，doubao\-seedream\-4.5、doubao\-seedream\-4.0 支持单图或多图输入（[查看多图融合示例](https://www.volcengine.com/docs/82379/1824121#%E5%A4%9A%E5%9B%BE%E8%9E%8D%E5%90%88%EF%BC%88%E5%A4%9A%E5%9B%BE%E8%BE%93%E5%85%A5%E5%8D%95%E5%9B%BE%E8%BE%93%E5%87%BA%EF%BC%89)），doubao\-seededit\-3.0\-i2i 仅支持单图输入。
 
-* 图片URL：请确保图片URL可被访问。
-* Base64编码：请遵循此格式`data:image/<图片格式>;base64,<Base64编码>`。注意 `<图片格式>` 需小写，如 `data:image/png;base64,<base64_image>`。
+- 图片URL：请确保图片URL可被访问。
+- Base64编码：请遵循此格式`data:image/<图片格式>;base64,<Base64编码>`。注意 `<图片格式>` 需小写，如 `data:image/png;base64,<base64_image>`。
 
 :::tip
 
-* 传入图片需要满足以下条件：
-   * 图片格式：jpeg、png（doubao\-seedream\-4.5、doubao\-seedream\-4.0 模型新增支持 webp、bmp、tiff、gif 格式**==^new^==**）
-   * 宽高比（宽/高）范围：
-      * [1/16, 16] (适用模型：doubao\-seedream\-4.5、doubao\-seedream\-4.0）
-      * [1/3, 3] (适用模型：doubao\-seededit\-3.0\-t2i、doubao\-seededit\-3.0\-i2i）
-   * 宽高长度（px） \> 14
-   * 大小：不超过 10MB
-   * 总像素：不超过 `6000×6000` px
-* doubao\-seedream\-4.5、doubao\-seedream\-4.0 最多支持传入 14 张参考图。
+- 传入图片需要满足以下条件：
+  - 图片格式：jpeg、png（doubao\-seedream\-4.5、doubao\-seedream\-4.0 模型新增支持 webp、bmp、tiff、gif 格式**==^new^==**）
+  - 宽高比（宽/高）范围：
+    - [1/16, 16] (适用模型：doubao\-seedream\-4.5、doubao\-seedream\-4.0）
+    - [1/3, 3] (适用模型：doubao\-seededit\-3.0\-t2i、doubao\-seededit\-3.0\-i2i）
+  - 宽高长度（px） \> 14
+  - 大小：不超过 10MB
+  - 总像素：不超过 `6000×6000` px
+- doubao\-seedream\-4.5、doubao\-seedream\-4.0 最多支持传入 14 张参考图。
 
+## :::
 
-:::
----
-
-
-**size **  `string` 
+**size ** `string`
 
 ```mixin-react
 return (<Tabs>
@@ -88,7 +84,7 @@ return (<Tabs>
    * 可选值：\`2K\`、\`4K\`
 * 方式 2 | 指定生成图像的宽高像素值：
    * 默认值：\`2048x2048\`
-   * 总像素取值范围：[\`2560x1440=3686400\`, \`4096x4096=16777216\`] 
+   * 总像素取值范围：[\`2560x1440=3686400\`, \`4096x4096=16777216\`]
    * 宽高比取值范围：[1/16, 16]
 
 :::tip
@@ -122,7 +118,7 @@ return (<Tabs>
    * 可选值：\`1K\`、\`2K\`、\`4K\`
 * 方式 2 | 指定生成图像的宽高像素值：
    * 默认值：\`2048x2048\`
-   * 总像素取值范围：[\`1280x720=921600\`, \`4096x4096=16777216\`] 
+   * 总像素取值范围：[\`1280x720=921600\`, \`4096x4096=16777216\`]
    * 宽高比取值范围：[1/16, 16]
 
 :::tip
@@ -153,7 +149,7 @@ return (<Tabs>
 <Tabs.TabPane title="doubao-seedream-3.0-t2i" key="MKsftGMr"><RenderMd content={`指定生成图像的宽高像素值。
 
 * 默认值：\`1024x1024\`
-* 总像素取值范围： [\`512x512\`, \`2048x2048\`] 
+* 总像素取值范围： [\`512x512\`, \`2048x2048\`]
 
 推荐的宽高像素值：
 
@@ -169,7 +165,7 @@ return (<Tabs>
 |21:9 |\`1512x648\` |
 
 `}></RenderMd></Tabs.TabPane>
-<Tabs.TabPane title="doubao-seededit-3.0-i2i" key="dUuqsxPhNL"><RenderMd content={`指定生成图像的宽高像素值。**当前仅支持 adaptive。** 
+<Tabs.TabPane title="doubao-seededit-3.0-i2i" key="dUuqsxPhNL"><RenderMd content={`指定生成图像的宽高像素值。**当前仅支持 adaptive。**
 
 * adaptive。将您的输入图片尺寸与下表中的尺寸进行对比，选择最接近的，作为输出图片的尺寸。具体而言，会按顺序从可选比例中，选取与原图宽高比**差值最小**的**第一个**，作为生成图片的比例。
 * 预设的高宽像素
@@ -234,25 +230,22 @@ return (<Tabs>
 `}></RenderMd></Tabs.TabPane></Tabs>);
 ```
 
-
 ---
 
+**seed** `integer` `默认值 -1`
 
-**seed** `integer`  `默认值 -1`
 > 仅 doubao\-seedream\-3.0\-t2i、doubao\-seededit\-3.0\-i2i 支持该参数
 
 随机数种子，用于控制模型生成内容的随机性。取值范围为 [\-1, 2147483647]。
 :::warning
 
-* 相同的请求下，模型收到不同的seed值，如：不指定seed值或令seed取值为\-1（会使用随机数替代）、或手动变更seed值，将生成不同的结果。
-* 相同的请求下，模型收到相同的seed值，会生成类似的结果，但不保证完全一致。
+- 相同的请求下，模型收到不同的seed值，如：不指定seed值或令seed取值为\-1（会使用随机数替代）、或手动变更seed值，将生成不同的结果。
+- 相同的请求下，模型收到相同的seed值，会生成类似的结果，但不保证完全一致。
 
-
-:::
----
-
+## :::
 
 **sequential_image_generation** `string` `默认值 disabled`
+
 > 仅 doubao\-seedream\-4.5、doubao\-seedream\-4.0 支持该参数 | [查看组图输出示例](https://www.volcengine.com/docs/82379/1824121?lang=zh#%E7%BB%84%E5%9B%BE%E8%BE%93%E5%87%BA%EF%BC%88%E5%A4%9A%E5%9B%BE%E8%BE%93%E5%87%BA%EF%BC%89)
 
 控制是否关闭组图功能。
@@ -260,14 +253,14 @@ return (<Tabs>
 组图：基于您输入的内容，生成的一组内容关联的图片。
 
 :::
-* `auto`：自动判断模式，模型会根据用户提供的提示词自主判断是否返回组图以及组图包含的图片数量。
-* `disabled`：关闭组图功能，模型只会生成一张图。
 
+- `auto`：自动判断模式，模型会根据用户提供的提示词自主判断是否返回组图以及组图包含的图片数量。
+- `disabled`：关闭组图功能，模型只会生成一张图。
 
 ---
 
-
 **sequential_image_generation_options ** `object`
+
 > 仅 doubao\-seedream\-4.5、doubao\-seedream\-4.0 支持该参数
 
 组图功能的配置。仅当 **sequential_image_generation ** 为 `auto` 时生效。
@@ -276,11 +269,10 @@ return (<Tabs>
 
 ---
 
-
-sequential_image_generation_options.**max_images **  ** ** `integer` `默认值 15`
+sequential_image_generation_options.**max_images ** \*\* \*\* `integer` `默认值 15`
 指定本次请求，最多可生成的图片数量。
 
-* 取值范围： [1, 15]
+- 取值范围： [1, 15]
 
 :::tip
 实际可生成的图片数量，除受到 **max_images ** 影响外 **，** 还受到输入的参考图数量影响。**输入的参考图数量+最终生成的图片数量≤15张**。
@@ -289,20 +281,19 @@ sequential_image_generation_options.**max_images **  ** ** `integer` `默认值 
 
 ---
 
+**stream** `Boolean` `默认值 false`
 
-**stream**  `Boolean` `默认值 false`
 > 仅 doubao\-seedream\-4.5、doubao\-seedream\-4.0 支持该参数 | [查看流式输出示例](https://www.volcengine.com/docs/82379/1824121#%E6%B5%81%E5%BC%8F%E8%BE%93%E5%87%BA)
 
 控制是否开启流式输出模式。
 
-* `false`：非流式输出模式，等待所有图片全部生成结束后再一次性返回所有信息。
-* `true`：流式输出模式，即时返回每张图片输出的结果。在生成单图和组图的场景下，流式输出模式均生效。
-
+- `false`：非流式输出模式，等待所有图片全部生成结束后再一次性返回所有信息。
+- `true`：流式输出模式，即时返回每张图片输出的结果。在生成单图和组图的场景下，流式输出模式均生效。
 
 ---
 
+**guidance_scale ** `Float`
 
-**guidance_scale **  `Float` 
 > doubao\-seedream\-3.0\-t2i 默认值 2.5
 > doubao\-seededit\-3.0\-i2i 默认值 5.5
 > doubao\-seedream\-4.5、doubao\-seedream\-4.0 不支持
@@ -312,77 +303,72 @@ sequential_image_generation_options.**max_images **  ** ** `integer` `默认值 
 
 ---
 
-
 **response_format** `string` `默认值 url`
 指定生成图像的返回格式。
 生成的图片为 jpeg 格式，支持以下两种返回方式：
 
-* `url`：返回图片下载链接；**链接在图片生成后24小时内有效，请及时下载图片。** 
-* `b64_json`：以 Base64 编码字符串的 JSON 格式返回图像数据。
-
+- `url`：返回图片下载链接；**链接在图片生成后24小时内有效，请及时下载图片。**
+- `b64_json`：以 Base64 编码字符串的 JSON 格式返回图像数据。
 
 ---
 
-
-**watermark**  `Boolean` `默认值 true`
+**watermark** `Boolean` `默认值 true`
 是否在生成的图片中添加水印。
 
-* `false`：不添加水印。
-* `true`：在图片右下角添加“AI生成”字样的水印标识。
-
+- `false`：不添加水印。
+- `true`：在图片右下角添加“AI生成”字样的水印标识。
 
 ---
 
+**optimize_prompt_options==^new^==** \*\* \*\* `object`
 
-**optimize_prompt_options==^new^==** ** ** `object` 
 > 仅 doubao\-seedream\-4.5（当前仅支持 `standard` 模式）、doubao\-seedream\-4.0 支持该参数
 
 提示词优化功能的配置。
 
 属性
-optimize_prompt_options.**mode ** `string`  `默认值 standard`
+optimize_prompt_options.**mode ** `string` `默认值 standard`
 设置提示词优化功能使用的模式。
 
-* `standard`：标准模式，生成内容的质量更高，耗时较长。
-* `fast`：快速模式，生成内容的耗时更短，质量一般。
-
+- `standard`：标准模式，生成内容的质量更高，耗时较长。
+- `fast`：快速模式，生成内容的耗时更短，质量一般。
 
 ---
-
 
 &nbsp;
 <span id="7P96iLnc"></span>
+
 ## 响应参数
+
 <span id="Hrya4y9k"></span>
+
 ### 流式响应参数
+
 请参见[文档](https://www.volcengine.com/docs/82379/1824137?lang=zh)。
 &nbsp;
 <span id="1AxnwQZN"></span>
+
 ### 非流式响应参数
 
 ---
-
 
 **model** `string`
 本次请求使用的模型 ID （`模型名称-版本`）。
 
 ---
 
-
 **created** `integer`
 本次请求创建时间的 Unix 时间戳（秒）。
 
 ---
-
 
 **data** `array`
 输出图像的信息。
 :::tip
 doubao\-seedream\-4.5、doubao\-seedream\-4.0 模型生成组图场景下，组图生成过程中某张图生成失败时：
 
-* 若失败原因为审核不通过：仍会继续请求下一个图片生成任务，即不影响同请求内其他图片的生成流程。
-* 若失败原因为内部服务异常（500）：不会继续请求下一个图片生成任务。
-
+- 若失败原因为审核不通过：仍会继续请求下一个图片生成任务，即不影响同请求内其他图片的生成流程。
+- 若失败原因为内部服务异常（500）：不会继续请求下一个图片生成任务。
 
 :::
 可能类型
@@ -395,21 +381,18 @@ data.**url ** `string`
 
 ---
 
-
 data.**b64_json** `string`
 图片的 base64 信息，当 **response_format ** 指定为 `b64_json` 时返回。
 
 ---
 
-
 data.**size** `string`
+
 > 仅 doubao\-seedream\-4.5、doubao\-seedream\-4.0 支持该字段。
 
 图像的宽高像素值，格式 `<宽像素>x<高像素>`，如`2048×2048`。
 
-
 ---
-
 
 错误信息 `object`
 某张图片生成失败，错误信息。
@@ -422,21 +405,15 @@ data.**error** `object`
 
 ---
 
-
 data.error.**code**
 某张图片生成错误的错误码，请参见[错误码](https://www.volcengine.com/docs/82379/1299023)。
 
 ---
 
-
 data.error.**message**
 某张图片生成错误的提示信息。
 
-
-
-
 ---
-
 
 **usage** `object`
 本次请求的用量信息。
@@ -445,13 +422,11 @@ data.error.**message**
 
 ---
 
-
 usage.**generated_images ** `integer`
 模型成功生成的图片张数，不包含生成失败的图片。
 仅对成功生成图片按张数进行计费。
 
 ---
-
 
 usage.**output_tokens** `integer`
 模型生成的图片花费的 token 数量。
@@ -459,28 +434,23 @@ usage.**output_tokens** `integer`
 
 ---
 
-
 usage.**total_tokens** `integer`
 本次请求消耗的总 token 数量。
 当前不计算输入 token，故与 **output_tokens** 值一致。
 
-**error**  `object`
-本次请求，如发生错误，对应的错误信息。 
+**error** `object`
+本次请求，如发生错误，对应的错误信息。
 
 属性
 
 ---
 
-
-error.**code** `string` 
+error.**code** `string`
 请参见[错误码](https://www.volcengine.com/docs/82379/1299023)。
 
 ---
-
 
 error.**message** `string`
 错误提示信息
 
 &nbsp;
-
-

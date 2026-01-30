@@ -2,22 +2,20 @@
 Tests for centralized exception hierarchy.
 """
 
-import pytest
-
 from app.core.exceptions import (
-    DomainError,
-    NotFoundError,
-    ValidationError,
-    MissingFieldError,
-    InvalidFormatError,
-    DuplicateError,
-    UnauthorizedError,
-    ForbiddenError,
-    ConflictError,
-    ServiceError,
-    GenerationFailedError,
     ConfigurationError,
+    ConflictError,
+    DomainError,
+    DuplicateError,
     ExternalServiceError,
+    ForbiddenError,
+    GenerationFailedError,
+    InvalidFormatError,
+    MissingFieldError,
+    NotFoundError,
+    ServiceError,
+    UnauthorizedError,
+    ValidationError,
 )
 
 
@@ -206,9 +204,7 @@ class TestExceptionToDict:
 
     def test_exception_with_rich_context(self):
         error = GenerationFailedError(
-            "图像",
-            "API错误",
-            context={"provider": "openai", "attempt": 3}
+            "图像", "API错误", context={"provider": "openai", "attempt": 3}
         )
         result = error.to_dict()
         assert result["context"]["provider"] == "openai"

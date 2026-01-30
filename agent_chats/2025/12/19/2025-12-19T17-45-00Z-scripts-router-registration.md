@@ -39,11 +39,13 @@ Continue with refactoring plan Phase 1, Task 1.1.8: Update Router Registration.
 ## Strategy
 
 The refactoring follows a phased approach:
+
 1. Phase 1: Create new services and routers (completed)
 2. Phase 2: Gradually migrate endpoints from legacy to new routers
 3. Phase 3: Remove legacy file once all endpoints migrated
 
 This ensures:
+
 - Zero downtime during refactoring
 - All existing functionality preserved
 - Clear migration path for remaining endpoints

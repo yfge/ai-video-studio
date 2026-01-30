@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-
 from app.services.story_structure.environment_image_generation import (
     generate_environment_images,
 )
@@ -46,7 +45,9 @@ async def test_generate_environment_images_passes_txt2img_reference_images(monke
     async def _fake_persist_environment_images(**_kwargs):  # type: ignore[no-untyped-def]
         return ["/ai-generated/environments/image/saved.png"]
 
-    monkeypatch.setattr(module, "persist_environment_images", _fake_persist_environment_images)
+    monkeypatch.setattr(
+        module, "persist_environment_images", _fake_persist_environment_images
+    )
 
     ai_manager = _DummyAIManager()
     ai_service = SimpleNamespace(ai_manager=ai_manager)
@@ -91,4 +92,3 @@ async def test_generate_environment_images_passes_txt2img_reference_images(monke
     assert ai_manager.last_kwargs["reference_images"] == [
         "http://backend.local/ai-generated/environments/image/example.png"
     ]
-

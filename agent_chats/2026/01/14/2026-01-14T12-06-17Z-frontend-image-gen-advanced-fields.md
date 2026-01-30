@@ -41,4 +41,3 @@ summary: "Add shared provider-aware advanced parameter fields for image generati
 ## Linked Commits
 
 - N/A (pending)
-

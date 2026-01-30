@@ -46,6 +46,7 @@ Episode assembly node that merges all committed scenes:
 Final validation node that verifies episode total duration:
 
 - **`final_validation_node()`**:
+
   - Calculates duration ratio (actual / target)
   - Uses `DURATION_TOLERANCE_EPISODE_LOW` (0.90) and `DURATION_TOLERANCE_EPISODE_HIGH` (1.10) for ±10% tolerance
   - Determines pass/fail based on whether ratio is within tolerance range
@@ -59,6 +60,7 @@ Final validation node that verifies episode total duration:
 ### 3. Updated `app/services/duration_orchestrator/nodes/__init__.py`
 
 Added exports for new nodes:
+
 - `assemble_episode_node`
 - `final_validation_node`
 - `should_pass_or_fail`
@@ -125,6 +127,7 @@ tests/unit/services/duration_orchestrator/test_final_validation.py: 15 passed
 ```
 
 Import verification:
+
 ```python
 from app.services.duration_orchestrator.nodes import (
     assemble_episode_node,
@@ -136,6 +139,7 @@ from app.services.duration_orchestrator.nodes import (
 ## Next Steps
 
 1. **Phase 6**: API Endpoints
+
    - Create `/api/v1/episodes/{id}/generate-with-duration-control` endpoint
    - Implement progress query API
    - Integrate with async task framework

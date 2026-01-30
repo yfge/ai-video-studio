@@ -15,18 +15,18 @@ Aggregates all story structure sub-routers:
 
 from fastapi import APIRouter
 
-from .scenes import router as scenes_router
-from .beats import router as beats_router
-from .shots import router as shots_router
-from .environments import router as environments_router
-from .environment_images import router as environment_images_router
-from .environment_generation import router as environment_generation_router
-from .environment_variants import router as environment_variants_router
-from .treatments import router as treatments_router
 from .async_tasks import (
     process_environment_image_task,
     process_environment_image_variant_task,
 )
+from .beats import router as beats_router
+from .environment_generation import router as environment_generation_router
+from .environment_images import router as environment_images_router
+from .environment_variants import router as environment_variants_router
+from .environments import router as environments_router
+from .scenes import router as scenes_router
+from .shots import router as shots_router
+from .treatments import router as treatments_router
 
 # Create main router and aggregate sub-routers
 router = APIRouter()

@@ -54,11 +54,15 @@ export function WorkspaceOverviewTabContent({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <span className="text-sm text-gray-500">集数</span>
-            <p className="text-lg font-medium">第 {episode.episode_number} 集</p>
+            <p className="text-lg font-medium">
+              第 {episode.episode_number} 集
+            </p>
           </div>
           <div>
             <span className="text-sm text-gray-500">时长</span>
-            <p className="text-lg font-medium">{episode.duration_minutes || "—"} 分钟</p>
+            <p className="text-lg font-medium">
+              {episode.duration_minutes || "—"} 分钟
+            </p>
           </div>
           <div>
             <span className="text-sm text-gray-500">场景数</span>
@@ -76,7 +80,11 @@ export function WorkspaceOverviewTabContent({
                     : "bg-gray-100 text-gray-800"
                 }`}
               >
-                {episode.status === "published" ? "已发布" : episode.status === "draft" ? "草稿" : episode.status}
+                {episode.status === "published"
+                  ? "已发布"
+                  : episode.status === "draft"
+                  ? "草稿"
+                  : episode.status}
               </span>
             </p>
           </div>
@@ -103,7 +111,9 @@ export function WorkspaceOverviewTabContent({
                 </span>
                 <div className="flex-1">
                   {point.timing && (
-                    <span className="text-xs font-medium text-blue-600 mr-2">{point.timing}</span>
+                    <span className="text-xs font-medium text-blue-600 mr-2">
+                      {point.timing}
+                    </span>
                   )}
                   <span className="text-gray-700">{point.description}</span>
                 </div>
@@ -125,11 +135,17 @@ export function WorkspaceOverviewTabContent({
                 </span>
                 <div className="flex-1">
                   {conflict.intensity && (
-                    <span className={`text-xs font-medium mr-2 px-1.5 py-0.5 rounded ${
-                      conflict.intensity === "高" ? "bg-red-100 text-red-700" :
-                      conflict.intensity === "中" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-gray-100 text-gray-700"
-                    }`}>{conflict.intensity}</span>
+                    <span
+                      className={`text-xs font-medium mr-2 px-1.5 py-0.5 rounded ${
+                        conflict.intensity === "高"
+                          ? "bg-red-100 text-red-700"
+                          : conflict.intensity === "中"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {conflict.intensity}
+                    </span>
                   )}
                   <span className="text-gray-700">{conflict.description}</span>
                 </div>
@@ -145,7 +161,10 @@ export function WorkspaceOverviewTabContent({
           <h3 className="text-lg font-semibold text-gray-900 mb-3">角色弧线</h3>
           <div className="space-y-3">
             {Object.entries(characterArcs).map(([character, arc]) => (
-              <div key={character} className="border-l-4 border-purple-400 pl-4">
+              <div
+                key={character}
+                className="border-l-4 border-purple-400 pl-4"
+              >
                 <h4 className="font-medium text-gray-900">{character}</h4>
                 <p className="text-gray-600 text-sm">
                   {typeof arc === "string" ? arc : JSON.stringify(arc)}
@@ -179,11 +198,15 @@ export function WorkspaceOverviewTabContent({
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-gray-500">创建时间</span>
-            <p className="text-gray-900">{new Date(episode.created_at).toLocaleString("zh-CN")}</p>
+            <p className="text-gray-900">
+              {new Date(episode.created_at).toLocaleString("zh-CN")}
+            </p>
           </div>
           <div>
             <span className="text-gray-500">更新时间</span>
-            <p className="text-gray-900">{new Date(episode.updated_at).toLocaleString("zh-CN")}</p>
+            <p className="text-gray-900">
+              {new Date(episode.updated_at).toLocaleString("zh-CN")}
+            </p>
           </div>
           {episode.ai_model && (
             <div>
@@ -193,7 +216,9 @@ export function WorkspaceOverviewTabContent({
           )}
           <div>
             <span className="text-gray-500">业务ID</span>
-            <p className="text-gray-900 font-mono text-xs">{episode.business_id}</p>
+            <p className="text-gray-900 font-mono text-xs">
+              {episode.business_id}
+            </p>
           </div>
         </div>
       </div>

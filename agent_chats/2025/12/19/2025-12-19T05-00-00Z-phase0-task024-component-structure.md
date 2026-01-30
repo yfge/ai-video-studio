@@ -29,6 +29,7 @@ Continuing Phase 0 refactoring autonomously, implementing Task 0.2.4: Create com
 ## Context
 
 Current components/ directory is flat with 20+ files making it difficult to navigate and maintain. Need to organize into:
+
 - **layouts/**: Page layout components (AdminLayout, Navigation)
 - **shared/**: Reusable components across features (AuthGuard, modals, etc.)
 - **features/**: Feature-specific complex components (Timeline, storyboard, etc.)
@@ -78,63 +79,87 @@ components/
 ### Created Barrel Exports
 
 **layouts/index.ts:**
+
 ```typescript
-export { default as AdminLayout } from './AdminLayout'
-export { default as Navigation } from './Navigation'
+export { default as AdminLayout } from "./AdminLayout";
+export { default as Navigation } from "./Navigation";
 ```
 
 **shared/index.ts:**
+
 ```typescript
-export { default as AuthGuard } from './AuthGuard'
-export { CreationOverlay } from './CreationOverlay'
-export { ImagePreviewCard } from './ImagePreviewCard'
-export { ModelSelector } from './ModelSelector'
-export { MultiModelSelector } from './MultiModelSelector'
-export { ModelUiFields } from './ModelUiFields'
-export { default as SmartInputField } from './SmartInputField'
-export { StyleSpecAdvancedPanel, type StyleSpecField, type StyleSpecKey } from './StyleSpecAdvancedPanel'
+export { default as AuthGuard } from "./AuthGuard";
+export { CreationOverlay } from "./CreationOverlay";
+export { ImagePreviewCard } from "./ImagePreviewCard";
+export { ModelSelector } from "./ModelSelector";
+export { MultiModelSelector } from "./MultiModelSelector";
+export { ModelUiFields } from "./ModelUiFields";
+export { default as SmartInputField } from "./SmartInputField";
+export {
+  StyleSpecAdvancedPanel,
+  type StyleSpecField,
+  type StyleSpecKey,
+} from "./StyleSpecAdvancedPanel";
 
 // Re-export modals
-export * from './modals'
+export * from "./modals";
 ```
 
 **shared/modals/index.ts:**
+
 ```typescript
-export { AlertModalProvider, useAlertModal, type AlertOptions } from './AlertModalProvider'
-export { ImagePreviewModal } from './ImagePreviewModal'
-export { ImageToImageModal } from './ImageToImageModal'
-export { default as RoleManagementModal } from './RoleManagementModal'
-export { StoryboardVideoModal } from './StoryboardVideoModal'
-export { default as UserApprovalModal } from './UserApprovalModal'
-export { default as UserDetailsModal } from './UserDetailsModal'
+export {
+  AlertModalProvider,
+  useAlertModal,
+  type AlertOptions,
+} from "./AlertModalProvider";
+export { ImagePreviewModal } from "./ImagePreviewModal";
+export { ImageToImageModal } from "./ImageToImageModal";
+export { default as RoleManagementModal } from "./RoleManagementModal";
+export { StoryboardVideoModal } from "./StoryboardVideoModal";
+export { default as UserApprovalModal } from "./UserApprovalModal";
+export { default as UserDetailsModal } from "./UserDetailsModal";
 ```
 
 **features/index.ts:**
+
 ```typescript
-export { default as AIGenerationProcess } from './AIGenerationProcess'
-export { SceneStructurePanel, type SceneNode } from './SceneStructurePanel'
-export { default as StoryboardFrameCard, SceneTag, formatText, type StoryboardFrame } from './StoryboardFrameCard'
-export { Timeline, type TimelineTrack, type TimelineItem, type TimelineProps } from './Timeline/Timeline'
+export { default as AIGenerationProcess } from "./AIGenerationProcess";
+export { SceneStructurePanel, type SceneNode } from "./SceneStructurePanel";
+export {
+  default as StoryboardFrameCard,
+  SceneTag,
+  formatText,
+  type StoryboardFrame,
+} from "./StoryboardFrameCard";
+export {
+  Timeline,
+  type TimelineTrack,
+  type TimelineItem,
+  type TimelineProps,
+} from "./Timeline/Timeline";
 ```
 
 ### Updated Import Paths
 
 Updated imports in **43 files** across:
+
 - `app/` pages (15 files)
 - `components/` (internal fixes - 7 files)
 - `tests/` (1 file)
 
 **Pattern changes:**
+
 ```typescript
 // Old (from components root)
-import Navigation from '@/components/Navigation'
-import AuthGuard from '@/components/AuthGuard'
-import { useAlertModal } from '@/components/AlertModalProvider'
+import Navigation from "@/components/Navigation";
+import AuthGuard from "@/components/AuthGuard";
+import { useAlertModal } from "@/components/AlertModalProvider";
 
 // New (organized structure)
-import { Navigation } from '@/components/layouts'
-import { AuthGuard } from '@/components/shared'
-import { useAlertModal } from '@/components/shared/modals'
+import { Navigation } from "@/components/layouts";
+import { AuthGuard } from "@/components/shared";
+import { useAlertModal } from "@/components/shared/modals";
 ```
 
 ### Fixed Export/Import Mismatches
@@ -142,16 +167,21 @@ import { useAlertModal } from '@/components/shared/modals'
 **Problem**: Some components used default exports but barrel exports expected named exports.
 
 **Fixed:**
+
 1. **Layouts**: AdminLayout, Navigation (default exports)
+
    - Fixed: `export { default as AdminLayout }`
 
 2. **Shared**: AuthGuard, SmartInputField (default exports)
+
    - Fixed: `export { default as AuthGuard }`
 
 3. **Modals**: RoleManagementModal, UserApprovalModal, UserDetailsModal (default exports)
+
    - Fixed: `export { default as RoleManagementModal }`
 
 4. **Features**: Timeline, SceneStructurePanel (named exports)
+
    - Fixed: `export { Timeline, type TimelineTrack }`
 
 5. **useAlertModal hook**: Missing from modals re-export
@@ -162,52 +192,58 @@ import { useAlertModal } from '@/components/shared/modals'
 Components moved to subdirectories needed absolute imports instead of relative:
 
 **layouts/AdminLayout.tsx, shared/AuthGuard.tsx:**
+
 ```typescript
 // Before
-import { authAPI } from '../utils/api'
-import { isAdmin } from '../utils/auth'
+import { authAPI } from "../utils/api";
+import { isAdmin } from "../utils/auth";
 
 // After
-import { authAPI } from '@/utils/api'
-import { isAdmin } from '@/utils/auth'
+import { authAPI } from "@/utils/api";
+import { isAdmin } from "@/utils/auth";
 ```
 
-**shared/modals/*.tsx (3 files):**
+**shared/modals/\*.tsx (3 files):**
+
 ```typescript
 // Before
-import { adminAPI } from '../utils/api'
+import { adminAPI } from "../utils/api";
 
 // After
-import { adminAPI } from '@/utils/api'
+import { adminAPI } from "@/utils/api";
 ```
 
 **features/SceneStructurePanel.tsx:**
+
 ```typescript
 // Before
-import { useAlertModal } from './AlertModalProvider'
+import { useAlertModal } from "./AlertModalProvider";
 
 // After
-import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
+import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 ```
 
 **tests/storyboardStructure.e2e.tsx:**
+
 ```typescript
 // Before
-import { FrameCard } from '../src/components/StoryboardFrameCard'
+import { FrameCard } from "../src/components/StoryboardFrameCard";
 
 // After
-import { FrameCard } from '../src/components/features/StoryboardFrameCard'
+import { FrameCard } from "../src/components/features/StoryboardFrameCard";
 ```
 
 ## Validation
 
 ### Lint Check
+
 ```bash
 cd ai-pic-frontend && npm run lint
 ✔ No ESLint warnings or errors
 ```
 
 ### Production Build
+
 ```bash
 cd docker && ./build_prod_images.sh
 ✅ Build successful (tag: aa97b9f)
@@ -216,12 +252,14 @@ cd docker && ./build_prod_images.sh
 ```
 
 **Build output:**
+
 - 20 routes compiled successfully
 - All static pages generated
 - Type checking passed
 - No warnings or errors
 
 **Build stats:**
+
 ```
 Route (app)                                 Size     First Load JS
 ┌ ○ /                                    1.54 kB         116 kB
@@ -234,22 +272,26 @@ Route (app)                                 Size     First Load JS
 ### Code Quality Checks
 
 ✅ **Clear Organization:**
+
 - **layouts/**: 2 components (AdminLayout, Navigation)
 - **shared/**: 8 components + 7 modals
 - **features/**: 4 complex components
 - **ui/**: 1 primitive (Modal)
 
 ✅ **Consistent Exports:**
+
 - All subdirectories have barrel exports (index.ts)
 - Correct handling of default vs named exports
 - Type exports included where applicable
 
 ✅ **Import Path Clarity:**
+
 - Organized imports: `@/components/{layouts|shared|features|ui}`
 - Modals nested under shared: `@/components/shared/modals`
 - No relative path imports across directories
 
 ✅ **Backward Compatibility:**
+
 - All existing functionality preserved
 - No breaking changes to component behavior
 - Import paths updated systematically
@@ -257,12 +299,14 @@ Route (app)                                 Size     First Load JS
 ## Impact
 
 **Problem Solved:**
+
 - Flat components/ directory with 20+ files was hard to navigate
 - No clear separation between layouts, shared, and feature components
 - Difficult to locate specific components
 - Mixed concerns (UI primitives, layouts, business logic)
 
 **Enables:**
+
 - **Better scalability**: Clear places for new components
 - **Easier navigation**: Logical grouping of related components
 - **Clearer architecture**: Separation of concerns visible in structure
@@ -271,6 +315,7 @@ Route (app)                                 Size     First Load JS
 - **Future refactoring**: Easy to identify shared vs feature-specific code
 
 **Migration benefits:**
+
 ```
 Before:
 components/
@@ -290,6 +335,7 @@ components/
 ```
 
 **Code organization metrics:**
+
 - 22 components organized
 - 4 barrel exports created
 - 43 import paths updated

@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from app.services.task_agent_run.utils import loads_task_parameters, maybe_int, split_provider_model
+from app.services.task_agent_run.utils import (
+    loads_task_parameters,
+    maybe_int,
+    split_provider_model,
+)
 
 
 def build_video_generation_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
@@ -44,7 +48,11 @@ def build_video_generation_agent_run(db, task, *, user_id: int) -> Dict[str, Any
         "generation_method": "video_generation",
         "provider_used": provider_used,
         "model_used": model_used or requested_model_id,
-        "prompt": override_prompt if isinstance(override_prompt, str) else getattr(task, "prompt", None),
+        "prompt": (
+            override_prompt
+            if isinstance(override_prompt, str)
+            else getattr(task, "prompt", None)
+        ),
         "requested_provider": requested_provider,
         "requested_model": requested_model_id,
         "result_ref": {
@@ -56,4 +64,3 @@ def build_video_generation_agent_run(db, task, *, user_id: int) -> Dict[str, Any
         "providers": providers,
         "models": models,
     }
-

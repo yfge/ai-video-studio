@@ -1,11 +1,10 @@
-
 # 查询视频生成任务状态
 
 > 使用本接口查询视频生成的任务状态。
 
 ## OpenAPI
 
-````yaml api-reference/video/generation/api/openapi.json get /v1/query/video_generation
+```yaml api-reference/video/generation/api/openapi.json get /v1/query/video_generation
 openapi: 3.1.0
 info:
   title: MiniMax API
@@ -32,12 +31,12 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QueryVideoGenerationTaskResp'
+                $ref: "#/components/schemas/QueryVideoGenerationTaskResp"
 components:
   schemas:
     QueryVideoGenerationTaskResp:
@@ -47,7 +46,7 @@ components:
           type: string
           description: 被查询的任务 ID
         status:
-          $ref: '#/components/schemas/VideoProcessStatus'
+          $ref: "#/components/schemas/VideoProcessStatus"
         file_id:
           type: string
           description: 任务成功时返回，用于获取视频文件的文件 ID
@@ -58,11 +57,11 @@ components:
           type: integer
           description: 任务成功时返回，生成视频的高度（像素）
         base_resp:
-          $ref: '#/components/schemas/QueryVideoGenerationTaskBaseResp'
+          $ref: "#/components/schemas/QueryVideoGenerationTaskBaseResp"
       example:
-        task_id: '176843862716480'
+        task_id: "176843862716480"
         status: Success
-        file_id: '176844028768320'
+        file_id: "176844028768320"
         video_width: 1920
         video_height: 1080
         base_resp:
@@ -109,10 +108,8 @@ components:
         `HTTP: Bearer Auth`
          - Security Scheme Type: http
          - HTTP Authorization Scheme: Bearer API_key，用于验证账户信息，可在 [账户管理>接口密钥](https://platform.minimaxi.com/user-center/basic-information/interface-key) 中查看。
-
-````
+```
 
 ---
 
 > To find navigation and other pages in this documentation, fetch the llms.txt file at: https://platform.minimaxi.com/docs/llms.txt
-

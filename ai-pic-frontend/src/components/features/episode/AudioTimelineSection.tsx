@@ -3,7 +3,12 @@
 import { useMemo } from "react";
 import type { NormalizedScene, Script } from "@/utils/api";
 import { Timeline, type TimelineTrack } from "@/components/features";
-import { asRecord, getString, getNumber, parseMs } from "@/hooks/useEpisodeDetail";
+import {
+  asRecord,
+  getString,
+  getNumber,
+  parseMs,
+} from "@/hooks/useEpisodeDetail";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 
 interface AudioTimelineSectionProps {
@@ -52,15 +57,20 @@ export function AudioTimelineSection({
   onNavigateToScript,
 }: AudioTimelineSectionProps) {
   // Load available LLM models for timing calculation
-  const { models: availableModels, loading: modelsLoading } = useAvailableModels({
-    modelType: "text",
-    enabled: true,
-  });
+  const { models: availableModels, loading: modelsLoading } =
+    useAvailableModels({
+      modelType: "text",
+      enabled: true,
+    });
 
-  const selectedEpisodeAudio = asRecord(selectedAudioTimeline?.["episode_audio"]);
+  const selectedEpisodeAudio = asRecord(
+    selectedAudioTimeline?.["episode_audio"],
+  );
   const selectedEpisodeAudioUrl = getString(selectedEpisodeAudio?.["oss_url"]);
   const selectedEpisodeAudioVersion = selectedEpisodeAudio?.["version"];
-  const selectedTimelineBeatCount = Array.isArray(selectedAudioTimeline?.["beats"])
+  const selectedTimelineBeatCount = Array.isArray(
+    selectedAudioTimeline?.["beats"],
+  )
     ? (selectedAudioTimeline?.["beats"] as unknown[]).length
     : 0;
 
@@ -72,7 +82,9 @@ export function AudioTimelineSection({
     [selectedStoryboard],
   );
   const selectedStoryboardMeta = asRecord(selectedStoryboard?.["meta"]);
-  const selectedStoryboardSource = getString(selectedStoryboardMeta?.["generation_source"]);
+  const selectedStoryboardSource = getString(
+    selectedStoryboardMeta?.["generation_source"],
+  );
 
   const normalizedSceneAudio = normalizedScenes.map((scene) => {
     const meta = asRecord(scene.metadata);
@@ -90,9 +102,21 @@ export function AudioTimelineSection({
   ).length;
 
   const pipelineSteps = [
-    { key: "dialogue_audio", label: "生成对白音轨", done: normalizedSceneAudioCount > 0 },
-    { key: "audio_timeline", label: "生成时间轴", done: Boolean(selectedAudioTimeline) },
-    { key: "storyboard_slots", label: "生成分镜帧占位", done: Boolean(selectedStoryboard) },
+    {
+      key: "dialogue_audio",
+      label: "生成对白音轨",
+      done: normalizedSceneAudioCount > 0,
+    },
+    {
+      key: "audio_timeline",
+      label: "生成时间轴",
+      done: Boolean(selectedAudioTimeline),
+    },
+    {
+      key: "storyboard_slots",
+      label: "生成分镜帧占位",
+      done: Boolean(selectedStoryboard),
+    },
   ];
 
   const pillClass = (done: boolean) =>
@@ -110,7 +134,9 @@ export function AudioTimelineSection({
     const beatItems = beatsRaw
       .map<TimelineTrack["items"][number] | null>((raw, idx) => {
         const record =
-          raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+          raw && typeof raw === "object"
+            ? (raw as Record<string, unknown>)
+            : null;
         if (!record) return null;
         const start = parseMs(record["start_ms"]);
         const end = parseMs(record["end_ms"]);
@@ -130,24 +156,43 @@ export function AudioTimelineSection({
       })
       .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
     if (beatItems.length > 0) {
-      tracks.push({ id: "dialogue-beats", label: "对白 beats", color: "#2563eb", items: beatItems });
+      tracks.push({
+        id: "dialogue-beats",
+        label: "对白 beats",
+        color: "#2563eb",
+        items: beatItems,
+      });
     }
     const storyboardItems = selectedStoryboardFrames
       .map<TimelineTrack["items"][number] | null>((fr, idx) => {
-        const record = fr && typeof fr === "object" ? (fr as Record<string, unknown>) : null;
+        const record =
+          fr && typeof fr === "object" ? (fr as Record<string, unknown>) : null;
         if (!record) return null;
         const start = parseMs(record["start_ms"]);
         const end = parseMs(record["end_ms"]);
         if (start == null || end == null || end < start) return null;
         const frameNumber = getNumber(record["frame_number"]);
-        const label = getString(record["description"]) || `Frame ${frameNumber ?? idx + 1}`;
+        const label =
+          getString(record["description"]) || `Frame ${frameNumber ?? idx + 1}`;
         const rawId = record["frame_id"] ?? record["id"] ?? idx;
         const id = typeof rawId === "string" ? rawId : String(rawId);
-        return { id: `frame-${id}`, startMs: start, endMs: end, label, type: "frame", color: "#a855f7" };
+        return {
+          id: `frame-${id}`,
+          startMs: start,
+          endMs: end,
+          label,
+          type: "frame",
+          color: "#a855f7",
+        };
       })
       .filter((item): item is TimelineTrack["items"][number] => Boolean(item));
     if (storyboardItems.length > 0) {
-      tracks.push({ id: "storyboard-frames", label: "分镜帧", color: "#a855f7", items: storyboardItems });
+      tracks.push({
+        id: "storyboard-frames",
+        label: "分镜帧",
+        color: "#a855f7",
+        items: storyboardItems,
+      });
     }
     return tracks;
   }, [selectedAudioTimeline, selectedStoryboardFrames]);
@@ -180,7 +225,9 @@ export function AudioTimelineSection({
                 <span className={pillClass(step.done)}>
                   {step.done ? "✓" : "·"} {step.label}
                 </span>
-                {idx < pipelineSteps.length - 1 && <span className="text-gray-400">→</span>}
+                {idx < pipelineSteps.length - 1 && (
+                  <span className="text-gray-400">→</span>
+                )}
               </div>
             ))}
           </div>
@@ -208,7 +255,10 @@ export function AudioTimelineSection({
           <div className="mb-1">
             时间轴（剧集）：{" "}
             {selectedAudioTimeline ? (
-              <span>节拍={selectedTimelineBeatCount} • 版本={String(selectedEpisodeAudioVersion ?? "—")}</span>
+              <span>
+                节拍={selectedTimelineBeatCount} • 版本=
+                {String(selectedEpisodeAudioVersion ?? "—")}
+              </span>
             ) : (
               <span className="text-gray-400">未生成</span>
             )}
@@ -217,10 +267,20 @@ export function AudioTimelineSection({
             剧集音频：{" "}
             {selectedEpisodeAudioUrl ? (
               <div className="mt-1">
-                <a href={selectedEpisodeAudioUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">
+                <a
+                  href={selectedEpisodeAudioUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:underline break-all"
+                >
                   {selectedEpisodeAudioUrl}
                 </a>
-                <audio className="mt-2 w-full" controls preload="none" src={selectedEpisodeAudioUrl} />
+                <audio
+                  className="mt-2 w-full"
+                  controls
+                  preload="none"
+                  src={selectedEpisodeAudioUrl}
+                />
               </div>
             ) : (
               <span className="text-gray-400">—</span>
@@ -229,7 +289,10 @@ export function AudioTimelineSection({
           <div>
             分镜占位（剧本）：{" "}
             {selectedStoryboard ? (
-              <span>帧数={selectedStoryboardFrames.length} • 来源={selectedStoryboardSource || "—"}</span>
+              <span>
+                帧数={selectedStoryboardFrames.length} • 来源=
+                {selectedStoryboardSource || "—"}
+              </span>
             ) : (
               <span className="text-gray-400">—</span>
             )}
@@ -238,42 +301,83 @@ export function AudioTimelineSection({
       </div>
 
       {/* Scene dialogue audio details */}
-      <details open={normalizedSceneAudioCount > 0} className="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+      <details
+        open={normalizedSceneAudioCount > 0}
+        className="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700"
+      >
         <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
-          场景对白音轨（场景级）{normalizedScenes.length > 0 ? `：${normalizedSceneAudioCount}/${normalizedScenes.length} 已生成` : ""}
+          场景对白音轨（场景级）
+          {normalizedScenes.length > 0
+            ? `：${normalizedSceneAudioCount}/${normalizedScenes.length} 已生成`
+            : ""}
         </summary>
-        <div className="mt-2 text-[11px] text-gray-600">每个场景一条混音音轨，来源于 scene.metadata.dialogue_audio.oss_url</div>
-        {!normalizedScenesLoading && !normalizedScenesError && normalizedScenes.length === 0 && (
-          <div className="mt-2 text-gray-500">暂无场景数据（请先选择剧本并完成「生成对白音轨」）</div>
+        <div className="mt-2 text-[11px] text-gray-600">
+          每个场景一条混音音轨，来源于 scene.metadata.dialogue_audio.oss_url
+        </div>
+        {!normalizedScenesLoading &&
+          !normalizedScenesError &&
+          normalizedScenes.length === 0 && (
+            <div className="mt-2 text-gray-500">
+              暂无场景数据（请先选择剧本并完成「生成对白音轨」）
+            </div>
+          )}
+        {normalizedScenesLoading && (
+          <div className="mt-2 text-gray-500">加载中...</div>
         )}
-        {normalizedScenesLoading && <div className="mt-2 text-gray-500">加载中...</div>}
-        {normalizedScenesError && <div className="mt-2 text-red-600">{normalizedScenesError}</div>}
-        {!normalizedScenesLoading && !normalizedScenesError && normalizedSceneAudio.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {normalizedSceneAudio.map((item) => (
-              <div key={item.scene.id} className="rounded border border-gray-200 bg-white p-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-gray-900 truncate">
-                      场景 {item.scene.scene_number}: {item.scene.slug_line}
+        {normalizedScenesError && (
+          <div className="mt-2 text-red-600">{normalizedScenesError}</div>
+        )}
+        {!normalizedScenesLoading &&
+          !normalizedScenesError &&
+          normalizedSceneAudio.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {normalizedSceneAudio.map((item) => (
+                <div
+                  key={item.scene.id}
+                  className="rounded border border-gray-200 bg-white p-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-gray-900 truncate">
+                        场景 {item.scene.scene_number}: {item.scene.slug_line}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-gray-500">
+                        ID={item.scene.id}
+                        {item.version != null
+                          ? ` • 版本=${String(item.version)}`
+                          : ""}
+                        {item.durationSeconds != null
+                          ? ` • 时长=${String(item.durationSeconds)}秒`
+                          : ""}
+                      </div>
                     </div>
-                    <div className="mt-0.5 text-[11px] text-gray-500">
-                      ID={item.scene.id}
-                      {item.version != null ? ` • 版本=${String(item.version)}` : ""}
-                      {item.durationSeconds != null ? ` • 时长=${String(item.durationSeconds)}秒` : ""}
-                    </div>
+                    {item.ossUrl ? (
+                      <a
+                        href={item.ossUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 text-[11px] text-blue-600 hover:underline"
+                      >
+                        打开
+                      </a>
+                    ) : (
+                      <span className="shrink-0 text-[11px] text-gray-400">
+                        未生成
+                      </span>
+                    )}
                   </div>
-                  {item.ossUrl ? (
-                    <a href={item.ossUrl} target="_blank" rel="noreferrer" className="shrink-0 text-[11px] text-blue-600 hover:underline">打开</a>
-                  ) : (
-                    <span className="shrink-0 text-[11px] text-gray-400">未生成</span>
+                  {item.ossUrl && (
+                    <audio
+                      className="mt-2 w-full"
+                      controls
+                      preload="none"
+                      src={item.ossUrl}
+                    />
                   )}
                 </div>
-                {item.ossUrl && <audio className="mt-2 w-full" controls preload="none" src={item.ossUrl} />}
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
       </details>
 
       <div className="flex flex-wrap gap-2 mb-3 mt-4">
@@ -300,7 +404,8 @@ export function AudioTimelineSection({
             <option value="">自动（默认模型）</option>
             {availableModels.map((model) => {
               // Use provider:model_id format for backend routing
-              const fullModelId = model.model_id || `${model.provider}:${model.id}`;
+              const fullModelId =
+                model.model_id || `${model.provider}:${model.id}`;
               return (
                 <option key={fullModelId} value={fullModelId}>
                   {model.name || model.id}
@@ -309,14 +414,19 @@ export function AudioTimelineSection({
             })}
           </select>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer" title="启用 Duration Orchestrator 确保时长在目标的±10%范围内">
+        <label
+          className="flex items-center gap-2 cursor-pointer"
+          title="启用 Duration Orchestrator 确保时长在目标的±10%范围内"
+        >
           <input
             type="checkbox"
             checked={useDurationControl}
             onChange={(e) => setUseDurationControl(e.target.checked)}
             className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
           />
-          <span className={useDurationControl ? "text-blue-600 font-medium" : ""}>
+          <span
+            className={useDurationControl ? "text-blue-600 font-medium" : ""}
+          >
             时长精控
           </span>
           {useDurationControl && (
@@ -337,10 +447,16 @@ export function AudioTimelineSection({
       <div className="mt-4">
         {timelineTracks.length === 0 ? (
           <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
-            生成时间轴后可视化对白 beats / 分镜帧的时间分布；分镜帧需携带 start/end_ms 才能显示。
+            生成时间轴后可视化对白 beats / 分镜帧的时间分布；分镜帧需携带
+            start/end_ms 才能显示。
           </div>
         ) : (
-          <Timeline tracks={timelineTracks} startMs={timelineRange?.startMs} endMs={timelineRange?.endMs} initialZoom={1} />
+          <Timeline
+            tracks={timelineTracks}
+            startMs={timelineRange?.startMs}
+            endMs={timelineRange?.endMs}
+            initialZoom={1}
+          />
         )}
       </div>
     </div>

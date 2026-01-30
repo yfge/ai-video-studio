@@ -27,6 +27,7 @@ Continuing Phase 0 refactoring autonomously, implementing Task 0.2.3: Split API 
 ## Context
 
 Current api.ts file is monolithic (2627 lines):
+
 - 70+ type/interface definitions
 - ApiClient class with 100+ methods
 - Business logic mixed with HTTP logic
@@ -45,6 +46,7 @@ Current api.ts file is monolithic (2627 lines):
 **Core Functions:**
 
 1. **Token Management:**
+
 ```typescript
 getAuthToken(): string | null     // Read from localStorage
 setAuthToken(token: string): void // Write to localStorage
@@ -52,6 +54,7 @@ clearAuthToken(): void           // Remove from localStorage
 ```
 
 2. **HTTP Client:**
+
 ```typescript
 httpClient<T>(
   endpoint: string,
@@ -60,6 +63,7 @@ httpClient<T>(
 ```
 
 **Features:**
+
 1. **Automatic auth**: Reads token from localStorage, adds Authorization header
 2. **Skip auth option**: `skipAuth: true` for public endpoints
 3. **Error handling**: Optional `onError` callback per request
@@ -70,6 +74,7 @@ httpClient<T>(
 8. **Standard response**: Wraps all responses in `{success, data, error}` format
 
 **Convenience Methods (http object):**
+
 ```typescript
 http.get<T>(endpoint, options?)
 http.post<T>(endpoint, body?, options?)
@@ -79,27 +84,28 @@ http.patch<T>(endpoint, body?, options?)
 ```
 
 **Usage Example:**
+
 ```typescript
-import { http, getAuthToken } from '@/utils/api/client'
+import { http, getAuthToken } from "@/utils/api/client";
 
 // GET request
-const users = await http.get<User[]>('/api/v1/users')
+const users = await http.get<User[]>("/api/v1/users");
 
 // POST request
-const newUser = await http.post<User>('/api/v1/users', {
-  username: 'john',
-  email: 'john@example.com'
-})
+const newUser = await http.post<User>("/api/v1/users", {
+  username: "john",
+  email: "john@example.com",
+});
 
 // With error handling
-const response = await http.get<User>('/api/v1/users/123', {
-  onError: (err) => showToast(err.message)
-})
+const response = await http.get<User>("/api/v1/users/123", {
+  onError: (err) => showToast(err.message),
+});
 
 // Public endpoint (no auth)
-const models = await http.get<Model[]>('/api/v1/public/models', {
-  skipAuth: true
-})
+const models = await http.get<Model[]>("/api/v1/public/models", {
+  skipAuth: true,
+});
 
 // Check if user is authenticated
 if (getAuthToken()) {
@@ -108,6 +114,7 @@ if (getAuthToken()) {
 ```
 
 **Benefits:**
+
 - Clean, focused HTTP utilities (no business logic)
 - Reusable across different parts of the app
 - Type-safe with generics
@@ -121,6 +128,7 @@ if (getAuthToken()) {
 Currently just re-exports from parent api.ts for backward compatibility.
 
 **Phase 2 migration plan:**
+
 ```typescript
 // Future structure:
 types/
@@ -133,12 +141,14 @@ types/
 ```
 
 **Current implementation:**
+
 ```typescript
 // Temporary: Re-export from parent api.ts
-export * from '../../api'
+export * from "../../api";
 ```
 
 This allows:
+
 1. Future code to import from `@/utils/api/types`
 2. Gradual migration of types in Phase 2
 3. No breaking changes to existing code
@@ -148,35 +158,40 @@ This allows:
 **Barrel export for API module:**
 
 Exports both:
+
 1. New HTTP client utilities
 2. Legacy api.ts exports (backward compatibility)
 
 **Enables clean imports:**
+
 ```typescript
 // New style (recommended)
-import { http } from '@/utils/api'
-import type { User } from '@/utils/api/types'
+import { http } from "@/utils/api";
+import type { User } from "@/utils/api/types";
 
 // Old style (still works)
-import { api } from '@/utils/api'
-import type { User } from '@/utils/api'
+import { api } from "@/utils/api";
+import type { User } from "@/utils/api";
 ```
 
 **Backward compatibility:**
+
 ```typescript
 // All existing imports continue to work
-import { api, type User } from '@/utils/api'
+import { api, type User } from "@/utils/api";
 ```
 
 ## Validation
 
 ### Lint Check
+
 ```bash
 cd ai-pic-frontend && npm run lint
 ✔ No ESLint warnings or errors
 ```
 
 ### Production Build
+
 ```bash
 cd docker && ./build_prod_images.sh
 ✅ Build successful (tag: e59e8e0)
@@ -187,21 +202,25 @@ cd docker && ./build_prod_images.sh
 ### Code Quality Checks
 
 ✅ **File Size Compliance:**
+
 - client.ts: 290 lines (⚠️ exceeds 150 target but acceptable for comprehensive HTTP utility with full TypeScript docs & examples)
 - types/index.ts: 16 lines (✅ minimal placeholder)
 - index.ts: 25 lines (✅ barrel export)
 
 ✅ **Single Responsibility:**
+
 - client.ts: Only HTTP request handling
 - types/index.ts: Only type re-exports
 - index.ts: Only module exports
 
 ✅ **Backward Compatibility:**
+
 - All existing imports continue to work
 - api.ts remains unchanged
 - No breaking changes
 
 ✅ **Type Safety:**
+
 - Full TypeScript typing with generics
 - Exported interfaces for all types
 - Type-safe request/response data
@@ -209,12 +228,14 @@ cd docker && ./build_prod_images.sh
 ## Impact
 
 **Problem Solved:**
+
 - api.ts is monolithic (2627 lines) and difficult to navigate
 - HTTP logic mixed with business logic and types
 - Hard to reuse HTTP utilities without importing entire api.ts
 - No clear separation of concerns
 
 **Enables:**
+
 - **Modular imports**: Import only what you need
 - **Gradual migration**: Can migrate code incrementally to use new client
 - **Better testing**: HTTP utilities can be tested in isolation
@@ -225,43 +246,48 @@ cd docker && ./build_prod_images.sh
 **Migration Path** (for future refactorings):
 
 **Current (working, but not recommended for new code):**
-```typescript
-import { api } from '@/utils/api'
 
-const response = await api.getUsers()
+```typescript
+import { api } from "@/utils/api";
+
+const response = await api.getUsers();
 ```
 
 **New recommended pattern:**
-```typescript
-import { http } from '@/utils/api'
-import type { User } from '@/utils/api/types'
 
-const response = await http.get<User[]>('/api/v1/users')
+```typescript
+import { http } from "@/utils/api";
+import type { User } from "@/utils/api/types";
+
+const response = await http.get<User[]>("/api/v1/users");
 ```
 
 **Even better with useApi hook (from Task 0.2.2):**
+
 ```typescript
-import { useApi } from '@/hooks'
-import type { User } from '@/utils/api/types'
+import { useApi } from "@/hooks";
+import type { User } from "@/utils/api/types";
 
 function UserPage() {
-  const api = useApi()
+  const api = useApi();
 
   async function loadUsers() {
-    const response = await api.get<User[]>('/api/v1/users')
+    const response = await api.get<User[]>("/api/v1/users");
     // ...
   }
 }
 ```
 
 **File size reduction potential:**
+
 - api.ts current: 2627 lines
 - After Phase 2 migration:
   - client.ts: ~300 lines (HTTP utilities)
-  - types/*.ts: ~800 lines (organized by domain)
+  - types/\*.ts: ~800 lines (organized by domain)
   - Existing ApiClient methods: ~1500 lines (can be gradually migrated or deprecated)
 
 **Bundle size impact:**
+
 - Before: Importing any API type or function pulls entire 2627-line file
 - After: Tree-shaking can eliminate unused code
 - Estimated 30-50% reduction in API-related bundle size

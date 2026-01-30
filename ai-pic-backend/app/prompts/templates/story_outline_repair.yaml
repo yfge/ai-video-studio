@@ -28,4 +28,4 @@ usage_examples:
   - schema: "{...StoryOutlineModel schema...}"
     missing_fields: ["premise", "synopsis"]
     original_prompt: "生成故事大纲"
-    original_output: "{\"premise\": \"...\"}"
+    original_output: '{"premise": "..."}'

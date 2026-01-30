@@ -36,4 +36,3 @@ summary: "Emphasize minimal atomic commits, minimal diffs, and keeping the worki
 ## Linked Commits
 
 - pending（本地此次改动将与本账本条目一同提交）
-

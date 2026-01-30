@@ -80,8 +80,7 @@ def _build_prompt_with_flags(
 
     rt = (ratio or "").strip()
     if rt and not (
-        _contains_flag(base_prompt, "--rt")
-        or _contains_flag(base_prompt, "--ratio")
+        _contains_flag(base_prompt, "--rt") or _contains_flag(base_prompt, "--ratio")
     ):
         flags.append(f"--rt {rt}")
 
@@ -178,8 +177,14 @@ async def generate_video(
         ark_model = _normalize_model(model, image_url is not None)
 
         final_prompt, dur, fps_int, rs, rt = _build_prompt_with_flags(
-            prompt, resolution, ratio, duration, fps,
-            watermark, seed, camera_fixed,
+            prompt,
+            resolution,
+            ratio,
+            duration,
+            fps,
+            watermark,
+            seed,
+            camera_fixed,
         )
 
         content: list[Dict[str, Any]] = [
@@ -331,9 +336,7 @@ async def generate_video(
             model=ark_model,
             task_type=AITaskType.VIDEO_GENERATION,
             model_type=(
-                AIModelType.IMAGE_TO_VIDEO
-                if image_url
-                else AIModelType.TEXT_TO_VIDEO
+                AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
             ),
             metadata={
                 "task_id": task_id,
@@ -357,8 +360,6 @@ async def generate_video(
             model=(model or "doubao-seedance-1-0-pro-250528"),
             task_type=AITaskType.VIDEO_GENERATION,
             model_type=(
-                AIModelType.IMAGE_TO_VIDEO
-                if image_url
-                else AIModelType.TEXT_TO_VIDEO
+                AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
             ),
         )

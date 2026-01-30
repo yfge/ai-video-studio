@@ -13,36 +13,37 @@ variables:
     description: "角色名称"
     min_length: 1
     max_length: 50
-  
+
   character_description:
     type: string
     required: false
     description: "角色描述"
     max_length: 500
-  
+
   background_story:
     type: string
     required: false
     description: "角色背景故事"
     max_length: 1000
-  
+
   style:
     type: string
     required: true
     description: "图像风格"
-    enum: ["realistic", "anime", "cartoon", "portrait", "artistic", "3d", "sketch"]
-  
+    enum:
+      ["realistic", "anime", "cartoon", "portrait", "artistic", "3d", "sketch"]
+
   category:
     type: string
     required: true
     description: "图像类别"
     enum: ["portrait", "full_body", "action", "emotion", "scene", "concept"]
-  
+
   additional_prompts:
     type: list
     required: false
     description: "附加提示词列表"
-  
+
   is_default:
     type: boolean
     required: false
@@ -54,15 +55,16 @@ style_guidelines:
     keywords: ["photorealistic", "high resolution", "professional photography"]
     lighting: ["natural lighting", "studio lighting", "golden hour"]
     quality: ["sharp focus", "detailed texture", "realistic skin"]
-    
+
   anime:
     keywords: ["anime style", "manga art", "cel shading"]
     features: ["large eyes", "detailed hair", "vibrant colors"]
     quality: ["clean lines", "smooth shading", "high contrast"]
-    
+
   cartoon:
     keywords: ["cartoon style", "illustration", "colorful"]
-    features: ["simplified features", "exaggerated expressions", "bold outlines"]
+    features:
+      ["simplified features", "exaggerated expressions", "bold outlines"]
     quality: ["clean art", "bright colors", "vector style"]
 
 category_specifications:
@@ -70,12 +72,12 @@ category_specifications:
     composition: "head and shoulders, close-up"
     background: "simple, blurred, or studio"
     focus: "facial features, expression, personality"
-    
+
   full_body:
     composition: "full figure, standing or posed"
     background: "detailed environment optional"
     focus: "outfit, posture, overall character design"
-    
+
   action:
     composition: "dynamic pose, movement"
     background: "action-appropriate environment"
@@ -87,7 +89,7 @@ technical_defaults:
     full_body: "512x768"
     landscape: "768x512"
     square: "512x512"
-  
+
   parameters:
     steps: 30
     cfg_scale: 7.5

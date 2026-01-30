@@ -1,13 +1,13 @@
-import { ImagePreviewCard } from '@/components/shared'
-import type { EnvironmentImage } from './types'
+import { ImagePreviewCard } from "@/components/shared";
+import type { EnvironmentImage } from "./types";
 
 interface EnvironmentImagesPanelProps {
-  envName: string
-  images: EnvironmentImage[]
-  imageSrc: (url: string) => string
-  onImg2Img: (image: EnvironmentImage) => void
-  onDelete: (url: string) => void
-  variant?: 'card' | 'embedded'
+  envName: string;
+  images: EnvironmentImage[];
+  imageSrc: (url: string) => string;
+  onImg2Img: (image: EnvironmentImage) => void;
+  onDelete: (url: string) => void;
+  variant?: "card" | "embedded";
 }
 
 export function EnvironmentImagesPanel({
@@ -16,12 +16,12 @@ export function EnvironmentImagesPanel({
   imageSrc,
   onImg2Img,
   onDelete,
-  variant = 'card',
+  variant = "card",
 }: EnvironmentImagesPanelProps) {
   const containerClassName =
-    variant === 'embedded'
-      ? 'space-y-4'
-      : 'bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 space-y-4 lg:col-span-2'
+    variant === "embedded"
+      ? "space-y-4"
+      : "bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 space-y-4 lg:col-span-2";
 
   return (
     <div className={containerClassName}>
@@ -48,5 +48,5 @@ export function EnvironmentImagesPanel({
         </div>
       )}
     </div>
-  )
+  );
 }

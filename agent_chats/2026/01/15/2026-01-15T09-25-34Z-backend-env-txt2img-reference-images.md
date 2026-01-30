@@ -45,4 +45,3 @@ summary: "Support reference_images for environment txt2img requests"
 ## Linked Commits
 
 - (pending)
-

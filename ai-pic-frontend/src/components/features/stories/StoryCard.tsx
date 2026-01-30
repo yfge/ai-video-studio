@@ -41,7 +41,9 @@ export function StoryCard({ story, onViewDetails, onDelete }: StoryCardProps) {
             {story.title}
           </h3>
           <span
-            className={`px-2 py-1 text-xs rounded-full ${getStatusStyle(story.status)}`}
+            className={`px-2 py-1 text-xs rounded-full ${getStatusStyle(
+              story.status,
+            )}`}
           >
             {getStatusLabel(story.status)}
           </span>
@@ -67,7 +69,9 @@ export function StoryCard({ story, onViewDetails, onDelete }: StoryCardProps) {
             <span>时长: {story.duration_minutes || "--"}分钟</span>
             <span>{new Date(story.created_at).toLocaleDateString()}</span>
           </div>
-          <div className="text-xs">创建者：{resolveCreatorLabel(story.creator)}</div>
+          <div className="text-xs">
+            创建者：{resolveCreatorLabel(story.creator)}
+          </div>
         </div>
 
         <div className="flex gap-2">

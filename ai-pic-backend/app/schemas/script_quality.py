@@ -43,17 +43,20 @@ class ScriptLintMetrics(BaseModel):
     dialogue_lines: int = Field(..., ge=0, description="对白行数")
     stage_lines: int = Field(..., ge=0, description="舞台指示/音效行数")
     estimated_words: int = Field(..., ge=0, description="估算字数（中文按字计）")
-    estimated_dialogue_chars: int = Field(..., ge=0, description="对白估算字数（中文按字计）")
+    estimated_dialogue_chars: int = Field(
+        ..., ge=0, description="对白估算字数（中文按字计）"
+    )
 
 
 class ScriptLintResult(BaseModel):
     options: ScriptLintOptions = Field(..., description="本次质检使用的选项")
     overall_score: float = Field(..., ge=0.0, le=10.0, description="综合评分（0-10）")
     passed: bool = Field(..., description="是否通过（overall_score >= pass_threshold）")
-    rules: list[ScriptLintRuleResult] = Field(..., description="规则明细（可表格化展示）")
+    rules: list[ScriptLintRuleResult] = Field(
+        ..., description="规则明细（可表格化展示）"
+    )
     issues: list[ScriptLintIssue] = Field(..., description="问题列表（含定位与建议）")
     metrics: ScriptLintMetrics = Field(..., description="统计指标")
     unimplemented_checks: list[str] = Field(
         default_factory=list, description="尚未自动检测的规则（需人工或 LLM 审核）"
     )
-

@@ -60,8 +60,13 @@ export default function VirtualIPDetail() {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">未找到虚拟IP</h2>
-          <Link href="/virtual-ip" className="text-blue-600 hover:text-blue-800">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            未找到虚拟IP
+          </h2>
+          <Link
+            href="/virtual-ip"
+            className="text-blue-600 hover:text-blue-800"
+          >
             返回虚拟IP列表
           </Link>
         </div>
@@ -96,18 +101,28 @@ export default function VirtualIPDetail() {
 
           {(editing || virtualIP.background_story) && (
             <div className="p-6 sm:p-8 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">背景故事</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                背景故事
+              </h3>
               {editing ? (
                 <textarea
                   value={editForm.background_story}
-                  onChange={(e) => setEditForm({ ...editForm, background_story: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      background_story: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={6}
                 />
               ) : (
                 <div className="prose max-w-none">
                   {virtualIP.background_story ? (
-                    <CollapsibleText text={virtualIP.background_story} collapsedLines={4} />
+                    <CollapsibleText
+                      text={virtualIP.background_story}
+                      collapsedLines={4}
+                    />
                   ) : (
                     <p className="text-sm text-gray-400">未填写</p>
                   )}

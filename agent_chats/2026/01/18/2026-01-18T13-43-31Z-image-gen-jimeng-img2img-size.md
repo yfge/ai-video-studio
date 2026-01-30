@@ -45,4 +45,3 @@ summary: "让 Jimeng 图生图透传 size，并在 provider 侧映射为 width/h
 ## Linked Commits
 
 - TBD
-

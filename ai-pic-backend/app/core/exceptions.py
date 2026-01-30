@@ -59,6 +59,7 @@ class DomainError(Exception):
 # 4xx Client Errors
 # ============================================================================
 
+
 class NotFoundError(DomainError):
     """
     Resource not found error (404).
@@ -264,6 +265,7 @@ class ConflictError(DomainError):
 # ============================================================================
 # 5xx Server Errors
 # ============================================================================
+
 
 class ServiceError(DomainError):
     """

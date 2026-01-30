@@ -8,16 +8,15 @@ data parsing, and database query helpers.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException
-from pydantic import ValidationError
-from sqlalchemy.orm import Session
-
-from app.models.script import Story, Episode
+from app.models.script import Episode, Story
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.generation import EpisodeStepOutlineModel
 from app.schemas.story_structure import StoryStepOutlineCreate
 from app.utils.json_utils import extract_json_block
+from fastapi import HTTPException
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 
 def not_deleted(query, model):

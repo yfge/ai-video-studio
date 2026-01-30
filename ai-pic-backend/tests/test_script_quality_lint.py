@@ -1,5 +1,4 @@
 import pytest
-
 from app.schemas.script_quality import ScriptLintOptions
 from app.services.script_quality import lint_script_content
 
@@ -37,4 +36,3 @@ def test_lint_flags_unfilmable_language_and_long_dialogue():
     issue_rule_ids = {i.rule_id for i in result.issues}
     assert "visual_language" in issue_rule_ids
     assert "dialogue_length" in issue_rule_ids
-

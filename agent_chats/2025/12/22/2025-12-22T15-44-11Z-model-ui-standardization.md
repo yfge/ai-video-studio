@@ -40,16 +40,19 @@ summary: "Standardized image model UI metadata and split virtual IP image hooks"
 ---
 
 ## User Prompt
+
 - Reported environment text-to-image could not select model parameters on the environment detail page.
 - Noted environment text-to-image tasks failed when choosing Volcengine Seedream 4.5.
 - Requested frontend + backend standardization and to continue checking.
 
 ## Goals
+
 - Ensure environment text-to-image can select model parameters (size/ratio) and submit tasks reliably.
 - Normalize image parameter handling and UI metadata across providers.
 - Refactor front-end model UI and virtual IP image hooks into smaller modules.
 
 ## Changes
+
 - Added shared image parameter normalization and size/aspect rules for providers, and applied normalization in image generation providers.
 - Enriched OpenAI/Volcengine remote model listings with UI metadata so size options appear for Seedream and DALL-E models.
 - Split model UI rendering into focused components and refactored virtual IP image hooks for clearer responsibilities.
@@ -57,14 +60,17 @@ summary: "Standardized image model UI metadata and split virtual IP image hooks"
 - Passed aspect ratio through environment generation endpoints/tasks and auto-selected the first available model to surface ratio options where supported.
 
 ## Validation
+
 - npm run lint (ai-pic-frontend): PASS.
 - pytest (ai-pic-backend): TIMED OUT at 120s; multiple existing failures across diagnostic endpoints, user management e2e, keling tests, api/migrations/models suites.
 - ./docker/build_prod_images.sh: PASS (backend + frontend images built and pushed).
 - MCP Chrome E2E: Environment detail page -> Google model shows "画幅比例" options; switch provider to 火山引擎 and model doubao-seedream-4-5 -> only size (2K) shown, no ratio field.
 
 ## Next Steps
+
 - Investigate baseline pytest failures/timeouts to enable clean backend test runs.
 - Spot-check image-to-image and virtual IP image generation flows with the new UI metadata.
 
 ## Linked Commits
+
 - d5e09eb

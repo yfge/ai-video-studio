@@ -1,5 +1,4 @@
 import pytest
-
 from app.schemas.generation import StoryboardPlanScene
 from app.services.ai.storyboard_plan import StoryboardPlanMixin
 
@@ -73,4 +72,3 @@ async def test_storyboard_plan_mixin_coerces_ad_snippet_string_into_object():
     assert frames[0]["scene_number"] == 1
     assert frames[0]["reference_images"] == ["https://example.com/ref.png"]
     assert frames[0]["ad_snippet"]["hook"] == "投流钩子一句话"
-

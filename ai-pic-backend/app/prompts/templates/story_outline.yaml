@@ -13,7 +13,7 @@ variables:
     description: "故事标题"
     min_length: 1
     max_length: 100
-  
+
   genre:
     type: string
     required: true
@@ -31,56 +31,56 @@ variables:
     required: false
     description: "微类型/细分题材"
     examples: ["霸总复仇", "狼人恋爱", "黑帮复仇"]
-  
+
   theme:
     type: string
     required: false
     description: "故事主题"
     max_length: 200
-  
+
   target_audience:
     type: string
     required: false
     description: "目标受众"
     examples: ["儿童", "青少年", "年轻人", "成年人", "家庭"]
-  
+
   duration_minutes:
     type: number
     required: false
     description: "总时长（分钟）"
-  
+
   characters:
     type: list
     required: true
     description: "主要角色列表"
     min_length: 1
-  
+
   setting_time:
     type: string
     required: false
     description: "时间背景"
     examples: ["现代", "古代", "未来", "民国", "80年代"]
-  
+
   setting_location:
     type: string
     required: false
     description: "地点设定"
-  
+
   world_building:
     type: string
     required: false
     description: "世界观设定"
-  
+
   additional_requirements:
     type: string
     required: false
     description: "额外创作要求"
-  
+
   style_preferences:
     type: list
     required: false
     description: "风格偏好列表"
-  
+
   content_restrictions:
     type: list
     required: false

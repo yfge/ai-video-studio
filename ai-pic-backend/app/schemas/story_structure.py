@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, List, Any
-
-from pydantic import BaseModel, Field
+from typing import Any, List, Optional
 
 from app.schemas.user import UserSummary
+from pydantic import BaseModel, Field
 
 
 class ORMModel(BaseModel):

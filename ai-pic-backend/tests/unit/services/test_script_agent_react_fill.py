@@ -1,9 +1,8 @@
 from types import SimpleNamespace
 
 import pytest
-
-from app.services.script_agent_react_fill import try_fill_pending_scenes_after_react
 from app.services.duration_orchestrator.state import SceneBudget
+from app.services.script_agent_react_fill import try_fill_pending_scenes_after_react
 
 
 @pytest.mark.asyncio
@@ -18,7 +17,12 @@ async def test_try_fill_pending_scenes_after_react_accepts_dict_response():
                     {"scene_number": 2, "character": "B", "content": "不应该出现"},
                 ],
                 "stage_directions": [
-                    {"scene_number": 1, "timing": "mid", "content": "动作", "type": "action"}
+                    {
+                        "scene_number": 1,
+                        "timing": "mid",
+                        "content": "动作",
+                        "type": "action",
+                    }
                 ],
             },
         )
@@ -43,7 +47,10 @@ async def test_try_fill_pending_scenes_after_react_accepts_dict_response():
         ai_manager=ai_manager,
         episode={"title": "ep"},
         story={"title": "story"},
-        scenes=[{"scene_number": 1, "summary": "s1"}, {"scene_number": 2, "summary": "s2"}],
+        scenes=[
+            {"scene_number": 1, "summary": "s1"},
+            {"scene_number": 2, "summary": "s2"},
+        ],
         pending_budgets=pending_budgets,
         dialogue_style="natural",
         language="zh",

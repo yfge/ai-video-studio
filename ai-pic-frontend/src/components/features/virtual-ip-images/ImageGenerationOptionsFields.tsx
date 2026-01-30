@@ -4,7 +4,9 @@ import type { ImageGenerationFormState } from "@/hooks/useVirtualIPImages";
 
 interface ImageGenerationOptionsFieldsProps {
   generateForm: ImageGenerationFormState;
-  setGenerateForm: React.Dispatch<React.SetStateAction<ImageGenerationFormState>>;
+  setGenerateForm: React.Dispatch<
+    React.SetStateAction<ImageGenerationFormState>
+  >;
   maxCount?: number;
 }
 

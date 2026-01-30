@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.providers.base import AIModelType, ProviderConfig
 from app.services.providers.google_provider import GoogleProvider
 
@@ -49,8 +48,10 @@ async def test_generate_image_success(monkeypatch):
             ]
         }
     )
+
     async def _fake_client():
         return dummy_client
+
     monkeypatch.setattr(provider, "get_client", _fake_client)
 
     resp = await provider.generate_image(
@@ -64,12 +65,21 @@ async def test_generate_image_success(monkeypatch):
     assert resp.model_type == AIModelType.TEXT_TO_IMAGE
     assert resp.data and resp.data["images"]
     assert resp.data["images"][0].startswith("data:image/png;base64,")
-    assert "sunset" in dummy_client.last_request["json"]["contents"][0]["parts"][0]["text"]
+    assert (
+        "sunset" in dummy_client.last_request["json"]["contents"][0]["parts"][0]["text"]
+    )
     # 验证 responseModalities 字段已正确设置
     assert "generationConfig" in dummy_client.last_request["json"]
     assert "responseModalities" in dummy_client.last_request["json"]["generationConfig"]
-    assert dummy_client.last_request["json"]["generationConfig"]["responseModalities"] == ["IMAGE"]
-    assert dummy_client.last_request["json"]["generationConfig"]["imageConfig"]["aspectRatio"] == "16:9"
+    assert dummy_client.last_request["json"]["generationConfig"][
+        "responseModalities"
+    ] == ["IMAGE"]
+    assert (
+        dummy_client.last_request["json"]["generationConfig"]["imageConfig"][
+            "aspectRatio"
+        ]
+        == "16:9"
+    )
 
 
 @pytest.mark.asyncio
@@ -94,12 +104,16 @@ async def test_generate_image_strips_provider_prefix(monkeypatch):
             ]
         }
     )
+
     async def _fake_client():
         return dummy_client
+
     monkeypatch.setattr(provider, "get_client", _fake_client)
 
     # 使用带有 provider 前缀的模型名称
-    resp = await provider.generate_image(prompt="test image", model="google:gemini-3-pro-image-preview")
+    resp = await provider.generate_image(
+        prompt="test image", model="google:gemini-3-pro-image-preview"
+    )
 
     assert resp.success is True
     # 验证 URL 中的模型名称不包含 provider 前缀
@@ -128,8 +142,10 @@ async def test_image_to_image_uses_reference(monkeypatch):
             ]
         }
     )
+
     async def _fake_client():
         return dummy_client
+
     monkeypatch.setattr(provider, "get_client", _fake_client)
 
     resp = await provider.image_to_image(
@@ -148,4 +164,6 @@ async def test_image_to_image_uses_reference(monkeypatch):
     # 验证 responseModalities 字段已正确设置
     assert "generationConfig" in dummy_client.last_request["json"]
     assert "responseModalities" in dummy_client.last_request["json"]["generationConfig"]
-    assert dummy_client.last_request["json"]["generationConfig"]["responseModalities"] == ["IMAGE"]
+    assert dummy_client.last_request["json"]["generationConfig"][
+        "responseModalities"
+    ] == ["IMAGE"]

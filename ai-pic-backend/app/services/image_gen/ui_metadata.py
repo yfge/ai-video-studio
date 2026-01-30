@@ -97,15 +97,15 @@ def build_image_gen_ui_metadata(
     text_notes: list[str] = []
     image_notes: list[str] = []
 
-    negative_prompt_note = (
-        "该提供商不支持 negative_prompt：常用约束需写入 prompt（模板已内置 Constraints）"
-    )
+    negative_prompt_note = "该提供商不支持 negative_prompt：常用约束需写入 prompt（模板已内置 Constraints）"
     if not text_to_image["supports_negative_prompt"]:
         _append_note(text_notes, negative_prompt_note)
 
     if supports_reference_image and not image_to_image["supports_negative_prompt"]:
         if provider_key == "keling":
-            _append_note(image_notes, "可灵图生图不支持 negative_prompt：请将约束写入 prompt")
+            _append_note(
+                image_notes, "可灵图生图不支持 negative_prompt：请将约束写入 prompt"
+            )
         else:
             _append_note(image_notes, negative_prompt_note)
 

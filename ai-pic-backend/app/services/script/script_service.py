@@ -5,20 +5,19 @@ Provides CRUD operations and validation for scripts, using repositories
 for data access. Separates business logic from API endpoints.
 """
 
-from typing import Any, Dict, List, Optional
-from sqlalchemy.orm import Session
+from typing import List, Optional
 
-from app.core.exceptions import NotFoundError, ValidationError, ForbiddenError
+from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
-from app.models.script import Script, Episode, Story
+from app.models.script import Episode, Script, Story
 from app.models.user import User
 from app.repositories.script_repository import (
-    ScriptRepository,
     EpisodeRepository,
+    ScriptRepository,
     StoryRepository,
 )
 from app.schemas.script import ScriptCreate, ScriptUpdate
-
+from sqlalchemy.orm import Session
 
 logger = get_logger()
 
@@ -47,7 +46,7 @@ class ScriptService:
         self,
         user: User,
         story: Optional[Story] = None,
-        episode: Optional[Episode] = None
+        episode: Optional[Episode] = None,
     ) -> bool:
         """
         Check if user has access to the resource.
@@ -78,7 +77,7 @@ class ScriptService:
         self,
         script_id: Optional[int] = None,
         business_id: Optional[str] = None,
-        user: Optional[User] = None
+        user: Optional[User] = None,
     ) -> Script:
         """
         Get script by ID or business_id.
@@ -96,9 +95,7 @@ class ScriptService:
         """
         user_id = self._get_user_id_filter(user) if user else None
         script = self.script_repo.get_with_relations(
-            script_id=script_id,
-            business_id=business_id,
-            user_id=user_id
+            script_id=script_id, business_id=business_id, user_id=user_id
         )
         if not script:
             raise NotFoundError("剧本", script_id or business_id)
@@ -112,7 +109,7 @@ class ScriptService:
         status: Optional[str] = None,
         format_type: Optional[str] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Script]:
         """
         List scripts with filters.
@@ -137,14 +134,11 @@ class ScriptService:
             status=status,
             format_type=format_type,
             skip=skip,
-            limit=limit
+            limit=limit,
         )
 
     def get_episode_scripts(
-        self,
-        episode_id: int,
-        user: User,
-        limit: int = 50
+        self, episode_id: int, user: User, limit: int = 50
     ) -> List[Script]:
         """
         Get scripts for an episode.
@@ -162,23 +156,16 @@ class ScriptService:
         """
         user_id = self._get_user_id_filter(user)
         episode = self.episode_repo.get_with_story(
-            episode_id=episode_id,
-            user_id=user_id
+            episode_id=episode_id, user_id=user_id
         )
         if not episode:
             raise NotFoundError("剧集", episode_id)
 
         return self.script_repo.list_by_episode(
-            episode_id=episode_id,
-            user_id=user_id,
-            limit=limit
+            episode_id=episode_id, user_id=user_id, limit=limit
         )
 
-    def create_script(
-        self,
-        script_data: ScriptCreate,
-        user: User
-    ) -> Script:
+    def create_script(self, script_data: ScriptCreate, user: User) -> Script:
         """
         Create a new script.
 
@@ -195,8 +182,7 @@ class ScriptService:
         # Verify episode exists and user has access
         user_id = self._get_user_id_filter(user)
         episode = self.episode_repo.get_with_story(
-            episode_id=script_data.episode_id,
-            user_id=user_id
+            episode_id=script_data.episode_id, user_id=user_id
         )
         if not episode:
             raise NotFoundError("剧集", script_data.episode_id)
@@ -207,9 +193,7 @@ class ScriptService:
 
         # Create script
         script = self.script_repo.create(
-            **script_data.dict(),
-            word_count=word_count,
-            character_count=character_count
+            **script_data.dict(), word_count=word_count, character_count=character_count
         )
         self.session.commit()
         self.session.refresh(script)
@@ -224,7 +208,7 @@ class ScriptService:
         script_id: Optional[int] = None,
         business_id: Optional[str] = None,
         update_data: ScriptUpdate = None,
-        user: Optional[User] = None
+        user: Optional[User] = None,
     ) -> Script:
         """
         Update an existing script.
@@ -242,9 +226,7 @@ class ScriptService:
             NotFoundError: If script not found
         """
         script = self.get_script(
-            script_id=script_id,
-            business_id=business_id,
-            user=user
+            script_id=script_id, business_id=business_id, user=user
         )
 
         # Apply updates
@@ -271,7 +253,7 @@ class ScriptService:
         script_id: Optional[int] = None,
         business_id: Optional[str] = None,
         user: Optional[User] = None,
-        reason: str = "user delete"
+        reason: str = "user delete",
     ) -> None:
         """
         Soft delete a script.
@@ -286,9 +268,7 @@ class ScriptService:
             NotFoundError: If script not found
         """
         script = self.get_script(
-            script_id=script_id,
-            business_id=business_id,
-            user=user
+            script_id=script_id, business_id=business_id, user=user
         )
 
         user_id = user.id if user else None
@@ -307,7 +287,10 @@ class ScriptService:
         """
         try:
             # Import here to avoid circular imports
-            from app.api.v1.endpoints.scripts import _sync_script_scenes_to_story_structure
+            from app.api.v1.endpoints.scripts import (
+                _sync_script_scenes_to_story_structure,
+            )
+
             _sync_script_scenes_to_story_structure(self.session, script)
         except Exception:
             logger.warning("同步规范化场景失败", exc_info=True)

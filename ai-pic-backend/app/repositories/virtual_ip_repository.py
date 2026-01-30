@@ -4,12 +4,11 @@ Virtual IP repository for data access layer.
 Encapsulates VirtualIP queries with ownership and soft-delete filters.
 """
 
-from sqlalchemy.orm import Session
-
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.repositories.base import BaseRepository
+from sqlalchemy.orm import Session
 
 
 class VirtualIPRepository(BaseRepository[VirtualIP]):
@@ -35,7 +34,11 @@ class VirtualIPRepository(BaseRepository[VirtualIP]):
     def get_owned_by_business_id(self, business_id: str, user: User) -> VirtualIP:
         if not business_id:
             raise ValidationError("虚拟IP标识缺失", field="virtual_ip_business_id")
-        ip = self._owned_query(user).filter(self.model.business_id == business_id).first()
+        ip = (
+            self._owned_query(user)
+            .filter(self.model.business_id == business_id)
+            .first()
+        )
         if not ip:
             raise NotFoundError.virtual_ip(business_id)
         return ip

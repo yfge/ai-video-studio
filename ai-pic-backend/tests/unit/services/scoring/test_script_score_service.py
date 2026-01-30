@@ -2,17 +2,17 @@
 Unit tests for ScriptScoreService.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from app.schemas.generation import ScriptScoreDimensions, ScriptScoreResult
+import pytest
+from app.schemas.generation import ScriptScoreDimensions
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.scoring.script_score_service import (
-    ScriptScoreService,
-    PASS_OVERALL_THRESHOLD,
     PASS_DIMENSION_THRESHOLD,
-    REVIEW_OVERALL_MIN,
+    PASS_OVERALL_THRESHOLD,
     REVIEW_DIMENSION_MIN,
+    REVIEW_OVERALL_MIN,
+    ScriptScoreService,
 )
 
 
@@ -94,7 +94,7 @@ class TestScriptScoreService:
 
     def test_parse_score_response_valid(self, score_service):
         """Test parsing a valid score response."""
-        response = '''
+        response = """
         Here is the score:
         ```json
         {
@@ -113,7 +113,7 @@ class TestScriptScoreService:
             "suggested_ad_hooks": ["15s: Opening betrayal scene"]
         }
         ```
-        '''
+        """
         result = score_service._parse_score_response(response)
 
         assert result.overall_score == 4.2
@@ -125,7 +125,7 @@ class TestScriptScoreService:
 
     def test_parse_score_response_missing_overall(self, score_service):
         """Test parsing when overall_score is missing (computed)."""
-        response = '''
+        response = """
         ```json
         {
             "dimension_scores": {
@@ -141,7 +141,7 @@ class TestScriptScoreService:
             "suggested_ad_hooks": []
         }
         ```
-        '''
+        """
         result = score_service._parse_score_response(response)
 
         # Should compute average: 4.0
@@ -171,7 +171,7 @@ class TestScriptScoreService:
         """Test successful script scoring."""
         mock_ai_service.ai_manager.generate_text.return_value = AIResponse(
             success=True,
-            data='''
+            data="""
         ```json
         {
             "overall_score": 4.5,
@@ -189,7 +189,7 @@ class TestScriptScoreService:
             "suggested_ad_hooks": ["15s: Opening scene"]
         }
         ```
-        ''',
+        """,
             provider="mock",
             model="mock",
             task_type=AITaskType.SCRIPT_WRITING,

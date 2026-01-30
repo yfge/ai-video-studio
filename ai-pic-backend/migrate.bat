@@ -24,4 +24,4 @@ if errorlevel 1 (
 )
 
 echo 命令执行完成
-pause 
+pause

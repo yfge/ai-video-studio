@@ -1,12 +1,11 @@
 import enum
 
+from app.core.database import Base
+from app.models.base import SoftDeleteBusinessMixin
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import JSON
-
-from app.core.database import Base
-from app.models.base import SoftDeleteBusinessMixin
 
 
 class VideoGenerationTaskStatus(str, enum.Enum):

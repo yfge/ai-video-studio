@@ -5,7 +5,6 @@
 """
 
 import pytest
-
 from app.services.duration_orchestrator.nodes.commit_scene import (
     commit_scene_node,
     should_continue_or_assemble,

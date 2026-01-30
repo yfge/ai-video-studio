@@ -2,9 +2,6 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskStatus, TaskType
@@ -12,6 +9,8 @@ from app.models.user import User
 from app.schemas.generation_requests import StoryGenerationRequest
 from app.services.story.story_generation_service import StoryGenerationService
 from app.services.task_worker import story_generate_task
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 

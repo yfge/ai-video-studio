@@ -8,10 +8,8 @@ supporting multiple providers.
 from typing import Any, Dict, Optional
 
 from app.core.logging import get_logger
-from app.services.media import (
-    build_generation_metadata,
-    upload_from_url as upload_media_from_url,
-)
+from app.services.media import build_generation_metadata
+from app.services.media import upload_from_url as upload_media_from_url
 from app.services.storage import oss_service
 
 
@@ -96,7 +94,9 @@ class SpeechService:
         )
 
         return {
-            "audio_url": self._get_oss_url_or_original(audio_oss_result, original_audio_url),
+            "audio_url": self._get_oss_url_or_original(
+                audio_oss_result, original_audio_url
+            ),
             "original_audio_url": original_audio_url,
             "audio_oss_upload": audio_oss_result,
             "duration": response.data.get("duration"),

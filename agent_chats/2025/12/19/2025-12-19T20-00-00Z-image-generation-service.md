@@ -31,11 +31,13 @@ Continue with Phase 2 of the refactoring plan - extract service modules from ai_
 
 ### New Files Created
 
-1. **ai-pic-backend/app/services/image/__init__.py** (~16 lines)
+1. **ai-pic-backend/app/services/image/**init**.py** (~16 lines)
+
    - Package initialization
    - Exports: `ImageGenerationService`, `get_image_generation_service`
 
 2. **ai-pic-backend/app/services/image/image_generation_service.py** (~353 lines)
+
    - `ImageGenerationService`: Main service class for AI-powered image generation
    - Methods:
      - `generate_virtual_ip_image()`: Main generation entry point
@@ -47,6 +49,7 @@ Continue with Phase 2 of the refactoring plan - extract service modules from ai_
    - Factory function: `get_image_generation_service()`
 
 3. **ai-pic-backend/app/services/image/image_persistence.py** (~314 lines)
+
    - Image persistence utilities extracted from ai_service.py
    - Functions:
      - `download_image()`: Download from URL or decode base64
@@ -67,11 +70,13 @@ Continue with Phase 2 of the refactoring plan - extract service modules from ai_
 ### Test Files Created
 
 5. **tests/unit/services/image/test_image_generation_service.py** (~15 tests)
+
    - Tests for `ImageGenerationService` class
    - Tests for model detection, prompt building, style resolution
    - Tests for factory function singleton behavior
 
 6. **tests/unit/services/image/test_image_persistence.py** (~12 tests)
+
    - Tests for all persistence functions
    - Tests for base64 handling, URL download with retry
    - Tests for OSS upload success/failure scenarios
@@ -84,6 +89,7 @@ Continue with Phase 2 of the refactoring plan - extract service modules from ai_
 ## Validation
 
 ### Import Tests
+
 ```bash
 python -c "from app.services.image import ImageGenerationService, get_image_generation_service; print('Image Service import OK')"
 # Output: Image Service import OK
@@ -96,12 +102,14 @@ python -c "from app.services.image.image_providers import generate_with_openai_d
 ```
 
 ### Unit Tests
+
 ```bash
 pytest tests/unit/services/image/ -v
 # Result: 41 passed (100%)
 ```
 
 ### Production Build
+
 ```bash
 ./docker/build_prod_images.sh
 # Result: SUCCESS - All images built successfully
@@ -112,11 +120,13 @@ pytest tests/unit/services/image/ -v
 The Image Generation Service follows a clean separation of concerns:
 
 1. **Service Layer** (`image_generation_service.py`)
+
    - Business logic and orchestration
    - Style resolution and prompt building
    - Provider routing based on model selection
 
 2. **Persistence Layer** (`image_persistence.py`)
+
    - Download from URL or base64
    - Local file storage
    - OSS upload integration
@@ -127,6 +137,7 @@ The Image Generation Service follows a clean separation of concerns:
    - Error handling per provider
 
 This structure allows:
+
 - Independent testing of each layer
 - Easy addition of new providers
 - Clear dependency direction (Service → Persistence + Providers)

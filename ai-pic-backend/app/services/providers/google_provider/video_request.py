@@ -101,7 +101,9 @@ async def build_veo_request_body(
                 image_payload = await fetch_image_bytes(item, config_timeout)
                 refs.append({"image": image_payload, "referenceType": "asset"})
             elif isinstance(item, dict):
-                image_value = item.get("image") or item.get("image_url") or item.get("url")
+                image_value = (
+                    item.get("image") or item.get("image_url") or item.get("url")
+                )
                 if not image_value:
                     continue
                 image_payload = await fetch_image_bytes(image_value, config_timeout)
@@ -121,4 +123,3 @@ async def build_veo_request_body(
         "duration": resolved_duration,
     }
     return body, resolved
-

@@ -1,7 +1,9 @@
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, Optional
+
 from app.models.task import TaskStatus, TaskType
+from pydantic import BaseModel
+
 
 class TaskBase(BaseModel):
     title: str
@@ -10,8 +12,10 @@ class TaskBase(BaseModel):
     prompt: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
 
+
 class TaskCreate(TaskBase):
     pass
+
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -21,6 +25,7 @@ class TaskUpdate(BaseModel):
     parameters: Optional[Dict[str, Any]] = None
     result_file_path: Optional[str] = None
     error_message: Optional[str] = None
+
 
 class TaskResponse(TaskBase):
     id: int
@@ -33,12 +38,13 @@ class TaskResponse(TaskBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     progress_detail: Optional[str] = None
-    
+
     class Config:
         from_attributes = True
+
 
 class TaskList(BaseModel):
     tasks: list[TaskResponse]
     total: int
     page: int
-    size: int 
+    size: int

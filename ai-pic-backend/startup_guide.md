@@ -3,11 +3,13 @@
 ## 🚀 快速启动
 
 ### 1. 确保在正确的目录
+
 ```bash
 cd ai-pic-backend
 ```
 
 ### 2. 创建虚拟环境（推荐）
+
 ```bash
 # 使用venv
 python -m venv venv
@@ -20,11 +22,13 @@ source venv/bin/activate
 ```
 
 ### 3. 安装依赖
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 4. 配置环境变量
+
 ```bash
 # 复制环境变量示例文件
 cp env.example .env
@@ -34,6 +38,7 @@ cp env.example .env
 ```
 
 ### 5. 启动开发服务器
+
 ```bash
 # 方式1：直接运行
 python main.py
@@ -43,6 +48,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 6. 访问应用
+
 - API服务: http://localhost:8000
 - API文档: http://localhost:8000/docs
 - ReDoc文档: http://localhost:8000/redoc
@@ -50,9 +56,11 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## 🔧 故障排除
 
 ### 问题1: 依赖安装失败
+
 **错误信息**: `pip install -r requirements.txt` 失败
 
 **解决方案**:
+
 ```bash
 # 升级pip
 pip install --upgrade pip
@@ -65,9 +73,11 @@ conda install -c conda-forge fastapi uvicorn
 ```
 
 ### 问题2: 端口被占用
+
 **错误信息**: `Port 8000 is already in use`
 
 **解决方案**:
+
 ```bash
 # 查找占用端口的进程
 netstat -ano | findstr :8000
@@ -80,9 +90,11 @@ uvicorn main:app --reload --port 8001
 ```
 
 ### 问题3: 数据库错误
+
 **错误信息**: `sqlite3.OperationalError`
 
 **解决方案**:
+
 ```bash
 # 删除现有数据库文件（如果存在）
 rm ai_pic.db
@@ -92,9 +104,11 @@ python main.py
 ```
 
 ### 问题4: 导入错误
+
 **错误信息**: `ModuleNotFoundError`
 
 **解决方案**:
+
 ```bash
 # 确保在正确的目录
 pwd  # 应该显示 .../ai-pic-backend
@@ -111,11 +125,13 @@ python -c "import sys; print(sys.path)"
 启动成功后，你可以测试以下API端点：
 
 ### 1. 健康检查
+
 ```bash
 curl http://localhost:8000/health
 ```
 
 ### 2. 用户注册
+
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/register" \
   -H "Content-Type: application/json" \
@@ -128,6 +144,7 @@ curl -X POST "http://localhost:8000/api/v1/auth/register" \
 ```
 
 ### 3. 用户登录
+
 ```bash
 curl -X POST "http://localhost:8000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
@@ -169,6 +186,7 @@ pytest
 ## 🆘 获取帮助
 
 如果遇到其他问题，请检查：
+
 1. Python版本是否为3.8+
 2. 是否在正确的目录下
 3. 依赖是否正确安装
@@ -179,4 +197,4 @@ pytest
 
 - [FastAPI官方文档](https://fastapi.tiangolo.com/)
 - [SQLAlchemy文档](https://docs.sqlalchemy.org/)
-- [Pydantic文档](https://pydantic-docs.helpmanual.io/) 
+- [Pydantic文档](https://pydantic-docs.helpmanual.io/)

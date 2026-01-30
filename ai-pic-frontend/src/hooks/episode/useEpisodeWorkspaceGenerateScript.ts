@@ -3,7 +3,11 @@
 import { useCallback } from "react";
 
 import { scriptAPI } from "@/utils/api/endpoints";
-import type { Episode, Script, ScriptGenerationRequest } from "@/utils/api/types";
+import type {
+  Episode,
+  Script,
+  ScriptGenerationRequest,
+} from "@/utils/api/types";
 
 import type { ShowAlert } from "./episodeWorkspaceScriptActions.types";
 
@@ -72,7 +76,15 @@ export function useEpisodeWorkspaceGenerateScript(args: {
     } finally {
       setGenerating(false);
     }
-  }, [episode?.id, generateForm, onSelectScript, setGenerating, setScripts, showAlert, useAsync]);
+  }, [
+    episode?.id,
+    generateForm,
+    onSelectScript,
+    setGenerating,
+    setScripts,
+    showAlert,
+    useAsync,
+  ]);
 
   return { handleGenerateScript };
 }

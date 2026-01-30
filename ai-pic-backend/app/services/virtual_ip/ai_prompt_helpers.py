@@ -55,7 +55,9 @@ def sanitize_character_text(text: str, *, name: str) -> str:
     return cleaned.strip()
 
 
-def generate_template_style_prompt(name: str, description: str, image_category: str) -> str:
+def generate_template_style_prompt(
+    name: str, description: str, image_category: str
+) -> str:
     """生成模板风格提示词（中文）"""
     base_prompt = "高质量的二次元角色"
 

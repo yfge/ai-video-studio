@@ -1,22 +1,26 @@
-"use client"
+"use client";
 
-import { CollapsibleText } from "@/components/ui"
-import type { Environment } from "@/utils/api"
-import { resolveCreatorLabel } from "@/utils/creator"
+import { CollapsibleText } from "@/components/ui";
+import type { Environment } from "@/utils/api";
+import { resolveCreatorLabel } from "@/utils/creator";
 
 interface EnvironmentHeaderProps {
-  env: Environment
-  editing: boolean
+  env: Environment;
+  editing: boolean;
   form: {
-    category: string
-    tags: string[]
-    description: string
-  }
+    category: string;
+    tags: string[];
+    description: string;
+  };
   setForm: React.Dispatch<
-    React.SetStateAction<{ category: string; tags: string[]; description: string }>
-  >
-  addTag: (tag: string) => void
-  removeTag: (tag: string) => void
+    React.SetStateAction<{
+      category: string;
+      tags: string[];
+      description: string;
+    }>
+  >;
+  addTag: (tag: string) => void;
+  removeTag: (tag: string) => void;
 }
 
 export function EnvironmentHeader({
@@ -27,8 +31,8 @@ export function EnvironmentHeader({
   addTag,
   removeTag,
 }: EnvironmentHeaderProps) {
-  const tags = editing ? form.tags : env.tags || []
-  const categoryValue = editing ? form.category : env.category || ''
+  const tags = editing ? form.tags : env.tags || [];
+  const categoryValue = editing ? form.category : env.category || "";
 
   return (
     <>
@@ -67,16 +71,22 @@ export function EnvironmentHeader({
           <div className="mt-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">类别</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  类别
+                </label>
                 <input
                   value={form.category}
-                  onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, category: e.target.value }))
+                  }
                   placeholder="例如 indoor / outdoor / custom"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">标签</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  标签
+                </label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {form.tags.map((tag) => (
                     <span
@@ -99,11 +109,11 @@ export function EnvironmentHeader({
                     type="text"
                     placeholder="输入标签"
                     onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        const input = e.target as HTMLInputElement
-                        addTag(input.value)
-                        input.value = ''
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const input = e.target as HTMLInputElement;
+                        addTag(input.value);
+                        input.value = "";
                       }
                     }}
                     className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
@@ -111,9 +121,10 @@ export function EnvironmentHeader({
                   <button
                     type="button"
                     onClick={(e) => {
-                      const input = e.currentTarget.previousElementSibling as HTMLInputElement
-                      addTag(input.value)
-                      input.value = ''
+                      const input = e.currentTarget
+                        .previousElementSibling as HTMLInputElement;
+                      addTag(input.value);
+                      input.value = "";
                     }}
                     className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
@@ -124,10 +135,14 @@ export function EnvironmentHeader({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                描述
+              </label>
               <textarea
                 value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, description: e.target.value }))
+                }
                 rows={4}
                 placeholder="填写环境描述或使用场景"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
@@ -160,5 +175,5 @@ export function EnvironmentHeader({
         </div>
       </div>
     </>
-  )
+  );
 }

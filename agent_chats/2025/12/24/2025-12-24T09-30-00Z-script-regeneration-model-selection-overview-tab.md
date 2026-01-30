@@ -33,6 +33,7 @@ summary: "Add script regeneration with model selection and episode overview tab"
 ### Backend Changes
 
 **`ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py`**:
+
 - Added `ScriptRegenerateRequest` Pydantic model with optional `model` field
 - Updated `regenerate_script` endpoint to accept optional model parameter
 - Updated `regenerate_script_by_business_id` endpoint similarly
@@ -41,32 +42,39 @@ summary: "Add script regeneration with model selection and episode overview tab"
 ### Frontend Changes
 
 **`ai-pic-frontend/src/utils/api.ts`**:
+
 - Updated `regenerateScript` method to accept optional `{ model?: string }` options
 
 **`ai-pic-frontend/src/utils/api/endpoints/script.endpoints.ts`**:
+
 - Added `ScriptRegenerateRequest` interface
 
 **`ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx`**:
+
 - Added "overview" to TabKey type
 - Changed default tab from "script" to "overview"
 - Added regenerating state and handleRegenerateScript with model parameter
 - Added WorkspaceOverviewTabContent component usage
 
 **`ai-pic-frontend/src/components/features/episode/WorkspaceScriptTabContent.tsx`**:
+
 - Added regeneration modal with ModelSelector component
 - Added regenerateModel state management
 - Updated onRegenerateScript prop to accept optional model parameter
 
 **`ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceHeader.tsx`**:
+
 - Updated activeTab type to include "overview"
 - Added "剧集概要" as first tab in navigation
 
 **`ai-pic-frontend/src/components/features/episode/WorkspaceOverviewTabContent.tsx`** (NEW):
+
 - Created new component to display episode overview
 - Shows: 基本信息, 剧集概要, 剧情要点, 冲突点, 角色弧线, 标签, 元数据
 - Proper parsing of plot_points and conflicts with timing/intensity display
 
 **`ai-pic-frontend/src/components/features/episode/index.ts`**:
+
 - Added export for WorkspaceOverviewTabContent
 
 ## Validation

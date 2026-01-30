@@ -1,15 +1,15 @@
 """Unit tests for timeline processing utilities."""
 
-import pytest
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
+import pytest
 from app.services.audio.timeline_processor import (
-    utc_now_iso,
+    _create_frame,
     build_episode_timeline_beats,
     build_storyboard_frames_from_audio_timeline,
-    _create_frame,
     generate_storyboard_from_episode_audio_timeline,
+    utc_now_iso,
 )
 
 
@@ -521,11 +521,7 @@ class TestGenerateStoryboardFromEpisodeAudioTimeline:
         script = MagicMock()
         script.id = 1
         script.extra_metadata = {
-            "storyboard": {
-                "frames": [
-                    {"image_url": "http://example.com/image.jpg"}
-                ]
-            }
+            "storyboard": {"frames": [{"image_url": "http://example.com/image.jpg"}]}
         }
 
         episode = MagicMock()
@@ -554,11 +550,7 @@ class TestGenerateStoryboardFromEpisodeAudioTimeline:
         script = MagicMock()
         script.id = 1
         script.extra_metadata = {
-            "storyboard": {
-                "frames": [
-                    {"image_url": "http://example.com/image.jpg"}
-                ]
-            }
+            "storyboard": {"frames": [{"image_url": "http://example.com/image.jpg"}]}
         }
         script.storyboard_version = 1
 

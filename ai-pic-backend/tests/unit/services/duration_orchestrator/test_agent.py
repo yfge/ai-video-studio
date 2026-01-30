@@ -7,7 +7,6 @@ Duration Orchestrator Agent 单元测试
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from app.services.duration_orchestrator.agent import (
     DurationOrchestratorAgent,
     orchestrate_episode_duration,
@@ -33,8 +32,16 @@ class TestDurationOrchestratorAgent:
             "story_id": 1,
             "total_duration_minutes": 3,
             "scenes": [
-                {"scene_number": 1, "summary": "场景1", "estimated_duration_seconds": 60},
-                {"scene_number": 2, "summary": "场景2", "estimated_duration_seconds": 60},
+                {
+                    "scene_number": 1,
+                    "summary": "场景1",
+                    "estimated_duration_seconds": 60,
+                },
+                {
+                    "scene_number": 2,
+                    "summary": "场景2",
+                    "estimated_duration_seconds": 60,
+                },
             ],
             "episode": {"id": 1, "title": "测试剧集"},
             "story": {"id": 1, "title": "测试故事"},
@@ -47,8 +54,16 @@ class TestDurationOrchestratorAgent:
         mock_script_agent.generate.return_value = {
             "content": {
                 "dialogues": [
-                    {"scene_number": 1, "character": "A", "content": "这是场景一的对白内容"},
-                    {"scene_number": 2, "character": "B", "content": "这是场景二的对白内容"},
+                    {
+                        "scene_number": 1,
+                        "character": "A",
+                        "content": "这是场景一的对白内容",
+                    },
+                    {
+                        "scene_number": 2,
+                        "character": "B",
+                        "content": "这是场景二的对白内容",
+                    },
                 ],
             },
         }
@@ -96,7 +111,9 @@ class TestDurationOrchestratorAgent:
         assert len(result.get("errors", [])) > 0
 
     @pytest.mark.asyncio
-    async def test_orchestrate_with_generation_config(self, mock_script_agent, base_params):
+    async def test_orchestrate_with_generation_config(
+        self, mock_script_agent, base_params
+    ):
         """带生成配置的编排"""
         mock_script_agent.generate.return_value = {
             "content": {
@@ -125,7 +142,9 @@ class TestDurationOrchestratorAgent:
         assert "scene_budgets" in result
 
     @pytest.mark.asyncio
-    async def test_orchestrate_statistics_structure(self, mock_script_agent, base_params):
+    async def test_orchestrate_statistics_structure(
+        self, mock_script_agent, base_params
+    ):
         """验证统计信息结构"""
         mock_script_agent.generate.return_value = {
             "content": {
@@ -259,9 +278,21 @@ class TestSceneLoopIntegration:
             story_id=1,
             total_duration_minutes=3,
             scenes=[
-                {"scene_number": 1, "summary": "开场", "estimated_duration_seconds": 60},
-                {"scene_number": 2, "summary": "发展", "estimated_duration_seconds": 60},
-                {"scene_number": 3, "summary": "结尾", "estimated_duration_seconds": 60},
+                {
+                    "scene_number": 1,
+                    "summary": "开场",
+                    "estimated_duration_seconds": 60,
+                },
+                {
+                    "scene_number": 2,
+                    "summary": "发展",
+                    "estimated_duration_seconds": 60,
+                },
+                {
+                    "scene_number": 3,
+                    "summary": "结尾",
+                    "estimated_duration_seconds": 60,
+                },
             ],
             episode={"id": 1, "title": "测试剧集"},
             story={"id": 1, "title": "测试故事"},
@@ -296,8 +327,16 @@ class TestSceneLoopIntegration:
             story_id=1,
             total_duration_minutes=2,  # 2分钟 = 120秒
             scenes=[
-                {"scene_number": 1, "summary": "场景1", "estimated_duration_seconds": 60},
-                {"scene_number": 2, "summary": "场景2", "estimated_duration_seconds": 60},
+                {
+                    "scene_number": 1,
+                    "summary": "场景1",
+                    "estimated_duration_seconds": 60,
+                },
+                {
+                    "scene_number": 2,
+                    "summary": "场景2",
+                    "estimated_duration_seconds": 60,
+                },
             ],
             episode={"id": 1},
             story={"id": 1},
@@ -356,7 +395,11 @@ class TestSceneLoopIntegration:
                 return {
                     "content": {
                         "dialogues": [
-                            {"scene_number": 1, "character": "A", "content": "正常对白"},
+                            {
+                                "scene_number": 1,
+                                "character": "A",
+                                "content": "正常对白",
+                            },
                         ],
                     },
                 }

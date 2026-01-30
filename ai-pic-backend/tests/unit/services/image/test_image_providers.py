@@ -1,13 +1,13 @@
 """Unit tests for image generation providers."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from app.services.image.image_providers import (
+    generate_with_custom_service,
     generate_with_keling,
     generate_with_openai_dalle,
     generate_with_stability,
-    generate_with_custom_service,
 )
 
 
@@ -175,9 +175,7 @@ class TestGenerateWithOpenAIDalle:
 
                 mock_response = MagicMock()
                 mock_response.raise_for_status = MagicMock()
-                mock_response.json.return_value = {
-                    "data": [{"b64_json": "imagedata"}]
-                }
+                mock_response.json.return_value = {"data": [{"b64_json": "imagedata"}]}
 
                 mock_client = AsyncMock()
                 mock_client.post.return_value = mock_response

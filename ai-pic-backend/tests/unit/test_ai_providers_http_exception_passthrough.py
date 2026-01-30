@@ -1,7 +1,6 @@
 import pytest
-from fastapi import HTTPException
-
 from app.api.v1 import ai_providers
+from fastapi import HTTPException
 
 
 class _StubResponse:
@@ -50,7 +49,10 @@ async def test_generate_video_propagates_validation_http_exception():
     ("endpoint", "payload"),
     [
         (ai_providers.generate_text, ai_providers.TextGenerationRequest(prompt="hi")),
-        (ai_providers.generate_image, ai_providers.ImageGenerationRequest(prompt="cat")),
+        (
+            ai_providers.generate_image,
+            ai_providers.ImageGenerationRequest(prompt="cat"),
+        ),
         (ai_providers.generate_speech, ai_providers.SpeechGenerationRequest(text="hi")),
         (ai_providers.generate_video, ai_providers.VideoGenerationRequest(prompt="hi")),
     ],

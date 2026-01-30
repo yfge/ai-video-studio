@@ -29,14 +29,17 @@ summary: "修复虚拟IP图生图异步任务缺少参考图传递的问题"
 通过对比分镜图像任务（已正确实现参考图传递）和虚拟IP图生图任务，发现以下缺失：
 
 1. **前端 API** (`ai-pic-frontend/src/utils/api.ts:2029-2049`)
+
    - `generateVariantAndSaveAsync` 函数只传递了 `prompt`, `model`, `count`, `size`
    - **缺失**: `reference_images` 参数未包含在 TypeScript 类型和请求体中
 
 2. **前端页面** (`ai-pic-frontend/src/app/virtual-ip/[id]/images/page.tsx:340-348`)
+
    - `handleSubmitVariant` 收到了 `payload.referenceImages` 参数
    - **缺失**: 未将该参数传递给 API 调用
 
 3. **后端接口** (`ai-pic-backend/app/api/v1/endpoints/virtual_ip_images.py:768-801`)
+
    - `generate_virtual_ip_image_variant_async` 从请求中提取参数
    - **缺失**: 未提取 `reference_images` 并加入 payload
 
@@ -56,7 +59,7 @@ export interface ImageToImageRequestPayload {
   prefer_provider?: string;
   count?: number;
   size?: string;
-  reference_images?: string[];  // 新增
+  reference_images?: string[]; // 新增
 }
 ```
 
@@ -98,7 +101,7 @@ const res = await virtualIPImageAPI.generateVariantAndSaveAsync(
     model: modelFallback || undefined,
     count: payload.count,
     size: payload.size || generateForm.size,
-    reference_images: payload.referenceImages,  // 新增
+    reference_images: payload.referenceImages, // 新增
   },
 );
 ```
@@ -164,6 +167,7 @@ response = await ai_service.ai_manager.image_to_image(
 ## Next Steps
 
 1. **人工测试**: 需要在真实环境中验证虚拟IP图生图功能
+
    - 使用测试账号 `geyunfei` / `Gyf@845261`
    - 在虚拟IP图像页选择一张图执行图生图
    - 确认前端选中的参考图正确传递到后端
@@ -171,6 +175,7 @@ response = await ai_service.ai_manager.image_to_image(
    - 检查生成的图像是否受参考图影响
 
 2. **后续优化**:
+
    - 考虑为环境图生图任务添加同样的参考图支持（目前也缺失）
    - 统一所有图生图接口的参数处理逻辑
 

@@ -1,11 +1,10 @@
-
 # 视频下载
 
 > 通过本接口进行生成视频文件下载。
 
 ## OpenAPI
 
-````yaml api-reference/video/generation/api/openapi.json get /v1/files/retrieve
+```yaml api-reference/video/generation/api/openapi.json get /v1/files/retrieve
 openapi: 3.1.0
 info:
   title: MiniMax API
@@ -35,21 +34,21 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RetrieveFileResp'
+                $ref: "#/components/schemas/RetrieveFileResp"
 components:
   schemas:
     RetrieveFileResp:
       type: object
       properties:
         file:
-          $ref: '#/components/schemas/FileObject'
+          $ref: "#/components/schemas/FileObject"
         base_resp:
-          $ref: '#/components/schemas/RetrieveFileBaseResp'
+          $ref: "#/components/schemas/RetrieveFileBaseResp"
       example:
         file:
           file_id: ${file_id}
@@ -117,10 +116,8 @@ components:
         `HTTP: Bearer Auth`
          - Security Scheme Type: http
          - HTTP Authorization Scheme: Bearer API_key，用于验证账户信息，可在 [账户管理>接口密钥](https://platform.minimaxi.com/user-center/basic-information/interface-key) 中查看。
-
-````
+```
 
 ---
 
 > To find navigation and other pages in this documentation, fetch the llms.txt file at: https://platform.minimaxi.com/docs/llms.txt
-

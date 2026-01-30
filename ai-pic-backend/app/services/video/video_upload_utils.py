@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from app.services.media import (
-    build_generation_metadata,
-    upload_base64 as upload_media_base64,
-    upload_from_url as upload_media_from_url,
-)
+from app.services.media import build_generation_metadata
+from app.services.media import upload_base64 as upload_media_base64
+from app.services.media import upload_from_url as upload_media_from_url
 from app.services.storage import oss_service
 
 
@@ -48,7 +46,8 @@ async def upload_video_bytes_base64_to_oss(
                 resolution=resolution,
                 extra={
                     # Keep this for debugging/tracing; may be truncated/filtered later.
-                    "end_image_url": end_image_url or "",
+                    "end_image_url": end_image_url
+                    or "",
                 },
             ),
             oss_service_override=service,

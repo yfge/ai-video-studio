@@ -32,4 +32,3 @@ summary: "Rename reserved attribute 'metadata' to 'extra_metadata' columns in OR
 ## Linked Commits
 
 - pending（本地增量补丁，后续与此台账一并提交）
-

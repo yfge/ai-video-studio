@@ -34,11 +34,15 @@ export function StorySummarySection({ story }: StorySummarySectionProps) {
         <div>
           <div className="text-sm text-gray-600">
             {story.setting_time && <div>时间设定：{story.setting_time}</div>}
-            {story.setting_location && <div>地点设定：{story.setting_location}</div>}
+            {story.setting_location && (
+              <div>地点设定：{story.setting_location}</div>
+            )}
             {story.world_building && (
               <div className="mt-2">
                 <div className="font-medium text-gray-800">世界观</div>
-                <div className="whitespace-pre-wrap">{story.world_building}</div>
+                <div className="whitespace-pre-wrap">
+                  {story.world_building}
+                </div>
               </div>
             )}
           </div>

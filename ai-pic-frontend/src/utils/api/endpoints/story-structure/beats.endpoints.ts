@@ -2,15 +2,19 @@
  * Story Structure scene beat endpoints.
  */
 
-import { httpClient } from '../../client';
-import type { ApiResponse } from '../../types/common.types';
-import type { SceneBeat } from '../../types/script.types';
+import { httpClient } from "../../client";
+import type { ApiResponse } from "../../types/common.types";
+import type { SceneBeat } from "../../types/script.types";
 
 /**
  * Get beats for a scene.
  */
-export async function getNormalizedSceneBeats(sceneId: number): Promise<ApiResponse<SceneBeat[]>> {
-  return httpClient<SceneBeat[]>(`/api/v1/story-structure/scenes/${sceneId}/beats`);
+export async function getNormalizedSceneBeats(
+  sceneId: number,
+): Promise<ApiResponse<SceneBeat[]>> {
+  return httpClient<SceneBeat[]>(
+    `/api/v1/story-structure/scenes/${sceneId}/beats`,
+  );
 }
 
 /**
@@ -28,10 +32,10 @@ export async function createSceneBeat(
     camera_notes?: string;
     duration_seconds?: number;
     metadata?: Record<string, unknown>;
-  }
+  },
 ): Promise<ApiResponse<unknown>> {
   return httpClient(`/api/v1/story-structure/scenes/${sceneId}/beats`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
@@ -50,10 +54,10 @@ export async function updateSceneBeat(
     camera_notes: string;
     duration_seconds: number;
     metadata: Record<string, unknown>;
-  }>
+  }>,
 ): Promise<ApiResponse<unknown>> {
   return httpClient(`/api/v1/story-structure/scene-beats/${beatId}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(payload),
   });
 }
@@ -61,7 +65,10 @@ export async function updateSceneBeat(
 /**
  * Delete a scene beat.
  */
-export async function deleteSceneBeat(beatId: number): Promise<ApiResponse<void>> {
-  return httpClient<void>(`/api/v1/story-structure/scene-beats/${beatId}`, { method: 'DELETE' });
+export async function deleteSceneBeat(
+  beatId: number,
+): Promise<ApiResponse<void>> {
+  return httpClient<void>(`/api/v1/story-structure/scene-beats/${beatId}`, {
+    method: "DELETE",
+  });
 }
-

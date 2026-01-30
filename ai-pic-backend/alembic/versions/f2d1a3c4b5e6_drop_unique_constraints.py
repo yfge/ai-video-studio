@@ -1,7 +1,7 @@
 """drop unique constraints in favor of non-unique indexes"""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "f2d1a3c4b5e6"
@@ -47,7 +47,10 @@ def _recreate_index(table: str, name: str, columns: list[str], unique: bool):
     op.create_index(name, table, columns, unique=unique)
 
     # Clean up temp index if we created one and replaced original name.
-    if temp_name in {idx["name"] for idx in inspector.get_indexes(table)} and name != temp_name:
+    if (
+        temp_name in {idx["name"] for idx in inspector.get_indexes(table)}
+        and name != temp_name
+    ):
         try:
             op.drop_index(temp_name, table_name=table)
         except Exception:

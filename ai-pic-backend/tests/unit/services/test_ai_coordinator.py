@@ -1,12 +1,9 @@
 """Unit tests for AIServiceCoordinator."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from app.services.ai_coordinator import (
-    AIServiceCoordinator,
-    get_ai_coordinator,
-)
+import pytest
+from app.services.ai_coordinator import AIServiceCoordinator, get_ai_coordinator
 
 
 class TestAIServiceCoordinator:
@@ -50,6 +47,7 @@ class TestGetAICoordinator:
     def test_get_coordinator_creates_singleton(self):
         """Test that factory creates singleton instance."""
         import app.services.ai_coordinator as module
+
         module._ai_coordinator = None
 
         coordinator1 = get_ai_coordinator()
@@ -59,6 +57,7 @@ class TestGetAICoordinator:
     def test_get_coordinator_with_manager(self):
         """Test that factory accepts AI manager on first call."""
         import app.services.ai_coordinator as module
+
         module._ai_coordinator = None
 
         mock_manager = MagicMock()
@@ -214,9 +213,7 @@ class TestApplyUIMetadata:
             "type": "image_to_video",
             "provider": "custom",
             "capabilities": [],
-            "metadata": {
-                "ui": {"custom_option": True}
-            }
+            "metadata": {"ui": {"custom_option": True}},
         }
 
         result = AIServiceCoordinator._apply_ui_metadata(model)

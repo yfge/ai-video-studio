@@ -42,18 +42,23 @@ export function VoiceSettingsPanel({
             按“服务商 → 模型 → 声音”绑定角色配音
           </p>
         </div>
-        {!voiceEnums && <span className="text-sm text-gray-500">正在加载声音选项...</span>}
+        {!voiceEnums && (
+          <span className="text-sm text-gray-500">正在加载声音选项...</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">服务商</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            服务商
+          </label>
           <select
             value={voiceSettings.provider || ""}
             onChange={(e) => {
               const value = e.target.value || undefined;
               const defaultModel =
-                voiceEnums?.defaults?.tts_model || voiceEnums?.tts_models?.[0]?.value;
+                voiceEnums?.defaults?.tts_model ||
+                voiceEnums?.tts_models?.[0]?.value;
               setVoiceSettings((prev) => ({
                 ...prev,
                 provider: value,
@@ -73,11 +78,16 @@ export function VoiceSettingsPanel({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">语音模型</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            语音模型
+          </label>
           <select
             value={voiceSettings.model || ""}
             onChange={(e) =>
-              setVoiceSettings((prev) => ({ ...prev, model: e.target.value || undefined }))
+              setVoiceSettings((prev) => ({
+                ...prev,
+                model: e.target.value || undefined,
+              }))
             }
             disabled={!editing}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -91,7 +101,9 @@ export function VoiceSettingsPanel({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">声音类型</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            声音类型
+          </label>
           <select
             value={voiceTypeFilter}
             onChange={(e) => setVoiceTypeFilter(e.target.value)}
@@ -109,12 +121,17 @@ export function VoiceSettingsPanel({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
             声音
-            {voiceLoading && <span className="text-xs text-gray-500">加载中...</span>}
+            {voiceLoading && (
+              <span className="text-xs text-gray-500">加载中...</span>
+            )}
           </label>
           <select
             value={voiceSettings.voice_id || ""}
             onChange={(e) =>
-              setVoiceSettings((prev) => ({ ...prev, voice_id: e.target.value || undefined }))
+              setVoiceSettings((prev) => ({
+                ...prev,
+                voice_id: e.target.value || undefined,
+              }))
             }
             disabled={!editing || voiceLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -127,13 +144,16 @@ export function VoiceSettingsPanel({
             ))}
           </select>
           <p className="mt-1 text-xs text-gray-500">
-            来源：{voiceSettings.provider || "默认"} / {voiceSettings.model || "未选择"}
+            来源：{voiceSettings.provider || "默认"} /{" "}
+            {voiceSettings.model || "未选择"}
           </p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">试听文本</label>
+        <label className="block text-sm font-medium text-gray-700">
+          试听文本
+        </label>
         <textarea
           value={voicePreviewText}
           onChange={(e) => setVoicePreviewText(e.target.value)}

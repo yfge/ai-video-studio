@@ -12,24 +12,30 @@ summary: "Documented micro-genre matrix, hook cadence, traffic sheet spec, and s
 ---
 
 ## User Prompt
+
 Continue the short-drama micro-genre and traffic-driven creation work.
 
 ## Goals
+
 - Define market x micro-genre matrix and Story Bible template.
 - Specify hook/twist cadence and traffic sheet structure.
 - Document script scoring dimensions and thresholds.
 
 ## Changes
+
 - Added a micro-genre framework spec with cadence, Story Bible, and scoring rules.
 - Updated docs index and task checklist to reflect the new spec.
 
 ## Validation
+
 - `./docker/build_prod_images.sh`.
 - Tests not run (docs/tasks update only).
 
 ## Next Steps
+
 - Implement HookScore/ScriptScore service and traffic sheet generation in backend.
 - Add UI inputs for market/micro-genre selection and scoring view in frontend.
 
 ## Linked Commits
+
 - Pending.

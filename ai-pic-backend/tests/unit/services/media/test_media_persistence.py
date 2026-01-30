@@ -2,7 +2,6 @@ import base64
 import hashlib
 
 import pytest
-
 from app.services.media.media_persistence import (
     build_generation_metadata,
     upload_base64,
@@ -74,4 +73,3 @@ async def test_upload_base64_adds_sha256():
     assert name == "upload_file_content"
     assert kwargs["metadata"]["ok"] == "ascii"
     assert kwargs["metadata"]["sha256"] == expected
-

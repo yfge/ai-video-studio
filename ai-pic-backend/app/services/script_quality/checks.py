@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from app.schemas.script_quality import ScriptLintIssue, ScriptLintOptions, ScriptLintRuleResult
+from app.schemas.script_quality import (
+    ScriptLintIssue,
+    ScriptLintOptions,
+    ScriptLintRuleResult,
+)
 from app.services.script_quality.constants import (
     EMOTION_TAG_KEYWORDS,
     HOOK_MARKERS,
@@ -39,8 +43,12 @@ def check_scene_headers(
     )
 
 
-def check_tempo_tags(all_tags: list[str]) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
-    has_tempo = any(any(tag.startswith(k) or k in tag for k in TEMPO_TAGS) for tag in all_tags)
+def check_tempo_tags(
+    all_tags: list[str],
+) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
+    has_tempo = any(
+        any(tag.startswith(k) or k in tag for k in TEMPO_TAGS) for tag in all_tags
+    )
     issues: list[ScriptLintIssue] = []
     if not has_tempo:
         issues.append(
@@ -64,8 +72,12 @@ def check_tempo_tags(all_tags: list[str]) -> tuple[ScriptLintRuleResult, list[Sc
     )
 
 
-def check_emotion_goal(all_tags: list[str]) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
-    has_emotion_goal = any(any(k in tag for k in EMOTION_TAG_KEYWORDS) for tag in all_tags)
+def check_emotion_goal(
+    all_tags: list[str],
+) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
+    has_emotion_goal = any(
+        any(k in tag for k in EMOTION_TAG_KEYWORDS) for tag in all_tags
+    )
     issues: list[ScriptLintIssue] = []
     if not has_emotion_goal:
         issues.append(
@@ -116,7 +128,9 @@ def check_sfx_lines(
     )
 
 
-def check_hook_3s(non_empty: list[tuple[int, str]]) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
+def check_hook_3s(
+    non_empty: list[tuple[int, str]]
+) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
     first_three = [ln for _no, ln in non_empty[:3]]
     has_hook = any(any(m in ln for m in HOOK_MARKERS) for ln in first_three)
     issues: list[ScriptLintIssue] = []
@@ -142,7 +156,9 @@ def check_hook_3s(non_empty: list[tuple[int, str]]) -> tuple[ScriptLintRuleResul
     )
 
 
-def check_cliffhanger(non_empty: list[tuple[int, str]]) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
+def check_cliffhanger(
+    non_empty: list[tuple[int, str]]
+) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
     last_line = non_empty[-1][1] if non_empty else ""
     has_cliff = bool(last_line) and (
         ("?" in last_line)
@@ -233,9 +249,7 @@ def check_visual_language(
                     )
                 )
 
-    score_visual = (
-        1.0 if hits == 0 else max(0.0, 1.0 - min(1.0, hits / 5.0))
-    )
+    score_visual = 1.0 if hits == 0 else max(0.0, 1.0 - min(1.0, hits / 5.0))
     return (
         ScriptLintRuleResult(
             rule_id="visual_language",
@@ -247,4 +261,3 @@ def check_visual_language(
         ),
         issues,
     )
-

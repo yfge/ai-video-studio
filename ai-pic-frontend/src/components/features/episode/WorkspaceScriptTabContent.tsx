@@ -1,9 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { NormalizedScene, NormalizedShot, SceneBeat, Script, ScriptGenerationRequest } from "@/utils/api";
+import type {
+  NormalizedScene,
+  NormalizedShot,
+  SceneBeat,
+  Script,
+  ScriptGenerationRequest,
+} from "@/utils/api";
 import { storyStructureAPI, authAPI } from "@/utils/api";
-import { ScriptOverviewTab, ScriptScenesTab, ScriptGenerationForm } from "@/components/features";
+import {
+  ScriptOverviewTab,
+  ScriptScenesTab,
+  ScriptGenerationForm,
+} from "@/components/features";
 import type { SceneNode } from "@/components/features";
 import { isAdmin } from "@/utils/auth";
 import type { User } from "@/utils/api";
@@ -38,7 +48,9 @@ type ScriptDirection =
     }
   | string;
 
-const toSceneNumber = (value: number | string | undefined): number | undefined => {
+const toSceneNumber = (
+  value: number | string | undefined,
+): number | undefined => {
   if (typeof value === "number") return value;
   if (typeof value === "string") {
     const parsed = parseInt(value, 10);
@@ -53,7 +65,10 @@ const normalizeScenes = (scenes: unknown): ScriptScene[] => {
     if (scene && typeof scene === "object") {
       return scene as ScriptScene;
     }
-    return { scene_number: index + 1, description: typeof scene === "string" ? scene : undefined };
+    return {
+      scene_number: index + 1,
+      description: typeof scene === "string" ? scene : undefined,
+    };
   });
 };
 
@@ -67,7 +82,9 @@ interface WorkspaceScriptTabContentProps {
   script: Script | null;
   // Script generation props
   generateForm: ScriptGenerationRequest;
-  setGenerateForm: React.Dispatch<React.SetStateAction<ScriptGenerationRequest>>;
+  setGenerateForm: React.Dispatch<
+    React.SetStateAction<ScriptGenerationRequest>
+  >;
   formats: Array<{ value: string; label: string }>;
   languages: Array<{ value: string; label: string }>;
   useAsync: boolean;
@@ -96,12 +113,20 @@ export function WorkspaceScriptTabContent({
   onRegenerateScript,
   regenerating,
 }: WorkspaceScriptTabContentProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "scenes">("scenes");
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "scenes">(
+    "scenes",
+  );
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [structuredScenes, setStructuredScenes] = useState<SceneNode[]>([]);
-  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>([]);
-  const [sceneBeatsMap, setSceneBeatsMap] = useState<Record<number, SceneBeat[]>>({});
-  const [sceneShotsMap, setSceneShotsMap] = useState<Record<number, NormalizedShot[]>>({});
+  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>(
+    [],
+  );
+  const [sceneBeatsMap, setSceneBeatsMap] = useState<
+    Record<number, SceneBeat[]>
+  >({});
+  const [sceneShotsMap, setSceneShotsMap] = useState<
+    Record<number, NormalizedShot[]>
+  >({});
   const [structureLoading, setStructureLoading] = useState(false);
   const [structureError, setStructureError] = useState<string | null>(null);
   const [showStructureEditor, setShowStructureEditor] = useState(false);
@@ -161,7 +186,10 @@ export function WorkspaceScriptTabContent({
   }, []);
 
   // Computed values
-  const rawScenes = useMemo(() => normalizeScenes(script?.scenes), [script?.scenes]);
+  const rawScenes = useMemo(
+    () => normalizeScenes(script?.scenes),
+    [script?.scenes],
+  );
 
   useEffect(() => {
     if (!normalizedScenes.length) return;
@@ -185,16 +213,29 @@ export function WorkspaceScriptTabContent({
       scene_number: toSceneNumber(scene.scene_number) ?? idx + 1,
       location: scene.location,
       time: scene.time_of_day,
-      description: scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
+      description:
+        scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
     }));
   }, [structuredScenes]);
 
-  const scenes = structuredSceneViews.length > 0 ? structuredSceneViews : rawScenes;
-  const dialogues = useMemo(() => normalizeDialogues(script?.dialogues), [script?.dialogues]);
-  const directions = useMemo(() => normalizeDirections(script?.stage_directions), [script?.stage_directions]);
+  const scenes =
+    structuredSceneViews.length > 0 ? structuredSceneViews : rawScenes;
+  const dialogues = useMemo(
+    () => normalizeDialogues(script?.dialogues),
+    [script?.dialogues],
+  );
+  const directions = useMemo(
+    () => normalizeDirections(script?.stage_directions),
+    [script?.stage_directions],
+  );
 
   const activeScene = useMemo(
-    () => (focusedScene ? scenes.find((scene) => toSceneNumber(scene.scene_number) === focusedScene) || null : null),
+    () =>
+      focusedScene
+        ? scenes.find(
+            (scene) => toSceneNumber(scene.scene_number) === focusedScene,
+          ) || null
+        : null,
     [focusedScene, scenes],
   );
 
@@ -209,9 +250,15 @@ export function WorkspaceScriptTabContent({
     return map;
   }, [normalizedScenes]);
 
-  const selectedNormalizedScene = focusedScene ? normalizedSceneMap.get(focusedScene) : undefined;
-  const sceneBeats = selectedNormalizedScene ? sceneBeatsMap[selectedNormalizedScene.id] : undefined;
-  const sceneShots = selectedNormalizedScene ? sceneShotsMap[selectedNormalizedScene.id] : undefined;
+  const selectedNormalizedScene = focusedScene
+    ? normalizedSceneMap.get(focusedScene)
+    : undefined;
+  const sceneBeats = selectedNormalizedScene
+    ? sceneBeatsMap[selectedNormalizedScene.id]
+    : undefined;
+  const sceneShots = selectedNormalizedScene
+    ? sceneShotsMap[selectedNormalizedScene.id]
+    : undefined;
   const canEditStructure = useMemo(() => isAdmin(currentUser), [currentUser]);
 
   // Load scene structure
@@ -224,10 +271,16 @@ export function WorkspaceScriptTabContent({
           storyStructureAPI.getNormalizedSceneShots(sceneId),
         ]);
         if (beatsRes.success && Array.isArray(beatsRes.data)) {
-          setSceneBeatsMap((prev) => ({ ...prev, [sceneId]: beatsRes.data as SceneBeat[] }));
+          setSceneBeatsMap((prev) => ({
+            ...prev,
+            [sceneId]: beatsRes.data as SceneBeat[],
+          }));
         }
         if (shotsRes.success && Array.isArray(shotsRes.data)) {
-          setSceneShotsMap((prev) => ({ ...prev, [sceneId]: shotsRes.data as NormalizedShot[] }));
+          setSceneShotsMap((prev) => ({
+            ...prev,
+            [sceneId]: shotsRes.data as NormalizedShot[],
+          }));
         }
       } catch (error) {
         console.error("Failed to load scene structure", error);
@@ -312,15 +365,37 @@ export function WorkspaceScriptTabContent({
             {regenerating ? (
               <>
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
                 重新生成中...
               </>
             ) : (
               <>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
                 重新生成剧本
               </>
@@ -333,7 +408,9 @@ export function WorkspaceScriptTabContent({
       {showRegenerateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">重新生成剧本</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              重新生成剧本
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
               重新生成将使用AI创建新的剧本内容，并应用最新的分类优化。
             </p>

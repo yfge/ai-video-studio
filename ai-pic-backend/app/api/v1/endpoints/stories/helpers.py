@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import HTTPException
-from sqlalchemy.orm import Session
-
 from app.models.script import Story
 from app.models.user import User
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 
 def not_deleted(query, model):
@@ -14,7 +13,10 @@ def not_deleted(query, model):
 
 
 def get_story_by_identifier(
-    db: Session, story_id: Optional[int], story_business_id: Optional[str], current_user: User
+    db: Session,
+    story_id: Optional[int],
+    story_business_id: Optional[str],
+    current_user: User,
 ) -> Story:
     query = not_deleted(db.query(Story), Story)
     if story_business_id:

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
-
-from app.models.script import Story, Episode, Script
-from app.schemas.story_structure import SceneCreate, SceneBeatCreate, ShotCreate
+from app.models.script import Episode, Script, Story
+from app.schemas.story_structure import SceneBeatCreate, SceneCreate
 from app.services import story_structure_service as svc
+from sqlalchemy.orm import Session
 
 
 def _create_script(db: Session) -> Script:
@@ -27,8 +26,18 @@ def test_create_scene_with_children_and_fetch(db_session: Session):
         status="draft",
     )
     beats = [
-        SceneBeatCreate(scene_id=script.id, order_index=1, beat_type="action", beat_summary="do stuff"),
-        SceneBeatCreate(scene_id=script.id, order_index=2, beat_type="dialogue", beat_summary="talk stuff"),
+        SceneBeatCreate(
+            scene_id=script.id,
+            order_index=1,
+            beat_type="action",
+            beat_summary="do stuff",
+        ),
+        SceneBeatCreate(
+            scene_id=script.id,
+            order_index=2,
+            beat_type="dialogue",
+            beat_summary="talk stuff",
+        ),
     ]
     shots = [
         {"shot_number": "1A", "scene_beat_order_index": 1, "shot_type": "WS"},

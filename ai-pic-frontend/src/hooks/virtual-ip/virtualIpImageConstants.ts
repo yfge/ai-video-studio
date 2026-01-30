@@ -4,7 +4,10 @@ type StyleSpecKey = keyof StyleSpec;
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
-export const VIRTUAL_IP_STYLE_SPEC_FIELDS: Array<{ key: StyleSpecKey; label: string }> = [
+export const VIRTUAL_IP_STYLE_SPEC_FIELDS: Array<{
+  key: StyleSpecKey;
+  label: string;
+}> = [
   { key: "style_universe", label: "世界观 / 画风体系" },
   { key: "character_proportion", label: "人物比例" },
   { key: "character_face_style", label: "五官与人物风格" },

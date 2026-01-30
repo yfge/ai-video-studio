@@ -9,9 +9,9 @@ implementation in focused, single-responsibility service modules.
 from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
-from app.services.providers.base import AIModelType
 from app.services.audio.speech_service import SpeechService
 from app.services.image.image_generation_service import ImageGenerationService
+from app.services.providers.base import AIModelType
 from app.services.video.video_generation_service import VideoGenerationService
 from app.services.video.video_ui_utils import compute_image_ui, compute_video_ui
 

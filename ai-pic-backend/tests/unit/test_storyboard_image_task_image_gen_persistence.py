@@ -23,7 +23,9 @@ def _patch_storyboard_generate(monkeypatch, *, image_gen_factory):
             "image_gen": image_gen_factory(prompt),
         }
 
-    monkeypatch.setattr(sb_gen, "generate_storyboard_image_urls", _fake_generate_storyboard_image_urls)
+    monkeypatch.setattr(
+        sb_gen, "generate_storyboard_image_urls", _fake_generate_storyboard_image_urls
+    )
 
 
 def test_storyboard_image_task_persists_image_gen_single(
@@ -83,7 +85,9 @@ def test_storyboard_image_task_persists_image_gen_single(
     session = test_db()
     try:
         refreshed = session.query(Script).filter_by(id=script.id).first()
-        frames = ((refreshed.extra_metadata or {}).get("storyboard") or {}).get("frames") or []
+        frames = ((refreshed.extra_metadata or {}).get("storyboard") or {}).get(
+            "frames"
+        ) or []
         assert frames and isinstance(frames[0], dict)
         meta = frames[0].get("image_gen")
         assert isinstance(meta, dict)
@@ -163,7 +167,9 @@ def test_storyboard_image_task_persists_image_gen_start_end(
     session = test_db()
     try:
         refreshed = session.query(Script).filter_by(id=script.id).first()
-        frames = ((refreshed.extra_metadata or {}).get("storyboard") or {}).get("frames") or []
+        frames = ((refreshed.extra_metadata or {}).get("storyboard") or {}).get(
+            "frames"
+        ) or []
         assert frames and isinstance(frames[0], dict)
         frame = frames[0]
         start_meta = frame.get("start_image_gen")

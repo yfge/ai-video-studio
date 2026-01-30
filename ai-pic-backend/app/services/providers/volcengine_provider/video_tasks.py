@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Optional
 
 import httpx
-
 from app.core.logging import get_logger
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.providers.polling_utils import TaskStatus

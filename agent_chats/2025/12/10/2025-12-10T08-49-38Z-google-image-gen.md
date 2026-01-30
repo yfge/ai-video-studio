@@ -31,7 +31,7 @@ summary: "Add Google Gemini text-to-image and image-to-image support and surface
 ## Validation
 
 - `cd ai-pic-backend && pytest tests/unit/test_google_provider_image.py tests/unit/test_model_listing.py -q`
-- Chrome MCP (login `geyunfei`/`Gyf@845261`): 
+- Chrome MCP (login `geyunfei`/`Gyf@845261`):
   - `/api/v1/ai/models/available?model_type=text_to_image` shows providers `google,keling,openai,volcengine` with `google:gemini-2.0-flash-exp`.
   - `/api/v1/ai/models/available?model_type=image_to_image` shows providers `google,openai,volcengine` with `google:gemini-2.0-flash-exp`.
 

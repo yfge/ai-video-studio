@@ -11,10 +11,11 @@ from typing import Any, Dict, List, Optional
 
 class SceneStatus(str, Enum):
     """场景生成状态"""
-    PENDING = "pending"          # 待处理
+
+    PENDING = "pending"  # 待处理
     IN_PROGRESS = "in_progress"  # 处理中
-    COMMITTED = "committed"      # 已提交（验证通过）
-    FAILED = "failed"            # 失败（达到最大重试次数）
+    COMMITTED = "committed"  # 已提交（验证通过）
+    FAILED = "failed"  # 失败（达到最大重试次数）
 
 
 @dataclass
@@ -130,7 +131,9 @@ class OrchestratorState:
     # 流程控制
     # ==========================================================================
     current_scene_index: int = 0
-    phase: str = "init"  # init | allocating | generating | assembling | validating | done | failed
+    phase: str = (
+        "init"  # init | allocating | generating | assembling | validating | done | failed
+    )
 
     # ==========================================================================
     # 最终结果
@@ -237,6 +240,7 @@ class OrchestratorState:
             "target_duration_seconds": self.total_duration_minutes * 60,
             "progress_ratio": (
                 round(len(committed) / len(self.scene_budgets), 2)
-                if self.scene_budgets else 0
+                if self.scene_budgets
+                else 0
             ),
         }

@@ -7,7 +7,11 @@ Uploads preview audio to OSS and persists the sample URL to voice_config.
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from app.core.exceptions import ConfigurationError, ExternalServiceError, ValidationError
+from app.core.exceptions import (
+    ConfigurationError,
+    ExternalServiceError,
+    ValidationError,
+)
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.repositories.virtual_ip_repository import VirtualIPRepository

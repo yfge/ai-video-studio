@@ -14,6 +14,7 @@ summary: "修复虚拟IP图生图前端未传递 reference_images 参数"
 用户报告：虚拟IP图生图还是有问题
 
 查看 Celery worker 日志后发现：
+
 ```
 [2025-12-11 20:27:23,409: INFO/ForkPoolWorker-8] HTTP Request: GET http://ai-video-backend:8000/uploads/c74780f913784235acd5e548886c1ef8.png "HTTP/1.1 200 OK"
 [2025-12-11 20:27:23,417: WARNING/ForkPoolWorker-8] image_to_image base64 preload failed: All connection attempts failed
@@ -32,6 +33,7 @@ summary: "修复虚拟IP图生图前端未传递 reference_images 参数"
 ### 症状
 
 Celery 日志显示：
+
 - 只下载了 base image，没有下载 reference images
 - "All connection attempts failed" 错误信息误导（实际上是因为 extra_images 列表为空）
 
@@ -40,6 +42,7 @@ Celery 日志显示：
 前端代码 `page.tsx:322-350` 的 `handleSubmitVariant` 函数：
 
 **接收了 `referenceImages` 参数**（line 328）：
+
 ```typescript
 const handleSubmitVariant = async (payload: {
   prompt: string;
@@ -52,6 +55,7 @@ const handleSubmitVariant = async (payload: {
 ```
 
 **但没有传给 API**（line 340-347）：
+
 ```typescript
 const res = await virtualIPImageAPI.generateVariantAndSaveAsync(
   virtualIPId,
@@ -79,6 +83,7 @@ const res = await virtualIPImageAPI.generateVariantAndSaveAsync(
 `ai-pic-frontend/src/app/virtual-ip/[id]/images/page.tsx:348`
 
 **修改前**：
+
 ```typescript
 const res = await virtualIPImageAPI.generateVariantAndSaveAsync(
   virtualIPId,
@@ -93,6 +98,7 @@ const res = await virtualIPImageAPI.generateVariantAndSaveAsync(
 ```
 
 **修改后**：
+
 ```typescript
 const res = await virtualIPImageAPI.generateVariantAndSaveAsync(
   virtualIPId,
@@ -102,7 +108,7 @@ const res = await virtualIPImageAPI.generateVariantAndSaveAsync(
     model: modelFallback || undefined,
     count: payload.count,
     size: payload.size || generateForm.size,
-    reference_images: payload.referenceImages,  // ✓ 新增
+    reference_images: payload.referenceImages, // ✓ 新增
   },
 );
 ```
@@ -120,11 +126,13 @@ cd ai-pic-frontend && npm run lint
 ### 2. 完整传递链路确认
 
 **前端 → API**：
+
 - `ImageToImageModal` 收集 `referenceImages` ✓
 - `handleSubmitVariant` 接收 `payload.referenceImages` ✓
 - **现在传给 API** `reference_images: payload.referenceImages` ✅（已修复）
 
 **API → 后端 → Celery → Worker → AI Service**：
+
 - `api.ts` 类型定义包含 `reference_images` ✓
 - 后端接口提取 `payload.get("reference_images")` ✓
 - Celery payload 包含 `reference_images` ✓
@@ -149,9 +157,11 @@ npm run dev
    - 输入提示词
    - 提交
 4. 检查 Celery worker 日志：
+
    ```bash
    docker logs -f ai-video-celery-worker
    ```
+
    应该看到多个 `HTTP Request: GET` 日志，对应每张参考图
 
 5. 检查生成的图像是否体现了参考图的特征
@@ -159,6 +169,7 @@ npm run dev
 ### 3. 相关检查
 
 确认以下页面也正确传递了 `reference_images`：
+
 - ✅ 环境资产图生图（`environments/page.tsx`）- 已在之前修复
 - ✅ 分镜图像生成（`scripts.py`）- 后端已正确实现
 

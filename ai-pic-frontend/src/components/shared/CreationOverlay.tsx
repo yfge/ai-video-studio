@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { ReactNode } from 'react';
+import { ReactNode } from "react";
 
 interface CreationOverlayProps {
   open: boolean;
@@ -18,7 +18,7 @@ export function CreationOverlay({
   title,
   subtitle,
   icon,
-  widthClassName = 'max-w-3xl',
+  widthClassName = "max-w-3xl",
   onClose,
   children,
   footer,
@@ -54,7 +54,12 @@ export function CreationOverlay({
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>

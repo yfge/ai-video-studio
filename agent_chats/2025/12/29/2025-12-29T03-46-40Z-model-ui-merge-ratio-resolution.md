@@ -48,4 +48,3 @@ summary: "Merge aspect ratio + size/resolution controls, and accept `ratio` for 
 ## Linked Commits
 
 - (pending)
-

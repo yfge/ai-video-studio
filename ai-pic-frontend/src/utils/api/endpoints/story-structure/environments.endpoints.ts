@@ -2,32 +2,42 @@
  * Story Structure environment endpoints.
  */
 
-import { httpClient } from '../../client';
-import type { ApiResponse } from '../../types/common.types';
-import type { Environment, EnvironmentCreate, EnvironmentImagesResponse } from '../../types/environment.types';
-import type { StyleSpec } from '../../types/style.types';
+import { httpClient } from "../../client";
+import type { ApiResponse } from "../../types/common.types";
+import type {
+  Environment,
+  EnvironmentCreate,
+  EnvironmentImagesResponse,
+} from "../../types/environment.types";
+import type { StyleSpec } from "../../types/style.types";
 
 /**
  * List all environments.
  */
 export async function listEnvironments(): Promise<ApiResponse<Environment[]>> {
-  return httpClient<Environment[]>('/api/v1/story-structure/environments');
+  return httpClient<Environment[]>("/api/v1/story-structure/environments");
 }
 
 /**
  * Get a specific environment.
  */
-export async function getEnvironment(id: number | string): Promise<ApiResponse<Environment>> {
+export async function getEnvironment(
+  id: number | string,
+): Promise<ApiResponse<Environment>> {
   const envKey = encodeURIComponent(String(id));
-  return httpClient<Environment>(`/api/v1/story-structure/environments/${envKey}`);
+  return httpClient<Environment>(
+    `/api/v1/story-structure/environments/${envKey}`,
+  );
 }
 
 /**
  * Create an environment.
  */
-export async function createEnvironment(payload: EnvironmentCreate): Promise<ApiResponse<Environment>> {
-  return httpClient<Environment>('/api/v1/story-structure/environments', {
-    method: 'POST',
+export async function createEnvironment(
+  payload: EnvironmentCreate,
+): Promise<ApiResponse<Environment>> {
+  return httpClient<Environment>("/api/v1/story-structure/environments", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
@@ -37,22 +47,27 @@ export async function createEnvironment(payload: EnvironmentCreate): Promise<Api
  */
 export async function updateEnvironment(
   id: number | string,
-  payload: Partial<EnvironmentCreate>
+  payload: Partial<EnvironmentCreate>,
 ): Promise<ApiResponse<Environment>> {
   const envKey = encodeURIComponent(String(id));
-  return httpClient<Environment>(`/api/v1/story-structure/environments/${envKey}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  return httpClient<Environment>(
+    `/api/v1/story-structure/environments/${envKey}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 /**
  * Delete an environment.
  */
-export async function deleteEnvironment(id: number | string): Promise<ApiResponse<void>> {
+export async function deleteEnvironment(
+  id: number | string,
+): Promise<ApiResponse<void>> {
   const envKey = encodeURIComponent(String(id));
   return httpClient<void>(`/api/v1/story-structure/environments/${envKey}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
@@ -60,11 +75,11 @@ export async function deleteEnvironment(id: number | string): Promise<ApiRespons
  * List images for an environment.
  */
 export async function listEnvironmentImages(
-  envId: number | string
+  envId: number | string,
 ): Promise<ApiResponse<EnvironmentImagesResponse>> {
   const envKey = encodeURIComponent(String(envId));
   return httpClient<EnvironmentImagesResponse>(
-    `/api/v1/story-structure/environments/${envKey}/images`
+    `/api/v1/story-structure/environments/${envKey}/images`,
   );
 }
 
@@ -73,17 +88,17 @@ export async function listEnvironmentImages(
  */
 export async function uploadEnvironmentImage(
   envId: number | string,
-  file: File
+  file: File,
 ): Promise<ApiResponse<{ url: string }>> {
   const envKey = encodeURIComponent(String(envId));
   const formData = new FormData();
-  formData.append('image', file);
+  formData.append("image", file);
   return httpClient<{ url: string }>(
     `/api/v1/story-structure/environments/${envKey}/images/upload`,
     {
-      method: 'POST',
+      method: "POST",
       body: formData,
-    }
+    },
   );
 }
 
@@ -107,15 +122,15 @@ export async function generateEnvironmentImages(
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
-  }
+  },
 ): Promise<ApiResponse<{ images: string[]; count: number }>> {
   const envKey = encodeURIComponent(String(envId));
   return httpClient<{ images: string[]; count: number }>(
     `/api/v1/story-structure/environments/${envKey}/images/generate`,
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload),
-    }
+    },
   );
 }
 
@@ -141,15 +156,15 @@ export async function generateEnvironmentImageVariants(
     style_preset_id?: string;
     style_spec?: StyleSpec;
     reference_images?: string[];
-  }
+  },
 ): Promise<ApiResponse<{ images: string[]; count: number }>> {
   const envKey = encodeURIComponent(String(envId));
   return httpClient<{ images: string[]; count: number }>(
     `/api/v1/story-structure/environments/${envKey}/images/variants`,
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload),
-    }
+    },
   );
 }
 
@@ -173,15 +188,15 @@ export async function generateEnvironmentImagesAsync(
     style?: string;
     style_preset_id?: string;
     style_spec?: StyleSpec;
-  }
+  },
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   const envKey = encodeURIComponent(String(envId));
   return httpClient<{ task_id: number; status: string }>(
     `/api/v1/story-structure/environments/${envKey}/images/generate-async`,
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload),
-    }
+    },
   );
 }
 
@@ -210,15 +225,15 @@ export async function generateEnvironmentImageVariantsAsync(
     style_preset_id?: string;
     style_spec?: StyleSpec;
     reference_images?: string[];
-  }
+  },
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   const envKey = encodeURIComponent(String(envId));
   return httpClient<{ task_id: number; status: string }>(
     `/api/v1/story-structure/environments/${envKey}/images/variants-async`,
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload),
-    }
+    },
   );
 }
 
@@ -227,12 +242,12 @@ export async function generateEnvironmentImageVariantsAsync(
  */
 export async function deleteEnvironmentImage(
   envId: number | string,
-  imageUrl: string
+  imageUrl: string,
 ): Promise<ApiResponse<EnvironmentImagesResponse>> {
   const envKey = encodeURIComponent(String(envId));
   const params = new URLSearchParams({ image_url: imageUrl });
   return httpClient<EnvironmentImagesResponse>(
     `/api/v1/story-structure/environments/${envKey}/images?${params.toString()}`,
-    { method: 'DELETE' }
+    { method: "DELETE" },
   );
 }

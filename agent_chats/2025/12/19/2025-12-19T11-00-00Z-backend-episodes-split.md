@@ -47,6 +47,7 @@ episodes/
 ### Module Details
 
 1. **helpers.py** (~360 lines)
+
    - `not_deleted` - Soft delete query filter
    - `get_episode_by_identifier` - Get episode by ID or business_id
    - `get_story_by_identifier` - Get story by ID or business_id
@@ -59,6 +60,7 @@ episodes/
    - `ensure_scenes` - Ensure episode has valid scenes
 
 2. **crud.py** (~280 lines)
+
    - POST `/` - Create episode
    - GET `/`, GET `` - List episodes
    - GET `/{episode_id}` - Get by ID
@@ -68,22 +70,25 @@ episodes/
    - GET `/story/{story_id}`, GET `/story/business/{business_id}` - Get by story
 
 3. **generation.py** (~300 lines)
+
    - POST `/generate` - AI episode generation (sync)
    - POST `/prompt/preview` - Preview generation prompt
    - Helper: `_build_story_data`, `_get_focus_characters`, `_build_agent_run_info`
 
 4. **regenerate.py** (~160 lines)
+
    - POST `/{episode_id}/regenerate` - Regenerate episode by ID
    - POST `/business/{business_id}/regenerate` - Regenerate by business ID
    - Helper: `_regenerate_episode_instance`
 
 5. **async_tasks.py** (~450 lines)
+
    - POST `/generate-async` - Async episode generation
    - `process_episode_generation_task` - Celery task processor
    - `_process_fallback_result` - Handle non-callback results
    - `_coerce_episode_payload` - Normalize episode data
 
-6. **__init__.py** (~60 lines)
+6. ****init**.py** (~60 lines)
    - Aggregates all sub-routers into single `router`
    - Re-exports helpers and `process_episode_generation_task`
 

@@ -7,9 +7,8 @@ Celery 应用配置
 import sys
 from datetime import timedelta
 
-from celery import Celery
-
 from app.core.config import settings
+from celery import Celery
 
 
 def _running_under_pytest() -> bool:
@@ -65,5 +64,5 @@ if _running_under_pytest():
 # 任务定义位于 app.services.task_worker 等模块中，使用显式 name（如 "tasks.virtual_ip_image_generate"）
 # 通过导入该模块完成注册，避免 worker 启动时出现 KeyError。
 import app.services.task_worker  # noqa: E402,F401
-import app.services.task_worker_storyboard_media  # noqa: E402,F401
 import app.services.task_worker_script_quality  # noqa: E402,F401
+import app.services.task_worker_storyboard_media  # noqa: E402,F401

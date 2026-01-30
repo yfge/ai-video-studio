@@ -32,6 +32,7 @@ Translation: Can you merge the full script content directly here? Same for timel
 ### New Files Created
 
 1. **`ai-pic-frontend/src/components/features/episode/WorkspaceScriptTabContent.tsx`** (~240 lines)
+
    - Wrapper component that loads script structure data
    - Renders sub-tabs: "概览" (Overview) and "场景" (Scenes)
    - Uses `ScriptOverviewTab` and `ScriptScenesTab` components
@@ -49,6 +50,7 @@ Translation: Can you merge the full script content directly here? Same for timel
 ### Modified Files
 
 3. **`ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx`**
+
    - Extended `useEpisodeDetail` usage to include timeline state
    - Replaced placeholder `ScriptTabContent` with `WorkspaceScriptTabContent`
    - Replaced placeholder `TimelineTabContent` with `WorkspaceTimelineTabContent`
@@ -56,9 +58,11 @@ Translation: Can you merge the full script content directly here? Same for timel
    - Kept StoryboardTabContent as placeholder
 
 4. **`ai-pic-frontend/src/components/features/episode/EpisodeWorkflowSteps.tsx`**
+
    - Exported `WorkflowStep` interface for external use
 
 5. **`ai-pic-frontend/src/components/features/episode/index.ts`**
+
    - Added exports for new components and types
 
 6. **`ai-pic-frontend/src/components/features/index.ts`**
@@ -69,6 +73,7 @@ Translation: Can you merge the full script content directly here? Same for timel
 Browser verification via Chrome DevTools MCP:
 
 1. **Script Tab** (`?tab=script`):
+
    - Sub-tabs working: 概览/场景
    - Scene navigation with 4 scenes
    - Scene details: location, time, dialogue, stage directions
@@ -76,6 +81,7 @@ Browser verification via Chrome DevTools MCP:
    - Edit structure button available
 
 2. **Timeline Tab** (`?tab=timeline`):
+
    - Full AudioTimelineSection embedded
    - Script selector working
    - Timeline info: 50 beats, version 1
@@ -85,6 +91,7 @@ Browser verification via Chrome DevTools MCP:
    - Generation buttons functional
 
 3. **Storyboard Tab** (`?tab=storyboard`):
+
    - Placeholder with "进入分镜管理" link
    - Shows "分镜已生成" status
 

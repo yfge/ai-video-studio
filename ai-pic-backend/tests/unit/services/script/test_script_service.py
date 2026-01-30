@@ -4,12 +4,11 @@ Unit tests for Script Service.
 Tests the ScriptService class business logic.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
-from datetime import datetime
+from unittest.mock import MagicMock, patch
 
-from app.services.script.script_service import ScriptService, get_script_service
+import pytest
 from app.core.exceptions import NotFoundError
+from app.services.script.script_service import ScriptService, get_script_service
 
 
 class TestScriptService:
@@ -90,19 +89,21 @@ class TestScriptService:
         result = self.service._check_user_access(mock_user, story=mock_story)
         assert result is False
 
-    @patch.object(ScriptService, '_get_user_id_filter')
+    @patch.object(ScriptService, "_get_user_id_filter")
     def test_get_script_found(self, mock_filter):
         """Test getting script that exists."""
         mock_filter.return_value = None
         mock_script = MagicMock()
-        self.service.script_repo.get_with_relations = MagicMock(return_value=mock_script)
+        self.service.script_repo.get_with_relations = MagicMock(
+            return_value=mock_script
+        )
 
         result = self.service.get_script(script_id=1)
 
         assert result == mock_script
         self.service.script_repo.get_with_relations.assert_called_once()
 
-    @patch.object(ScriptService, '_get_user_id_filter')
+    @patch.object(ScriptService, "_get_user_id_filter")
     def test_get_script_not_found(self, mock_filter):
         """Test getting script that doesn't exist."""
         mock_filter.return_value = None
@@ -111,7 +112,7 @@ class TestScriptService:
         with pytest.raises(NotFoundError):
             self.service.get_script(script_id=999)
 
-    @patch.object(ScriptService, '_get_user_id_filter')
+    @patch.object(ScriptService, "_get_user_id_filter")
     def test_list_scripts(self, mock_filter):
         """Test listing scripts."""
         mock_filter.return_value = 123
@@ -124,8 +125,8 @@ class TestScriptService:
         assert len(result) == 2
         self.service.script_repo.list_by_episode.assert_called_once()
 
-    @patch.object(ScriptService, '_get_user_id_filter')
-    @patch.object(ScriptService, '_sync_scenes_safe')
+    @patch.object(ScriptService, "_get_user_id_filter")
+    @patch.object(ScriptService, "_sync_scenes_safe")
     def test_create_script(self, mock_sync, mock_filter):
         """Test creating a script."""
         mock_filter.return_value = None
@@ -147,7 +148,7 @@ class TestScriptService:
         self.service.script_repo.create.assert_called_once()
         self.mock_session.commit.assert_called_once()
 
-    @patch.object(ScriptService, '_get_user_id_filter')
+    @patch.object(ScriptService, "_get_user_id_filter")
     def test_create_script_episode_not_found(self, mock_filter):
         """Test creating script with non-existent episode."""
         mock_filter.return_value = None
@@ -161,8 +162,8 @@ class TestScriptService:
         with pytest.raises(NotFoundError):
             self.service.create_script(script_data=mock_data, user=mock_user)
 
-    @patch.object(ScriptService, 'get_script')
-    @patch.object(ScriptService, '_sync_scenes_safe')
+    @patch.object(ScriptService, "get_script")
+    @patch.object(ScriptService, "_sync_scenes_safe")
     def test_update_script(self, mock_sync, mock_get):
         """Test updating a script."""
         mock_script = MagicMock()
@@ -174,15 +175,13 @@ class TestScriptService:
         mock_update.dict.return_value = {"content": "Updated content"}
 
         result = self.service.update_script(
-            script_id=1,
-            update_data=mock_update,
-            user=mock_user
+            script_id=1, update_data=mock_update, user=mock_user
         )
 
         assert result == mock_script
         self.mock_session.commit.assert_called_once()
 
-    @patch.object(ScriptService, 'get_script')
+    @patch.object(ScriptService, "get_script")
     def test_delete_script(self, mock_get):
         """Test deleting a script."""
         mock_script = MagicMock()
@@ -192,7 +191,9 @@ class TestScriptService:
 
         self.service.delete_script(script_id=1, user=mock_user)
 
-        mock_script.soft_delete.assert_called_once_with(user_id=123, reason="user delete")
+        mock_script.soft_delete.assert_called_once_with(
+            user_id=123, reason="user delete"
+        )
         self.mock_session.commit.assert_called_once()
 
 

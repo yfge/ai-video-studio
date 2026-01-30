@@ -29,6 +29,7 @@ Translation: ALL operations for an episode must be completed in the workspace pa
 ### Frontend
 
 1. **`ai-pic-frontend/src/components/features/episode/WorkspaceScriptTabContent.tsx`**
+
    - Updated interface to accept script generation props:
      - `generateForm`, `setGenerateForm`
      - `formats`, `languages`

@@ -35,4 +35,3 @@ summary: "Make prod image build more reliable by adding platform fallback and op
 ## Linked Commits
 
 - (pending) `chore(docker): add build platform fallback`
-

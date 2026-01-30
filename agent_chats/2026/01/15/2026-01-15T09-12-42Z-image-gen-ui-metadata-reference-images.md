@@ -38,4 +38,3 @@ summary: "Align txt2img supports_reference_images UI metadata with actual provid
 ## Linked Commits
 
 - (pending)
-

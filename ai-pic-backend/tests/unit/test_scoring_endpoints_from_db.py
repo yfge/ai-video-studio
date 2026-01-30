@@ -12,7 +12,12 @@ def test_scoring_endpoints_work_with_script_id(client, db_session, mock_ai_servi
         episode=episode,
         content="INT. ROOM - DAY\nA: Hello.",
         scenes=[
-            {"scene_number": 1, "location": "Room", "time": "Day", "description": "Mock"}
+            {
+                "scene_number": 1,
+                "location": "Room",
+                "time": "Day",
+                "description": "Mock",
+            }
         ],
         dialogues=[{"scene_number": 1, "character": "A", "content": "Hello"}],
         extra_metadata={"hook_plan": {"opening_hook": "mock"}},
@@ -30,4 +35,3 @@ def test_scoring_endpoints_work_with_script_id(client, db_session, mock_ai_servi
     traffic = traffic_res.json()
     assert isinstance(traffic.get("assets"), list)
     assert traffic["assets"], "expected at least one traffic asset"
-

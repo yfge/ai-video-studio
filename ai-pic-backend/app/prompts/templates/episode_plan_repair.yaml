@@ -27,4 +27,4 @@ variables:
 usage_examples:
   - schema: "{...EpisodePlanModel schema...}"
     original_prompt: "生成 10 集都市职场剧集大纲"
-    original_output: "{\"episodes\": []}"
+    original_output: '{"episodes": []}'

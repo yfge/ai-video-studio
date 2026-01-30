@@ -48,4 +48,3 @@ summary: "Prevent storyboard image prompts from producing multi-panel/collage ou
 ## Linked Commits
 
 - (pending)
-

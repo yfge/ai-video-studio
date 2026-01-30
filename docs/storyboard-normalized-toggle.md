@@ -5,6 +5,7 @@ The storyboard page always loads normalized scenes/shots when available. The old
 Page: `ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx`
 
 Behavior
+
 - Fetches normalized scenes for the active script via `storyStructureAPI.getNormalizedScenes`.
 - Scene navigation prefers normalized scenes; if none exist, it falls back to scene numbers in storyboard frames.
 - Selecting a normalized scene loads:
@@ -17,6 +18,7 @@ Behavior
   - saving uses `storyStructureAPI.updateSceneShot` with `character_ids`
 
 Endpoints used
+
 - `/api/v1/story-structure/scripts/{script_id}/scenes`
 - `/api/v1/story-structure/scenes/{scene_id}/shots`
 - `/api/v1/story-structure/scenes/{scene_id}/beats`
@@ -26,4 +28,5 @@ Endpoints used
 - `/api/v1/story-structure/environments/{env_id}/images`
 
 Client helpers
+
 - `ai-pic-frontend/src/utils/api.ts` (`storyStructureAPI`)

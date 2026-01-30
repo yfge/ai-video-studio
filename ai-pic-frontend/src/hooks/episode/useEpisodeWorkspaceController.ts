@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { type Episode, type Script, type ScriptGenerationRequest } from "@/utils/api/types";
+import {
+  type Episode,
+  type Script,
+  type ScriptGenerationRequest,
+} from "@/utils/api/types";
 import { sortScriptsNewestFirst } from "./scriptSort";
 import { useEpisodeWorkspaceScriptActions } from "./useEpisodeWorkspaceScriptActions";
 
@@ -91,15 +95,22 @@ export function useEpisodeWorkspaceController(args: {
 
     const hasSelectedScriptId = typeof selectedScriptId === "number";
     const selectedIsValid =
-      hasSelectedScriptId && orderedScripts.some((script) => script.id === selectedScriptId);
+      hasSelectedScriptId &&
+      orderedScripts.some((script) => script.id === selectedScriptId);
     if (selectedIsValid) {
       if (urlScriptId !== selectedScriptId) {
-        router.replace(buildUrl(activeTab, selectedScriptId), { scroll: false });
+        router.replace(buildUrl(activeTab, selectedScriptId), {
+          scroll: false,
+        });
       }
       return;
     }
 
-    if (hasSelectedScriptId && typeof urlScriptId === "number" && urlScriptId !== selectedScriptId) {
+    if (
+      hasSelectedScriptId &&
+      typeof urlScriptId === "number" &&
+      urlScriptId !== selectedScriptId
+    ) {
       return;
     }
 
@@ -165,9 +176,14 @@ export function useEpisodeWorkspaceController(args: {
 
   const handleGenerateTimeline = useCallback(() => {
     setActiveTab("timeline");
-    router.replace(buildUrl("timeline", selectedScriptId, { autoTimelinePipeline: String(Date.now()) }), {
-      scroll: false,
-    });
+    router.replace(
+      buildUrl("timeline", selectedScriptId, {
+        autoTimelinePipeline: String(Date.now()),
+      }),
+      {
+        scroll: false,
+      },
+    );
   }, [buildUrl, router, selectedScriptId]);
 
   const handleGenerateStoryboard = useCallback(() => {

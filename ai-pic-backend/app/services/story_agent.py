@@ -30,7 +30,11 @@ def _extract_missing_fields(exc: Exception) -> list[str]:
 def _coerce_text_and_parsed(payload: object) -> tuple[str, dict | None]:
     if isinstance(payload, dict):
         return json.dumps(payload, ensure_ascii=False), payload
-    text = payload if isinstance(payload, str) else ("" if payload is None else str(payload))
+    text = (
+        payload
+        if isinstance(payload, str)
+        else ("" if payload is None else str(payload))
+    )
     return text, extract_json_block(text)
 
 
@@ -96,7 +100,9 @@ class StoryLangGraphAgent:
         resolved_template = resolve_template_name(
             PromptTemplate.STORY_OUTLINE.value, variables, prompt_manager.prompts_dir
         )
-        prompt = prompt_manager.render_prompt(PromptTemplate.STORY_OUTLINE.value, variables)
+        prompt = prompt_manager.render_prompt(
+            PromptTemplate.STORY_OUTLINE.value, variables
+        )
         system_prompt = (
             prompt_manager.render_prompt(
                 PromptTemplate.SYSTEM_PROMPT_STORY.value,

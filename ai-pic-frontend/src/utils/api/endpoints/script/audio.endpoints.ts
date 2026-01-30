@@ -2,10 +2,10 @@
  * Script audio/timeline endpoints.
  */
 
-import { httpClient } from '../../client';
-import type { ApiResponse } from '../../types/common.types';
+import { httpClient } from "../../client";
+import type { ApiResponse } from "../../types/common.types";
 
-import { scriptPath } from './paths';
+import { scriptPath } from "./paths";
 
 /**
  * Generate scene dialogue audio asynchronously.
@@ -18,14 +18,14 @@ export async function generateSceneDialogueAudioAsync(
     scene_numbers?: number[];
     overwrite_audio?: boolean;
     overwrite_beats?: boolean;
-  }
+  },
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   return httpClient<{ task_id: number; status: string }>(
-    scriptPath(scriptId, '/dialogue-audio/generate-async'),
+    scriptPath(scriptId, "/dialogue-audio/generate-async"),
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload || {}),
-    }
+    },
   );
 }
 
@@ -34,14 +34,14 @@ export async function generateSceneDialogueAudioAsync(
  */
 export async function generateAudioTimelineAsync(
   scriptId: number | string,
-  payload?: { overwrite?: boolean }
+  payload?: { overwrite?: boolean },
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   return httpClient<{ task_id: number; status: string }>(
-    scriptPath(scriptId, '/audio-timeline/generate-async'),
+    scriptPath(scriptId, "/audio-timeline/generate-async"),
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload || {}),
-    }
+    },
   );
 }
 
@@ -53,14 +53,14 @@ export async function generateStoryboardFromAudioTimelineAsync(
   payload?: {
     overwrite_existing?: boolean;
     min_pause_seconds?: number;
-  }
+  },
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   return httpClient<{ task_id: number; status: string }>(
-    scriptPath(scriptId, '/storyboard/from-audio-timeline/generate-async'),
+    scriptPath(scriptId, "/storyboard/from-audio-timeline/generate-async"),
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload || {}),
-    }
+    },
   );
 }
 
@@ -77,14 +77,13 @@ export async function generateTimelinePipelineAsync(
     overwrite_storyboard?: boolean;
     min_pause_seconds?: number;
     use_duration_control?: boolean;
-  }
+  },
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   return httpClient<{ task_id: number; status: string }>(
-    scriptPath(scriptId, '/timeline-pipeline/generate-async'),
+    scriptPath(scriptId, "/timeline-pipeline/generate-async"),
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload || {}),
-    }
+    },
   );
 }
-

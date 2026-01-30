@@ -61,4 +61,3 @@ summary: "Frontend now fetches style presets from backend and sends style_preset
 ## Linked Commits
 
 - feat(frontend): send style preset id in image requests
-

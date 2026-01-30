@@ -67,8 +67,8 @@ variables:
     description: "额外场景要求"
 
 usage_examples:
-  - story: {title: "未来之城", genre: "科幻"}
-    episode: {episode_number: 1, title: "觉醒", duration_minutes: 3}
+  - story: { title: "未来之城", genre: "科幻" }
+    episode: { episode_number: 1, title: "觉醒", duration_minutes: 3 }
     duration_minutes: 3
     scene_detail_level: "medium"
     format_type: "screenplay"

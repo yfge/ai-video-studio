@@ -34,6 +34,7 @@ Continue with Phase 5 frontend page refactoring. Task 5.1: Refactor episodes/[id
 ### New Files Created
 
 1. **`src/hooks/useEpisodeDetail.ts`** (374 lines)
+
    - Consolidated 30+ useState hooks
    - Episode and script data loading
    - Task polling logic for audio/timeline/storyboard
@@ -41,21 +42,26 @@ Continue with Phase 5 frontend page refactoring. Task 5.1: Refactor episodes/[id
    - Computed/memoized values for episode meta, audio timeline, storyboard
 
 2. **`src/components/features/episode/EpisodeHeader.tsx`** (57 lines)
+
    - Episode title, scene count, navigation buttons
 
 3. **`src/components/features/episode/EpisodeDetails.tsx`** (171 lines)
+
    - Episode summary, plot points, character arcs, conflicts, scene list
 
 4. **`src/components/features/episode/AudioTimelineSection.tsx`** (413 lines)
+
    - Script selector, audio timeline display, task status
    - Pipeline steps visualization, generation buttons
    - Timeline component integration
 
 5. **`src/components/features/episode/ScriptGenerationForm.tsx`** (220 lines)
+
    - Script generation form with format/language selection
    - Async mode toggle, prompt preview
 
 6. **`src/components/features/episode/ScriptList.tsx`** (118 lines)
+
    - Script cards with view/regenerate/delete actions
 
 7. **`src/components/features/episode/index.ts`** (6 lines)
@@ -64,6 +70,7 @@ Continue with Phase 5 frontend page refactoring. Task 5.1: Refactor episodes/[id
 ### Modified Files
 
 1. **`src/app/episodes/[id]/page.tsx`** (1,580 → 327 lines, 79% reduction)
+
    - Now imports useEpisodeDetail hook and extracted components
    - Contains only event handlers and component composition
 

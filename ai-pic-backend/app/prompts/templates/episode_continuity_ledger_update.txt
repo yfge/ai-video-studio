@@ -80,4 +80,3 @@
   - info_acquisition_events 最多 60 条；单集 snapshot 内最多 15 条
   - 每个角色 known_info 最多 20 条，unknown_info 最多 10 条
 - 只输出 JSON。
-

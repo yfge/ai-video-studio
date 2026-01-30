@@ -83,11 +83,17 @@ export default function ScriptDetailPage() {
           onExport={handleExport}
           onNavigateToEpisode={() =>
             router.push(
-              `/episodes/${script.episode_business_id || script.episode_id}/workspace?tab=script&scriptId=${script.id}`,
+              `/episodes/${
+                script.episode_business_id || script.episode_id
+              }/workspace?tab=script&scriptId=${script.id}`,
             )
           }
           onNavigateToStoryboard={() =>
-            router.push(`/episodes/${script.episode_business_id || script.episode_id}/storyboard`)
+            router.push(
+              `/episodes/${
+                script.episode_business_id || script.episode_id
+              }/storyboard`,
+            )
           }
         />
 
@@ -95,7 +101,11 @@ export default function ScriptDetailPage() {
           onGoToSceneDetails={goToSceneDetails}
           onGoToSceneStructure={goToSceneStructure}
           onGoToStoryboard={() =>
-            router.push(`/episodes/${script.episode_business_id || script.episode_id}/storyboard`)
+            router.push(
+              `/episodes/${
+                script.episode_business_id || script.episode_id
+              }/storyboard`,
+            )
           }
         />
 

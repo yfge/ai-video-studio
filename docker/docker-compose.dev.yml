@@ -7,7 +7,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ai-video
       MYSQL_DATABASE: ai_video_studio
-    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+      ]
     volumes:
       - ./mysql_data:/var/lib/mysql
 
@@ -45,7 +50,8 @@ services:
     env_file:
       - .env
     working_dir: /app/ai-pic-backend
-    command: ["celery", "-A", "app.core.celery_app.celery_app", "worker", "-l", "info"]
+    command:
+      ["celery", "-A", "app.core.celery_app.celery_app", "worker", "-l", "info"]
     volumes:
       - ../ai-pic-backend:/app/ai-pic-backend
       - ../ai-pic-backend/uploads:/app/ai-pic-backend/uploads
@@ -61,7 +67,8 @@ services:
     env_file:
       - .env
     working_dir: /app/ai-pic-backend
-    command: ["celery", "-A", "app.core.celery_app.celery_app", "beat", "-l", "info"]
+    command:
+      ["celery", "-A", "app.core.celery_app.celery_app", "beat", "-l", "info"]
     volumes:
       - ../ai-pic-backend:/app/ai-pic-backend
       - ../ai-pic-backend/uploads:/app/ai-pic-backend/uploads
@@ -77,7 +84,8 @@ services:
     env_file:
       - .env
     working_dir: /app/ai-pic-frontend
-    command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+    command:
+      ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
     volumes:
       - ../ai-pic-frontend:/app/ai-pic-frontend
       - /app/ai-pic-frontend/node_modules

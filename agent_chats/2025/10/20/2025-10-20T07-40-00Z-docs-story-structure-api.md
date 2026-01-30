@@ -34,4 +34,3 @@ summary: "Document minimal normalized story structure API and usage notes."
 ## Linked Commits
 
 - pending（本地增量补丁，后续与此台账一并提交）
-

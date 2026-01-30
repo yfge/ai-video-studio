@@ -48,7 +48,9 @@ def build_episode_agent_run(
     story: Story | None = None
     if story_id is not None:
         story = (
-            db.query(Story).filter(Story.id == story_id, Story.user_id == user_id).first()
+            db.query(Story)
+            .filter(Story.id == story_id, Story.user_id == user_id)
+            .first()
         )
     if story:
         story_meta = safe_dict(getattr(story, "extra_metadata", None))
@@ -125,7 +127,9 @@ def build_script_agent_run(db, task, *, user_id: int, script_id: int) -> Dict[st
     return agent_run
 
 
-def parse_episode_task_ids(task, *, request_dict: Optional[Dict[str, Any]]) -> tuple[int | None, list[int]]:
+def parse_episode_task_ids(
+    task, *, request_dict: Optional[Dict[str, Any]]
+) -> tuple[int | None, list[int]]:
     created_ids: list[int] = []
     episode_ids_str = parse_result_id(task.result_file_path, prefix="episodes")
     if episode_ids_str:
@@ -147,4 +151,3 @@ def parse_episode_task_ids(task, *, request_dict: Optional[Dict[str, Any]]) -> t
             story_id = None
 
     return story_id, created_ids
-

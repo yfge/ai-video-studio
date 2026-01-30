@@ -57,10 +57,10 @@ User requested: "提供重新生成剧本的功能" (Provide script regeneration
 
 ### Before/After Comparison (Scene 2)
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Dialogues | 0 | 2 ✅ |
-| Stage Directions | 5 | 4 ✅ |
+| Metric           | Before | After |
+| ---------------- | ------ | ----- |
+| Dialogues        | 0      | 2 ✅  |
+| Stage Directions | 5      | 4 ✅  |
 
 The review step in the script agent correctly reclassified the two misclassified dialogues.
 

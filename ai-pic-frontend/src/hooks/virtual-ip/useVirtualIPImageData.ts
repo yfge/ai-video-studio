@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { virtualIPAPI, virtualIPImageAPI, type VirtualIP, type VirtualIPImage } from "@/utils/api";
+import {
+  virtualIPAPI,
+  virtualIPImageAPI,
+  type VirtualIP,
+  type VirtualIPImage,
+} from "@/utils/api";
 
 interface UseVirtualIPImageDataOptions {
   virtualIPKey: string;
@@ -18,8 +23,12 @@ export function useVirtualIPImageData({
   skipVirtualIPFetch = false,
   showAlert,
 }: UseVirtualIPImageDataOptions) {
-  const [virtualIP, setVirtualIP] = useState<VirtualIP | null>(initialVirtualIP ?? null);
-  const [virtualIPId, setVirtualIPId] = useState<number | null>(initialVirtualIP?.id ?? null);
+  const [virtualIP, setVirtualIP] = useState<VirtualIP | null>(
+    initialVirtualIP ?? null,
+  );
+  const [virtualIPId, setVirtualIPId] = useState<number | null>(
+    initialVirtualIP?.id ?? null,
+  );
   const [images, setImages] = useState<VirtualIPImage[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -59,9 +68,15 @@ export function useVirtualIPImageData({
         virtualIPImageAPI.getCategories(ip.id),
       ]);
 
-      setImages(imagesResponse.success && imagesResponse.data ? imagesResponse.data : []);
+      setImages(
+        imagesResponse.success && imagesResponse.data
+          ? imagesResponse.data
+          : [],
+      );
       setCategories(
-        categoriesResponse.success && categoriesResponse.data ? categoriesResponse.data : [],
+        categoriesResponse.success && categoriesResponse.data
+          ? categoriesResponse.data
+          : [],
       );
     } catch (error) {
       console.error("Failed to load data:", error);
@@ -78,7 +93,10 @@ export function useVirtualIPImageData({
   }, [loadData]);
 
   const filteredImages = useMemo(
-    () => (selectedCategory ? images.filter((img) => img.category === selectedCategory) : images),
+    () =>
+      selectedCategory
+        ? images.filter((img) => img.category === selectedCategory)
+        : images,
     [images, selectedCategory],
   );
 

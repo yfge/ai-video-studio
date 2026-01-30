@@ -60,13 +60,20 @@ def test_storyboard_model_accepts_keyframe_urls():
         "https://cdn.example.com/clip.mp4",
         "https://cdn.example.com/clip-2.mp4",
     ]
-    assert storyboard.frames[0].video_thumbnail_url == "https://cdn.example.com/thumb.png"
+    assert (
+        storyboard.frames[0].video_thumbnail_url == "https://cdn.example.com/thumb.png"
+    )
     assert storyboard.frames[0].video_thumbnail_urls == [
         "https://cdn.example.com/thumb.png",
         "https://cdn.example.com/thumb-2.png",
     ]
-    assert storyboard.frames[0].video_url_original == "https://provider.example.com/clip.mp4"
-    assert storyboard.frames[0].video_last_frame_url == "https://cdn.example.com/last.png"
+    assert (
+        storyboard.frames[0].video_url_original
+        == "https://provider.example.com/clip.mp4"
+    )
+    assert (
+        storyboard.frames[0].video_last_frame_url == "https://cdn.example.com/last.png"
+    )
     assert storyboard.frames[0].video_last_frame_urls == [
         "https://cdn.example.com/last.png",
         "https://cdn.example.com/last-2.png",

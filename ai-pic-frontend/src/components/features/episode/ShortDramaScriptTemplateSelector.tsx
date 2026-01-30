@@ -5,7 +5,9 @@ import type { ScriptGenerationRequest } from "@/utils/api";
 import { SHORT_DRAMA_SCRIPT_TEMPLATES } from "@/utils/shortDramaTemplates";
 
 interface ShortDramaScriptTemplateSelectorProps {
-  setGenerateForm: React.Dispatch<React.SetStateAction<ScriptGenerationRequest>>;
+  setGenerateForm: React.Dispatch<
+    React.SetStateAction<ScriptGenerationRequest>
+  >;
 }
 
 const buildMergedRequirements = (
@@ -66,4 +68,3 @@ export function ShortDramaScriptTemplateSelector({
     </div>
   );
 }
-

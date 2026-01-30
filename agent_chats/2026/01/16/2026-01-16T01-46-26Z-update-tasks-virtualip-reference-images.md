@@ -33,4 +33,3 @@ summary: "更新 tasks.md：标记虚拟IP文生图 reference_images 已完成"
 ## Linked Commits
 
 - (pending)
-

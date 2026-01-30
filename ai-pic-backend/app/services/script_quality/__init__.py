@@ -8,4 +8,3 @@ Provides deterministic lint checks for screenplay-like scripts, focused on
 from app.services.script_quality.lint_engine import lint_script_content
 
 __all__ = ["lint_script_content"]
-

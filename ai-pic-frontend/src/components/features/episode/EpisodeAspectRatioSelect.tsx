@@ -40,7 +40,8 @@ export function EpisodeAspectRatioSelect({
         value={current ?? ""}
         onChange={async (e) => {
           const raw = e.target.value;
-          const next: AspectRatioValue = raw === "" ? null : (raw as AspectRatioValue);
+          const next: AspectRatioValue =
+            raw === "" ? null : (raw as AspectRatioValue);
 
           setSaving(true);
           setError("");

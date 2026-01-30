@@ -7,9 +7,8 @@ Create Date: 2026-01-08 00:00:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "2a6b1c0d9f01"
@@ -36,4 +35,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_column("stories", "story_format")
-

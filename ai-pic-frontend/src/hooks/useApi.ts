@@ -21,55 +21,76 @@
  * ```
  */
 
-import { useCallback } from 'react'
-import type { ApiResponse } from '@/utils/api'
+import { useCallback } from "react";
+import type { ApiResponse } from "@/utils/api";
 
 export interface UseApiRequestOptions extends RequestInit {
   /**
    * Skip automatic auth token (default: false)
    */
-  skipAuth?: boolean
+  skipAuth?: boolean;
   /**
    * Custom error handler
    */
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void;
 }
 
 export interface UseApiReturn {
   /**
    * GET request
    */
-  get: <T>(endpoint: string, options?: UseApiRequestOptions) => Promise<ApiResponse<T>>
+  get: <T>(
+    endpoint: string,
+    options?: UseApiRequestOptions,
+  ) => Promise<ApiResponse<T>>;
   /**
    * POST request
    */
-  post: <T>(endpoint: string, data?: unknown, options?: UseApiRequestOptions) => Promise<ApiResponse<T>>
+  post: <T>(
+    endpoint: string,
+    data?: unknown,
+    options?: UseApiRequestOptions,
+  ) => Promise<ApiResponse<T>>;
   /**
    * PUT request
    */
-  put: <T>(endpoint: string, data?: unknown, options?: UseApiRequestOptions) => Promise<ApiResponse<T>>
+  put: <T>(
+    endpoint: string,
+    data?: unknown,
+    options?: UseApiRequestOptions,
+  ) => Promise<ApiResponse<T>>;
   /**
    * DELETE request
    */
-  del: <T>(endpoint: string, options?: UseApiRequestOptions) => Promise<ApiResponse<T>>
+  del: <T>(
+    endpoint: string,
+    options?: UseApiRequestOptions,
+  ) => Promise<ApiResponse<T>>;
   /**
    * PATCH request
    */
-  patch: <T>(endpoint: string, data?: unknown, options?: UseApiRequestOptions) => Promise<ApiResponse<T>>
+  patch: <T>(
+    endpoint: string,
+    data?: unknown,
+    options?: UseApiRequestOptions,
+  ) => Promise<ApiResponse<T>>;
   /**
    * Generic request with custom method
    */
-  request: <T>(endpoint: string, options?: UseApiRequestOptions) => Promise<ApiResponse<T>>
+  request: <T>(
+    endpoint: string,
+    options?: UseApiRequestOptions,
+  ) => Promise<ApiResponse<T>>;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 /**
  * Get auth token from localStorage
  */
 function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('auth_token')
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("auth_token");
 }
 
 /**
@@ -77,19 +98,19 @@ function getAuthToken(): string | null {
  */
 function buildHeaders(options: UseApiRequestOptions = {}): HeadersInit {
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...options.headers,
-  }
+  };
 
   // Add auth token unless explicitly skipped
   if (!options.skipAuth) {
-    const token = getAuthToken()
+    const token = getAuthToken();
     if (token) {
-      ;(headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
     }
   }
 
-  return headers
+  return headers;
 }
 
 /**
@@ -127,41 +148,46 @@ function buildHeaders(options: UseApiRequestOptions = {}): HeadersInit {
  */
 export function useApi(): UseApiReturn {
   const request = useCallback(
-    async <T>(endpoint: string, options: UseApiRequestOptions = {}): Promise<ApiResponse<T>> => {
-      const { onError, skipAuth, ...fetchOptions } = options
+    async <T>(
+      endpoint: string,
+      options: UseApiRequestOptions = {},
+    ): Promise<ApiResponse<T>> => {
+      const { onError, skipAuth, ...fetchOptions } = options;
 
-      const url = `${API_BASE_URL}${endpoint}`
-      const headers = buildHeaders({ skipAuth, ...options })
+      const url = `${API_BASE_URL}${endpoint}`;
+      const headers = buildHeaders({ skipAuth, ...options });
 
       try {
         const response = await fetch(url, {
           ...fetchOptions,
           headers,
-        })
+        });
 
         // Parse JSON response
-        let data: ApiResponse<T>
+        let data: ApiResponse<T>;
 
         // Handle empty responses
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          data = await response.json()
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
         } else {
           // Non-JSON response (e.g., 204 No Content)
           data = {
             success: response.ok,
             data: undefined as unknown as T,
-          }
+          };
         }
 
         // Handle HTTP errors
         if (!response.ok) {
           const error = new Error(
-            data.message || data.error || `HTTP ${response.status}: ${response.statusText}`
-          )
+            data.message ||
+              data.error ||
+              `HTTP ${response.status}: ${response.statusText}`,
+          );
 
           if (onError) {
-            onError(error)
+            onError(error);
           }
 
           // Return error response (data might already have success: false)
@@ -169,72 +195,72 @@ export function useApi(): UseApiReturn {
             ...data,
             success: false,
             error: error.message,
-          }
+          };
         }
 
-        return data
+        return data;
       } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err))
+        const error = err instanceof Error ? err : new Error(String(err));
 
         if (onError) {
-          onError(error)
+          onError(error);
         }
 
         return {
           success: false,
           error: error.message,
-        }
+        };
       }
     },
-    []
-  )
+    [],
+  );
 
   const get = useCallback(
     <T>(endpoint: string, options?: UseApiRequestOptions) => {
-      return request<T>(endpoint, { ...options, method: 'GET' })
+      return request<T>(endpoint, { ...options, method: "GET" });
     },
-    [request]
-  )
+    [request],
+  );
 
   const post = useCallback(
     <T>(endpoint: string, data?: unknown, options?: UseApiRequestOptions) => {
       return request<T>(endpoint, {
         ...options,
-        method: 'POST',
+        method: "POST",
         body: data ? JSON.stringify(data) : undefined,
-      })
+      });
     },
-    [request]
-  )
+    [request],
+  );
 
   const put = useCallback(
     <T>(endpoint: string, data?: unknown, options?: UseApiRequestOptions) => {
       return request<T>(endpoint, {
         ...options,
-        method: 'PUT',
+        method: "PUT",
         body: data ? JSON.stringify(data) : undefined,
-      })
+      });
     },
-    [request]
-  )
+    [request],
+  );
 
   const del = useCallback(
     <T>(endpoint: string, options?: UseApiRequestOptions) => {
-      return request<T>(endpoint, { ...options, method: 'DELETE' })
+      return request<T>(endpoint, { ...options, method: "DELETE" });
     },
-    [request]
-  )
+    [request],
+  );
 
   const patch = useCallback(
     <T>(endpoint: string, data?: unknown, options?: UseApiRequestOptions) => {
       return request<T>(endpoint, {
         ...options,
-        method: 'PATCH',
+        method: "PATCH",
         body: data ? JSON.stringify(data) : undefined,
-      })
+      });
     },
-    [request]
-  )
+    [request],
+  );
 
   return {
     get,
@@ -243,5 +269,5 @@ export function useApi(): UseApiReturn {
     del,
     patch,
     request,
-  }
+  };
 }

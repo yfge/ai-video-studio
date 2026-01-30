@@ -6,23 +6,15 @@ Basic create, read, update, delete operations for episodes.
 
 from typing import List, Optional
 
+from app.core.database import get_db
+from app.core.middleware import get_current_active_user
+from app.models.script import Episode, Story
+from app.models.user import User
+from app.schemas.script import EpisodeCreate, EpisodeResponse, EpisodeUpdate
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.core.middleware import get_current_active_user
-from app.models.script import Story, Episode
-from app.models.user import User
-from app.schemas.script import (
-    EpisodeCreate,
-    EpisodeUpdate,
-    EpisodeResponse,
-)
-from .helpers import (
-    not_deleted,
-    get_episode_by_identifier,
-    get_story_by_identifier,
-)
+from .helpers import get_episode_by_identifier, get_story_by_identifier, not_deleted
 
 router = APIRouter()
 

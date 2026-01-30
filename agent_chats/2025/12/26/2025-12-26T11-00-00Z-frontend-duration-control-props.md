@@ -40,12 +40,14 @@ setUseDurationControl,
 **`ai-pic-frontend/src/app/episodes/[id]/page.tsx` (lines 58-59, 278-279)**:
 
 Added destructuring:
+
 ```typescript
 useDurationControl,
 setUseDurationControl,
 ```
 
 Passed to AudioTimelineSection:
+
 ```typescript
 <AudioTimelineSection
   ...

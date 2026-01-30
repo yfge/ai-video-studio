@@ -3,18 +3,16 @@ Tests for domain exception middleware.
 """
 
 import pytest
-from fastapi import FastAPI, Request
-from fastapi.testclient import TestClient
-from starlette.responses import Response
-
 from app.core.exceptions import (
     DomainError,
+    ExternalServiceError,
+    GenerationFailedError,
     NotFoundError,
     ValidationError,
-    GenerationFailedError,
-    ExternalServiceError,
 )
 from app.core.middleware import domain_exception_handler
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -42,11 +40,7 @@ def app_with_middleware():
 
     @app.get("/test/domain-error-with-context")
     async def test_domain_error_with_context():
-        raise NotFoundError(
-            "脚本",
-            456,
-            context={"user_id": 123, "attempt": 3}
-        )
+        raise NotFoundError("脚本", 456, context={"user_id": 123, "attempt": 3})
 
     @app.get("/test/success")
     async def test_success():
@@ -175,4 +169,6 @@ class TestErrorLogging:
             client.get("/test/not-found")
 
         # Check that error was logged
-        assert any("Domain error occurred" in record.message for record in caplog.records)
+        assert any(
+            "Domain error occurred" in record.message for record in caplog.records
+        )

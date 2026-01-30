@@ -24,8 +24,7 @@ def abs_url(url: str) -> str:
     if not url.startswith("/"):
         url = f"/{url}"
     base = (
-        getattr(settings, "INTERNAL_BACKEND_URL", None)
-        or "http://localhost:8000"
+        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
     ).rstrip("/")
     return f"{base}{url}"
 
@@ -135,7 +134,11 @@ def resolve_frame_urls(
             or ""
         )
 
-    if not use_end_frame or end_explicit_none or (selection_has_start and not selection_has_end):
+    if (
+        not use_end_frame
+        or end_explicit_none
+        or (selection_has_start and not selection_has_end)
+    ):
         raw_end_url = ""
     elif not raw_end_url:
         raw_end_url = (

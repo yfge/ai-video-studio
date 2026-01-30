@@ -1,14 +1,17 @@
-'use client'
+"use client";
 
-import { AuthGuard } from '@/components/shared'
-import { Navigation } from '@/components/layouts'
-import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
-import { VirtualIPCreateModal, VirtualIPListSection } from '@/components/features/virtual-ip'
-import { useVirtualIPCreateForm } from '@/hooks/useVirtualIPCreateForm'
-import { useVirtualIPList } from '@/hooks/useVirtualIPList'
+import { AuthGuard } from "@/components/shared";
+import { Navigation } from "@/components/layouts";
+import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
+import {
+  VirtualIPCreateModal,
+  VirtualIPListSection,
+} from "@/components/features/virtual-ip";
+import { useVirtualIPCreateForm } from "@/hooks/useVirtualIPCreateForm";
+import { useVirtualIPList } from "@/hooks/useVirtualIPList";
 
 function VirtualIPListContent() {
-  const { showAlert } = useAlertModal()
+  const { showAlert } = useAlertModal();
   const {
     virtualIPs,
     loading,
@@ -19,7 +22,7 @@ function VirtualIPListContent() {
     allTags,
     handleDeleteIP,
     prependVirtualIP,
-  } = useVirtualIPList({ showAlert })
+  } = useVirtualIPList({ showAlert });
 
   const {
     showCreateForm,
@@ -34,7 +37,7 @@ function VirtualIPListContent() {
     removeTag,
     runGenerateAllAI,
     handleCloseCreateForm,
-  } = useVirtualIPCreateForm({ showAlert, onCreated: prependVirtualIP })
+  } = useVirtualIPCreateForm({ showAlert, onCreated: prependVirtualIP });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -69,7 +72,7 @@ function VirtualIPListContent() {
         removeTag={removeTag}
       />
     </div>
-  )
+  );
 }
 
 export default function VirtualIPList() {
@@ -77,5 +80,5 @@ export default function VirtualIPList() {
     <AuthGuard>
       <VirtualIPListContent />
     </AuthGuard>
-  )
+  );
 }

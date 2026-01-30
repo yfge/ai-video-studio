@@ -6,9 +6,7 @@ from app.models.story_structure import Environment
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 
-DEFAULT_ENV_VARIANT_EXTRA_PROMPT = (
-    "基于参考环境图生成风格一致的变体，仅调整指定要素（如：时间/天气/灯光/材质），保持空间布局与镜头视角一致"
-)
+DEFAULT_ENV_VARIANT_EXTRA_PROMPT = "基于参考环境图生成风格一致的变体，仅调整指定要素（如：时间/天气/灯光/材质），保持空间布局与镜头视角一致"
 
 
 def _compact_text(text: str) -> str:
@@ -58,7 +56,9 @@ def compose_environment_variant_prompt(
     """Render environment img2img variant prompt via PromptManager templates."""
     base_prompt_value = (env.description or "").strip() or (env.name or "").strip()
     if not base_prompt_value:
-        base_prompt_value = "Environment scene with clear spatial layout and lighting cues"
+        base_prompt_value = (
+            "Environment scene with clear spatial layout and lighting cues"
+        )
 
     variant_value = (variant_prompt or "").strip() or DEFAULT_ENV_VARIANT_EXTRA_PROMPT
 

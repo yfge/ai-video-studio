@@ -6,14 +6,13 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.schemas.generation import ScriptScoreResult, TrafficSheet
 from app.services.scoring import ScriptScoreService, TrafficSheetService
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 logger = get_logger()
 router = APIRouter()
@@ -218,8 +217,8 @@ async def get_script_score(
     """
     根据剧本 ID 获取评分（便捷接口）。
     """
-    from app.services.scoring import score_script_from_db
     from app.services.ai_service import ai_service
+    from app.services.scoring import score_script_from_db
 
     try:
         result = await score_script_from_db(
@@ -247,8 +246,8 @@ async def get_traffic_sheet(
     """
     根据剧本 ID 生成投流表（便捷接口）。
     """
-    from app.services.scoring import generate_traffic_sheet_from_db
     from app.services.ai_service import ai_service
+    from app.services.scoring import generate_traffic_sheet_from_db
 
     try:
         result = await generate_traffic_sheet_from_db(

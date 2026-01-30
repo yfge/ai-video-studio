@@ -27,6 +27,7 @@ Continue with refactoring plan Phase 1, Task 1.1.4: Split scripts.py Endpoints -
 ### New Files
 
 1. `ai-pic-backend/app/api/v1/endpoints/scripts/__init__.py` (~15 lines)
+
    - Package init with router aggregation
    - Include sub-routers
 

@@ -54,11 +54,10 @@ summary: "Ensure production frontend images do not bake in local .env.local (wit
 
 - 在有 Docker 环境的机器上重新执行：
   - `./docker/build_prod_images.sh`
-  - 使用脚本输出的最新 `IMAGE_TAG` 更新生产栈：  
+  - 使用脚本输出的最新 `IMAGE_TAG` 更新生产栈：
     `IMAGE_TAG=<tag> docker compose -f docker/docker-compose.prod.yml pull && IMAGE_TAG=<tag> docker compose -f docker/docker-compose.prod.yml up -d`
 - 如需为某些环境显式配置 API 地址，可后续在 Dockerfile 中增加 `ARG NEXT_PUBLIC_API_URL` 并在 buildx 命令里通过 `--build-arg` 传入。
 
 ## Linked Commits
 
 - （待补充）`fix(frontend): ignore env.local in prod docker build` 提交记录此更改。
-

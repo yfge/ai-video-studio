@@ -40,18 +40,18 @@
 - 除 `negative_prompt` / `reference_images` 外，其它不支持参数（如 `seed/steps/cfg_scale/strength/style_preset_id/style_spec`）也会在 normalize 阶段被丢弃，并写入 `audit.warnings`（避免“填了但静默无效”）。
 - `style_preset_id` / `style_spec` 仅部分 provider 支持；Environment domain 会强制禁用二者（见下方 Domain 差异）。
 
-| provider | mode | `reference_images`（list） | `extra_images`（img2img） | `negative_prompt` | `style_preset_id` | `style_spec` | `seed` | `steps` | `cfg_scale` | `strength` | 备注 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OpenAI | text_to_image | ❌ | n/a | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | n/a | DALL·E 2/3 主要用 `size`/`style` |
-| OpenAI | image_to_image | n/a | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 仅支持单 base image（variations/inpainting） |
-| Google | text_to_image | ✅ | n/a | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | n/a | 支持 `reference_images`（建议≤4张；过大将自动压缩）；`aspect_ratio` 可用 |
-| Google | image_to_image | n/a | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 支持多参考图（base + extra） |
-| Volcengine | text_to_image | ✅ | n/a | ❌ | ✅ | ✅ | ❌ | ❌ | ⚠️ | n/a | `cfg_scale→guidance_scale`（部分模型） |
-| Volcengine | image_to_image | n/a | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ❌ | 支持多参考图（base + extra） |
-| 可灵（Keling） | text_to_image | ✅（仅 1 张） | n/a | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ | n/a | `reference_images[0]→image`；有参考图时 `negative_prompt` 会合并进 prompt；支持 `image_reference/image_fidelity/human_fidelity` |
-| 可灵（Keling） | image_to_image | n/a | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | 仅支持 1 张基准图（extra_images 会被忽略）；img2img 不支持 `negative_prompt`（需写入 prompt） |
-| 即梦（Jimeng） | text_to_image | ❌ | n/a | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | n/a | 支持 `width/height`（由 `size` 归一化） |
-| 即梦（Jimeng） | image_to_image | n/a | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | 支持 `strength`（显式走 img2img）；支持 `size`（映射为 `width/height`） |
+| provider       | mode           | `reference_images`（list） | `extra_images`（img2img） | `negative_prompt` | `style_preset_id` | `style_spec` | `seed` | `steps` | `cfg_scale` | `strength` | 备注                                                                                                                            |
+| -------------- | -------------- | -------------------------- | ------------------------- | ----------------- | ----------------- | ------------ | ------ | ------- | ----------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI         | text_to_image  | ❌                         | n/a                       | ❌                | ❌                | ❌           | ❌     | ❌      | ❌          | n/a        | DALL·E 2/3 主要用 `size`/`style`                                                                                                |
+| OpenAI         | image_to_image | n/a                        | ❌                        | ❌                | ❌                | ❌           | ❌     | ❌      | ❌          | ❌         | 仅支持单 base image（variations/inpainting）                                                                                    |
+| Google         | text_to_image  | ✅                         | n/a                       | ❌                | ❌                | ❌           | ❌     | ❌      | ❌          | n/a        | 支持 `reference_images`（建议≤4张；过大将自动压缩）；`aspect_ratio` 可用                                                        |
+| Google         | image_to_image | n/a                        | ✅                        | ❌                | ❌                | ❌           | ❌     | ❌      | ❌          | ❌         | 支持多参考图（base + extra）                                                                                                    |
+| Volcengine     | text_to_image  | ✅                         | n/a                       | ❌                | ✅                | ✅           | ❌     | ❌      | ⚠️          | n/a        | `cfg_scale→guidance_scale`（部分模型）                                                                                          |
+| Volcengine     | image_to_image | n/a                        | ✅                        | ❌                | ✅                | ✅           | ❌     | ❌      | ⚠️          | ❌         | 支持多参考图（base + extra）                                                                                                    |
+| 可灵（Keling） | text_to_image  | ✅（仅 1 张）              | n/a                       | ⚠️                | ✅                | ✅           | ❌     | ❌      | ❌          | n/a        | `reference_images[0]→image`；有参考图时 `negative_prompt` 会合并进 prompt；支持 `image_reference/image_fidelity/human_fidelity` |
+| 可灵（Keling） | image_to_image | n/a                        | ❌                        | ❌                | ✅                | ✅           | ❌     | ❌      | ❌          | ❌         | 仅支持 1 张基准图（extra_images 会被忽略）；img2img 不支持 `negative_prompt`（需写入 prompt）                                   |
+| 即梦（Jimeng） | text_to_image  | ❌                         | n/a                       | ✅                | ❌                | ❌           | ✅     | ✅      | ✅          | n/a        | 支持 `width/height`（由 `size` 归一化）                                                                                         |
+| 即梦（Jimeng） | image_to_image | n/a                        | ❌                        | ❌                | ❌                | ❌           | ✅     | ✅      | ✅          | ✅         | 支持 `strength`（显式走 img2img）；支持 `size`（映射为 `width/height`）                                                         |
 
 ## Domain 行为差异（与矩阵的关系）
 

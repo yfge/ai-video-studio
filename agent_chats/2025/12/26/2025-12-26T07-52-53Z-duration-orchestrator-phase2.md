@@ -39,6 +39,7 @@ Continued from previous session. Phase 1 of Duration Orchestrator was completed 
 ### 2. Created `app/services/duration_orchestrator/nodes/generate_dialogue.py`
 
 New LangGraph node for dialogue generation:
+
 - `generate_dialogue_node()`: Calls ScriptLangGraphAgent with scene budgets
   - Updates budget status to IN_PROGRESS
   - Increments attempt_count
@@ -54,7 +55,9 @@ New LangGraph node for dialogue generation:
 ### 4. Created Test Files
 
 #### `tests/unit/services/duration_orchestrator/test_generate_dialogue.py`
+
 - `TestGenerateDialogueNode`: 8 test cases
+
   - Successful generation
   - Generation with retry hint
   - Missing script_agent error handling
@@ -71,7 +74,9 @@ New LangGraph node for dialogue generation:
   - Failed with invalid index
 
 #### `tests/unit/services/test_script_agent_word_count.py`
+
 - `TestBuildWordCountConstraints`: 5 test cases
+
   - Empty budgets returns empty string
   - Single budget constraint
   - Multiple budget constraints
@@ -93,6 +98,7 @@ tests/unit/services/test_script_agent_word_count.py: 7 passed
 ```
 
 Import verification:
+
 ```python
 from app.services.script_agent import ScriptLangGraphAgent  # OK
 from app.services.duration_orchestrator.nodes import generate_dialogue_node  # OK
@@ -101,14 +107,17 @@ from app.services.duration_orchestrator.nodes import generate_dialogue_node  # O
 ## Next Steps
 
 1. **Phase 3**: Implement TTS trial node (`tts_trial_node`)
+
    - Call TTS service to get actual duration
    - Update `actual_duration_seconds` in budget
 
 2. **Phase 4**: Implement commit/rebalance nodes
+
    - `commit_scene_node`: Finalize scene and rebalance remaining budgets
    - `prepare_retry_node`: Generate adjustment hints for failed validations
 
 3. **Phase 5**: Assemble StateGraph
+
    - Wire all nodes together
    - Implement routing logic between nodes
 

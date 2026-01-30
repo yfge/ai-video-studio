@@ -37,4 +37,3 @@
 - `issues.length` 最多 10 条；只保留最关键/最可操作的问题。
 - 仅当不存在 medium/high 问题时，`verdict` 才能为 `pass`；否则为 `fail`。
 - 只输出 JSON。
-

@@ -47,6 +47,7 @@ tests/
 ## 测试分类
 
 ### 单元测试 (Unit Tests)
+
 - 测试单个函数或方法
 - 不依赖外部系统
 - 运行速度快
@@ -60,6 +61,7 @@ def test_user_creation():
 ```
 
 ### 集成测试 (Integration Tests)
+
 - 测试多个组件的交互
 - 可能涉及数据库、API等
 - 标记: `@pytest.mark.integration`
@@ -72,6 +74,7 @@ def test_create_virtual_ip_api(client):
 ```
 
 ### 端到端测试 (E2E Tests)
+
 - 测试完整的用户工作流
 - 模拟真实用户操作
 - 标记: `@pytest.mark.e2e`
@@ -84,6 +87,7 @@ def test_complete_story_workflow(client):
 ```
 
 ### 迁移测试 (Migration Tests)
+
 - 测试数据库迁移
 - 确保SQLite兼容性
 - 验证表结构和关系
@@ -97,6 +101,7 @@ def test_migration_creates_all_tables():
 ## 测试配置
 
 ### pytest.ini
+
 项目根目录的 `pytest.ini` 文件包含了pytest的配置：
 
 ```ini
@@ -111,6 +116,7 @@ addopts = -v --cov=app --cov-report=html
 ```
 
 ### 测试数据库
+
 测试使用内存SQLite数据库，每个测试函数都会重置数据库状态：
 
 ```python
@@ -126,16 +132,19 @@ def db_session():
 ## 测试夹具 (Fixtures)
 
 ### 数据库夹具
+
 - `db_session`: 提供数据库会话
 - `client`: 提供测试客户端
 - `setup_test_environment`: 设置测试环境
 
 ### 数据夹具
+
 - `sample_image_file`: 提供示例图片文件
 - `auth_headers`: 提供认证头部
 - `temp_upload_dir`: 提供临时上传目录
 
 ### Mock夹具
+
 - `mock_ai_service`: 模拟AI服务
 - `mock_redis`: 模拟Redis服务
 
@@ -153,6 +162,7 @@ def test_user_creation(db_session):
 ```
 
 ### 可用工厂
+
 - `UserFactory`: 创建用户
 - `VirtualIPFactory`: 创建虚拟IP
 - `VirtualIPImageFactory`: 创建虚拟IP图像
@@ -171,6 +181,7 @@ python run_tests.py coverage
 ```
 
 生成的报告：
+
 - **HTML报告**: `htmlcov/index.html` - 可视化覆盖率报告
 - **XML报告**: `coverage.xml` - 用于CI/CD集成
 - **终端报告**: 直接在终端显示
@@ -178,6 +189,7 @@ python run_tests.py coverage
 ## 数据库迁移测试
 
 专门的迁移测试确保：
+
 - 所有表都被正确创建
 - 索引和外键约束正确
 - SQLite兼容性
@@ -192,6 +204,7 @@ def test_migration_sqlite_compatibility():
 ```
 
 ### 结构化场景/镜头回归
+
 - 校验场景/节拍/镜头的顺序/唯一性与归属关系：
   ```bash
   pytest tests/test_story_structure_endpoints.py -q
@@ -210,6 +223,7 @@ def test_migration_sqlite_compatibility():
 - 生产环境中，`docker/docker-compose.prod.yml` 中的 `ai-video-celery-worker` 服务会自动随后端一同启动。
 
 ### 迁移验证与回滚
+
 - 在本地 MySQL/SQLite 运行迁移回填：
   ```bash
   alembic upgrade c4a1cbf0d7c2
@@ -225,6 +239,7 @@ def test_migration_sqlite_compatibility():
   ```
 
 ### 前端结构化 CRUD 验证
+
 - 前端权限/只读提示与结构化场景加载单测：
   ```bash
   cd ai-pic-frontend
@@ -235,6 +250,7 @@ def test_migration_sqlite_compatibility():
 ## 最佳实践
 
 ### 1. 测试隔离
+
 每个测试都应该独立运行，不依赖其他测试的状态：
 
 ```python
@@ -245,6 +261,7 @@ def test_something(db_session):
 ```
 
 ### 2. 使用工厂创建数据
+
 使用工厂而不是手动创建测试数据：
 
 ```python
@@ -256,6 +273,7 @@ user = User(username="test", email="test@example.com", ...)
 ```
 
 ### 3. 测试边界情况
+
 不仅测试正常情况，也要测试边界情况：
 
 ```python
@@ -266,6 +284,7 @@ def test_user_creation_with_long_username():
 ```
 
 ### 4. 使用描述性的测试名称
+
 测试名称应该清楚地说明测试的内容：
 
 ```python
@@ -275,6 +294,7 @@ def test_create_virtual_ip_with_valid_data():
 ```
 
 ### 5. Mock外部依赖
+
 对于外部API调用，使用mock：
 
 ```python
@@ -293,7 +313,7 @@ def test_generate_image(mock_ai_service):
 - name: Run tests
   run: |
     python run_tests.py coverage
-    
+
 - name: Upload coverage
   uses: codecov/codecov-action@v1
   with:
@@ -330,10 +350,12 @@ python run_tests.py parallel  # 并行运行测试
 ### 常见问题
 
 1. **导入错误**
+
    - 确保虚拟环境已激活
    - 检查PYTHONPATH设置
 
 2. **数据库错误**
+
    - 确保测试数据库配置正确
    - 检查迁移是否已应用
 
@@ -368,4 +390,4 @@ pytest tests/test_models.py::test_user_creation --pdb
 # 运行完整的检查
 python run_tests.py coverage
 python run_tests.py lint
-``` 
+```

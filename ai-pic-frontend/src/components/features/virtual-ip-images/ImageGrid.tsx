@@ -43,11 +43,15 @@ export function ImageGrid({
           return fp ? `${API_BASE}${fp.startsWith("/") ? "" : "/"}${fp}` : "";
         })();
         const isAiGenerated = Boolean(
-          (image.metadata as { generation_method?: string } | null | undefined)?.generation_method,
+          (image.metadata as { generation_method?: string } | null | undefined)
+            ?.generation_method,
         );
 
         return (
-          <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div
+            key={image.id}
+            className="bg-white rounded-lg shadow-md overflow-hidden"
+          >
             <ImagePreviewCard
               src={primarySrc}
               fallbackSrc={fallbackSrc}
@@ -55,8 +59,12 @@ export function ImageGrid({
               aspectClass="aspect-[4/5]"
               showActionsOnHover
               badges={[
-                ...(image.is_default ? [{ label: "默认", tone: "green" as const }] : []),
-                ...(isAiGenerated ? [{ label: "AI生成", tone: "blue" as const }] : []),
+                ...(image.is_default
+                  ? [{ label: "默认", tone: "green" as const }]
+                  : []),
+                ...(isAiGenerated
+                  ? [{ label: "AI生成", tone: "blue" as const }]
+                  : []),
               ]}
               onPreview={() => onPreview(image)}
               onImg2Img={() => onImg2Img(image)}
@@ -94,7 +102,9 @@ export function ImageGrid({
                       </span>
                     ))}
                     {image.tags.length > 3 && (
-                      <span className="text-gray-500 text-xs">+{image.tags.length - 3}</span>
+                      <span className="text-gray-500 text-xs">
+                        +{image.tags.length - 3}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -113,10 +123,13 @@ interface StyleDetailsSectionProps {
 }
 
 function StyleDetailsSection({ generationParams }: StyleDetailsSectionProps) {
-  if (!generationParams || Object.keys(generationParams).length === 0) return null;
+  if (!generationParams || Object.keys(generationParams).length === 0)
+    return null;
 
   const presetId =
-    typeof generationParams.style_preset_id === "string" ? generationParams.style_preset_id : null;
+    typeof generationParams.style_preset_id === "string"
+      ? generationParams.style_preset_id
+      : null;
   const spec = generationParams.style_spec;
   const resolution = generationParams.style_spec_resolution;
 
@@ -129,7 +142,9 @@ function StyleDetailsSection({ generationParams }: StyleDetailsSectionProps) {
       </summary>
       <div className="mt-2 break-all">预设：{presetId || "—"}</div>
       <div className="mt-1 break-all">规格：{JSON.stringify(spec ?? null)}</div>
-      <div className="mt-1 break-all">分辨率：{JSON.stringify(resolution ?? null)}</div>
+      <div className="mt-1 break-all">
+        分辨率：{JSON.stringify(resolution ?? null)}
+      </div>
     </details>
   );
 }

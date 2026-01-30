@@ -1,7 +1,6 @@
+from app.models.video_generation_task import VideoGenerationTask
 from sqlalchemy import String
 from sqlalchemy.types import JSON
-
-from app.models.video_generation_task import VideoGenerationTask
 
 
 def test_video_provider_task_id_column_length_is_safe():

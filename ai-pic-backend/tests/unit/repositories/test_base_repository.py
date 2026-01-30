@@ -3,12 +3,11 @@ Tests for base repository pattern.
 """
 
 import pytest
-from sqlalchemy import Column, Integer, String, Boolean, create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
-
-from app.repositories.base import BaseRepository
 from app.core.exceptions import NotFoundError
 from app.models.base import SoftDeleteBusinessMixin
+from app.repositories.base import BaseRepository
+from sqlalchemy import Boolean, Column, Integer, String, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Create test base and engine
 Base = declarative_base()
@@ -16,6 +15,7 @@ Base = declarative_base()
 
 class TestModel(Base, SoftDeleteBusinessMixin):
     """Test model for repository tests."""
+
     __tablename__ = "test_model"
 
     id = Column(Integer, primary_key=True)

@@ -1,59 +1,61 @@
-'use client'
+"use client";
 
-import type { Task as APITask } from '@/utils/api'
+import type { Task as APITask } from "@/utils/api";
 
-import { TASK_TYPE_LABELS } from './taskTypeOptions'
-import { TaskDetails } from './TaskDetails'
-import type { PersistedStyleInfo } from './utils'
+import { TASK_TYPE_LABELS } from "./taskTypeOptions";
+import { TaskDetails } from "./TaskDetails";
+import type { PersistedStyleInfo } from "./utils";
 
 type TasksListProps = {
-  tasks: APITask[]
-  loading: boolean
-  fetchError: string | null
-  expanded: Record<number, boolean>
-  onToggleExpanded: (task: APITask) => void
-  persistedStyle: Record<number, PersistedStyleInfo>
-  persistedLoading: Record<number, boolean>
-  isStartingId: number | null
-  deletingTaskId: number | null
-  onStart: (taskId: number) => void
-  onDelete: (taskId: number) => void
-}
+  tasks: APITask[];
+  loading: boolean;
+  fetchError: string | null;
+  expanded: Record<number, boolean>;
+  onToggleExpanded: (task: APITask) => void;
+  persistedStyle: Record<number, PersistedStyleInfo>;
+  persistedLoading: Record<number, boolean>;
+  isStartingId: number | null;
+  deletingTaskId: number | null;
+  onStart: (taskId: number) => void;
+  onDelete: (taskId: number) => void;
+};
 
-const getStatusColor = (status: APITask['status']) => {
+const getStatusColor = (status: APITask["status"]) => {
   switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800'
-    case 'processing':
-      return 'bg-blue-100 text-blue-800'
-    case 'completed':
-      return 'bg-green-100 text-green-800'
-    case 'failed':
-      return 'bg-red-100 text-red-800'
+    case "pending":
+      return "bg-yellow-100 text-yellow-800";
+    case "processing":
+      return "bg-blue-100 text-blue-800";
+    case "completed":
+      return "bg-green-100 text-green-800";
+    case "failed":
+      return "bg-red-100 text-red-800";
     default:
-      return 'bg-gray-100 text-gray-800'
+      return "bg-gray-100 text-gray-800";
   }
-}
+};
 
-const getStatusText = (status: APITask['status']) => {
+const getStatusText = (status: APITask["status"]) => {
   switch (status) {
-    case 'pending':
-      return '等待中'
-    case 'processing':
-      return '生成中'
-    case 'completed':
-      return '已完成'
-    case 'failed':
-      return '失败'
+    case "pending":
+      return "等待中";
+    case "processing":
+      return "生成中";
+    case "completed":
+      return "已完成";
+    case "failed":
+      return "失败";
     default:
-      return '未知'
+      return "未知";
   }
-}
+};
 
 const formatTaskType = (taskType?: string) => {
-  if (!taskType) return '—'
-  return TASK_TYPE_LABELS[taskType] ? `${TASK_TYPE_LABELS[taskType]}（${taskType}）` : taskType
-}
+  if (!taskType) return "—";
+  return TASK_TYPE_LABELS[taskType]
+    ? `${TASK_TYPE_LABELS[taskType]}（${taskType}）`
+    : taskType;
+};
 
 export function TasksList({
   tasks,
@@ -69,7 +71,7 @@ export function TasksList({
   onDelete,
 }: TasksListProps) {
   if (!loading && !fetchError && tasks.length === 0) {
-    return <div className="p-6 text-sm text-gray-500">暂无任务。</div>
+    return <div className="p-6 text-sm text-gray-500">暂无任务。</div>;
   }
 
   return (
@@ -79,7 +81,9 @@ export function TasksList({
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
-                <h3 className="text-lg font-medium text-gray-900">{task.title}</h3>
+                <h3 className="text-lg font-medium text-gray-900">
+                  {task.title}
+                </h3>
                 <span
                   className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
                     task.status,
@@ -90,20 +94,29 @@ export function TasksList({
               </div>
               {task.progress_detail && (
                 <p className="text-sm text-gray-700 mb-2">
-                  进度：<span className="text-gray-800">{task.progress_detail}</span>
+                  进度：
+                  <span className="text-gray-800">{task.progress_detail}</span>
                 </p>
               )}
-              {task.prompt && <p className="text-gray-600 mb-3">{task.prompt}</p>}
+              {task.prompt && (
+                <p className="text-gray-600 mb-3">{task.prompt}</p>
+              )}
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                 <span>
                   创建时间：
-                  {task.created_at ? new Date(task.created_at).toLocaleString() : '未知'}
+                  {task.created_at
+                    ? new Date(task.created_at).toLocaleString()
+                    : "未知"}
                 </span>
                 {task.updated_at && (
-                  <span>更新时间：{new Date(task.updated_at).toLocaleString()}</span>
+                  <span>
+                    更新时间：{new Date(task.updated_at).toLocaleString()}
+                  </span>
                 )}
                 {task.description && <span>描述：{task.description}</span>}
-                {task.task_type && <span>类型：{formatTaskType(task.task_type)}</span>}
+                {task.task_type && (
+                  <span>类型：{formatTaskType(task.task_type)}</span>
+                )}
               </div>
               {expanded[task.id] ? (
                 <TaskDetails
@@ -114,7 +127,7 @@ export function TasksList({
               ) : null}
             </div>
             <div className="flex items-center space-x-3">
-              {task.status === 'processing' && (
+              {task.status === "processing" && (
                 <div className="flex items-center space-x-2">
                   <svg
                     className="animate-spin h-5 w-5 text-blue-600"
@@ -139,13 +152,13 @@ export function TasksList({
                   <span className="text-blue-600">生成中...</span>
                 </div>
               )}
-              {task.status === 'pending' && (
+              {task.status === "pending" && (
                 <button
                   onClick={() => onStart(task.id)}
                   disabled={isStartingId === task.id}
                   className="text-blue-600 hover:text-blue-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isStartingId === task.id ? '启动中...' : '开始'}
+                  {isStartingId === task.id ? "启动中..." : "开始"}
                 </button>
               )}
               <button
@@ -153,19 +166,18 @@ export function TasksList({
                 disabled={deletingTaskId === task.id}
                 className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {deletingTaskId === task.id ? '删除中...' : '删除'}
+                {deletingTaskId === task.id ? "删除中..." : "删除"}
               </button>
               <button
                 onClick={() => onToggleExpanded(task)}
                 className="text-gray-600 hover:text-gray-800 text-sm"
               >
-                {expanded[task.id] ? '收起详情' : '详情'}
+                {expanded[task.id] ? "收起详情" : "详情"}
               </button>
             </div>
           </div>
         </div>
       ))}
     </div>
-  )
+  );
 }
-

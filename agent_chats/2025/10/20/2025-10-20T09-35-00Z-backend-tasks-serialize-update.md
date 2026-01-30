@@ -32,4 +32,3 @@ summary: "Return serialized TaskResponse on update to ensure parameters are dict
 ## Linked Commits
 
 - pending（本地增量补丁，后续与此台账一并提交）
-

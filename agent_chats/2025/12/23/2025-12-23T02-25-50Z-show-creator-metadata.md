@@ -21,27 +21,33 @@ summary: "Display creator metadata for stories, environments, and virtual IPs"
 ---
 
 ## User Prompt
+
 - 在故事、环境、IP 的界面都要显示是谁创建的
 - 提交现有的更改
 
 ## Goals
+
 - Add creator data to backend response schemas for stories, environments, and virtual IPs.
 - Surface creator labels in list/detail UI for stories, environments, and virtual IPs.
 - Provide a shared frontend helper for consistent creator display.
 
 ## Changes
+
 - Added `UserSummary` schema and exposed `creator` in story, environment, and virtual IP responses via `owner` mapping.
 - Added frontend type augmentation and creator label helper for display fallbacks.
 - Updated list and detail UI components to render “创建者” consistently.
 
 ## Validation
+
 - `npm run lint` (ai-pic-frontend) — pass.
 - `pytest` (ai-pic-backend) — timed out at 120s with existing failures (see test output).
 - `./docker/build_prod_images.sh` — first run timed out at 120s, rerun succeeded.
 - MCP E2E (Chrome): login `geyunfei`/`Gyf@845261`, verified creator on `/virtual-ip` list and `/virtual-ip/{id}` detail, `/environments` list and `/environments/{id}` detail, `/stories` list and `/stories/{id}` detail.
 
 ## Next Steps
+
 - Investigate and address failing backend tests if required for release gating.
 
 ## Linked Commits
+
 - TBD

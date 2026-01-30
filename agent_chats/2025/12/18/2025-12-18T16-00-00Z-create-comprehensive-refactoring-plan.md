@@ -30,30 +30,36 @@ User requested a detailed refactoring plan based on the code quality violations 
 Comprehensive refactoring plan with **6 phases** and **45+ tasks** organized by priority:
 
 #### Phase 0: Foundation (8 tasks - CRITICAL)
+
 Infrastructure that enables other refactorings:
 
 **Backend Infrastructure (4 tasks):**
+
 - Repository pattern base classes
 - Centralized exception hierarchy (replace 212 HTTPException instances)
 - Exception middleware for domain → HTTP conversion
 - Shared provider utilities (retry, polling, auth) to eliminate duplication across 8 providers
 
 **Frontend Infrastructure (4 tasks):**
+
 - Base Modal component (replace 5 duplicated implementations)
 - Foundation hooks (useModal, useAsyncTask, useApi)
 - API client split phase 1 (extract HTTP client from 2,627-line api.ts)
 - Component directory structure (organize 21 scattered components)
 
 #### Phase 1: Critical Monoliths (12 tasks - HIGH)
+
 Attack the most severe violations:
 
 **Backend: scripts.py (4,168 lines → 8-10 files)**
+
 - Create ScriptRepository, ScriptService, ScriptGenerator
 - Split endpoints: crud.py, generation.py, episodes.py, storyboard.py
 - Each file < 300 lines, each route < 50 lines
 - 9 detailed tasks with dependencies
 
 **Frontend: storyboard/page.tsx (3,279 lines → 10+ files)**
+
 - Create StoryboardContext for state management
 - Extract hooks: useStoryboard, useStoryboardTimeline
 - Extract components: Timeline, FrameGrid, VideoGenerationModal
@@ -63,33 +69,42 @@ Attack the most severe violations:
 #### Phase 2: Service Layer & God Objects (10 tasks - HIGH)
 
 **Backend: ai_service.py (2,910 lines → 5-6 services)**
+
 - Split by domain: ImageGenerationService, VideoGenerationService, TextGenerationService
 - Refactor to thin coordinator pattern
 - Each service < 300 lines
 
 **Backend: Other large services**
+
 - dialogue_audio_service.py (1,261 lines → 3 files)
 - voice_catalog.py (1,171 lines → 3 files)
 
 **Frontend: api.ts (2,627 lines → 15+ files)**
+
 - Split types by domain (8 type files, ~200 lines each)
 - Split endpoints by domain (8 endpoint files, ~250 lines each)
 - Maintain backward compatibility during transition
 
 #### Phase 3: Endpoint Refactoring (8 tasks - MEDIUM)
+
 Apply thin controller pattern to remaining large endpoints:
+
 - episodes.py (1,605 lines → 4-5 files)
 - virtual_ip_images.py (1,364 lines → 3-4 files)
 - story_structure.py (1,318 lines → 3-4 files)
 
 #### Phase 4: Provider Consistency (9 tasks - MEDIUM)
+
 Eliminate duplication across 8 AI providers:
+
 - Refactor all providers to use shared utilities from Phase 0
 - Target: ~400 lines per provider (down from 774-1,409)
 - Consistent error handling, retry, logging, polling patterns
 
 #### Phase 5: Page Component Refactoring (6 tasks - MEDIUM)
+
 Apply container/presentation split to remaining large pages:
+
 - episodes/[id]/page.tsx (1,580 lines)
 - virtual-ip/[id]/images/page.tsx (1,143 lines)
 - scripts/[id]/page.tsx (705 lines)
@@ -97,6 +112,7 @@ Apply container/presentation split to remaining large pages:
 - All target: < 200 lines
 
 #### Phase 6: Testing & Documentation (Ongoing)
+
 - Continuous testing during all phases
 - OpenAPI documentation generation
 - Component storybook (future)
@@ -105,17 +121,20 @@ Apply container/presentation split to remaining large pages:
 ### Key Features of the Plan
 
 **Incremental Approach:**
+
 - Complete Phase 0 entirely before Phase 1
 - Each task is atomic with clear acceptance criteria
 - Each task = separate PR + ledger entry
 - No "big bang" refactoring
 
 **Dependency Management:**
+
 - Tasks explicitly list dependencies
 - Phase 0 has no dependencies (foundation)
 - Later phases depend on Phase 0 utilities
 
 **Risk Mitigation:**
+
 - High-risk areas identified (scripts.py, storyboard page, api.ts)
 - Mitigation strategies: extensive tests, feature flags, backward compatibility
 - Rollback strategy: keep old code during transition
@@ -123,6 +142,7 @@ Apply container/presentation split to remaining large pages:
 **Success Metrics:**
 
 Quantitative:
+
 - No Python file > 300 lines (currently 10+ violations)
 - No TypeScript file > 250 lines (currently 6+ violations)
 - Backend avg: 150-250 lines/file (currently ~380)
@@ -130,6 +150,7 @@ Quantitative:
 - Test coverage: 80% backend, 70% frontend
 
 Qualitative:
+
 - Clear separation of concerns (API → Service → Repository → Model)
 - Consistent patterns across all providers
 - No code duplication (< 3 occurrences)
@@ -141,6 +162,7 @@ Phase 0 tasks listed in execution order (1-8) for immediate action.
 ### Documentation Structure
 
 **10 main sections:**
+
 1. Executive Summary
 2. Refactoring Phases (detailed breakdown)
 3. Execution Strategy
@@ -150,10 +172,12 @@ Phase 0 tasks listed in execution order (1-8) for immediate action.
 7. Appendix: Complete task list by file
 
 **2 comprehensive tables:**
+
 - Backend files requiring refactoring (11 files, priority order)
 - Frontend files requiring refactoring (8 files, priority order)
 
 **Statistics:**
+
 - Total tasks: 45+
 - Total files to create/refactor: 100+
 - Estimated line reduction: ~15,000 lines through better organization

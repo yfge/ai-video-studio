@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.image_gen.ui_metadata import build_image_gen_ui_metadata
 
 

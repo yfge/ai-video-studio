@@ -49,4 +49,3 @@ summary: "Centralize aspect ratio resolution (request > episode > story > defaul
 ## Linked Commits
 
 - (pending)
-

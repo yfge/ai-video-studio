@@ -64,4 +64,3 @@ def load_task_param_str(task, key: str) -> Optional[str]:
     params = loads_task_parameters(getattr(task, "parameters", None))
     value = params.get(key)
     return value if isinstance(value, str) and value.strip() else None
-

@@ -57,7 +57,12 @@ interface ImageToImageSettingsFormProps {
   onDimensionsChange: (next: { size?: string; aspect_ratio?: string }) => void;
 }
 
-const FALLBACK_STYLE_OPTIONS = [{ value: "realistic", label: "写实" }, { value: "anime", label: "二次元" }, { value: "cinematic", label: "电影感" }, { value: "sketch", label: "素描" }];
+const FALLBACK_STYLE_OPTIONS = [
+  { value: "realistic", label: "写实" },
+  { value: "anime", label: "二次元" },
+  { value: "cinematic", label: "电影感" },
+  { value: "sketch", label: "素描" },
+];
 
 export function ImageToImageSettingsForm({
   prompt,
@@ -191,7 +196,10 @@ export function ImageToImageSettingsForm({
                 onCountChange(
                   Math.max(
                     minCount,
-                    Math.min(maxCount, parseInt(e.target.value, 10) || minCount),
+                    Math.min(
+                      maxCount,
+                      parseInt(e.target.value, 10) || minCount,
+                    ),
                   ),
                 )
               }

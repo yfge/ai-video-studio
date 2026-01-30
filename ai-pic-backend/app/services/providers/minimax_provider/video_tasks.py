@@ -144,7 +144,9 @@ async def fetch_video_task_status(
     format_error: Callable = str,
 ) -> AIResponse:
     try:
-        data = await client.get_json("/query/video_generation", params={"task_id": task_id})
+        data = await client.get_json(
+            "/query/video_generation", params={"task_id": task_id}
+        )
         logger.info(
             "Video task status http response: provider=%s task_id=%s body=%s",
             provider_name,

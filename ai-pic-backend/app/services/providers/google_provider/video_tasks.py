@@ -8,23 +8,23 @@ This module implements a two-phase workflow:
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, List, Optional
 
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
 from ..polling_utils import TaskStatus, google_operation_status_mapper
 from .helpers import clean_model_id
-from .video_request import build_veo_request_body
 from .video_helpers import (
     append_api_key,
     extract_video_uri,
     format_http_status_error,
     normalize_operation_path,
 )
+from .video_request import build_veo_request_body
 from .video_vertex import (
-    build_vertex_headers,
     build_vertex_fetch_predict_operation_url,
+    build_vertex_headers,
     build_vertex_predict_long_running_url,
     extract_video_bytes_base64,
     extract_video_mime_type,
@@ -121,7 +121,9 @@ async def submit_video_task(
         resolved_resolution = resolved.get("resolution")
         resolved_duration = resolved.get("duration")
 
-        headers = build_vertex_headers(access_token, vertex_api_key) if use_vertex else None
+        headers = (
+            build_vertex_headers(access_token, vertex_api_key) if use_vertex else None
+        )
         resp = await client.post(endpoint, json=body, headers=headers)
         resp.raise_for_status()
         create_payload = resp.json()
@@ -134,7 +136,9 @@ async def submit_video_task(
                 model=model_id,
                 task_type=AITaskType.VIDEO_GENERATION,
                 model_type=(
-                    AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
+                    AIModelType.IMAGE_TO_VIDEO
+                    if image_url
+                    else AIModelType.TEXT_TO_VIDEO
                 ),
                 metadata={"raw": create_payload},
             )

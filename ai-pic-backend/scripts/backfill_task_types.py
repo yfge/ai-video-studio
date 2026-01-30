@@ -28,13 +28,11 @@ from typing import Iterable
 from sqlalchemy import not_, or_
 from sqlalchemy.orm import Session
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.core.database import SessionLocal  # noqa: E402
 from app.models.task import Task, TaskType  # noqa: E402
-
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("backfill_task_types")
@@ -128,7 +126,9 @@ def _rules() -> list[BackfillRule]:
                 Task.title.like("分镜生成%"),
                 Task.title.like("分镜占位生成%"),
                 Task.prompt.like("Storyboard generation for script %"),
-                Task.prompt.like("Storyboard placeholder generation from audio timeline for script %"),
+                Task.prompt.like(
+                    "Storyboard placeholder generation from audio timeline for script %"
+                ),
             ),
         ),
         BackfillRule(
@@ -146,7 +146,7 @@ def _rules() -> list[BackfillRule]:
                 Task.title.like("虚拟IP文生图%"),
                 Task.prompt.like("VirtualIP image gen for %"),
                 Task.prompt.like('为虚拟IP "%'),
-                Task.prompt.like('为虚拟IP %生成%图像%'),
+                Task.prompt.like("为虚拟IP %生成%图像%"),
             ),
         ),
         BackfillRule(
@@ -210,9 +210,15 @@ def _print_samples(tasks: Iterable[Task], *, header: str) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Backfill legacy Task.task_type values")
-    parser.add_argument("--apply", action="store_true", help="Apply updates (default: dry-run)")
-    parser.add_argument("--user-id", type=int, default=None, help="Only update tasks for user_id")
+    parser = argparse.ArgumentParser(
+        description="Backfill legacy Task.task_type values"
+    )
+    parser.add_argument(
+        "--apply", action="store_true", help="Apply updates (default: dry-run)"
+    )
+    parser.add_argument(
+        "--user-id", type=int, default=None, help="Only update tasks for user_id"
+    )
     parser.add_argument(
         "--after",
         type=str,
@@ -256,11 +262,17 @@ def main() -> int:
             if count == 0:
                 continue
             if args.apply:
-                updated = matched.update({Task.task_type: rule.target}, synchronize_session=False)
+                updated = matched.update(
+                    {Task.task_type: rule.target}, synchronize_session=False
+                )
                 session.commit()
-                logger.info("Updated %s -> %s: %s", rule.label, rule.target.value, updated)
+                logger.info(
+                    "Updated %s -> %s: %s", rule.label, rule.target.value, updated
+                )
             else:
-                logger.info("Would update %s -> %s: %s", rule.label, rule.target.value, count)
+                logger.info(
+                    "Would update %s -> %s: %s", rule.label, rule.target.value, count
+                )
 
         remaining = base.count()
         logger.info("Remaining IMAGE_GENERATION candidates: %s", remaining)
@@ -273,7 +285,9 @@ def main() -> int:
                 .limit(int(args.show_unmatched))
                 .all()
             )
-            _print_samples(unmatched, header="Unmatched samples (still IMAGE_GENERATION):")
+            _print_samples(
+                unmatched, header="Unmatched samples (still IMAGE_GENERATION):"
+            )
         return 0
     finally:
         session.close()

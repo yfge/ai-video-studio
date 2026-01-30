@@ -1,8 +1,8 @@
 """Unit tests for ImageGenerationService."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from app.services.image.image_generation_service import (
     ImageGenerationService,
     get_image_generation_service,
@@ -119,6 +119,7 @@ class TestGetImageGenerationService:
         """Test that factory creates singleton instance."""
         # Reset global state
         import app.services.image.image_generation_service as module
+
         module._image_generation_service = None
 
         service1 = get_image_generation_service()
@@ -128,6 +129,7 @@ class TestGetImageGenerationService:
     def test_get_service_with_manager(self):
         """Test that factory accepts AI manager on first call."""
         import app.services.image.image_generation_service as module
+
         module._image_generation_service = None
 
         mock_manager = MagicMock()

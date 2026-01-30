@@ -40,4 +40,3 @@ summary: "Remove the gallery page and make the tasks management page use the sha
 ## Linked Commits
 
 - pending
-

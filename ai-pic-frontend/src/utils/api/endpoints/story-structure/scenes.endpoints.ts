@@ -2,15 +2,19 @@
  * Story Structure scene endpoints.
  */
 
-import { httpClient } from '../../client';
-import type { ApiResponse } from '../../types/common.types';
-import type { NormalizedScene } from '../../types/script.types';
+import { httpClient } from "../../client";
+import type { ApiResponse } from "../../types/common.types";
+import type { NormalizedScene } from "../../types/script.types";
 
 /**
  * Get normalized scenes for a script.
  */
-export async function getNormalizedScenes(scriptId: number): Promise<ApiResponse<NormalizedScene[]>> {
-  return httpClient<NormalizedScene[]>(`/api/v1/story-structure/scripts/${scriptId}/scenes`);
+export async function getNormalizedScenes(
+  scriptId: number,
+): Promise<ApiResponse<NormalizedScene[]>> {
+  return httpClient<NormalizedScene[]>(
+    `/api/v1/story-structure/scripts/${scriptId}/scenes`,
+  );
 }
 
 /**
@@ -28,10 +32,10 @@ export async function createScene(
     location?: string;
     time_of_day?: string;
     summary?: string;
-  }
+  },
 ): Promise<ApiResponse<unknown>> {
   return httpClient(`/api/v1/story-structure/scripts/${scriptId}/scenes`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
@@ -56,10 +60,10 @@ export async function updateScene(
     ai_prompt_snapshot: Record<string, unknown>;
     status: string;
     metadata: Record<string, unknown>;
-  }>
+  }>,
 ): Promise<ApiResponse<unknown>> {
   return httpClient(`/api/v1/story-structure/scenes/${sceneId}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(payload),
   });
 }
@@ -68,6 +72,7 @@ export async function updateScene(
  * Delete a scene.
  */
 export async function deleteScene(sceneId: number): Promise<ApiResponse<void>> {
-  return httpClient<void>(`/api/v1/story-structure/scenes/${sceneId}`, { method: 'DELETE' });
+  return httpClient<void>(`/api/v1/story-structure/scenes/${sceneId}`, {
+    method: "DELETE",
+  });
 }
-

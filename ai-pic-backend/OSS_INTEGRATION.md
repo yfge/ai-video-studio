@@ -5,12 +5,14 @@
 ## 功能特性
 
 ### 🚀 自动上传
+
 - **图像生成**: AI生成的图像会自动上传到OSS，并返回OSS链接
 - **视频生成**: AI生成的视频和缩略图会自动上传到OSS
 - **音频生成**: AI生成的音频文件会自动上传到OSS
 - **智能分类**: 根据文件类型自动分类存储
 
 ### 📁 存储结构
+
 ```
 ai-generated/
 ├── virtual-ip/           # 虚拟IP图像
@@ -23,11 +25,13 @@ ai-generated/
 ### 🔧 API接口
 
 #### AI生成接口（自动上传）
+
 - `POST /api/v1/ai/generate/image` - 生成图像并自动上传
-- `POST /api/v1/ai/generate/video` - 生成视频并自动上传  
+- `POST /api/v1/ai/generate/video` - 生成视频并自动上传
 - `POST /api/v1/ai/generate/speech` - 生成语音并自动上传
 
 #### OSS存储管理接口
+
 - `POST /api/v1/ai/storage/upload-url` - 从URL上传文件
 - `POST /api/v1/ai/storage/batch-upload` - 批量上传文件
 - `GET /api/v1/ai/storage/list` - 列出存储对象
@@ -43,12 +47,14 @@ ai-generated/
 在阿里云控制台完成以下步骤：
 
 1. **创建OSS Bucket**
+
    - 登录阿里云控制台
    - 进入OSS服务
    - 创建新的Bucket（建议选择就近地域）
    - 设置访问权限为"公共读"
 
 2. **获取访问密钥**
+
    - 进入AccessKey管理
    - 创建新的AccessKey
    - 记录AccessKey ID和AccessKey Secret
@@ -77,17 +83,18 @@ ALIYUN_OSS_DOMAIN=https://your-custom-domain.com  # 可选，自定义域名
 ```
 
 **配置说明：**
+
 - `ALIYUN_ACCESS_KEY_ID`: 阿里云AccessKey ID
-- `ALIYUN_ACCESS_KEY_SECRET`: 阿里云AccessKey Secret  
+- `ALIYUN_ACCESS_KEY_SECRET`: 阿里云AccessKey Secret
 - `ALIYUN_OSS_ENDPOINT`: OSS服务端点（根据Bucket地域选择）
 - `ALIYUN_OSS_BUCKET`: OSS Bucket名称
 - `ALIYUN_OSS_DOMAIN`: 自定义域名（可选，不配置则使用默认域名）
 
 ### 3. 常用Endpoint地址
 
-| 地域 | Endpoint |
-|------|----------|
-| 华北2（北京） | https://oss-cn-beijing.aliyuncs.com |
+| 地域          | Endpoint                             |
+| ------------- | ------------------------------------ |
+| 华北2（北京） | https://oss-cn-beijing.aliyuncs.com  |
 | 华东1（杭州） | https://oss-cn-hangzhou.aliyuncs.com |
 | 华东2（上海） | https://oss-cn-shanghai.aliyuncs.com |
 | 华南1（深圳） | https://oss-cn-shenzhen.aliyuncs.com |
@@ -111,7 +118,7 @@ async def generate_image():
             },
             headers={"Authorization": "Bearer your-token"}
         )
-        
+
         result = response.json()
         if result["success"]:
             print(f"图像已生成并上传: {result['data']['images'][0]}")
@@ -139,7 +146,7 @@ async def batch_upload():
             },
             headers={"Authorization": "Bearer your-token"}
         )
-        
+
         result = response.json()
         print(f"成功上传: {result['data']['success_count']} 个文件")
 ```
@@ -157,7 +164,7 @@ async def list_files():
             },
             headers={"Authorization": "Bearer your-token"}
         )
-        
+
         result = response.json()
         for obj in result["data"]["objects"]:
             print(f"文件: {obj['key']}, 大小: {obj['size']}, URL: {obj['url']}")
@@ -171,7 +178,9 @@ async def list_files():
 {
   "success": true,
   "data": {
-    "images": ["https://your-bucket.oss-cn-beijing.aliyuncs.com/ai-generated/image/20241215/12345678.png"],
+    "images": [
+      "https://your-bucket.oss-cn-beijing.aliyuncs.com/ai-generated/image/20241215/12345678.png"
+    ],
     "original_image_url": "https://original-provider-url.com/image.png",
     "oss_upload": {
       "success": true,
@@ -216,16 +225,19 @@ async def list_files():
 ## 安全建议
 
 ### 1. AccessKey安全
+
 - 定期轮换AccessKey
 - 使用RAM子账号，仅授予必要权限
 - 不要在代码中硬编码AccessKey
 
 ### 2. Bucket权限
+
 - 合理设置Bucket访问权限
 - 启用防盗链保护
 - 配置访问日志记录
 
 ### 3. 文件安全
+
 - 定期备份重要文件
 - 启用版本控制
 - 设置生命周期规则自动清理临时文件
@@ -235,11 +247,13 @@ async def list_files():
 ### 常见问题
 
 1. **上传失败: 403 Forbidden**
+
    - 检查AccessKey权限
    - 确认Bucket访问策略
    - 验证Endpoint地址是否正确
 
 2. **上传失败: 404 Not Found**
+
    - 检查Bucket名称是否正确
    - 确认Endpoint与Bucket地域匹配
 
@@ -251,20 +265,23 @@ async def list_files():
 ### 调试方法
 
 1. **检查OSS服务状态**
+
    ```bash
    curl -H "Authorization: Bearer your-token" \
         http://localhost:8000/api/v1/ai/storage/status
    ```
 
 2. **查看服务日志**
+
    ```bash
    tail -f logs/app.log | grep OSS
    ```
 
 3. **测试基本连接**
+
    ```python
    from app.services.storage.oss_service import oss_service
-   
+
    # 测试连接
    result = oss_service.list_objects(max_keys=1)
    print(result)

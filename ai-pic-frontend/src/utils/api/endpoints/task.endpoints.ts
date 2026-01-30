@@ -2,9 +2,9 @@
  * Task Management API endpoints.
  */
 
-import { httpClient } from '../client';
-import type { Task, CreateTaskRequest } from '../types/task.types';
-import type { ApiResponse } from '../types/common.types';
+import { httpClient } from "../client";
+import type { Task, CreateTaskRequest } from "../types/task.types";
+import type { ApiResponse } from "../types/common.types";
 
 /**
  * Get paginated list of tasks.
@@ -14,28 +14,38 @@ export async function getTasks(params?: {
   size?: number;
   status_filter?: string;
   task_type?: string;
-}): Promise<ApiResponse<{ tasks: Task[]; total: number; page: number; size: number }>> {
+}): Promise<
+  ApiResponse<{ tasks: Task[]; total: number; page: number; size: number }>
+> {
   const searchParams = new URLSearchParams();
   const size = params?.size && params.size > 0 ? params.size : 20;
   const page = params?.page && params.page > 0 ? params.page : 1;
-  searchParams.append('skip', String((page - 1) * size));
-  searchParams.append('limit', String(size));
-  if (params?.status_filter) searchParams.append('status_filter', params.status_filter);
-  if (params?.task_type) searchParams.append('task_type', params.task_type);
+  searchParams.append("skip", String((page - 1) * size));
+  searchParams.append("limit", String(size));
+  if (params?.status_filter)
+    searchParams.append("status_filter", params.status_filter);
+  if (params?.task_type) searchParams.append("task_type", params.task_type);
 
   const qs = searchParams.toString();
-  const endpoint = qs ? `/api/v1/tasks?${qs}` : '/api/v1/tasks';
-  return httpClient<{ tasks: Task[]; total: number; page: number; size: number }>(endpoint);
+  const endpoint = qs ? `/api/v1/tasks?${qs}` : "/api/v1/tasks";
+  return httpClient<{
+    tasks: Task[];
+    total: number;
+    page: number;
+    size: number;
+  }>(endpoint);
 }
 
 /**
  * Create a new task.
  */
-export async function createTask(taskData: CreateTaskRequest): Promise<ApiResponse<Task>> {
+export async function createTask(
+  taskData: CreateTaskRequest,
+): Promise<ApiResponse<Task>> {
   const backendPayload = {
     title: taskData.title,
     description: `${taskData.platform} image generation task`,
-    task_type: 'image_generation',
+    task_type: "image_generation",
     prompt: taskData.prompt,
     parameters: {
       platform: taskData.platform,
@@ -44,8 +54,8 @@ export async function createTask(taskData: CreateTaskRequest): Promise<ApiRespon
       count: taskData.count,
     },
   };
-  return httpClient<Task>('/api/v1/tasks', {
-    method: 'POST',
+  return httpClient<Task>("/api/v1/tasks", {
+    method: "POST",
     body: JSON.stringify(backendPayload),
   });
 }
@@ -61,18 +71,21 @@ export async function getTask(id: string): Promise<ApiResponse<Task>> {
  * Delete a task.
  */
 export async function deleteTask(id: string): Promise<ApiResponse<void>> {
-  return httpClient<void>(`/api/v1/tasks/${id}`, { method: 'DELETE' });
+  return httpClient<void>(`/api/v1/tasks/${id}`, { method: "DELETE" });
 }
 
 /**
  * Start a task execution.
  */
 export async function startTask(
-  id: number
+  id: number,
 ): Promise<ApiResponse<{ message: string; task_id: number }>> {
-  return httpClient<{ message: string; task_id: number }>(`/api/v1/tasks/${id}/start`, {
-    method: 'POST',
-  });
+  return httpClient<{ message: string; task_id: number }>(
+    `/api/v1/tasks/${id}/start`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 /**

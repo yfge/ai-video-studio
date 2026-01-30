@@ -13,7 +13,9 @@ def _normalize_ratio(value: Optional[str]) -> Optional[str]:
     return None
 
 
-def _parse_dimensions(resolution: Optional[str], ratio: Optional[str]) -> Tuple[Optional[int], Optional[int]]:
+def _parse_dimensions(
+    resolution: Optional[str], ratio: Optional[str]
+) -> Tuple[Optional[int], Optional[int]]:
     """Best-effort parse width/height from common resolution representations."""
     if not resolution:
         return None, None
@@ -78,9 +80,15 @@ def build_video_generation_metadata(
     resolution = params.get("resolution")
     width, height = _parse_dimensions(str(resolution) if resolution else None, ratio)
 
-    video_original = result_payload.get("original_video_url") or result_payload.get("video_url")
-    thumb_original = result_payload.get("original_thumbnail_url") or result_payload.get("thumbnail_url")
-    last_original = result_payload.get("original_last_frame_url") or result_payload.get("last_frame_url")
+    video_original = result_payload.get("original_video_url") or result_payload.get(
+        "video_url"
+    )
+    thumb_original = result_payload.get("original_thumbnail_url") or result_payload.get(
+        "thumbnail_url"
+    )
+    last_original = result_payload.get("original_last_frame_url") or result_payload.get(
+        "last_frame_url"
+    )
 
     return {
         "provider": provider,

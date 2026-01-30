@@ -2,6 +2,6 @@
 中间件模块
 """
 
-from .migration_middleware import MigrationCheckMiddleware, DatabaseHealthMiddleware
+from .migration_middleware import DatabaseHealthMiddleware, MigrationCheckMiddleware
 
-__all__ = ['MigrationCheckMiddleware', 'DatabaseHealthMiddleware']
+__all__ = ["MigrationCheckMiddleware", "DatabaseHealthMiddleware"]

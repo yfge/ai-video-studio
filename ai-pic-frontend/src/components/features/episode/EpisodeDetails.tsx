@@ -62,7 +62,8 @@ export function EpisodeDetails({ episode }: EpisodeDetailsProps) {
             Object.keys(episode.character_arcs).length > 0 ? (
               Object.entries(episode.character_arcs).map(([character, arc]) => (
                 <div key={character} className="mb-2">
-                  <span className="font-medium">{character}:</span> {String(arc)}
+                  <span className="font-medium">{character}:</span>{" "}
+                  {String(arc)}
                 </div>
               ))
             ) : (
@@ -94,9 +95,13 @@ export function EpisodeDetails({ episode }: EpisodeDetailsProps) {
                 return (
                   <div key={idx} className="bg-red-50 p-3 rounded text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-red-900">{description}</span>
+                      <span className="font-medium text-red-900">
+                        {description}
+                      </span>
                       {intensity && (
-                        <span className={`text-xs px-2 py-0.5 rounded ${intensityClass}`}>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${intensityClass}`}
+                        >
                           {intensity}
                         </span>
                       )}
@@ -125,44 +130,54 @@ export function EpisodeDetails({ episode }: EpisodeDetailsProps) {
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {extractScenes(episode).map((scene: Record<string, unknown>, idx: number) => {
-              const title =
-                (scene.title as string) ||
-                (scene.slug_line as string) ||
-                `场景 ${idx + 1}`;
-              const desc =
-                (scene.summary as string) ||
-                (scene.description as string) ||
-                (scene.beat_summary as string);
-              const loc =
-                (scene.location as string) ||
-                (scene.environment as string) ||
-                (scene.setting as string);
-              const tod =
-                (scene.time_of_day as string) ||
-                (scene.time as string) ||
-                (scene.period as string);
-              const status = scene.status as string | undefined;
-              const sceneNumber =
-                (scene as { scene_number?: number | string }).scene_number ?? idx + 1;
-              return (
-                <div key={idx} className="border rounded p-3 bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-gray-900">场景 {sceneNumber}</div>
-                    {status && <span className="text-xs text-gray-600">{status}</span>}
-                  </div>
-                  <div className="text-sm text-gray-800 mt-1">{title}</div>
-                  {desc && (
-                    <div className="text-xs text-gray-600 mt-1 line-clamp-3">{desc}</div>
-                  )}
-                  {(loc || tod) && (
-                    <div className="text-xs text-gray-500 mt-2">
-                      {loc ? `地点：${loc}` : ""} {tod ? ` · 时间：${tod}` : ""}
+            {extractScenes(episode).map(
+              (scene: Record<string, unknown>, idx: number) => {
+                const title =
+                  (scene.title as string) ||
+                  (scene.slug_line as string) ||
+                  `场景 ${idx + 1}`;
+                const desc =
+                  (scene.summary as string) ||
+                  (scene.description as string) ||
+                  (scene.beat_summary as string);
+                const loc =
+                  (scene.location as string) ||
+                  (scene.environment as string) ||
+                  (scene.setting as string);
+                const tod =
+                  (scene.time_of_day as string) ||
+                  (scene.time as string) ||
+                  (scene.period as string);
+                const status = scene.status as string | undefined;
+                const sceneNumber =
+                  (scene as { scene_number?: number | string }).scene_number ??
+                  idx + 1;
+                return (
+                  <div key={idx} className="border rounded p-3 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-gray-900">
+                        场景 {sceneNumber}
+                      </div>
+                      {status && (
+                        <span className="text-xs text-gray-600">{status}</span>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    <div className="text-sm text-gray-800 mt-1">{title}</div>
+                    {desc && (
+                      <div className="text-xs text-gray-600 mt-1 line-clamp-3">
+                        {desc}
+                      </div>
+                    )}
+                    {(loc || tod) && (
+                      <div className="text-xs text-gray-500 mt-2">
+                        {loc ? `地点：${loc}` : ""}{" "}
+                        {tod ? ` · 时间：${tod}` : ""}
+                      </div>
+                    )}
+                  </div>
+                );
+              },
+            )}
           </div>
         )}
       </div>

@@ -1,10 +1,9 @@
 from pathlib import Path
 
 import pytest
+from app.core.database import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from app.core.database import Base
 
 
 @pytest.fixture
@@ -14,7 +13,9 @@ def test_db():
     if db_path.exists():
         db_path.unlink()
 
-    engine = create_engine("sqlite:///./test.db", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite:///./test.db", connect_args={"check_same_thread": False}
+    )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     from app import models  # noqa: F401  # ensure models are registered

@@ -16,4 +16,3 @@ class PlannedSegment:
     action: str | None = None
     timing: str | None = None  # start/mid/end (for action)
     planned_duration_ms: int | None = None
-

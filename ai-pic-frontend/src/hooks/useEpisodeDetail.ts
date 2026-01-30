@@ -30,7 +30,10 @@ export interface UseEpisodeDetailOptions {
   }) => void;
 }
 
-export function useEpisodeDetail({ episodeKey, showAlert }: UseEpisodeDetailOptions) {
+export function useEpisodeDetail({
+  episodeKey,
+  showAlert,
+}: UseEpisodeDetailOptions) {
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,8 +74,12 @@ export function useEpisodeDetail({ episodeKey, showAlert }: UseEpisodeDetailOpti
     SCRIPT_GENERATION_DEFAULTS,
   );
 
-  const [formats, setFormats] = useState<Array<{ value: string; label: string }>>([]);
-  const [languages, setLanguages] = useState<Array<{ value: string; label: string }>>([]);
+  const [formats, setFormats] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
+  const [languages, setLanguages] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
 
   const loadData = useCallback(async () => {
     try {

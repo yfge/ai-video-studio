@@ -1,5 +1,4 @@
 import pytest
-
 from app.core.config import settings
 
 
@@ -48,6 +47,8 @@ def pytest_collection_modifyitems(config, items):
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     if exitstatus == 0:
-        terminalreporter.write_line("\n🎉 所有测试通过！AI图像生成系统运行正常。", green=True)
+        terminalreporter.write_line(
+            "\n🎉 所有测试通过！AI图像生成系统运行正常。", green=True
+        )
     else:
         terminalreporter.write_line("\n❌ 部分测试失败，请检查上述错误信息。", red=True)

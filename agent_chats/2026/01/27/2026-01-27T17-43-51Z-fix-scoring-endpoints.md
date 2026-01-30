@@ -54,4 +54,3 @@ summary: "Fix scoring endpoints to use ai_manager + current DB fields; add endpo
 ## Linked Commits
 
 - (current) 同提交。
-

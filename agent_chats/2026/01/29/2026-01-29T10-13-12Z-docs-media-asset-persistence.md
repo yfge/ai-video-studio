@@ -44,4 +44,3 @@ summary: "Document generated media persistence (OSS/CDN) naming + metadata contr
 ## Linked Commits
 
 - (pending)
-

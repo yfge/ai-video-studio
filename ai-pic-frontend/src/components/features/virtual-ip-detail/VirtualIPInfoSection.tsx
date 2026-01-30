@@ -40,7 +40,12 @@ export function VirtualIPInfoSection({
               unoptimized
             />
           ) : (
-            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-12 h-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -55,28 +60,38 @@ export function VirtualIPInfoSection({
           {editing ? (
             <form id={formId} onSubmit={onSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  名称 *
+                </label>
                 <input
                   type="text"
                   required
                   value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, name: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  描述
+                </label>
                 <textarea
                   value={editForm.description}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, description: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">标签</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  标签
+                </label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {editForm.tags.map((tag) => (
                     <span
@@ -111,7 +126,8 @@ export function VirtualIPInfoSection({
                   <button
                     type="button"
                     onClick={(e) => {
-                      const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                      const input = e.currentTarget
+                        .previousElementSibling as HTMLInputElement;
                       addTag(input.value.trim());
                       input.value = "";
                     }}
@@ -124,10 +140,15 @@ export function VirtualIPInfoSection({
             </form>
           ) : (
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">{virtualIP.name}</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                {virtualIP.name}
+              </h2>
               {virtualIP.description ? (
                 <div className="mb-4">
-                  <CollapsibleText text={virtualIP.description} collapsedLines={2} />
+                  <CollapsibleText
+                    text={virtualIP.description}
+                    collapsedLines={2}
+                  />
                 </div>
               ) : (
                 <p className="text-sm text-gray-400 mb-4">暂无描述</p>
@@ -135,7 +156,10 @@ export function VirtualIPInfoSection({
               {virtualIP.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {virtualIP.tags.map((tag) => (
-                    <span key={tag} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                    <span
+                      key={tag}
+                      className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                    >
                       {tag}
                     </span>
                   ))}

@@ -1,8 +1,9 @@
 """add business_id link columns and backfill"""
 
-from alembic import op
-import sqlalchemy as sa
 import uuid
+
+import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "dc3d7b9b2c41"
@@ -85,7 +86,9 @@ def _add_columns():
     )
     op.add_column(
         "scenes",
-        sa.Column("story_step_outline_business_id", sa.String(length=32), nullable=True),
+        sa.Column(
+            "story_step_outline_business_id", sa.String(length=32), nullable=True
+        ),
     )
     op.add_column(
         "scenes",
@@ -158,7 +161,15 @@ def _add_columns():
 
 
 def _backfill(bind):
-    def _fill_child(child_table, child_pk, child_fk_col, parent_table, parent_pk, parent_biz_col, child_biz_col):
+    def _fill_child(
+        child_table,
+        child_pk,
+        child_fk_col,
+        parent_table,
+        parent_pk,
+        parent_biz_col,
+        child_biz_col,
+    ):
         rows = bind.execute(
             sa.text(
                 f"""
@@ -326,14 +337,24 @@ def downgrade():
         "ix_virtual_ip_images_virtual_ip_business_id",
         "virtual_ip_business_id",
     )
-    _drop_index_and_column("shots", "ix_shots_scene_beat_business_id", "scene_beat_business_id")
-    _drop_index_and_column("shots", "ix_shots_scene_business_id", "scene_business_id")
-    _drop_index_and_column("scene_beats", "ix_scene_beats_scene_business_id", "scene_business_id")
-    _drop_index_and_column("scenes", "ix_scenes_environment_business_id", "environment_business_id")
     _drop_index_and_column(
-        "scenes", "ix_scenes_story_step_outline_business_id", "story_step_outline_business_id"
+        "shots", "ix_shots_scene_beat_business_id", "scene_beat_business_id"
     )
-    _drop_index_and_column("scenes", "ix_scenes_script_business_id", "script_business_id")
+    _drop_index_and_column("shots", "ix_shots_scene_business_id", "scene_business_id")
+    _drop_index_and_column(
+        "scene_beats", "ix_scene_beats_scene_business_id", "scene_business_id"
+    )
+    _drop_index_and_column(
+        "scenes", "ix_scenes_environment_business_id", "environment_business_id"
+    )
+    _drop_index_and_column(
+        "scenes",
+        "ix_scenes_story_step_outline_business_id",
+        "story_step_outline_business_id",
+    )
+    _drop_index_and_column(
+        "scenes", "ix_scenes_script_business_id", "script_business_id"
+    )
     _drop_index_and_column(
         "story_step_outlines",
         "ix_story_step_outlines_story_treatment_business_id",
@@ -357,5 +378,9 @@ def downgrade():
     _drop_index_and_column(
         "story_characters", "ix_story_characters_story_business_id", "story_business_id"
     )
-    _drop_index_and_column("scripts", "ix_scripts_episode_business_id", "episode_business_id")
-    _drop_index_and_column("episodes", "ix_episodes_story_business_id", "story_business_id")
+    _drop_index_and_column(
+        "scripts", "ix_scripts_episode_business_id", "episode_business_id"
+    )
+    _drop_index_and_column(
+        "episodes", "ix_episodes_story_business_id", "story_business_id"
+    )

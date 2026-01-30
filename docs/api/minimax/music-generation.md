@@ -4,7 +4,7 @@
 
 ## OpenAPI
 
-````yaml api-reference/music/api/openapi.json post /v1/music_generation
+```yaml api-reference/music/api/openapi.json post /v1/music_generation
 openapi: 3.1.0
 info:
   title: MiniMax Music Generation API
@@ -39,15 +39,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenerateMusicReq'
+              $ref: "#/components/schemas/GenerateMusicReq"
         required: true
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenerateMusicResp'
+                $ref: "#/components/schemas/GenerateMusicResp"
 components:
   schemas:
     GenerateMusicReq:
@@ -70,7 +70,7 @@ components:
         lyrics:
           type: string
           description: |-
-            歌曲的歌词。使用 
+            歌曲的歌词。使用
              分隔每行。你可以在歌词中加入 `[Intro]`, `[Verse]`, `[Chorus]`, `[Bridge]`, `[Outro]` 等结构标签来优化生成的音乐结构。长度限制为 [10, 3000] 个字符
           minLength: 10
           maxLength: 3000
@@ -88,10 +88,10 @@ components:
             - hex
           default: hex
         audio_setting:
-          $ref: '#/components/schemas/AudioSetting'
+          $ref: "#/components/schemas/AudioSetting"
         aigc_watermark:
           type: boolean
-          description: '是否在音频末尾添加水印，默认为 `false`。仅在非流式 (`stream: false`) 请求时生效'
+          description: "是否在音频末尾添加水印，默认为 `false`。仅在非流式 (`stream: false`) 请求时生效"
       example:
         model: music-2.0
         prompt: 独立民谣,忧郁,内省,渴望,独自漫步,咖啡馆
@@ -112,9 +112,9 @@ components:
       type: object
       properties:
         data:
-          $ref: '#/components/schemas/MusicData'
+          $ref: "#/components/schemas/MusicData"
         base_resp:
-          $ref: '#/components/schemas/BaseResp'
+          $ref: "#/components/schemas/BaseResp"
       example:
         data:
           audio: hex编码的音频数据
@@ -195,8 +195,7 @@ components:
         `HTTP: Bearer Auth`
          - Security Scheme Type: http
          - HTTP Authorization Scheme: Bearer API_key，用于验证账户信息，可在 [账户管理>接口密钥](https://platform.minimaxi.com/user-center/basic-information/interface-key) 中查看。
-
-````
+```
 
 ---
 

@@ -1,8 +1,7 @@
-'use client'
+"use client";
 
-import { TasksPage } from '@/components/features/tasks/TasksPage'
+import { TasksPage } from "@/components/features/tasks/TasksPage";
 
 export default function Tasks() {
-  return <TasksPage />
+  return <TasksPage />;
 }
-

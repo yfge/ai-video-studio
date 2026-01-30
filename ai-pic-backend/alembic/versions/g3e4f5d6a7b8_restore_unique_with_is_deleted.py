@@ -13,8 +13,8 @@ so we include is_deleted in the unique key. This means:
 For business_id: kept as simple unique since it's globally unique by design.
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "g3e4f5d6a7b8"
@@ -90,7 +90,9 @@ def upgrade():
         unique=True,
     )
     # Keep the old non-unique index for query performance
-    _safe_create_index("virtual_ips", op.f("ix_virtual_ips_name"), ["name"], unique=False)
+    _safe_create_index(
+        "virtual_ips", op.f("ix_virtual_ips_name"), ["name"], unique=False
+    )
 
     # 4. Story structure tables: add is_deleted to composite unique keys
     _safe_create_index(
@@ -143,7 +145,9 @@ def downgrade():
     _safe_drop_index("users", "ux_users_username_is_deleted")
     _safe_drop_index("virtual_ips", "ux_virtual_ips_user_name_is_deleted")
     _safe_drop_index("story_treatments", "ux_story_treatments_story_revision_deleted")
-    _safe_drop_index("story_step_outlines", "ux_step_outlines_treatment_sequence_deleted")
+    _safe_drop_index(
+        "story_step_outlines", "ux_step_outlines_treatment_sequence_deleted"
+    )
     _safe_drop_index("scenes", "ux_scenes_script_scene_deleted")
     _safe_drop_index("scene_beats", "ux_scene_beats_scene_order_deleted")
     _safe_drop_index("shots", "ux_shots_scene_shot_deleted")

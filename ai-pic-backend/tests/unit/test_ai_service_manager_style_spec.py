@@ -1,5 +1,4 @@
 import pytest
-
 from app.core.logging import get_logger
 from app.services.ai_service_manager import (
     AIServiceConfig,
@@ -8,8 +7,8 @@ from app.services.ai_service_manager import (
 )
 from app.services.providers.base import (
     AIModelType,
-    AITaskType,
     AIResponse,
+    AITaskType,
     BaseProvider,
     ModelInfo,
     ProviderConfig,

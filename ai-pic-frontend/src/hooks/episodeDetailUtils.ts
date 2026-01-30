@@ -1,7 +1,9 @@
 import type { Episode } from "@/utils/api";
 
 export const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
 
 export const getString = (value: unknown): string | undefined =>
   typeof value === "string" ? value : undefined;
@@ -24,7 +26,9 @@ export const parseMs = (value: unknown): number | null => {
   return null;
 };
 
-export const extractScenes = (ep: Episode | null): Record<string, unknown>[] => {
+export const extractScenes = (
+  ep: Episode | null,
+): Record<string, unknown>[] => {
   if (!ep) return [];
   const meta =
     (ep as unknown as Record<string, unknown>)?.extra_metadata ??
@@ -33,8 +37,7 @@ export const extractScenes = (ep: Episode | null): Record<string, unknown>[] => 
   const scenes = (meta as Record<string, unknown>)?.scenes;
   if (Array.isArray(scenes)) {
     return scenes.filter(
-      (s): s is Record<string, unknown> =>
-        Boolean(s) && typeof s === "object",
+      (s): s is Record<string, unknown> => Boolean(s) && typeof s === "object",
     );
   }
   return [];

@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "c9d8e7f6a5b4"
@@ -49,9 +48,7 @@ def upgrade() -> None:
             if value in TASKTYPE_OLD:
                 continue
             op.execute(
-                sa.text(
-                    f"ALTER TYPE tasktype ADD VALUE IF NOT EXISTS '{value}'"
-                )
+                sa.text(f"ALTER TYPE tasktype ADD VALUE IF NOT EXISTS '{value}'")
             )
         return
 
@@ -105,4 +102,3 @@ def downgrade() -> None:
         type_=old_type,
         existing_nullable=False,
     )
-

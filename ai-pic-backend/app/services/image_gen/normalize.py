@@ -6,22 +6,12 @@ from app.utils.model_utils import infer_provider_from_model, parse_model_and_pro
 
 from .coerce import clean_str
 from .normalize_capabilities import apply_capability_drops
-from .normalize_helpers import (
-    clamp_count,
-    normalize_size_ratio,
-    resolve_dimensions,
-)
+from .normalize_helpers import clamp_count, normalize_size_ratio, resolve_dimensions
 from .normalize_profile import resolve_profile_params
 from .policies import get_policy
 from .provider_params import supported_ai_manager_keys
 from .refs import normalize_reference_images, resolve_base_image
-from .types import (
-    ImageGenAudit,
-    ImageGenDomain,
-    ImageGenMode,
-    ImageGenNormalized,
-    ImageGenRequest,
-)
+from .types import ImageGenAudit, ImageGenMode, ImageGenNormalized, ImageGenRequest
 
 
 def _append_negative_prompt_to_prompt(prompt: str, negative_prompt: str) -> str:
@@ -158,11 +148,7 @@ def normalize_image_gen_request(
     if not prompt:
         audit.warnings.append("empty prompt")
 
-    if (
-        provider == "keling"
-        and req.mode == ImageGenMode.TEXT_TO_IMAGE
-        and extra_images
-    ):
+    if provider == "keling" and req.mode == ImageGenMode.TEXT_TO_IMAGE and extra_images:
         if len(extra_images) > 1:
             audit.warnings.append(
                 "keling text_to_image supports only 1 reference image; using the first"

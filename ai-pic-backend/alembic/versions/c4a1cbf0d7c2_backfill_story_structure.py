@@ -6,11 +6,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
+from app.models.script import Script
 from sqlalchemy.orm import Session
-
-from app.models.script import Script, Episode, Story
 
 ROOT = Path(__file__).resolve().parents[2]
 import sys
@@ -18,7 +17,10 @@ import sys
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.prototype_story_structure_migration import assemble_payload, load_live_payloads  # noqa: E402
+from scripts.prototype_story_structure_migration import (  # noqa: E402
+    assemble_payload,
+    load_live_payloads,
+)
 
 # revision identifiers, used by Alembic.
 revision = "c4a1cbf0d7c2"
@@ -45,17 +47,28 @@ def _tables_available(connection) -> bool:
 def _has_normalized_rows(connection, script_id: int) -> bool:
     scenes = sa.table("scenes", sa.column("script_id"))
     count = connection.execute(
-        sa.select(sa.func.count()).select_from(scenes).where(scenes.c.script_id == script_id)
+        sa.select(sa.func.count())
+        .select_from(scenes)
+        .where(scenes.c.script_id == script_id)
     ).scalar()
     return bool(count and count > 0)
 
 
-def _materialize_payload(connection, payload: Dict[str, List[Dict[str, object]]]) -> None:
+def _materialize_payload(
+    connection, payload: Dict[str, List[Dict[str, object]]]
+) -> None:
     metadata = sa.MetaData()
-    tables = {name: sa.Table(name, metadata, autoload_with=connection) for name in REQUIRED_TABLES if name != "scripts"}
+    tables = {
+        name: sa.Table(name, metadata, autoload_with=connection)
+        for name in REQUIRED_TABLES
+        if name != "scripts"
+    }
 
     timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
-    migration_marker = {"migration_revision": revision, "migration_source": "alembic_backfill"}
+    migration_marker = {
+        "migration_revision": revision,
+        "migration_source": "alembic_backfill",
+    }
 
     treatment_id_map: Dict[Tuple[int, int], int] = {}
     for row in payload.get("story_treatments", []):
@@ -66,9 +79,13 @@ def _materialize_payload(connection, payload: Dict[str, List[Dict[str, object]]]
         insert_data.setdefault("is_deleted", False)
         insert_data.setdefault("created_at", timestamp)
         insert_data.setdefault("updated_at", timestamp)
-        result = connection.execute(tables["story_treatments"].insert().values(**insert_data))
+        result = connection.execute(
+            tables["story_treatments"].insert().values(**insert_data)
+        )
         inserted_id = result.inserted_primary_key[0]
-        treatment_id_map[(insert_data["story_id"], insert_data["revision_number"])] = inserted_id
+        treatment_id_map[(insert_data["story_id"], insert_data["revision_number"])] = (
+            inserted_id
+        )
 
     outline_id_map: Dict[int, int] = {}
     for row in payload.get("story_step_outlines", []):
@@ -84,7 +101,9 @@ def _materialize_payload(connection, payload: Dict[str, List[Dict[str, object]]]
         insert_data["story_treatment_id"] = treatment_id_map.get(treatment_key)
         insert_data.setdefault("created_at", timestamp)
         insert_data.setdefault("updated_at", timestamp)
-        result = connection.execute(tables["story_step_outlines"].insert().values(**insert_data))
+        result = connection.execute(
+            tables["story_step_outlines"].insert().values(**insert_data)
+        )
         inserted_id = result.inserted_primary_key[0]
         proto_id = meta_blob.get("prototype_outline_id")
         if proto_id is not None:
@@ -98,7 +117,9 @@ def _materialize_payload(connection, payload: Dict[str, List[Dict[str, object]]]
         insert_data["metadata"] = meta_blob
         outline_proto = meta_blob.get("outline_proto_id")
         if outline_proto:
-            insert_data["story_step_outline_id"] = outline_id_map.get(int(outline_proto))
+            insert_data["story_step_outline_id"] = outline_id_map.get(
+                int(outline_proto)
+            )
         insert_data.setdefault("created_at", timestamp)
         insert_data.setdefault("updated_at", timestamp)
         result = connection.execute(tables["scenes"].insert().values(**insert_data))
@@ -122,7 +143,9 @@ def _materialize_payload(connection, payload: Dict[str, List[Dict[str, object]]]
         insert_data["scene_id"] = scene_fk
         insert_data.setdefault("created_at", timestamp)
         insert_data.setdefault("updated_at", timestamp)
-        result = connection.execute(tables["scene_beats"].insert().values(**insert_data))
+        result = connection.execute(
+            tables["scene_beats"].insert().values(**insert_data)
+        )
         inserted_id = result.inserted_primary_key[0]
         proto_beat_id = meta_blob.get("prototype_beat_id")
         if proto_beat_id is not None:
@@ -134,12 +157,18 @@ def _materialize_payload(connection, payload: Dict[str, List[Dict[str, object]]]
         meta_blob.update(migration_marker)
         insert_data["metadata"] = meta_blob
         proto_scene_id = meta_blob.get("prototype_scene_id")
-        scene_fk = scene_id_map.get(int(proto_scene_id)) if proto_scene_id is not None else None
+        scene_fk = (
+            scene_id_map.get(int(proto_scene_id))
+            if proto_scene_id is not None
+            else None
+        )
         if scene_fk is None:
             continue
         insert_data["scene_id"] = scene_fk
         proto_beat_id = meta_blob.get("prototype_beat_id")
-        insert_data["scene_beat_id"] = beat_id_map.get(int(proto_beat_id)) if proto_beat_id else None
+        insert_data["scene_beat_id"] = (
+            beat_id_map.get(int(proto_beat_id)) if proto_beat_id else None
+        )
         insert_data.setdefault("created_at", timestamp)
         insert_data.setdefault("updated_at", timestamp)
         connection.execute(tables["shots"].insert().values(**insert_data))
@@ -156,8 +185,12 @@ def upgrade() -> None:
         for script in scripts:
             if _has_normalized_rows(bind, script.id):
                 continue
-            story_payload, episode_payload, script_payload = load_live_payloads(session, script.id)
-            payload, _warnings = assemble_payload(story_payload, episode_payload, script_payload)
+            story_payload, episode_payload, script_payload = load_live_payloads(
+                session, script.id
+            )
+            payload, _warnings = assemble_payload(
+                story_payload, episode_payload, script_payload
+            )
             _materialize_payload(bind, payload)
     finally:
         session.close()
@@ -169,7 +202,11 @@ def downgrade() -> None:
         return
 
     metadata = sa.MetaData()
-    tables = {name: sa.Table(name, metadata, autoload_with=bind) for name in REQUIRED_TABLES if name != "scripts"}
+    tables = {
+        name: sa.Table(name, metadata, autoload_with=bind)
+        for name in REQUIRED_TABLES
+        if name != "scripts"
+    }
 
     def _delete(name: str, where_clause):
         bind.execute(tables[name].delete().where(where_clause))

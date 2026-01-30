@@ -32,19 +32,24 @@ Continue with phase 3 endpoint refactoring (from context continuation).
 ### Created virtual_ip_images package structure:
 
 1. **`helpers.py`** (~130 lines)
+
    - Shared utility functions: `not_deleted`, `parse_identifier`, `get_owned_virtual_ip`, `get_virtual_ip_image`, `resolve_image_url`, `set_ip_default_avatar`, `normalize_reference_images`
 
 2. **`crud.py`** (~280 lines)
+
    - CRUD endpoints: create, list, get, update, delete, set-default, categories, download
 
 3. **`generation.py`** (~355 lines)
+
    - AI text-to-image generation: `generate_virtual_ip_image`, `generate_virtual_ip_image_async`
    - Includes `build_virtual_ip_image_payload` helper
 
 4. **`variants.py`** (~326 lines)
+
    - Image-to-image variant generation: `generate_virtual_ip_image_variant`, `generate_virtual_ip_image_variant_async`
 
 5. **`async_tasks.py`** (~361 lines)
+
    - Background task processors: `process_virtual_ip_image_task`, `process_virtual_ip_image_variant_task`
 
 6. **`__init__.py`** (~31 lines)
@@ -58,6 +63,7 @@ Continue with phase 3 endpoint refactoring (from context continuation).
 2. **tests/test_api.py**: Updated import from `virtual_ip_images` module to `virtual_ip_images.variants` submodule, added missing `metadata` attribute to test mock
 
 ### Deleted:
+
 - `ai-pic-backend/app/api/v1/endpoints/virtual_ip_images.py` (original 1,364 line monolith)
 
 ## Validation

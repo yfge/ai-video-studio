@@ -1,14 +1,16 @@
-import pytest
-
-from app.core.logging import get_logger
-import app.services.ai_service as ai_service_module
 import app.services.ai.video as video_module
+import pytest
+from app.core.logging import get_logger
 from app.services.ai_service import AIService
-from app.services.ai_service_manager import AIServiceConfig, AIServiceManager, ProviderWeight
+from app.services.ai_service_manager import (
+    AIServiceConfig,
+    AIServiceManager,
+    ProviderWeight,
+)
 from app.services.providers.base import (
     AIModelType,
-    AITaskType,
     AIResponse,
+    AITaskType,
     BaseProvider,
     ModelInfo,
     ProviderConfig,
@@ -75,7 +77,9 @@ class _DummyVideoProvider(BaseProvider):
             provider=self.name,
             model=model or "unknown",
             task_type=AITaskType.VIDEO_GENERATION,
-            model_type=AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO,
+            model_type=(
+                AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
+            ),
         )
 
 
@@ -172,9 +176,7 @@ async def test_ai_service_generate_video_uploads_last_frame(monkeypatch):
         image_url="https://cdn.example.com/start.png",
     )
 
-    assert result["video_url"].startswith(
-        "https://oss.example.com/ai-generated/videos"
-    )
+    assert result["video_url"].startswith("https://oss.example.com/ai-generated/videos")
     assert result["thumbnail_url"].startswith(
         "https://oss.example.com/ai-generated/thumbnails"
     )

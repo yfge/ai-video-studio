@@ -116,6 +116,7 @@ python migrate.py current
 ### 3. 模型字段命名
 
 避免使用 SQLAlchemy 保留字段名，如：
+
 - `metadata` - 使用 `extra_metadata` 代替
 - `query` - 使用其他名称
 
@@ -127,29 +128,34 @@ python migrate.py current
 
 ### Q: 迁移失败怎么办？
 
-A: 
+A:
+
 1. 检查模型定义是否正确
 2. 检查数据库连接是否正常
 3. 查看错误日志，修复问题后重新生成迁移
 
 ### Q: 如何回退迁移？
 
-A: 
+A:
+
 ```bash
 python migrate.py downgrade
 ```
 
 ### Q: 如何重置数据库？
 
-A: 
+A:
+
 ```bash
 python migrate.py reset
 ```
+
 **警告：这将删除所有数据！**
 
 ### Q: 迁移文件冲突怎么办？
 
-A: 
+A:
+
 1. 使用 `alembic merge` 合并冲突的迁移
 2. 或者删除冲突的迁移文件，重新生成
 
@@ -176,4 +182,4 @@ ai-pic-backend/
 1. 每次模型变更后立即生成迁移
 2. 为每个迁移添加有意义的描述信息
 3. 在团队开发中，及时同步迁移文件
-4. 定期检查数据库结构与模型定义的一致性 
+4. 定期检查数据库结构与模型定义的一致性

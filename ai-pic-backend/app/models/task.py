@@ -1,10 +1,12 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
-from sqlalchemy.dialects import mysql
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 import enum
+
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects import mysql
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 
 class TaskStatus(str, enum.Enum):
     PENDING = "pending"
@@ -12,6 +14,7 @@ class TaskStatus(str, enum.Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
 
 class TaskType(str, enum.Enum):
     IMAGE_GENERATION = "image_generation"
@@ -33,22 +36,27 @@ class TaskType(str, enum.Enum):
     VIDEO_GENERATION = "video_generation"
     TEXT_GENERATION = "text_generation"
 
+
 class Task(SoftDeleteBusinessMixin, Base):
     __tablename__ = "tasks"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    target_business_id = Column(String(32), nullable=True, index=True, comment="业务目标对象 business_id")
+    target_business_id = Column(
+        String(32), nullable=True, index=True, comment="业务目标对象 business_id"
+    )
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     task_type = Column(Enum(TaskType), nullable=False)
     status = Column(Enum(TaskStatus), default=TaskStatus.PENDING)
     prompt = Column(Text, nullable=True)
-    parameters = Column(Text().with_variant(mysql.LONGTEXT(), "mysql"), nullable=True)  # JSON字符串
+    parameters = Column(
+        Text().with_variant(mysql.LONGTEXT(), "mysql"), nullable=True
+    )  # JSON字符串
     result_file_path = Column(String(512), nullable=True)
     error_message = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     # 关系
-    user = relationship("User", back_populates="tasks") 
+    user = relationship("User", back_populates="tasks")

@@ -45,6 +45,7 @@ db.commit()
 ### dialogue_audio_service.py - SceneBeat Overwrite
 
 原代码使用 hard delete：
+
 ```python
 if overwrite_beats:
     db.query(SceneBeat).filter(SceneBeat.scene_id == scene.id).delete(
@@ -53,6 +54,7 @@ if overwrite_beats:
 ```
 
 改为 soft delete：
+
 ```python
 if overwrite_beats:
     existing_beats = (
@@ -72,7 +74,9 @@ if overwrite_beats:
 Regenerate 成功消息增加 business_id 前缀提示：
 
 ```typescript
-const bizIdHint = picked.business_id ? ` [${picked.business_id.slice(0, 8)}...]` : "";
+const bizIdHint = picked.business_id
+  ? ` [${picked.business_id.slice(0, 8)}...]`
+  : "";
 showAlert({
   message: `已生成新剧本（v${picked.version} / ID: ${picked.id}${bizIdHint}）`,
   variant: "success",
@@ -82,6 +86,7 @@ showAlert({
 ### 前端 business_id fallback 验证
 
 已验证关键路径均使用 `business_id || id` fallback 模式：
+
 - `WorkspaceTimelineTabContent.tsx:122` - `selectedScript.business_id || selectedScript.id`
 - `storyboard/page.tsx:135` - `episode?.business_id || episodeKey`
 - `scripts/[id]/page.tsx:86,90,98` - `episode_business_id || episode_id`

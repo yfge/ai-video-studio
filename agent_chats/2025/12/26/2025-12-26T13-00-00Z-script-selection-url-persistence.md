@@ -30,12 +30,14 @@ Translation: "The storyboard is still not correct"
 **Fix**: Added URL-based state persistence for script selection.
 
 1. Read initial scriptId from URL query params:
+
 ```tsx
 const urlScriptId = searchParams.get("scriptId");
 const initialScriptId = urlScriptId ? Number(urlScriptId) : null;
 ```
 
 2. Sync URL scriptId to hook state when scripts load:
+
 ```tsx
 useEffect(() => {
   if (!scripts || scripts.length === 0) return;
@@ -48,6 +50,7 @@ useEffect(() => {
 ```
 
 3. Build URL with both tab and scriptId params:
+
 ```tsx
 const buildUrl = useCallback(
   (tab: TabKey, scriptId: number | null) => {
@@ -58,29 +61,31 @@ const buildUrl = useCallback(
     }
     return `/episodes/${episodeKey}/workspace?${params.toString()}`;
   },
-  [episodeKey]
+  [episodeKey],
 );
 ```
 
 4. Update handleTabChange to preserve scriptId:
+
 ```tsx
 const handleTabChange = useCallback(
   (tab: TabKey) => {
     setActiveTab(tab);
     router.replace(buildUrl(tab, selectedScriptId), { scroll: false });
   },
-  [router, buildUrl, selectedScriptId]
+  [router, buildUrl, selectedScriptId],
 );
 ```
 
 5. Add handleScriptChange to update both state and URL:
+
 ```tsx
 const handleScriptChange = useCallback(
   (scriptId: number | null) => {
     setSelectedScriptId(scriptId);
     router.replace(buildUrl(activeTab, scriptId), { scroll: false });
   },
-  [setSelectedScriptId, router, buildUrl, activeTab]
+  [setSelectedScriptId, router, buildUrl, activeTab],
 );
 ```
 

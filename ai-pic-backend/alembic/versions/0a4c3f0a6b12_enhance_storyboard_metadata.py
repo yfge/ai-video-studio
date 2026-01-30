@@ -5,6 +5,7 @@ Revises: fe284ccd1b92
 Create Date: 2025-02-14 10:45:00.000000
 
 """
+
 from __future__ import annotations
 
 import json
@@ -12,9 +13,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0a4c3f0a6b12"
@@ -42,17 +42,34 @@ def upgrade() -> None:
     )
     op.add_column(
         "scripts",
-        sa.Column("storyboard_version", sa.Integer(), nullable=True, server_default="1", comment="分镜版本号"),
+        sa.Column(
+            "storyboard_version",
+            sa.Integer(),
+            nullable=True,
+            server_default="1",
+            comment="分镜版本号",
+        ),
     )
     op.add_column(
         "scripts",
-        sa.Column("storyboard_updated_at", sa.DateTime(), nullable=True, comment="分镜最近更新时间"),
+        sa.Column(
+            "storyboard_updated_at",
+            sa.DateTime(),
+            nullable=True,
+            comment="分镜最近更新时间",
+        ),
     )
 
     connection = op.get_bind()
-    scripts = connection.execute(sa.text("SELECT id, extra_metadata FROM scripts WHERE extra_metadata IS NOT NULL"))
+    scripts = connection.execute(
+        sa.text(
+            "SELECT id, extra_metadata FROM scripts WHERE extra_metadata IS NOT NULL"
+        )
+    )
 
-    update_stmt = sa.text("UPDATE scripts SET extra_metadata = :extra_meta_json, storyboard_updated_at = :updated_at WHERE id = :id")
+    update_stmt = sa.text(
+        "UPDATE scripts SET extra_metadata = :extra_meta_json, storyboard_updated_at = :updated_at WHERE id = :id"
+    )
 
     for row in scripts:
         try:
@@ -75,7 +92,10 @@ def upgrade() -> None:
             if not frame.get("frame_id"):
                 frame["frame_id"] = str(uuid.uuid4())
                 changed = True
-            if frame.get("scene_index") is None and frame.get("scene_number") is not None:
+            if (
+                frame.get("scene_index") is None
+                and frame.get("scene_number") is not None
+            ):
                 frame["scene_index"] = frame.get("scene_number")
                 changed = True
             if frame.get("generated_at") is None:
@@ -88,7 +108,9 @@ def upgrade() -> None:
                 frame["generation_source"] = "legacy"
                 changed = True
             if frame.get("generation_method") is None:
-                frame["generation_method"] = "ai" if frame.get("ai_prompt") else "manual"
+                frame["generation_method"] = (
+                    "ai" if frame.get("ai_prompt") else "manual"
+                )
                 changed = True
             if frame.get("frame_number") is None:
                 frame["frame_number"] = idx

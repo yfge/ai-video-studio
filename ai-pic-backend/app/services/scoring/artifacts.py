@@ -91,4 +91,3 @@ async def generate_scoring_artifacts(
         "traffic_sheet": traffic.model_dump(mode="json", exclude_none=True),
         "asset_tags": traffic_tags,
     }
-

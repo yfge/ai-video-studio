@@ -6,7 +6,7 @@ Contains text-to-image and image-to-image functionality using Gemini.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 import httpx
 
@@ -70,9 +70,7 @@ async def generate_image(
     if isinstance(reference_images_raw, str):
         reference_images = [reference_images_raw]
     elif isinstance(reference_images_raw, list):
-        reference_images = [
-            u for u in reference_images_raw if isinstance(u, str) and u
-        ]
+        reference_images = [u for u in reference_images_raw if isinstance(u, str) and u]
     if base64_images:
         parts.extend(inline_parts_from_data_urls(base64_images))
     elif reference_images:
@@ -81,7 +79,9 @@ async def generate_image(
 
     # Build image config from kwargs
     aspect_ratio = kwargs.get("aspect_ratio") or kwargs.get("aspectRatio")
-    image_size = kwargs.get("image_size") or kwargs.get("imageSize") or kwargs.get("size")
+    image_size = (
+        kwargs.get("image_size") or kwargs.get("imageSize") or kwargs.get("size")
+    )
     try:
         image_size, aspect_ratio, rules = normalize_image_params(
             provider_name, model_id, image_size, aspect_ratio
@@ -255,12 +255,9 @@ async def image_to_image(
             image_config["imageSize"] = image_size
 
         response_modalities = normalize_response_modalities(
-            kwargs.get("response_modalities")
-            or kwargs.get("responseModalities")
+            kwargs.get("response_modalities") or kwargs.get("responseModalities")
         )
-        generation_config: Dict[str, Any] = {
-            "responseModalities": response_modalities
-        }
+        generation_config: Dict[str, Any] = {"responseModalities": response_modalities}
         if image_config:
             generation_config["imageConfig"] = image_config
         body["generationConfig"] = generation_config

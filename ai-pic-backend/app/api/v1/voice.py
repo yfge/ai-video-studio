@@ -1,12 +1,11 @@
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-
 from app.core.middleware import get_current_active_user
 from app.models.user import User
-from app.services.voice_service import voice_service
 from app.services.minimax_client import MinimaxAPIError
+from app.services.voice_service import voice_service
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 

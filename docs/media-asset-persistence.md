@@ -31,7 +31,7 @@ Notes:
 - `file_type` is one of `image|video|audio` and is always inserted as a path segment.
 - `ext` is inferred from filename (and defaults for some types).
 
-## OSS Metadata Contract (x-oss-meta-*)
+## OSS Metadata Contract (x-oss-meta-\*)
 
 We attach generation metadata as OSS object metadata headers (`x-oss-meta-*`).
 

@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean
-from sqlalchemy.sql import func
-from sqlalchemy.types import JSON
-from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from sqlalchemy.types import JSON
 
 
 class VirtualIP(SoftDeleteBusinessMixin, Base):

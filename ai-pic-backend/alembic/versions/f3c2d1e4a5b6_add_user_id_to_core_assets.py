@@ -8,9 +8,8 @@ Create Date: 2025-12-11 01:10:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "f3c2d1e4a5b6"
@@ -91,21 +90,15 @@ def upgrade() -> None:
 
     if first_user_id is not None:
         conn.execute(
-            sa.text(
-                "UPDATE virtual_ips SET user_id = :uid WHERE user_id IS NULL"
-            ),
+            sa.text("UPDATE virtual_ips SET user_id = :uid WHERE user_id IS NULL"),
             {"uid": first_user_id},
         )
         conn.execute(
-            sa.text(
-                "UPDATE stories SET user_id = :uid WHERE user_id IS NULL"
-            ),
+            sa.text("UPDATE stories SET user_id = :uid WHERE user_id IS NULL"),
             {"uid": first_user_id},
         )
         conn.execute(
-            sa.text(
-                "UPDATE environments SET user_id = :uid WHERE user_id IS NULL"
-            ),
+            sa.text("UPDATE environments SET user_id = :uid WHERE user_id IS NULL"),
             {"uid": first_user_id},
         )
 
@@ -126,4 +119,3 @@ def downgrade() -> None:
     op.drop_constraint("fk_virtual_ips_user_id", "virtual_ips", type_="foreignkey")
     op.drop_index("ix_virtual_ips_user_id", table_name="virtual_ips")
     op.drop_column("virtual_ips", "user_id")
-

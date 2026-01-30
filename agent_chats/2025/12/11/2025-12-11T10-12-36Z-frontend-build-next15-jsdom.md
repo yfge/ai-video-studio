@@ -74,4 +74,3 @@ summary: "Fixed Next.js build for prod images: jsdom typings, shared FrameCard c
 ## Linked Commits
 
 - （待填写）在完成 `git commit` 后，将对应的提交哈希补充到这里，例如：`- feat(frontend): fix next build for prod images (abcd1234)`
-

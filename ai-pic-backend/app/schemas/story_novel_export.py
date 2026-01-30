@@ -29,4 +29,3 @@ class StoryNovelExportSummary(BaseModel):
 
 class StoryNovelExportListResponse(BaseModel):
     items: List[StoryNovelExportSummary]
-

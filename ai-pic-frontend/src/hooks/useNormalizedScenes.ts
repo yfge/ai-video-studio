@@ -5,7 +5,9 @@ import { storyStructureAPI } from "@/utils/api";
 import type { NormalizedScene } from "@/utils/api";
 
 export function useNormalizedScenes(scriptId: number | null) {
-  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>([]);
+  const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>(
+    [],
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -3,11 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { ImageToImageModal, useAlertModal } from "@/components/shared/modals";
-import {
-  AIModelType,
-  type Environment,
-  type StyleSpec,
-} from "@/utils/api";
+import { AIModelType, type Environment, type StyleSpec } from "@/utils/api";
 import { storyStructureAPI } from "@/utils/api/endpoints";
 
 import type { EnvironmentImage } from "./types";

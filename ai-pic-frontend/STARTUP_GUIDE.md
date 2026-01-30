@@ -3,41 +3,50 @@
 ## 🚀 快速启动
 
 ### 1. 确保在正确的目录
+
 ```bash
 cd ai-pic-frontend
 ```
 
 ### 2. 安装依赖（如果还没安装）
+
 ```bash
 npm install
 ```
 
 ### 3. 启动开发服务器
+
 ```bash
 npm run dev
 ```
 
 ### 4. 访问应用
+
 打开浏览器访问 [http://localhost:3000](http://localhost:3000)
 
 ## 🔧 故障排除
 
 ### 问题1: 路径错误
+
 **错误信息**: `npm error enoent Could not read package.json`
 
 **解决方案**: 确保你在 `ai-pic-frontend` 目录下运行命令，而不是在父目录 `ai-pic` 下。
 
 ### 问题2: Turbopack 路径问题
+
 **错误信息**: `Cannot depend on path outside of root directory`
 
-**解决方案**: 
+**解决方案**:
+
 - 使用默认的 `npm run dev` 命令（不使用 Turbopack）
 - 如果需要使用 Turbopack，运行 `npm run dev:turbo`
 
 ### 问题3: 端口被占用
+
 **错误信息**: `Port 3000 is already in use`
 
 **解决方案**:
+
 ```bash
 # 查找占用端口的进程
 netstat -ano | findstr :3000
@@ -85,7 +94,8 @@ npm run lint
 ## 🆘 获取帮助
 
 如果遇到其他问题，请检查：
+
 1. Node.js 版本是否正确
 2. 是否在正确的目录下
 3. 依赖是否正确安装
-4. 端口是否被其他程序占用 
+4. 端口是否被其他程序占用

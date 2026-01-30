@@ -1,12 +1,12 @@
-'use client'
+"use client";
 
 interface VirtualIPVoicePreviewSectionProps {
-  previewText: string
-  setPreviewText: (text: string) => void
-  previewLoading: boolean
-  previewAudioUrl: string | null
-  onPreview: () => void
-  canPreview: boolean
+  previewText: string;
+  setPreviewText: (text: string) => void;
+  previewLoading: boolean;
+  previewAudioUrl: string | null;
+  onPreview: () => void;
+  canPreview: boolean;
 }
 
 export function VirtualIPVoicePreviewSection({
@@ -19,7 +19,9 @@ export function VirtualIPVoicePreviewSection({
 }: VirtualIPVoicePreviewSectionProps) {
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">试听文本</label>
+      <label className="block text-sm font-medium text-gray-700">
+        试听文本
+      </label>
       <textarea
         value={previewText}
         onChange={(e) => setPreviewText(e.target.value)}
@@ -34,7 +36,7 @@ export function VirtualIPVoicePreviewSection({
           disabled={!canPreview || previewLoading}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-60"
         >
-          {previewLoading ? '生成中...' : '试听'}
+          {previewLoading ? "生成中..." : "试听"}
         </button>
         {previewAudioUrl && (
           <audio controls src={previewAudioUrl} className="w-full max-w-md">
@@ -42,8 +44,14 @@ export function VirtualIPVoicePreviewSection({
           </audio>
         )}
       </div>
-      {!canPreview && <p className="text-xs text-gray-500">请先选择服务商与语音模型再试听。</p>}
-      <p className="text-xs text-gray-500">保存后将自动转存 OSS 并绑定到该角色。</p>
+      {!canPreview && (
+        <p className="text-xs text-gray-500">
+          请先选择服务商与语音模型再试听。
+        </p>
+      )}
+      <p className="text-xs text-gray-500">
+        保存后将自动转存 OSS 并绑定到该角色。
+      </p>
     </div>
-  )
+  );
 }

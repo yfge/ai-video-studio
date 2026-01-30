@@ -30,6 +30,7 @@ Translation: "Create new script - keep original, create new version"
 ### scripts_legacy.py - `_process_script_regeneration_task`
 
 **Before**: Direct update of existing script record
+
 ```python
 script.content = script_content
 script.scenes = scenes
@@ -38,6 +39,7 @@ db.commit()
 ```
 
 **After**: Create new Script record
+
 - Version increment: `1.0` → `1.1`, `1.1` → `1.2`, etc.
 - Parent tracking in `extra_metadata`:
   - `parent_script_id`: Original script's database ID

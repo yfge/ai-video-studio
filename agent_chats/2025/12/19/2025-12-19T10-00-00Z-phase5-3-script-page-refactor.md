@@ -32,6 +32,7 @@ Continue with Phase 5 frontend page refactoring. Task 5.3: Refactor scripts/[id]
 ### New Files Created
 
 1. **`src/hooks/useScriptDetail.ts`** (336 lines)
+
    - Types: TabId, ScriptScene, ScriptDialogue, ScriptDirection
    - Constants: TABS array
    - Utility functions: formatDate, toSceneNumber
@@ -39,16 +40,20 @@ Continue with Phase 5 frontend page refactoring. Task 5.3: Refactor scripts/[id]
    - Data loading, structure loading, export handlers
 
 2. **`src/components/features/script/ScriptHeader.tsx`** (137 lines)
+
    - Script header with title, stats, export menu
    - InfoCard sub-component for stats display
 
 3. **`src/components/features/script/WorkflowSteps.tsx`** (57 lines)
+
    - Three-step workflow cards for script workflow
 
 4. **`src/components/features/script/ScriptOverviewTab.tsx`** (103 lines)
+
    - Overview tab with script content, scene summary, stats
 
 5. **`src/components/features/script/ScriptScenesTab.tsx`** (253 lines)
+
    - Scenes tab with scene list, details, structure editor
    - SceneDetails sub-component
    - Section helper component
@@ -59,6 +64,7 @@ Continue with Phase 5 frontend page refactoring. Task 5.3: Refactor scripts/[id]
 ### Modified Files
 
 1. **`src/app/scripts/[id]/page.tsx`** (705 → 147 lines, 79% reduction)
+
    - Now imports useScriptDetail hook and extracted components
    - Contains only component composition and tab navigation
 

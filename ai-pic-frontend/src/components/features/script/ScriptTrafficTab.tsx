@@ -20,14 +20,23 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
   const params = asRecord(script.generation_params) ?? {};
   const scoring = asRecord(extra.scoring) ?? {};
 
-  const marketRegion = getValue(extra, params, "market_region") as string | undefined;
-  const microGenre = getValue(extra, params, "micro_genre") as string | undefined;
-  const twistDensity = getValue(extra, params, "twist_density") as string | undefined;
-  const cliffhangerPlan = toStringList(getValue(extra, params, "cliffhanger_plan"));
+  const marketRegion = getValue(extra, params, "market_region") as
+    | string
+    | undefined;
+  const microGenre = getValue(extra, params, "micro_genre") as
+    | string
+    | undefined;
+  const twistDensity = getValue(extra, params, "twist_density") as
+    | string
+    | undefined;
+  const cliffhangerPlan = toStringList(
+    getValue(extra, params, "cliffhanger_plan"),
+  );
 
   const hookPlanRaw = getValue(extra, params, "hook_plan");
   const hookPlan = toHookPlan(hookPlanRaw);
-  const hookPlanText = typeof hookPlanRaw === "string" ? hookPlanRaw : undefined;
+  const hookPlanText =
+    typeof hookPlanRaw === "string" ? hookPlanRaw : undefined;
 
   const adSnippets = toAdSnippets(getValue(extra, params, "ad_snippets"));
 
@@ -43,9 +52,15 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
       getValue(extra, params, "overall_score"),
   );
 
-  const dimensionScores = asRecord(scorecard?.dimension_scores ?? scorecard?.scores);
-  const strengths = toStringList(scorecard?.strengths ?? getValue(extra, params, "strengths"));
-  const risks = toStringList(scorecard?.risks ?? getValue(extra, params, "risk_notes"));
+  const dimensionScores = asRecord(
+    scorecard?.dimension_scores ?? scorecard?.scores,
+  );
+  const strengths = toStringList(
+    scorecard?.strengths ?? getValue(extra, params, "strengths"),
+  );
+  const risks = toStringList(
+    scorecard?.risks ?? getValue(extra, params, "risk_notes"),
+  );
   const rewriteGuidance = toStringList(
     scorecard?.rewrite_guidance ?? getValue(extra, params, "rewrite_guidance"),
   );
@@ -98,7 +113,9 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="text-sm font-semibold text-slate-800 mb-3">爽点评分</div>
+          <div className="text-sm font-semibold text-slate-800 mb-3">
+            爽点评分
+          </div>
           {dimensionScores ? (
             <div className="space-y-2 text-sm">
               {Object.entries(dimensionScores).map(([key, value]) => (
@@ -125,7 +142,9 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
           )}
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="text-sm font-semibold text-slate-800 mb-3">风险提示</div>
+          <div className="text-sm font-semibold text-slate-800 mb-3">
+            风险提示
+          </div>
           {risks.length > 0 ? (
             <ul className="list-disc pl-4 text-sm text-slate-700">
               {risks.map((risk, idx) => (
@@ -150,8 +169,12 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-slate-800">Hook/节奏规划</div>
-          <span className="text-xs text-slate-500">来自生成参数或额外元数据</span>
+          <div className="text-sm font-semibold text-slate-800">
+            Hook/节奏规划
+          </div>
+          <span className="text-xs text-slate-500">
+            来自生成参数或额外元数据
+          </span>
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm">
           <div>
@@ -190,7 +213,9 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-slate-800">投流素材清单</div>
+          <div className="text-sm font-semibold text-slate-800">
+            投流素材清单
+          </div>
           <button
             type="button"
             onClick={handleExport}
@@ -216,9 +241,13 @@ export function ScriptTrafficTab({ script }: ScriptTrafficTabProps) {
               <tbody className="divide-y divide-slate-100">
                 {adSnippets.map((snippet, idx) => (
                   <tr key={`snippet-${idx}`} className="text-slate-700">
-                    <td className="py-2 pr-4">{snippet.duration_seconds || "—"}s</td>
+                    <td className="py-2 pr-4">
+                      {snippet.duration_seconds || "—"}s
+                    </td>
                     <td className="py-2 pr-4">{snippet.hook}</td>
-                    <td className="py-2 pr-4">{snippet.visual_summary || "—"}</td>
+                    <td className="py-2 pr-4">
+                      {snippet.visual_summary || "—"}
+                    </td>
                     <td className="py-2">{snippet.call_to_action || "—"}</td>
                   </tr>
                 ))}

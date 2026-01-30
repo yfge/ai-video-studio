@@ -2,20 +2,24 @@
  * Virtual IP Image Management API endpoints (CRUD).
  */
 
-import { httpClient } from '../../client';
-import type { ApiResponse } from '../../types/common.types';
-import type { VirtualIPImage, VirtualIPImageUpdate } from '../../types/image.types';
+import { httpClient } from "../../client";
+import type { ApiResponse } from "../../types/common.types";
+import type {
+  VirtualIPImage,
+  VirtualIPImageUpdate,
+} from "../../types/image.types";
 
 /**
  * Get images for a virtual IP.
  */
 export async function getVirtualIPImages(
   virtualIPId: number,
-  params?: { category?: string; subcategory?: string }
+  params?: { category?: string; subcategory?: string },
 ): Promise<ApiResponse<VirtualIPImage[]>> {
   const searchParams = new URLSearchParams();
-  if (params?.category) searchParams.append('category', params.category);
-  if (params?.subcategory) searchParams.append('subcategory', params.subcategory);
+  if (params?.category) searchParams.append("category", params.category);
+  if (params?.subcategory)
+    searchParams.append("subcategory", params.subcategory);
 
   const queryString = searchParams.toString();
   const endpoint = queryString
@@ -30,9 +34,11 @@ export async function getVirtualIPImages(
  */
 export async function getVirtualIPImage(
   virtualIPId: number,
-  imageId: number
+  imageId: number,
 ): Promise<ApiResponse<VirtualIPImage>> {
-  return httpClient<VirtualIPImage>(`/api/v1/virtual-ips/${virtualIPId}/images/${imageId}`);
+  return httpClient<VirtualIPImage>(
+    `/api/v1/virtual-ips/${virtualIPId}/images/${imageId}`,
+  );
 }
 
 /**
@@ -48,24 +54,28 @@ export async function uploadVirtualIPImage(
     prompt?: string;
     ai_model?: string;
     is_default?: boolean;
-  }
+  },
 ): Promise<ApiResponse<VirtualIPImage>> {
   const formData = new FormData();
-  formData.append('image', file);
-  formData.append('category', data.category);
-  if (data.subcategory) formData.append('subcategory', data.subcategory);
+  formData.append("image", file);
+  formData.append("category", data.category);
+  if (data.subcategory) formData.append("subcategory", data.subcategory);
   if (data.tags !== undefined) {
-    const tagValue = Array.isArray(data.tags) ? data.tags.join(',') : data.tags;
-    if (tagValue) formData.append('tags', tagValue);
+    const tagValue = Array.isArray(data.tags) ? data.tags.join(",") : data.tags;
+    if (tagValue) formData.append("tags", tagValue);
   }
-  if (data.prompt) formData.append('prompt', data.prompt);
-  if (data.ai_model) formData.append('ai_model', data.ai_model);
-  if (data.is_default !== undefined) formData.append('is_default', data.is_default.toString());
+  if (data.prompt) formData.append("prompt", data.prompt);
+  if (data.ai_model) formData.append("ai_model", data.ai_model);
+  if (data.is_default !== undefined)
+    formData.append("is_default", data.is_default.toString());
 
-  return httpClient<VirtualIPImage>(`/api/v1/virtual-ips/${virtualIPId}/images`, {
-    method: 'POST',
-    body: formData,
-  });
+  return httpClient<VirtualIPImage>(
+    `/api/v1/virtual-ips/${virtualIPId}/images`,
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
 }
 
 /**
@@ -73,11 +83,14 @@ export async function uploadVirtualIPImage(
  */
 export async function deleteVirtualIPImage(
   virtualIPId: number,
-  imageId: number
+  imageId: number,
 ): Promise<ApiResponse<void>> {
-  return httpClient<void>(`/api/v1/virtual-ips/${virtualIPId}/images/${imageId}`, {
-    method: 'DELETE',
-  });
+  return httpClient<void>(
+    `/api/v1/virtual-ips/${virtualIPId}/images/${imageId}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 /**
@@ -85,11 +98,14 @@ export async function deleteVirtualIPImage(
  */
 export async function setDefaultVirtualIPImage(
   virtualIPId: number,
-  imageId: number
+  imageId: number,
 ): Promise<ApiResponse<void>> {
-  return httpClient<void>(`/api/v1/virtual-ips/${virtualIPId}/images/${imageId}/set-default`, {
-    method: 'POST',
-  });
+  return httpClient<void>(
+    `/api/v1/virtual-ips/${virtualIPId}/images/${imageId}/set-default`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 /**
@@ -98,20 +114,24 @@ export async function setDefaultVirtualIPImage(
 export async function updateVirtualIPImage(
   virtualIPId: number,
   imageId: number,
-  update: VirtualIPImageUpdate
+  update: VirtualIPImageUpdate,
 ): Promise<ApiResponse<VirtualIPImage>> {
-  return httpClient<VirtualIPImage>(`/api/v1/virtual-ips/${virtualIPId}/images/${imageId}`, {
-    method: 'PUT',
-    body: JSON.stringify(update),
-  });
+  return httpClient<VirtualIPImage>(
+    `/api/v1/virtual-ips/${virtualIPId}/images/${imageId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(update),
+    },
+  );
 }
 
 /**
  * Get image categories for a virtual IP.
  */
 export async function getVirtualIPImageCategories(
-  virtualIPId: number
+  virtualIPId: number,
 ): Promise<ApiResponse<string[]>> {
-  return httpClient<string[]>(`/api/v1/virtual-ips/${virtualIPId}/images/categories`);
+  return httpClient<string[]>(
+    `/api/v1/virtual-ips/${virtualIPId}/images/categories`,
+  );
 }
-

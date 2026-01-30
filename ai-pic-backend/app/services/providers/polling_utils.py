@@ -6,9 +6,9 @@ across different providers (Keling, MiniMax, etc.).
 """
 
 import asyncio
-from typing import Callable, Optional, Dict, Any, Awaitable
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, Optional
 
 from app.core.logging import get_logger
 
@@ -17,6 +17,7 @@ logger = get_logger(__name__)
 
 class TaskStatus(str, Enum):
     """Standardized task status across providers."""
+
     PENDING = "pending"
     QUEUING = "queuing"
     PREPARING = "preparing"
@@ -55,7 +56,7 @@ class TaskPoller:
         max_delay: float = 30.0,
         backoff_factor: float = 1.0,  # 1.0 = no backoff, >1.0 = exponential backoff
         task_id: Optional[str] = None,
-        task_type: str = "unknown"
+        task_type: str = "unknown",
     ):
         """
         Initialize task poller.
@@ -91,7 +92,7 @@ class TaskPoller:
             return self.initial_delay
 
         # Exponential backoff
-        delay = self.initial_delay * (self.backoff_factor ** self._attempt_count)
+        delay = self.initial_delay * (self.backoff_factor**self._attempt_count)
         return min(delay, self.max_delay)
 
     async def poll(self) -> Optional[Any]:
@@ -138,7 +139,11 @@ class TaskPoller:
                     return self.result_extractor(response)
 
                 elif status == TaskStatus.FAILED:
-                    error_msg = response.get("error") or response.get("message") or "Unknown error"
+                    error_msg = (
+                        response.get("error")
+                        or response.get("message")
+                        or "Unknown error"
+                    )
                     logger.warning(
                         f"Task {self.task_id} failed after {self._attempt_count} attempts "
                         f"({elapsed:.1f}s): {error_msg}"
@@ -151,7 +156,7 @@ class TaskPoller:
                     TaskStatus.QUEUING,
                     TaskStatus.PREPARING,
                     TaskStatus.PROCESSING,
-                    TaskStatus.RUNNING
+                    TaskStatus.RUNNING,
                 ):
                     if attempt < self.max_attempts - 1:
                         delay = self._calculate_delay()
@@ -179,7 +184,7 @@ class TaskPoller:
             except Exception as e:
                 logger.error(
                     f"Error polling task {self.task_id} (attempt {self._attempt_count}): {e}",
-                    exc_info=True
+                    exc_info=True,
                 )
 
                 # Retry on transient errors if not last attempt
@@ -196,7 +201,9 @@ class TaskPoller:
                     raise
 
         # Should not reach here, but handle just in case
-        logger.warning(f"Task {self.task_id} polling exhausted all attempts without resolution")
+        logger.warning(
+            f"Task {self.task_id} polling exhausted all attempts without resolution"
+        )
         return None
 
 
@@ -220,7 +227,7 @@ def keling_status_mapper(response: Dict[str, Any]) -> TaskStatus:
         "succeed": TaskStatus.SUCCESS,
         "success": TaskStatus.SUCCESS,
         "failed": TaskStatus.FAILED,
-        "fail": TaskStatus.FAILED
+        "fail": TaskStatus.FAILED,
     }
 
     return status_map.get(status_str, TaskStatus.PENDING)
@@ -240,7 +247,7 @@ def minimax_status_mapper(response: Dict[str, Any]) -> TaskStatus:
         "Processing": TaskStatus.PROCESSING,
         "Success": TaskStatus.SUCCESS,
         "Fail": TaskStatus.FAILED,
-        "Failed": TaskStatus.FAILED
+        "Failed": TaskStatus.FAILED,
     }
 
     return status_map.get(status_str, TaskStatus.PENDING)

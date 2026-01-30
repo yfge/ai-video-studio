@@ -7,7 +7,9 @@ import { ShortDramaScriptTemplateSelector } from "./ShortDramaScriptTemplateSele
 
 interface ScriptGenerationFormProps {
   generateForm: ScriptGenerationRequest;
-  setGenerateForm: React.Dispatch<React.SetStateAction<ScriptGenerationRequest>>;
+  setGenerateForm: React.Dispatch<
+    React.SetStateAction<ScriptGenerationRequest>
+  >;
   formats: Array<{ value: string; label: string }>;
   languages: Array<{ value: string; label: string }>;
   useAsync: boolean;
@@ -54,7 +56,10 @@ export function ScriptGenerationForm({
           <select
             value={generateForm.format_type}
             onChange={(e) =>
-              setGenerateForm((prev) => ({ ...prev, format_type: e.target.value }))
+              setGenerateForm((prev) => ({
+                ...prev,
+                format_type: e.target.value,
+              }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -92,7 +97,10 @@ export function ScriptGenerationForm({
           <select
             value={generateForm.dialogue_style}
             onChange={(e) =>
-              setGenerateForm((prev) => ({ ...prev, dialogue_style: e.target.value }))
+              setGenerateForm((prev) => ({
+                ...prev,
+                dialogue_style: e.target.value,
+              }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >

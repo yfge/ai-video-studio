@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from app.api.v1.endpoints.virtual_ip_images.async_tasks import (
     process_virtual_ip_image_task,
 )
@@ -78,7 +77,9 @@ def test_process_virtual_ip_image_task_persists_normalized_dimensions(
     import app.api.v1.endpoints.virtual_ip_images.async_tasks as vip_async
 
     monkeypatch.setattr(
-        vip_async.ai_service, "generate_virtual_ip_image", _fake_generate_virtual_ip_image
+        vip_async.ai_service,
+        "generate_virtual_ip_image",
+        _fake_generate_virtual_ip_image,
     )
 
     payload = {

@@ -56,10 +56,16 @@ export function EpisodeWorkflowSteps({
         {steps.map((step, index) => (
           <div key={step.key} className="flex items-center gap-1">
             {statusIcon(step.status)}
-            <span className={step.status === "ready" ? "text-green-700" : "text-gray-600"}>
+            <span
+              className={
+                step.status === "ready" ? "text-green-700" : "text-gray-600"
+              }
+            >
               {step.label}
             </span>
-            {index < steps.length - 1 && <span className="text-gray-300 mx-1">→</span>}
+            {index < steps.length - 1 && (
+              <span className="text-gray-300 mx-1">→</span>
+            )}
           </div>
         ))}
       </div>
@@ -78,7 +84,9 @@ export function EpisodeWorkflowSteps({
                 className={`flex-1 rounded-xl border border-gray-100 bg-gradient-to-br ${colors.bg} p-4`}
               >
                 <div className="flex items-center justify-between">
-                  <div className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}>
+                  <div
+                    className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}
+                  >
                     步骤 {index + 1}
                   </div>
                   {statusIcon(step.status)}
@@ -92,7 +100,9 @@ export function EpisodeWorkflowSteps({
                   disabled={step.status === "generating"}
                   className={`mt-3 inline-flex items-center rounded-lg ${colors.button} px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50`}
                 >
-                  {step.status === "generating" ? "生成中..." : step.actionLabel}
+                  {step.status === "generating"
+                    ? "生成中..."
+                    : step.actionLabel}
                 </button>
               </div>
               {/* Arrow Connector */}

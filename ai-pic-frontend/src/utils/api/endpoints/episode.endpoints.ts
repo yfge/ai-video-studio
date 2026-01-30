@@ -2,21 +2,24 @@
  * Episode API endpoints.
  */
 
-import { httpClient } from '../client';
-import type { Episode, EpisodeGenerationRequest } from '../types/story.types';
-import type { ApiResponse } from '../types/common.types';
+import { httpClient } from "../client";
+import type { Episode, EpisodeGenerationRequest } from "../types/story.types";
+import type { ApiResponse } from "../types/common.types";
 
 // Helper to check if value is a business ID
 function isBusinessIdentifier(value: number | string): boolean {
-  if (typeof value === 'number') return false;
-  const raw = String(value || '').trim();
+  if (typeof value === "number") return false;
+  const raw = String(value || "").trim();
   if (!raw) return false;
   const isDigitsOnly = /^\d+$/.test(raw);
   return !isDigitsOnly || raw.length >= 16;
 }
 
 // Helper to build episode path
-function episodePath(episodeIdOrBiz: number | string, suffix: string = ''): string {
+function episodePath(
+  episodeIdOrBiz: number | string,
+  suffix: string = "",
+): string {
   const base = isBusinessIdentifier(episodeIdOrBiz)
     ? `/api/v1/episodes/business/${episodeIdOrBiz}`
     : `/api/v1/episodes/${episodeIdOrBiz}`;
@@ -34,11 +37,13 @@ export async function getEpisodes(params?: {
   status?: string;
 }): Promise<ApiResponse<Episode[]>> {
   const searchParams = new URLSearchParams();
-  if (params?.story_id) searchParams.append('story_id', params.story_id.toString());
-  if (params?.story_business_id) searchParams.append('story_business_id', params.story_business_id);
-  if (params?.skip) searchParams.append('skip', params.skip.toString());
-  if (params?.limit) searchParams.append('limit', params.limit.toString());
-  if (params?.status) searchParams.append('status', params.status);
+  if (params?.story_id)
+    searchParams.append("story_id", params.story_id.toString());
+  if (params?.story_business_id)
+    searchParams.append("story_business_id", params.story_business_id);
+  if (params?.skip) searchParams.append("skip", params.skip.toString());
+  if (params?.limit) searchParams.append("limit", params.limit.toString());
+  if (params?.status) searchParams.append("status", params.status);
 
   return httpClient<Episode[]>(`/api/v1/episodes?${searchParams}`);
 }
@@ -46,7 +51,9 @@ export async function getEpisodes(params?: {
 /**
  * Get a specific episode.
  */
-export async function getEpisode(idOrBusinessId: number | string): Promise<ApiResponse<Episode>> {
+export async function getEpisode(
+  idOrBusinessId: number | string,
+): Promise<ApiResponse<Episode>> {
   return httpClient<Episode>(episodePath(idOrBusinessId));
 }
 
@@ -54,10 +61,10 @@ export async function getEpisode(idOrBusinessId: number | string): Promise<ApiRe
  * Generate episodes for a story.
  */
 export async function generateEpisodes(
-  data: EpisodeGenerationRequest
+  data: EpisodeGenerationRequest,
 ): Promise<ApiResponse<Episode[]>> {
-  return httpClient<Episode[]>('/api/v1/episodes/generate', {
-    method: 'POST',
+  return httpClient<Episode[]>("/api/v1/episodes/generate", {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }
@@ -66,10 +73,10 @@ export async function generateEpisodes(
  * Preview episode generation prompt.
  */
 export async function previewEpisodePrompt(
-  data: EpisodeGenerationRequest
+  data: EpisodeGenerationRequest,
 ): Promise<ApiResponse<{ prompt: string }>> {
-  return httpClient<{ prompt: string }>('/api/v1/episodes/prompt/preview', {
-    method: 'POST',
+  return httpClient<{ prompt: string }>("/api/v1/episodes/prompt/preview", {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }
@@ -78,12 +85,15 @@ export async function previewEpisodePrompt(
  * Generate episodes asynchronously.
  */
 export async function generateEpisodesAsync(
-  data: EpisodeGenerationRequest
+  data: EpisodeGenerationRequest,
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
-  return httpClient<{ task_id: number; status: string }>('/api/v1/episodes/generate-async', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  return httpClient<{ task_id: number; status: string }>(
+    "/api/v1/episodes/generate-async",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
 }
 
 /**
@@ -91,10 +101,10 @@ export async function generateEpisodesAsync(
  */
 export async function updateEpisode(
   idOrBusinessId: number | string,
-  data: Partial<Episode>
+  data: Partial<Episode>,
 ): Promise<ApiResponse<Episode>> {
   return httpClient<Episode>(episodePath(idOrBusinessId), {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -102,15 +112,17 @@ export async function updateEpisode(
 /**
  * Delete an episode.
  */
-export async function deleteEpisode(idOrBusinessId: number | string): Promise<ApiResponse<void>> {
-  return httpClient<void>(episodePath(idOrBusinessId), { method: 'DELETE' });
+export async function deleteEpisode(
+  idOrBusinessId: number | string,
+): Promise<ApiResponse<void>> {
+  return httpClient<void>(episodePath(idOrBusinessId), { method: "DELETE" });
 }
 
 /**
  * Get episodes for a story.
  */
 export async function getStoryEpisodes(
-  storyIdOrBusinessId: number | string
+  storyIdOrBusinessId: number | string,
 ): Promise<ApiResponse<Episode[]>> {
   const endpoint = isBusinessIdentifier(storyIdOrBusinessId)
     ? `/api/v1/episodes/story/business/${storyIdOrBusinessId}`
@@ -122,10 +134,10 @@ export async function getStoryEpisodes(
  * Regenerate an episode.
  */
 export async function regenerateEpisode(
-  idOrBusinessId: number | string
+  idOrBusinessId: number | string,
 ): Promise<ApiResponse<Episode>> {
-  return httpClient<Episode>(episodePath(idOrBusinessId, '/regenerate'), {
-    method: 'POST',
+  return httpClient<Episode>(episodePath(idOrBusinessId, "/regenerate"), {
+    method: "POST",
   });
 }
 

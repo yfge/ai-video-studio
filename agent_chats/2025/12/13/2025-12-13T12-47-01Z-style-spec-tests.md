@@ -41,4 +41,3 @@ summary: "Added unit tests for StyleSpec resolution and prompt injection; fixed 
 ## Linked Commits
 
 - test(backend): add style spec unit coverage
-

@@ -87,7 +87,11 @@ export function ImageToImageModal({
     defaultStyleSpec,
     defaultAdvancedValue,
   });
-  const { genMode, notes: modalNotes, toggleReference } = useReferenceSelection({
+  const {
+    genMode,
+    notes: modalNotes,
+    toggleReference,
+  } = useReferenceSelection({
     modelType,
     model: selectedModel,
     referenceSectionsLength: referenceSections.length,
@@ -121,8 +125,15 @@ export function ImageToImageModal({
       size: size || undefined,
       aspect_ratio: supportsAspectRatio ? aspectRatio || undefined : undefined,
       style: style || undefined,
-      style_preset_id: effectiveShowStylePreset ? stylePresetId || undefined : undefined,
-      style_spec: imageGenUi.supportsStyleSpec && styleSpec && Object.keys(styleSpec).length > 0 ? styleSpec : undefined,
+      style_preset_id: effectiveShowStylePreset
+        ? stylePresetId || undefined
+        : undefined,
+      style_spec:
+        imageGenUi.supportsStyleSpec &&
+        styleSpec &&
+        Object.keys(styleSpec).length > 0
+          ? styleSpec
+          : undefined,
       referenceImages: refs,
       labeledReferences: labeledRefs.length > 0 ? labeledRefs : undefined,
       seed: advanced.seed,

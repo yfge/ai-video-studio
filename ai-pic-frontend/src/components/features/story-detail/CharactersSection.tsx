@@ -21,7 +21,8 @@ export function CharactersSection({ story }: CharactersSectionProps) {
     : [];
 
   const characterRelationships =
-    story.character_relationships && typeof story.character_relationships === "object"
+    story.character_relationships &&
+    typeof story.character_relationships === "object"
       ? story.character_relationships
       : null;
 
@@ -37,7 +38,10 @@ export function CharactersSection({ story }: CharactersSectionProps) {
           <h3 className="text-lg font-medium text-gray-800 mb-2">主要角色</h3>
           <div className="space-y-2">
             {mainCharacters.map((ch, idx) => (
-              <div key={idx} className="border border-gray-100 rounded p-3 bg-gray-50">
+              <div
+                key={idx}
+                className="border border-gray-100 rounded p-3 bg-gray-50"
+              >
                 <div className="font-medium text-gray-900">
                   {ch.name || ch.character_name || `角色 ${idx + 1}`}
                 </div>
@@ -68,14 +72,19 @@ export function CharactersSection({ story }: CharactersSectionProps) {
         <div>
           <h3 className="text-lg font-medium text-gray-800 mb-2">角色关系</h3>
           <div className="space-y-2">
-            {Object.entries(characterRelationships as Record<string, unknown>).map(
-              ([key, value]) => (
-                <div key={key} className="text-sm text-gray-700 whitespace-pre-wrap">
-                  <span className="font-medium text-gray-900">{key}：</span>
-                  {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
-                </div>
-              )
-            )}
+            {Object.entries(
+              characterRelationships as Record<string, unknown>,
+            ).map(([key, value]) => (
+              <div
+                key={key}
+                className="text-sm text-gray-700 whitespace-pre-wrap"
+              >
+                <span className="font-medium text-gray-900">{key}：</span>
+                {typeof value === "string"
+                  ? value
+                  : JSON.stringify(value, null, 2)}
+              </div>
+            ))}
           </div>
         </div>
       )}

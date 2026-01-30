@@ -30,25 +30,30 @@ Continue with Phase 4 provider refactoring (from context continuation).
 ### Created google_provider package structure:
 
 1. **`__init__.py`** (9 lines)
+
    - Package exports: `GoogleProvider`
 
 2. **`helpers.py`** (65 lines)
+
    - Model ID utilities: `clean_model_id`
    - Image parsing: `parse_images`
    - Download helpers: `prefer_http_for_download`, `fetch_inline_image`
 
 3. **`models.py`** (185 lines)
+
    - Model definitions: Gemini 1.0, 1.5, 2.0, 2.5, 3.0 variants
    - Type checking: `supports_type`, `fallback_models`
    - Model inference: `normalize_model_id`, `supported_methods`, `infer_model_type`, `infer_capabilities`
    - Payload processing: `from_payload`, `dedupe`
 
 4. **`provider.py`** (182 lines)
+
    - Main `GoogleProvider` class
    - Client initialization with Google API headers
    - Delegates to text and image modules
 
 5. **`text.py`** (204 lines)
+
    - Text generation: `generate_text`
    - Streaming: `stream_generate_content`
    - JSON schema support
@@ -59,9 +64,11 @@ Continue with Phase 4 provider refactoring (from context continuation).
    - Multi-image reference support (up to 14 images)
 
 ### Deleted:
+
 - `ai-pic-backend/app/services/providers/google_provider.py` (original 760 line monolith)
 
 ### Import compatibility:
+
 - Package `__init__.py` exports `GoogleProvider`, maintaining API compatibility
 - No changes needed to `ai_service_manager.py` or `providers/__init__.py`
 

@@ -29,18 +29,22 @@ Continue with Phase 4 provider refactoring (from context continuation).
 ### Created keling_provider package structure:
 
 1. **`__init__.py`** (9 lines)
+
    - Package exports: `KelingProvider`
 
 2. **`models.py`** (221 lines)
+
    - Model definitions: 10 ModelInfo instances for V1/V2 video and image models
    - Includes UI metadata for frontend rendering
 
 3. **`provider.py`** (222 lines)
+
    - Main `KelingProvider` class
    - JWT authentication with KelingAuthManager
    - Delegates to specialized modules for image/video generation
 
 4. **`image.py`** (177 lines)
+
    - Image generation: `generate_image`, `poll_image_task`
    - Supports reference images, character/face modes
 
@@ -50,9 +54,11 @@ Continue with Phase 4 provider refactoring (from context continuation).
    - Camera control and multi-image support
 
 ### Deleted:
+
 - `ai-pic-backend/app/services/providers/keling_provider.py` (original 843 line monolith)
 
 ### Import compatibility:
+
 - Package `__init__.py` exports `KelingProvider`, maintaining API compatibility
 - No changes needed to `ai_service_manager.py` or `providers/__init__.py`
 

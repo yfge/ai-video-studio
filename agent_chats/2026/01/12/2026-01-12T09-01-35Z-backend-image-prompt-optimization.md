@@ -60,4 +60,3 @@ summary: "Improve image-generation prompt templates for consistent quality acros
 ## Linked Commits
 
 - (pending)
-

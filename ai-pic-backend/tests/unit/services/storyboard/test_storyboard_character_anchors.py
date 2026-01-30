@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.models.script import Story, StoryCharacter
 from app.models.virtual_ip import VirtualIP
 from app.services.storyboard.storyboard_character_anchors import (

@@ -1,59 +1,69 @@
-from pydantic_settings import BaseSettings
-from typing import List, Optional
 import os
+from typing import List, Optional
+
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
     # 项目基本信息
     PROJECT_NAME: str = "AI图片生成API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
-    
+
     # 安全配置
     SECRET_KEY: str = "your-secret-key-here"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
+
     # 数据库配置
-    DATABASE_URL: str = "mysql+pymysql://root:Pa88word@127.0.0.1:13306/ai_video_studio?charset=utf8mb4"
-    
+    DATABASE_URL: str = (
+        "mysql+pymysql://root:Pa88word@127.0.0.1:13306/ai_video_studio?charset=utf8mb4"
+    )
+
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379"
-    
-    # CORS配置  
-    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "localhost:8000", "127.0.0.1:8000", "*"]
-    
+
+    # CORS配置
+    ALLOWED_HOSTS: List[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "localhost:8000",
+        "127.0.0.1:8000",
+        "*",
+    ]
+
     # 文件上传配置
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS: List[str] = [".jpg", ".jpeg", ".png", ".gif"]
-    
+
     # AI服务配置
     AI_SERVICE_URL: Optional[str] = None
     AI_API_KEY: Optional[str] = None
-    
+
     # OpenAI配置
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_BASE_URL: Optional[str] = None
-    
+
     # Stability AI配置
     STABILITY_API_KEY: Optional[str] = None
-    
+
     # 其他AI服务配置
     # 可灵AI（快手）- 双密钥认证
     KELING_API_KEY: Optional[str] = None
     KELING_SECRET_KEY: Optional[str] = None
-    
-    # 即梦AI - 双密钥认证  
+
+    # 即梦AI - 双密钥认证
     JIMENG_API_KEY: Optional[str] = None
     JIMENG_SECRET_KEY: Optional[str] = None
-    
+
     # MiniMax配置
     MINIMAX_API_KEY: Optional[str] = None
     MINIMAX_GROUP_ID: Optional[str] = None
-    
+
     # DeepSeek配置
     DEEPSEEK_API_KEY: Optional[str] = None
-    
+
     # 火山引擎配置
     VOLCENGINE_API_KEY: Optional[str] = None
     VOLCENGINE_SECRET_KEY: Optional[str] = None
@@ -70,20 +80,20 @@ class Settings(BaseSettings):
     GOOGLE_VERTEX_API_KEY: Optional[str] = None
     GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON: Optional[str] = None
     GOOGLE_VERTEX_SERVICE_ACCOUNT_PATH: Optional[str] = None
-    
+
     # 阿里云OSS配置
     ALIYUN_ACCESS_KEY_ID: Optional[str] = None
     ALIYUN_ACCESS_KEY_SECRET: Optional[str] = None
     ALIYUN_OSS_ENDPOINT: Optional[str] = None
     ALIYUN_OSS_BUCKET: Optional[str] = None
     ALIYUN_OSS_DOMAIN: Optional[str] = None
-    
+
     # 邮件配置
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
-    
+
     # 日志配置
     LOG_LEVEL: str = "INFO"
     LOG_DIR: str = "logs"
@@ -94,10 +104,11 @@ class Settings(BaseSettings):
 
     # 容器内部访问后端的基础地址（用于 Celery / Provider 拉取本机上传的图片等资源）
     INTERNAL_BACKEND_URL: Optional[str] = None
-    
+
     class Config:
         env_file = ".env"
         case_sensitive = True
+
 
 settings = Settings()
 
@@ -116,9 +127,15 @@ settings.OPENAI_API_KEY = _normalize_optional_str(settings.OPENAI_API_KEY)
 settings.OPENAI_BASE_URL = _normalize_optional_str(settings.OPENAI_BASE_URL)
 settings.GOOGLE_BASE_URL = _normalize_optional_str(settings.GOOGLE_BASE_URL)
 settings.GOOGLE_VIDEO_BASE_URL = _normalize_optional_str(settings.GOOGLE_VIDEO_BASE_URL)
-settings.GOOGLE_VERTEX_PROJECT_ID = _normalize_optional_str(settings.GOOGLE_VERTEX_PROJECT_ID)
-settings.GOOGLE_VERTEX_LOCATION = _normalize_optional_str(settings.GOOGLE_VERTEX_LOCATION)
-settings.GOOGLE_VERTEX_ACCESS_TOKEN = _normalize_optional_str(settings.GOOGLE_VERTEX_ACCESS_TOKEN)
+settings.GOOGLE_VERTEX_PROJECT_ID = _normalize_optional_str(
+    settings.GOOGLE_VERTEX_PROJECT_ID
+)
+settings.GOOGLE_VERTEX_LOCATION = _normalize_optional_str(
+    settings.GOOGLE_VERTEX_LOCATION
+)
+settings.GOOGLE_VERTEX_ACCESS_TOKEN = _normalize_optional_str(
+    settings.GOOGLE_VERTEX_ACCESS_TOKEN
+)
 settings.GOOGLE_VERTEX_API_KEY = _normalize_optional_str(settings.GOOGLE_VERTEX_API_KEY)
 settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON = _normalize_optional_str(
     settings.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON
@@ -138,6 +155,7 @@ settings.VOLCENGINE_API_KEY = _normalize_optional_str(settings.VOLCENGINE_API_KE
 settings.VOLCENGINE_SECRET_KEY = _normalize_optional_str(settings.VOLCENGINE_SECRET_KEY)
 settings.VOLCENGINE_REGION = _normalize_optional_str(settings.VOLCENGINE_REGION)
 settings.INTERNAL_BACKEND_URL = _normalize_optional_str(settings.INTERNAL_BACKEND_URL)
+
 
 def _is_container_env() -> bool:
     """Heuristic to detect containerized environments (Docker/K8s)."""
@@ -163,7 +181,9 @@ def _resolve_internal_backend_url(raw: Optional[str]) -> str:
     normalized = _normalize_optional_str(raw)
     if normalized:
         normalized = normalized.rstrip("/")
-    container_default = os.getenv("CONTAINER_BACKEND_URL") or "http://ai-video-backend:8000"
+    container_default = (
+        os.getenv("CONTAINER_BACKEND_URL") or "http://ai-video-backend:8000"
+    )
 
     if _is_container_env():
         # 在容器里不要使用 localhost，Celery worker 需要访问后端容器
@@ -175,7 +195,9 @@ def _resolve_internal_backend_url(raw: Optional[str]) -> str:
 
 
 # 容器外默认 localhost，容器内默认 docker-compose service，允许显式覆盖
-settings.INTERNAL_BACKEND_URL = _resolve_internal_backend_url(settings.INTERNAL_BACKEND_URL)
+settings.INTERNAL_BACKEND_URL = _resolve_internal_backend_url(
+    settings.INTERNAL_BACKEND_URL
+)
 
 # 确保上传目录存在
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True) 
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

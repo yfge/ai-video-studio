@@ -27,5 +27,5 @@ variables:
 usage_examples:
   - frames_per_scene: 5
     selected_scenes: [1, 2]
-    context_json: "{\"story\":{...}}"
-    script_json: "{\"scenes\":[...]}"
+    context_json: '{"story":{...}}'
+    script_json: '{"scenes":[...]}'

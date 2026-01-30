@@ -36,11 +36,11 @@ paths:
               - application/json
             default: application/json
       requestBody:
-        description: ''
+        description: ""
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/T2aV2Req'
+              $ref: "#/components/schemas/T2aV2Req"
             examples:
               非流式:
                 value:
@@ -86,12 +86,12 @@ paths:
                   subtitle_enable: false
         required: true
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/T2aV2Resp'
+                $ref: "#/components/schemas/T2aV2Resp"
               examples:
                 非流式:
                   value:
@@ -120,14 +120,14 @@ paths:
                       trace_id: 01b8bf9bb7433cc75c18eee6cfa8fe21
                       base_resp:
                         status_code: 0
-                        status_msg: ''
+                        status_msg: ""
                     - data:
                         audio: hex编码的audio_chunk2
                         status: 1
                       trace_id: 01b8bf9bb7433cc75c18eee6cfa8fe21
                       base_resp:
                         status_code: 0
-                        status_msg: ''
+                        status_msg: ""
                     - data:
                         audio: hex编码的audio
                         status: 2
@@ -147,7 +147,7 @@ paths:
                         status_msg: success
             text/event-stream:
               schema:
-                $ref: '#/components/schemas/T2aV2Resp'
+                $ref: "#/components/schemas/T2aV2Resp"
               examples:
                 流式:
                   value:
@@ -157,14 +157,14 @@ paths:
                       trace_id: 01b8bf9bb7433cc75c18eee6cfa8fe21
                       base_resp:
                         status_code: 0
-                        status_msg: ''
+                        status_msg: ""
                     - data:
                         audio: hex编码的audio_chunk2
                         status: 1
                       trace_id: 01b8bf9bb7433cc75c18eee6cfa8fe21
                       base_resp:
                         status_code: 0
-                        status_msg: ''
+                        status_msg: ""
                     - data:
                         audio: hex编码的audio
                         status: 2
@@ -216,17 +216,17 @@ components:
           type: boolean
           description: 控制是否流式输出。默认 false，即不开启流式
         stream_options:
-          $ref: '#/components/schemas/T2AStreamOption'
+          $ref: "#/components/schemas/T2AStreamOption"
         voice_setting:
-          $ref: '#/components/schemas/T2AVoiceSetting'
+          $ref: "#/components/schemas/T2AVoiceSetting"
         audio_setting:
-          $ref: '#/components/schemas/T2AAudioSetting'
+          $ref: "#/components/schemas/T2AAudioSetting"
         pronunciation_dict:
-          $ref: '#/components/schemas/PronunciationDict'
+          $ref: "#/components/schemas/PronunciationDict"
         timber_weights:
           type: array
           items:
-            $ref: '#/components/schemas/TimbreWeights'
+            $ref: "#/components/schemas/TimbreWeights"
         language_boost:
           type: string
           description: 是否增强对指定的小语种和方言的识别能力。默认值为 `null`，可设置为 `auto` 让模型自主判断。
@@ -274,7 +274,7 @@ components:
             - auto
           default: null
         voice_modify:
-          $ref: '#/components/schemas/VoiceModify'
+          $ref: "#/components/schemas/VoiceModify"
         subtitle_enable:
           type: boolean
           description: >-
@@ -367,7 +367,7 @@ components:
               description: |-
                 状态码。
 
-                 您可在header中获取本次会话的trace_id，用于在咨询/反馈时帮助定位问题 
+                 您可在header中获取本次会话的trace_id，用于在咨询/反馈时帮助定位问题
 
                 - `0`: 请求结果正常
                 - `1000`: 未知错误
@@ -594,7 +594,6 @@ components:
         `HTTP: Bearer Auth`
          - Security Scheme Type: http
          - HTTP Authorization Scheme: Bearer API_key，用于验证账户信息，可在 [账户管理>接口密钥](https://platform.minimaxi.com/user-center/basic-information/interface-key) 中查看。
-
 ````
 
 ---

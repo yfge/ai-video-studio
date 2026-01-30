@@ -1,15 +1,22 @@
-from app.models.story_structure import Scene, Shot
 from app.models.script import Script
+from app.models.story_structure import Scene, Shot
 from tests.factories import EpisodeFactory, setup_factories
 
 
-def test_generate_script_syncs_normalized_scenes(client, db_session, mock_ai_service, monkeypatch):
+def test_generate_script_syncs_normalized_scenes(
+    client, db_session, mock_ai_service, monkeypatch
+):
     setup_factories(db_session)
     episode = EpisodeFactory(
         scene_count=2,
         extra_metadata={
             "scenes": [
-                {"scene_number": 1, "summary": "同步规范化场景测试", "location": "校园", "time_of_day": "白天"},
+                {
+                    "scene_number": 1,
+                    "summary": "同步规范化场景测试",
+                    "location": "校园",
+                    "time_of_day": "白天",
+                },
                 {"scene_number": 2, "summary": "第二个场景"},
             ]
         },
@@ -60,7 +67,9 @@ def test_generate_script_syncs_normalized_scenes(client, db_session, mock_ai_ser
     assert len(scenes) >= 1
     assert scenes[0].slug_line
 
-    shots = db_session.query(Shot).filter(Shot.scene_id.in_([s.id for s in scenes])).all()
+    shots = (
+        db_session.query(Shot).filter(Shot.scene_id.in_([s.id for s in scenes])).all()
+    )
     assert len(shots) == len(scenes)
     assert all(sh.shot_number == "1" for sh in shots)
 

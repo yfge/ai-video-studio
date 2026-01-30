@@ -2,9 +2,8 @@ import os
 from io import BytesIO
 
 import pytest
-from PIL import Image
-
 from app.services.providers.google_provider.helpers import maybe_compress_inline_image
+from PIL import Image
 
 
 @pytest.mark.unit
@@ -26,4 +25,3 @@ def test_maybe_compress_inline_image_downscales_and_reencodes():
 
     decoded = Image.open(BytesIO(out))
     assert max(decoded.size) <= 512
-

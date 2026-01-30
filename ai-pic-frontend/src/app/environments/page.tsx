@@ -1,63 +1,66 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { AuthGuard } from '@/components/shared'
-import { Navigation } from '@/components/layouts'
-import { EnvironmentCreateOverlay, EnvironmentList } from '@/components/features'
-import { storyStructureAPI, type Environment } from '@/utils/api'
-import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AuthGuard } from "@/components/shared";
+import { Navigation } from "@/components/layouts";
+import {
+  EnvironmentCreateOverlay,
+  EnvironmentList,
+} from "@/components/features";
+import { storyStructureAPI, type Environment } from "@/utils/api";
+import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 
 function EnvironmentsPageContent() {
-  const router = useRouter()
-  const { showAlert } = useAlertModal()
-  const [list, setList] = useState<Environment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showCreateForm, setShowCreateForm] = useState(false)
+  const router = useRouter();
+  const { showAlert } = useAlertModal();
+  const [list, setList] = useState<Environment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setLoading(true)
-      const res = await storyStructureAPI.listEnvironments()
+      setLoading(true);
+      const res = await storyStructureAPI.listEnvironments();
       if (res.success && res.data) {
-        setList(res.data)
+        setList(res.data);
       } else {
-        showAlert({ message: res.error || '加载环境失败', variant: 'error' })
+        showAlert({ message: res.error || "加载环境失败", variant: "error" });
       }
     } catch (e) {
-      console.error(e)
-      showAlert({ message: '加载环境失败', variant: 'error' })
+      console.error(e);
+      showAlert({ message: "加载环境失败", variant: "error" });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [showAlert])
+  }, [showAlert]);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+  }, [load]);
 
   const handleDelete = (env: Environment) => {
     showAlert({
-      title: '确认删除环境',
-      message: '删除后引用该环境的场景将失去关联，确定删除吗？',
-      variant: 'warning',
-      confirmText: '删除',
+      title: "确认删除环境",
+      message: "删除后引用该环境的场景将失去关联，确定删除吗？",
+      variant: "warning",
+      confirmText: "删除",
       onConfirm: async () => {
         try {
-          const res = await storyStructureAPI.deleteEnvironment(env.id)
+          const res = await storyStructureAPI.deleteEnvironment(env.id);
           if (res.success) {
-            setList(prev => prev.filter(item => item.id !== env.id))
-            showAlert({ message: '删除成功', variant: 'success' })
+            setList((prev) => prev.filter((item) => item.id !== env.id));
+            showAlert({ message: "删除成功", variant: "success" });
           } else {
-            showAlert({ message: res.error || '删除失败', variant: 'error' })
+            showAlert({ message: res.error || "删除失败", variant: "error" });
           }
         } catch (e) {
-          console.error(e)
-          showAlert({ message: '删除失败', variant: 'error' })
+          console.error(e);
+          showAlert({ message: "删除失败", variant: "error" });
         }
       },
-    })
-  }
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -66,7 +69,9 @@ function EnvironmentsPageContent() {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">环境资产</h2>
-            <p className="text-sm text-gray-500">列表仅展示概要信息，图片在详情内管理</p>
+            <p className="text-sm text-gray-500">
+              列表仅展示概要信息，图片在详情内管理
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -88,18 +93,20 @@ function EnvironmentsPageContent() {
           loading={loading}
           list={list}
           onRefresh={() => void load()}
-          onManage={env => router.push(`/environments/${env.business_id || env.id}`)}
+          onManage={(env) =>
+            router.push(`/environments/${env.business_id || env.id}`)
+          }
           onDelete={handleDelete}
         />
 
         <EnvironmentCreateOverlay
           open={showCreateForm}
           onClose={() => setShowCreateForm(false)}
-          onCreated={env => setList(prev => [env, ...prev])}
+          onCreated={(env) => setList((prev) => [env, ...prev])}
         />
       </main>
     </div>
-  )
+  );
 }
 
 export default function EnvironmentsPage() {
@@ -107,5 +114,5 @@ export default function EnvironmentsPage() {
     <AuthGuard>
       <EnvironmentsPageContent />
     </AuthGuard>
-  )
+  );
 }

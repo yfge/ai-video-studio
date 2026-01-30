@@ -17,6 +17,7 @@ summary: "Created comprehensive Kling AI API documentation including authenticat
 ## User Prompt
 
 用户要求将 Kling AI（可灵）的 API 文档从网页内容整理成 markdown 格式保存到项目中，包括：
+
 1. 公共信息（调用域名、接口鉴权、错误码）
 2. 图生视频接口文档
 3. 多图参考生视频接口文档
@@ -35,28 +36,33 @@ summary: "Created comprehensive Kling AI API documentation including authenticat
 ### 新增文件
 
 1. **docs/api/keling/README.md** - 文档索引和快速开始指南
+
    - 包含所有文档的导航链接
    - 快速开始流程说明
    - 重要提示和技术支持信息
 
 2. **docs/api/keling/common-info.md** - 公共信息
+
    - 调用域名：`https://api-beijing.klingai.com`
    - JWT Token 鉴权方法（包含 Python 示例代码）
    - 完整的错误码对照表（HTTP 状态码和业务码）
 
 3. **docs/api/keling/imagetovideo.md** - 图生视频接口
+
    - 创建任务接口：`POST /v1/videos/image2video`
    - 查询单个任务接口：`GET /v1/videos/image2video/{id}`
    - 查询任务列表接口：`GET /v1/videos/image2video`
    - 支持功能：首尾帧控制、运动笔刷、摄像机运镜控制、音色控制
 
 4. **docs/api/keling/multi-imagetovideo.md** - 多图参考生视频接口
+
    - 创建任务接口：`POST /v1/videos/multi-image2video`（支持最多4张图片）
    - 查询单个任务接口：`GET /v1/videos/multi-image2video/{id}`
    - 查询任务列表接口：`GET /v1/videos/multi-image2video`
    - 支持自定义画面纵横比
 
 5. **docs/api/keling/image-generation.md** - 图像生成接口
+
    - 创建任务接口：`POST /v1/images/generations`
    - 查询单个任务接口：`GET /v1/images/generations/{id}`
    - 查询任务列表接口：`GET /v1/images/generations`
@@ -86,6 +92,7 @@ ls -lh docs/api/keling/
 ```
 
 确认创建了6个文档文件：
+
 - README.md (3.1K) - 索引
 - common-info.md (3.8K) - 公共信息
 - imagetovideo.md (15K) - 图生视频

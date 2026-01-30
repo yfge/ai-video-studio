@@ -10,8 +10,14 @@ import { useVirtualIPImageGeneration } from "./virtual-ip/useVirtualIPImageGener
 import { useVirtualIPImageUpload } from "./virtual-ip/useVirtualIPImageUpload";
 import { useVirtualIPImageVariants } from "./virtual-ip/useVirtualIPImageVariants";
 
-export { VIRTUAL_IP_STYLE_SPEC_FIELDS, resolveImageUrl } from "./virtual-ip/virtualIpImageConstants";
-export type { ImageGenerationFormState, UploadFormState } from "./virtual-ip/virtualIpImageTypes";
+export {
+  VIRTUAL_IP_STYLE_SPEC_FIELDS,
+  resolveImageUrl,
+} from "./virtual-ip/virtualIpImageConstants";
+export type {
+  ImageGenerationFormState,
+  UploadFormState,
+} from "./virtual-ip/virtualIpImageTypes";
 
 export interface UseVirtualIPImagesOptions {
   virtualIPKey: string;
@@ -34,7 +40,12 @@ export function useVirtualIPImages({
   showAlert,
   router,
 }: UseVirtualIPImagesOptions) {
-  const data = useVirtualIPImageData({ virtualIPKey, virtualIP, skipVirtualIPFetch, showAlert });
+  const data = useVirtualIPImageData({
+    virtualIPKey,
+    virtualIP,
+    skipVirtualIPFetch,
+    showAlert,
+  });
   const generation = useVirtualIPImageGeneration({
     virtualIPId: data.virtualIPId,
     showAlert,

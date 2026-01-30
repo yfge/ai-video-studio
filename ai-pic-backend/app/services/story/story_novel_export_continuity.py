@@ -16,7 +16,11 @@ def init_continuity_ledger(*, story_payload: Dict[str, Any]) -> Dict[str, Any]:
             continue
         name = (item.get("name") or "").strip()
         if not name:
-            vip = item.get("virtual_ip") if isinstance(item.get("virtual_ip"), dict) else {}
+            vip = (
+                item.get("virtual_ip")
+                if isinstance(item.get("virtual_ip"), dict)
+                else {}
+            )
             name = str(vip.get("name") or "").strip()
         if not name or name in characters:
             continue
@@ -104,7 +108,9 @@ def format_summary_lines(lines: List[str]) -> str:
     return "\n".join(cleaned)
 
 
-def build_plan_context(plan: Dict[str, Any], *, chapters: List[Dict[str, Any]], index: int) -> Dict[str, Any]:
+def build_plan_context(
+    plan: Dict[str, Any], *, chapters: List[Dict[str, Any]], index: int
+) -> Dict[str, Any]:
     overview: list[dict[str, Any]] = []
     for ch in chapters:
         if not isinstance(ch, dict):
@@ -135,7 +141,8 @@ def build_plan_context(plan: Dict[str, Any], *, chapters: List[Dict[str, Any]], 
             "target_words": current.get("target_words"),
             "chapter_goal": current.get("chapter_goal"),
             "key_beats": current.get("key_beats") or current.get("beats"),
-            "cliffhanger_hint": current.get("cliffhanger_hint") or current.get("cliffhanger"),
+            "cliffhanger_hint": current.get("cliffhanger_hint")
+            or current.get("cliffhanger"),
         },
         "next_chapter": (
             {
@@ -144,7 +151,8 @@ def build_plan_context(plan: Dict[str, Any], *, chapters: List[Dict[str, Any]], 
                 "target_words": next_ch.get("target_words"),
                 "chapter_goal": next_ch.get("chapter_goal"),
                 "key_beats": next_ch.get("key_beats") or next_ch.get("beats"),
-                "cliffhanger_hint": next_ch.get("cliffhanger_hint") or next_ch.get("cliffhanger"),
+                "cliffhanger_hint": next_ch.get("cliffhanger_hint")
+                or next_ch.get("cliffhanger"),
             }
             if isinstance(next_ch, dict)
             else None
@@ -160,7 +168,9 @@ def _truncate_list(values: Any, max_items: int) -> list:
 
 def compact_ledger_for_prompt(ledger: Dict[str, Any]) -> Dict[str, Any]:
     base: dict[str, Any] = ledger if isinstance(ledger, dict) else {}
-    characters = base.get("characters") if isinstance(base.get("characters"), dict) else {}
+    characters = (
+        base.get("characters") if isinstance(base.get("characters"), dict) else {}
+    )
 
     facts = _truncate_list(base.get("facts"), 25)
     open_threads = _truncate_list(base.get("open_threads"), 25)
@@ -179,7 +189,9 @@ def compact_ledger_for_prompt(ledger: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def normalize_ledger_update_payload(payload: Dict[str, Any]) -> Tuple[Dict[str, Any], str, str]:
+def normalize_ledger_update_payload(
+    payload: Dict[str, Any]
+) -> Tuple[Dict[str, Any], str, str]:
     ledger_raw = payload.get("ledger")
     ledger = (
         compact_ledger_for_prompt(ledger_raw)

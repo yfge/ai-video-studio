@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Tuple
 
-
 SHOT_CYCLE = ["远景", "中景", "近景", "特写"]
 MOVEMENT_CYCLE = ["固定", "推", "拉", "摇", "移", "跟", "变焦"]
 COMPOSITION_CYCLE = ["三分法", "对称", "前后景", "对角线", "中心对称"]

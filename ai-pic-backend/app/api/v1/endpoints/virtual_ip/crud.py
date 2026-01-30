@@ -1,12 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
 from app.schemas.virtual_ip import VirtualIPCreate, VirtualIPResponse, VirtualIPUpdate
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 

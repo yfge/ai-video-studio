@@ -34,7 +34,9 @@ def _filter_ascii_metadata(metadata: dict[str, Any] | None) -> dict[str, str]:
             value_str = str(value)
             key_str.encode("ascii")
             value_str.encode("ascii")
-        except Exception:  # noqa: BLE001 - defensive: avoid breaking uploads on metadata issues
+        except (
+            Exception
+        ):  # noqa: BLE001 - defensive: avoid breaking uploads on metadata issues
             continue
         safe[key_str] = value_str
     return safe

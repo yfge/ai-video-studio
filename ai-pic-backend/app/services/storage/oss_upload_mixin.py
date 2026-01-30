@@ -63,7 +63,9 @@ class OSSUploadMixin:
         """
         try:
             timeout = 180.0 if file_type == "video" else 60.0
-            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            async with httpx.AsyncClient(
+                timeout=timeout, follow_redirects=True
+            ) as client:
                 response = await client.get(url)
                 response.raise_for_status()
                 file_content = response.content
@@ -109,7 +111,9 @@ class OSSUploadMixin:
                         safe_key = str(key).replace("_", "-")
                         headers[f"x-oss-meta-{safe_key}"] = value_str
                     except UnicodeEncodeError:
-                        self.logger.warning("跳过包含非ASCII字符的metadata: %s=%s", key, value_str)
+                        self.logger.warning(
+                            "跳过包含非ASCII字符的metadata: %s=%s", key, value_str
+                        )
 
             def _put():
                 return self.bucket.put_object(object_key, file_content, headers=headers)
@@ -181,4 +185,3 @@ class OSSUploadMixin:
                 processed_results.append(result)
 
         return processed_results
-

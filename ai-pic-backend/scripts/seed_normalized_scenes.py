@@ -9,6 +9,7 @@ Notes:
 - Requires Alembic migration `a1b2c3d4e5f6_add_story_structure_tables.py` applied.
 - Non-destructive: only inserts missing scene rows for the target script_id.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,7 +19,6 @@ from typing import Any, List
 from app.core.database import SessionLocal
 from app.models.script import Script
 from app.models.story_structure import Scene
-
 
 logger = logging.getLogger("seed_normalized_scenes")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -58,9 +58,7 @@ def seed_for_script(script_id: int, *, dry_run: bool = False) -> int:
             logger.info("Script %s has no JSON scenes; nothing to seed.", script_id)
             return 0
 
-        existing = (
-            db.query(Scene).filter(Scene.script_id == script_id).all()
-        )
+        existing = db.query(Scene).filter(Scene.script_id == script_id).all()
         existing_keys = {(s.scene_number) for s in existing}
 
         to_insert: List[Scene] = []
@@ -86,7 +84,10 @@ def seed_for_script(script_id: int, *, dry_run: bool = False) -> int:
             to_insert.append(sc)
 
         if not to_insert:
-            logger.info("All scenes already present for script %s; nothing new to insert.", script_id)
+            logger.info(
+                "All scenes already present for script %s; nothing new to insert.",
+                script_id,
+            )
             return 0
 
         logger.info("Prepared %d new scenes for script %s", len(to_insert), script_id)
@@ -103,7 +104,9 @@ def seed_for_script(script_id: int, *, dry_run: bool = False) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Seed normalized scenes from Script.scenes JSON")
+    parser = argparse.ArgumentParser(
+        description="Seed normalized scenes from Script.scenes JSON"
+    )
     parser.add_argument("--script-id", type=int, required=True, help="Target script id")
     parser.add_argument("--dry-run", action="store_true", help="Do not write to DB")
     args = parser.parse_args()
@@ -114,4 +117,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

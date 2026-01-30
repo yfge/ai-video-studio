@@ -24,25 +24,23 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from datetime import datetime, timezone
-from copy import deepcopy
-from dataclasses import dataclass, asdict
-from typing import Any, Dict, List, Optional, Tuple
-
 import sys
+from copy import deepcopy
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import sqlalchemy as sa
+from app.core.config import settings
+from app.models.script import Episode, Script, Story
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-
-from app.core.config import settings
-from app.models.script import Episode, Script, Story
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -149,7 +147,9 @@ class ProbeResult:
     error: Optional[str]
 
 
-def _with_original_json(metadata: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
+def _with_original_json(
+    metadata: Dict[str, Any], raw: Dict[str, Any]
+) -> Dict[str, Any]:
     """Attach original JSON payload for audit/backfill diagnostics."""
     merged = dict(metadata)
     merged["original_json"] = deepcopy(raw)
@@ -319,16 +319,28 @@ SAMPLE_SCRIPT: Dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # Extraction helpers
 # ---------------------------------------------------------------------------
-def build_slug_line(payload: Dict[str, Any], warnings: List[str], scene_number: str) -> str:
-    env = (payload.get("environment") or payload.get("env") or DEFAULT_ENVIRONMENT).upper()
+def build_slug_line(
+    payload: Dict[str, Any], warnings: List[str], scene_number: str
+) -> str:
+    env = (
+        payload.get("environment") or payload.get("env") or DEFAULT_ENVIRONMENT
+    ).upper()
     location = payload.get("location") or payload.get("place") or DEFAULT_LOCATION
-    time_of_day = payload.get("time") or payload.get("time_of_day") or DEFAULT_TIME_OF_DAY
+    time_of_day = (
+        payload.get("time") or payload.get("time_of_day") or DEFAULT_TIME_OF_DAY
+    )
     if payload.get("environment") is None and payload.get("env") is None:
-        warnings.append(f"Scene {scene_number}: environment missing; defaulted to {DEFAULT_ENVIRONMENT}")
+        warnings.append(
+            f"Scene {scene_number}: environment missing; defaulted to {DEFAULT_ENVIRONMENT}"
+        )
     if payload.get("location") is None and payload.get("place") is None:
-        warnings.append(f"Scene {scene_number}: location missing; defaulted to {DEFAULT_LOCATION}")
+        warnings.append(
+            f"Scene {scene_number}: location missing; defaulted to {DEFAULT_LOCATION}"
+        )
     if payload.get("time") is None and payload.get("time_of_day") is None:
-        warnings.append(f"Scene {scene_number}: time_of_day missing; defaulted to {DEFAULT_TIME_OF_DAY}")
+        warnings.append(
+            f"Scene {scene_number}: time_of_day missing; defaulted to {DEFAULT_TIME_OF_DAY}"
+        )
     return f"{env}. {location} - {time_of_day}"
 
 
@@ -370,7 +382,12 @@ def extract_step_outlines(
     beats = episode.get("plot_points") or []
     for idx, beat in enumerate(beats, start=1):
         proto_outline_id = idx
-        scene_ref = beat.get("scene_number") or beat.get("scene") or beat.get("order") or proto_outline_id
+        scene_ref = (
+            beat.get("scene_number")
+            or beat.get("scene")
+            or beat.get("order")
+            or proto_outline_id
+        )
         outline_lookup[str(scene_ref)] = proto_outline_id
         metadata = _with_original_json(
             {
@@ -427,9 +444,17 @@ def extract_scenes(
                 story_step_outline_id=outline_proto,
                 scene_number=scene_number,
                 slug_line=build_slug_line(raw_scene, warnings, scene_number),
-                environment_type=(raw_scene.get("environment") or raw_scene.get("env") or DEFAULT_ENVIRONMENT).upper(),
-                location=raw_scene.get("location") or raw_scene.get("place") or DEFAULT_LOCATION,
-                time_of_day=raw_scene.get("time") or raw_scene.get("time_of_day") or DEFAULT_TIME_OF_DAY,
+                environment_type=(
+                    raw_scene.get("environment")
+                    or raw_scene.get("env")
+                    or DEFAULT_ENVIRONMENT
+                ).upper(),
+                location=raw_scene.get("location")
+                or raw_scene.get("place")
+                or DEFAULT_LOCATION,
+                time_of_day=raw_scene.get("time")
+                or raw_scene.get("time_of_day")
+                or DEFAULT_TIME_OF_DAY,
                 summary=raw_scene.get("summary") or raw_scene.get("description"),
                 page_length_eighths=None,
                 primary_characters=raw_scene.get("characters"),
@@ -555,7 +580,9 @@ def build_engine(dsn: Optional[str] = None) -> Engine:
     return engine
 
 
-def load_live_payloads(session: Session, script_id: int) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+def load_live_payloads(
+    session: Session, script_id: int
+) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     script: Script | None = session.query(Script).filter(Script.id == script_id).first()
     if not script:
         raise ValueError(f"Script {script_id} not found")
@@ -623,7 +650,9 @@ def assemble_payload(
     return payload, warnings
 
 
-def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> ProbeResult:
+def probe_insert(
+    engine: Engine, payload: Dict[str, List[Dict[str, Any]]]
+) -> ProbeResult:
     inspector = sa.inspect(engine)
     required_tables = [
         "story_treatments",
@@ -646,8 +675,7 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
 
     metadata = sa.MetaData()
     tables = {
-        name: sa.Table(name, metadata, autoload_with=engine)
-        for name in required_tables
+        name: sa.Table(name, metadata, autoload_with=engine) for name in required_tables
     }
 
     connection = engine.connect()
@@ -665,11 +693,17 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
             metadata_blob = insert_data.get("metadata") or {}
             metadata_blob.setdefault("probe", True)
             insert_data["metadata"] = metadata_blob
-            result = connection.execute(tables["story_treatments"].insert().values(**insert_data))
+            result = connection.execute(
+                tables["story_treatments"].insert().values(**insert_data)
+            )
             inserted_id = result.inserted_primary_key[0]
-            treatment_id_map[(insert_data["story_id"], insert_data["revision_number"])] = inserted_id
+            treatment_id_map[
+                (insert_data["story_id"], insert_data["revision_number"])
+            ] = inserted_id
             inserted_counts["story_treatments"] += 1
-        logger.info("Inserted %d story_treatments (rolled back later)", len(treatment_id_map))
+        logger.info(
+            "Inserted %d story_treatments (rolled back later)", len(treatment_id_map)
+        )
 
         outline_id_map: Dict[int, int] = {}
         for row in payload.get("story_step_outlines", []):
@@ -683,14 +717,18 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
                 treatment_key = (insert_data["story_id"], 1)
             treatment_fk = treatment_id_map.get(treatment_key)
             if treatment_fk is None:
-                msg = f"Skipping step outline; no treatment found for key {treatment_key}"
+                msg = (
+                    f"Skipping step outline; no treatment found for key {treatment_key}"
+                )
                 logger.warning(msg)
                 skipped.append(msg)
                 continue
             insert_data["story_treatment_id"] = treatment_fk
             insert_data.setdefault("created_at", timestamp)
             insert_data.setdefault("updated_at", timestamp)
-            result = connection.execute(tables["story_step_outlines"].insert().values(**insert_data))
+            result = connection.execute(
+                tables["story_step_outlines"].insert().values(**insert_data)
+            )
             inserted_id = result.inserted_primary_key[0]
             proto_id = metadata_blob.get("prototype_outline_id")
             if proto_id is not None:
@@ -704,7 +742,9 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
             metadata_blob = insert_data.get("metadata") or {}
             outline_proto = metadata_blob.get("outline_proto_id")
             if outline_proto:
-                insert_data["story_step_outline_id"] = outline_id_map.get(int(outline_proto))
+                insert_data["story_step_outline_id"] = outline_id_map.get(
+                    int(outline_proto)
+                )
             else:
                 insert_data["story_step_outline_id"] = None
             proto_scene_id = metadata_blob.get("prototype_scene_id")
@@ -740,7 +780,9 @@ def probe_insert(engine: Engine, payload: Dict[str, List[Dict[str, Any]]]) -> Pr
             insert_data["scene_id"] = real_scene_id
             insert_data.setdefault("created_at", timestamp)
             insert_data.setdefault("updated_at", timestamp)
-            result = connection.execute(tables["scene_beats"].insert().values(**insert_data))
+            result = connection.execute(
+                tables["scene_beats"].insert().values(**insert_data)
+            )
             inserted_id = result.inserted_primary_key[0]
             proto_beat_id = metadata_blob.get("prototype_beat_id")
             if proto_beat_id is not None:
@@ -813,10 +855,20 @@ def parse_args() -> argparse.Namespace:
         default="sample",
         help="Extraction source: sample fixture (default) or live database records.",
     )
-    parser.add_argument("--script-id", type=int, help="Script ID to extract when running in live mode.")
-    parser.add_argument("--dsn", type=str, help="Override DATABASE_URL for live mode connections.")
-    parser.add_argument("--dump-json", action="store_true", help="Emit extracted payload as JSON.")
-    parser.add_argument("--insert-probe", action="store_true", help="Attempt insert + rollback against live database.")
+    parser.add_argument(
+        "--script-id", type=int, help="Script ID to extract when running in live mode."
+    )
+    parser.add_argument(
+        "--dsn", type=str, help="Override DATABASE_URL for live mode connections."
+    )
+    parser.add_argument(
+        "--dump-json", action="store_true", help="Emit extracted payload as JSON."
+    )
+    parser.add_argument(
+        "--insert-probe",
+        action="store_true",
+        help="Attempt insert + rollback against live database.",
+    )
     parser.add_argument(
         "--report-path",
         type=str,
@@ -856,7 +908,9 @@ def main() -> None:
             probe_result = probe_insert(engine, payload)
         engine.dispose()
     else:
-        payload, warnings = assemble_payload(SAMPLE_STORY, SAMPLE_EPISODE, SAMPLE_SCRIPT)
+        payload, warnings = assemble_payload(
+            SAMPLE_STORY, SAMPLE_EPISODE, SAMPLE_SCRIPT
+        )
         probe_result = None
 
     logger.info(

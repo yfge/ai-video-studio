@@ -80,4 +80,3 @@ def extract_stage_for_scene(
             continue
 
     return result
-

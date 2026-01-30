@@ -48,8 +48,8 @@ usage_examples:
   - language: "zh-CN"
     dialogue_style: "natural"
     format_type: "screenplay"
-    story: {title: "创业路", genre: "剧情"}
-    episode: {episode_number: 1, title: "初遇"}
+    story: { title: "创业路", genre: "剧情" }
+    episode: { episode_number: 1, title: "初遇" }
     scenes:
       - scene_number: 1
         slug_line: "INT. 咖啡馆 - 日"

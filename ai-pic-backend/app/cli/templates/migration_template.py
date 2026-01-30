@@ -21,10 +21,12 @@ down_revision = ${repr(down_revision)}
 branch_labels = ${repr(branch_labels)}
 depends_on = ${repr(depends_on)}
 
-from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import mysql
 from datetime import datetime
+
+import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.dialects import mysql
+
 ${imports if imports else ""}
 
 def upgrade() -> None:
@@ -94,16 +96,16 @@ def execute_sql(sql: str, description: str = None):
 def migrate_data(source_table: str, target_table: str, mapping: dict):
     """数据迁移工具"""
     bind = op.get_bind()
-    
+
     # 构建映射SQL
     source_cols = ', '.join(mapping.keys())
     target_cols = ', '.join(mapping.values())
-    
+
     sql = f"""
     INSERT INTO {target_table} ({target_cols})
     SELECT {source_cols} FROM {source_table}
     """
-    
+
     try:
         result = bind.execute(sa.text(sql))
         print(f"✅ 数据迁移成功: {result.rowcount} 行")

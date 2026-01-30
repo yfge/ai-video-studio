@@ -33,12 +33,14 @@ Error: name 'parse_model_and_provider' is not defined
 ```
 
 **实际情况**：
+
 - Celery worker 日志显示任务 "succeeded"，但这只是指任务执行完成，不代表业务逻辑成功
 - 数据库中的任务状态是 FAILED
 - 真正的错误是：`name 'parse_model_and_provider' is not defined`
 
 **根本原因**：
 在 `_process_environment_image_variant_task` (line 819) 中使用了以下工具函数：
+
 - `parse_model_and_provider` (line 670, 819)
 - `normalize_openai_image_style` (line 462, 589, 674, 825)
 
@@ -70,6 +72,7 @@ from app.utils.model_utils import parse_model_and_provider, normalize_openai_ima
 ## Next Steps
 
 1. **重启服务**: 用户需要重启 Celery worker 使修复生效
+
    ```bash
    docker-compose restart ai-video-celery-worker
    ```
@@ -77,6 +80,7 @@ from app.utils.model_utils import parse_model_and_provider, normalize_openai_ima
 2. **重试任务**: 在环境资产页面重新执行图生图
 
 3. **验证结果**: 检查：
+
    - Task 状态变为 COMPLETED
    - 环境资产的 reference_images 列表增加了新图片
    - 前端页面刷新后能看到新图片

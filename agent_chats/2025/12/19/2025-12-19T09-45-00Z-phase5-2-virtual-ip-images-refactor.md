@@ -33,6 +33,7 @@ Continue with Phase 5 frontend page refactoring. Task 5.2: Refactor virtual-ip/[
 ### New Files Created
 
 1. **`src/hooks/useVirtualIPImages.ts`** (512 lines)
+
    - All state management for virtual IP images
    - Data loading, image generation, upload handlers
    - Variant modal state management
@@ -40,18 +41,23 @@ Continue with Phase 5 frontend page refactoring. Task 5.2: Refactor virtual-ip/[
    - Exported constants: `VIRTUAL_IP_STYLE_SPEC_FIELDS`, `resolveImageUrl`
 
 2. **`src/components/features/virtual-ip-images/ImagePageHeader.tsx`** (63 lines)
+
    - Header with title and action buttons
 
 3. **`src/components/features/virtual-ip-images/ImageGenerationForm.tsx`** (274 lines)
+
    - AI image generation form with model, style, resolution options
 
 4. **`src/components/features/virtual-ip-images/ImageUploadForm.tsx`** (101 lines)
+
    - Manual image upload form
 
 5. **`src/components/features/virtual-ip-images/CategoryFilter.tsx`** (43 lines)
+
    - Category filter buttons
 
 6. **`src/components/features/virtual-ip-images/ImageGrid.tsx`** (132 lines)
+
    - Image card grid with preview, delete, set default actions
    - Includes StyleDetailsSection sub-component
 
@@ -61,6 +67,7 @@ Continue with Phase 5 frontend page refactoring. Task 5.2: Refactor virtual-ip/[
 ### Modified Files
 
 1. **`src/app/virtual-ip/[id]/images/page.tsx`** (1,143 → 195 lines, 83% reduction)
+
    - Now imports useVirtualIPImages hook and extracted components
    - Contains only component composition and modal rendering
 

@@ -61,7 +61,12 @@ def resolve_profile_params(
         steps_input = profile.defaults.steps
         audit.defaults_applied["steps"] = steps_input
     steps = normalize_steps(steps_input, audit=audit)
-    if steps is None and request.steps is not None and profile and profile.defaults.steps:
+    if (
+        steps is None
+        and request.steps is not None
+        and profile
+        and profile.defaults.steps
+    ):
         audit.warnings.append("invalid steps; falling back to generation_profile")
         audit.defaults_applied["steps"] = profile.defaults.steps
         steps = normalize_steps(profile.defaults.steps, audit=audit)
@@ -128,8 +133,7 @@ def resolve_profile_params(
         if (
             provider == "keling"
             and image_reference is None
-            and (model_id or "").strip().lower()
-            in {"kling-v1-5", "kling-image-v1-5"}
+            and (model_id or "").strip().lower() in {"kling-v1-5", "kling-image-v1-5"}
         ):
             image_reference = "subject"
             audit.defaults_applied["image_reference"] = image_reference
@@ -176,4 +180,3 @@ def resolve_profile_params(
         image_fidelity=image_fidelity,
         human_fidelity=human_fidelity,
     )
-

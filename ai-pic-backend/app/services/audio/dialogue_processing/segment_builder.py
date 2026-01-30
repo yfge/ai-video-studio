@@ -163,4 +163,3 @@ def _build_segments_with_timing(
         )
 
     return planned
-

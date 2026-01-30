@@ -6,14 +6,14 @@ Provides async retry decorators for handling transient errors in API calls.
 
 import asyncio
 import functools
-from typing import Callable, TypeVar, Type, Tuple, Optional, Any
-import httpx
+from typing import Any, Callable, Optional, Tuple, Type, TypeVar
 
+import httpx
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 # Default retryable HTTP status codes (rate limits, server errors, timeouts)
@@ -22,7 +22,7 @@ DEFAULT_RETRYABLE_STATUS_CODES = {
     500,  # Internal Server Error
     502,  # Bad Gateway
     503,  # Service Unavailable
-    504   # Gateway Timeout
+    504,  # Gateway Timeout
 }
 
 # Default retryable error codes from providers
@@ -31,7 +31,7 @@ DEFAULT_RETRYABLE_ERROR_CODES = {
     1039,  # TPM rate limit (MiniMax)
     5000,  # Server error (Keling)
     5001,  # Service unavailable (Keling)
-    5002   # Timeout (Keling)
+    5002,  # Timeout (Keling)
 }
 
 
@@ -44,11 +44,11 @@ def async_retry(
         httpx.HTTPStatusError,
         httpx.TimeoutException,
         httpx.NetworkError,
-        ConnectionError
+        ConnectionError,
     ),
     retryable_status_codes: Optional[set] = None,
     retryable_error_codes: Optional[set] = None,
-    on_retry: Optional[Callable[[Exception, int], None]] = None
+    on_retry: Optional[Callable[[Exception, int], None]] = None,
 ):
     """
     Async retry decorator with exponential backoff.
@@ -106,7 +106,10 @@ def async_retry(
                             )
 
                     # Check provider error code
-                    elif hasattr(e, 'status_code') and e.status_code in retryable_error_codes:
+                    elif (
+                        hasattr(e, "status_code")
+                        and e.status_code in retryable_error_codes
+                    ):
                         should_retry = True
                         logger.warning(
                             f"{func.__name__} failed with error code {e.status_code} "
@@ -114,7 +117,9 @@ def async_retry(
                         )
 
                     # Other retryable exceptions (timeout, network errors)
-                    elif isinstance(e, (httpx.TimeoutException, httpx.NetworkError, ConnectionError)):
+                    elif isinstance(
+                        e, (httpx.TimeoutException, httpx.NetworkError, ConnectionError)
+                    ):
                         should_retry = True
                         logger.warning(
                             f"{func.__name__} failed with {type(e).__name__} "
@@ -135,7 +140,7 @@ def async_retry(
                         except Exception as callback_error:
                             logger.error(
                                 f"Retry callback failed: {callback_error}",
-                                exc_info=True
+                                exc_info=True,
                             )
 
                     # Wait before next retry
@@ -150,17 +155,16 @@ def async_retry(
             if last_exception:
                 raise last_exception
             else:
-                raise RuntimeError(f"{func.__name__} failed after {max_attempts} attempts")
+                raise RuntimeError(
+                    f"{func.__name__} failed after {max_attempts} attempts"
+                )
 
         return wrapper
+
     return decorator
 
 
-def async_retry_with_auth_refresh(
-    auth_manager,
-    max_attempts: int = 3,
-    **retry_kwargs
-):
+def async_retry_with_auth_refresh(auth_manager, max_attempts: int = 3, **retry_kwargs):
     """
     Specialized retry decorator that handles authentication token expiry.
 
@@ -189,7 +193,7 @@ def async_retry_with_auth_refresh(
             if exception.response.status_code in auth_error_codes:
                 is_auth_error = True
 
-        elif hasattr(exception, 'status_code') and exception.status_code == 1004:
+        elif hasattr(exception, "status_code") and exception.status_code == 1004:
             is_auth_error = True
 
         if is_auth_error:
@@ -200,14 +204,16 @@ def async_retry_with_auth_refresh(
             auth_manager.invalidate_cache()
 
     # Add auth error codes to retryable status codes
-    retryable_status_codes = retry_kwargs.get('retryable_status_codes', set()) | auth_error_codes
-    retry_kwargs['retryable_status_codes'] = retryable_status_codes
+    retryable_status_codes = (
+        retry_kwargs.get("retryable_status_codes", set()) | auth_error_codes
+    )
+    retry_kwargs["retryable_status_codes"] = retryable_status_codes
 
     # Add auth error code 1004 to retryable error codes
-    retryable_error_codes = retry_kwargs.get('retryable_error_codes', set()) | {1004}
-    retry_kwargs['retryable_error_codes'] = retryable_error_codes
+    retryable_error_codes = retry_kwargs.get("retryable_error_codes", set()) | {1004}
+    retry_kwargs["retryable_error_codes"] = retryable_error_codes
 
     # Set on_retry callback
-    retry_kwargs['on_retry'] = on_auth_retry
+    retry_kwargs["on_retry"] = on_auth_retry
 
     return async_retry(max_attempts=max_attempts, **retry_kwargs)

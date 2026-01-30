@@ -5,7 +5,6 @@
 """
 
 import pytest
-
 from app.services.duration_orchestrator.constants import MAX_RETRY_ATTEMPTS
 from app.services.duration_orchestrator.nodes.prepare_retry import (
     prepare_retry_node,

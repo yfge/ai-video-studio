@@ -7,11 +7,10 @@ identifier parsing, and URL handling.
 
 from typing import Optional, Tuple
 
-from fastapi import HTTPException
-from sqlalchemy.orm import Session
-
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 
 def not_deleted(query, model):

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import HTTPException
-
 from app.services.ai_service import ai_service
+from fastapi import HTTPException
 
 
 async def generate_story_novel_text(
@@ -38,4 +37,3 @@ async def generate_story_novel_text(
     if content and content.strip():
         return content.strip()
     raise HTTPException(status_code=500, detail="AI生成失败（无可用 provider）")
-

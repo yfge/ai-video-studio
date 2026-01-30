@@ -2,7 +2,11 @@
 
 import type { Dispatch, SetStateAction } from "react";
 
-import type { Episode, Script, ScriptGenerationRequest } from "@/utils/api/types";
+import type {
+  Episode,
+  Script,
+  ScriptGenerationRequest,
+} from "@/utils/api/types";
 
 import type { ShowAlert } from "./episodeWorkspaceScriptActions.types";
 import { useEpisodeWorkspaceGenerateScript } from "./useEpisodeWorkspaceGenerateScript";
@@ -43,14 +47,15 @@ export function useEpisodeWorkspaceScriptActions(args: {
     onSelectScript,
   });
 
-  const { regenerating, handleRegenerateScript } = useEpisodeWorkspaceRegenerateScript({
-    episodeKey,
-    scripts,
-    setScripts,
-    showAlert,
-    onSelectScript,
-    regenerateScriptId,
-  });
+  const { regenerating, handleRegenerateScript } =
+    useEpisodeWorkspaceRegenerateScript({
+      episodeKey,
+      scripts,
+      setScripts,
+      showAlert,
+      onSelectScript,
+      regenerateScriptId,
+    });
 
   return { regenerating, handleGenerateScript, handleRegenerateScript };
 }

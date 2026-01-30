@@ -13,6 +13,7 @@ summary: "修复 OpenAI structured outputs JSON schema 错误：递归添加 add
 ## User Prompt
 
 用户在故事生成功能中遇到OpenAI API 400错误：
+
 ```
 OpenAI stream status 400 body={
   "error": {
@@ -25,6 +26,7 @@ OpenAI stream status 400 body={
 ```
 
 Request body 显示：
+
 ```json
 {
   "title": "大杀四方",
@@ -43,9 +45,10 @@ Request body 显示：
 
 ## Changes
 
-### 1. 添加 _add_additional_properties_false 函数 (ai-pic-backend/app/services/providers/openai_provider.py:68-108)
+### 1. 添加 \_add_additional_properties_false 函数 (ai-pic-backend/app/services/providers/openai_provider.py:68-108)
 
 **新增辅助函数**：
+
 ```python
 def _add_additional_properties_false(schema: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -91,12 +94,14 @@ def _add_additional_properties_false(schema: Dict[str, Any]) -> Dict[str, Any]:
 ```
 
 **功能**：
+
 - 递归遍历整个 JSON schema
 - 为所有 `type: "object"` 的节点添加 `"additionalProperties": false`
 - 处理嵌套对象、数组items、anyOf/oneOf/allOf、$defs等复杂结构
 - 不修改原对象，返回新的 schema 副本
 
 **原因**：
+
 - OpenAI structured outputs (GPT-4o+) 要求所有对象**必须**显式设置 `"additionalProperties": false`
 - Pydantic 生成的 JSON schema 默认不包含此字段
 - 缺少此字段会导致 400 错误
@@ -104,6 +109,7 @@ def _add_additional_properties_false(schema: Dict[str, Any]) -> Dict[str, Any]:
 ### 2. 在 generate_text 中应用修复 (line 324-326)
 
 **修改前**：
+
 ```python
 if _supports_structured_outputs(model):
     payload["response_format"] = {
@@ -117,6 +123,7 @@ if _supports_structured_outputs(model):
 ```
 
 **修改后**：
+
 ```python
 if _supports_structured_outputs(model):
     # 获取原始 schema 并添加 additionalProperties: false
@@ -148,6 +155,7 @@ if _supports_structured_outputs(model):
 ## Validation
 
 ### 单元测试
+
 ```bash
 $ pytest tests/unit/test_openai_schema_fix.py -v
 ======================== 7 passed, 25 warnings in 0.04s ========================
@@ -157,15 +165,16 @@ $ pytest tests/unit/test_openai_schema_fix.py -v
 ### 修复前后对比
 
 **修复前的 Schema**（Pydantic 生成）：
+
 ```json
 {
   "type": "object",
   "properties": {
-    "premise": {"type": "string"},
+    "premise": { "type": "string" },
     "character_relationships": {
       "type": "object",
       "properties": {
-        "data": {"type": "string"}
+        "data": { "type": "string" }
       }
       // ❌ 缺少 additionalProperties
     }
@@ -175,17 +184,18 @@ $ pytest tests/unit/test_openai_schema_fix.py -v
 ```
 
 **修复后的 Schema**（自动添加）：
+
 ```json
 {
   "type": "object",
-  "additionalProperties": false,  // ✅ 已添加
+  "additionalProperties": false, // ✅ 已添加
   "properties": {
-    "premise": {"type": "string"},
+    "premise": { "type": "string" },
     "character_relationships": {
       "type": "object",
-      "additionalProperties": false,  // ✅ 已添加
+      "additionalProperties": false, // ✅ 已添加
       "properties": {
-        "data": {"type": "string"}
+        "data": { "type": "string" }
       }
     }
   }
@@ -193,13 +203,16 @@ $ pytest tests/unit/test_openai_schema_fix.py -v
 ```
 
 ### 端到端测试计划
+
 测试步骤：
+
 1. 访问故事生成页面（/stories/new）
 2. 填写故事信息（标题、类型、角色等）
 3. 选择 OpenAI GPT-4o 或 GPT-4o-mini 模型
 4. 点击生成故事概要
 
 预期结果：
+
 - OpenAI API 调用成功
 - 返回符合 StoryOutlineModel 格式的 JSON数据
 - 后端日志显示 `status=success`
@@ -216,7 +229,8 @@ $ pytest tests/unit/test_openai_schema_fix.py -v
 ## Linked Commits
 
 本次提交将包含以下修改：
-- `ai-pic-backend/app/services/providers/openai_provider.py` - 添加并应用 _add_additional_properties_false
+
+- `ai-pic-backend/app/services/providers/openai_provider.py` - 添加并应用 \_add_additional_properties_false
 - `ai-pic-backend/tests/unit/test_openai_schema_fix.py` - 新增测试验证
 - `agent_chats/2025/12/10/2025-12-10T11-01-15Z-fix-openai-json-schema.md` - 本日志文件
 

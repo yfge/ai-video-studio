@@ -44,7 +44,9 @@ export const extractImageGenUi = (
   const t2iNotes = safeStringList(t2i.notes);
   const i2iNotes = safeStringList(i2i.notes);
   const hasModeNotes =
-    mode === "text_to_image" ? t2i.notes !== undefined : i2i.notes !== undefined;
+    mode === "text_to_image"
+      ? t2i.notes !== undefined
+      : i2i.notes !== undefined;
   const notes = hasModeNotes
     ? mode === "text_to_image"
       ? t2iNotes
@@ -83,8 +85,8 @@ export const extractImageGenUi = (
     Number.isFinite(rawMaxReferenceImages) && rawMaxReferenceImages > 0
       ? rawMaxReferenceImages
       : supportsExtraImages
-        ? undefined
-        : 1;
+      ? undefined
+      : 1;
   const maxCount = Number(i2i.max_count);
 
   return {
@@ -105,4 +107,3 @@ export const extractImageGenUi = (
     notes,
   };
 };
-

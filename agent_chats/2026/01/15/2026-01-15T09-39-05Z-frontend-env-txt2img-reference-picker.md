@@ -49,4 +49,3 @@ summary: "Add provider-aware reference image picker for environment txt2img"
 ## Linked Commits
 
 - (pending)
-

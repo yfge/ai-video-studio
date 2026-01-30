@@ -52,4 +52,3 @@ summary: "Ran production TaskType backfill for legacy image_generation tasks and
 ## Linked Commits
 
 - (current) 本次变更与日志同一提交。
-

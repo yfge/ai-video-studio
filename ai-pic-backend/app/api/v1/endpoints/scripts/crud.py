@@ -6,15 +6,14 @@ Uses ScriptService for business logic.
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.schemas.script import ScriptCreate, ScriptResponse, ScriptUpdate
 from app.services.script import ScriptService, get_script_service
-
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -170,7 +169,9 @@ async def get_episode_scripts(
     return [ScriptResponse.from_orm(s) for s in scripts]
 
 
-@router.get("/episode/business/{episode_business_id}", response_model=List[ScriptResponse])
+@router.get(
+    "/episode/business/{episode_business_id}", response_model=List[ScriptResponse]
+)
 async def get_episode_scripts_by_business_id(
     episode_business_id: str,
     current_user: User = Depends(get_current_active_user),

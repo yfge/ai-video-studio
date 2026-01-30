@@ -77,8 +77,9 @@ export function MarketingFields<T extends MarketingFormValues>({
             ))}
           </select>
           <p className="mt-1 text-[11px] text-slate-500">
-            {MARKET_REGIONS.find((region) => region.value === form.market_region)?.description ||
-              "选择目标市场后将自动触发本地化提示"}
+            {MARKET_REGIONS.find(
+              (region) => region.value === form.market_region,
+            )?.description || "选择目标市场后将自动触发本地化提示"}
           </p>
         </div>
         <div>
@@ -151,21 +152,29 @@ export function MarketingFields<T extends MarketingFormValues>({
             <p className="text-slate-600">{selectedTemplate.description}</p>
             <div className="grid gap-2 md:grid-cols-3">
               <div>
-                <div className="text-[11px] uppercase text-slate-400">开场钩子</div>
+                <div className="text-[11px] uppercase text-slate-400">
+                  开场钩子
+                </div>
                 <div>{selectedTemplate.hookPlan.opening_hook || "—"}</div>
               </div>
               <div>
-                <div className="text-[11px] uppercase text-slate-400">情绪升级</div>
+                <div className="text-[11px] uppercase text-slate-400">
+                  情绪升级
+                </div>
                 <div>{selectedTemplate.hookPlan.escalation_plan || "—"}</div>
               </div>
               <div>
-                <div className="text-[11px] uppercase text-slate-400">释放节点</div>
+                <div className="text-[11px] uppercase text-slate-400">
+                  释放节点
+                </div>
                 <div>{selectedTemplate.hookPlan.payoff_plan || "—"}</div>
               </div>
             </div>
             {selectedTemplate.twistDensity && (
               <div>
-                <span className="text-[11px] uppercase text-slate-400">反转密度</span>
+                <span className="text-[11px] uppercase text-slate-400">
+                  反转密度
+                </span>
                 <span className="ml-2 text-slate-700">
                   {selectedTemplate.twistDensity}
                 </span>
@@ -180,7 +189,9 @@ export function MarketingFields<T extends MarketingFormValues>({
             ) : null}
           </div>
         ) : (
-          <div className="text-slate-500">选择节奏模板后显示节奏与钩子说明。</div>
+          <div className="text-slate-500">
+            选择节奏模板后显示节奏与钩子说明。
+          </div>
         )}
       </div>
     </div>

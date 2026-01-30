@@ -31,15 +31,18 @@ summary: "Async storyboard video submission with centralized polling and new tra
 ---
 
 ## User Prompt
+
 - Fix worker import issues; test via port 8089 in dev_indocker; increase image-to-video check time to 30 minutes.
 - Move video generation to non-blocking submission with centralized polling (all providers), Celery beat schedule, new table, 1-hour max, and return immediately after submission.
 
 ## Goals
+
 - Decouple storyboard video generation from synchronous polling and avoid blocking worker threads.
 - Add centralized polling for all video tasks with Celery beat and a dedicated DB table.
 - Enforce provider coverage and 1-hour timeout while keeping tasks non-blocking.
 
 ## Changes
+
 - Added `video_generation_tasks` table + SQLAlchemy model/repository for tracking async video tasks.
 - Introduced submission and polling services, dispatcher, and shared utilities for async video task flow.
 - Implemented provider-specific async submit/status helpers for Keling, MiniMax, and Volcengine; refactored to keep function sizes within limits.
@@ -47,13 +50,16 @@ summary: "Async storyboard video submission with centralized polling and new tra
 - Added helper modules for provider model resolution and storyboard update handling.
 
 ## Validation
+
 - `pytest` (ai-pic-backend) timed out after 120s with existing failures (numerous failing tests before timeout).
 - `./docker/build_prod_images.sh` succeeded (tag `9cacb95`).
 - Chrome MCP: `http://localhost:8089/login` returned `502 Bad Gateway` (nginx), so E2E login flow could not be completed.
 
 ## Next Steps
+
 - Restore backend availability behind nginx (502) and rerun Chrome login + storyboard video generation flow.
 - Re-run full `pytest` once test environment is stable and address failing suites.
 
 ## Linked Commits
+
 - Pending

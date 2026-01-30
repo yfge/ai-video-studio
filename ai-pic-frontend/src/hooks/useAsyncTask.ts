@@ -20,37 +20,37 @@
  * ```
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback } from "react";
 
 export interface UseAsyncTaskReturn<T> {
   /**
    * Whether the task is currently running
    */
-  loading: boolean
+  loading: boolean;
   /**
    * Error from the last failed task
    */
-  error: Error | null
+  error: Error | null;
   /**
    * Data from the last successful task
    */
-  data: T | null
+  data: T | null;
   /**
    * Run an async task and update state
    */
-  run: (task: () => Promise<T>) => Promise<T | null>
+  run: (task: () => Promise<T>) => Promise<T | null>;
   /**
    * Reset state to initial values
    */
-  reset: () => void
+  reset: () => void;
   /**
    * Set data directly (useful for optimistic updates)
    */
-  setData: (data: T | null) => void
+  setData: (data: T | null) => void;
   /**
    * Set error directly
    */
-  setError: (error: Error | null) => void
+  setError: (error: Error | null) => void;
 }
 
 /**
@@ -91,42 +91,42 @@ export interface UseAsyncTaskReturn<T> {
  * }
  */
 export function useAsyncTask<T>(
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
 ): UseAsyncTaskReturn<T> {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-  const [data, setData] = useState<T | null>(null)
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [data, setData] = useState<T | null>(null);
 
   const run = useCallback(
     async (task: () => Promise<T>): Promise<T | null> => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       try {
-        const result = await task()
-        setData(result)
-        return result
+        const result = await task();
+        setData(result);
+        return result;
       } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err))
-        setError(error)
+        const error = err instanceof Error ? err : new Error(String(err));
+        setError(error);
 
         if (onError) {
-          onError(error)
+          onError(error);
         }
 
-        return null
+        return null;
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     },
-    [onError]
-  )
+    [onError],
+  );
 
   const reset = useCallback(() => {
-    setLoading(false)
-    setError(null)
-    setData(null)
-  }, [])
+    setLoading(false);
+    setError(null);
+    setData(null);
+  }, []);
 
   return {
     loading,
@@ -136,5 +136,5 @@ export function useAsyncTask<T>(
     reset,
     setData,
     setError,
-  }
+  };
 }

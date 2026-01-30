@@ -1,6 +1,4 @@
 import pytest
-from fastapi.testclient import TestClient
-
 from app.core.database import get_db
 from app.core.middleware import (
     get_current_active_user,
@@ -8,6 +6,7 @@ from app.core.middleware import (
     get_current_superuser,
 )
 from app.models.user import User
+from fastapi.testclient import TestClient
 from main import app
 
 

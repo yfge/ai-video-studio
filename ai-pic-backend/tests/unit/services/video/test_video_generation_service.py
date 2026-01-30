@@ -1,8 +1,8 @@
 """Unit tests for VideoGenerationService."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from app.services.video.video_generation_service import (
     VideoGenerationService,
     get_video_generation_service,
@@ -48,9 +48,7 @@ class TestVideoGenerationService:
 
     def test_get_oss_url_or_original_with_none(self):
         """Test URL extraction when OSS result is None."""
-        result = get_oss_url_or_original(
-            None, "https://original.example.com/video.mp4"
-        )
+        result = get_oss_url_or_original(None, "https://original.example.com/video.mp4")
         assert result == "https://original.example.com/video.mp4"
 
 
@@ -61,6 +59,7 @@ class TestGetVideoGenerationService:
         """Test that factory creates singleton instance."""
         # Reset global state
         import app.services.video.video_generation_service as module
+
         module._video_generation_service = None
 
         service1 = get_video_generation_service()
@@ -70,6 +69,7 @@ class TestGetVideoGenerationService:
     def test_get_service_with_manager(self):
         """Test that factory accepts AI manager on first call."""
         import app.services.video.video_generation_service as module
+
         module._video_generation_service = None
 
         mock_manager = MagicMock()
@@ -200,10 +200,12 @@ class TestGenerateVideo:
         mock_manager.generate_video.return_value = mock_response
 
         mock_oss = MagicMock()
-        mock_oss.upload_from_url = AsyncMock(return_value={
-            "success": True,
-            "file_url": "https://cdn.example.com/video.mp4",
-        })
+        mock_oss.upload_from_url = AsyncMock(
+            return_value={
+                "success": True,
+                "file_url": "https://cdn.example.com/video.mp4",
+            }
+        )
 
         service = VideoGenerationService(ai_manager=mock_manager)
 
@@ -242,10 +244,12 @@ class TestOSSUploadMethods:
     async def test_upload_video_to_oss_success(self):
         """Test successful video OSS upload."""
         mock_oss = MagicMock()
-        mock_oss.upload_from_url = AsyncMock(return_value={
-            "success": True,
-            "file_url": "https://cdn.example.com/video.mp4",
-        })
+        mock_oss.upload_from_url = AsyncMock(
+            return_value={
+                "success": True,
+                "file_url": "https://cdn.example.com/video.mp4",
+            }
+        )
 
         result = await upload_video_url_to_oss(
             video_url="https://example.com/video.mp4",
@@ -302,10 +306,12 @@ class TestOSSUploadMethods:
     async def test_upload_thumbnail_to_oss_success(self):
         """Test successful thumbnail OSS upload."""
         mock_oss = MagicMock()
-        mock_oss.upload_from_url = AsyncMock(return_value={
-            "success": True,
-            "file_url": "https://cdn.example.com/thumb.jpg",
-        })
+        mock_oss.upload_from_url = AsyncMock(
+            return_value={
+                "success": True,
+                "file_url": "https://cdn.example.com/thumb.jpg",
+            }
+        )
 
         result = await upload_video_thumbnail_to_oss(
             thumbnail_url="https://example.com/thumb.jpg",
@@ -321,10 +327,12 @@ class TestOSSUploadMethods:
     async def test_upload_last_frame_to_oss_success(self):
         """Test successful last frame OSS upload."""
         mock_oss = MagicMock()
-        mock_oss.upload_from_url = AsyncMock(return_value={
-            "success": True,
-            "file_url": "https://cdn.example.com/last.jpg",
-        })
+        mock_oss.upload_from_url = AsyncMock(
+            return_value={
+                "success": True,
+                "file_url": "https://cdn.example.com/last.jpg",
+            }
+        )
 
         result = await upload_video_last_frame_to_oss(
             last_frame_url="https://example.com/last.jpg",

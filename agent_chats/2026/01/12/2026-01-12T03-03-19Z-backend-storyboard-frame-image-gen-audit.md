@@ -45,4 +45,3 @@ summary: "Persist storyboard per-frame image_gen metadata for reproducible img2i
 ## Linked Commits
 
 - (pending)
-

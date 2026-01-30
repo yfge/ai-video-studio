@@ -16,27 +16,33 @@ summary: "Pass labeled reference images through storyboard image generation"
 ---
 
 ## User Prompt
+
 Commit current changes and use localhost:8089.
 
 ## Goals
+
 - Persist labeled reference images from the UI through to storyboard image generation.
 - Validate via build/lint/tests and an end-to-end browser flow.
 - Commit the current changes with a matching agent chat ledger entry.
 
 ## Changes
+
 - Added labeled reference metadata to storyboard image generation request payloads and task worker handling.
 - Injected labeled reference context into prompts to clarify character/environment intent for AI.
 - Built labeled references in the image-to-image modal and threaded them through the storyboard page and API client.
 
 ## Validation
+
 - `./docker/build_prod_images.sh` (success).
 - `pytest` (failed: 90 failed, 7 errors; missing fixtures like `admin_token`/`username` plus multiple integration test failures).
 - `npm run lint` (success; warnings in `src/components/features/episode/WorkspaceStoryboardTabContent.tsx`).
 - Chrome MCP E2E on `http://localhost:8089`: logged in as `geyunfei`, opened story id `6d7c528b4b064a5f99689f095f5bef90`, entered episode id `cd378417b7f143eab5bc6d063cd7f6e7` storyboard, opened Image-to-Image modal on frame 2, submitted task, saw success toast.
 
 ## Next Steps
+
 - Resolve the failing pytest suite or confirm expected failures before committing.
 - Re-run pytest after fixture/test environment updates.
 
 ## Linked Commits
+
 - (pending)

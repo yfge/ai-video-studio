@@ -14,24 +14,18 @@ def _compact_ledger_for_prompt(ledger: Dict[str, Any] | None) -> Dict[str, Any]:
         :30
     ]
     open_threads = (
-        (base.get("open_threads") if isinstance(base.get("open_threads"), list) else [])[
-            :25
-        ]
-    )
+        base.get("open_threads") if isinstance(base.get("open_threads"), list) else []
+    )[:25]
     resolved_threads = (
-        (
-            base.get("resolved_threads")
-            if isinstance(base.get("resolved_threads"), list)
-            else []
-        )[:25]
-    )
+        base.get("resolved_threads")
+        if isinstance(base.get("resolved_threads"), list)
+        else []
+    )[:25]
     events = (
-        (
-            base.get("info_acquisition_events")
-            if isinstance(base.get("info_acquisition_events"), list)
-            else []
-        )[:60]
-    )
+        base.get("info_acquisition_events")
+        if isinstance(base.get("info_acquisition_events"), list)
+        else []
+    )[:60]
     characters = (
         base.get("characters") if isinstance(base.get("characters"), dict) else {}
     )
@@ -145,4 +139,3 @@ async def run_script_dialogues_rewrite_with_audit(
     raw = resp.data if isinstance(resp.data, str) else (resp.data or {})
     payload = raw if isinstance(raw, dict) else (extract_json_block(raw) or {})
     return payload if isinstance(payload, dict) else {}, resp
-

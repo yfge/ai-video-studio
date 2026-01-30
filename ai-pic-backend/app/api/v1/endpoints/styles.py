@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
-
 from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.schemas.style import StylePreset, StyleSchemaResponse
@@ -11,6 +9,7 @@ from app.utils.style_utils import (
     get_style_preset,
     list_style_presets,
 )
+from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter()
 

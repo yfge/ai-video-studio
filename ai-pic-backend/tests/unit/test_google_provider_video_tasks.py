@@ -1,10 +1,8 @@
-import pytest
 import httpx
-
-from app.services.providers.google_provider import GoogleProvider
-from app.services.providers.google_provider import video_tasks as video_tasks_module
-from app.services.providers.google_provider import video_request as video_request_module
+import pytest
 from app.services.providers.base import ProviderConfig
+from app.services.providers.google_provider import GoogleProvider
+from app.services.providers.google_provider import video_request as video_request_module
 
 
 class _DummyResponse:
@@ -22,7 +20,9 @@ class _DummyResponse:
 
 
 class _DummyClient:
-    def __init__(self, *, post_payload: dict | None = None, get_payload: dict | None = None):
+    def __init__(
+        self, *, post_payload: dict | None = None, get_payload: dict | None = None
+    ):
         self.post_payload = post_payload or {}
         self.get_payload = get_payload or {}
         self.last_post = None
@@ -38,7 +38,12 @@ class _DummyClient:
 
 
 class _HTTPXClient:
-    def __init__(self, *, post_response: httpx.Response, get_response: httpx.Response | None = None):
+    def __init__(
+        self,
+        *,
+        post_response: httpx.Response,
+        get_response: httpx.Response | None = None,
+    ):
         self.post_response = post_response
         self.get_response = get_response
         self.last_post = None
@@ -66,7 +71,9 @@ async def test_submit_video_task_returns_task_id(monkeypatch):
         return {"mimeType": "image/png", "bytesBase64Encoded": "AAA"}
 
     monkeypatch.setattr(provider, "get_client", _fake_client)
-    monkeypatch.setattr(video_request_module, "fetch_image_bytes", _fake_fetch_image_bytes)
+    monkeypatch.setattr(
+        video_request_module, "fetch_image_bytes", _fake_fetch_image_bytes
+    )
 
     resp = await provider.submit_video_task(
         prompt="test video",
@@ -90,7 +97,9 @@ async def test_submit_video_task_returns_task_id(monkeypatch):
 @pytest.mark.asyncio
 async def test_submit_video_task_surfaces_http_error_body(monkeypatch):
     provider = GoogleProvider(ProviderConfig(name="google", api_key="test-key"))
-    request = httpx.Request("POST", "https://example.com/v1beta/models/veo:predictLongRunning")
+    request = httpx.Request(
+        "POST", "https://example.com/v1beta/models/veo:predictLongRunning"
+    )
     response = httpx.Response(
         400,
         json={"error": {"status": "INVALID_ARGUMENT", "message": "bad request"}},
@@ -146,7 +155,9 @@ async def test_fetch_video_task_status_success_extracts_video_url(monkeypatch):
             "done": True,
             "response": {
                 "generateVideoResponse": {
-                    "generatedSamples": [{"video": {"uri": "https://example.com/video.mp4"}}]
+                    "generatedSamples": [
+                        {"video": {"uri": "https://example.com/video.mp4"}}
+                    ]
                 }
             },
         }
@@ -162,7 +173,9 @@ async def test_fetch_video_task_status_success_extracts_video_url(monkeypatch):
     assert resp.success is True
     assert (resp.data or {}).get("status") == "success"
     assert (resp.data or {}).get("video_url") == "https://example.com/video.mp4"
-    assert (resp.data or {}).get("download_url") == "https://example.com/video.mp4?key=test-key"
+    assert (resp.data or {}).get(
+        "download_url"
+    ) == "https://example.com/video.mp4?key=test-key"
     assert dummy_client.last_get is not None
     assert dummy_client.last_get["url"].endswith("/v1beta/operations/abc")
 
@@ -170,7 +183,9 @@ async def test_fetch_video_task_status_success_extracts_video_url(monkeypatch):
 @pytest.mark.asyncio
 async def test_fetch_video_task_status_failed_maps_error(monkeypatch):
     provider = GoogleProvider(ProviderConfig(name="google", api_key="test-key"))
-    dummy_client = _DummyClient(get_payload={"done": True, "error": {"message": "boom"}})
+    dummy_client = _DummyClient(
+        get_payload={"done": True, "error": {"message": "boom"}}
+    )
 
     async def _fake_client():
         return dummy_client
@@ -197,9 +212,7 @@ async def test_fetch_video_task_status_vertex_returns_base64(monkeypatch):
         post_payload={
             "done": True,
             "response": {
-                "videos": [
-                    {"bytesBase64Encoded": "AAAA", "mimeType": "video/mp4"}
-                ]
+                "videos": [{"bytesBase64Encoded": "AAAA", "mimeType": "video/mp4"}]
             },
         }
     )
@@ -241,9 +254,7 @@ async def test_fetch_video_task_status_vertex_uses_api_key(monkeypatch):
         post_payload={
             "done": True,
             "response": {
-                "videos": [
-                    {"bytesBase64Encoded": "BBBB", "mimeType": "video/mp4"}
-                ]
+                "videos": [{"bytesBase64Encoded": "BBBB", "mimeType": "video/mp4"}]
             },
         }
     )

@@ -82,4 +82,3 @@ def environment_image_variant_task(
         user_id=user_id,
         kind="environment_image_variants",
     )
-

@@ -14,7 +14,7 @@ summary: "Refactor StoryLangGraphAgent into plan->validate->repair using PromptM
 
 ## User Prompt
 
-- “按这个思路重构 StoryLangGraphAgent，要求： 1. 使用提示词管理器  2. 同样有valid 以及repair 的结点”
+- “按这个思路重构 StoryLangGraphAgent，要求： 1. 使用提示词管理器 2. 同样有valid 以及repair 的结点”
 
 ## Goals
 

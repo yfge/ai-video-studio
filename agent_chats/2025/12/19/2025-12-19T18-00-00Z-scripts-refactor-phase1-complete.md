@@ -35,36 +35,42 @@ Continue with refactoring plan Phase 1, completing all tasks 1.1.1 through 1.1.8
 ### New Files Created
 
 1. **ai-pic-backend/app/repositories/script_repository.py** (~290 lines)
+
    - `ScriptRepository`: CRUD operations for Script model
    - `EpisodeRepository`: Episode data access
    - `StoryRepository`: Story data access
    - Methods: `get_with_relations()`, `list_by_episode()`, `update_storyboard()`, etc.
 
 2. **ai-pic-backend/app/services/script/script_service.py** (~230 lines)
+
    - `ScriptService`: Business logic for script operations
    - Methods: `get_script()`, `list_scripts()`, `create_script()`, `update_script()`, `delete_script()`
    - Uses repository pattern, handles permissions and validation
 
 3. **ai-pic-backend/app/services/script/script_generator.py** (~295 lines)
+
    - `ScriptGenerator`: AI-powered script generation
    - Methods: `generate_script()`, `preview_prompt()`, `_normalize_content()`
    - Integrates with AI service for content generation
 
 4. **ai-pic-backend/app/services/script/script_utils.py** (~210 lines)
+
    - Utility functions extracted from monolithic scripts.py
    - `collect_previous_episode_summaries()`, `build_character_profiles()`
    - `build_episode_data()`, `build_story_data()`
 
 5. **ai-pic-backend/app/api/v1/endpoints/scripts/crud.py** (~185 lines)
+
    - CRUD endpoints using ScriptService
    - Routes: GET/POST/PUT/DELETE for scripts, episode scripts
    - Format and language listing endpoints
 
 6. **ai-pic-backend/app/api/v1/endpoints/scripts/generation.py** (~108 lines)
+
    - Generation endpoints using ScriptGenerator
    - Routes: POST /generate, POST /generate-async, POST /prompt/preview
 
-7. **ai-pic-backend/app/api/v1/endpoints/scripts/__init__.py** (~25 lines)
+7. **ai-pic-backend/app/api/v1/endpoints/scripts/**init**.py** (~25 lines)
    - Router aggregation and re-export
    - Currently re-exports legacy router for backward compatibility
 
@@ -83,12 +89,14 @@ Continue with refactoring plan Phase 1, completing all tasks 1.1.1 through 1.1.8
 ## Validation
 
 ### Build Verification
+
 ```bash
 ./docker/build_prod_images.sh
 # Result: SUCCESS - All images built successfully
 ```
 
 ### Import Tests
+
 ```bash
 python -c "from app.api.v1.api import api_router; print('Routes:', len(api_router.routes))"
 # Output: Routes: 194
@@ -101,6 +109,7 @@ python -c "from app.services.script import ScriptService, ScriptGenerator; print
 ```
 
 ### Browser Testing (Chrome MCP)
+
 - Logged in as geyunfei at http://localhost:8089/
 - Navigated to Stories page: **WORKING** - All 22+ stories displayed correctly
 - Navigated to Story Detail page: **WORKING** - Story with 3 episodes loaded
@@ -116,6 +125,7 @@ The refactoring follows a phased approach for zero-downtime migration:
 3. **Phase 2+**: Migrate remaining endpoints, then remove legacy file
 
 Key architecture decisions:
+
 - Repository pattern for data access isolation
 - Service layer for business logic
 - Thin controller pattern for API endpoints

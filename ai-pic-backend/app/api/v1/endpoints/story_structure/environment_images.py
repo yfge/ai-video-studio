@@ -9,9 +9,6 @@ from __future__ import annotations
 import os
 from typing import List
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy.orm import Session
-
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
@@ -24,6 +21,8 @@ from app.schemas.story_structure import (
 from app.services import story_structure_service as svc
 from app.services.ai_service import ai_service
 from app.services.storage import oss_service
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 

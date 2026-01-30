@@ -25,6 +25,7 @@ The user reported that TTS was reading scene descriptions/narration instead of a
 ### `ai-pic-backend/app/services/ai_service.py`
 
 **Root Cause**: The `_generate_mock_script()` method was wrapping scene descriptions as fake dialogues:
+
 ```python
 # BUG (old code):
 dialogues.append({
@@ -34,6 +35,7 @@ dialogues.append({
 ```
 
 **Fix 1**: Added new `_extract_dialogues_from_summary()` method (lines 852-904):
+
 - Extracts real character dialogues from scene summaries using regex patterns
 - Matches patterns like `角色名：'对白内容'` or `角色名："对白内容"`
 - Supports both Chinese and English quotation marks
@@ -43,6 +45,7 @@ dialogues.append({
 - Maps extracted character names to known characters from `focus_characters`
 
 **Fix 2**: Modified `_generate_mock_script()` to use extraction:
+
 ```python
 # NEW (fixed code):
 extracted_dialogues = self._extract_dialogues_from_summary(

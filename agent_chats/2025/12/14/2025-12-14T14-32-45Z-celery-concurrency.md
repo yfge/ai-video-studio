@@ -11,7 +11,7 @@ summary: "Set prod Celery worker concurrency to 8 for better IO-bound throughput
 
 ## User Prompt
 
-prod 的  ai-video-celery-worker 设置为 8 个线程吧
+prod 的 ai-video-celery-worker 设置为 8 个线程吧
 
 ## Goals
 

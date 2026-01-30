@@ -66,4 +66,3 @@ export const SHORT_DRAMA_SCRIPT_TEMPLATES: ShortDramaScriptTemplate[] = [
     },
   },
 ];
-

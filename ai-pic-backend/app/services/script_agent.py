@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from app.core.logging import get_logger
 from app.core.validators.script_dialogue_quality import (
     find_reused_short_dialogues,
     validate_scene_dialogues,
 )
-from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import ScriptModel
@@ -143,7 +143,9 @@ class ScriptLangGraphAgent:
 
             # Compute word count: keep dialogue dense by default (short drama pacing)
             # to avoid under-filled scenes and timeline drift later.
-            target_words = int(target_seconds * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND)
+            target_words = int(
+                target_seconds * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND
+            )
 
             budget = SceneBudget(
                 scene_number=scene.get("scene_number", idx + 1),
@@ -307,7 +309,9 @@ class ScriptLangGraphAgent:
             parsed = (
                 resp.data
                 if isinstance(resp.data, dict)
-                else extract_json_block(resp.data if isinstance(resp.data, str) else str(resp.data))
+                else extract_json_block(
+                    resp.data if isinstance(resp.data, str) else str(resp.data)
+                )
             )
             if not parsed:
                 return {"error": "scene_plan_invalid_json", "raw": resp.data}
@@ -456,7 +460,9 @@ class ScriptLangGraphAgent:
             parsed = (
                 resp.data
                 if isinstance(resp.data, dict)
-                else extract_json_block(resp.data if isinstance(resp.data, str) else str(resp.data))
+                else extract_json_block(
+                    resp.data if isinstance(resp.data, str) else str(resp.data)
+                )
             )
             if not parsed:
                 return {"error": "dialogue_invalid_json", "raw": resp.data}
@@ -518,8 +524,12 @@ class ScriptLangGraphAgent:
             for budget in budgets:
                 scene_num = budget.scene_number
                 scene_dialogues = _get_scene_dialogues(scene_num)
-                estimated_seconds = self._estimate_dialogue_duration(dialogues, scene_num)
-                is_valid, reason = self._validate_scene_duration(budget, estimated_seconds)
+                estimated_seconds = self._estimate_dialogue_duration(
+                    dialogues, scene_num
+                )
+                is_valid, reason = self._validate_scene_duration(
+                    budget, estimated_seconds
+                )
 
                 issues = validate_scene_dialogues(
                     scene_dialogues,
@@ -529,7 +539,9 @@ class ScriptLangGraphAgent:
                 if issues:
                     is_valid = False
                     issue_text = "；".join(i.message for i in issues)
-                    reason = f"{reason}；{issue_text}".strip("；") if reason else issue_text
+                    reason = (
+                        f"{reason}；{issue_text}".strip("；") if reason else issue_text
+                    )
 
                 if not is_valid:
                     all_valid = False
@@ -757,7 +769,9 @@ class ScriptLangGraphAgent:
             parsed = (
                 resp.data
                 if isinstance(resp.data, dict)
-                else extract_json_block(resp.data if isinstance(resp.data, str) else str(resp.data))
+                else extract_json_block(
+                    resp.data if isinstance(resp.data, str) else str(resp.data)
+                )
             )
             if not parsed or not isinstance(parsed, dict):
                 self.logger.warning("Review returned invalid JSON, keeping original")

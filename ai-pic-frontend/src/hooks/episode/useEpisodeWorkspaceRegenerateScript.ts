@@ -6,7 +6,10 @@ import { scriptAPI } from "@/utils/api/endpoints";
 import type { Script, Task } from "@/utils/api/types";
 import { httpClient } from "@/utils/api/client";
 import { sortScriptsNewestFirst } from "./scriptSort";
-import type { PendingRegenerateState, ShowAlert } from "./episodeWorkspaceScriptActions.types";
+import type {
+  PendingRegenerateState,
+  ShowAlert,
+} from "./episodeWorkspaceScriptActions.types";
 import { parsePendingRegenerateState } from "./episodeWorkspaceScriptActions.types";
 
 const resolveScriptIdFromTask = (task: Task) => {
@@ -25,8 +28,14 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
   onSelectScript: (scriptId: number | null) => void;
   regenerateScriptId: number | null;
 }) {
-  const { episodeKey, scripts, setScripts, showAlert, onSelectScript, regenerateScriptId } =
-    args;
+  const {
+    episodeKey,
+    scripts,
+    setScripts,
+    showAlert,
+    onSelectScript,
+    regenerateScriptId,
+  } = args;
 
   const [regenerating, setRegenerating] = useState(false);
   const pendingStorageKey = useMemo(
@@ -39,7 +48,9 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
     const intervalMs = 2000;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
-      const res = await httpClient<Task>(`/api/v1/tasks/${taskId}`, { retry: false });
+      const res = await httpClient<Task>(`/api/v1/tasks/${taskId}`, {
+        retry: false,
+      });
       if (!res.success || !res.data) continue;
       const task = res.data;
       if (task.status === "completed" || task.status === "failed") {
@@ -64,7 +75,9 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
 
   const getPendingRegenerate = useCallback(() => {
     if (typeof window === "undefined") return null;
-    const pending = parsePendingRegenerateState(sessionStorage.getItem(pendingStorageKey));
+    const pending = parsePendingRegenerateState(
+      sessionStorage.getItem(pendingStorageKey),
+    );
     if (!pending) return null;
     const maxAgeMs = 1000 * 60 * 60 * 24; // 24h
     if (Date.now() - pending.createdAtMs > maxAgeMs) {
@@ -76,7 +89,11 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
 
   const loadLatestScripts = useCallback(async () => {
     const scriptsRes = await scriptAPI.getEpisodeScripts(episodeKey);
-    if (!scriptsRes.success || !Array.isArray(scriptsRes.data) || scriptsRes.data.length === 0) {
+    if (
+      !scriptsRes.success ||
+      !Array.isArray(scriptsRes.data) ||
+      scriptsRes.data.length === 0
+    ) {
       return null;
     }
     const ordered = sortScriptsNewestFirst(scriptsRes.data);
@@ -107,7 +124,8 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
         typeof scriptIdFromTask === "number"
           ? ordered.find((script) => script.id === scriptIdFromTask) || null
           : null;
-      const pickedNewerThanBefore = ordered.find((script) => !knownIds.has(script.id)) || null;
+      const pickedNewerThanBefore =
+        ordered.find((script) => !knownIds.has(script.id)) || null;
       const picked = pickedByTaskId || pickedNewerThanBefore;
 
       if (!picked) {
@@ -120,13 +138,21 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
 
       clearPendingRegenerate();
       onSelectScript(picked.id);
-      const bizIdHint = picked.business_id ? ` [${picked.business_id.slice(0, 8)}...]` : "";
+      const bizIdHint = picked.business_id
+        ? ` [${picked.business_id.slice(0, 8)}...]`
+        : "";
       showAlert({
         message: `已生成新剧本（v${picked.version} / ID: ${picked.id}${bizIdHint}）`,
         variant: "success",
       });
     },
-    [clearPendingRegenerate, loadLatestScripts, onSelectScript, pollTaskUntilDone, showAlert],
+    [
+      clearPendingRegenerate,
+      loadLatestScripts,
+      onSelectScript,
+      pollTaskUntilDone,
+      showAlert,
+    ],
   );
 
   const handleRegenerateScript = useCallback(
@@ -166,7 +192,13 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
         setRegenerating(false);
       }
     },
-    [regenerateScriptId, runRegenerateTaskFlow, scripts, setPendingRegenerate, showAlert],
+    [
+      regenerateScriptId,
+      runRegenerateTaskFlow,
+      scripts,
+      setPendingRegenerate,
+      showAlert,
+    ],
   );
 
   useEffect(() => {
@@ -176,7 +208,10 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
     void (async () => {
       try {
         setRegenerating(true);
-        await runRegenerateTaskFlow(pending.taskId, new Set(pending.knownScriptIds));
+        await runRegenerateTaskFlow(
+          pending.taskId,
+          new Set(pending.knownScriptIds),
+        );
       } finally {
         setRegenerating(false);
       }

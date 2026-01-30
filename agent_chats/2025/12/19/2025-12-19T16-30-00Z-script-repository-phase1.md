@@ -27,6 +27,7 @@ Continue with refactoring plan Phase 1, Task 1.1.1: Create Script Repository.
 ### New Files
 
 1. `ai-pic-backend/app/repositories/script_repository.py` (~290 lines)
+
    - `ScriptRepository`: Script model operations with relations
      - `get_with_relations()`: Get script with episode/story loaded
      - `list_by_episode()`: List scripts with filters

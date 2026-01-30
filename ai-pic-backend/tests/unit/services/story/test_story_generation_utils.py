@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.story.story_generation_utils import (
     build_agent_run,
     build_extra_metadata,

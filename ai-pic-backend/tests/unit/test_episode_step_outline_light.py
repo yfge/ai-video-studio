@@ -2,7 +2,6 @@ import asyncio
 import json
 
 import pytest
-
 from app.services.episode_agent import EpisodeLangGraphAgent
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 
@@ -66,6 +65,7 @@ def make_response(data: str) -> AIResponse:
         usage={"total_tokens": 10},
         metadata={},
     )
+
 
 def make_audit_pass_response() -> AIResponse:
     return make_response(json.dumps({"verdict": "pass", "issues": []}))

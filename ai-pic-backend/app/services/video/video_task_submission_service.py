@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import anyio
-
 from app.core.logging import get_logger
 from app.models.script import Script
 from app.models.task import Task, TaskStatus
@@ -14,7 +13,9 @@ from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
 from app.services.video.video_task_dispatcher import VideoTaskDispatcher
-from app.services.video.video_task_generation_metadata import build_video_generation_metadata
+from app.services.video.video_task_generation_metadata import (
+    build_video_generation_metadata,
+)
 from app.services.video.video_task_utils import (
     build_parameters_payload,
     build_selection_map,
@@ -23,7 +24,6 @@ from app.services.video.video_task_utils import (
     resolve_frame_urls,
     resolve_prompt,
 )
-
 
 VIDEO_TASK_TIMEOUT = timedelta(hours=1)
 
@@ -114,7 +114,9 @@ class VideoTaskSubmissionService:
 
         prompt_value = resolve_prompt(frame, opts.get("prompt"))
         duration_int = coerce_duration(
-            opts["duration"] if opts.get("duration") is not None else frame.get("duration_seconds")
+            opts["duration"]
+            if opts.get("duration") is not None
+            else frame.get("duration_seconds")
         )
 
         response = self._submit_provider_task(
@@ -187,7 +189,9 @@ class VideoTaskSubmissionService:
         opts: Dict[str, Any],
     ) -> None:
         provider_task_id = str((response.data or {}).get("task_id"))
-        params_payload = build_parameters_payload(prompt, start_url, end_url, duration, opts)
+        params_payload = build_parameters_payload(
+            prompt, start_url, end_url, duration, opts
+        )
         self.repo.create(
             task_id=task.id,
             script_id=script_id,
@@ -215,9 +219,7 @@ class VideoTaskSubmissionService:
         self, task: Task, submitted: int, failures: List[str]
     ) -> None:
         if submitted == 0:
-            error_msg = "未生成任何视频" + (
-                f"：{failures[0]}" if failures else ""
-            )
+            error_msg = "未生成任何视频" + (f"：{failures[0]}" if failures else "")
             task.status = TaskStatus.FAILED
             task.error_message = error_msg
             self.db.commit()

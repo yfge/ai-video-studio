@@ -15,13 +15,16 @@ summary: "Expose provider-aware img2img advanced params for Environment variants
 ---
 
 ## User Prompt
+
 全局检查文生图/图生图提示词与参数规范；按 provider 动态展示额外输入信息；覆盖所有域；原子化分布提交。
 
 ## Goals
+
 - 环境资产「图生图变体」支持按 provider 动态展示高级参数，并确保参数端到端透传到后端统一归一化逻辑。
 - 补齐可灵（keling）图生图关键参数：`image_reference`/`image_fidelity`/`human_fidelity`（以及通用 `seed/steps/cfg_scale/negative_prompt/strength` 在支持的 provider 下可用）。
 
 ## Changes
+
 - 后端环境图生图：`resolve_environment_image_variant_request()` / task payload / service 调用补齐 `image_reference`/`image_fidelity`/`human_fidelity`，并透传到 `ImageGenRequest` → `normalize_image_gen_request` → provider-safe 调用。
 - 后端 endpoint：`/api/v1/story-structure/environments/{env_id}/images/variants(-async)` 增加 query fallback 参数，JSON body 同样支持上述字段。
 - 前端环境图生图弹窗：开启 `ImageToImageModal` 的 `showAdvancedParams`，并在提交 payload 中透传 `seed/steps/cfg_scale/negative_prompt/strength/image_reference/image_fidelity/human_fidelity`。
@@ -29,6 +32,7 @@ summary: "Expose provider-aware img2img advanced params for Environment variants
 - 测试：新增 resolver/task payload 单测覆盖上述字段。
 
 ## Validation
+
 - 后端单测：`cd ai-pic-backend && pytest tests/unit/services/story_structure/test_environment_image_requests.py -q`（通过）。
 - 前端静态检查：`cd ai-pic-frontend && npm run lint`（通过，存在已知 warnings）。
 - 前端构建：`cd ai-pic-frontend && npm run build`（通过）。
@@ -38,9 +42,10 @@ summary: "Expose provider-aware img2img advanced params for Environment variants
   - DevTools Network 确认 `POST /api/v1/story-structure/environments/<env_id>/images/variants-async` Request Body 包含 `image_reference/image_fidelity/human_fidelity` 字段。
 
 ## Next Steps
+
 - 对齐所有 domain 的 txt2img/img2img 参数集合（含 provider notes），并保证 UI 与后端归一化逻辑一致。
 - 评估是否需要让 `/api/v1/ai/generate/image-to-image` 也走同一套归一化与参数过滤（避免域间能力漂移）。
 
 ## Linked Commits
-- (this commit)
 
+- (this commit)

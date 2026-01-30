@@ -23,4 +23,3 @@ test('mapNormalizedSceneToSelected normalizes numeric and string values', () => 
   assert.equal(mapNormalizedSceneToSelected({ scene_number: 'NaN' }), 1)
   assert.equal(mapNormalizedSceneToSelected(null), 1)
 })
-

@@ -4,13 +4,13 @@
 
 当前项目的内容分层是 `IP → Story → Episode → Script → Scene → Storyboard`（另有规范化表：Scene/Shot 等），已经能支撑“写作/拆分/分镜”的生产过程。但当目标变成：
 
-1) 为每个镜头生成分镜的首尾关键帧  
-2) 基于关键帧生成视频片段（image-to-video / video diffusion）  
-3) 拼接、剪辑、混音，导出单集成片（≤5分钟）
+1. 为每个镜头生成分镜的首尾关键帧
+2. 基于关键帧生成视频片段（image-to-video / video diffusion）
+3. 拼接、剪辑、混音，导出单集成片（≤5分钟）
 
 会出现一个结构性缺口：**缺少一个“可渲染的编排主线”**。
 
-> Story/Episode/Script/Scene/Shot/Storyboard 是“内容与资产层级”；  
+> Story/Episode/Script/Scene/Shot/Storyboard 是“内容与资产层级”；
 > Timeline/Sequence/EDL 是“剪辑与渲染主线”（决定顺序、时长、轨道、版本、导出）。
 
 因此建议在现有架构上新增“时间轴/剪辑序列”域模型与渲染任务链路，而不是推倒重来改成“只以声音为主线”。声音可以作为主线的来源之一，但落地仍需要时间轴承载。
@@ -157,11 +157,20 @@ MVP 建议：
           "clip_id": "c1",
           "order": 1,
           "duration_ms": 3200,
-          "source": { "shot_id": 9001, "scene_id": 501, "storyboard_frame_id": "..." },
+          "source": {
+            "shot_id": 9001,
+            "scene_id": 501,
+            "storyboard_frame_id": "..."
+          },
           "start_frame_asset_id": 111,
           "end_frame_asset_id": 112,
           "video_asset_id": 210,
-          "generation": { "model": "keling-video", "provider": "keling", "prompt": "...", "seed": null }
+          "generation": {
+            "model": "keling-video",
+            "provider": "keling",
+            "prompt": "...",
+            "seed": null
+          }
         }
       ]
     },
@@ -169,7 +178,13 @@ MVP 建议：
       "track_id": "dialogue-1",
       "type": "dialogue",
       "clips": [
-        { "clip_id": "d1", "order": 1, "duration_ms": 3200, "audio_asset_id": 310, "subtitle": "..." }
+        {
+          "clip_id": "d1",
+          "order": 1,
+          "duration_ms": 3200,
+          "audio_asset_id": 310,
+          "subtitle": "..."
+        }
       ]
     }
   ]
@@ -304,4 +319,3 @@ MVP 建议：
 8. 对该 clip 生成视频片段
 9. 导出 proxy，前端播放验证 clip 顺序与时长
 10. 导出 final，下载/播放验证音画同步与拼接正确
-

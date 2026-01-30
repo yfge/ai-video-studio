@@ -125,9 +125,13 @@ async def try_fill_pending_scenes_after_react(
                             "scene_number": {
                                 "anyOf": [{"type": "integer"}, {"type": "null"}]
                             },
-                            "character": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "character": {
+                                "anyOf": [{"type": "string"}, {"type": "null"}]
+                            },
                             "content": {"type": "string"},
-                            "emotion": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "emotion": {
+                                "anyOf": [{"type": "string"}, {"type": "null"}]
+                            },
                             "action": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                         },
                     },
@@ -160,7 +164,11 @@ async def try_fill_pending_scenes_after_react(
     for attempt in range(3):
         resp = await ai_manager.generate_text(
             prompt=prompt,
-            temperature=min(0.6, temperature) if attempt == 0 else (0.4 if attempt == 1 else 0.2),
+            temperature=(
+                min(0.6, temperature)
+                if attempt == 0
+                else (0.4 if attempt == 1 else 0.2)
+            ),
             model=model,
             prefer_provider=prefer_provider,
             json_schema=schema,
@@ -180,7 +188,9 @@ async def try_fill_pending_scenes_after_react(
             continue
 
         new_dialogues = _filter_scene_items(parsed.get("dialogues") or [], pending_set)
-        new_stage = _filter_scene_items(parsed.get("stage_directions") or [], pending_set)
+        new_stage = _filter_scene_items(
+            parsed.get("stage_directions") or [], pending_set
+        )
 
         per_scene_counts = {
             s: len([d for d in new_dialogues if _to_int(d.get("scene_number")) == s])
@@ -215,14 +225,26 @@ async def try_fill_pending_scenes_after_react(
                     and _to_int(d.get("scene_number")) == scene_no
                 )
                 est_seconds = total_chars / WORDS_PER_SECOND if total_chars > 0 else 0.0
-                if budget.min_duration_seconds and est_seconds < float(budget.min_duration_seconds):
-                    need = int((budget.target_duration_seconds - est_seconds) * WORDS_PER_SECOND)
-                    min_chars = int(float(budget.min_duration_seconds) * WORDS_PER_SECOND)
+                if budget.min_duration_seconds and est_seconds < float(
+                    budget.min_duration_seconds
+                ):
+                    need = int(
+                        (budget.target_duration_seconds - est_seconds)
+                        * WORDS_PER_SECOND
+                    )
+                    min_chars = int(
+                        float(budget.min_duration_seconds) * WORDS_PER_SECOND
+                    )
                     too_short.append(
                         f"{scene_no}(当前≈{est_seconds:.1f}s，至少≈{budget.min_duration_seconds}s；字符数≥{min_chars}，建议再+{max(need, 20)}字)"
                     )
-                elif budget.max_duration_seconds and est_seconds > float(budget.max_duration_seconds):
-                    over = int((est_seconds - budget.target_duration_seconds) * WORDS_PER_SECOND)
+                elif budget.max_duration_seconds and est_seconds > float(
+                    budget.max_duration_seconds
+                ):
+                    over = int(
+                        (est_seconds - budget.target_duration_seconds)
+                        * WORDS_PER_SECOND
+                    )
                     too_long.append(
                         f"{scene_no}(当前≈{est_seconds:.1f}s，最多≈{budget.max_duration_seconds}s；建议删减≈{max(over, 20)}字)"
                     )

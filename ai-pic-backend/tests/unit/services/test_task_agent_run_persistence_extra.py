@@ -2,11 +2,14 @@ import json
 
 from app.models.script import Episode, Script, Story
 from app.models.story_novel_export import StoryNovelExport
+from app.models.story_structure import Environment
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.models.video_generation_task import VideoGenerationTask, VideoGenerationTaskStatus
+from app.models.video_generation_task import (
+    VideoGenerationTask,
+    VideoGenerationTaskStatus,
+)
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
-from app.models.story_structure import Environment
 from app.services.task_agent_run_persistence import persist_task_agent_run
 
 
@@ -65,13 +68,17 @@ def test_persist_task_agent_run_dialogue_audio(db_session):
         task_type=TaskType.DIALOGUE_AUDIO_GENERATION,
         status=TaskStatus.COMPLETED,
         result_file_path=f"script:{script.id}:dialogue_audio",
-        parameters=json.dumps({"script_id": script.id, "tts_model": "speech-2.6-hd"}, ensure_ascii=False),
+        parameters=json.dumps(
+            {"script_id": script.id, "tts_model": "speech-2.6-hd"}, ensure_ascii=False
+        ),
         user_id=user.id,
     )
     db_session.add(task)
     db_session.commit()
 
-    persist_task_agent_run(task_id=task.id, user_id=user.id, kind="dialogue_audio", db_session=db_session)
+    persist_task_agent_run(
+        task_id=task.id, user_id=user.id, kind="dialogue_audio", db_session=db_session
+    )
 
     db_session.refresh(task)
     params = json.loads(task.parameters)
@@ -107,7 +114,12 @@ def test_persist_task_agent_run_storyboard_generation(db_session):
     db_session.add(task)
     db_session.commit()
 
-    persist_task_agent_run(task_id=task.id, user_id=user.id, kind="storyboard_generation", db_session=db_session)
+    persist_task_agent_run(
+        task_id=task.id,
+        user_id=user.id,
+        kind="storyboard_generation",
+        db_session=db_session,
+    )
 
     db_session.refresh(task)
     run = json.loads(task.parameters)["agent_run"]
@@ -117,7 +129,14 @@ def test_persist_task_agent_run_storyboard_generation(db_session):
 
 def test_persist_task_agent_run_environment_images(db_session):
     user = _create_user(db_session)
-    env = Environment(user_id=user.id, name="Env", category="indoor", tags=[], description="x", reference_images=[])
+    env = Environment(
+        user_id=user.id,
+        name="Env",
+        category="indoor",
+        tags=[],
+        description="x",
+        reference_images=[],
+    )
     db_session.add(env)
     db_session.commit()
     db_session.refresh(env)
@@ -127,13 +146,21 @@ def test_persist_task_agent_run_environment_images(db_session):
         task_type=TaskType.IMAGE_GENERATION,
         status=TaskStatus.COMPLETED,
         result_file_path=f"environment_images:{env.id}:1",
-        parameters=json.dumps({"env_id": env.id, "prompt": "p", "model": "google:imagen-3"}, ensure_ascii=False),
+        parameters=json.dumps(
+            {"env_id": env.id, "prompt": "p", "model": "google:imagen-3"},
+            ensure_ascii=False,
+        ),
         user_id=user.id,
     )
     db_session.add(task)
     db_session.commit()
 
-    persist_task_agent_run(task_id=task.id, user_id=user.id, kind="environment_images", db_session=db_session)
+    persist_task_agent_run(
+        task_id=task.id,
+        user_id=user.id,
+        kind="environment_images",
+        db_session=db_session,
+    )
 
     db_session.refresh(task)
     run = json.loads(task.parameters)["agent_run"]
@@ -144,7 +171,9 @@ def test_persist_task_agent_run_environment_images(db_session):
 
 def test_persist_task_agent_run_virtual_ip_image(db_session):
     user = _create_user(db_session)
-    vip = VirtualIP(user_id=user.id, name="VIP", description="d", is_active=True, is_public=False)
+    vip = VirtualIP(
+        user_id=user.id, name="VIP", description="d", is_active=True, is_public=False
+    )
     db_session.add(vip)
     db_session.commit()
     db_session.refresh(vip)
@@ -175,13 +204,17 @@ def test_persist_task_agent_run_virtual_ip_image(db_session):
         task_type=TaskType.IMAGE_GENERATION,
         status=TaskStatus.COMPLETED,
         result_file_path=f"virtual_ip_image:{vip.id}:{image.id}",
-        parameters=json.dumps({"virtual_ip_id": vip.id, "model": "openai:dall-e-3"}, ensure_ascii=False),
+        parameters=json.dumps(
+            {"virtual_ip_id": vip.id, "model": "openai:dall-e-3"}, ensure_ascii=False
+        ),
         user_id=user.id,
     )
     db_session.add(task)
     db_session.commit()
 
-    persist_task_agent_run(task_id=task.id, user_id=user.id, kind="virtual_ip_image", db_session=db_session)
+    persist_task_agent_run(
+        task_id=task.id, user_id=user.id, kind="virtual_ip_image", db_session=db_session
+    )
 
     db_session.refresh(task)
     run = json.loads(task.parameters)["agent_run"]
@@ -203,7 +236,10 @@ def test_persist_task_agent_run_story_novel_export(db_session):
         task_type=TaskType.TEXT_GENERATION,
         status=TaskStatus.COMPLETED,
         result_file_path="exports:novels/x.txt",
-        parameters=json.dumps({"model": "deepseek:deepseek-chat", "target_words": 1200}, ensure_ascii=False),
+        parameters=json.dumps(
+            {"model": "deepseek:deepseek-chat", "target_words": 1200},
+            ensure_ascii=False,
+        ),
         user_id=user.id,
         target_business_id=story.business_id,
     )
@@ -225,7 +261,9 @@ def test_persist_task_agent_run_story_novel_export(db_session):
     db_session.add(export_row)
     db_session.commit()
 
-    persist_task_agent_run(task_id=task.id, user_id=user.id, kind="text_generation", db_session=db_session)
+    persist_task_agent_run(
+        task_id=task.id, user_id=user.id, kind="text_generation", db_session=db_session
+    )
 
     db_session.refresh(task)
     run = json.loads(task.parameters)["agent_run"]
@@ -240,7 +278,9 @@ def test_persist_task_agent_run_video_generation(db_session):
         title="分镜视频生成",
         task_type=TaskType.VIDEO_GENERATION,
         status=TaskStatus.COMPLETED,
-        parameters=json.dumps({"script_id": 123, "model": "google:veo"}, ensure_ascii=False),
+        parameters=json.dumps(
+            {"script_id": 123, "model": "google:veo"}, ensure_ascii=False
+        ),
         user_id=user.id,
     )
     db_session.add(task)
@@ -263,11 +303,12 @@ def test_persist_task_agent_run_video_generation(db_session):
     db_session.add(sub)
     db_session.commit()
 
-    persist_task_agent_run(task_id=task.id, user_id=user.id, kind="video_generation", db_session=db_session)
+    persist_task_agent_run(
+        task_id=task.id, user_id=user.id, kind="video_generation", db_session=db_session
+    )
 
     db_session.refresh(task)
     run = json.loads(task.parameters)["agent_run"]
     assert run["provider_used"] == "google"
     assert run["model_used"] == "veo"
     assert run["result_ref"]["video_task_count"] == 1
-

@@ -24,11 +24,11 @@ from ..base import (
     ModelInfo,
     ProviderConfig,
 )
-from .models import get_available_models
 from . import text as text_module
 from . import tts as tts_module
 from . import video as video_module
 from . import video_tasks as video_tasks_module
+from .models import get_available_models
 
 
 class MinimaxProvider(BaseProvider):

@@ -1,5 +1,4 @@
 import pytest
-
 from app.models.user import User
 from tests.factories import EpisodeFactory, ScriptFactory, StoryFactory, setup_factories
 

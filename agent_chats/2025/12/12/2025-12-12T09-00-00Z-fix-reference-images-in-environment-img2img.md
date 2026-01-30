@@ -29,14 +29,17 @@ summary: "修复环境资产图生图异步任务缺少参考图传递的问题"
 **环境资产图生图** 与虚拟IP图生图存在相同的问题：
 
 1. **前端页面** (`ai-pic-frontend/src/app/environments/page.tsx:158`)
+
    - `handleGenerateVariant` 接收到了 `payload.referenceImages` (ImageToImageModal 传递)
    - **缺失**: 未将该参数传递给 API 调用
 
 2. **前端 API** (`ai-pic-frontend/src/utils/api.ts:1266-1285`)
+
    - `generateEnvironmentImageVariantsAsync` 类型定义和请求体
    - **缺失**: `reference_images` 参数未包含在类型和请求中
 
 3. **后端接口** (`ai-pic-backend/app/api/v1/endpoints/story_structure.py:712-780`)
+
    - `generate_environment_image_variants_async` 从请求中提取参数
    - **缺失**: 未提取 `reference_images` 并加入 payload
 
@@ -45,6 +48,7 @@ summary: "修复环境资产图生图异步任务缺少参考图传递的问题"
    - **缺失**: 未从 payload 提取 `reference_images` 并通过 `extra_images` 传递
 
 **分镜管理图生图** 已正确实现：
+
 - 后端接口 `generate_storyboard_images` (scripts.py:2223,2240) 正确传递 `reference_images`
 - task_worker.py:89 正确从 payload 提取并传递给处理函数
 - **无需修复**
@@ -59,18 +63,21 @@ const handleGenerateVariant = async (payload: {
   model?: string;
   count: number;
   size?: string;
-  referenceImages: string[]  // 新增
+  referenceImages: string[]; // 新增
 }) => {
   // ...
-  const res = await storyStructureAPI.generateEnvironmentImageVariantsAsync(variantTarget.env.id, {
-    base_image: variantTarget.url,
-    prompt: payload.prompt || variantPrompt,
-    model: payload.model || variantTarget.modelHint,
-    size: payload.size,
-    count: payload.count,
-    reference_images: payload.referenceImages,  // 新增
-  })
-}
+  const res = await storyStructureAPI.generateEnvironmentImageVariantsAsync(
+    variantTarget.env.id,
+    {
+      base_image: variantTarget.url,
+      prompt: payload.prompt || variantPrompt,
+      model: payload.model || variantTarget.modelHint,
+      size: payload.size,
+      count: payload.count,
+      reference_images: payload.referenceImages, // 新增
+    },
+  );
+};
 ```
 
 #### 2. 前端 API 类型和传递 (api.ts:1266-1285)
@@ -150,6 +157,7 @@ response = await ai_service.ai_manager.image_to_image(
 ## Next Steps
 
 1. **人工测试**: 需要在真实环境中验证环境资产图生图功能
+
    - 使用测试账号 `geyunfei` / `Gyf@845261`
    - 在环境资产页面选择一张环境图执行图生图
    - 确认前端选中的参考图正确传递到后端

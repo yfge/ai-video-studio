@@ -50,17 +50,7 @@ const formatMs = (ms: number) => {
 const niceStep = (rangeMs: number) => {
   // Pick a human-friendly tick step (ms)
   const candidates = [
-    100,
-    200,
-    250,
-    500,
-    1000,
-    2000,
-    5000,
-    10000,
-    20000,
-    30000,
-    60000,
+    100, 200, 250, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000,
   ];
   const target = rangeMs / 8;
   for (const step of candidates) {
@@ -80,7 +70,11 @@ const buildTicks = (startMs: number, endMs: number): Tick[] => {
   return ticks;
 };
 
-const resolveRange = (tracks: TimelineTrack[], startMs?: number, endMs?: number) => {
+const resolveRange = (
+  tracks: TimelineTrack[],
+  startMs?: number,
+  endMs?: number,
+) => {
   const minStart =
     startMs ??
     tracks.reduce((acc, track) => {
@@ -120,14 +114,9 @@ export function Timeline({
   const totalMs = Math.max(1, maxEnd - minStart);
   const pxPerMs = BASE_PX_PER_MS * zoom;
   const contentWidth = Math.max(600, totalMs * pxPerMs);
-  const ticks = useMemo(
-    () => buildTicks(minStart, maxEnd),
-    [maxEnd, minStart],
-  );
+  const ticks = useMemo(() => buildTicks(minStart, maxEnd), [maxEnd, minStart]);
 
-  const colorForTrack = (track: TimelineTrack) =>
-    track.color ||
-    "#4f46e5"; // default indigo; per-track override allowed
+  const colorForTrack = (track: TimelineTrack) => track.color || "#4f46e5"; // default indigo; per-track override allowed
 
   const renderItem = (item: TimelineItem, trackColor: string) => {
     const startOffset = (item.startMs - minStart) * pxPerMs;
@@ -152,13 +141,15 @@ export function Timeline({
         key={item.id}
         title={
           item.label
-            ? `${item.label} (${formatMs(item.startMs)}–${formatMs(item.endMs)})`
+            ? `${item.label} (${formatMs(item.startMs)}–${formatMs(
+                item.endMs,
+              )})`
             : `${formatMs(item.startMs)}–${formatMs(item.endMs)}`
         }
         onClick={() => onSelect?.(item)}
-        className={`absolute top-1 bottom-1 rounded ${isMarker ? "" : "border"} ${
-          onSelect ? "cursor-pointer" : "cursor-default"
-        } overflow-hidden`}
+        className={`absolute top-1 bottom-1 rounded ${
+          isMarker ? "" : "border"
+        } ${onSelect ? "cursor-pointer" : "cursor-default"} overflow-hidden`}
         style={style}
       >
         {!isMarker ? (
@@ -205,7 +196,10 @@ export function Timeline({
       <div className="relative overflow-x-auto border-t border-gray-200">
         <div
           className="relative"
-          style={{ width: `${contentWidth}px`, minHeight: `${60 + tracks.length * 42}px` }}
+          style={{
+            width: `${contentWidth}px`,
+            minHeight: `${60 + tracks.length * 42}px`,
+          }}
         >
           {/* Ticks */}
           <div className="absolute left-0 right-0 top-0 h-8">

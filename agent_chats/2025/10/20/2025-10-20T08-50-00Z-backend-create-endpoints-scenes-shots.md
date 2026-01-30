@@ -39,4 +39,3 @@ summary: "Add POST endpoints to create scenes and shots; update docs and route t
 ## Linked Commits
 
 - pending（本地增量补丁，后续与此台账一并提交）
-

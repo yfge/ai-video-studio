@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from app.schemas.script_quality import ScriptLintMetrics, ScriptLintOptions, ScriptLintResult
+from app.schemas.script_quality import (
+    ScriptLintMetrics,
+    ScriptLintOptions,
+    ScriptLintResult,
+)
 from app.services.script_quality.checks import (
     check_cliffhanger,
     check_dialogue_length,
@@ -12,7 +16,11 @@ from app.services.script_quality.checks import (
     check_visual_language,
 )
 from app.services.script_quality.constants import SFX_TAG_KEYWORDS, UNIMPLEMENTED_CHECKS
-from app.services.script_quality.utils import collect_tags, estimate_visible_chars, is_dialogue
+from app.services.script_quality.utils import (
+    collect_tags,
+    estimate_visible_chars,
+    is_dialogue,
+)
 
 
 def lint_script_content(
@@ -36,7 +44,9 @@ def lint_script_content(
         if is_dialogue_line:
             dialogue_lines.append((ln_no, ln, content or ""))
             continue
-        if any(key in ln for key in SFX_TAG_KEYWORDS) or ln.startswith(("（", "(", "[")):
+        if any(key in ln for key in SFX_TAG_KEYWORDS) or ln.startswith(
+            ("（", "(", "[")
+        ):
             stage_lines.append((ln_no, ln))
 
     rule_results = []
@@ -86,7 +96,9 @@ def lint_script_content(
         dialogue_lines=len(dialogue_lines),
         stage_lines=len(stage_lines),
         estimated_words=estimated_words,
-        estimated_dialogue_chars=sum(estimate_visible_chars(c) for _no, _ln, c in dialogue_lines),
+        estimated_dialogue_chars=sum(
+            estimate_visible_chars(c) for _no, _ln, c in dialogue_lines
+        ),
     )
 
     return ScriptLintResult(

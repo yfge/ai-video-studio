@@ -13,11 +13,13 @@ summary: "修复 Google provider 前缀问题：去除模型名称中的 'google
 ## User Prompt
 
 用户在测试时遇到新的错误：
+
 ```
 ERROR: google 错误: Client error '404 Not Found' for url 'https://generativelanguage.googleapis.com/v1beta/models/google:gemini-3-pro-image-preview:generateContent'
 ```
 
 请求 body 显示：
+
 ```
 "model": "google:gemini-3-pro-image-preview"
 ```
@@ -33,6 +35,7 @@ ERROR: google 错误: Client error '404 Not Found' for url 'https://generativela
 ### 1. 添加模型 ID 清理方法 (ai-pic-backend/app/services/providers/google_provider.py:235-242)
 
 **新增方法**：
+
 ```python
 def _clean_model_id(self, model: Optional[str]) -> Optional[str]:
     """清理模型 ID，去掉可能的 provider 前缀（如 'google:'）"""
@@ -45,6 +48,7 @@ def _clean_model_id(self, model: Optional[str]) -> Optional[str]:
 ```
 
 **原因**：
+
 - 前端/API 传入的模型名称格式为 `provider:model_id`（如 `google:gemini-3-pro-image-preview`）
 - Google API 只接受纯模型 ID（如 `gemini-3-pro-image-preview`）
 - 需要在调用 API 前清理掉 provider 前缀
@@ -52,11 +56,13 @@ def _clean_model_id(self, model: Optional[str]) -> Optional[str]:
 ### 2. 在 generate_image() 中应用清理逻辑 (line 298)
 
 **修改前**：
+
 ```python
 model_id = model or "gemini-2.5-flash-image"
 ```
 
 **修改后**：
+
 ```python
 # 清理模型 ID，去掉可能的 provider 前缀
 model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
@@ -65,11 +71,13 @@ model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
 ### 3. 在 image_to_image() 中应用清理逻辑 (line 375)
 
 **修改前**：
+
 ```python
 model_id = model or "gemini-2.5-flash-image"
 ```
 
 **修改后**：
+
 ```python
 # 清理模型 ID，去掉可能的 provider 前缀
 model_id = self._clean_model_id(model) or "gemini-2.5-flash-image"
@@ -96,6 +104,7 @@ async def test_generate_image_strips_provider_prefix(monkeypatch):
 ## Validation
 
 ### 单元测试
+
 ```bash
 $ pytest tests/unit/test_google_provider_image.py -v
 ======================== 3 passed, 23 warnings in 0.04s ========================
@@ -103,30 +112,36 @@ $ pytest tests/unit/test_google_provider_image.py -v
 ```
 
 三个测试用例：
+
 1. `test_generate_image_success` - 验证基本文生图功能
 2. `test_generate_image_strips_provider_prefix` - ✨ 新增：验证 provider 前缀清理
 3. `test_image_to_image_uses_reference` - 验证图生图功能
 
 ### 端到端测试计划
+
 测试步骤：
+
 1. 在浏览器中访问故事结构环境图像生成页面
 2. 选择 Google Gemini 3 Pro Image Preview 模型（model="google:gemini-3-pro-image-preview"）
 3. 输入提示词（如 "幼儿园"）
 4. 点击生成
 
 预期结果：
+
 - 后端日志显示正确的 API URL（不包含 "google:" 前缀）
 - 图像成功生成
 
 ### 修复前后对比
 
 **修复前**：
+
 ```
 URL: https://generativelanguage.googleapis.com/v1beta/models/google:gemini-3-pro-image-preview:generateContent
 错误: 404 Not Found
 ```
 
 **修复后**：
+
 ```
 URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent
 状态: 成功生成图像
@@ -141,6 +156,7 @@ URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-
 ## Linked Commits
 
 本次提交将包含以下修改：
-- `ai-pic-backend/app/services/providers/google_provider.py` - 添加 _clean_model_id 方法并应用
+
+- `ai-pic-backend/app/services/providers/google_provider.py` - 添加 \_clean_model_id 方法并应用
 - `ai-pic-backend/tests/unit/test_google_provider_image.py` - 新增前缀清理测试
 - `agent_chats/2025/12/10/2025-12-10T10-47-22Z-fix-google-model-prefix.md` - 本日志文件

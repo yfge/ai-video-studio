@@ -39,4 +39,3 @@ summary: "Fix Next.js build failure caused by PersistedStyleInfo typing on tasks
 ## Linked Commits
 
 - fix(frontend): fix tasks page docker build
-

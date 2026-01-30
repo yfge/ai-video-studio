@@ -4,7 +4,7 @@
 
 ## OpenAPI
 
-````yaml api-reference/speech/voice-design/api/openapi.json post /v1/voice_design
+```yaml api-reference/speech/voice-design/api/openapi.json post /v1/voice_design
 openapi: 3.1.0
 info:
   title: MiniMax Voice Design API
@@ -37,15 +37,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/T2VReq'
+              $ref: "#/components/schemas/T2VReq"
         required: true
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/T2VResp'
+                $ref: "#/components/schemas/T2VResp"
 components:
   schemas:
     T2VReq:
@@ -120,8 +120,7 @@ components:
         `HTTP: Bearer Auth`
          - Security Scheme Type: http
          - HTTP Authorization Scheme: Bearer API_key，用于验证账户信息，可在 [账户管理>接口密钥](https://platform.minimaxi.com/user-center/basic-information/interface-key) 中查看。
-
-````
+```
 
 ---
 

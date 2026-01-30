@@ -53,7 +53,9 @@ class VideoGenerationMixin:
                 thumbnail_oss_result = None
                 last_frame_oss_result = None
 
-                video_download_url = response.data.get("download_url") or original_video_url
+                video_download_url = (
+                    response.data.get("download_url") or original_video_url
+                )
                 if video_download_url and oss_service:
                     try:
                         video_oss_result = await oss_service.upload_from_url(
@@ -114,8 +116,7 @@ class VideoGenerationMixin:
                     ),
                     "thumbnail_url": (
                         thumbnail_oss_result.get("file_url")
-                        if thumbnail_oss_result
-                        and thumbnail_oss_result.get("success")
+                        if thumbnail_oss_result and thumbnail_oss_result.get("success")
                         else original_thumbnail_url
                     ),
                     "original_video_url": original_video_url,

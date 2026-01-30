@@ -28,6 +28,7 @@ Continue the duration control integration by adding the `use_duration_control` p
 ### 1. API Type Definitions
 
 **`ai-pic-frontend/src/utils/api.ts` (line 1931)**:
+
 ```typescript
 async generateTimelinePipelineAsync(
   scriptId: number | string,
@@ -39,19 +40,21 @@ async generateTimelinePipelineAsync(
 ```
 
 **`ai-pic-frontend/src/utils/api/endpoints/script.endpoints.ts` (line 250)**:
+
 ```typescript
 export async function generateTimelinePipelineAsync(
   scriptId: number | string,
   payload?: {
     // ... existing fields ...
-    use_duration_control?: boolean;  // NEW
-  }
-)
+    use_duration_control?: boolean; // NEW
+  },
+);
 ```
 
 ### 2. State Management in WorkspaceTimelineTabContent.tsx
 
 Added state hook and passed to API call:
+
 ```typescript
 const [useDurationControl, setUseDurationControl] = useState(false);
 
@@ -65,6 +68,7 @@ use_duration_control: useDurationControl,
 ### 3. UI Toggle in AudioTimelineSection.tsx
 
 Added props interface:
+
 ```typescript
 // Duration control
 useDurationControl: boolean;
@@ -72,8 +76,12 @@ setUseDurationControl: (value: boolean) => void;
 ```
 
 Added checkbox toggle near model selector:
+
 ```tsx
-<label className="flex items-center gap-2 cursor-pointer" title="启用 Duration Orchestrator 确保时长在目标的±10%范围内">
+<label
+  className="flex items-center gap-2 cursor-pointer"
+  title="启用 Duration Orchestrator 确保时长在目标的±10%范围内"
+>
   <input
     type="checkbox"
     checked={useDurationControl}
@@ -83,9 +91,7 @@ Added checkbox toggle near model selector:
   <span className={useDurationControl ? "text-blue-600 font-medium" : ""}>
     时长精控
   </span>
-  {useDurationControl && (
-    <span className="text-xs text-blue-500">(±10%)</span>
-  )}
+  {useDurationControl && <span className="text-xs text-blue-500">(±10%)</span>}
 </label>
 ```
 

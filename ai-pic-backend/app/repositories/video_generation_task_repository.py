@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import Iterable, List, Optional
 
-from sqlalchemy.orm import Session
-
 from app.models.video_generation_task import (
     VideoGenerationTask,
     VideoGenerationTaskStatus,
 )
 from app.repositories.base import BaseRepository
+from sqlalchemy.orm import Session
 
 
 class VideoGenerationTaskRepository(BaseRepository[VideoGenerationTask]):

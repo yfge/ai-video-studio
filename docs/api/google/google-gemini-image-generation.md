@@ -12,26 +12,30 @@ Google's Gemini API offers native image generation and editing capabilities thro
 ## Core Features
 
 ### Text-to-Image Generation
+
 Generate images from text descriptions with control over composition, lighting, and style.
 
 ### Image Editing
+
 Modify existing images through text prompts, adding/removing elements while maintaining original context and lighting.
 
 ### Multi-Turn Iteration
+
 Refine images conversationally across multiple rounds until achieving desired results.
 
 ### High-Fidelity Text Rendering
+
 Accurate text generation suitable for logos, charts, and marketing materials.
 
 ## Model Comparison
 
-| Feature | Gemini 2.5 Flash | Gemini 3 Pro Preview |
-|---------|------------------|----------------------|
-| Max Resolution | 1024px | 4K |
-| Input Images | Up to 3 | Up to 14 |
-| Google Search Integration | No | Yes |
-| Thinking Process | No | Yes (default) |
-| Speed | Optimized | Professional |
+| Feature                   | Gemini 2.5 Flash | Gemini 3 Pro Preview |
+| ------------------------- | ---------------- | -------------------- |
+| Max Resolution            | 1024px           | 4K                   |
+| Input Images              | Up to 3          | Up to 14             |
+| Google Search Integration | No               | Yes                  |
+| Thinking Process          | No               | Yes (default)        |
+| Speed                     | Optimized        | Professional         |
 
 ## API Parameters
 
@@ -44,6 +48,7 @@ response_modalities: ["TEXT", "IMAGE"] or ["IMAGE"]
 ```
 
 ### Aspect Ratios & Resolutions
+
 - **Gemini 2.5 Flash**: All aspect ratios generate 1290 tokens
 - **Gemini 3 Pro**: 1K (1120 tokens), 2K (1120 tokens), 4K (2000 tokens)
 
@@ -79,18 +84,19 @@ import * as fs from "node:fs";
 const ai = new GoogleGenAI({});
 
 const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image",
-    contents: "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme",
+  model: "gemini-2.5-flash-image",
+  contents:
+    "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme",
 });
 
 for (const part of response.candidates[0].content.parts) {
-    if (part.text) {
-        console.log(part.text);
-    } else if (part.inlineData) {
-        const imageData = part.inlineData.data;
-        const buffer = Buffer.from(imageData, "base64");
-        fs.writeFileSync("gemini-native-image.png", buffer);
-    }
+  if (part.text) {
+    console.log(part.text);
+  } else if (part.inlineData) {
+    const imageData = part.inlineData.data;
+    const buffer = Buffer.from(imageData, "base64");
+    fs.writeFileSync("gemini-native-image.png", buffer);
+  }
 }
 ```
 

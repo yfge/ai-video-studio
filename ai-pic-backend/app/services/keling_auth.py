@@ -5,11 +5,12 @@ Handles JWT token generation and caching for Keling AI API authentication.
 Tokens are cached and automatically refreshed 5 minutes before expiry.
 """
 
-import time
-import jwt
-from typing import Optional
-from datetime import datetime, timedelta
 import threading
+import time
+from datetime import datetime
+from typing import Optional
+
+import jwt
 
 
 class KelingAuthManager:
@@ -31,7 +32,7 @@ class KelingAuthManager:
         access_key: str,
         secret_key: str,
         token_ttl: int = 1800,  # 30 minutes
-        refresh_buffer: int = 300  # 5 minutes
+        refresh_buffer: int = 300,  # 5 minutes
     ):
         """
         Initialize Keling authentication manager.
@@ -80,22 +81,19 @@ class KelingAuthManager:
         ttl = ttl_seconds or self.token_ttl
         current_time = int(time.time())
 
-        headers = {
-            "alg": "HS256",
-            "typ": "JWT"
-        }
+        headers = {"alg": "HS256", "typ": "JWT"}
 
         payload = {
             "iss": self.access_key,  # Issuer: AccessKey
             "exp": current_time + ttl,  # Expiration time
-            "nbf": current_time - 5  # Not before (5s clock skew tolerance)
+            "nbf": current_time - 5,  # Not before (5s clock skew tolerance)
         }
 
         token = jwt.encode(payload, self.secret_key, algorithm="HS256", headers=headers)
 
         # PyJWT 2.0+ returns string directly, older versions return bytes
         if isinstance(token, bytes):
-            token = token.decode('utf-8')
+            token = token.decode("utf-8")
 
         return token
 
@@ -118,9 +116,9 @@ class KelingAuthManager:
 
             # Check if we need to refresh the token
             should_refresh = (
-                self._cached_token is None or
-                self._token_expiry is None or
-                current_time >= (self._token_expiry - self.refresh_buffer)
+                self._cached_token is None
+                or self._token_expiry is None
+                or current_time >= (self._token_expiry - self.refresh_buffer)
             )
 
             if should_refresh:
@@ -179,7 +177,7 @@ class KelingAuthManager:
                     "has_token": False,
                     "is_valid": False,
                     "expires_in": None,
-                    "expires_at": None
+                    "expires_at": None,
                 }
 
             current_time = time.time()
@@ -193,5 +191,5 @@ class KelingAuthManager:
                 "expires_at": datetime.fromtimestamp(self._token_expiry).isoformat(),
                 "should_refresh_at": datetime.fromtimestamp(
                     self._token_expiry - self.refresh_buffer
-                ).isoformat()
+                ).isoformat(),
             }

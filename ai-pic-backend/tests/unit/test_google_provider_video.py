@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.providers.base import AIModelType, ProviderConfig
 from app.services.providers.google_provider import GoogleProvider
 from app.services.providers.google_provider import video as video_module
@@ -62,6 +61,4 @@ async def test_generate_video_uses_ratio_alias(monkeypatch):
     assert resp.success is True
     assert resp.model_type == AIModelType.TEXT_TO_VIDEO
     assert dummy_client.last_request is not None
-    assert (
-        dummy_client.last_request["json"]["parameters"]["aspectRatio"] == "9:16"
-    )
+    assert dummy_client.last_request["json"]["parameters"]["aspectRatio"] == "9:16"

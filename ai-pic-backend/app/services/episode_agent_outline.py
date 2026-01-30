@@ -162,7 +162,10 @@ async def generate_step_outlines(
             temperature=min(0.6, temperature),
             model=model,
             prefer_provider=prefer_provider,
-            json_schema={"name": "episode_step_outline_repair", "schema": outline_schema},
+            json_schema={
+                "name": "episode_step_outline_repair",
+                "schema": outline_schema,
+            },
             system_prompt=prompt_manager.render_prompt(
                 PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
             ),

@@ -6,7 +6,11 @@ from app.prompts.manager import prompt_manager
 
 from .story_novel_export_ai import generate_story_novel_text
 from .story_novel_export_planner import generate_zhihu_chapter_beats
-from .story_novel_export_utils import ZH_CLIFFHANGER_MARKER, ZH_SUMMARY_MARKER, clip_text
+from .story_novel_export_utils import (
+    ZH_CLIFFHANGER_MARKER,
+    ZH_SUMMARY_MARKER,
+    clip_text,
+)
 
 ProgressCallback = Callable[[str], Any]
 
@@ -64,7 +68,9 @@ async def generate_zhihu_chapter_text(
 
     if progress:
         suffix = f"/{chapter_total}" if chapter_total else ""
-        progress(f"生成正文草稿：更新 {chapter_number}{suffix}（目标≈{chapter_target}字）…")
+        progress(
+            f"生成正文草稿：更新 {chapter_number}{suffix}（目标≈{chapter_target}字）…"
+        )
     chapter_prompt = prompt_manager.render_prompt(
         "story_novel_zhihu_chapter",
         {
@@ -115,7 +121,9 @@ async def generate_zhihu_chapter_text(
         max_tokens=chapter_max_tokens(chapter_target),
     )
 
-    if (ZH_SUMMARY_MARKER not in final_text) or (ZH_CLIFFHANGER_MARKER not in final_text):
+    if (ZH_SUMMARY_MARKER not in final_text) or (
+        ZH_CLIFFHANGER_MARKER not in final_text
+    ):
         if progress:
             suffix = f"/{chapter_total}" if chapter_total else ""
             progress(f"补全章节收尾：更新 {chapter_number}{suffix}…")
@@ -144,4 +152,3 @@ async def generate_zhihu_chapter_text(
         )
 
     return final_text
-

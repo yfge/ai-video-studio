@@ -5,12 +5,12 @@ Encapsulates all database operations for Script, Episode, and Story models,
 providing clean separation between business logic and data access.
 """
 
-from typing import Any, Dict, List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session, joinedload
+from typing import Any, Dict, List, Optional
 
-from app.models.script import Script, Episode, Story
+from app.models.script import Episode, Script, Story
 from app.repositories.base import BaseRepository
+from sqlalchemy.orm import Session, joinedload
 
 
 class ScriptRepository(BaseRepository[Script]):
@@ -29,7 +29,7 @@ class ScriptRepository(BaseRepository[Script]):
         script_id: Optional[int] = None,
         business_id: Optional[str] = None,
         user_id: Optional[int] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
     ) -> Optional[Script]:
         """
         Get script with episode and story relations loaded.
@@ -76,7 +76,7 @@ class ScriptRepository(BaseRepository[Script]):
         format_type: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
-        include_deleted: bool = False
+        include_deleted: bool = False,
     ) -> List[Script]:
         """
         List scripts by episode with optional filters.
@@ -116,18 +116,13 @@ class ScriptRepository(BaseRepository[Script]):
         if user_id is not None:
             query = query.filter(Story.user_id == user_id)
 
-        return (
-            query.order_by(Script.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(Script.created_at.desc()).offset(skip).limit(limit).all()
 
     def update_storyboard(
         self,
         script_id: int,
         storyboard_data: Dict[str, Any],
-        increment_version: bool = True
+        increment_version: bool = True,
     ) -> Optional[Script]:
         """
         Update script storyboard data.
@@ -155,9 +150,7 @@ class ScriptRepository(BaseRepository[Script]):
         return script
 
     def update_storyboard_plan(
-        self,
-        script_id: int,
-        plan_data: Dict[str, Any]
+        self, script_id: int, plan_data: Dict[str, Any]
     ) -> Optional[Script]:
         """
         Update script storyboard plan.
@@ -193,7 +186,7 @@ class EpisodeRepository(BaseRepository[Episode]):
         episode_id: Optional[int] = None,
         business_id: Optional[str] = None,
         user_id: Optional[int] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
     ) -> Optional[Episode]:
         """
         Get episode with story relation loaded.
@@ -233,7 +226,7 @@ class EpisodeRepository(BaseRepository[Episode]):
         self,
         story_id: int,
         user_id: Optional[int] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
     ) -> List[Episode]:
         """
         List episodes by story.
@@ -278,7 +271,7 @@ class StoryRepository(BaseRepository[Story]):
         status: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
-        include_deleted: bool = False
+        include_deleted: bool = False,
     ) -> List[Story]:
         """
         List stories by user.
@@ -301,18 +294,13 @@ class StoryRepository(BaseRepository[Story]):
         if status is not None:
             query = query.filter(Story.status == status)
 
-        return (
-            query.order_by(Story.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(Story.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_by_user(
         self,
         story_id: int,
         user_id: Optional[int] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
     ) -> Optional[Story]:
         """
         Get story with optional user filter.

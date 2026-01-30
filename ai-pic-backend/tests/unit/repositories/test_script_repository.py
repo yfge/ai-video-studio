@@ -4,13 +4,11 @@ Unit tests for Script Repository.
 Tests the ScriptRepository, EpisodeRepository, and StoryRepository classes.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
-from datetime import datetime
+from unittest.mock import MagicMock
 
 from app.repositories.script_repository import (
-    ScriptRepository,
     EpisodeRepository,
+    ScriptRepository,
     StoryRepository,
 )
 
@@ -72,7 +70,9 @@ class TestScriptRepository:
         mock_script.storyboard_version = 1
 
         mock_session = MagicMock()
-        mock_session.query.return_value.filter.return_value.first.return_value = mock_script
+        mock_session.query.return_value.filter.return_value.first.return_value = (
+            mock_script
+        )
 
         repo = ScriptRepository(mock_session)
         result = repo.update_storyboard(1, {"frames": []})
@@ -97,7 +97,9 @@ class TestScriptRepository:
         mock_script.storyboard_plan = None
 
         mock_session = MagicMock()
-        mock_session.query.return_value.filter.return_value.first.return_value = mock_script
+        mock_session.query.return_value.filter.return_value.first.return_value = (
+            mock_script
+        )
 
         repo = ScriptRepository(mock_session)
         result = repo.update_storyboard_plan(1, {"scenes": []})

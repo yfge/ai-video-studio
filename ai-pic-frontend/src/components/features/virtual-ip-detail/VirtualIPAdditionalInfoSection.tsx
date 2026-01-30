@@ -38,45 +38,62 @@ export function VirtualIPAdditionalInfoSection({
 }: VirtualIPAdditionalInfoSectionProps) {
   const hasBiography = Boolean(virtualIP.biography?.trim());
   const hasStylePrompt = Boolean(virtualIP.style_prompt?.trim());
-  const hasStyleReferences = (virtualIP.style_reference_images || []).length > 0;
+  const hasStyleReferences =
+    (virtualIP.style_reference_images || []).length > 0;
 
   return (
     <div className="p-6 sm:p-8 border-b border-gray-100 space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900">其他信息</h3>
-        <p className="text-sm text-gray-500">补充人物小传、风格提示词与公开状态。</p>
+        <p className="text-sm text-gray-500">
+          补充人物小传、风格提示词与公开状态。
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">人物小传</label>
+          <label className="block text-sm font-medium text-gray-700">
+            人物小传
+          </label>
           {editing ? (
             <textarea
               value={editForm.biography}
-              onChange={(e) => setEditForm({ ...editForm, biography: e.target.value })}
+              onChange={(e) =>
+                setEditForm({ ...editForm, biography: e.target.value })
+              }
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="补充角色的小传、经历或性格补充"
             />
           ) : hasBiography ? (
-            <CollapsibleText text={virtualIP.biography || ""} collapsedLines={3} />
+            <CollapsibleText
+              text={virtualIP.biography || ""}
+              collapsedLines={3}
+            />
           ) : (
             <p className="text-sm text-gray-400">未填写</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">风格提示词</label>
+          <label className="block text-sm font-medium text-gray-700">
+            风格提示词
+          </label>
           {editing ? (
             <textarea
               value={editForm.style_prompt}
-              onChange={(e) => setEditForm({ ...editForm, style_prompt: e.target.value })}
+              onChange={(e) =>
+                setEditForm({ ...editForm, style_prompt: e.target.value })
+              }
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="用于图像生成的风格描述"
             />
           ) : hasStylePrompt ? (
-            <CollapsibleText text={virtualIP.style_prompt || ""} collapsedLines={3} />
+            <CollapsibleText
+              text={virtualIP.style_prompt || ""}
+              collapsedLines={3}
+            />
           ) : (
             <p className="text-sm text-gray-400">未填写</p>
           )}
@@ -84,7 +101,9 @@ export function VirtualIPAdditionalInfoSection({
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">风格参考图</label>
+        <label className="block text-sm font-medium text-gray-700">
+          风格参考图
+        </label>
         {editing ? (
           <textarea
             value={formatReferenceImages(editForm.style_reference_images)}

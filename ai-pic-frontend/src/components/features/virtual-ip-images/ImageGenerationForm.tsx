@@ -82,14 +82,22 @@ export function ImageGenerationForm({
 
   useEffect(() => {
     if (!supportsReferenceImages) return;
-    if (typeof maxReferenceImages !== "number" || maxReferenceImages <= 0) return;
+    if (typeof maxReferenceImages !== "number" || maxReferenceImages <= 0)
+      return;
     const current = generateForm.reference_images || [];
     if (current.length <= maxReferenceImages) return;
     setGenerateForm((prev) => ({
       ...prev,
-      reference_images: (prev.reference_images || []).slice(-maxReferenceImages),
+      reference_images: (prev.reference_images || []).slice(
+        -maxReferenceImages,
+      ),
     }));
-  }, [generateForm.reference_images, maxReferenceImages, setGenerateForm, supportsReferenceImages]);
+  }, [
+    generateForm.reference_images,
+    maxReferenceImages,
+    setGenerateForm,
+    supportsReferenceImages,
+  ]);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -170,7 +178,10 @@ export function ImageGenerationForm({
               const max = maxReferenceImages;
               const clamped =
                 typeof max === "number" && max > 0 ? next.slice(-max) : next;
-              setGenerateForm((prev) => ({ ...prev, reference_images: clamped }));
+              setGenerateForm((prev) => ({
+                ...prev,
+                reference_images: clamped,
+              }));
             }}
             disabled={generating}
           />

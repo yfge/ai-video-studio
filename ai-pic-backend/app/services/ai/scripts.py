@@ -36,13 +36,19 @@ class ScriptGenerationMixin:
             story.get("continuity_ledger") if isinstance(story, dict) else None
         )
 
-        async def _maybe_apply_script_continuity_rewrite(payload: Dict[str, Any]) -> None:
+        async def _maybe_apply_script_continuity_rewrite(
+            payload: Dict[str, Any]
+        ) -> None:
             ai_manager = getattr(self, "ai_manager", None)
             if not ai_manager:
                 return
-            scenes = payload.get("scenes") if isinstance(payload.get("scenes"), list) else []
+            scenes = (
+                payload.get("scenes") if isinstance(payload.get("scenes"), list) else []
+            )
             dialogues = (
-                payload.get("dialogues") if isinstance(payload.get("dialogues"), list) else []
+                payload.get("dialogues")
+                if isinstance(payload.get("dialogues"), list)
+                else []
             )
             stage_directions = (
                 payload.get("stage_directions")
@@ -198,8 +204,14 @@ class ScriptGenerationMixin:
                 extra={
                     "prefer_provider": prefer_provider,
                     "model": model,
-                    "story_format": story.get("story_format") if isinstance(story, dict) else None,
-                    "episode_number": episode.get("episode_number") if isinstance(episode, dict) else None,
+                    "story_format": (
+                        story.get("story_format") if isinstance(story, dict) else None
+                    ),
+                    "episode_number": (
+                        episode.get("episode_number")
+                        if isinstance(episode, dict)
+                        else None
+                    ),
                 },
             )
             return None

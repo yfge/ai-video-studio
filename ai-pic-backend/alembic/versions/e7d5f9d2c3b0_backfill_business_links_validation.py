@@ -1,8 +1,9 @@
 """backfill and validate business_id link columns"""
 
-from alembic import op
-import sqlalchemy as sa
 import uuid
+
+import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "e7d5f9d2c3b0"
@@ -41,9 +42,7 @@ def _backfill_business_ids(bind):
         ).fetchall()
         for row_id, biz in rows:
             bind.execute(
-                sa.text(
-                    f"UPDATE {table} SET business_id = :biz WHERE id = :row_id"
-                ),
+                sa.text(f"UPDATE {table} SET business_id = :biz WHERE id = :row_id"),
                 {"biz": _coerce_uuid(biz), "row_id": row_id},
             )
 

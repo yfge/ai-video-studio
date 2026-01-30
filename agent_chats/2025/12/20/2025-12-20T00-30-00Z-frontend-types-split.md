@@ -37,12 +37,14 @@ Continue executing refactoring plan Phase 2.3.1 - Split Frontend api.ts Types.
 ### New Type Definition Files (12 files created)
 
 1. **common.types.ts** (~50 lines)
+
    - `API_BASE_URL` constant
    - `ApiResponse<T>` generic interface
    - `PaginatedResponse<T>` interface
    - `SortDirection`, `FilterOperator` types
 
 2. **user.types.ts** (~90 lines)
+
    - `User`, `AdminUser` interfaces
    - `UserListResponse` for pagination
    - `LoginRequest`, `LoginResponse` for auth
@@ -50,49 +52,58 @@ Continue executing refactoring plan Phase 2.3.1 - Split Frontend api.ts Types.
    - `PasswordResetRequest`, `UserUpdateRequest`
 
 3. **task.types.ts** (~50 lines)
+
    - `Task` interface with all task fields
    - `CreateTaskRequest` for task creation
    - Task status and type enums
 
 4. **image.types.ts** (~90 lines)
+
    - `ImageItem` for gallery images
    - `VirtualIPImage` for character images
    - `AIImageGenerationRequest` for generation params
    - `AIImageGenerationResponse` for results
 
 5. **style.types.ts** (~100 lines)
+
    - `StyleOption` for style selections
    - `StyleSpec` for detailed specifications
    - `StylePreset` for preset configurations
    - `StylePresetGroup` for grouping
 
 6. **voice.types.ts** (~80 lines)
+
    - `VoiceOption` for voice selections
    - `VoiceConfig` for TTS configuration
    - `VoiceEnums` with emotion/speed/format options
 
 7. **ai-model.types.ts** (~60 lines)
+
    - `AIModel` interface
    - `AIModelType` constant (image/video categories)
    - Provider-specific configurations
 
 8. **virtual-ip.types.ts** (~95 lines)
+
    - `VirtualIP` main entity interface
    - `CreateVirtualIPRequest`, `UpdateVirtualIPRequest`
    - `VirtualIPAICreateRequest`, `VirtualIPAIGenerationRequest`
    - `VirtualIPAIGenerationResponse`, `VirtualIPAIGenerationDetailedResponse`
 
 9. **story.types.ts** (~105 lines)
+
    - `Story`, `Episode` entity interfaces
    - `StoryCharacter` for character references
    - `StoryGenerationRequest`, `EpisodeGenerationRequest`
 
 10. **script.types.ts** (~90 lines)
+
     - `Script` entity interface
     - `ScriptGenerationRequest`
     - `NormalizedScene`, `SceneBeat`, `NormalizedShot`
 
 11. **video.types.ts** (~110 lines)
+
     - `StoryboardVideoGenerationOptions`
     - `StoryboardVideoGenerationMeta`
     - `StoryboardFrame`, `StoryboardMeta`

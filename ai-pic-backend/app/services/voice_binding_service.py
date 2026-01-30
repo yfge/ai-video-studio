@@ -394,9 +394,7 @@ def _count_story_episodes_with_character(
         .subquery()
     )
     scripts = (
-        db.query(Script)
-        .join(latest_subq, Script.id == latest_subq.c.latest_id)
-        .all()
+        db.query(Script).join(latest_subq, Script.id == latest_subq.c.latest_id).all()
     )
     latest_by_episode = {sc.episode_id: sc for sc in scripts}
 

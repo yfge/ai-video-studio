@@ -12,27 +12,26 @@ The combined router aggregates all sub-routers for mounting in the API.
 
 from fastapi import APIRouter
 
+# Re-export the background task processor for Celery
+from .async_tasks import process_episode_generation_task
+from .async_tasks import router as async_router
 from .crud import router as crud_router
 from .generation import router as generation_router
-from .regenerate import router as regenerate_router
-from .async_tasks import router as async_router
 
 # Re-export helpers for other modules that may need them
 from .helpers import (
-    not_deleted,
+    build_outline_rows,
+    build_stub_episodes_from_outlines,
+    ensure_scenes,
     get_episode_by_identifier,
     get_story_by_identifier,
     is_episode_payload_valid,
+    not_deleted,
     parse_step_outlines,
     persist_story_outlines,
-    build_outline_rows,
-    build_stub_episodes_from_outlines,
     update_task_progress,
-    ensure_scenes,
 )
-
-# Re-export the background task processor for Celery
-from .async_tasks import process_episode_generation_task
+from .regenerate import router as regenerate_router
 
 # Combined router that includes all episode endpoints
 # Note: We aggregate all routes from sub-routers into a single router.

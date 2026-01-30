@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
-
 from app.services.providers.retry_utils import (
     async_retry,
     async_retry_with_auth_refresh,

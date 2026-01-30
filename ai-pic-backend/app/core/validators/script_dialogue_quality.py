@@ -12,11 +12,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 _PUNCTUATION = set(
-    " \t\r\n"
-    "，。！？!?….,、;；:："
-    "\"“”‘’'`"
-    "()（）[]【】{}<>《》"
-    "—-~～"
+    " \t\r\n" "，。！？!?….,、;；:：" "\"“”‘’'`" "()（）[]【】{}<>《》" "—-~～"
 )
 
 
@@ -34,7 +30,19 @@ def looks_like_writer_note(text: str) -> bool:
         return True
 
     locators = ("这里", "此处", "这一段", "这段", "这一幕", "本段", "本场", "此时")
-    verbs = ("可以", "建议", "应该", "需要", "用来", "用于", "突出", "加强", "体现", "表现", "铺垫")
+    verbs = (
+        "可以",
+        "建议",
+        "应该",
+        "需要",
+        "用来",
+        "用于",
+        "突出",
+        "加强",
+        "体现",
+        "表现",
+        "铺垫",
+    )
     targets = ("冲突", "情绪", "张力", "节奏", "氛围", "转折", "反转", "矛盾")
 
     has_locator = any(k in s for k in locators)

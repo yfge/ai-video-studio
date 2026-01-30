@@ -24,13 +24,13 @@ User requested: "现在检查所有的agent 看是否已经传入了必要的上
 
 ## Agent Analysis
 
-| Agent | Context Passed | Status |
-|-------|---------------|--------|
-| **StoryLangGraphAgent** | title, genre, characters, theme, setting | ✅ Complete |
-| **EpisodeLangGraphAgent** | story (full), episode params, focus_characters | ✅ Complete |
-| **ScriptLangGraphAgent** | episode, story (with characters), format/style | ✅ Complete |
-| **StoryboardReActReasoner** | script (full with scenes, dialogues) | ✅ Complete |
-| **TimelineLangGraphAgent** | dialogues, stage_directions, limited scene_context | ⚠️ Enhanced |
+| Agent                       | Context Passed                                     | Status      |
+| --------------------------- | -------------------------------------------------- | ----------- |
+| **StoryLangGraphAgent**     | title, genre, characters, theme, setting           | ✅ Complete |
+| **EpisodeLangGraphAgent**   | story (full), episode params, focus_characters     | ✅ Complete |
+| **ScriptLangGraphAgent**    | episode, story (with characters), format/style     | ✅ Complete |
+| **StoryboardReActReasoner** | script (full with scenes, dialogues)               | ✅ Complete |
+| **TimelineLangGraphAgent**  | dialogues, stage_directions, limited scene_context | ⚠️ Enhanced |
 
 ## Changes
 
@@ -39,6 +39,7 @@ User requested: "现在检查所有的agent 看是否已经传入了必要的上
 **`ai-pic-backend/app/services/dialogue_audio_service.py`**
 
 Enhanced scene_context passed to timeline agent:
+
 ```python
 scene_context = {
     "scene_id": scene.id,
@@ -56,6 +57,7 @@ scene_context = {
 **`ai-pic-backend/app/services/timeline_agent/schemas.py`**
 
 Added new fields to SceneContext:
+
 - `slug_line` - Scene slug line (e.g., "INT. APARTMENT - NIGHT")
 - `location` - Scene location
 - `time_of_day` - Time of day
@@ -64,6 +66,7 @@ Added new fields to SceneContext:
 **`ai-pic-backend/app/services/timeline_agent/utils.py`**
 
 Updated `build_scene_context()` to accept and use new fields:
+
 - Now accepts slug_line, location, time_of_day, summary, primary_characters
 - Merges primary_characters with dialogue-extracted characters
 

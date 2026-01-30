@@ -3,9 +3,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskType
@@ -14,7 +11,8 @@ from app.schemas.script_quality import ScriptLintOptions, ScriptLintResult
 from app.services.script import ScriptService, get_script_service
 from app.services.script_quality import lint_script_content
 from app.services.task_worker_script_quality import script_quality_check_task
-
+from fastapi import APIRouter, Body, Depends
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -62,4 +60,3 @@ async def quality_check_script_async(
 
     script_quality_check_task.delay(task.id, payload, current_user.id)
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
-

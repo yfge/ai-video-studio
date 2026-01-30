@@ -34,7 +34,9 @@ def test_extract_chapter_markers_strips_leading_marker_block():
 
 def test_ensure_markers_appends_missing_markers():
     body = "正文"
-    merged = ensure_markers(body, summary_text="- 要点 1\n- 要点 2", cliffhanger_text="钩子句子")
+    merged = ensure_markers(
+        body, summary_text="- 要点 1\n- 要点 2", cliffhanger_text="钩子句子"
+    )
 
     assert "【本章小结】" in merged
     assert "【本章卡点】" in merged
@@ -81,7 +83,14 @@ def test_story_novel_zhihu_prompts_render_with_new_variables():
     base_payload = {
         "story": {"title": "测试故事", "genre": "剧情"},
         "plan": {"chapter_total": 3, "current_chapter": {"chapter_number": 1}},
-        "ledger": {"version": 1, "facts": [], "timeline": [], "characters": {}, "open_threads": [], "resolved_threads": []},
+        "ledger": {
+            "version": 1,
+            "facts": [],
+            "timeline": [],
+            "characters": {},
+            "open_threads": [],
+            "resolved_threads": [],
+        },
         "previous_tail": "",
         "chapter": {
             "chapter_number": 1,
@@ -96,7 +105,9 @@ def test_story_novel_zhihu_prompts_render_with_new_variables():
     }
 
     prompt_manager.render_prompt("story_novel_zhihu_chapter", base_payload)
-    prompt_manager.render_prompt("story_novel_zhihu_chapter_rewrite", {**base_payload, "draft": "草稿内容"})
+    prompt_manager.render_prompt(
+        "story_novel_zhihu_chapter_rewrite", {**base_payload, "draft": "草稿内容"}
+    )
 
     prompt_manager.render_prompt(
         "story_novel_zhihu_ledger_update",

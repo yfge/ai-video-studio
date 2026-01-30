@@ -14,6 +14,7 @@ summary: "Fix timeline model selector to use provider:model_id format"
 "这个页面的模型选择有问题 http://localhost:8089/episodes/xxx/workspace?tab=timeline 导致后面的调用一直在出错"
 
 Error shown:
+
 ```
 provider=openai model=deepseek-chat status=failure
 ```
@@ -27,19 +28,22 @@ Fix the model selector on the timeline tab to send the correct `provider:model_i
 ### Frontend Changes
 
 **`ai-pic-frontend/src/components/features/episode/AudioTimelineSection.tsx`**:
+
 - Fixed model selector option values to use `provider:model_id` format
 - Changed from using `model.id` (e.g., "deepseek-chat") to constructing the full model ID
 - Code change (lines 316-325):
   ```tsx
-  {availableModels.map((model) => {
-    // Use provider:model_id format for backend routing
-    const fullModelId = model.model_id || `${model.provider}:${model.id}`;
-    return (
-      <option key={fullModelId} value={fullModelId}>
-        {model.name || model.id}
-      </option>
-    );
-  })}
+  {
+    availableModels.map((model) => {
+      // Use provider:model_id format for backend routing
+      const fullModelId = model.model_id || `${model.provider}:${model.id}`;
+      return (
+        <option key={fullModelId} value={fullModelId}>
+          {model.name || model.id}
+        </option>
+      );
+    });
+  }
   ```
 
 ### Root Cause Analysis

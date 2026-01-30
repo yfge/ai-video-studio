@@ -5,11 +5,11 @@ Revises: fe284ccd1b92
 Create Date: 2025-10-17 09:15:00.000000
 
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "a1b2c3d4e5f6"
@@ -23,22 +23,51 @@ def upgrade() -> None:
     op.create_table(
         "story_treatments",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column("story_id", sa.Integer(), sa.ForeignKey("stories.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "story_id",
+            sa.Integer(),
+            sa.ForeignKey("stories.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("revision_number", sa.Integer(), nullable=False),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="draft"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="draft"
+        ),
         sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("logline", sa.Text(), nullable=True),
         sa.Column("theme_summary", sa.Text(), nullable=True),
-        sa.Column("act_structure", sa.JSON(), nullable=True, comment="Act I/II/III structured summary"),
+        sa.Column(
+            "act_structure",
+            sa.JSON(),
+            nullable=True,
+            comment="Act I/II/III structured summary",
+        ),
         sa.Column("target_audience_notes", sa.Text(), nullable=True),
-        sa.Column("tone_reference", sa.JSON(), nullable=True, comment="Visual/audio references"),
+        sa.Column(
+            "tone_reference",
+            sa.JSON(),
+            nullable=True,
+            comment="Visual/audio references",
+        ),
         sa.Column("created_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
-        sa.Column("approved_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+        sa.Column(
+            "approved_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=True
+        ),
         sa.Column("ai_prompt_snapshot", sa.JSON(), nullable=True),
         sa.Column("metadata", sa.JSON(), nullable=True),
-        sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column(
+            "is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.func.now(),
+            onupdate=sa.func.now(),
+            nullable=False,
+        ),
     )
     op.create_index(
         "ux_story_treatments_story_revision",
@@ -50,8 +79,18 @@ def upgrade() -> None:
     op.create_table(
         "story_step_outlines",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column("story_id", sa.Integer(), sa.ForeignKey("stories.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("episode_id", sa.Integer(), sa.ForeignKey("episodes.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "story_id",
+            sa.Integer(),
+            sa.ForeignKey("stories.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "episode_id",
+            sa.Integer(),
+            sa.ForeignKey("episodes.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column(
             "story_treatment_id",
             sa.BigInteger(),
@@ -66,12 +105,22 @@ def upgrade() -> None:
         sa.Column("characters_involved", sa.JSON(), nullable=True),
         sa.Column("location_hint", sa.String(length=255), nullable=True),
         sa.Column("duration_estimate_minutes", sa.Numeric(5, 2), nullable=True),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="draft"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="draft"
+        ),
         sa.Column("metadata", sa.JSON(), nullable=True),
         sa.Column("created_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
         sa.Column("updated_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.func.now(),
+            onupdate=sa.func.now(),
+            nullable=False,
+        ),
     )
     op.create_index(
         "ux_step_outlines_treatment_sequence",
@@ -83,7 +132,12 @@ def upgrade() -> None:
     op.create_table(
         "scenes",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column("script_id", sa.Integer(), sa.ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "script_id",
+            sa.Integer(),
+            sa.ForeignKey("scripts.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column(
             "story_step_outline_id",
             sa.BigInteger(),
@@ -92,7 +146,12 @@ def upgrade() -> None:
         ),
         sa.Column("scene_number", sa.String(length=20), nullable=False),
         sa.Column("slug_line", sa.String(length=255), nullable=False),
-        sa.Column("environment_type", sa.String(length=32), nullable=True, comment="INT/EXT/INT-EXT"),
+        sa.Column(
+            "environment_type",
+            sa.String(length=32),
+            nullable=True,
+            comment="INT/EXT/INT-EXT",
+        ),
         sa.Column("location", sa.String(length=255), nullable=True),
         sa.Column("time_of_day", sa.String(length=50), nullable=True),
         sa.Column("summary", sa.Text(), nullable=True),
@@ -100,10 +159,20 @@ def upgrade() -> None:
         sa.Column("primary_characters", sa.JSON(), nullable=True),
         sa.Column("conflict_notes", sa.Text(), nullable=True),
         sa.Column("ai_prompt_snapshot", sa.JSON(), nullable=True),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="draft"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="draft"
+        ),
         sa.Column("metadata", sa.JSON(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.func.now(),
+            onupdate=sa.func.now(),
+            nullable=False,
+        ),
     )
     op.create_index(
         "ux_scenes_script_scene_number",
@@ -115,7 +184,12 @@ def upgrade() -> None:
     op.create_table(
         "scene_beats",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column("scene_id", sa.BigInteger(), sa.ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "scene_id",
+            sa.BigInteger(),
+            sa.ForeignKey("scenes.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("order_index", sa.Integer(), nullable=False),
         sa.Column("beat_type", sa.String(length=32), nullable=True),
         sa.Column("beat_summary", sa.Text(), nullable=True),
@@ -124,8 +198,16 @@ def upgrade() -> None:
         sa.Column("camera_notes", sa.Text(), nullable=True),
         sa.Column("duration_seconds", sa.Numeric(6, 2), nullable=True),
         sa.Column("metadata", sa.JSON(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.func.now(),
+            onupdate=sa.func.now(),
+            nullable=False,
+        ),
     )
     op.create_index(
         "ux_scene_beats_scene_order",
@@ -137,7 +219,12 @@ def upgrade() -> None:
     op.create_table(
         "shots",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column("scene_id", sa.BigInteger(), sa.ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "scene_id",
+            sa.BigInteger(),
+            sa.ForeignKey("scenes.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column(
             "scene_beat_id",
             sa.BigInteger(),
@@ -151,13 +238,28 @@ def upgrade() -> None:
         sa.Column("framing", sa.Text(), nullable=True),
         sa.Column("focus_subject", sa.String(length=255), nullable=True),
         sa.Column("duration_seconds", sa.Numeric(6, 2), nullable=True),
-        sa.Column("storyboard_frame_asset_id", sa.Integer(), sa.ForeignKey("images.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "storyboard_frame_asset_id",
+            sa.Integer(),
+            sa.ForeignKey("images.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("lighting_notes", sa.Text(), nullable=True),
         sa.Column("audio_notes", sa.Text(), nullable=True),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="planned"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="planned"
+        ),
         sa.Column("metadata", sa.JSON(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.func.now(),
+            onupdate=sa.func.now(),
+            nullable=False,
+        ),
     )
     op.create_index(
         "ux_shots_scene_shot_number",
@@ -175,8 +277,9 @@ def downgrade() -> None:
     op.drop_table("scene_beats")
     op.drop_index("ux_scenes_script_scene_number", table_name="scenes")
     op.drop_table("scenes")
-    op.drop_index("ux_step_outlines_treatment_sequence", table_name="story_step_outlines")
+    op.drop_index(
+        "ux_step_outlines_treatment_sequence", table_name="story_step_outlines"
+    )
     op.drop_table("story_step_outlines")
     op.drop_index("ux_story_treatments_story_revision", table_name="story_treatments")
     op.drop_table("story_treatments")
-

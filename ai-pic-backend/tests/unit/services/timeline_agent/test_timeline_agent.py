@@ -7,18 +7,12 @@ Tests the intelligent timing calculation for dialogue gaps.
 from __future__ import annotations
 
 import pytest
-
 from app.services.timeline_agent.constants import (
     EMOTION_TRANSITION_WEIGHTS,
     MAX_GAP_MS,
     MIN_GAP_MS,
 )
-from app.services.timeline_agent.schemas import (
-    DialogueContext,
-    SceneContext,
-    TimingDecision,
-    TimingPlan,
-)
+from app.services.timeline_agent.schemas import SceneContext, TimingDecision, TimingPlan
 from app.services.timeline_agent.utils import (
     build_dialogue_contexts,
     build_scene_context,
@@ -172,7 +166,9 @@ class TestFallbackTiming:
 
     def test_fallback_timing_respects_pacing(self):
         """Should adjust timing based on pacing."""
-        fast_dialogues = [{"character": f"C{i}", "content": f"Line {i}"} for i in range(12)]
+        fast_dialogues = [
+            {"character": f"C{i}", "content": f"Line {i}"} for i in range(12)
+        ]
         slow_dialogues = [{"character": "A", "content": "Hello"}]
 
         fast_contexts = build_dialogue_contexts(fast_dialogues)
@@ -185,8 +181,12 @@ class TestFallbackTiming:
         slow_decisions = calculate_fallback_timing(slow_contexts, slow_scene)
 
         # Fast scene should have shorter average gap
-        fast_avg = sum(d.adjusted_duration_ms for d in fast_decisions) / len(fast_decisions)
-        slow_avg = sum(d.adjusted_duration_ms for d in slow_decisions) / len(slow_decisions)
+        fast_avg = sum(d.adjusted_duration_ms for d in fast_decisions) / len(
+            fast_decisions
+        )
+        slow_avg = sum(d.adjusted_duration_ms for d in slow_decisions) / len(
+            slow_decisions
+        )
 
         assert fast_avg < slow_avg
 
@@ -197,7 +197,9 @@ class TestRhythmScore:
     def test_monotonous_rhythm(self):
         """Should score low for identical durations."""
         decisions = [
-            TimingDecision(segment_index=i, adjusted_duration_ms=300, base_duration_ms=300)
+            TimingDecision(
+                segment_index=i, adjusted_duration_ms=300, base_duration_ms=300
+            )
             for i in range(5)
         ]
         score = calculate_rhythm_score(decisions)
@@ -206,17 +208,29 @@ class TestRhythmScore:
     def test_varied_rhythm(self):
         """Should score higher for varied durations."""
         decisions = [
-            TimingDecision(segment_index=0, adjusted_duration_ms=200, base_duration_ms=300),
-            TimingDecision(segment_index=1, adjusted_duration_ms=500, base_duration_ms=300),
-            TimingDecision(segment_index=2, adjusted_duration_ms=300, base_duration_ms=300),
-            TimingDecision(segment_index=3, adjusted_duration_ms=800, base_duration_ms=300),
+            TimingDecision(
+                segment_index=0, adjusted_duration_ms=200, base_duration_ms=300
+            ),
+            TimingDecision(
+                segment_index=1, adjusted_duration_ms=500, base_duration_ms=300
+            ),
+            TimingDecision(
+                segment_index=2, adjusted_duration_ms=300, base_duration_ms=300
+            ),
+            TimingDecision(
+                segment_index=3, adjusted_duration_ms=800, base_duration_ms=300
+            ),
         ]
         score = calculate_rhythm_score(decisions)
         assert score > 0.3  # Higher score for varied
 
     def test_single_decision(self):
         """Should return 0.5 for single decision."""
-        decisions = [TimingDecision(segment_index=0, adjusted_duration_ms=300, base_duration_ms=300)]
+        decisions = [
+            TimingDecision(
+                segment_index=0, adjusted_duration_ms=300, base_duration_ms=300
+            )
+        ]
         score = calculate_rhythm_score(decisions)
         assert score == 0.5
 

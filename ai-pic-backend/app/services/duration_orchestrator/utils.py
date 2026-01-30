@@ -5,7 +5,7 @@ Duration Orchestrator 工具函数
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from app.services.duration_orchestrator.constants import (
     ADJUSTMENT_WORDS_PER_DIALOGUE,
@@ -93,11 +93,15 @@ def allocate_scene_budgets(
             estimated = scene.get(
                 "estimated_duration_seconds", DEFAULT_SCENE_DURATION_SECONDS
             )
-            ratio = estimated / total_estimated if total_estimated > 0 else 1 / len(scenes)
+            ratio = (
+                estimated / total_estimated if total_estimated > 0 else 1 / len(scenes)
+            )
             target = int(available_seconds * ratio)
 
             # 确保在合理范围内
-            target = max(MIN_SCENE_DURATION_SECONDS, min(target, MAX_SCENE_DURATION_SECONDS))
+            target = max(
+                MIN_SCENE_DURATION_SECONDS, min(target, MAX_SCENE_DURATION_SECONDS)
+            )
 
             budgets.append(
                 SceneBudget(
@@ -112,7 +116,9 @@ def allocate_scene_budgets(
     else:
         # 平均分配
         per_scene = available_seconds // len(scenes)
-        per_scene = max(MIN_SCENE_DURATION_SECONDS, min(per_scene, MAX_SCENE_DURATION_SECONDS))
+        per_scene = max(
+            MIN_SCENE_DURATION_SECONDS, min(per_scene, MAX_SCENE_DURATION_SECONDS)
+        )
 
         for idx, scene in enumerate(scenes):
             budgets.append(
@@ -262,8 +268,7 @@ def rebalance_remaining_budgets(
 
     # 计算后续待处理场景
     remaining_budgets = [
-        b for b in budgets[current_index + 1:]
-        if b.status == SceneStatus.PENDING
+        b for b in budgets[current_index + 1 :] if b.status == SceneStatus.PENDING
     ]
 
     if not remaining_budgets:
@@ -276,8 +281,7 @@ def rebalance_remaining_budgets(
         new_target = int(budget.target_duration_seconds + adjustment_per_scene)
         # 确保在合理范围内
         new_target = max(
-            MIN_SCENE_DURATION_SECONDS,
-            min(new_target, MAX_SCENE_DURATION_SECONDS)
+            MIN_SCENE_DURATION_SECONDS, min(new_target, MAX_SCENE_DURATION_SECONDS)
         )
         budget.target_duration_seconds = new_target
         budget.target_word_count = calculate_target_word_count(new_target)

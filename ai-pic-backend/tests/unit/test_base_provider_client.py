@@ -1,11 +1,10 @@
 import pytest
-
 from app.services.providers.base import (
     AIModelType,
+    AIResponse,
     AITaskType,
     BaseProvider,
     ProviderConfig,
-    AIResponse,
 )
 
 

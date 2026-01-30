@@ -57,4 +57,3 @@ summary: "Storyboard image generation falls back to Story-registered character a
 ## Linked Commits
 
 - (pending) feat(backend): storyboard character anchor fallback via story registry
-

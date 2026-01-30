@@ -38,4 +38,3 @@ summary: "Preserve provider-specific error details when video task submission fa
 ## Linked Commits
 
 - fix(backend): preserve provider errors in video dispatcher
-

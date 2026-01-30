@@ -1,6 +1,3 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.user import User
@@ -12,6 +9,8 @@ from app.schemas.virtual_ip import (
     VirtualIPAIGenerationResponse,
 )
 from app.services.virtual_ip_ai_service import virtual_ip_ai_service
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -45,7 +44,10 @@ async def generate_ai_content(
         raise HTTPException(status_code=500, detail=f"AI生成失败: {str(e)}")
 
 
-@router.post("/generate-ai-content-detailed", response_model=VirtualIPAIGenerationDetailedResponse)
+@router.post(
+    "/generate-ai-content-detailed",
+    response_model=VirtualIPAIGenerationDetailedResponse,
+)
 async def generate_ai_content_detailed(
     request: VirtualIPAIGenerationRequest,
     current_user: User = Depends(get_current_active_user),
@@ -65,7 +67,9 @@ async def generate_ai_content_detailed(
             biography=ai_content["biography"],
             image_category=request.image_category,
         )
-        generation_details["prompts_used"].append("风格提示词生成: 基于角色信息生成AI绘画提示词...")
+        generation_details["prompts_used"].append(
+            "风格提示词生成: 基于角色信息生成AI绘画提示词..."
+        )
         return VirtualIPAIGenerationDetailedResponse(
             description=ai_content["description"],
             background_story=ai_content["background_story"],

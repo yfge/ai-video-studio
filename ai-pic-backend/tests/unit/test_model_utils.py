@@ -1,9 +1,5 @@
 import pytest
-
-from app.utils.model_utils import (
-    normalize_openai_image_style,
-    parse_model_and_provider,
-)
+from app.utils.model_utils import normalize_openai_image_style, parse_model_and_provider
 
 
 def test_parse_model_and_provider_splits_and_infers():

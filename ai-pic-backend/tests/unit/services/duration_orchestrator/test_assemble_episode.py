@@ -5,7 +5,6 @@ assemble_episode 节点单元测试
 """
 
 import pytest
-
 from app.services.duration_orchestrator.constants import (
     DIALOGUE_DENSITY_FACTOR,
     WORDS_PER_SECOND,
@@ -26,7 +25,9 @@ def create_budget(
         scene_number=scene_number,
         scene_index=scene_index,
         target_duration_seconds=target_duration,
-        target_word_count=int(target_duration * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND),
+        target_word_count=int(
+            target_duration * DIALOGUE_DENSITY_FACTOR * WORDS_PER_SECOND
+        ),
         min_duration_seconds=int(target_duration * 0.85),
         max_duration_seconds=int(target_duration * 1.15),
     )

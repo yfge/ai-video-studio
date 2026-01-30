@@ -29,7 +29,10 @@ export function useVirtualIPImageActions({
           return;
         }
         try {
-          const response = await virtualIPImageAPI.deleteImage(virtualIPId, imageId);
+          const response = await virtualIPImageAPI.deleteImage(
+            virtualIPId,
+            imageId,
+          );
           if (response.success) {
             setImages((prev) => prev.filter((img) => img.id !== imageId));
             showAlert({ message: "图片删除成功", variant: "success" });
@@ -39,7 +42,9 @@ export function useVirtualIPImageActions({
         } catch (error) {
           console.error("Delete image failed:", error);
           showAlert({
-            message: `删除图片失败：${error instanceof Error ? error.message : "未知错误"}`,
+            message: `删除图片失败：${
+              error instanceof Error ? error.message : "未知错误"
+            }`,
             variant: "error",
           });
         }
@@ -53,9 +58,14 @@ export function useVirtualIPImageActions({
       return;
     }
     try {
-      const response = await virtualIPImageAPI.setDefaultImage(virtualIPId, imageId);
+      const response = await virtualIPImageAPI.setDefaultImage(
+        virtualIPId,
+        imageId,
+      );
       if (response.success) {
-        setImages((prev) => prev.map((img) => ({ ...img, is_default: img.id === imageId })));
+        setImages((prev) =>
+          prev.map((img) => ({ ...img, is_default: img.id === imageId })),
+        );
         showAlert({ message: "已设置为默认图片", variant: "success" });
       } else {
         throw new Error(response.error || "设置默认图片失败");
@@ -63,7 +73,9 @@ export function useVirtualIPImageActions({
     } catch (error) {
       console.error("Set default image failed:", error);
       showAlert({
-        message: `设置默认图片失败：${error instanceof Error ? error.message : "未知错误"}`,
+        message: `设置默认图片失败：${
+          error instanceof Error ? error.message : "未知错误"
+        }`,
         variant: "error",
       });
     }

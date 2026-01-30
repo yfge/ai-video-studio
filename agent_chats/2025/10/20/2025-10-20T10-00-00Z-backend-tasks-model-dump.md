@@ -32,4 +32,3 @@ summary: "Replace deprecated Pydantic .dict() with .model_dump() in tasks update
 ## Linked Commits
 
 - pending（本地此次改动将与本账本条目一并提交）
-

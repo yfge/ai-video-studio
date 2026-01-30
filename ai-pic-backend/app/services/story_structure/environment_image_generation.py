@@ -44,7 +44,9 @@ async def generate_environment_images(
     require_upload: bool,
 ) -> list[str]:
     final_prompt = compose_environment_prompt(env, request.prompt)
-    prompt_template = build_prompt_template_audit(PromptTemplate.ENVIRONMENT_IMAGE.value)
+    prompt_template = build_prompt_template_audit(
+        PromptTemplate.ENVIRONMENT_IMAGE.value
+    )
     prompt_sha256 = sha256_text(final_prompt)
 
     normalized = normalize_image_gen_request(

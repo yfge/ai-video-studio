@@ -23,7 +23,11 @@ from app.services.task_agent_run.builders_script_ops import (
 )
 from app.services.task_agent_run.builders_text import build_story_novel_export_agent_run
 from app.services.task_agent_run.builders_video import build_video_generation_agent_run
-from app.services.task_agent_run.utils import loads_task_parameters, maybe_int, parse_result_id
+from app.services.task_agent_run.utils import (
+    loads_task_parameters,
+    maybe_int,
+    parse_result_id,
+)
 
 
 def build_agent_run(
@@ -38,7 +42,9 @@ def build_agent_run(
         return build_story_agent_run(db, task, user_id=user_id)
 
     if kind == "episode":
-        story_id, created_episode_ids = parse_episode_task_ids(task, request_dict=request_dict)
+        story_id, created_episode_ids = parse_episode_task_ids(
+            task, request_dict=request_dict
+        )
         if story_id is None:
             params = loads_task_parameters(getattr(task, "parameters", None))
             story_id = maybe_int(params.get("story_id"))
@@ -51,7 +57,9 @@ def build_agent_run(
         )
 
     if kind == "script":
-        result = parse_result_id(getattr(task, "result_file_path", None), prefix="script")
+        result = parse_result_id(
+            getattr(task, "result_file_path", None), prefix="script"
+        )
         if not result:
             return {}
         script_id_token = result.split(":", 1)[0]
@@ -79,10 +87,14 @@ def build_agent_run(
         return build_storyboard_image_agent_run(db, task, user_id=user_id)
 
     if kind == "environment_images":
-        return build_environment_images_agent_run(db, task, user_id=user_id, variant=False)
+        return build_environment_images_agent_run(
+            db, task, user_id=user_id, variant=False
+        )
 
     if kind == "environment_image_variants":
-        return build_environment_images_agent_run(db, task, user_id=user_id, variant=True)
+        return build_environment_images_agent_run(
+            db, task, user_id=user_id, variant=True
+        )
 
     if kind == "virtual_ip_image":
         return build_virtual_ip_image_agent_run(db, task, user_id=user_id)
@@ -97,4 +109,3 @@ def build_agent_run(
         return build_video_generation_agent_run(db, task, user_id=user_id)
 
     return {}
-

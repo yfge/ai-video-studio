@@ -1,44 +1,44 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from "react";
 
 export interface ModalProps {
   /**
    * Controls modal visibility
    */
-  isOpen: boolean
+  isOpen: boolean;
   /**
    * Callback when modal should close (ESC key or backdrop click)
    */
-  onClose: () => void
+  onClose: () => void;
   /**
    * Optional modal title displayed in header
    */
-  title?: string
+  title?: string;
   /**
    * Modal content
    */
-  children: ReactNode
+  children: ReactNode;
   /**
    * Optional footer content (action buttons, etc.)
    */
-  footer?: ReactNode
+  footer?: ReactNode;
   /**
    * Max width class (default: 'max-w-2xl')
    */
-  maxWidth?: string
+  maxWidth?: string;
   /**
    * Disable backdrop click to close (default: false)
    */
-  disableBackdropClick?: boolean
+  disableBackdropClick?: boolean;
   /**
    * Disable ESC key to close (default: false)
    */
-  disableEscapeKey?: boolean
+  disableEscapeKey?: boolean;
   /**
    * Custom className for modal container
    */
-  className?: string
+  className?: string;
 }
 
 /**
@@ -68,48 +68,48 @@ export function Modal({
   title,
   children,
   footer,
-  maxWidth = 'max-w-2xl',
+  maxWidth = "max-w-2xl",
   disableBackdropClick = false,
   disableEscapeKey = false,
-  className = '',
+  className = "",
 }: ModalProps) {
-  const backdropRef = useRef<HTMLDivElement>(null)
+  const backdropRef = useRef<HTMLDivElement>(null);
 
   // ESC key handler
   useEffect(() => {
-    if (!isOpen || disableEscapeKey) return
+    if (!isOpen || disableEscapeKey) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
+      if (event.key === "Escape") {
+        onClose();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, disableEscapeKey, onClose])
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, disableEscapeKey, onClose]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = ''
+      document.body.style.overflow = "";
     }
 
     return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (disableBackdropClick) return
+    if (disableBackdropClick) return;
     if (e.target === backdropRef.current) {
-      onClose()
+      onClose();
     }
-  }
+  };
 
   return (
     <div
@@ -118,7 +118,7 @@ export function Modal({
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? 'modal-title' : undefined}
+      aria-labelledby={title ? "modal-title" : undefined}
     >
       <div
         className={`bg-white rounded-lg shadow-xl ${maxWidth} w-full max-h-[90vh] flex flex-col ${className}`}
@@ -163,5 +163,5 @@ export function Modal({
         )}
       </div>
     </div>
-  )
+  );
 }

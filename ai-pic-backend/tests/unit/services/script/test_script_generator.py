@@ -4,11 +4,11 @@ Unit tests for Script Generator Service.
 Tests the ScriptGenerator class for AI-powered script generation.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 
+import pytest
+from app.core.exceptions import NotFoundError
 from app.services.script.script_generator import ScriptGenerator, get_script_generator
-from app.core.exceptions import NotFoundError, GenerationFailedError
 
 
 class TestScriptGenerator:
@@ -53,7 +53,9 @@ class TestScriptGenerator:
 
     def test_parse_ai_result_string(self):
         """Test parsing string result."""
-        with patch("app.services.script.script_generator.extract_json_block") as mock_extract:
+        with patch(
+            "app.services.script.script_generator.extract_json_block"
+        ) as mock_extract:
             mock_extract.return_value = {"scenes": []}
             result = {"content": '{"scenes": []}'}
             parsed = self.generator._parse_ai_result(result)
@@ -128,7 +130,7 @@ class TestScriptGenerator:
         assert "agent_run" in metadata
         assert metadata["agent_run"]["generation_method"] == "test"
 
-    @patch.object(ScriptGenerator, '_get_user_id_filter')
+    @patch.object(ScriptGenerator, "_get_user_id_filter")
     def test_preview_prompt(self, mock_filter):
         """Test preview prompt generation."""
         mock_filter.return_value = None
@@ -141,20 +143,36 @@ class TestScriptGenerator:
         mock_story.main_characters = []
         mock_episode.story = mock_story
 
-        self.generator.episode_repo.get_with_story = MagicMock(return_value=mock_episode)
-        self.generator.prompt_manager.render_prompt = MagicMock(return_value="Test prompt")
+        self.generator.episode_repo.get_with_story = MagicMock(
+            return_value=mock_episode
+        )
+        self.generator.prompt_manager.render_prompt = MagicMock(
+            return_value="Test prompt"
+        )
 
-        with patch("app.services.script.script_generator.collect_previous_episode_summaries", return_value=[]):
-            with patch("app.services.script.script_generator.build_character_profiles", return_value=[]):
-                with patch("app.services.script.script_generator.build_episode_data", return_value={}):
-                    with patch("app.services.script.script_generator.build_story_data", return_value={}):
+        with patch(
+            "app.services.script.script_generator.collect_previous_episode_summaries",
+            return_value=[],
+        ):
+            with patch(
+                "app.services.script.script_generator.build_character_profiles",
+                return_value=[],
+            ):
+                with patch(
+                    "app.services.script.script_generator.build_episode_data",
+                    return_value={},
+                ):
+                    with patch(
+                        "app.services.script.script_generator.build_story_data",
+                        return_value={},
+                    ):
                         result = self.generator.preview_prompt(
                             episode_id=1,
                             user=mock_user,
                         )
                         assert result == "Test prompt"
 
-    @patch.object(ScriptGenerator, '_get_user_id_filter')
+    @patch.object(ScriptGenerator, "_get_user_id_filter")
     def test_preview_prompt_not_found(self, mock_filter):
         """Test preview prompt with non-existent episode."""
         mock_filter.return_value = None

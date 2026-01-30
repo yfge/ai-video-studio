@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.virtual_ip.image_variant_requests import (
     build_virtual_ip_variant_task_payload,
     resolve_virtual_ip_variant_request,
@@ -64,4 +63,3 @@ def test_virtual_ip_variant_task_payload_includes_img2img_advanced_params():
     assert payload["image_reference"] == "subject"
     assert payload["image_fidelity"] == 0.7
     assert payload["human_fidelity"] == 0.5
-

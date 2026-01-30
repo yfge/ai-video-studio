@@ -29,9 +29,11 @@ Continue with refactoring plan Phase 1, Task 1.1.2: Create Script Service.
 ### New Files
 
 1. `ai-pic-backend/app/services/script/__init__.py` (~10 lines)
+
    - Package init with exports
 
 2. `ai-pic-backend/app/services/script/script_service.py` (~230 lines)
+
    - `ScriptService` class with:
      - `get_script()`: Get by ID or business_id with authorization
      - `list_scripts()`: List with filters

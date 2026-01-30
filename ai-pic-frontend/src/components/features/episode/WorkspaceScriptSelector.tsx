@@ -31,7 +31,9 @@ export function WorkspaceScriptSelector(props: {
           {scripts.map((script) => {
             const hasVersionInTitle = /\(v[\d.]+\)$/.test(script.title || "");
             const versionSuffix =
-              script.version && !hasVersionInTitle ? ` (v${script.version})` : "";
+              script.version && !hasVersionInTitle
+                ? ` (v${script.version})`
+                : "";
 
             return (
               <option key={script.id} value={script.id}>
@@ -41,7 +43,9 @@ export function WorkspaceScriptSelector(props: {
             );
           })}
         </select>
-        <span className="text-xs text-gray-500">共 {scripts.length} 个剧本</span>
+        <span className="text-xs text-gray-500">
+          共 {scripts.length} 个剧本
+        </span>
       </div>
     </div>
   );

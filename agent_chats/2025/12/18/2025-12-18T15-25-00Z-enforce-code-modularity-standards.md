@@ -12,6 +12,7 @@ summary: "Added strict code architecture and quality standards to enforce modula
 ## User Prompt
 
 User requested to add strict guidelines in AGENTS.md regarding:
+
 - File size limits
 - Code structure and modularity
 - Code reuse
@@ -37,22 +38,26 @@ Location: AGENTS.md after "Repository Expectations", before "Agent Collaboration
 Key requirements added:
 
 **File Size Limits (Strict)**
+
 - Python files: MAX 300 lines (target 150-250)
 - TypeScript/TSX files: MAX 250 lines (target 100-200)
 - Immediate refactoring required when approaching limits
 
 **Single Responsibility Principle (Mandatory)**
+
 - One file, one purpose
 - API routes < 50 lines
 - Extract business logic to services
 - Separate presentation from logic in React components
 
 **Code Reuse & DRY**
+
 - Proactive duplication detection
 - Extract shared utilities before third occurrence
 - Defined common patterns for backend/frontend organization
 
 **Mandatory Refactoring Triggers**
+
 1. File exceeds size limit
 2. Function exceeds 50 lines
 3. Duplicate code in 3+ places
@@ -61,17 +66,20 @@ Key requirements added:
 6. Import cycles
 
 **Modular Architecture Best Practices**
+
 - Vertical slicing by feature/domain
 - Explicit interfaces via schemas
 - Proper dependency direction
 - No circular dependencies
 
 **Reference Standard: ai-shifu**
+
 - Backend: 186 lines/file (183 files)
 - Frontend: 119 lines/file (258 files)
 - Target: match or exceed this modularity
 
 **Enforcement**
+
 - Agent self-audit before completion
 - Document refactoring in agent_chats with [refactor] tag
 - Future TODO: pre-commit hooks for file size limits

@@ -1,34 +1,40 @@
-'use client'
+"use client";
 
-import { useEffect, useRef } from 'react'
-import Image from 'next/image'
+import { useEffect, useRef } from "react";
+import Image from "next/image";
 
 type ImagePreviewModalProps = {
-  open: boolean
-  src: string
-  alt?: string
-  onClose: () => void
-  description?: string
-}
+  open: boolean;
+  src: string;
+  alt?: string;
+  onClose: () => void;
+  description?: string;
+};
 
 /**
  * Lightweight image preview overlay used across grids (虚拟IP / 环境 / 分镜).
  */
-export function ImagePreviewModal({ open, src, alt, onClose, description }: ImagePreviewModalProps) {
-  const backdropRef = useRef<HTMLDivElement | null>(null)
+export function ImagePreviewModal({
+  open,
+  src,
+  alt,
+  onClose,
+  description,
+}: ImagePreviewModalProps) {
+  const backdropRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
+      if (event.key === "Escape") {
+        onClose();
       }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [open, onClose])
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
 
-  if (!open) return null
+  if (!open) return null;
 
   return (
     <div
@@ -36,7 +42,7 @@ export function ImagePreviewModal({ open, src, alt, onClose, description }: Imag
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
       onClick={(e) => {
         if (e.target === backdropRef.current) {
-          onClose()
+          onClose();
         }
       }}
     >
@@ -49,10 +55,10 @@ export function ImagePreviewModal({ open, src, alt, onClose, description }: Imag
           关闭
         </button>
         <div className="overflow-hidden rounded-lg bg-gray-900 shadow-2xl">
-          <div className="relative w-full" style={{ aspectRatio: '3 / 2' }}>
+          <div className="relative w-full" style={{ aspectRatio: "3 / 2" }}>
             <Image
               src={src}
-              alt={alt || '图片预览'}
+              alt={alt || "图片预览"}
               fill
               className="object-contain"
               sizes="100vw"
@@ -67,5 +73,5 @@ export function ImagePreviewModal({ open, src, alt, onClose, description }: Imag
         </div>
       </div>
     </div>
-  )
+  );
 }

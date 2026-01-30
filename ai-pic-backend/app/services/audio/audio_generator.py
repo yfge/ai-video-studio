@@ -15,18 +15,23 @@ from pathlib import Path
 from typing import Any, Sequence
 
 import httpx
-
 from app.core.logging import get_logger
 from app.services.ai_service import ai_service
-
 
 logger = get_logger(__name__)
 
 
 # Allowed TTS emotion labels
 ALLOWED_TTS_EMOTIONS = {
-    "happy", "sad", "angry", "fearful", "disgusted",
-    "surprised", "calm", "fluent", "whisper",
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "disgusted",
+    "surprised",
+    "calm",
+    "fluent",
+    "whisper",
 }
 
 
@@ -62,14 +67,21 @@ def generate_silence_wav(
 ) -> None:
     """Generate a silent WAV file of specified duration."""
     duration_s = max(0.0, float(duration_ms) / 1000.0)
-    run_ffmpeg([
-        "ffmpeg", "-y",
-        "-f", "lavfi",
-        "-i", f"anullsrc=channel_layout=mono:sample_rate={sample_rate}",
-        "-t", f"{duration_s:.3f}",
-        "-acodec", "pcm_s16le",
-        str(path),
-    ])
+    run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"anullsrc=channel_layout=mono:sample_rate={sample_rate}",
+            "-t",
+            f"{duration_s:.3f}",
+            "-acodec",
+            "pcm_s16le",
+            str(path),
+        ]
+    )
 
 
 async def download_to_file(url: str, path: Path) -> None:
@@ -152,11 +164,28 @@ def normalize_tts_emotion(
         return any(tok in raw_lower for tok in tokens)
 
     # Emotion detection rules
-    if _has_any(["whisper", "低语", "耳语", "压低", "小声", "悄声", "轻声", "低声", "自语"]):
+    if _has_any(
+        ["whisper", "低语", "耳语", "压低", "小声", "悄声", "轻声", "低声", "自语"]
+    ):
         return "whisper"
     if _has_any(["angry", "愤怒", "生气", "恼火", "怒", "火大", "暴躁"]):
         return "angry"
-    if _has_any(["sad", "悲伤", "难过", "沮丧", "哽咽", "哭", "伤心", "叹气", "叹了口气", "叹了一口气", "叹息", "长叹"]):
+    if _has_any(
+        [
+            "sad",
+            "悲伤",
+            "难过",
+            "沮丧",
+            "哽咽",
+            "哭",
+            "伤心",
+            "叹气",
+            "叹了口气",
+            "叹了一口气",
+            "叹息",
+            "长叹",
+        ]
+    ):
         return "sad"
     if _has_any(["happy", "高兴", "开心", "喜悦", "兴奋", "激动", "欢快", "愉快"]):
         return "happy"
@@ -166,9 +195,34 @@ def normalize_tts_emotion(
         return "fearful"
     if _has_any(["disgusted", "厌恶", "恶心", "反感"]):
         return "disgusted"
-    if _has_any(["calm", "neutral", "thoughtful", "平静", "冷静", "中性", "沉稳", "严肃", "思考", "克制"]):
+    if _has_any(
+        [
+            "calm",
+            "neutral",
+            "thoughtful",
+            "平静",
+            "冷静",
+            "中性",
+            "沉稳",
+            "严肃",
+            "思考",
+            "克制",
+        ]
+    ):
         return "calm"
-    if _has_any(["fluent", "confident", "assertive", "自信", "坚定", "果断", "专业", "流利", "从容"]):
+    if _has_any(
+        [
+            "fluent",
+            "confident",
+            "assertive",
+            "自信",
+            "坚定",
+            "果断",
+            "专业",
+            "流利",
+            "从容",
+        ]
+    ):
         return "fluent"
 
     # Safety fallback
@@ -182,27 +236,42 @@ def concat_wavs(paths: Sequence[Path], out_wav: Path) -> None:
         "".join(f"file '{p.as_posix()}'\n" for p in paths),
         encoding="utf-8",
     )
-    run_ffmpeg([
-        "ffmpeg", "-y",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", str(concat_file),
-        "-acodec", "pcm_s16le",
-        "-ac", "1",
-        "-ar", "24000",
-        str(out_wav),
-    ])
+    run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(concat_file),
+            "-acodec",
+            "pcm_s16le",
+            "-ac",
+            "1",
+            "-ar",
+            "24000",
+            str(out_wav),
+        ]
+    )
 
 
 def encode_mp3(in_wav: Path, out_mp3: Path, bitrate: str = "128k") -> None:
     """Encode WAV file to MP3."""
-    run_ffmpeg([
-        "ffmpeg", "-y",
-        "-i", str(in_wav),
-        "-acodec", "libmp3lame",
-        "-b:a", bitrate,
-        str(out_mp3),
-    ])
+    run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(in_wav),
+            "-acodec",
+            "libmp3lame",
+            "-b:a",
+            bitrate,
+            str(out_mp3),
+        ]
+    )
 
 
 def concat_mp3s(paths: Sequence[Path], out_mp3: Path) -> None:
@@ -212,11 +281,18 @@ def concat_mp3s(paths: Sequence[Path], out_mp3: Path) -> None:
         "".join(f"file '{p.as_posix()}'\n" for p in paths),
         encoding="utf-8",
     )
-    run_ffmpeg([
-        "ffmpeg", "-y",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", str(concat_file),
-        "-acodec", "copy",
-        str(out_mp3),
-    ])
+    run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(concat_file),
+            "-acodec",
+            "copy",
+            str(out_mp3),
+        ]
+    )

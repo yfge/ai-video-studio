@@ -19,9 +19,7 @@ def test_task_update_returns_serialized_parameters(client):
     assert data["parameters"].get("platform") == "gpt"
 
     # Update parameters
-    update_payload = {
-        "parameters": {"platform": "keling", "size": 4}
-    }
+    update_payload = {"parameters": {"platform": "keling", "size": 4}}
     r2 = client.put(f"/api/v1/tasks/{task_id}", json=update_payload)
     assert r2.status_code == 200, r2.text
     updated = r2.json()

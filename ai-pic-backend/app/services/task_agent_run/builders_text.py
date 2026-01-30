@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from app.services.task_agent_run.utils import loads_task_parameters, split_provider_model
+from app.services.task_agent_run.utils import (
+    loads_task_parameters,
+    split_provider_model,
+)
 
 
 def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
@@ -20,7 +23,9 @@ def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, A
         .first()
     )
     params = loads_task_parameters(getattr(task, "parameters", None))
-    model_value = getattr(export_row, "model", None) if export_row else params.get("model")
+    model_value = (
+        getattr(export_row, "model", None) if export_row else params.get("model")
+    )
     provider_used, model_used = split_provider_model(model_value)
 
     story_business_id = None
@@ -52,7 +57,9 @@ def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, A
             "story_id": story_id,
             "story_business_id": story_business_id,
             "export_id": getattr(export_row, "id", None) if export_row else None,
-            "file_relative_path": getattr(export_row, "file_relative_path", None) if export_row else None,
+            "file_relative_path": (
+                getattr(export_row, "file_relative_path", None) if export_row else None
+            ),
         },
     }
     if export_row:
@@ -61,4 +68,3 @@ def build_story_novel_export_agent_run(db, task, *, user_id: int) -> Dict[str, A
         payload["total_words"] = getattr(export_row, "total_words", None)
         payload["chapter_count"] = getattr(export_row, "chapter_count", None)
     return payload
-

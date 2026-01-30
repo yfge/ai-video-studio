@@ -34,6 +34,7 @@ Continue Phase 5 frontend page refactoring. Task 5.6: Refactor stories/[id]/page
 ### Created Files
 
 1. **`src/hooks/useStoryDetail.ts`** (231 lines)
+
    - Exported types: EpisodeGenForm, UseStoryDetailOptions
    - Exported utilities: extractEpisodeScenes, getEpisodeSceneCount
    - Core state: story, episodes, scriptsByEpisode, loading
@@ -42,26 +43,31 @@ Continue Phase 5 frontend page refactoring. Task 5.6: Refactor stories/[id]/page
    - Navigation helpers: navigateToStories, navigateToEpisode, navigateToStoryboard, navigateToScript
 
 2. **`src/components/features/story-detail/StoryDetailHeader.tsx`** (41 lines)
+
    - Story title, genre/theme badges, creation date
    - Back to list button
 
 3. **`src/components/features/story-detail/StorySummarySection.tsx`** (64 lines)
+
    - Synopsis, conflict, resolution
    - Time/location settings, world building
    - Collapsible generation prompt viewer
 
 4. **`src/components/features/story-detail/CharactersSection.tsx`** (84 lines)
+
    - Main characters list with roles, traits, arcs
    - Character relationships display
    - Conditional rendering if no data
 
 5. **`src/components/features/story-detail/AdditionalInfoSection.tsx`** (87 lines)
+
    - Plot structure (Act 1/2/3)
    - Core values, visual style
    - Selling points list
    - Conditional rendering if no data
 
 6. **`src/components/features/story-detail/EpisodeGeneratePanel.tsx`** (226 lines)
+
    - Collapsible panel with form fields
    - Episode count, duration, complexity, pacing
    - Model selector, temperature slider
@@ -69,6 +75,7 @@ Continue Phase 5 frontend page refactoring. Task 5.6: Refactor stories/[id]/page
    - Async toggle, preview and generate buttons
 
 7. **`src/components/features/story-detail/EpisodeListSection.tsx`** (303 lines)
+
    - Combines episode data with outline data
    - EpisodeCard sub-component with beats, scenes, scripts preview
    - BeatsPreview, ScenesPreview, ScriptsPreview helper components
@@ -80,6 +87,7 @@ Continue Phase 5 frontend page refactoring. Task 5.6: Refactor stories/[id]/page
 ### Modified Files
 
 1. **`src/app/stories/[id]/page.tsx`** (606 → 112 lines, 82% reduction)
+
    - Now uses `useStoryDetail` hook for all state
    - Imports components from `@/components/features`
    - Clean component composition with loading/error states

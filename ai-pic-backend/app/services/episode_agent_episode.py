@@ -19,6 +19,7 @@ class EpisodeGenerationResult:
     reasoning: list[str]
     continuity_ledger: dict[str, Any] | None = None
 
+
 async def generate_episodes_from_outlines(
     *,
     ai_manager: Any,

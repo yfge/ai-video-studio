@@ -49,7 +49,9 @@ export function ImageModelUiFields({
     const sizeValid =
       !imageUi.defaultSize ||
       !value.size ||
-      imageUi.sizeOptions.some((opt) => opt.toLowerCase() === value.size?.toLowerCase());
+      imageUi.sizeOptions.some(
+        (opt) => opt.toLowerCase() === value.size?.toLowerCase(),
+      );
     if (!sizeValid && imageUi.defaultSize) updates.size = imageUi.defaultSize;
     if (!value.size && imageUi.defaultSize) updates.size = imageUi.defaultSize;
 
@@ -70,7 +72,11 @@ export function ImageModelUiFields({
   }, [model]);
 
   return (
-    <div className={mergeSizeAndAspectRatio ? "grid gap-3" : "grid gap-3 md:grid-cols-2"}>
+    <div
+      className={
+        mergeSizeAndAspectRatio ? "grid gap-3" : "grid gap-3 md:grid-cols-2"
+      }
+    >
       {mergeSizeAndAspectRatio ? (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -93,7 +99,9 @@ export function ImageModelUiFields({
             {imageUi.aspectRatioOptions.flatMap((ratio) =>
               imageUi.sizeOptions.map((size) => {
                 const key = `${size}|${ratio}`;
-                const label = `${ratio} · ${size.toUpperCase?.() ? size.toUpperCase() : size}`;
+                const label = `${ratio} · ${
+                  size.toUpperCase?.() ? size.toUpperCase() : size
+                }`;
                 return (
                   <option key={key} value={key}>
                     {label}

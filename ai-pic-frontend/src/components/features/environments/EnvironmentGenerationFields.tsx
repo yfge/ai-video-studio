@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   GenerationProfileSelect,
   ImageGenAdvancedFields,
@@ -38,7 +44,8 @@ export function EnvironmentGenerationFields({
     () => extractImageGenUi(selectedModel, "text_to_image"),
     [selectedModel],
   );
-  const supportsReferenceImages = Boolean(envKey) && imageGenUi.supportsExtraImages;
+  const supportsReferenceImages =
+    Boolean(envKey) && imageGenUi.supportsExtraImages;
   const maxReferenceImages = imageGenUi.maxReferenceImages;
   const maxCount = imageGenUi.maxCount;
   const effectiveMaxCount =
@@ -60,11 +67,16 @@ export function EnvironmentGenerationFields({
     if (supportsReferenceImages) return;
     if (generation.reference_images.length === 0) return;
     setGeneration((prev) => ({ ...prev, reference_images: [] }));
-  }, [generation.reference_images.length, setGeneration, supportsReferenceImages]);
+  }, [
+    generation.reference_images.length,
+    setGeneration,
+    supportsReferenceImages,
+  ]);
 
   useEffect(() => {
     if (!supportsReferenceImages) return;
-    if (typeof maxReferenceImages !== "number" || maxReferenceImages <= 0) return;
+    if (typeof maxReferenceImages !== "number" || maxReferenceImages <= 0)
+      return;
     if (generation.reference_images.length <= maxReferenceImages) return;
     setGeneration((prev) => ({
       ...prev,

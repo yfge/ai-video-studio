@@ -36,10 +36,9 @@ from typing import Any, Dict, List, Optional, Tuple
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from app.core.config import settings  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
-
-from app.core.config import settings  # noqa: E402
 
 # 配置日志
 logging.basicConfig(
@@ -165,9 +164,7 @@ class Base64ToOSSMigrator:
                         session.commit()
                     converted += 1
                     self.stats["converted"] += 1
-                    logger.info(
-                        f"[{table_name}] ID={record_id}: 已转换 {field_name}"
-                    )
+                    logger.info(f"[{table_name}] ID={record_id}: 已转换 {field_name}")
                 else:
                     failed += 1
                     self.stats["failed"] += 1
@@ -219,7 +216,9 @@ class Base64ToOSSMigrator:
                 if not isinstance(data, list):
                     continue
 
-                has_base64 = any(self.is_base64_image(item) for item in data if isinstance(item, str))
+                has_base64 = any(
+                    self.is_base64_image(item) for item in data if isinstance(item, str)
+                )
                 if not has_base64:
                     continue
 
@@ -381,7 +380,10 @@ class Base64ToOSSMigrator:
                         )
                         session.execute(
                             update_query,
-                            {"data": json.dumps(new_data, ensure_ascii=False), "id": record_id},
+                            {
+                                "data": json.dumps(new_data, ensure_ascii=False),
+                                "id": record_id,
+                            },
                         )
                         session.commit()
                     converted += success
@@ -439,7 +441,10 @@ class Base64ToOSSMigrator:
 
         elif table_name == "virtual_ips":
             f, c, fa = await self.migrate_json_field(
-                "virtual_ips", "id", "style_reference_images", "migrated/virtual-ip-refs"
+                "virtual_ips",
+                "id",
+                "style_reference_images",
+                "migrated/virtual-ip-refs",
             )
             results["found"] += f
             results["converted"] += c

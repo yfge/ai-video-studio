@@ -37,4 +37,3 @@ summary: "Remove the generation configuration form from the tasks management pag
 ## Linked Commits
 
 - pending
-

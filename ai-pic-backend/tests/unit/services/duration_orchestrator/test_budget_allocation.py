@@ -4,11 +4,8 @@
 测试 Duration Orchestrator 的预算分配逻辑。
 """
 
-import pytest
-
 from app.services.duration_orchestrator.constants import (
     BUFFER_RATIO,
-    DEFAULT_SCENE_DURATION_SECONDS,
     DIALOGUE_DENSITY_FACTOR,
     DURATION_TOLERANCE_SCENE_HIGH,
     DURATION_TOLERANCE_SCENE_LOW,
@@ -131,8 +128,12 @@ class TestAllocateSceneBudgets:
         )
 
         budget = budgets[0]
-        expected_min = int(budget.target_duration_seconds * DURATION_TOLERANCE_SCENE_LOW)
-        expected_max = int(budget.target_duration_seconds * DURATION_TOLERANCE_SCENE_HIGH)
+        expected_min = int(
+            budget.target_duration_seconds * DURATION_TOLERANCE_SCENE_LOW
+        )
+        expected_max = int(
+            budget.target_duration_seconds * DURATION_TOLERANCE_SCENE_HIGH
+        )
         assert budget.min_duration_seconds == expected_min
         assert budget.max_duration_seconds == expected_max
 

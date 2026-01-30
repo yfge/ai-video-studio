@@ -2,10 +2,10 @@
  * Script API endpoints.
  */
 
-export * from './script/core.endpoints';
-export * from './script/generation.endpoints';
-export * from './script/audio.endpoints';
-export * from './script/storyboard.endpoints';
+export * from "./script/core.endpoints";
+export * from "./script/generation.endpoints";
+export * from "./script/audio.endpoints";
+export * from "./script/storyboard.endpoints";
 
 import {
   deleteScript,
@@ -17,14 +17,18 @@ import {
   getScripts,
   regenerateScript,
   updateScript,
-} from './script/core.endpoints';
-import { generateScript, generateScriptAsync, previewScriptPrompt } from './script/generation.endpoints';
+} from "./script/core.endpoints";
+import {
+  generateScript,
+  generateScriptAsync,
+  previewScriptPrompt,
+} from "./script/generation.endpoints";
 import {
   generateAudioTimelineAsync,
   generateSceneDialogueAudioAsync,
   generateStoryboardFromAudioTimelineAsync,
   generateTimelinePipelineAsync,
-} from './script/audio.endpoints';
+} from "./script/audio.endpoints";
 import {
   generateStoryboard,
   generateStoryboardAsync,
@@ -33,7 +37,7 @@ import {
   getStoryboard,
   previewStoryboardPrompt,
   updateStoryboard,
-} from './script/storyboard.endpoints';
+} from "./script/storyboard.endpoints";
 
 /**
  * Script API namespace.
@@ -63,4 +67,3 @@ export const scriptAPI = {
   generateStoryboardImages,
   updateStoryboard,
 };
-

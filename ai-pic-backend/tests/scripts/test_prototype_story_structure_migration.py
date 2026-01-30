@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-import pytest
 import sqlalchemy as sa
 from sqlalchemy import create_engine
 
@@ -18,20 +17,38 @@ from scripts.prototype_story_structure_migration import (
 
 
 def test_sample_extraction_includes_original_json_and_no_warnings():
-    payload, warnings = assemble_payload(deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT))
+    payload, warnings = assemble_payload(
+        deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT)
+    )
 
     assert warnings == []
     treatment_metadata = payload["story_treatments"][0]["metadata"]
     assert treatment_metadata["original_json"]["title"] == SAMPLE_STORY["title"]
 
     first_scene = payload["scenes"][0]
-    assert first_scene["metadata"]["original_json"]["scene_number"] == SAMPLE_SCRIPT["scenes"][0]["scene_number"]
+    assert (
+        first_scene["metadata"]["original_json"]["scene_number"]
+        == SAMPLE_SCRIPT["scenes"][0]["scene_number"]
+    )
     assert first_scene["environment_type"] == SAMPLE_SCRIPT["scenes"][0]["environment"]
 
 
 def test_defaults_and_warnings_when_scene_fields_missing():
-    story = {"id": 1, "title": "Test", "premise": None, "synopsis": None, "theme": None, "target_audience": None}
-    episode = {"id": 10, "story_id": 1, "episode_number": 1, "title": "Ep", "plot_points": []}
+    story = {
+        "id": 1,
+        "title": "Test",
+        "premise": None,
+        "synopsis": None,
+        "theme": None,
+        "target_audience": None,
+    }
+    episode = {
+        "id": 10,
+        "story_id": 1,
+        "episode_number": 1,
+        "title": "Ep",
+        "plot_points": [],
+    }
     script = {
         "id": 100,
         "episode_id": 10,
@@ -66,7 +83,9 @@ def test_defaults_and_warnings_when_scene_fields_missing():
 
 def test_probe_insert_reports_missing_tables():
     engine = create_engine("sqlite:///:memory:")
-    payload, _ = assemble_payload(deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT))
+    payload, _ = assemble_payload(
+        deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT)
+    )
 
     result = probe_insert(engine, payload)
 
@@ -85,6 +104,7 @@ def test_probe_insert_reports_missing_tables():
 
     engine.dispose()
 
+
 def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -> None:
     metadata = sa.MetaData()
 
@@ -98,14 +118,18 @@ def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -
         "episodes",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("story_id", sa.Integer, sa.ForeignKey("stories.id", ondelete="CASCADE")),
+        sa.Column(
+            "story_id", sa.Integer, sa.ForeignKey("stories.id", ondelete="CASCADE")
+        ),
         sa.Column("title", sa.String(255)),
     )
     scripts = sa.Table(
         "scripts",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("episode_id", sa.Integer, sa.ForeignKey("episodes.id", ondelete="CASCADE")),
+        sa.Column(
+            "episode_id", sa.Integer, sa.ForeignKey("episodes.id", ondelete="CASCADE")
+        ),
         sa.Column("scenes", sa.JSON, nullable=True),
         sa.Column("dialogues", sa.JSON, nullable=True),
         sa.Column("stage_directions", sa.JSON, nullable=True),
@@ -118,7 +142,12 @@ def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -
         "story_treatments",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("story_id", sa.Integer, sa.ForeignKey("stories.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "story_id",
+            sa.Integer,
+            sa.ForeignKey("stories.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("revision_number", sa.Integer, nullable=False),
         sa.Column("status", sa.String(32), nullable=False, server_default="draft"),
         sa.Column("title", sa.String(255), nullable=False),
@@ -155,9 +184,21 @@ def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -
         "story_step_outlines",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("story_id", sa.Integer, sa.ForeignKey("stories.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("episode_id", sa.Integer, sa.ForeignKey("episodes.id", ondelete="SET NULL")),
-        sa.Column("story_treatment_id", sa.BigInteger, sa.ForeignKey("story_treatments.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "story_id",
+            sa.Integer,
+            sa.ForeignKey("stories.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "episode_id", sa.Integer, sa.ForeignKey("episodes.id", ondelete="SET NULL")
+        ),
+        sa.Column(
+            "story_treatment_id",
+            sa.BigInteger,
+            sa.ForeignKey("story_treatments.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("sequence_number", sa.Integer, nullable=False),
         sa.Column("act_label", sa.String(50)),
         sa.Column("beat_title", sa.String(255), nullable=False),
@@ -188,8 +229,17 @@ def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -
         "scenes",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("script_id", sa.Integer, sa.ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("story_step_outline_id", sa.BigInteger, sa.ForeignKey("story_step_outlines.id", ondelete="SET NULL")),
+        sa.Column(
+            "script_id",
+            sa.Integer,
+            sa.ForeignKey("scripts.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "story_step_outline_id",
+            sa.BigInteger,
+            sa.ForeignKey("story_step_outlines.id", ondelete="SET NULL"),
+        ),
         sa.Column("scene_number", sa.String(20), nullable=False),
         sa.Column("slug_line", sa.String(255), nullable=False),
         sa.Column("environment_type", sa.String(32)),
@@ -220,7 +270,12 @@ def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -
         "scene_beats",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("scene_id", sa.BigInteger, sa.ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "scene_id",
+            sa.BigInteger,
+            sa.ForeignKey("scenes.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("order_index", sa.Integer, nullable=False),
         sa.Column("beat_type", sa.String(32)),
         sa.Column("beat_summary", sa.Text),
@@ -247,8 +302,17 @@ def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -
         "shots",
         metadata,
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("scene_id", sa.BigInteger, sa.ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("scene_beat_id", sa.BigInteger, sa.ForeignKey("scene_beats.id", ondelete="SET NULL")),
+        sa.Column(
+            "scene_id",
+            sa.BigInteger,
+            sa.ForeignKey("scenes.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "scene_beat_id",
+            sa.BigInteger,
+            sa.ForeignKey("scene_beats.id", ondelete="SET NULL"),
+        ),
         sa.Column("shot_number", sa.String(20), nullable=False),
         sa.Column("shot_type", sa.String(50)),
         sa.Column("camera_setup", sa.String(255)),
@@ -256,7 +320,11 @@ def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -
         sa.Column("framing", sa.Text),
         sa.Column("focus_subject", sa.String(255)),
         sa.Column("duration_seconds", sa.Numeric(6, 2)),
-        sa.Column("storyboard_frame_asset_id", sa.Integer, sa.ForeignKey("images.id", ondelete="SET NULL")),
+        sa.Column(
+            "storyboard_frame_asset_id",
+            sa.Integer,
+            sa.ForeignKey("images.id", ondelete="SET NULL"),
+        ),
         sa.Column("lighting_notes", sa.Text),
         sa.Column("audio_notes", sa.Text),
         sa.Column("status", sa.String(32), nullable=False, server_default="planned"),
@@ -288,7 +356,9 @@ def test_probe_insert_succeeds_and_rolls_back():
     engine = create_engine("sqlite:///:memory:")
     _bootstrap_schema(engine)
 
-    payload, _ = assemble_payload(deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT))
+    payload, _ = assemble_payload(
+        deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT)
+    )
     result = probe_insert(engine, payload)
 
     assert result.attempted is True
@@ -299,7 +369,9 @@ def test_probe_insert_succeeds_and_rolls_back():
     assert result.error is None
 
     with engine.begin() as conn:
-        rows = conn.execute(sa.text("SELECT COUNT(*) FROM story_treatments")).scalar_one()
+        rows = conn.execute(
+            sa.text("SELECT COUNT(*) FROM story_treatments")
+        ).scalar_one()
         assert rows == 0
 
     engine.dispose()
@@ -309,7 +381,9 @@ def test_probe_insert_populates_missing_defaults():
     engine = create_engine("sqlite:///:memory:")
     _bootstrap_schema(engine, include_server_defaults=False)
 
-    payload, _ = assemble_payload(deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT))
+    payload, _ = assemble_payload(
+        deepcopy(SAMPLE_STORY), deepcopy(SAMPLE_EPISODE), deepcopy(SAMPLE_SCRIPT)
+    )
     result = probe_insert(engine, payload)
 
     assert result.attempted is True
@@ -320,7 +394,9 @@ def test_probe_insert_populates_missing_defaults():
     assert result.rolled_back is True
 
     with engine.begin() as conn:
-        rows = conn.execute(sa.text("SELECT COUNT(*) FROM story_treatments")).scalar_one()
+        rows = conn.execute(
+            sa.text("SELECT COUNT(*) FROM story_treatments")
+        ).scalar_one()
         assert rows == 0
 
     engine.dispose()

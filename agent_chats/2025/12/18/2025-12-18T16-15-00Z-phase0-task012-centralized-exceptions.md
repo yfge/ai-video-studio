@@ -49,6 +49,7 @@ DomainError (base class)
 **Key Features:**
 
 1. **Structured Error Responses:**
+
    - `status_code`: HTTP status code
    - `error_code`: Machine-readable error code
    - `message`: Human-readable message
@@ -56,6 +57,7 @@ DomainError (base class)
    - `to_dict()`: JSON serialization method
 
 2. **Convenience Factory Methods:**
+
    ```python
    # Before (scattered throughout code):
    raise HTTPException(status_code=404, detail="用户不存在")
@@ -98,6 +100,7 @@ Total: Replaces 246 HTTPException raises identified in codebase analysis.
 ## Validation
 
 ### Test Results
+
 ```bash
 pytest tests/unit/core/test_exceptions.py -v
 # 31 passed, 29 warnings in 0.07s
@@ -106,39 +109,47 @@ pytest tests/unit/core/test_exceptions.py -v
 ### Code Quality Checks
 
 ✅ **File Size Compliance:**
+
 - `exceptions.py`: 280 lines (✅ < 300 line limit)
 - `test_exceptions.py`: 217 lines (✅ < 300 line limit)
 
 ✅ **Single Responsibility:**
+
 - One file, one purpose: Domain exception hierarchy
 - Clear separation of exception types
 
 ✅ **No Duplication:**
+
 - Base class provides common functionality
 - Factory methods eliminate repetitive exception creation
 
 ✅ **Testing:**
+
 - Comprehensive test coverage for all exception types
 - Edge cases tested (with/without IDs, custom messages, context)
 
 ✅ **Documentation:**
+
 - Docstrings with usage examples for all classes
 - Module-level documentation explaining purpose and usage
 
 ## Impact
 
 **Problem Solved:**
+
 - Current codebase has 246 scattered `HTTPException` raises
 - No consistency in error messages or status codes
 - No machine-readable error codes
 - No structured context for debugging
 
 **Foundation Established:**
+
 - Domain exceptions ready to use in all endpoints/services
 - Enables Task 0.1.3 (exception middleware)
 - Enables gradual migration from HTTPException to domain exceptions
 
 **Next Steps:**
+
 1. Task 0.1.3: Create exception middleware to convert domain exceptions → HTTP responses
 2. Begin gradual migration: Replace HTTPException with domain exceptions (can start immediately in new code)
 

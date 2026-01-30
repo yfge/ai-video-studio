@@ -30,6 +30,7 @@ Translation: The current interaction is too ugly. Put the scene list on the left
 Complete rewrite with new layout:
 
 1. **Left sidebar (320px width)**
+
    - Fixed header with "场景列表" title and scene count
    - Scrollable scene list
    - Scene cards show:
@@ -40,6 +41,7 @@ Complete rewrite with new layout:
    - Active scene has blue highlight with ring
 
 2. **Right panel (flex-1)**
+
    - Large scene header with number and time badge
    - Location display
    - Description section with notes

@@ -7,7 +7,6 @@
 import logging
 from typing import Any, Dict
 
-from app.services.duration_orchestrator.state import OrchestratorState
 from app.services.duration_orchestrator.utils import (
     allocate_scene_budgets,
     format_budget_summary,
@@ -104,6 +103,7 @@ def should_proceed_to_generation(state: Dict[str, Any]) -> str:
 
     # 检查是否有待处理的场景
     from app.services.duration_orchestrator.state import SceneStatus
+
     pending = [b for b in budgets if b.status == SceneStatus.PENDING]
 
     if pending:

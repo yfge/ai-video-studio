@@ -13,10 +13,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.schemas.generation import (
-    ScriptScoreDimensions,
-    ScriptScoreResult,
-)
+from app.schemas.generation import ScriptScoreDimensions, ScriptScoreResult
 from app.utils.json_utils import extract_json_block
 
 if TYPE_CHECKING:

@@ -36,6 +36,7 @@ class ScriptDialogueAudioGenerateRequest(BaseModel):
 ```
 
 Modified `_process_script_dialogue_audio_task` to branch on `use_duration_control`:
+
 - When `True`: Calls `generate_dialogue_with_duration_control()` from new service
 - When `False`: Uses traditional scene-by-scene generation (existing behavior)
 
@@ -69,6 +70,7 @@ python -m pytest tests/unit/services/duration_orchestrator/ -v
 ```
 
 Import verification:
+
 ```python
 from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
@@ -82,11 +84,13 @@ from app.api.v1.endpoints.scripts_legacy import (
 ## Next Steps
 
 1. **Phase 6.4**: Implement result persistence
+
    - Update Scene `estimated_duration_seconds` with actual values
    - Create/update SceneBeat records from orchestrator output
    - Update Script dialogue timeline data
 
 2. **Phase 6.5**: Write API integration tests
+
    - Test with `use_duration_control=false` (existing behavior)
    - Test with `use_duration_control=true` (orchestrator path)
 

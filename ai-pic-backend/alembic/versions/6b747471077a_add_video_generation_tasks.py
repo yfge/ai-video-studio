@@ -1,7 +1,7 @@
 """add video generation tasks table"""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "6b747471077a"
@@ -26,7 +26,9 @@ def upgrade() -> None:
         "video_generation_tasks",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("business_id", sa.String(length=32), nullable=False),
-        sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column(
+            "is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("0")
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_by", sa.Integer(), nullable=True),
         sa.Column("deleted_reason", sa.Text(), nullable=True),
@@ -88,11 +90,22 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_video_generation_tasks_provider_task_id", table_name="video_generation_tasks")
-    op.drop_index("ix_video_generation_tasks_frame_index", table_name="video_generation_tasks")
-    op.drop_index("ix_video_generation_tasks_script_id", table_name="video_generation_tasks")
-    op.drop_index("ix_video_generation_tasks_task_id", table_name="video_generation_tasks")
-    op.drop_index("ix_video_generation_tasks_business_id", table_name="video_generation_tasks")
+    op.drop_index(
+        "ix_video_generation_tasks_provider_task_id",
+        table_name="video_generation_tasks",
+    )
+    op.drop_index(
+        "ix_video_generation_tasks_frame_index", table_name="video_generation_tasks"
+    )
+    op.drop_index(
+        "ix_video_generation_tasks_script_id", table_name="video_generation_tasks"
+    )
+    op.drop_index(
+        "ix_video_generation_tasks_task_id", table_name="video_generation_tasks"
+    )
+    op.drop_index(
+        "ix_video_generation_tasks_business_id", table_name="video_generation_tasks"
+    )
     op.drop_table("video_generation_tasks")
 
     status_enum = sa.Enum(

@@ -32,7 +32,11 @@ export type PacingTemplate = {
 export const MARKET_REGIONS = [
   { value: "NA", label: "北美", description: "复仇流、狼人、黑帮皮肤更顺畅" },
   { value: "LATAM", label: "拉美", description: "家族纠葛、情感拉扯接受度高" },
-  { value: "SEA", label: "东南亚", description: "霸总/契约婚姻、校园情感表现稳定" },
+  {
+    value: "SEA",
+    label: "东南亚",
+    description: "霸总/契约婚姻、校园情感表现稳定",
+  },
   { value: "MENA", label: "中东", description: "家族权力、财产继承线更稳妥" },
   { value: "KRJP", label: "日韩", description: "偶像、校园、职场情感更易转化" },
   { value: "GLOBAL", label: "全球", description: "保守模板，便于跨区复用" },
@@ -53,7 +57,8 @@ export const PACING_TEMPLATES: PacingTemplate[] = [
   {
     id: "fast-hook",
     label: "快钩子冲刺",
-    description: "开场5秒爆点 + 30秒内完成第一次反转，结尾以明确悬念锁住下一集。",
+    description:
+      "开场5秒爆点 + 30秒内完成第一次反转，结尾以明确悬念锁住下一集。",
     hookPlan: {
       opening_hook: "用一条台词/动作在5秒内引爆冲突。",
       escalation_plan: "20-40秒快速拉高羞辱/背叛情绪。",

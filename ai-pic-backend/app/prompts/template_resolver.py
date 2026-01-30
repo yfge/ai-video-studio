@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-
 _FORMAT_AWARE_TEMPLATES = {
     "story_outline",
     "system_prompt_story",

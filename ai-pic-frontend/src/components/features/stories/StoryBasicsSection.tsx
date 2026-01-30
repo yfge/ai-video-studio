@@ -128,8 +128,9 @@ export function StoryBasicsSection({
               ))}
             </select>
             <p className="mt-1 text-xs text-gray-500">
-              {SHORT_DRAMA_STORY_TEMPLATES.find((item) => item.id === storyTemplateId)
-                ?.description || "选择后会自动填充市场/微类型/节奏与额外要求。"}
+              {SHORT_DRAMA_STORY_TEMPLATES.find(
+                (item) => item.id === storyTemplateId,
+              )?.description || "选择后会自动填充市场/微类型/节奏与额外要求。"}
             </p>
           </div>
         ) : null}

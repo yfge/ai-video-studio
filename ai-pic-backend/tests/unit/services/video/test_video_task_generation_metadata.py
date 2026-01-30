@@ -1,4 +1,6 @@
-from app.services.video.video_task_generation_metadata import build_video_generation_metadata
+from app.services.video.video_task_generation_metadata import (
+    build_video_generation_metadata,
+)
 
 
 def test_build_video_generation_metadata_parses_720p_landscape_dimensions():
@@ -50,4 +52,3 @@ def test_build_video_generation_metadata_falls_back_to_original_url_when_no_oss_
     assert meta["width"] == 1280
     assert meta["height"] == 720
     assert meta["assets"]["video"]["url"] == "https://origin.example.com/video.mp4"
-

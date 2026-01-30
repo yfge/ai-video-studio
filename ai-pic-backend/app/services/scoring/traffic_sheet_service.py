@@ -13,11 +13,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.schemas.generation import (
-    HookPlan,
-    TrafficSheet,
-    TrafficSheetAsset,
-)
+from app.schemas.generation import TrafficSheet, TrafficSheetAsset
 from app.utils.json_utils import extract_json_block
 
 if TYPE_CHECKING:
@@ -242,7 +238,11 @@ async def generate_traffic_sheet_from_db(
         marketing_meta = merge_marketing_meta(
             story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
             script.extra_metadata if isinstance(script.extra_metadata, dict) else {},
-            script.generation_params if isinstance(script.generation_params, dict) else {},
+            (
+                script.generation_params
+                if isinstance(script.generation_params, dict)
+                else {}
+            ),
         )
         story_ctx = {
             "title": story.title,
@@ -252,8 +252,16 @@ async def generate_traffic_sheet_from_db(
         }
 
     marketing_meta = merge_marketing_meta(
-        story.extra_metadata if story and isinstance(story.extra_metadata, dict) else {},
-        episode.extra_metadata if episode and isinstance(episode.extra_metadata, dict) else {},
+        (
+            story.extra_metadata
+            if story and isinstance(story.extra_metadata, dict)
+            else {}
+        ),
+        (
+            episode.extra_metadata
+            if episode and isinstance(episode.extra_metadata, dict)
+            else {}
+        ),
         script.extra_metadata if isinstance(script.extra_metadata, dict) else {},
         script.generation_params if isinstance(script.generation_params, dict) else {},
     )

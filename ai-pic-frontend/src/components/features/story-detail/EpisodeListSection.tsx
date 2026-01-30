@@ -1,7 +1,10 @@
 "use client";
 
 import type { Episode, Script, Story } from "@/utils/api";
-import { extractEpisodeScenes, getEpisodeSceneCount } from "@/hooks/useStoryDetail";
+import {
+  extractEpisodeScenes,
+  getEpisodeSceneCount,
+} from "@/hooks/useStoryDetail";
 
 interface EpisodeListSectionProps {
   story: Story;
@@ -42,8 +45,10 @@ export function EpisodeListSection({
         .sort((a, b) => {
           const aNumRaw = a["episode_number"];
           const bNumRaw = b["episode_number"];
-          const aNum = typeof aNumRaw === "number" ? aNumRaw : Number(aNumRaw || 0);
-          const bNum = typeof bNumRaw === "number" ? bNumRaw : Number(bNumRaw || 0);
+          const aNum =
+            typeof aNumRaw === "number" ? aNumRaw : Number(aNumRaw || 0);
+          const bNum =
+            typeof bNumRaw === "number" ? bNumRaw : Number(bNumRaw || 0);
           return aNum - bNum;
         })
     : [];
@@ -59,7 +64,11 @@ export function EpisodeListSection({
     }));
     const merged = new Map<
       number,
-      { episodeNumber: number; episode?: Episode; outline?: Record<string, unknown> }
+      {
+        episodeNumber: number;
+        episode?: Episode;
+        outline?: Record<string, unknown>;
+      }
     >();
     outlineEntries.forEach((item) => {
       merged.set(item.episodeNumber, {
@@ -73,14 +82,18 @@ export function EpisodeListSection({
       };
       merged.set(item.episodeNumber, { ...existing, episode: item.episode });
     });
-    return Array.from(merged.values()).sort((a, b) => a.episodeNumber - b.episodeNumber);
+    return Array.from(merged.values()).sort(
+      (a, b) => a.episodeNumber - b.episodeNumber,
+    );
   })();
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">剧集列表</h2>
-        <span className="text-sm text-gray-500">共 {combinedEpisodes.length} 集</span>
+        <span className="text-sm text-gray-500">
+          共 {combinedEpisodes.length} 集
+        </span>
       </div>
 
       {combinedEpisodes.length === 0 ? (
@@ -126,13 +139,15 @@ function EpisodeCard({
 
   const titleFromEpisode = episode?.title?.trim();
   const titleFromOutline =
-    typeof outline?.["title"] === "string" && (outline["title"] as string).trim()
+    typeof outline?.["title"] === "string" &&
+    (outline["title"] as string).trim()
       ? (outline["title"] as string)
       : "";
   const title = titleFromEpisode || titleFromOutline || `第${episodeNumber}集`;
 
   const summaryFromOutline =
-    typeof outline?.["logline"] === "string" && (outline["logline"] as string).trim()
+    typeof outline?.["logline"] === "string" &&
+    (outline["logline"] as string).trim()
       ? (outline["logline"] as string)
       : "";
   const summary = episode?.summary || summaryFromOutline || "暂无概要";
@@ -159,18 +174,16 @@ function EpisodeCard({
         <BeatsPreview beats={beats} episodeNumber={episodeNumber} />
       )}
 
-      {scenes.length > 0 && (
-        <ScenesPreview scenes={scenes} />
-      )}
+      {scenes.length > 0 && <ScenesPreview scenes={scenes} />}
 
-      {scripts.length > 0 && (
-        <ScriptsInfo scripts={scripts} />
-      )}
+      {scripts.length > 0 && <ScriptsInfo scripts={scripts} />}
 
       {/* Single entry point button */}
       {episode && (
         <button
-          onClick={() => onNavigateToWorkspace(episode.business_id || episode.id)}
+          onClick={() =>
+            onNavigateToWorkspace(episode.business_id || episode.id)
+          }
           className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 text-sm font-medium"
         >
           进入工作台 →
@@ -194,11 +207,12 @@ function BeatsPreview({
         const seqRaw = beat?.["sequence_number"];
         const seq = typeof seqRaw === "number" ? seqRaw : bIdx + 1;
         const beatTitle =
-          typeof beat?.["beat_title"] === "string" && (beat["beat_title"] as string).trim()
+          typeof beat?.["beat_title"] === "string" &&
+          (beat["beat_title"] as string).trim()
             ? (beat["beat_title"] as string)
             : typeof beat?.["beat_summary"] === "string"
-              ? (beat["beat_summary"] as string)
-              : `节点 ${seq}`;
+            ? (beat["beat_summary"] as string)
+            : `节点 ${seq}`;
         return (
           <div
             key={`beat-${episodeNumber}-${seq}`}
@@ -227,14 +241,22 @@ function ScenesPreview({ scenes }: { scenes: Record<string, unknown>[] }) {
       {scenes.slice(0, 3).map((scene, idx) => {
         const rawNo = scene.scene_number;
         const sceneNumber =
-          typeof rawNo === "number" ? rawNo : parseInt(String(rawNo ?? idx + 1), 10);
+          typeof rawNo === "number"
+            ? rawNo
+            : parseInt(String(rawNo ?? idx + 1), 10);
         const sceneLabel = Number.isFinite(sceneNumber) ? sceneNumber : idx + 1;
         const titleRaw = scene.slug_line ?? scene.summary ?? scene.description;
-        const title = typeof titleRaw === "string" ? titleRaw : `场景 ${sceneLabel}`;
+        const title =
+          typeof titleRaw === "string" ? titleRaw : `场景 ${sceneLabel}`;
         return (
-          <div key={`scene-${sceneLabel}`} className="flex items-center justify-between gap-2">
+          <div
+            key={`scene-${sceneLabel}`}
+            className="flex items-center justify-between gap-2"
+          >
             <span className="font-medium text-gray-800">场景 {sceneLabel}</span>
-            <span className="text-[11px] text-gray-500 truncate">{String(title)}</span>
+            <span className="text-[11px] text-gray-500 truncate">
+              {String(title)}
+            </span>
           </div>
         );
       })}

@@ -18,7 +18,9 @@ class PlotStructure(BaseModel):
 
 
 class HookBeat(BaseModel):
-    beat_type: Optional[str] = Field(None, description="钩子类型：hook/reversal/payoff 等")
+    beat_type: Optional[str] = Field(
+        None, description="钩子类型：hook/reversal/payoff 等"
+    )
     description: str = Field(..., description="钩子/反转描述")
     timing: Optional[str] = Field(None, description="出现时机：开场/中段/结尾等")
     intensity: Optional[str] = Field(None, description="强度：low/medium/high")
@@ -310,9 +312,7 @@ class ScriptScoreResult(BaseModel):
 
     overall_score: float = Field(..., ge=0, le=5, description="总体评分（加权平均）")
     dimension_scores: ScriptScoreDimensions = Field(..., description="各维度评分")
-    verdict: str = Field(
-        ..., description="判定结果：pass/review/rewrite"
-    )
+    verdict: str = Field(..., description="判定结果：pass/review/rewrite")
     strengths: List[str] = Field(default_factory=list, description="剧本优势点")
     risks: List[str] = Field(default_factory=list, description="风险点/问题")
     rewrite_guidance: List[str] = Field(

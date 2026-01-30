@@ -1,12 +1,12 @@
 """Unit tests for text generation utilities."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from app.services.audio.text_generation_utils import (
     call_text_generation_with_fallback,
-    trim_text,
     extract_text_content,
+    trim_text,
 )
 
 

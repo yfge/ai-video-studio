@@ -29,11 +29,13 @@ Continue with Phase 4 of Duration Orchestrator - Assemble LangGraph StateGraph.
 Complete `DurationOrchestratorAgent` implementation with LangGraph StateGraph:
 
 - **`DurationOrchestratorAgent` class**:
+
   - `__init__()`: Accepts `script_agent`, `tts_service`, and `use_actual_tts` flag
   - `_build_graph()`: Constructs StateGraph with all nodes and edges
   - `orchestrate()`: Main async method to execute end-to-end duration control
 
 - **StateGraph Structure**:
+
   ```
   allocate_budget
       ↓
@@ -56,6 +58,7 @@ Complete `DurationOrchestratorAgent` implementation with LangGraph StateGraph:
   ```
 
 - **Conditional Edge Routing**:
+
   - `allocate_budget` → `generate_dialogue` (if scenes exist) or `END` (if empty/failed)
   - `generate_dialogue` → `tts_trial` (if success) or retry/failed
   - `tts_trial` → `validate_duration` (always)
@@ -68,6 +71,7 @@ Complete `DurationOrchestratorAgent` implementation with LangGraph StateGraph:
 ### 2. Updated `app/services/duration_orchestrator/__init__.py`
 
 Added exports for new agent:
+
 - `DurationOrchestratorAgent`
 - `orchestrate_episode_duration`
 
@@ -76,6 +80,7 @@ Added exports for new agent:
 Comprehensive tests for StateGraph and orchestration (12 tests):
 
 - **`TestDurationOrchestratorAgent`** (5 tests):
+
   - `test_orchestrate_returns_result`: Verify result structure
   - `test_orchestrate_no_script_agent`: Error handling without script agent
   - `test_orchestrate_empty_scenes`: Error handling for empty scenes
@@ -83,9 +88,11 @@ Comprehensive tests for StateGraph and orchestration (12 tests):
   - `test_orchestrate_statistics_structure`: Verify statistics output
 
 - **`TestOrchestrateEpisodeDuration`** (1 test):
+
   - `test_convenience_function`: Test helper function
 
 - **`TestAgentBuildGraph`** (2 tests):
+
   - `test_build_graph_structure`: Verify all nodes present
   - `test_build_graph_entry_point`: Verify graph compiles
 
@@ -109,6 +116,7 @@ tests/unit/services/duration_orchestrator/test_agent.py: 12 passed
 ```
 
 Import verification:
+
 ```python
 from app.services.duration_orchestrator import (
     DurationOrchestratorAgent,
@@ -119,10 +127,12 @@ from app.services.duration_orchestrator import (
 ## Next Steps
 
 1. **Phase 5**: Episode Assembly and Final Validation
+
    - Implement `assemble_episode` node - merge all scenes' SceneBeat + Audio Timeline + storyboard
    - Implement `final_validation` node - verify total duration within ±10%
 
 2. **Phase 6**: API Endpoints
+
    - Create `/api/v1/episodes/{id}/generate-with-duration-control` endpoint
    - Integrate with existing episode generation flow
 

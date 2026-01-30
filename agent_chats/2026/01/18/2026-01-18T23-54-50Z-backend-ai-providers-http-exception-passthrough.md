@@ -38,4 +38,3 @@ summary: "Preserve HTTP 400 errors for generate text/image/video/speech endpoint
 ## Linked Commits
 
 - (this commit)
-

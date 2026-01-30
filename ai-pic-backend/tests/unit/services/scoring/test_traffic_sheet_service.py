@@ -2,10 +2,9 @@
 Unit tests for TrafficSheetService.
 """
 
-import pytest
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from app.schemas.generation import TrafficSheet, TrafficSheetAsset
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 from app.services.scoring.traffic_sheet_service import TrafficSheetService
@@ -29,7 +28,7 @@ class TestTrafficSheetService:
 
     def test_parse_traffic_sheet_response_valid(self, traffic_service):
         """Test parsing a valid traffic sheet response."""
-        response = '''
+        response = """
         ```json
         {
             "episode_id": 1,
@@ -65,7 +64,7 @@ class TestTrafficSheetService:
             ]
         }
         ```
-        '''
+        """
         result = traffic_service._parse_traffic_sheet_response(response)
 
         assert result.episode_id == 1
@@ -78,13 +77,13 @@ class TestTrafficSheetService:
 
     def test_parse_traffic_sheet_response_empty_assets(self, traffic_service):
         """Test parsing response with empty assets."""
-        response = '''
+        response = """
         ```json
         {
             "assets": []
         }
         ```
-        '''
+        """
         result = traffic_service._parse_traffic_sheet_response(response)
         assert len(result.assets) == 0
 
@@ -106,7 +105,7 @@ class TestTrafficSheetService:
 
     def test_parse_traffic_sheet_response_with_fallback(self, traffic_service):
         """Test fallback values from story context."""
-        response = '''
+        response = """
         ```json
         {
             "assets": [
@@ -122,7 +121,7 @@ class TestTrafficSheetService:
             ]
         }
         ```
-        '''
+        """
         result = traffic_service._parse_traffic_sheet_response(
             response,
             story={"market_region": "LATAM", "micro_genre": "Revenge drama"},
@@ -138,7 +137,7 @@ class TestTrafficSheetService:
         """Test successful traffic sheet generation."""
         mock_ai_service.ai_manager.generate_text.return_value = AIResponse(
             success=True,
-            data='''
+            data="""
         ```json
         {
             "assets": [
@@ -155,7 +154,7 @@ class TestTrafficSheetService:
             ]
         }
         ```
-        ''',
+        """,
             provider="mock",
             model="mock",
             task_type=AITaskType.SCRIPT_WRITING,

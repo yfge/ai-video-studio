@@ -7,6 +7,18 @@ Basic create, read, update, delete operations for virtual IP images.
 import os
 from typing import List, Optional
 
+from app.core.config import settings
+from app.core.database import get_db
+from app.core.middleware import get_current_active_user
+from app.models.user import User
+from app.models.virtual_ip import VirtualIPImage
+from app.schemas.virtual_ip import (
+    VirtualIPImageCreate,
+    VirtualIPImageResponse,
+    VirtualIPImageUpdate,
+)
+from app.services.ai_service import ai_service
+from app.services.storage import oss_service
 from fastapi import (
     APIRouter,
     Depends,
@@ -20,22 +32,10 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.core.database import get_db
-from app.core.middleware import get_current_active_user
-from app.models.user import User
-from app.models.virtual_ip import VirtualIPImage
-from app.schemas.virtual_ip import (
-    VirtualIPImageCreate,
-    VirtualIPImageResponse,
-    VirtualIPImageUpdate,
-)
-from app.services.ai_service import ai_service
-from app.services.storage import oss_service
 from .helpers import (
-    not_deleted,
     get_owned_virtual_ip,
     get_virtual_ip_image,
+    not_deleted,
     set_ip_default_avatar,
 )
 

@@ -5,13 +5,13 @@ Revises: b1b863e84acc
 Create Date: 2026-01-27 21:20:03.958345
 
 """
+
 from __future__ import annotations
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "39e7d91e9b93"
@@ -53,7 +53,9 @@ def upgrade() -> None:
         for value in TASKTYPE_NEW:
             if value in TASKTYPE_OLD:
                 continue
-            op.execute(sa.text(f"ALTER TYPE tasktype ADD VALUE IF NOT EXISTS '{value}'"))
+            op.execute(
+                sa.text(f"ALTER TYPE tasktype ADD VALUE IF NOT EXISTS '{value}'")
+            )
         return
 
     existing_type = sa.Enum(*TASKTYPE_OLD, name="tasktype")

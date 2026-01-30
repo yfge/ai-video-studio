@@ -13,11 +13,11 @@ from app.core.logging import get_logger
 from app.utils.json_utils import extract_json_block
 
 from .constants import (
+    MAX_AVG_GAP_MS,
     MAX_GAP_MS,
     MAX_REPAIR_ATTEMPTS,
     MIN_AVG_GAP_MS,
     MIN_GAP_MS,
-    MAX_AVG_GAP_MS,
     TIMELINE_REPAIR_PROMPT,
     TIMELINE_SYSTEM_PROMPT,
 )
@@ -115,10 +115,14 @@ class TimelineLangGraphAgent:
 
         # --- Node definitions ---
         graph.add_node("analyze_scene", self._analyze_scene)
-        graph.add_node("think_timing", self._make_think_timing(model, prefer_provider, temperature))
+        graph.add_node(
+            "think_timing", self._make_think_timing(model, prefer_provider, temperature)
+        )
         graph.add_node("propose_gaps", self._propose_gaps)
         graph.add_node("validate_rhythm", self._validate_rhythm)
-        graph.add_node("adjust_timing", self._make_adjust_timing(model, prefer_provider))
+        graph.add_node(
+            "adjust_timing", self._make_adjust_timing(model, prefer_provider)
+        )
         graph.add_node("finalize", self._finalize)
 
         # --- Edges ---
@@ -175,6 +179,7 @@ class TimelineLangGraphAgent:
         temperature: float,
     ):
         """Create think_timing node with closure over LLM params."""
+
         async def think_timing(state: Dict[str, Any]) -> Dict[str, Any]:
             scene_ctx = state.get("scene_context", {})
             dialogue_contexts = state.get("dialogue_contexts", [])
@@ -191,16 +196,22 @@ class TimelineLangGraphAgent:
                     temperature=temperature,
                     model=model,
                     prefer_provider=prefer_provider,
-                    json_schema={"name": "timeline_timing", "schema": TIMING_OUTPUT_SCHEMA},
+                    json_schema={
+                        "name": "timeline_timing",
+                        "schema": TIMING_OUTPUT_SCHEMA,
+                    },
                     system_prompt=TIMELINE_SYSTEM_PROMPT,
                 )
-                content = resp.data if isinstance(resp.data, str) else str(resp.data or "")
+                content = (
+                    resp.data if isinstance(resp.data, str) else str(resp.data or "")
+                )
                 return {
                     **state,
                     "raw_llm_output": content,
                     "provider_used": resp.provider,
                     "model_used": resp.model,
-                    "reasoning": state.get("reasoning", []) + ["llm_reasoning_complete"],
+                    "reasoning": state.get("reasoning", [])
+                    + ["llm_reasoning_complete"],
                 }
             except Exception as e:
                 self.logger.warning(f"LLM call failed: {e}")
@@ -235,13 +246,15 @@ class TimelineLangGraphAgent:
         # Build decisions from parsed output
         decisions = []
         for rd in parsed.get("timing_decisions", []):
-            decisions.append(TimingDecision(
-                segment_index=rd.get("segment_index", 0),
-                gap_type=rd.get("gap_type", "post_dialogue"),
-                base_duration_ms=300,
-                adjusted_duration_ms=rd.get("duration_ms", 300),
-                reasoning=rd.get("reasoning", ""),
-            ))
+            decisions.append(
+                TimingDecision(
+                    segment_index=rd.get("segment_index", 0),
+                    gap_type=rd.get("gap_type", "post_dialogue"),
+                    base_duration_ms=300,
+                    adjusted_duration_ms=rd.get("duration_ms", 300),
+                    reasoning=rd.get("reasoning", ""),
+                )
+            )
 
         total_gap = sum(d.adjusted_duration_ms for d in decisions)
         avg_gap = total_gap / len(decisions) if decisions else 0
@@ -358,6 +371,7 @@ class TimelineLangGraphAgent:
 
     def _make_adjust_timing(self, model: Optional[str], prefer_provider: Optional[str]):
         """Create adjust_timing node with LLM repair."""
+
         async def adjust_timing(state: Dict[str, Any]) -> Dict[str, Any]:
             repair_attempts = state.get("repair_attempts", 0) + 1
             errors = state.get("validation_errors", [])
@@ -378,15 +392,21 @@ class TimelineLangGraphAgent:
                     temperature=0.3,
                     model=model,
                     prefer_provider=prefer_provider,
-                    json_schema={"name": "timeline_timing_repair", "schema": TIMING_OUTPUT_SCHEMA},
+                    json_schema={
+                        "name": "timeline_timing_repair",
+                        "schema": TIMING_OUTPUT_SCHEMA,
+                    },
                     system_prompt=TIMELINE_SYSTEM_PROMPT,
                 )
-                content = resp.data if isinstance(resp.data, str) else str(resp.data or "")
+                content = (
+                    resp.data if isinstance(resp.data, str) else str(resp.data or "")
+                )
                 return {
                     **state,
                     "raw_llm_output": content,
                     "repair_attempts": repair_attempts,
-                    "reasoning": state.get("reasoning", []) + [f"repair_attempt_{repair_attempts}"],
+                    "reasoning": state.get("reasoning", [])
+                    + [f"repair_attempt_{repair_attempts}"],
                 }
             except Exception as e:
                 self.logger.warning(f"Repair LLM call failed: {e}")
@@ -486,13 +506,21 @@ class TimelineLangGraphAgent:
         has_actual_durations = any(c.actual_duration_ms for c in contexts)
 
         # Build enhanced scene info
-        slug_line = scene_context.get('slug_line') or ''
-        location = scene_context.get('location') or '未知'
-        time_of_day = scene_context.get('time_of_day') or '未知'
-        summary = scene_context.get('summary') or ''
+        slug_line = scene_context.get("slug_line") or ""
+        location = scene_context.get("location") or "未知"
+        time_of_day = scene_context.get("time_of_day") or "未知"
+        summary = scene_context.get("summary") or ""
 
-        scene_description = f"- 场景: {slug_line}" if slug_line else f"- 地点: {location}, 时间: {time_of_day}"
-        summary_line = f"- 场景描述: {summary[:100]}..." if summary and len(summary) > 100 else (f"- 场景描述: {summary}" if summary else "")
+        scene_description = (
+            f"- 场景: {slug_line}"
+            if slug_line
+            else f"- 地点: {location}, 时间: {time_of_day}"
+        )
+        summary_line = (
+            f"- 场景描述: {summary[:100]}..."
+            if summary and len(summary) > 100
+            else (f"- 场景描述: {summary}" if summary else "")
+        )
 
         # Build duration constraint section
         duration_constraint = ""

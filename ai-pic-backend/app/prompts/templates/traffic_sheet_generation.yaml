@@ -77,7 +77,8 @@ output_schema:
             type: string
           hook_type:
             type: string
-            enum: [betrayal, reveal, revenge, reunion, threat, taboo, power-shift]
+            enum:
+              [betrayal, reveal, revenge, reunion, threat, taboo, power-shift]
           source_episode:
             type: integer
           source_timecode_start:

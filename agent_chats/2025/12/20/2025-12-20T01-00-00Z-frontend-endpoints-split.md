@@ -41,55 +41,66 @@ Continue executing refactoring plan Phase 2.3.2 - Split Frontend API Endpoints.
 ### New Endpoint Files (14 files created)
 
 1. **auth.endpoints.ts** (~70 lines)
+
    - `login`, `register`, `logout`, `getCurrentUser`
    - `authAPI` namespace
 
 2. **admin.endpoints.ts** (~180 lines)
+
    - User management: `getUsers`, `getUser`, `approveUser`, `updateUserRole`
    - User actions: `suspendUser`, `reactivateUser`, `deleteUser`
    - Stats and logs: `getUserStats`, `getUserAuditLogs`
    - `adminAPI` namespace
 
 3. **task.endpoints.ts** (~75 lines)
+
    - `getTasks`, `createTask`, `getTask`, `deleteTask`, `startTask`
    - `taskAPI` namespace
 
 4. **image.endpoints.ts** (~60 lines)
+
    - `getImages`, `getImage`, `deleteImage`, `uploadImage`
    - `imageAPI` namespace
 
 5. **voice.endpoints.ts** (~65 lines)
+
    - `getVoiceEnums`, `getVoices`, `previewVoice`
    - `voiceAPI` namespace
 
 6. **virtual-ip.endpoints.ts** (~120 lines)
+
    - CRUD: `getVirtualIPs`, `getVirtualIP`, `createVirtualIP`, `updateVirtualIP`, `deleteVirtualIP`
    - AI generation: `generateAIContent`, `generateAIContentDetailed`, `createVirtualIPWithAI`
    - `virtualIPAPI` namespace
 
 7. **virtual-ip-image.endpoints.ts** (~220 lines)
+
    - Image management: `getVirtualIPImages`, `getVirtualIPImage`, `uploadVirtualIPImage`, `deleteVirtualIPImage`
    - AI generation: `generateVirtualIPImage`, `generateVirtualIPImageAsync`
    - Variants: `generateVariantFromImage`, `generateVariantAndSave`, `generateVariantAndSaveAsync`
    - `virtualIPImageAPI` namespace
 
 8. **story.endpoints.ts** (~115 lines)
+
    - `getStories`, `getStory`, `generateStory`, `generateStoryAsync`
    - `updateStory`, `deleteStory`, `getStoryCharacters`, `getStoryGenres`
    - `storyAPI` namespace
 
 9. **episode.endpoints.ts** (~120 lines)
+
    - `getEpisodes`, `getEpisode`, `generateEpisodes`, `generateEpisodesAsync`
    - `updateEpisode`, `deleteEpisode`, `getStoryEpisodes`, `regenerateEpisode`
    - `episodeAPI` namespace
 
 10. **script.endpoints.ts** (~300 lines)
+
     - Script CRUD: `getScripts`, `getScript`, `generateScript`, `updateScript`, `deleteScript`
     - Audio: `generateSceneDialogueAudioAsync`, `generateAudioTimelineAsync`
     - Storyboard: `getStoryboard`, `generateStoryboard`, `generateStoryboardAsync`, `generateStoryboardVideo`, `generateStoryboardImages`, `updateStoryboard`
     - `scriptAPI` namespace
 
 11. **story-structure.endpoints.ts** (~320 lines)
+
     - Scenes: `getNormalizedScenes`, `createScene`, `updateScene`, `deleteScene`
     - Beats: `getNormalizedSceneBeats`, `createSceneBeat`, `updateSceneBeat`, `deleteSceneBeat`
     - Shots: `getNormalizedSceneShots`, `createSceneShot`, `updateSceneShot`, `deleteSceneShot`
@@ -98,10 +109,12 @@ Continue executing refactoring plan Phase 2.3.2 - Split Frontend API Endpoints.
     - `storyStructureAPI` namespace
 
 12. **ai.endpoints.ts** (~25 lines)
+
     - `getAvailableModels`
     - `aiAPI` namespace
 
 13. **style.endpoints.ts** (~45 lines)
+
     - `getStyleSchema`, `listStylePresets`, `getStylePreset`
     - `styleAPI` namespace
 

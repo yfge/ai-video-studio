@@ -54,6 +54,7 @@ curl -X POST "http://localhost:8089/api/v1/scripts/14/dialogue-audio/generate-as
 ```
 
 **Log output observed:**
+
 - `DurationControl: 开始时长精控流程` - Flow started
 - `allocate_budget_node: 分配完成` - Budget allocation (scene 1: 120s, scene 2: 120s)
 - `DurationControl: 预算分配完成` - Budget phase complete
@@ -66,6 +67,7 @@ curl -X POST "http://localhost:8089/api/v1/scripts/14/dialogue-audio/generate-as
 - Task succeeded in 149.99s
 
 **Key observations:**
+
 - Duration Orchestrator integration is working correctly
 - Budget allocation distributes time across scenes
 - REACT validation mechanism corrects timing issues

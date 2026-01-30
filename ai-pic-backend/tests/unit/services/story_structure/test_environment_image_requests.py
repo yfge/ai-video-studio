@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.story_structure.environment_image_requests import (
     build_environment_text_to_image_task_payload,
     build_environment_variant_task_payload,
@@ -81,4 +80,6 @@ def test_environment_text_to_image_task_payload_includes_reference_images_when_p
         aspect_ratio=None,
     )
     payload = build_environment_text_to_image_task_payload(env_id=1, request=req)
-    assert payload["reference_images"] == ["/ai-generated/environments/image/example.png"]
+    assert payload["reference_images"] == [
+        "/ai-generated/environments/image/example.png"
+    ]

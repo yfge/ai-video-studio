@@ -48,7 +48,12 @@ export function useVirtualIPImageUpload({
 
       if (response.success && response.data) {
         setImages((prev) => [response.data as VirtualIPImage, ...prev]);
-        setUploadForm({ file: null, category: "portrait", tags: "", is_default: false });
+        setUploadForm({
+          file: null,
+          category: "portrait",
+          tags: "",
+          is_default: false,
+        });
         showAlert({ message: "图片上传成功！", variant: "success" });
       } else {
         throw new Error(response.error || "图片上传失败");
@@ -56,7 +61,9 @@ export function useVirtualIPImageUpload({
     } catch (error) {
       console.error("Image upload failed:", error);
       showAlert({
-        message: `图片上传失败：${error instanceof Error ? error.message : "未知错误"}`,
+        message: `图片上传失败：${
+          error instanceof Error ? error.message : "未知错误"
+        }`,
         variant: "error",
       });
     } finally {

@@ -22,15 +22,18 @@ summary: "Show editable extra virtual IP info with collapsible text and restyle 
 ---
 
 ## User Prompt
-1) Show additional virtual IP information with editable fields and collapse long text in read-only mode.
-2) Re-layout environment detail page similarly, with collapsible descriptions by default.
+
+1. Show additional virtual IP information with editable fields and collapse long text in read-only mode.
+2. Re-layout environment detail page similarly, with collapsible descriptions by default.
 
 ## Goals
+
 - Add a reusable text collapse control for long paragraphs.
 - Expose extra virtual IP fields with edit support on the detail page.
 - Refresh environment detail layout to align with the updated card style.
 
 ## Changes
+
 - Added a reusable `CollapsibleText` UI helper and exported it.
 - Expanded virtual IP detail form state to include biography, style prompts, reference URLs, and visibility flags.
 - Introduced a dedicated “其他信息” section with editable fields and read-only collapse behavior.
@@ -38,12 +41,15 @@ summary: "Show editable extra virtual IP info with collapsible text and restyle 
 - Restyled environment detail header/cards for consistent spacing and added collapsible descriptions.
 
 ## Validation
+
 - `npm run lint` (ai-pic-frontend)
 - `./docker/build_prod_images.sh`
 - MCP/Chrome: logged in as `geyunfei`, opened a virtual IP detail page and verified the new “其他信息” section plus collapse buttons; opened an environment detail page (aab17f172446462a97e738772337d272) to confirm the new card layout and description handling.
 
 ## Next Steps
+
 - None.
 
 ## Linked Commits
+
 - 7c27e68 feat(frontend): add collapsible detail sections

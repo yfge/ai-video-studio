@@ -6,18 +6,14 @@ Implements text-to-video and image-to-video using Gemini Veo models.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, List, Optional
 
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
 from .helpers import clean_model_id
+from .video_helpers import append_api_key, extract_video_uri, format_http_status_error
 from .video_request import build_veo_request_body
-from .video_helpers import (
-    append_api_key,
-    extract_video_uri,
-    format_http_status_error,
-)
 from .video_vertex import (
     build_vertex_headers,
     build_vertex_predict_long_running_url,
@@ -25,6 +21,7 @@ from .video_vertex import (
     extract_video_mime_type,
     poll_veo_operation,
 )
+
 
 async def generate_video(
     client: httpx.AsyncClient,
@@ -117,7 +114,9 @@ async def generate_video(
         resolved_resolution = resolved.get("resolution")
         resolved_duration = resolved.get("duration")
 
-        headers = build_vertex_headers(access_token, vertex_api_key) if use_vertex else None
+        headers = (
+            build_vertex_headers(access_token, vertex_api_key) if use_vertex else None
+        )
         resp = await client.post(endpoint, json=body, headers=headers)
         resp.raise_for_status()
         create_payload = resp.json()
@@ -193,9 +192,7 @@ async def generate_video(
             model=model_id,
             task_type=AITaskType.VIDEO_GENERATION,
             model_type=(
-                AIModelType.IMAGE_TO_VIDEO
-                if image_url
-                else AIModelType.TEXT_TO_VIDEO
+                AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
             ),
             metadata={"operation_name": operation_name},
         )
@@ -210,8 +207,6 @@ async def generate_video(
             model=model_id,
             task_type=AITaskType.VIDEO_GENERATION,
             model_type=(
-                AIModelType.IMAGE_TO_VIDEO
-                if image_url
-                else AIModelType.TEXT_TO_VIDEO
+                AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
             ),
         )

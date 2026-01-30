@@ -16,23 +16,29 @@ summary: "Introduced a shared model selector hook/component and updated story/ep
 ---
 
 ## User Prompt
+
 先把所有模型选择／列表相关的组件统一化，并由后端统一提供，现在太乱了。
 
 ## Goals
+
 - Expose a reusable hook for fetching/caching available models from the backend.
 - Provide a consistent `ModelSelector` component with auto/default handling.
 - Adopt the shared selector across story, episode, storyboard, and script pages.
 
 ## Changes
+
 - Added `useAvailableModels` hook and `ModelSelector` component to centralize model fetching and rendering logic.
 - Updated story list/detail, episode detail/storyboard, and script detail pages to drop ad-hoc model state in favor of the shared selector.
 - Removed redundant `aiAPI.getAvailableModels` calls now covered by the shared hook/cache.
 
 ## Validation
+
 - npm run lint
 
 ## Next Steps
+
 - Replace remaining bespoke selectors (e.g. virtual IP image generator) with the shared component.
 
 ## Linked Commits
+
 N/A

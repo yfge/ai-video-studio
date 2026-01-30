@@ -4,7 +4,6 @@ from typing import Iterable, List
 from uuid import uuid4
 
 import pytest
-
 from app.core.config import settings
 
 
@@ -249,15 +248,15 @@ def mock_ai_service(monkeypatch):
     monkeypatch.setattr(ai_module, "ai_service", mock_service)
 
     # Patch cached imports for modules that bind `ai_service` at import-time.
-    import app.api.v1.endpoints.scripts_legacy as scripts_legacy_ep
-    import app.api.v1.endpoints.virtual_ip_images.generation_helpers as vip_gen_helpers
-    import app.api.v1.endpoints.virtual_ip_images.async_tasks as vip_async
     import app.api.v1.endpoints.episodes.async_tasks as episodes_async
     import app.api.v1.endpoints.episodes.regenerate as episodes_regenerate
-    import app.services.story.story_generation_service as story_generation_service
-    import app.services.episode.episode_generation_service as episode_generation_service
+    import app.api.v1.endpoints.scripts_legacy as scripts_legacy_ep
+    import app.api.v1.endpoints.virtual_ip_images.async_tasks as vip_async
+    import app.api.v1.endpoints.virtual_ip_images.generation_helpers as vip_gen_helpers
     import app.services.episode.episode_generation_persistence as episode_generation_persistence
+    import app.services.episode.episode_generation_service as episode_generation_service
     import app.services.script.script_generator as script_generator_service
+    import app.services.story.story_generation_service as story_generation_service
     import app.services.story.story_novel_export_ai as story_novel_export_ai
 
     monkeypatch.setattr(scripts_legacy_ep, "ai_service", mock_service)

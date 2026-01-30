@@ -15,13 +15,17 @@ def extract_script_structure(content: str) -> Dict[str, Any]:
 
     # 场景识别规则
     scene_patterns = [
-        re.compile(r"^(场景|Scene)\s*([0-9０-９一二三四五六七八九十]+)[：:、. ]?(.*)$", re.I),
+        re.compile(
+            r"^(场景|Scene)\s*([0-9０-９一二三四五六七八九十]+)[：:、. ]?(.*)$", re.I
+        ),
         re.compile(r"^(INT\.|EXT\.|INT/EXT\.)\s*(.+)$", re.I),
         re.compile(r"^(内景|外景)[：: .、，]?\s*(.+)$"),
     ]
 
     # 对话识别：例如 “小雅：……”，或 “LI MING: …”
-    dialogue_pattern = re.compile(r"^([\u4e00-\u9fa5A-Z][\u4e00-\u9fa5A-Z\s]{0,20})[：:]\s*(.+)$")
+    dialogue_pattern = re.compile(
+        r"^([\u4e00-\u9fa5A-Z][\u4e00-\u9fa5A-Z\s]{0,20})[：:]\s*(.+)$"
+    )
 
     # 舞台指示：括号/方括号/以“动作：/旁白：/音效：/音乐：”开头
     stage_patterns = [
@@ -50,19 +54,35 @@ def extract_script_structure(content: str) -> Dict[str, Any]:
             if len(matched_scene.groups()) >= 1:
                 tail = matched_scene.group(len(matched_scene.groups())) or ""
                 # 提取常见时间标记
-                if any(t in tail for t in ["日", "白天", "早上", "上午", "中午", "下午", "夜", "晚上", "傍晚", "黄昏"]):
+                if any(
+                    t in tail
+                    for t in [
+                        "日",
+                        "白天",
+                        "早上",
+                        "上午",
+                        "中午",
+                        "下午",
+                        "夜",
+                        "晚上",
+                        "傍晚",
+                        "黄昏",
+                    ]
+                ):
                     time_hint = "夜" if ("夜" in tail or "晚上" in tail) else "日"
                 location = tail.strip()
 
-            scenes.append({
-                "scene_number": current_scene_idx,
-                "location": location,
-                "time": time_hint or None,
-                "description": ln,
-                "characters": [],
-                "props": [],
-                "notes": ""
-            })
+            scenes.append(
+                {
+                    "scene_number": current_scene_idx,
+                    "location": location,
+                    "time": time_hint or None,
+                    "description": ln,
+                    "characters": [],
+                    "props": [],
+                    "notes": "",
+                }
+            )
             continue
 
         # 2) 对话
@@ -70,14 +90,16 @@ def extract_script_structure(content: str) -> Dict[str, Any]:
         if dm:
             character = dm.group(1).strip()
             text = dm.group(2).strip()
-            dialogues.append({
-                "scene_number": current_scene_idx or None,
-                "character": character,
-                "content": text,
-                "emotion": None,
-                "action": None,
-                "notes": None,
-            })
+            dialogues.append(
+                {
+                    "scene_number": current_scene_idx or None,
+                    "character": character,
+                    "content": text,
+                    "emotion": None,
+                    "action": None,
+                    "notes": None,
+                }
+            )
             continue
 
         # 3) 舞台指示
@@ -90,12 +112,14 @@ def extract_script_structure(content: str) -> Dict[str, Any]:
                 stage_text = sm.group(len(sm.groups())) if sm.groups() else ln
                 break
         if matched_stage:
-            stage_directions.append({
-                "scene_number": current_scene_idx or None,
-                "timing": None,
-                "content": stage_text.strip() if stage_text else ln,
-                "type": None,
-            })
+            stage_directions.append(
+                {
+                    "scene_number": current_scene_idx or None,
+                    "timing": None,
+                    "content": stage_text.strip() if stage_text else ln,
+                    "type": None,
+                }
+            )
             continue
 
     metadata = {
@@ -110,4 +134,3 @@ def extract_script_structure(content: str) -> Dict[str, Any]:
         "stage_directions": stage_directions,
         "metadata": metadata,
     }
-

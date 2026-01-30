@@ -214,9 +214,7 @@ class EpisodeMockScriptMixin:
             ]
             for dialog in [d for d in dialogues if d["scene_number"] == idx]:
                 line_text = dialog.get("content") or dialog.get("line") or ""
-                section_lines.append(
-                    f"{dialog.get('character', '旁白')}: {line_text}"
-                )
+                section_lines.append(f"{dialog.get('character', '旁白')}: {line_text}")
             script_sections.append("\n".join(section_lines))
 
         if additional_requirements:

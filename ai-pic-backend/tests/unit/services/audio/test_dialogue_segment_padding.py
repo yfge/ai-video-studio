@@ -1,7 +1,6 @@
 """Tests for scene segment padding to target duration."""
 
 import pytest
-
 from app.services.audio.dialogue_processor import plan_scene_segments_intelligent
 
 

@@ -6,9 +6,8 @@ This migration is defensive: it inspects the current column length and only alte
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "a97c737e5d56"
@@ -58,4 +57,3 @@ def downgrade() -> None:
         type_=sa.String(length=128),
         existing_nullable=False,
     )
-

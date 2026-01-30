@@ -22,7 +22,7 @@ summary: "Pin bcrypt to 3.2.2 for passlib compatibility and add troubleshooting 
 ## Changes
 
 - `requirements.txt` 新增 `bcrypt==3.2.2` 固定，避免安装到 4.x；
-- `DIAGNOSTIC_GUIDE.md` 增补“登录时报错：AttributeError: module 'bcrypt' has no attribute '__about__'”章节及解决方案。
+- `DIAGNOSTIC_GUIDE.md` 增补“登录时报错：AttributeError: module 'bcrypt' has no attribute '**about**'”章节及解决方案。
 
 ## Validation
 
@@ -35,4 +35,3 @@ summary: "Pin bcrypt to 3.2.2 for passlib compatibility and add troubleshooting 
 ## Linked Commits
 
 - pending（本地增量补丁将与此台账条目一并提交）
-

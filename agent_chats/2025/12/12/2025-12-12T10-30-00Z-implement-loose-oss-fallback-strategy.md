@@ -28,16 +28,19 @@ summary: "实施宽松OSS兜底策略，提高异步任务成功率"
 ### 问题分析
 
 **当前策略**（修改前）：
+
 ```python
 require_upload=bool(oss_service)
 ```
 
 **行为**：
+
 - OSS 未配置：使用本地存储 ✅
 - OSS 已配置 + 上传成功：使用 OSS URL ✅
 - OSS 已配置 + 上传失败：任务失败 ❌
 
 **风险**：
+
 - 如果 OSS 临时不可用（网络问题、服务故障等），任务完全失败
 - 即使本地文件已下载成功，也会浪费 AI 调用额度
 - 用户需要重新提交任务
@@ -45,11 +48,13 @@ require_upload=bool(oss_service)
 ### 解决方案：宽松兜底策略
 
 **新策略**：
+
 ```python
 require_upload=False
 ```
 
 在 `AIService._persist_local_image` 中的逻辑：
+
 ```python
 if oss_service:
     try:
@@ -64,6 +69,7 @@ if oss_service:
 ```
 
 **新行为**：
+
 - OSS 未配置：使用本地存储 ✅
 - OSS 已配置 + 上传成功：使用 OSS URL ✅
 - OSS 已配置 + 上传失败：兜底到本地存储 ✅（新增）
@@ -73,24 +79,28 @@ if oss_service:
 共修改 5 处，覆盖所有图像生成相关接口：
 
 1. **virtual_ip_images.py:84** - 用户上传虚拟IP图像
+
    ```python
    # 宽松兜底：OSS 上传失败时自动回退到本地存储
    require_upload=False,
    ```
 
 2. **virtual_ip_images.py:683** - 同步虚拟IP图生图
+
    ```python
    # 宽松兜底：OSS 上传失败时自动回退到本地存储
    require_upload=False,
    ```
 
 3. **virtual_ip_images.py:1072** - 异步虚拟IP图生图
+
    ```python
    # 宽松兜底：OSS 上传失败时自动回退到本地存储，确保任务成功
    require_upload=False,
    ```
 
 4. **story_structure.py:334** - 环境图生成（同步+异步共用）
+
    ```python
    # 宽松兜底：OSS 上传失败时自动回退到本地存储，确保任务成功
    require_upload=False,
@@ -113,10 +123,12 @@ if oss_service:
 ## Trade-offs
 
 **潜在缺点**：
+
 - 部分图片可能只在本地，没有 OSS 备份
 - 需要确保本地存储空间充足
 
 **缓解措施**：
+
 - `_persist_local_image` 会记录警告日志，便于监控 OSS 上传失败率
 - 可以实现后台任务定期重试上传失败的图片
 - 监控告警可以及时发现 OSS 持续性问题
@@ -130,11 +142,13 @@ if oss_service:
 ## Next Steps
 
 1. **重启服务**: 使修改生效
+
    ```bash
    docker-compose restart ai-video-backend ai-video-celery-worker
    ```
 
 2. **监控验证**: 观察 OSS 上传失败率
+
    - 检查日志中的 "OSS 上传失败，使用本地路径" 警告
    - 确认任务不会因 OSS 问题而失败
 

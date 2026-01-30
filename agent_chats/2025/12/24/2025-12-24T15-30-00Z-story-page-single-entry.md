@@ -28,6 +28,7 @@ Translation: On this story page, each episode should not have multiple entry poi
 ### Frontend
 
 1. **`ai-pic-frontend/src/components/features/story-detail/EpisodeListSection.tsx`**
+
    - Removed `onNavigateToStoryboard` and `onNavigateToScript` from `EpisodeListSectionProps`
    - Updated `EpisodeCardProps` to use single `onNavigateToWorkspace` prop
    - Replaced `ScriptsPreview` component with simpler `ScriptsInfo` that only displays script titles (no navigation buttons)

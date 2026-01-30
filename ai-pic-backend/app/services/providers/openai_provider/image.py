@@ -6,10 +6,9 @@ Contains DALL-E image generation, understanding, and variation functionality.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import httpx
-
 from app.core.logging import get_logger
 
 from ..base import AIModelType, AIResponse, AITaskType

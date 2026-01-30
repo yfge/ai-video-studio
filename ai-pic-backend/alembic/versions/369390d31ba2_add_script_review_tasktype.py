@@ -5,13 +5,13 @@ Revises: c9d8e7f6a5b4
 Create Date: 2026-01-26 21:28:12.380782
 
 """
+
 from __future__ import annotations
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "369390d31ba2"
@@ -43,7 +43,9 @@ def upgrade() -> None:
     dialect = bind.dialect.name
 
     if dialect == "postgresql":
-        op.execute(sa.text("ALTER TYPE tasktype ADD VALUE IF NOT EXISTS 'SCRIPT_REVIEW'"))
+        op.execute(
+            sa.text("ALTER TYPE tasktype ADD VALUE IF NOT EXISTS 'SCRIPT_REVIEW'")
+        )
         return
 
     existing_type = sa.Enum(*TASKTYPE_OLD, name="tasktype")

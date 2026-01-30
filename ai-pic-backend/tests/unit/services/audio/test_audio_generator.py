@@ -1,21 +1,20 @@
 """Unit tests for audio generation utilities."""
 
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from app.services.audio.audio_generator import (
     ALLOWED_TTS_EMOTIONS,
-    ensure_oss_configured,
-    wav_duration_ms,
-    run_ffmpeg,
-    generate_silence_wav,
-    download_to_file,
-    tts_to_wav_file,
-    normalize_tts_emotion,
-    concat_wavs,
-    encode_mp3,
     concat_mp3s,
+    concat_wavs,
+    download_to_file,
+    encode_mp3,
+    ensure_oss_configured,
+    generate_silence_wav,
+    normalize_tts_emotion,
+    run_ffmpeg,
+    tts_to_wav_file,
+    wav_duration_ms,
 )
 
 
@@ -25,8 +24,15 @@ class TestAllowedTTSEmotions:
     def test_contains_expected_emotions(self):
         """Test that all expected emotions are present."""
         expected = {
-            "happy", "sad", "angry", "fearful", "disgusted",
-            "surprised", "calm", "fluent", "whisper",
+            "happy",
+            "sad",
+            "angry",
+            "fearful",
+            "disgusted",
+            "surprised",
+            "calm",
+            "fluent",
+            "whisper",
         }
         assert ALLOWED_TTS_EMOTIONS == expected
 
@@ -144,12 +150,13 @@ class TestWavDurationMs:
         with patch("app.services.audio.audio_generator.run_ffmpeg") as mock_ffmpeg:
             # Create a minimal WAV file manually
             import wave
-            with wave.open(str(wav_path), 'wb') as wf:
+
+            with wave.open(str(wav_path), "wb") as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(2)
                 wf.setframerate(24000)
                 # Write 24000 frames = 1 second
-                wf.writeframes(b'\x00\x00' * 24000)
+                wf.writeframes(b"\x00\x00" * 24000)
 
             duration = wav_duration_ms(wav_path)
             assert duration == 1000  # 1 second
@@ -169,8 +176,7 @@ class TestRunFFmpeg:
         """Test failed ffmpeg command raises."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
-                returncode=1,
-                stderr="Error: something went wrong"
+                returncode=1, stderr="Error: something went wrong"
             )
             with pytest.raises(RuntimeError, match="ffmpeg_failed"):
                 run_ffmpeg(["ffmpeg", "-invalid"])

@@ -5,13 +5,11 @@ final_validation 节点单元测试
 """
 
 import pytest
-
 from app.services.duration_orchestrator.constants import (
     DURATION_TOLERANCE_EPISODE_HIGH,
     DURATION_TOLERANCE_EPISODE_LOW,
 )
 from app.services.duration_orchestrator.nodes.final_validation import (
-    TOLERANCE_PERCENT,
     final_validation_node,
     should_pass_or_fail,
 )

@@ -26,12 +26,18 @@ export function VideoModelUiFields({
     videoUi.resolutionOptions.length > 0 && videoUi.ratioOptions.length > 0;
 
   const activeResolution =
-    value.resolution || videoUi.defaultResolution || videoUi.resolutionOptions[0];
+    value.resolution ||
+    videoUi.defaultResolution ||
+    videoUi.resolutionOptions[0];
   const durationOptions = useMemo(() => {
     const key = (activeResolution || "").toLowerCase();
     const mapped = key ? videoUi.durationOptionsByResolution?.[key] : undefined;
     return mapped && mapped.length ? mapped : videoUi.durationOptions;
-  }, [activeResolution, videoUi.durationOptions, videoUi.durationOptionsByResolution]);
+  }, [
+    activeResolution,
+    videoUi.durationOptions,
+    videoUi.durationOptionsByResolution,
+  ]);
 
   const mergedValue = useMemo(() => {
     if (!mergeResolutionAndRatio) return "";
@@ -61,11 +67,15 @@ export function VideoModelUiFields({
       !videoUi.defaultRatio ||
       !value.ratio ||
       videoUi.ratioOptions.includes(value.ratio);
-    if (!ratioValid && videoUi.defaultRatio) updates.ratio = videoUi.defaultRatio;
-    if (!value.ratio && videoUi.defaultRatio) updates.ratio = videoUi.defaultRatio;
+    if (!ratioValid && videoUi.defaultRatio)
+      updates.ratio = videoUi.defaultRatio;
+    if (!value.ratio && videoUi.defaultRatio)
+      updates.ratio = videoUi.defaultRatio;
     const nextDurationOptions = (() => {
       const key = (nextResolution || value.resolution || "").toLowerCase();
-      const mapped = key ? videoUi.durationOptionsByResolution?.[key] : undefined;
+      const mapped = key
+        ? videoUi.durationOptionsByResolution?.[key]
+        : undefined;
       return mapped && mapped.length ? mapped : videoUi.durationOptions;
     })();
     if (nextDurationOptions.length > 0) {

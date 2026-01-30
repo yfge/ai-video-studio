@@ -67,4 +67,3 @@ summary: "Split generic image_generation tasks into domain-specific TaskTypes (s
 ## Linked Commits
 
 - (this commit)
-

@@ -61,4 +61,3 @@ summary: "Ensure production backend runs Alembic migrations automatically on sta
 ## Linked Commits
 
 - （待补充）`fix(backend): run alembic migrations on prod startup` 提交关联此更改。
-

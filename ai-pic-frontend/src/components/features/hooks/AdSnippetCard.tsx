@@ -36,9 +36,18 @@ interface AdSnippetCardProps {
  * 时长对应的样式
  */
 const DURATION_STYLES: Record<number, { bg: string; border: string }> = {
-  15: { bg: "bg-blue-50 dark:bg-blue-900/20", border: "border-blue-200 dark:border-blue-800" },
-  30: { bg: "bg-green-50 dark:bg-green-900/20", border: "border-green-200 dark:border-green-800" },
-  60: { bg: "bg-purple-50 dark:bg-purple-900/20", border: "border-purple-200 dark:border-purple-800" },
+  15: {
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    border: "border-blue-200 dark:border-blue-800",
+  },
+  30: {
+    bg: "bg-green-50 dark:bg-green-900/20",
+    border: "border-green-200 dark:border-green-800",
+  },
+  60: {
+    bg: "bg-purple-50 dark:bg-purple-900/20",
+    border: "border-purple-200 dark:border-purple-800",
+  },
 };
 
 /**

@@ -53,4 +53,3 @@ summary: "Add optional Episode.aspect_ratio (inherits story default) and expose 
 ## Linked Commits
 
 - (pending)
-

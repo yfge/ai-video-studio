@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.image_gen import (
     ImageGenDomain,
     ImageGenMode,
@@ -73,4 +72,3 @@ def test_openai_drops_style_spec_when_unsupported():
     assert normalized.style_preset_id is None
     assert any("style_spec ignored" in w for w in normalized.audit.warnings)
     assert any("style_preset_id ignored" in w for w in normalized.audit.warnings)
-

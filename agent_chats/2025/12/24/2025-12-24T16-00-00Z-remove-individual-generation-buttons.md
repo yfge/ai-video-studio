@@ -14,6 +14,7 @@ summary: "Simplify timeline tab UI: remove buttons/options, keep only model sele
 ## User Prompt
 
 User requested two changes:
+
 1. "生成对白音轨 生成时间轴 生成分镜帧占位 这个就都去掉吧" - Remove three individual generation buttons
 2. "这些也没有用了吧：覆盖对白音轨/覆盖时间轴/覆盖分镜/pause阈值/时间轴模型/对白音轨任务/时间轴任务/分镜占位任务... 只保留模型和温度就可以了" - Remove unused options, keep only model selector
 
@@ -30,6 +31,7 @@ User requested two changes:
 ### Frontend
 
 1. **`ai-pic-frontend/src/components/features/episode/AudioTimelineSection.tsx`**
+
    - Simplified interface: removed task props, busy states, overwrite options, pause threshold
    - Kept only: scripts, selectedScriptId/Script, audioTimeline/storyboard data, normalizedScenes, pipelineBusy, timingModel, pipeline actions
    - Removed Task type import
@@ -40,6 +42,7 @@ User requested two changes:
    - Fixed button disabled state to only use `pipelineBusy`
 
 2. **`ai-pic-frontend/src/components/features/episode/WorkspaceTimelineTabContent.tsx`**
+
    - Simplified interface significantly (removed ~40 lines of props)
    - Removed handler functions for individual generation
    - Updated API call to use sensible defaults (overwrite=true, pause=1.5)

@@ -8,6 +8,9 @@ Note: During refactoring, legacy routes from scripts_legacy.py are
 temporarily re-exported here. They will be migrated in subsequent phases.
 """
 
+# New script QC endpoints (kept out of scripts_legacy.py)
+from app.api.v1.endpoints.scripts.quality import router as quality_router
+
 # Import legacy router and task helpers for storyboard and other unmigrated endpoints.
 from app.api.v1.endpoints.scripts_legacy import (
     _augment_frames,
@@ -28,9 +31,6 @@ from app.api.v1.endpoints.scripts_legacy import router as legacy_router  # noqa:
 
 # Imported for test monkeypatching consistency across endpoint modules.
 from app.services.ai_service import ai_service  # noqa: F401
-
-# New script QC endpoints (kept out of scripts_legacy.py)
-from app.api.v1.endpoints.scripts.quality import router as quality_router
 
 # Mount non-legacy routers onto legacy_router (legacy contains "" paths and cannot be wrapped).
 legacy_router.include_router(quality_router)

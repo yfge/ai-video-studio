@@ -16,15 +16,18 @@ summary: "Added Vertex OAuth token refresh with cached service-account flow for 
 ---
 
 ## User Prompt
+
 1
 
 ## Goals
+
 - Add automatic Vertex OAuth access token refresh with TTL caching.
 - Keep provider/service files within size limits.
 - Validate backend tests and production image builds.
 - Run Chrome-based E2E smoke check.
 
 ## Changes
+
 - Added Vertex service account env/config fields and wiring into ProviderConfig.
 - Introduced `vertex_auth` helper to mint and cache OAuth tokens via service accounts.
 - Updated Google provider to fetch tokens automatically and pass them to Veo calls.
@@ -32,13 +35,16 @@ summary: "Added Vertex OAuth token refresh with cached service-account flow for 
 - Documented new environment variables in `docker/.env.example`.
 
 ## Validation
+
 - `cd ai-pic-backend && pytest` (failed: 87 failed, 7 errors; suite includes existing integration/fixture failures).
 - `./docker/build_prod_images.sh` (succeeded; images built/pushed, tag `1518a86`).
 - Chrome MCP E2E: opened `http://localhost:8089/login`, confirmed logged-in nav (welcome for `geyunfei` and main nav items).
 
 ## Next Steps
+
 - Investigate pre-existing failing tests/fixtures when required by CI.
 - Add optional token-refresh metrics/logging if needed for ops visibility.
 
 ## Linked Commits
+
 - None (pending commit).

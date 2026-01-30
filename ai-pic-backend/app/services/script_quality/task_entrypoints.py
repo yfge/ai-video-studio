@@ -25,7 +25,9 @@ def _dump_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def process_script_quality_task(task_id: int, payload: dict[str, Any], user_id: int) -> None:
+def process_script_quality_task(
+    task_id: int, payload: dict[str, Any], user_id: int
+) -> None:
     """
     Celery entrypoint: run deterministic script QC and persist results.
 
@@ -53,7 +55,11 @@ def process_script_quality_task(task_id: int, payload: dict[str, Any], user_id: 
             raise RuntimeError("script_not_found")
 
         options_dict = payload.get("options") or {}
-        options = ScriptLintOptions(**options_dict) if isinstance(options_dict, dict) else ScriptLintOptions()
+        options = (
+            ScriptLintOptions(**options_dict)
+            if isinstance(options_dict, dict)
+            else ScriptLintOptions()
+        )
         result = lint_script_content(script.content or "", options=options)
         result_payload = result.model_dump(mode="json")
 

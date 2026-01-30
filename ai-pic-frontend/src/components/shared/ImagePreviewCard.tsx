@@ -1,10 +1,14 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { useState } from 'react';
+import Image from "next/image";
+import { useState } from "react";
 
-type Badge = { label: string; tone?: 'blue' | 'green' | 'red' | 'gray' };
-type Action = { label: string; onClick: () => void; tone?: 'default' | 'primary' | 'danger' };
+type Badge = { label: string; tone?: "blue" | "green" | "red" | "gray" };
+type Action = {
+  label: string;
+  onClick: () => void;
+  tone?: "default" | "primary" | "danger";
+};
 
 interface ImagePreviewCardProps {
   src: string;
@@ -22,31 +26,31 @@ interface ImagePreviewCardProps {
   showActionsOnHover?: boolean;
 }
 
-const toneStyles: Record<NonNullable<Badge['tone']>, string> = {
-  blue: 'bg-blue-600 text-white',
-  green: 'bg-green-600 text-white',
-  red: 'bg-red-600 text-white',
-  gray: 'bg-gray-700 text-white',
+const toneStyles: Record<NonNullable<Badge["tone"]>, string> = {
+  blue: "bg-blue-600 text-white",
+  green: "bg-green-600 text-white",
+  red: "bg-red-600 text-white",
+  gray: "bg-gray-700 text-white",
 };
 
-const actionStyles: Record<NonNullable<Action['tone']>, string> = {
-  default: 'bg-black/60 hover:bg-black/80 text-white',
-  primary: 'bg-blue-600 hover:bg-blue-700 text-white',
-  danger: 'bg-red-600 hover:bg-red-700 text-white',
+const actionStyles: Record<NonNullable<Action["tone"]>, string> = {
+  default: "bg-black/60 hover:bg-black/80 text-white",
+  primary: "bg-blue-600 hover:bg-blue-700 text-white",
+  danger: "bg-red-600 hover:bg-red-700 text-white",
 };
 
 export function ImagePreviewCard({
   src,
   alt,
   fallbackSrc,
-  aspectClass = 'aspect-square',
+  aspectClass = "aspect-square",
   badges = [],
   actions = [],
   onPreview,
   onImg2Img,
   onDelete,
-  img2imgLabel = '图生图',
-  deleteLabel = '删除',
+  img2imgLabel = "图生图",
+  deleteLabel = "删除",
   footer,
   showActionsOnHover = true,
 }: ImagePreviewCardProps) {
@@ -62,8 +66,12 @@ export function ImagePreviewCard({
   };
 
   const allActions: Action[] = [
-    ...(onImg2Img ? [{ label: img2imgLabel, onClick: onImg2Img, tone: 'primary' as const }] : []),
-    ...(onDelete ? [{ label: deleteLabel, onClick: onDelete, tone: 'danger' as const }] : []),
+    ...(onImg2Img
+      ? [{ label: img2imgLabel, onClick: onImg2Img, tone: "primary" as const }]
+      : []),
+    ...(onDelete
+      ? [{ label: deleteLabel, onClick: onDelete, tone: "danger" as const }]
+      : []),
     ...actions,
   ];
 
@@ -75,7 +83,7 @@ export function ImagePreviewCard({
       >
         <Image
           src={currentSrc}
-          alt={alt || '图片'}
+          alt={alt || "图片"}
           fill
           sizes="100%"
           className="object-cover"
@@ -91,7 +99,9 @@ export function ImagePreviewCard({
             {badges.map((b, idx) => (
               <span
                 key={`${b.label}-${idx}`}
-                className={`rounded px-2 py-1 text-[11px] ${toneStyles[b.tone || 'gray']}`}
+                className={`rounded px-2 py-1 text-[11px] ${
+                  toneStyles[b.tone || "gray"]
+                }`}
               >
                 {b.label}
               </span>
@@ -101,7 +111,7 @@ export function ImagePreviewCard({
         {allActions.length > 0 && (
           <div
             className={`absolute inset-x-0 bottom-0 flex flex-wrap gap-2 p-2 ${
-              showActionsOnHover ? 'opacity-0 group-hover:opacity-100' : ''
+              showActionsOnHover ? "opacity-0 group-hover:opacity-100" : ""
             } transition-opacity`}
           >
             {allActions.map((action, idx) => (
@@ -112,7 +122,9 @@ export function ImagePreviewCard({
                   e.stopPropagation();
                   action.onClick();
                 }}
-                className={`rounded px-3 py-1 text-xs font-medium ${actionStyles[action.tone || 'default']}`}
+                className={`rounded px-3 py-1 text-xs font-medium ${
+                  actionStyles[action.tone || "default"]
+                }`}
               >
                 {action.label}
               </button>
@@ -132,10 +144,10 @@ export function ImagePreviewCard({
             >
               关闭
             </button>
-            <div className="relative w-full" style={{ paddingBottom: '60%' }}>
+            <div className="relative w-full" style={{ paddingBottom: "60%" }}>
               <Image
                 src={currentSrc}
-                alt={alt || '预览图'}
+                alt={alt || "预览图"}
                 fill
                 className="object-contain"
                 unoptimized

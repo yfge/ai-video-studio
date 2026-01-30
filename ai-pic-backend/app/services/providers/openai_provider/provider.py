@@ -6,26 +6,20 @@ Supports GPT text generation and DALL-E image generation.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import httpx
 
-from ..base import (
-    AIModelType,
-    AIResponse,
-    BaseProvider,
-    ModelInfo,
-    ProviderConfig,
-)
+from ..base import AIModelType, AIResponse, BaseProvider, ModelInfo, ProviderConfig
 from ..image_param_utils import compute_image_ui as compute_image_ui_rules
+from . import image as image_module
+from . import text as text_module
 from .models import (
     fallback_models,
     get_available_models,
     infer_capabilities,
     infer_model_type,
 )
-from . import image as image_module
-from . import text as text_module
 
 
 class OpenAIProvider(BaseProvider):

@@ -25,16 +25,21 @@ export function ScriptHeader({
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex items-center gap-3 text-sm text-gray-500">
-            <button onClick={onNavigateToEpisode} className="text-blue-600 hover:text-blue-800">
+            <button
+              onClick={onNavigateToEpisode}
+              className="text-blue-600 hover:text-blue-800"
+            >
               返回剧集
             </button>
             <span>•</span>
             <span>剧本 #{script.id}</span>
           </div>
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">{script.title}</h1>
+          <h1 className="mt-2 text-3xl font-bold text-gray-900">
+            {script.title}
+          </h1>
           <p className="mt-1 text-sm text-gray-500">
-            {script.format_type?.toUpperCase() || "剧本"} · {script.language?.toUpperCase()} · 版本{" "}
-            {script.version || "1.0"}
+            {script.format_type?.toUpperCase() || "剧本"} ·{" "}
+            {script.language?.toUpperCase()} · 版本 {script.version || "1.0"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -79,7 +84,11 @@ export function ScriptHeader({
 
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         <InfoCard label="字数" value={script.word_count || 0} hint="字数统计" />
-        <InfoCard label="字符数" value={script.character_count || 0} hint="字符统计" />
+        <InfoCard
+          label="字符数"
+          value={script.character_count || 0}
+          hint="字符统计"
+        />
         <InfoCard label="页数" value={script.page_count || 0} hint="预计页数" />
         <InfoCard
           label="状态"
@@ -91,7 +100,11 @@ export function ScriptHeader({
               : "草稿"
           }
           tone={
-            script.status === "published" ? "success" : script.status === "approved" ? "warning" : "default"
+            script.status === "published"
+              ? "success"
+              : script.status === "approved"
+              ? "warning"
+              : "default"
           }
           hint={
             script.status === "draft"
@@ -129,7 +142,9 @@ function InfoCard({
       : "border-gray-200 bg-white text-gray-900";
   return (
     <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>
-      <div className="text-xs uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs uppercase tracking-wide text-gray-500">
+        {label}
+      </div>
       <div className="mt-2 text-lg font-semibold leading-6">{value}</div>
       {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
     </div>

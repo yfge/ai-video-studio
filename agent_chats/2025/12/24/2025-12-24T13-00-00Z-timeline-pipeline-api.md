@@ -33,6 +33,7 @@ User selected "后端流水线API（推荐）" approach.
 ### Backend
 
 1. **`ai-pic-backend/app/services/task_worker.py`**
+
    - Added `timeline_pipeline_generate_task` Celery task
    - Calls `_process_timeline_pipeline_task` for execution
 
@@ -53,10 +54,12 @@ User selected "后端流水线API（推荐）" approach.
 ### Frontend
 
 3. **`ai-pic-frontend/src/utils/api/endpoints/script.endpoints.ts`**
+
    - Added `generateTimelinePipelineAsync` API method
    - Exported in `scriptAPI` namespace
 
 4. **`ai-pic-frontend/src/components/features/episode/WorkspaceTimelineTabContent.tsx`**
+
    - Added `pipelineBusy` and `pipelineTaskId` state
    - Added `handleGenerateTimelinePipeline` handler
    - Passes pipeline props to `AudioTimelineSection`

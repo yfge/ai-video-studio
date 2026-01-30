@@ -32,6 +32,7 @@ Continue with Phase 2.2 provider refactoring - split dialogue_audio_service.py (
 ### New Files Created
 
 1. **ai-pic-backend/app/services/audio/audio_generator.py** (~180 lines)
+
    - Low-level audio processing utilities
    - Functions:
      - `ensure_oss_configured()`: Validate OSS service
@@ -44,6 +45,7 @@ Continue with Phase 2.2 provider refactoring - split dialogue_audio_service.py (
      - `concat_wavs()`, `encode_mp3()`, `concat_mp3s()`: Audio concatenation/encoding
 
 2. **ai-pic-backend/app/services/audio/dialogue_processor.py** (~280 lines)
+
    - Dialogue extraction and segment planning
    - Classes:
      - `PlannedSegment`: Immutable dataclass for audio segments
@@ -67,19 +69,21 @@ Continue with Phase 2.2 provider refactoring - split dialogue_audio_service.py (
 
 ### Modified Files
 
-4. **ai-pic-backend/app/services/audio/__init__.py**
+4. **ai-pic-backend/app/services/audio/**init**.py**
    - Updated to export from all new modules
    - Added comprehensive `__all__` list for public API
 
 ### Test Files Created
 
 5. **tests/unit/services/audio/test_audio_generator.py** (~35 tests)
+
    - Tests for TTS emotion normalization
    - Tests for OSS configuration
    - Tests for WAV/MP3 operations
    - Tests for ffmpeg command execution
 
 6. **tests/unit/services/audio/test_dialogue_processor.py** (~44 tests)
+
    - Tests for name normalization
    - Tests for silence detection
    - Tests for dialogue sanitization
@@ -95,18 +99,21 @@ Continue with Phase 2.2 provider refactoring - split dialogue_audio_service.py (
 ## Validation
 
 ### Import Tests
+
 ```bash
 python -c "from app.services.audio import PlannedSegment, normalize_tts_emotion, build_episode_timeline_beats; print('OK')"
 # Output: OK
 ```
 
 ### Unit Tests
+
 ```bash
 pytest tests/unit/services/audio/test_audio_generator.py tests/unit/services/audio/test_dialogue_processor.py tests/unit/services/audio/test_timeline_processor.py -v
 # Result: 100 passed
 ```
 
 ### Production Build
+
 ```bash
 ./docker/build_prod_images.sh
 # Result: SUCCESS - All images built successfully
@@ -117,10 +124,12 @@ pytest tests/unit/services/audio/test_audio_generator.py tests/unit/services/aud
 The split follows single responsibility principle:
 
 1. **audio_generator.py**: Low-level audio I/O and TTS
+
    - Handles ffmpeg, WAV files, MP3 encoding
    - Manages TTS API calls and emotion mapping
 
 2. **dialogue_processor.py**: Script parsing and planning
+
    - Extracts dialogues/stage directions from scripts
    - Plans audio segments with timing and speaker info
 
@@ -129,6 +138,7 @@ The split follows single responsibility principle:
    - Generates storyboard frames from audio timeline
 
 Benefits:
+
 - Each module can be tested independently
 - Clear separation of concerns
 - Easier to maintain and extend

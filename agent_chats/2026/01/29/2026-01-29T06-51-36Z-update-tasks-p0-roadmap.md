@@ -37,4 +37,3 @@ summary: "Expanded tasks.md with P0 roadmap for aspect ratio, media persistence,
 ## Linked Commits
 
 - (pending)
-

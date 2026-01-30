@@ -15,12 +15,12 @@
     <script>
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            
+
             console.log('Trying to login with:', username, password);
-            
+
             try {
                 const response = await fetch('http://localhost:8000/api/v1/auth/login', {
                     method: 'POST',
@@ -29,11 +29,11 @@
                     },
                     body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
                 });
-                
+
                 const data = await response.json();
-                
+
                 console.log('Response:', response.status, data);
-                
+
                 if (response.ok) {
                     document.getElementById('result').innerHTML = `<p style="color: green;">Login successful! Token: ${data.access_token}</p>`;
                     localStorage.setItem('auth_token', data.access_token);

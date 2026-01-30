@@ -5,16 +5,16 @@ Revises: 2a6b1c0d9f01
 Create Date: 2026-01-08 14:58:13.838073
 
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import mysql
 
-
 # revision identifiers, used by Alembic.
-revision: str = 'cf21c1de4b11'
-down_revision: Union[str, Sequence[str], None] = '2a6b1c0d9f01'
+revision: str = "cf21c1de4b11"
+down_revision: Union[str, Sequence[str], None] = "2a6b1c0d9f01"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -38,7 +38,9 @@ def upgrade() -> None:
         sa.Column("story_business_id", sa.String(length=32), nullable=True),
         sa.Column("task_id", sa.Integer(), nullable=True),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("style", sa.String(length=32), nullable=False, server_default="zhihu"),
+        sa.Column(
+            "style", sa.String(length=32), nullable=False, server_default="zhihu"
+        ),
         sa.Column("target_words", sa.Integer(), nullable=False),
         sa.Column("chapter_count", sa.Integer(), nullable=True),
         sa.Column("total_words", sa.Integer(), nullable=True),
@@ -94,9 +96,7 @@ def downgrade() -> None:
         "ix_story_novel_exports_story_business_id", table_name="story_novel_exports"
     )
     op.drop_index("ix_story_novel_exports_story_id", table_name="story_novel_exports")
-    op.drop_index(
-        "ix_story_novel_exports_is_deleted", table_name="story_novel_exports"
-    )
+    op.drop_index("ix_story_novel_exports_is_deleted", table_name="story_novel_exports")
     op.drop_index(
         "ix_story_novel_exports_business_id", table_name="story_novel_exports"
     )

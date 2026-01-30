@@ -35,7 +35,7 @@ summary: "Generate ScriptScore + TrafficSheet during script generate/regenerate 
 - Pytest（quick gate）：`cd ai-pic-backend && pytest tests/unit tests/services tests/scripts`（`850 passed, 1 skipped`）。
 - Pytest（integration）：`cd ai-pic-backend && pytest tests/integration/test_task_pipeline_agent_run_audit.py -vv`（1 passed）。
 - Docker：`./docker/build_prod_images.sh`（backend/frontend 镜像均 build + push 成功）。
-- Chrome E2E（真实链路）：登录 `geyunfei`（`http://localhost:8089/login`）：\n+  - `POST /api/v1/scripts/generate-async`（episode_id=124，带 market_region/micro_genre）→ `task_id=5853`。\n+  - 轮询 `GET /api/v1/tasks/5853` 直到 `completed`，返回 `result_file_path=script:113`。\n+  - 验证 `GET /api/v1/tasks/5853` 的 `parameters.agent_run.scoring` 存在，且包含 `script_score` 与 `traffic_sheet`。
+- Chrome E2E（真实链路）：登录 `geyunfei`（`http://localhost:8089/login`）：\n+ - `POST /api/v1/scripts/generate-async`（episode_id=124，带 market_region/micro_genre）→ `task_id=5853`。\n+ - 轮询 `GET /api/v1/tasks/5853` 直到 `completed`，返回 `result_file_path=script:113`。\n+ - 验证 `GET /api/v1/tasks/5853` 的 `parameters.agent_run.scoring` 存在，且包含 `script_score` 与 `traffic_sheet`。
 
 ## Next Steps
 
@@ -45,4 +45,3 @@ summary: "Generate ScriptScore + TrafficSheet during script generate/regenerate 
 ## Linked Commits
 
 - (current) 同提交。
-

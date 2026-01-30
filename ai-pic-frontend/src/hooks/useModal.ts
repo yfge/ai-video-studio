@@ -20,33 +20,33 @@
  * ```
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback } from "react";
 
 export interface UseModalReturn<T = undefined> {
   /**
    * Whether the modal is currently open
    */
-  isOpen: boolean
+  isOpen: boolean;
   /**
    * Optional data associated with the modal
    */
-  data: T | undefined
+  data: T | undefined;
   /**
    * Open the modal with optional data
    */
-  open: (data?: T) => void
+  open: (data?: T) => void;
   /**
    * Close the modal and clear data
    */
-  close: () => void
+  close: () => void;
   /**
    * Toggle modal state
    */
-  toggle: () => void
+  toggle: () => void;
   /**
    * Update data without changing open state
    */
-  setData: (data: T | undefined) => void
+  setData: (data: T | undefined) => void;
 }
 
 /**
@@ -69,25 +69,25 @@ export interface UseModalReturn<T = undefined> {
  * console.log(editModal.data) // User object
  */
 export function useModal<T = undefined>(
-  initialOpen = false
+  initialOpen = false,
 ): UseModalReturn<T> {
-  const [isOpen, setIsOpen] = useState(initialOpen)
-  const [data, setData] = useState<T | undefined>(undefined)
+  const [isOpen, setIsOpen] = useState(initialOpen);
+  const [data, setData] = useState<T | undefined>(undefined);
 
   const open = useCallback((newData?: T) => {
-    setData(newData)
-    setIsOpen(true)
-  }, [])
+    setData(newData);
+    setIsOpen(true);
+  }, []);
 
   const close = useCallback(() => {
-    setIsOpen(false)
+    setIsOpen(false);
     // Clear data after modal close animation (300ms typical)
-    setTimeout(() => setData(undefined), 300)
-  }, [])
+    setTimeout(() => setData(undefined), 300);
+  }, []);
 
   const toggle = useCallback(() => {
-    setIsOpen((prev) => !prev)
-  }, [])
+    setIsOpen((prev) => !prev);
+  }, []);
 
   return {
     isOpen,
@@ -96,5 +96,5 @@ export function useModal<T = undefined>(
     close,
     toggle,
     setData,
-  }
+  };
 }

@@ -79,10 +79,10 @@ export function ImageUploadForm({
                 setUploadForm((prev) => ({
                   ...prev,
                   is_default: e.target.checked,
-              }))
-            }
-            className="mr-2"
-          />
+                }))
+              }
+              className="mr-2"
+            />
             <span className="text-sm text-gray-700">设为默认图片</span>
           </label>
         </div>

@@ -20,4 +20,3 @@ variables:
   extracted_cliffhanger:
     required: true
     type: string
-

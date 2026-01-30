@@ -51,4 +51,3 @@ summary: "Removed remaining hardcoded http://localhost:8000 API bases in client 
 ## Linked Commits
 
 - （待补充）`fix(frontend): remove localhost api bases` 提交包含这次清理。
-

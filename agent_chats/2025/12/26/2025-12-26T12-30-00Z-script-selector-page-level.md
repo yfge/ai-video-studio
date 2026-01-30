@@ -29,17 +29,22 @@ Translation: "Move the script list from the timeline tab to the page level"
 ### workspace/page.tsx
 
 Added script selector section between header and tab content:
+
 ```tsx
-{/* Script Selector - Page Level */}
-{scripts && scripts.length > 0 && (
-  <div className="mt-4 bg-white rounded-lg shadow p-4">
-    <div className="flex items-center gap-4">
-      <label>当前剧本</label>
-      <select value={selectedScriptId}>...</select>
-      <span>共 {scripts.length} 个剧本</span>
+{
+  /* Script Selector - Page Level */
+}
+{
+  scripts && scripts.length > 0 && (
+    <div className="mt-4 bg-white rounded-lg shadow p-4">
+      <div className="flex items-center gap-4">
+        <label>当前剧本</label>
+        <select value={selectedScriptId}>...</select>
+        <span>共 {scripts.length} 个剧本</span>
+      </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 Also added logic to avoid duplicate version display when title already contains version.

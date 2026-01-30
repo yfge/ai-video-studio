@@ -1,11 +1,6 @@
 """Unit tests for video UI utilities."""
 
-import pytest
-
-from app.services.video.video_ui_utils import (
-    compute_video_ui,
-    compute_image_ui,
-)
+from app.services.video.video_ui_utils import compute_image_ui, compute_video_ui
 
 
 class TestComputeVideoUI:

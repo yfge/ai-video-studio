@@ -66,7 +66,9 @@ def test_persist_task_agent_run_failed_minimal_fallback(db_session):
     db_session.add(task)
     db_session.commit()
 
-    persist_task_agent_run(task_id=task.id, user_id=user.id, kind="story", db_session=db_session)
+    persist_task_agent_run(
+        task_id=task.id, user_id=user.id, kind="story", db_session=db_session
+    )
 
     db_session.refresh(task)
     params = json.loads(task.parameters)
@@ -86,14 +88,18 @@ def test_persist_task_agent_run_failed_enriches_builder_run(db_session):
         task_type=TaskType.DIALOGUE_AUDIO_GENERATION,
         status=TaskStatus.FAILED,
         prompt=f"Dialogue audio generation for script {script.id}",
-        parameters=json.dumps({"script_id": script.id, "tts_model": "speech-2.6-hd"}, ensure_ascii=False),
+        parameters=json.dumps(
+            {"script_id": script.id, "tts_model": "speech-2.6-hd"}, ensure_ascii=False
+        ),
         error_message="tts failure",
         user_id=user.id,
     )
     db_session.add(task)
     db_session.commit()
 
-    persist_task_agent_run(task_id=task.id, user_id=user.id, kind="dialogue_audio", db_session=db_session)
+    persist_task_agent_run(
+        task_id=task.id, user_id=user.id, kind="dialogue_audio", db_session=db_session
+    )
 
     db_session.refresh(task)
     run = json.loads(task.parameters)["agent_run"]
@@ -101,4 +107,3 @@ def test_persist_task_agent_run_failed_enriches_builder_run(db_session):
     assert run["model_used"] == "speech-2.6-hd"
     assert run["task_status"] == "failed"
     assert run["error"]["message"] == "tts failure"
-

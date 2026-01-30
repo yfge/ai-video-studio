@@ -28,6 +28,7 @@ summary: "Implemented intelligent timeline agent using LangGraph ReAct pattern w
 ## User Prompt
 
 用户指出当前对白生成使用固定的 300ms 间隔，没有与剧本的分镜及场景描述关联。要求：
+
 1. 利用 LangGraph Agent 能力
 2. 使用 ReAct 机制进行时间预估和判断
 3. 形成真正的分镜时间轴
@@ -49,6 +50,7 @@ summary: "Implemented intelligent timeline agent using LangGraph ReAct pattern w
 ### 新增文件
 
 1. **timeline_agent/ 模块**
+
    - `__init__.py` - 模块导出
    - `schemas.py` (~150行) - Pydantic 数据模型
      - SceneContext, DialogueContext, TimingDecision, TimingPlan
@@ -62,6 +64,7 @@ summary: "Implemented intelligent timeline agent using LangGraph ReAct pattern w
      - 规则引擎回退计算
 
 2. **提示词模板**
+
    - `timeline_gap_reasoning.txt/yaml` - 推理提示词
    - `timeline_gap_repair.txt/yaml` - 修复提示词
 
@@ -71,16 +74,19 @@ summary: "Implemented intelligent timeline agent using LangGraph ReAct pattern w
 ### 修改文件
 
 1. **dialogue_processor.py**
+
    - 新增 `plan_scene_segments_intelligent()` 异步函数
    - 新增 `_build_segments_with_timing()` 辅助函数
    - 支持 timing_map 动态间隔
 
 2. **dialogue_audio_service.py**
+
    - 新增导入 `plan_scene_segments_intelligent`
    - `generate_scene_dialogue_audio()` 添加 `use_intelligent_timing` 参数
    - 构建 scene_context 传递给 Agent
 
 3. **templates.py**
+
    - 新增 `TIMELINE_GAP_REASONING`, `TIMELINE_GAP_REPAIR` 枚举
    - 更新 TEMPLATE_CATEGORIES 映射
 
@@ -91,16 +97,19 @@ summary: "Implemented intelligent timeline agent using LangGraph ReAct pattern w
 ### 前端修改
 
 1. **AudioTimelineSection.tsx**
+
    - 添加 `timingModel` 和 `setTimingModel` props
    - 集成 `useAvailableModels` hook 获取模型列表
    - 新增模型选择下拉框 UI
 
 2. **page.tsx (episodes/[id])**
+
    - 解构 `timingModel` 和 `setTimingModel` 状态
    - 传递给 `AudioTimelineSection` 组件
    - `handleGenerateSceneDialogueAudio` 携带 `timing_model` 参数
 
 3. **useEpisodeDetail.ts**
+
    - 新增 `timingModel` 状态管理
    - 返回 `timingModel` 和 `setTimingModel`
 

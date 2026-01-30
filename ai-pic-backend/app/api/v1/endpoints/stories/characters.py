@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from typing import List
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.script import StoryCharacter
 from app.models.user import User
 from app.schemas.script import StoryCharacterResponse
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from .helpers import get_story_by_identifier, not_deleted
 
@@ -34,7 +33,8 @@ async def get_story_characters(
 
 
 @router.get(
-    "/business/{story_business_id}/characters", response_model=List[StoryCharacterResponse]
+    "/business/{story_business_id}/characters",
+    response_model=List[StoryCharacterResponse],
 )
 async def get_story_characters_by_business_id(
     story_business_id: str,

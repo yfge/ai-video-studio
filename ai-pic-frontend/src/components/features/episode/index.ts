@@ -3,8 +3,15 @@ export { EpisodeDetails } from "./EpisodeDetails";
 export { AudioTimelineSection } from "./AudioTimelineSection";
 export { ScriptGenerationForm } from "./ScriptGenerationForm";
 export { ScriptList } from "./ScriptList";
-export { EpisodeWorkspaceHeader, type WorkflowStatus } from "./EpisodeWorkspaceHeader";
-export { EpisodeWorkflowSteps, type WorkflowStepStatus, type WorkflowStep } from "./EpisodeWorkflowSteps";
+export {
+  EpisodeWorkspaceHeader,
+  type WorkflowStatus,
+} from "./EpisodeWorkspaceHeader";
+export {
+  EpisodeWorkflowSteps,
+  type WorkflowStepStatus,
+  type WorkflowStep,
+} from "./EpisodeWorkflowSteps";
 export { WorkspaceOverviewTabContent } from "./WorkspaceOverviewTabContent";
 export { WorkspaceScriptTabContent } from "./WorkspaceScriptTabContent";
 export { WorkspaceScriptSelector } from "./WorkspaceScriptSelector";

@@ -5,13 +5,13 @@ Revises: 39e7d91e9b93
 Create Date: 2026-01-28 11:19:53.650219
 
 """
+
 from __future__ import annotations
 
 from typing import Sequence, Union
 
 from alembic import op
 from sqlalchemy.dialects import mysql
-
 
 # revision identifiers, used by Alembic.
 revision: str = "8848b61e51a8"

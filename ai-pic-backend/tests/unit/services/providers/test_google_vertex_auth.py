@@ -2,7 +2,6 @@ import time
 from unittest.mock import MagicMock
 
 import pytest
-
 from app.services.providers.google_provider import vertex_auth as vertex_auth_module
 
 
@@ -29,11 +28,15 @@ async def test_vertex_access_token_provider_caches_and_refreshes(monkeypatch):
     )
     calls = []
 
-    async def _fake_request_access_token(*, token_uri: str, assertion: str, timeout: float = 10.0):
+    async def _fake_request_access_token(
+        *, token_uri: str, assertion: str, timeout: float = 10.0
+    ):
         calls.append((token_uri, assertion))
         return {"access_token": f"token{len(calls)}", "expires_in": 3600}
 
-    monkeypatch.setattr(vertex_auth_module, "request_access_token", _fake_request_access_token)
+    monkeypatch.setattr(
+        vertex_auth_module, "request_access_token", _fake_request_access_token
+    )
 
     provider = vertex_auth_module.VertexAccessTokenProvider(
         service_account_info=info,

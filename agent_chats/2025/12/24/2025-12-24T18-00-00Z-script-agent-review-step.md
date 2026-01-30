@@ -17,6 +17,7 @@ summary: "Add review step to script agent for dialogue/stage_direction classific
 User reported: "有一些对白落在舞台指令中，要加react进行调整和检查，保证剧本质量"
 
 Example problem from Scene 2:
+
 - "嗯？电流读数异常波动。" was classified as stage_direction instead of dialogue
 - "搞什么……电磁干扰？备用电源没启动吗？" was classified as stage_direction instead of dialogue
 
@@ -33,6 +34,7 @@ Example problem from Scene 2:
 **`ai-pic-backend/app/services/script_agent.py`**
 
 Added new `review_classification` node to the LangGraph pipeline:
+
 - Pipeline now: `scene_plan` → `dialogue` → `review` → `assemble`
 - Review node uses AI to check for misclassified content
 - Detects dialogues incorrectly placed in stage_directions (questions, exclamations, speech patterns)
@@ -48,6 +50,7 @@ Added new `review_classification` node to the LangGraph pipeline:
 **`ai-pic-backend/app/prompts/templates/script_dialogues.txt`**
 
 Enhanced prompt with explicit classification rules:
+
 - Added clear examples of what belongs in dialogues vs stage_directions
 - Added "common errors to avoid" section
 - Emphasized that questions, exclamations, and speech-like content should be dialogues
@@ -55,6 +58,7 @@ Enhanced prompt with explicit classification rules:
 **`ai-pic-backend/app/prompts/templates/script_review.txt`** (new file)
 
 New prompt template for the review step:
+
 - Clear judgment criteria for dialogues vs stage_directions
 - Examples of correct classification
 - Common error patterns to detect

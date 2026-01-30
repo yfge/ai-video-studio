@@ -15,7 +15,9 @@ interface StylePreset {
 
 interface ImageGenerationStyleFieldsProps {
   generateForm: ImageGenerationFormState;
-  setGenerateForm: React.Dispatch<React.SetStateAction<ImageGenerationFormState>>;
+  setGenerateForm: React.Dispatch<
+    React.SetStateAction<ImageGenerationFormState>
+  >;
   stylePresets: StylePreset[];
   selectedStylePreset: StylePreset | undefined;
   showStylePreset: boolean;

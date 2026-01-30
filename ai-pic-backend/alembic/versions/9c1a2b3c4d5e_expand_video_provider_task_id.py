@@ -1,7 +1,7 @@
 """expand video provider task id length"""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "9c1a2b3c4d5e"

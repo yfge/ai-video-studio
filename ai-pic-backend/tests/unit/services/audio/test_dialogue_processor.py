@@ -1,17 +1,17 @@
 """Unit tests for dialogue processing utilities."""
 
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from app.services.audio.dialogue_processor import (
     PlannedSegment,
-    norm_name,
-    looks_like_silence,
-    sanitize_dialogue_content,
-    extract_scene_number,
     extract_dialogues_for_scene,
+    extract_scene_number,
     extract_stage_for_scene,
+    looks_like_silence,
+    norm_name,
     plan_scene_segments,
+    sanitize_dialogue_content,
 )
 
 
@@ -336,7 +336,9 @@ class TestPlanSceneSegments:
         )
 
         pause_segments = [s for s in result if s.kind == "pause"]
-        pause_with_duration = [s for s in pause_segments if s.planned_duration_ms == 500]
+        pause_with_duration = [
+            s for s in pause_segments if s.planned_duration_ms == 500
+        ]
         assert len(pause_with_duration) >= 1
 
     def test_empty_inputs(self):

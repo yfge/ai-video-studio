@@ -1,22 +1,22 @@
-'use client'
+"use client";
 
-import { useAlertModal } from '@/components/shared/modals/AlertModalProvider'
-import { Navigation } from '@/components/layouts'
-import type { Task as APITask } from '@/utils/api'
+import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
+import { Navigation } from "@/components/layouts";
+import type { Task as APITask } from "@/utils/api";
 
-import { TasksList } from './TasksList'
-import { TasksPagination } from './TasksPagination'
-import { TasksToolbar } from './TasksToolbar'
-import { useTaskPersistedStyle } from './useTaskPersistedStyle'
-import { useTasks } from './useTasks'
+import { TasksList } from "./TasksList";
+import { TasksPagination } from "./TasksPagination";
+import { TasksToolbar } from "./TasksToolbar";
+import { useTaskPersistedStyle } from "./useTaskPersistedStyle";
+import { useTasks } from "./useTasks";
 
-const toTaskId = (id: APITask['id']): number | null => {
-  const taskId = typeof id === 'number' ? id : Number(id)
-  return Number.isInteger(taskId) ? taskId : null
-}
+const toTaskId = (id: APITask["id"]): number | null => {
+  const taskId = typeof id === "number" ? id : Number(id);
+  return Number.isInteger(taskId) ? taskId : null;
+};
 
 export function TasksPage() {
-  const { showAlert } = useAlertModal()
+  const { showAlert } = useAlertModal();
   const {
     tasks,
     loading,
@@ -35,44 +35,50 @@ export function TasksPage() {
     refresh,
     startTask,
     deleteTask,
-  } = useTasks()
+  } = useTasks();
 
   const { expanded, toggleExpanded, persistedStyle, persistedLoading } =
-    useTaskPersistedStyle()
+    useTaskPersistedStyle();
 
-  const handleStart = async (id: APITask['id']) => {
-    const taskId = toTaskId(id)
+  const handleStart = async (id: APITask["id"]) => {
+    const taskId = toTaskId(id);
     if (!taskId) {
-      showAlert({ message: '任务编号无效，无法启动任务', variant: 'warning' })
-      return
+      showAlert({ message: "任务编号无效，无法启动任务", variant: "warning" });
+      return;
     }
-    const res = await startTask(taskId)
+    const res = await startTask(taskId);
     if (res.success) {
-      showAlert({ message: res.message || '任务已开始执行', variant: 'success' })
+      showAlert({
+        message: res.message || "任务已开始执行",
+        variant: "success",
+      });
     } else {
-      showAlert({ message: res.message || '启动任务失败', variant: 'error' })
+      showAlert({ message: res.message || "启动任务失败", variant: "error" });
     }
-  }
+  };
 
-  const handleDelete = (id: APITask['id']) => {
-    const taskId = toTaskId(id)
+  const handleDelete = (id: APITask["id"]) => {
+    const taskId = toTaskId(id);
     if (!taskId) {
-      showAlert({ message: '任务编号无效，无法删除', variant: 'warning' })
-      return
+      showAlert({ message: "任务编号无效，无法删除", variant: "warning" });
+      return;
     }
     showAlert({
-      title: '确认删除任务',
-      message: '确定删除该任务吗？',
-      variant: 'warning',
-      confirmText: '删除',
+      title: "确认删除任务",
+      message: "确定删除该任务吗？",
+      variant: "warning",
+      confirmText: "删除",
       onConfirm: async () => {
-        const res = await deleteTask(taskId)
+        const res = await deleteTask(taskId);
         if (!res.success) {
-          showAlert({ message: res.message || '删除任务失败', variant: 'error' })
+          showAlert({
+            message: res.message || "删除任务失败",
+            variant: "error",
+          });
         }
       },
-    })
-  }
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -87,8 +93,8 @@ export function TasksPage() {
             onRefresh={() => void refresh()}
             taskTypeFilter={taskTypeFilter}
             onTaskTypeFilterChange={(next) => {
-              setTaskTypeFilter(next)
-              setPage(1)
+              setTaskTypeFilter(next);
+              setPage(1);
             }}
           />
         </div>
@@ -126,6 +132,5 @@ export function TasksPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }
-

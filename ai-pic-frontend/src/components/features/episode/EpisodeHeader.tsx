@@ -24,8 +24,8 @@ export function EpisodeHeader({
             第{episode.episode_number}集: {episode.title}
           </h1>
           <p className="mt-2 text-gray-600">
-            {episode.duration_minutes}分钟 •{" "}
-            {getSceneCount(episode) || "未知"}个场景
+            {episode.duration_minutes}分钟 • {getSceneCount(episode) || "未知"}
+            个场景
           </p>
         </div>
         <div className="flex gap-2">

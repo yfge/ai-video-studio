@@ -1,6 +1,4 @@
 import pytest
-from fastapi import HTTPException
-
 from app.api.v1 import ai_providers
 from app.core.logging import get_logger
 from app.services.ai_service_manager import (
@@ -10,12 +8,13 @@ from app.services.ai_service_manager import (
 )
 from app.services.providers.base import (
     AIModelType,
-    AITaskType,
     AIResponse,
+    AITaskType,
     BaseProvider,
     ModelInfo,
     ProviderConfig,
 )
+from fastapi import HTTPException
 
 
 class _DummyProvider(BaseProvider):

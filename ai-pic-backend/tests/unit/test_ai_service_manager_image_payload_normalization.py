@@ -8,7 +8,9 @@ from app.services.ai_service_manager import AIServiceManager
 
 @pytest.mark.asyncio
 async def test_convert_base64_images_to_oss_normalizes_dict_items(monkeypatch):
-    monkeypatch.setattr("app.services.storage.oss_service.oss_service", None, raising=False)
+    monkeypatch.setattr(
+        "app.services.storage.oss_service.oss_service", None, raising=False
+    )
 
     manager = AIServiceManager.__new__(AIServiceManager)
     manager.logger = get_logger()
@@ -38,7 +40,10 @@ async def test_convert_base64_images_to_oss_uploads_data_url(monkeypatch):
         (),
         {
             "upload_file_content": AsyncMock(
-                return_value={"success": True, "file_url": "https://cdn.example.com/generated.png"}
+                return_value={
+                    "success": True,
+                    "file_url": "https://cdn.example.com/generated.png",
+                }
             )
         },
     )()
@@ -53,7 +58,9 @@ async def test_convert_base64_images_to_oss_uploads_data_url(monkeypatch):
     b64 = base64.b64encode(raw).decode("ascii")
     images = [f"data:image/png;base64,{b64}"]
 
-    result = await manager._convert_base64_images_to_oss(images, prefix="ai-generated/test")
+    result = await manager._convert_base64_images_to_oss(
+        images, prefix="ai-generated/test"
+    )
 
     assert result == ["https://cdn.example.com/generated.png"]
     call_kwargs = fake_oss.upload_file_content.call_args.kwargs

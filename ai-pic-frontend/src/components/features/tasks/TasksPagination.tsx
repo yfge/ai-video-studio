@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
 type TasksPaginationProps = {
-  total: number
-  size: number
-  page: number
-  totalPages: number
-  onPrev: () => void
-  onNext: () => void
-}
+  total: number;
+  size: number;
+  page: number;
+  totalPages: number;
+  onPrev: () => void;
+  onNext: () => void;
+};
 
 export function TasksPagination({
   total,
@@ -39,6 +39,5 @@ export function TasksPagination({
         </button>
       </div>
     </div>
-  )
+  );
 }
-

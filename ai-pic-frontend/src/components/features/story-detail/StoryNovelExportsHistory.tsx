@@ -32,7 +32,9 @@ export function StoryNovelExportsHistory({
 
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<StoryNovelExportSummary[]>([]);
-  const [downloadingTaskId, setDownloadingTaskId] = useState<number | null>(null);
+  const [downloadingTaskId, setDownloadingTaskId] = useState<number | null>(
+    null,
+  );
 
   const latest = useMemo(() => items[0] ?? null, [items]);
 
@@ -105,7 +107,9 @@ export function StoryNovelExportsHistory({
         <div className="mt-3 space-y-2">
           {items.slice(0, 5).map((item) => {
             const words = item.total_words || item.target_words;
-            const chapter = item.chapter_count ? `${item.chapter_count} 章` : "";
+            const chapter = item.chapter_count
+              ? `${item.chapter_count} 章`
+              : "";
             const meta = [
               words ? `约 ${words} 字` : "",
               chapter,
@@ -140,7 +144,9 @@ export function StoryNovelExportsHistory({
                       disabled={downloadingTaskId === item.task_id}
                       className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
                     >
-                      {downloadingTaskId === item.task_id ? "下载中…" : "下载 .txt"}
+                      {downloadingTaskId === item.task_id
+                        ? "下载中…"
+                        : "下载 .txt"}
                     </button>
                   </div>
                 ) : (

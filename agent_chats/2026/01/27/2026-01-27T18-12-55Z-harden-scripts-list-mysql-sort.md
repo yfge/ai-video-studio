@@ -39,4 +39,3 @@ summary: "Harden /api/v1/scripts list query to reduce MySQL sort buffer (1038) r
 ## Linked Commits
 
 - (current) 同提交。
-

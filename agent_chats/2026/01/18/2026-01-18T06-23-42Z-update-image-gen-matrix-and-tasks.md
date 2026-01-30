@@ -40,4 +40,3 @@ summary: "Updated provider-aware image-gen matrix with latest Google/Keling beha
 ## Linked Commits
 
 - chore(docs): update image gen provider matrix
-

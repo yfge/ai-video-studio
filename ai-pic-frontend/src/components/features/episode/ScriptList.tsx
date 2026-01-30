@@ -25,7 +25,9 @@ export function ScriptList({
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">剧本列表</h2>
-        <span className="text-sm text-gray-500">共 {scripts.length} 个剧本</span>
+        <span className="text-sm text-gray-500">
+          共 {scripts.length} 个剧本
+        </span>
       </div>
 
       {scripts.length === 0 ? (
@@ -50,14 +52,16 @@ export function ScriptList({
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-medium text-gray-900">{script.title}</h3>
+                    <h3 className="font-medium text-gray-900">
+                      {script.title}
+                    </h3>
                     <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
-                      {formats.find((f) => f.value === script.format_type)?.label ||
-                        script.format_type}
+                      {formats.find((f) => f.value === script.format_type)
+                        ?.label || script.format_type}
                     </span>
                     <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                      {languages.find((l) => l.value === script.language)?.label ||
-                        script.language}
+                      {languages.find((l) => l.value === script.language)
+                        ?.label || script.language}
                     </span>
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${

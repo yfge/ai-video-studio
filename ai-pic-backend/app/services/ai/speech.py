@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from app.services.media import (
-    build_generation_metadata,
-    upload_from_url as upload_media_from_url,
-)
+from app.services.media import build_generation_metadata
+from app.services.media import upload_from_url as upload_media_from_url
 from app.services.storage.oss_service import oss_service
 
 

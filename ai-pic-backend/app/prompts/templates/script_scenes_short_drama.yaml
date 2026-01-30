@@ -67,8 +67,13 @@ variables:
     description: "额外场景要求"
 
 usage_examples:
-  - story: {title: "反击人生", story_format: "short_drama", genre: "都市爽剧"}
-    episode: {episode_number: 1, title: "抓奸现场", summary: "女主撞见背叛并当场反击"}
+  - story: { title: "反击人生", story_format: "short_drama", genre: "都市爽剧" }
+    episode:
+      {
+        episode_number: 1,
+        title: "抓奸现场",
+        summary: "女主撞见背叛并当场反击",
+      }
     duration_minutes: 3
     scene_detail_level: "medium"
     format_type: "screenplay"

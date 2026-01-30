@@ -1,10 +1,9 @@
 import json
 
 import pytest
-
+from app.api.v1.endpoints.episodes import generation as episodes_generation
 from app.models.script import Story
 from app.models.story_structure import StoryStepOutline
-from app.api.v1.endpoints.episodes import generation as episodes_generation
 from app.services import ai_service as ai_service_module
 
 

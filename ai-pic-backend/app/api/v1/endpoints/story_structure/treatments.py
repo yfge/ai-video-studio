@@ -8,9 +8,6 @@ from __future__ import annotations
 
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.schemas.story_structure import (
     StoryStepOutlineCreate,
@@ -19,6 +16,8 @@ from app.schemas.story_structure import (
     StoryTreatmentResponse,
 )
 from app.services import story_structure_service as svc
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 

@@ -8,7 +8,6 @@ from typing import Any, Callable, List, Optional
 
 from app.core.logging import get_logger
 
-
 logger = get_logger()
 
 
@@ -55,7 +54,7 @@ def trim_text(value: Optional[str], limit: int = 160) -> str:
         return ""
     if len(value) <= limit:
         return value
-    return value[:limit - 3] + "..."
+    return value[: limit - 3] + "..."
 
 
 def extract_text_content(response: Any) -> Optional[str]:

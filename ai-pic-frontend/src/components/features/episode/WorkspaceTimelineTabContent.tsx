@@ -56,15 +56,18 @@ export function WorkspaceTimelineTabContent({
     }
     try {
       setPipelineBusy(true);
-      const res = await scriptAPI.generateTimelinePipelineAsync(selectedScriptId, {
-        timing_model: timingModel || undefined,
-        // Use sensible defaults
-        overwrite_audio: true,
-        overwrite_timeline: true,
-        overwrite_storyboard: true,
-        min_pause_seconds: 1.5,
-        use_duration_control: useDurationControl,
-      });
+      const res = await scriptAPI.generateTimelinePipelineAsync(
+        selectedScriptId,
+        {
+          timing_model: timingModel || undefined,
+          // Use sensible defaults
+          overwrite_audio: true,
+          overwrite_timeline: true,
+          overwrite_storyboard: true,
+          min_pause_seconds: 1.5,
+          use_duration_control: useDurationControl,
+        },
+      );
       if (res.success && res.data) {
         setPipelineTaskId(res.data.task_id);
         showAlert({
@@ -119,7 +122,9 @@ export function WorkspaceTimelineTabContent({
 
   const handleNavigateToScript = useCallback(() => {
     if (selectedScript) {
-      router.push(`/scripts/${selectedScript.business_id || selectedScript.id}`);
+      router.push(
+        `/scripts/${selectedScript.business_id || selectedScript.id}`,
+      );
     }
   }, [router, selectedScript]);
 

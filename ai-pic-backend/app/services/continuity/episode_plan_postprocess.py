@@ -107,4 +107,3 @@ async def postprocess_episode_plan_list(
 
     content_text = json.dumps({"episodes": updated}, ensure_ascii=False)
     return updated, continuity_ledger, content_text
-

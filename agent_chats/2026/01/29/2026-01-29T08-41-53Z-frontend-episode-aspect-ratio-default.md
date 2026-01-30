@@ -44,4 +44,3 @@ summary: "Prefer Episode.aspect_ratio over Story default for storyboard video mo
 ## Linked Commits
 
 - (pending)
-

@@ -11,20 +11,21 @@ This document defines the market x micro-genre matrix, a Story Bible template, h
 
 ## Market x Micro-Genre Matrix (Draft v1)
 
-| Market | Micro-Genre Cluster | Primary Audience | Core Hook Archetype | Localization Wrapper | No-Go / Risk Flags |
-| --- | --- | --- | --- | --- | --- |
-| NA | Mafia romance revenge | F18-34 | Betrayal -> retaliation | Organized crime / family dynasty | Child harm, non-consent |
-| NA | Werewolf mate drama | F18-34 | Fate-bonded rejection | Supernatural clans | Underage romance |
-| NA | Billionaire secret identity | F18-34 | Hidden power reveal | Tech/finance elite | Abuse glamorization |
-| LATAM | Revenge + family honor | F18-44 | Humiliation -> comeback | Telenovela family saga | Domestic violence |
-| LATAM | Forbidden romance | F18-34 | Social taboo reveal | Class/faith barriers | Religious sensitivity |
-| SEA | CEO contract marriage | F18-34 | Marriage deal -> real love | Corporate heir | Stalking/harassment |
-| SEA | Campus revenge | F16-28 | Bullying -> status flip | School/club rivalry | Minor safety |
-| MENA | Elite family intrigue | F18-34 | Family betrayal | Estate/inheritance | Explicit content |
-| KR/JP | Idol scandal romance | F18-34 | Public disgrace -> redemption | Entertainment industry | Defamation risk |
-| Global | Secret baby / hidden heir | F18-44 | Child reveal | Hospital/legacy drama | Infant endangerment |
+| Market | Micro-Genre Cluster         | Primary Audience | Core Hook Archetype           | Localization Wrapper             | No-Go / Risk Flags      |
+| ------ | --------------------------- | ---------------- | ----------------------------- | -------------------------------- | ----------------------- |
+| NA     | Mafia romance revenge       | F18-34           | Betrayal -> retaliation       | Organized crime / family dynasty | Child harm, non-consent |
+| NA     | Werewolf mate drama         | F18-34           | Fate-bonded rejection         | Supernatural clans               | Underage romance        |
+| NA     | Billionaire secret identity | F18-34           | Hidden power reveal           | Tech/finance elite               | Abuse glamorization     |
+| LATAM  | Revenge + family honor      | F18-44           | Humiliation -> comeback       | Telenovela family saga           | Domestic violence       |
+| LATAM  | Forbidden romance           | F18-34           | Social taboo reveal           | Class/faith barriers             | Religious sensitivity   |
+| SEA    | CEO contract marriage       | F18-34           | Marriage deal -> real love    | Corporate heir                   | Stalking/harassment     |
+| SEA    | Campus revenge              | F16-28           | Bullying -> status flip       | School/club rivalry              | Minor safety            |
+| MENA   | Elite family intrigue       | F18-34           | Family betrayal               | Estate/inheritance               | Explicit content        |
+| KR/JP  | Idol scandal romance        | F18-34           | Public disgrace -> redemption | Entertainment industry           | Defamation risk         |
+| Global | Secret baby / hidden heir   | F18-44           | Child reveal                  | Hospital/legacy drama            | Infant endangerment     |
 
 Notes:
+
 - This matrix is a starting point; update monthly using ad performance data.
 - Each micro-genre should map to a Story Bible (see template).
 

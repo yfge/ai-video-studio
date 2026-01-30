@@ -22,6 +22,7 @@ pip install -r requirements.txt
 ```
 
 新增的MySQL相关依赖：
+
 - `pymysql==1.1.0` - MySQL Python客户端
 - `cryptography==41.0.8` - PyMySQL加密支持
 
@@ -54,8 +55,8 @@ python scripts/init_mysql_db.py
 连接到MySQL服务器并创建数据库：
 
 ```sql
-CREATE DATABASE ai_video_studio 
-CHARACTER SET utf8mb4 
+CREATE DATABASE ai_video_studio
+CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 ```
 
@@ -203,6 +204,7 @@ Error: (2003, "Can't connect to MySQL server on '127.0.0.1:13306'")
 ```
 
 **解决方案：**
+
 - 确认MySQL服务正在运行
 - 检查端口号是否正确（13306）
 - 验证防火墙设置
@@ -214,6 +216,7 @@ Error: (1045, "Access denied for user 'root'@'localhost'")
 ```
 
 **解决方案：**
+
 - 检查用户名和密码是否正确
 - 确认MySQL用户权限设置
 - 检查MySQL的认证插件配置
@@ -225,6 +228,7 @@ Error: (1049, "Unknown database 'ai_video_studio'")
 ```
 
 **解决方案：**
+
 ```bash
 # 运行数据库初始化脚本
 python scripts/init_mysql_db.py
@@ -245,6 +249,7 @@ Error: Target database is not up to date
 ```
 
 **解决方案：**
+
 ```bash
 # 查看当前状态
 python migrate_mysql.py current
@@ -286,7 +291,7 @@ CREATE INDEX idx_virtual_ip_images_category ON virtual_ip_images(category);
 ### 3. 查询优化
 
 - 使用合适的数据类型
-- 避免SELECT *查询
+- 避免SELECT \*查询
 - 合理使用分页
 - 启用查询缓存
 
@@ -309,6 +314,7 @@ mysql -h127.0.0.1 -P13306 -uroot -pPa88word ai_video_studio < backup.sql
 ## 安全建议
 
 1. **生产环境**：
+
    - 使用强密码
    - 创建专用数据库用户
    - 限制网络访问权限

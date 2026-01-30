@@ -4,7 +4,6 @@ AI服务管理器
 统一管理所有AI服务提供商，提供负载均衡、故障转移等功能
 """
 
-import base64
 import random
 from dataclasses import dataclass, field
 from enum import Enum

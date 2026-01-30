@@ -36,4 +36,3 @@ summary: "Update tasks.md to reflect the Google Veo storyboard video fix and out
 ## Linked Commits
 
 - (pending) `chore: update tasks board`
-

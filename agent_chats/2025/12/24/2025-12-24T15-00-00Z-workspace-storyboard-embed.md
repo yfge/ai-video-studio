@@ -29,6 +29,7 @@ Following up on the previous request that ALL operations for an episode must be 
 ### Frontend
 
 1. **`ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx`** (new)
+
    - Created new component with ~275 lines
    - Fetches storyboard data using `scriptAPI.getStoryboard()`
    - Displays frame grid with:
@@ -44,6 +45,7 @@ Following up on the previous request that ALL operations for an episode must be 
    - "打开完整编辑器 →" button to access full storyboard page
 
 2. **`ai-pic-frontend/src/components/features/episode/index.ts`**
+
    - Added export for `WorkspaceStoryboardTabContent`
 
 3. **`ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx`**

@@ -43,4 +43,3 @@ summary: "Add ORM models for normalized story structure tables and export them."
 ## Linked Commits
 
 - pending（本地增量补丁，后续与此台账一并提交）
-

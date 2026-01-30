@@ -1,5 +1,4 @@
 import pytest
-
 from app.models.script import Episode, Script, Story
 
 
@@ -40,4 +39,3 @@ def test_scripts_list_returns_lite_items(client, db_session):
     assert item["version"] == "1.0"
     assert "created_at" in item
     assert "content" not in item
-

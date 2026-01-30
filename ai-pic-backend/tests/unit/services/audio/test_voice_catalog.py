@@ -1,20 +1,15 @@
 """Unit tests for voice catalog and constants."""
 
-import pytest
-
 from app.services.audio.voice_catalog import SYSTEM_VOICE_CATALOG
 from app.services.audio.voice_constants import (
+    AUDIO_FORMAT_OPTIONS,
+    CHANNEL_OPTIONS,
     DEFAULT_MINIMAX_VOICE_ID,
-    VOICE_TYPE_OPTIONS,
-    TTS_MODEL_OPTIONS,
     EMOTION_OPTIONS,
     LANGUAGE_BOOST_OPTIONS,
-    OUTPUT_FORMAT_OPTIONS,
-    AUDIO_FORMAT_OPTIONS,
     SAMPLE_RATE_OPTIONS,
-    BITRATE_OPTIONS,
-    CHANNEL_OPTIONS,
-    MUSIC_MODEL_OPTIONS,
+    TTS_MODEL_OPTIONS,
+    VOICE_TYPE_OPTIONS,
 )
 
 

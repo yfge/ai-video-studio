@@ -19,7 +19,9 @@ export function CharacterSelector({
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
         选择角色 * (至少选择一个)
-        <span className="text-blue-600 ml-2">已选择: {selectedIds.length} 个</span>
+        <span className="text-blue-600 ml-2">
+          已选择: {selectedIds.length} 个
+        </span>
       </label>
 
       {virtualIPs.length === 0 ? (

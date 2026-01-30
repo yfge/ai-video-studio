@@ -7,7 +7,10 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 from app.core.logging import get_logger
 from app.prompts.templates import PromptTemplate
 
-from .episode_agent_episode import dumps_episode_payload, generate_episodes_from_outlines
+from .episode_agent_episode import (
+    dumps_episode_payload,
+    generate_episodes_from_outlines,
+)
 from .episode_agent_outline import generate_step_outlines
 
 try:  # pragma: no cover - optional dependency
@@ -109,7 +112,9 @@ class EpisodeLangGraphAgent:
             },
         )
 
-        async def _emit_episode(episode_obj: Dict[str, Any], meta: Dict[str, Any]) -> None:
+        async def _emit_episode(
+            episode_obj: Dict[str, Any], meta: Dict[str, Any]
+        ) -> None:
             await _maybe_await(
                 callbacks.on_episode if callbacks else None, episode_obj, meta
             )

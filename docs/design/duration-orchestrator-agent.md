@@ -20,12 +20,12 @@ Episode Agent                     Script Agent                    TTS Generation
 
 ### 1.2 核心问题
 
-| 问题 | 根因 | 影响 |
-|------|------|------|
-| **估算偏差** | `estimated_duration_seconds` 是 LLM 猜测 | 与 TTS 实际时长差异可达 50%+ |
-| **无字数锚定** | Script Agent 不知道目标时长 | 对白长度随机，无法控制 |
-| **单向流动** | 错误无法自我修正 | 偏差累积，最终分镜时长混乱 |
-| **GAP 补救有限** | 停顿只能在 100ms~5000ms 范围 | 对白太短时无法补齐 |
+| 问题             | 根因                                     | 影响                         |
+| ---------------- | ---------------------------------------- | ---------------------------- |
+| **估算偏差**     | `estimated_duration_seconds` 是 LLM 猜测 | 与 TTS 实际时长差异可达 50%+ |
+| **无字数锚定**   | Script Agent 不知道目标时长              | 对白长度随机，无法控制       |
+| **单向流动**     | 错误无法自我修正                         | 偏差累积，最终分镜时长混乱   |
+| **GAP 补救有限** | 停顿只能在 100ms~5000ms 范围             | 对白太短时无法补齐           |
 
 ## 2. 方案 C 架构设计
 
@@ -579,102 +579,102 @@ ai-pic-backend/app/services/
 
 ### Phase 1: 基础框架 (P0, 3天)
 
-| 任务 | 描述 | 依赖 | 产出 |
-|------|------|------|------|
-| 1.1 | 创建 `duration_orchestrator/` 目录结构 | 无 | 目录 + `__init__.py` |
-| 1.2 | 实现 `OrchestratorState` 数据类 | 1.1 | `state.py` |
-| 1.3 | 实现 `allocate_budget` 节点 | 1.2 | `nodes/allocate_budget.py` |
-| 1.4 | 实现 `select_next_scene` 逻辑 | 1.2 | `agent.py` 部分 |
-| 1.5 | 编写单元测试: 预算分配 | 1.3 | `tests/unit/test_budget_allocation.py` |
+| 任务 | 描述                                   | 依赖 | 产出                                   |
+| ---- | -------------------------------------- | ---- | -------------------------------------- |
+| 1.1  | 创建 `duration_orchestrator/` 目录结构 | 无   | 目录 + `__init__.py`                   |
+| 1.2  | 实现 `OrchestratorState` 数据类        | 1.1  | `state.py`                             |
+| 1.3  | 实现 `allocate_budget` 节点            | 1.2  | `nodes/allocate_budget.py`             |
+| 1.4  | 实现 `select_next_scene` 逻辑          | 1.2  | `agent.py` 部分                        |
+| 1.5  | 编写单元测试: 预算分配                 | 1.3  | `tests/unit/test_budget_allocation.py` |
 
 ### Phase 2: 对白生成改造 (P0, 4天)
 
-| 任务 | 描述 | 依赖 | 产出 |
-|------|------|------|------|
-| 2.1 | 新增 `SCRIPT_WORD_COUNT_CONSTRAINT` prompt 模板 | 无 | `prompts/templates/script_word_count.txt` |
-| 2.2 | 改造 `ScriptLangGraphAgent` 支持字数约束 | 2.1 | `script_agent.py` 修改 |
-| 2.3 | 实现 `generate_dialogue` 节点 | 2.2, 1.4 | `nodes/generate_dialogue.py` |
-| 2.4 | 实现 `compute_adjustment_hint` 函数 | 无 | `utils.py` |
-| 2.5 | 编写单元测试: 对白生成 + 字数约束 | 2.3 | `tests/unit/test_dialogue_with_word_count.py` |
+| 任务 | 描述                                            | 依赖     | 产出                                          |
+| ---- | ----------------------------------------------- | -------- | --------------------------------------------- |
+| 2.1  | 新增 `SCRIPT_WORD_COUNT_CONSTRAINT` prompt 模板 | 无       | `prompts/templates/script_word_count.txt`     |
+| 2.2  | 改造 `ScriptLangGraphAgent` 支持字数约束        | 2.1      | `script_agent.py` 修改                        |
+| 2.3  | 实现 `generate_dialogue` 节点                   | 2.2, 1.4 | `nodes/generate_dialogue.py`                  |
+| 2.4  | 实现 `compute_adjustment_hint` 函数             | 无       | `utils.py`                                    |
+| 2.5  | 编写单元测试: 对白生成 + 字数约束               | 2.3      | `tests/unit/test_dialogue_with_word_count.py` |
 
 ### Phase 3: TTS 估算与验证 (P1, 3天)
 
-| 任务 | 描述 | 依赖 | 产出 |
-|------|------|------|------|
-| 3.1 | 实现 `quick_tts_estimate` 采样估算 | 无 | `nodes/tts_trial.py` |
-| 3.2 | 实现 `validate_duration` 节点 | 3.1 | `nodes/validate_duration.py` |
-| 3.3 | 实现 `prepare_retry` 节点 (生成调整建议) | 2.4 | `nodes/prepare_retry.py` |
-| 3.4 | 实现 `commit_scene` 节点 | 3.2 | `nodes/commit_scene.py` |
-| 3.5 | 编写集成测试: TTS 估算准确性 | 3.1 | `tests/integration/test_tts_estimate.py` |
+| 任务 | 描述                                     | 依赖 | 产出                                     |
+| ---- | ---------------------------------------- | ---- | ---------------------------------------- |
+| 3.1  | 实现 `quick_tts_estimate` 采样估算       | 无   | `nodes/tts_trial.py`                     |
+| 3.2  | 实现 `validate_duration` 节点            | 3.1  | `nodes/validate_duration.py`             |
+| 3.3  | 实现 `prepare_retry` 节点 (生成调整建议) | 2.4  | `nodes/prepare_retry.py`                 |
+| 3.4  | 实现 `commit_scene` 节点                 | 3.2  | `nodes/commit_scene.py`                  |
+| 3.5  | 编写集成测试: TTS 估算准确性             | 3.1  | `tests/integration/test_tts_estimate.py` |
 
 ### Phase 4: 闭环控制 (P1, 3天)
 
-| 任务 | 描述 | 依赖 | 产出 |
-|------|------|------|------|
-| 4.1 | 实现 `rebalance_budget` 节点 (可选) | 3.4 | `nodes/rebalance_budget.py` |
-| 4.2 | 组装 LangGraph StateGraph | 1.4, 2.3, 3.4 | `agent.py` 完整 |
-| 4.3 | 实现条件边路由逻辑 | 4.2 | `agent.py` |
-| 4.4 | 编写集成测试: 单场景闭环 | 4.3 | `tests/integration/test_scene_loop.py` |
+| 任务 | 描述                                | 依赖          | 产出                                   |
+| ---- | ----------------------------------- | ------------- | -------------------------------------- |
+| 4.1  | 实现 `rebalance_budget` 节点 (可选) | 3.4           | `nodes/rebalance_budget.py`            |
+| 4.2  | 组装 LangGraph StateGraph           | 1.4, 2.3, 3.4 | `agent.py` 完整                        |
+| 4.3  | 实现条件边路由逻辑                  | 4.2           | `agent.py`                             |
+| 4.4  | 编写集成测试: 单场景闭环            | 4.3           | `tests/integration/test_scene_loop.py` |
 
 ### Phase 5: 剧集组装与最终验证 (P1, 3天)
 
-| 任务 | 描述 | 依赖 | 产出 |
-|------|------|------|------|
-| 5.1 | 实现 `assemble_episode` 节点 | 4.3 | `nodes/assemble_episode.py` |
-| 5.2 | 实现 `final_validation` 节点 | 5.1 | `nodes/final_validation.py` |
-| 5.3 | 集成到 `dialogue_audio_service.py` | 5.2 | 修改现有服务 |
-| 5.4 | 编写端到端测试 | 5.3 | `tests/e2e/test_duration_orchestrator.py` |
+| 任务 | 描述                               | 依赖 | 产出                                      |
+| ---- | ---------------------------------- | ---- | ----------------------------------------- |
+| 5.1  | 实现 `assemble_episode` 节点       | 4.3  | `nodes/assemble_episode.py`               |
+| 5.2  | 实现 `final_validation` 节点       | 5.1  | `nodes/final_validation.py`               |
+| 5.3  | 集成到 `dialogue_audio_service.py` | 5.2  | 修改现有服务                              |
+| 5.4  | 编写端到端测试                     | 5.3  | `tests/e2e/test_duration_orchestrator.py` |
 
 ### Phase 6: API 与异步任务 (P2, 2天)
 
-| 任务 | 描述 | 依赖 | 产出 |
-|------|------|------|------|
-| 6.1 | 新增 Pydantic schemas | 5.2 | `schemas/duration_orchestrator.py` |
-| 6.2 | 实现 API 端点 | 6.1, 5.3 | `api/v1/endpoints/episodes/orchestrator.py` |
-| 6.3 | 集成异步任务框架 | 6.2 | 修改 `async_tasks.py` |
-| 6.4 | 编写 API 测试 | 6.3 | `tests/api/test_orchestrator_api.py` |
+| 任务 | 描述                  | 依赖     | 产出                                        |
+| ---- | --------------------- | -------- | ------------------------------------------- |
+| 6.1  | 新增 Pydantic schemas | 5.2      | `schemas/duration_orchestrator.py`          |
+| 6.2  | 实现 API 端点         | 6.1, 5.3 | `api/v1/endpoints/episodes/orchestrator.py` |
+| 6.3  | 集成异步任务框架      | 6.2      | 修改 `async_tasks.py`                       |
+| 6.4  | 编写 API 测试         | 6.3      | `tests/api/test_orchestrator_api.py`        |
 
 ### Phase 7: 监控与可观测性 (P2, 1天)
 
-| 任务 | 描述 | 依赖 | 产出 |
-|------|------|------|------|
-| 7.1 | 添加结构化日志 | 6.3 | 各节点日志增强 |
-| 7.2 | 添加进度回调 (callbacks) | 7.1 | `agent.py` callbacks |
-| 7.3 | 文档更新 | 7.2 | `docs/duration-orchestrator-guide.md` |
+| 任务 | 描述                     | 依赖 | 产出                                  |
+| ---- | ------------------------ | ---- | ------------------------------------- |
+| 7.1  | 添加结构化日志           | 6.3  | 各节点日志增强                        |
+| 7.2  | 添加进度回调 (callbacks) | 7.1  | `agent.py` callbacks                  |
+| 7.3  | 文档更新                 | 7.2  | `docs/duration-orchestrator-guide.md` |
 
 ## 7. 风险与缓解
 
-| 风险 | 影响 | 缓解措施 |
-|------|------|----------|
-| TTS 采样估算不准 | 时长偏差仍然存在 | 采样数量可配置；提供全量模式开关 |
-| 重试次数过多 | 生成时间过长 | 设置最大重试次数；超时强制接受 |
-| Script Agent 字数约束效果差 | 依赖 LLM 能力 | 多轮迭代优化 prompt；提供详细调整建议 |
-| 预算再平衡复杂 | 后续场景受影响 | Phase 4 作为可选功能；先用简单平均 |
+| 风险                        | 影响             | 缓解措施                              |
+| --------------------------- | ---------------- | ------------------------------------- |
+| TTS 采样估算不准            | 时长偏差仍然存在 | 采样数量可配置；提供全量模式开关      |
+| 重试次数过多                | 生成时间过长     | 设置最大重试次数；超时强制接受        |
+| Script Agent 字数约束效果差 | 依赖 LLM 能力    | 多轮迭代优化 prompt；提供详细调整建议 |
+| 预算再平衡复杂              | 后续场景受影响   | Phase 4 作为可选功能；先用简单平均    |
 
 ## 8. 验收标准
 
-| 指标 | 目标值 |
-|------|--------|
-| 单场景时长偏差 | ≤ ±15% |
-| 剧集总时长偏差 | ≤ ±10% |
-| 平均重试次数 | ≤ 1.5 次/场景 |
+| 指标           | 目标值           |
+| -------------- | ---------------- |
+| 单场景时长偏差 | ≤ ±15%           |
+| 剧集总时长偏差 | ≤ ±10%           |
+| 平均重试次数   | ≤ 1.5 次/场景    |
 | 端到端生成时间 | ≤ 现有流程 × 1.5 |
-| 单元测试覆盖率 | ≥ 80% |
+| 单元测试覆盖率 | ≥ 80%            |
 
 ## 9. 附录
 
 ### 9.1 字数-时长换算参考
 
-| 语速类型 | 字/分钟 | 字/秒 | 用途 |
-|----------|---------|-------|------|
-| 慢速 | 228 | 3.8 | 旁白、独白 |
-| 正常 | 282 | 4.7 | 对话、叙述 |
-| 快速 | 336 | 5.6 | 激动、紧张 |
+| 语速类型 | 字/分钟 | 字/秒 | 用途       |
+| -------- | ------- | ----- | ---------- |
+| 慢速     | 228     | 3.8   | 旁白、独白 |
+| 正常     | 282     | 4.7   | 对话、叙述 |
+| 快速     | 336     | 5.6   | 激动、紧张 |
 
 ### 9.2 容差设计依据
 
-| 层级 | 容差 | 理由 |
-|------|------|------|
-| Episode (总时长) | ±10% | 用户对总时长敏感 |
-| Scene (单场景) | ±15% | 允许场景间自然波动 |
+| 层级             | 容差 | 理由               |
+| ---------------- | ---- | ------------------ |
+| Episode (总时长) | ±10% | 用户对总时长敏感   |
+| Scene (单场景)   | ±15% | 允许场景间自然波动 |
 | TTS 估算 vs 实际 | ±20% | 采样估算有固有误差 |

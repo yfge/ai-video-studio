@@ -12,7 +12,7 @@ summary: "Add a buildx-based script to build and push multi-arch production imag
 
 ## User Prompt
 
-- “增加一个脚本，本地build 前后端镜像，记住要用buildx 支持linux amd64 和mac arm64 然后tag:  registry.cn-beijing.aliyuncs.com/geyunfei/[镜像名称]:git head 进行推送”
+- “增加一个脚本，本地build 前后端镜像，记住要用buildx 支持linux amd64 和mac arm64 然后tag: registry.cn-beijing.aliyuncs.com/geyunfei/[镜像名称]:git head 进行推送”
 - “要的是生产镜像 ，顺便把docker-compose.prod 也改了”
 
 ## Goals
@@ -57,4 +57,3 @@ summary: "Add a buildx-based script to build and push multi-arch production imag
 ## Linked Commits
 
 - pending
-

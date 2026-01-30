@@ -55,4 +55,3 @@ export type ModelUiMetadata = {
 export type ModelMetadata = {
   ui?: ModelUiMetadata;
 };
-

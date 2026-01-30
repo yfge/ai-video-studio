@@ -21,10 +21,17 @@ export function AdditionalInfoSection({ story }: AdditionalInfoSectionProps) {
     ? (extra.selling_points as string[])
     : [];
 
-  const coreValues = typeof extra?.core_values === "string" ? extra.core_values : "";
-  const visualStyle = typeof extra?.visual_style === "string" ? extra.visual_style : "";
+  const coreValues =
+    typeof extra?.core_values === "string" ? extra.core_values : "";
+  const visualStyle =
+    typeof extra?.visual_style === "string" ? extra.visual_style : "";
 
-  if (!plotStructure && !coreValues && !visualStyle && sellingPoints.length === 0) {
+  if (
+    !plotStructure &&
+    !coreValues &&
+    !visualStyle &&
+    sellingPoints.length === 0
+  ) {
     return null;
   }
 

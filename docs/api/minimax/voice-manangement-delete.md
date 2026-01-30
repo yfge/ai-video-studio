@@ -1,10 +1,10 @@
-# 删除音色 
+# 删除音色
 
 > 使用本接口，对于生成的部分音色进行删除。
 
 ## OpenAPI
 
-````yaml api-reference/speech/voice-management/api/openapi.json post /v1/delete_voice
+```yaml api-reference/speech/voice-management/api/openapi.json post /v1/delete_voice
 openapi: 3.1.0
 info:
   title: MiniMax Voice Management API
@@ -38,15 +38,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DeleteVoiceReq'
+              $ref: "#/components/schemas/DeleteVoiceReq"
         required: true
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeleteVoiceResp'
+                $ref: "#/components/schemas/DeleteVoiceResp"
 components:
   schemas:
     DeleteVoiceReq:
@@ -78,10 +78,10 @@ components:
           type: string
           description: 该音色生成请求提交的时间，非首次调用生效激活时间，格式为 `yyyy-mm-dd`
         base_resp:
-          $ref: '#/components/schemas/DeleteBaseResp'
+          $ref: "#/components/schemas/DeleteBaseResp"
       example:
         voice_id: yanshang11123
-        created_time: '1728962464'
+        created_time: "1728962464"
         base_resp:
           status_code: 0
           status_msg: success
@@ -111,8 +111,7 @@ components:
         `HTTP: Bearer Auth`
          - Security Scheme Type: http
          - HTTP Authorization Scheme: Bearer API_key，用于验证账户信息，可在 [账户管理>接口密钥](https://platform.minimaxi.com/user-center/basic-information/interface-key) 中查看。
-
-````
+```
 
 ---
 

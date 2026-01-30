@@ -6,31 +6,24 @@ Supports text generation, image generation, video generation, and TTS.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import httpx
-
 from app.services.video.video_ui_utils import compute_video_ui
 
-from ..base import (
-    AIModelType,
-    AIResponse,
-    BaseProvider,
-    ModelInfo,
-    ProviderConfig,
-)
+from ..base import AIModelType, AIResponse, BaseProvider, ModelInfo, ProviderConfig
 from ..image_param_utils import compute_image_ui as compute_image_ui_rules
+from . import image as image_module
+from . import text as text_module
+from . import tts as tts_module
+from . import video as video_module
+from . import video_tasks as video_tasks_module
 from .models import (
     fallback_models,
     get_available_models,
     infer_capabilities,
     infer_model_type,
 )
-from . import image as image_module
-from . import text as text_module
-from . import tts as tts_module
-from . import video as video_module
-from . import video_tasks as video_tasks_module
 
 
 class VolcengineProvider(BaseProvider):

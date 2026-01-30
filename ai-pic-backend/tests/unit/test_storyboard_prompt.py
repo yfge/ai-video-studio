@@ -1,5 +1,3 @@
-import pytest
-
 from app.services.ai_service import _build_storyboard_context
 
 
@@ -57,4 +55,3 @@ def test_build_storyboard_context_includes_scene_details():
     assert "场景 2" in context
     assert "备注:需要表达紧张氛围" in context
     assert "角色:神秘女子" in context
-

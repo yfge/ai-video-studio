@@ -13,12 +13,11 @@ Usage:
     users = await user_repo.list_by(email="test@example.com")
 """
 
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
-from sqlalchemy import select, update, delete, func
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Generic, List, Optional, Type, TypeVar
 
 from app.core.exceptions import NotFoundError
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 # Type variable for model classes
 ModelType = TypeVar("ModelType")
@@ -67,7 +66,9 @@ class BaseRepository(Generic[ModelType]):
         """
         return self.session.query(self.model).filter(self.model.id == id).first()
 
-    def get_by_id_or_fail(self, id: int, resource_name: Optional[str] = None) -> ModelType:
+    def get_by_id_or_fail(
+        self, id: int, resource_name: Optional[str] = None
+    ) -> ModelType:
         """
         Get entity by ID or raise NotFoundError.
 
@@ -265,7 +266,12 @@ class BaseRepository(Generic[ModelType]):
         entity = self.get_by_id_or_fail(id)
         self.delete(entity)
 
-    def soft_delete(self, entity: ModelType, user_id: Optional[int] = None, reason: Optional[str] = None) -> ModelType:
+    def soft_delete(
+        self,
+        entity: ModelType,
+        user_id: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> ModelType:
         """
         Soft delete entity (if model supports it).
 
@@ -290,10 +296,7 @@ class BaseRepository(Generic[ModelType]):
         return entity
 
     def soft_delete_by_id(
-        self,
-        id: int,
-        user_id: Optional[int] = None,
-        reason: Optional[str] = None
+        self, id: int, user_id: Optional[int] = None, reason: Optional[str] = None
     ) -> ModelType:
         """
         Soft delete entity by ID.

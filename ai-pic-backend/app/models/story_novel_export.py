@@ -1,10 +1,9 @@
+from app.core.database import Base
+from app.models.base import SoftDeleteBusinessMixin
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects import mysql
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-
-from app.core.database import Base
-from app.models.base import SoftDeleteBusinessMixin
 
 
 class StoryNovelExport(SoftDeleteBusinessMixin, Base):
@@ -43,4 +42,3 @@ class StoryNovelExport(SoftDeleteBusinessMixin, Base):
     story = relationship("Story", backref="novel_exports")
     task = relationship("Task")
     user = relationship("User")
-

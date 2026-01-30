@@ -1,5 +1,4 @@
 import pytest
-
 from app.core.aspect_ratio import DEFAULT_ASPECT_RATIO, resolve_aspect_ratio
 
 
@@ -30,4 +29,3 @@ def test_resolve_aspect_ratio_priority_and_fallback(
         )
         == expected
     )
-

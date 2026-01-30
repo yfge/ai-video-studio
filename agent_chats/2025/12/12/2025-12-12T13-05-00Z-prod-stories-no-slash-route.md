@@ -42,12 +42,15 @@ summary: "为 /api/v1/stories 增加无尾斜杠路由，消除 307 重定向导
 
 - 修改文件：`ai-pic-backend/app/api/v1/endpoints/stories.py`
 - 在已有的：
+
   ```python
   @router.get("/")
   async def get_stories(...):
       ...
   ```
+
   下方新增一个别名路由：
+
   ```python
   @router.get("", include_in_schema=False)
   async def get_stories_no_slash(
@@ -73,11 +76,13 @@ summary: "为 /api/v1/stories 增加无尾斜杠路由，消除 307 重定向导
       )
   ```
 
-> 效果：  
-> - `GET /api/v1/stories?limit=50` 和 `GET /api/v1/stories/?limit=50` 都直接返回 200 列表，无需 307。  
+> 效果：
+>
+> - `GET /api/v1/stories?limit=50` 和 `GET /api/v1/stories/?limit=50` 都直接返回 200 列表，无需 307。
 > - OpenAPI 文档只展示 `/stories/` 这一条路由，避免重复。
 
 - 修改文件：`ai-pic-backend/app/api/v1/endpoints/episodes.py`
+
   - 原有路由：
     ```python
     @router.get("/", response_model=List[EpisodeResponse])
@@ -93,6 +98,7 @@ summary: "为 /api/v1/stories 增加无尾斜杠路由，消除 307 重定向导
   - 影响路径：`/api/v1/episodes` 与 `/api/v1/episodes/`。
 
 - 修改文件：`ai-pic-backend/app/api/v1/endpoints/scripts.py`
+
   - 原有路由：
     ```python
     @router.get("/", response_model=List[ScriptResponse])

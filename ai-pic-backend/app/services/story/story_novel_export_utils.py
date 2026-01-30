@@ -7,7 +7,6 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-
 ZH_SUMMARY_MARKER = "【本章小结】"
 ZH_CLIFFHANGER_MARKER = "【本章卡点】"
 

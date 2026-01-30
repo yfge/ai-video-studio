@@ -32,4 +32,3 @@ variables:
   total_target_words:
     required: true
     type: number
-

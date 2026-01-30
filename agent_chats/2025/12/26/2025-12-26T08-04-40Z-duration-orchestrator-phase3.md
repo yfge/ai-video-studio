@@ -31,6 +31,7 @@ Continue with Phase 3 of Duration Orchestrator - TTS estimation and validation n
 ### 1. Created `app/services/duration_orchestrator/nodes/tts_trial.py`
 
 TTS trial node with two modes:
+
 - **Estimate mode** (default): Uses word count to estimate duration without calling TTS
   - `estimate_duration_from_dialogues()`: Calculates duration from character count
   - Uses `WORDS_PER_SECOND` (2.25 chars/s) constant
@@ -43,6 +44,7 @@ TTS trial node with two modes:
 ### 2. Created `app/services/duration_orchestrator/nodes/commit_scene.py`
 
 Scene commit node:
+
 - `commit_scene_node()`: Marks scene as COMMITTED
   - Saves committed scene data (dialogues, actual/target duration, deviation)
   - Triggers `rebalance_remaining_budgets()` if there's deviation and remaining scenes
@@ -54,6 +56,7 @@ Scene commit node:
 ### 3. Created `app/services/duration_orchestrator/nodes/prepare_retry.py`
 
 Retry preparation node:
+
 - `prepare_retry_node()`: Prepares scene for regeneration
   - Generates adjustment hint using `compute_adjustment_hint()`
   - Sets `last_rejection_reason` ("duration_too_short" or "duration_too_long")
@@ -66,6 +69,7 @@ Retry preparation node:
 ### 4. Updated `app/services/duration_orchestrator/nodes/__init__.py`
 
 Exported all new nodes and routing functions:
+
 - `tts_trial_node`, `estimate_duration_from_dialogues`
 - `commit_scene_node`, `should_continue_or_assemble`
 - `prepare_retry_node`, `should_retry_or_fail`
@@ -73,14 +77,17 @@ Exported all new nodes and routing functions:
 ### 5. Created Test Files (33 new tests)
 
 #### `test_tts_trial.py` (12 tests)
+
 - `TestEstimateDurationFromDialogues`: 4 tests for duration calculation
 - `TestTtsTrialNode`: 8 tests for node behavior
 
 #### `test_commit_scene.py` (12 tests)
+
 - `TestCommitSceneNode`: 9 tests for commit logic and rebalancing
 - `TestShouldContinueOrAssemble`: 3 tests for routing
 
 #### `test_prepare_retry.py` (9 tests)
+
 - `TestPrepareRetryNode`: 6 tests for retry preparation
 - `TestShouldRetryOrFail`: 3 tests for routing
 
@@ -97,6 +104,7 @@ tests/unit/services/duration_orchestrator/test_prepare_retry.py: 9 passed
 ```
 
 Import verification:
+
 ```python
 from app.services.duration_orchestrator.nodes import (
     tts_trial_node, commit_scene_node, prepare_retry_node
@@ -106,6 +114,7 @@ from app.services.duration_orchestrator.nodes import (
 ## Next Steps
 
 1. **Phase 4**: Assemble LangGraph StateGraph
+
    - Create `agent.py` with complete StateGraph
    - Wire all nodes with conditional edges
    - Implement the main loop: generate → tts → validate → (commit|retry)

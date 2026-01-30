@@ -15,7 +15,9 @@ async def resolve_provider_model(
     if original_model:
         return original_model
     static_models = [
-        m for m in getattr(provider, "available_models", []) if m.model_type == model_type
+        m
+        for m in getattr(provider, "available_models", [])
+        if m.model_type == model_type
     ]
     if not static_models and model_type == AIModelType.IMAGE_TO_VIDEO:
         static_models = [

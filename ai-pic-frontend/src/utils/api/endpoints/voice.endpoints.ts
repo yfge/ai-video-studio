@@ -2,15 +2,19 @@
  * Voice/TTS API endpoints.
  */
 
-import { httpClient } from '../client';
-import type { VoiceEnums, VoiceList, VoicePreviewResponse } from '../types/voice.types';
-import type { ApiResponse } from '../types/common.types';
+import { httpClient } from "../client";
+import type {
+  VoiceEnums,
+  VoiceList,
+  VoicePreviewResponse,
+} from "../types/voice.types";
+import type { ApiResponse } from "../types/common.types";
 
 /**
  * Get voice configuration enums (providers, models, emotions, etc.).
  */
 export async function getVoiceEnums(): Promise<ApiResponse<VoiceEnums>> {
-  return httpClient<VoiceEnums>('/api/v1/voice/enums');
+  return httpClient<VoiceEnums>("/api/v1/voice/enums");
 }
 
 /**
@@ -22,12 +26,14 @@ export async function getVoices(params?: {
   refresh?: boolean;
 }): Promise<ApiResponse<VoiceList>> {
   const searchParams = new URLSearchParams();
-  if (params?.voice_type) searchParams.append('voice_type', params.voice_type);
-  if (params?.provider) searchParams.append('provider', params.provider);
-  if (params?.refresh) searchParams.append('refresh', 'true');
+  if (params?.voice_type) searchParams.append("voice_type", params.voice_type);
+  if (params?.provider) searchParams.append("provider", params.provider);
+  if (params?.refresh) searchParams.append("refresh", "true");
 
   const query = searchParams.toString();
-  const endpoint = query ? `/api/v1/voice/voices?${query}` : '/api/v1/voice/voices';
+  const endpoint = query
+    ? `/api/v1/voice/voices?${query}`
+    : "/api/v1/voice/voices";
   return httpClient<VoiceList>(endpoint);
 }
 
@@ -39,15 +45,15 @@ export async function previewVoice(payload: {
   model: string;
   voice_id?: string;
   provider?: string;
-  output_format?: 'url' | 'hex';
+  output_format?: "url" | "hex";
 }): Promise<ApiResponse<VoicePreviewResponse>> {
   const body = {
     ...payload,
-    output_format: payload.output_format || 'url',
+    output_format: payload.output_format || "url",
     stream: false,
   };
-  return httpClient<VoicePreviewResponse>('/api/v1/voice/tts', {
-    method: 'POST',
+  return httpClient<VoicePreviewResponse>("/api/v1/voice/tts", {
+    method: "POST",
     body: JSON.stringify(body),
   });
 }

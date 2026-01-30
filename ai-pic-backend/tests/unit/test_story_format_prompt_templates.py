@@ -89,7 +89,11 @@ def test_episode_generation_template_resolves_tv_series_variant():
     prompt = prompt_manager.render_prompt(
         PromptTemplate.EPISODE_GENERATION.value,
         {
-            "story": {"title": "测试故事", "genre": "剧情", "story_format": "tv_series"},
+            "story": {
+                "title": "测试故事",
+                "genre": "剧情",
+                "story_format": "tv_series",
+            },
             "episode_count": 3,
             "episode_duration": 45,
             "focus_characters": [],
@@ -107,7 +111,11 @@ def test_episode_generation_template_resolves_short_drama_variant():
     prompt = prompt_manager.render_prompt(
         PromptTemplate.EPISODE_GENERATION.value,
         {
-            "story": {"title": "测试短剧", "genre": "剧情", "story_format": "short_drama"},
+            "story": {
+                "title": "测试短剧",
+                "genre": "剧情",
+                "story_format": "short_drama",
+            },
             "episode_count": 5,
             "episode_duration": 3,
             "focus_characters": [],
@@ -125,7 +133,11 @@ def test_script_generation_template_resolves_short_drama_variant():
     prompt = prompt_manager.render_prompt(
         PromptTemplate.SCRIPT_GENERATION.value,
         {
-            "story": {"title": "测试短剧", "genre": "剧情", "story_format": "short_drama"},
+            "story": {
+                "title": "测试短剧",
+                "genre": "剧情",
+                "story_format": "short_drama",
+            },
             "episode": {"episode_number": 1, "title": "第一集", "duration_minutes": 3},
             "format_type": "teleplay",
             "language": "zh-CN",
@@ -144,8 +156,16 @@ def test_episode_from_outline_template_resolves_short_drama_variant():
     prompt = prompt_manager.render_prompt(
         PromptTemplate.EPISODE_FROM_OUTLINE.value,
         {
-            "story": {"title": "测试短剧", "genre": "剧情", "story_format": "short_drama"},
-            "outline": {"episode_number": 1, "title": "第一集", "logline": "测试logline"},
+            "story": {
+                "title": "测试短剧",
+                "genre": "剧情",
+                "story_format": "short_drama",
+            },
+            "outline": {
+                "episode_number": 1,
+                "title": "第一集",
+                "logline": "测试logline",
+            },
             "previous_episodes": [],
             "episode_duration": 3,
             "plot_complexity": "medium",
@@ -162,14 +182,28 @@ def test_episode_duration_reject_template_resolves_short_drama_variant():
     prompt = prompt_manager.render_prompt(
         PromptTemplate.EPISODE_DURATION_REJECT.value,
         {
-            "story": {"title": "测试短剧", "genre": "剧情", "story_format": "short_drama"},
-            "outline": {"episode_number": 1, "title": "第一集", "logline": "测试logline"},
+            "story": {
+                "title": "测试短剧",
+                "genre": "剧情",
+                "story_format": "short_drama",
+            },
+            "outline": {
+                "episode_number": 1,
+                "title": "第一集",
+                "logline": "测试logline",
+            },
             "previous_episodes": [],
             "rejected_episode": {
                 "episode_number": 1,
                 "title": "第一集",
                 "summary": "测试概要",
-                "scenes": [{"scene_number": 1, "summary": "测试场景", "estimated_duration_seconds": 30}],
+                "scenes": [
+                    {
+                        "scene_number": 1,
+                        "summary": "测试场景",
+                        "estimated_duration_seconds": 30,
+                    }
+                ],
             },
             "target_duration_seconds": 180,
             "current_duration_seconds": 150,

@@ -8,7 +8,9 @@ from .dialogue_processing.scene_extractors import (
     extract_stage_for_scene,
 )
 from .dialogue_processing.segment_builder import plan_scene_segments
-from .dialogue_processing.segment_intelligent_planner import plan_scene_segments_intelligent
+from .dialogue_processing.segment_intelligent_planner import (
+    plan_scene_segments_intelligent,
+)
 from .dialogue_processing.segment_models import PlannedSegment
 from .dialogue_processing.text_utils import (
     looks_like_silence,
@@ -27,4 +29,3 @@ __all__ = [
     "plan_scene_segments",
     "plan_scene_segments_intelligent",
 ]
-

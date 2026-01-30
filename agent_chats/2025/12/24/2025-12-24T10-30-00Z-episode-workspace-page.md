@@ -31,12 +31,14 @@ Continue refactoring episode-related pages into a unified workspace with a stron
 ### New Files Created
 
 1. **`ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx`** (~275 lines)
+
    - Unified workspace page with tab navigation (Script | Timeline | Storyboard)
    - URL-synced tab state via query parameter `?tab=`
    - Workflow status calculation based on episode/script metadata
    - Tab content components for each workflow step
 
 2. **`ai-pic-frontend/src/components/features/episode/EpisodeWorkspaceHeader.tsx`** (~138 lines)
+
    - Unified header displaying episode info and workflow progress
    - Compact workflow indicator (top-right corner)
    - Full workflow steps section with action buttons
@@ -51,16 +53,19 @@ Continue refactoring episode-related pages into a unified workspace with a stron
 ### Bug Fixes
 
 4. **`ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx`**
+
    - Fixed: `params.id as string` → `params?.id?.toString() || ""` (safe params handling)
    - Fixed: Wrong hook signature `useEpisodeDetail(episodeKey, () => {})` → `useEpisodeDetail({ episodeKey, showAlert })`
    - Fixed: Added missing `useAlertModal` import and usage
    - Fixed: Removed non-existent `error` destructuring from hook result
 
 5. **`ai-pic-frontend/src/hooks/useAvailableModels.ts`**
+
    - Added deduplication logic for models using `model_id || id` as key
    - Prevents duplicate entries in model dropdown selectors
 
 6. **`ai-pic-frontend/src/utils/api/types/ai-model.types.ts`**
+
    - Added optional `model_id?: string` field to AIModel interface
    - Supports backend-enriched model IDs like "provider:id"
 

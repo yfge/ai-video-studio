@@ -12,19 +12,25 @@ summary: "Map doubao/seedream model ids to volcengine so storyboard img2img uses
 ---
 
 ## User Prompt
+
 然后分镜的图生图火山引擎也不对
 
 ## Goals
+
 - Ensure Seedream/doubao img2img flows (including storyboard) route to Volcengine provider so reference images are honored.
 
 ## Changes
+
 - Expanded provider inference to treat `doubao-*`/`seedream` model ids as Volcengine across model_utils, environment helper, and AI service fallback.
 
 ## Validation
+
 - Not run (pending Volcengine environment); logic-level change only.
 
 ## Next Steps
+
 - [ ] Re-run storyboard/environment/IP img2img with doubao/Seedream models to confirm Volcengine is selected and reference images are applied.
 
 ## Linked Commits
+
 - (pending)

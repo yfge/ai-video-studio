@@ -1,8 +1,9 @@
 """add business_id and soft delete fields to core tables"""
 
-from alembic import op
-import sqlalchemy as sa
 import uuid
+
+import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "b9b5c7e3a8d1"
@@ -58,7 +59,8 @@ def _add_columns_and_indexes(default_expr):
             )
         if "deleted_at" not in existing_cols:
             op.add_column(
-                table, sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True)
+                table,
+                sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
             )
         if "deleted_by" not in existing_cols:
             op.add_column(table, sa.Column("deleted_by", sa.Integer(), nullable=True))
@@ -69,9 +71,7 @@ def _add_columns_and_indexes(default_expr):
         business_idx = f"ix_{table}_business_id"
         is_deleted_idx = f"ix_{table}_is_deleted"
         if business_idx not in existing_indexes:
-            op.create_index(
-                business_idx, table, ["business_id"], unique=True
-            )
+            op.create_index(business_idx, table, ["business_id"], unique=True)
         if is_deleted_idx not in existing_indexes:
             op.create_index(is_deleted_idx, table, ["is_deleted"])
 
@@ -83,9 +83,7 @@ def _backfill_business_ids(bind):
         ).fetchall()
         for (row_id,) in rows:
             bind.execute(
-                sa.text(
-                    f"UPDATE {table} SET business_id = :bid WHERE id = :row_id"
-                ),
+                sa.text(f"UPDATE {table} SET business_id = :bid WHERE id = :row_id"),
                 {"bid": uuid.uuid4().hex, "row_id": row_id},
             )
 

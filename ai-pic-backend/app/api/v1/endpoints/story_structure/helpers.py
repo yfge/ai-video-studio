@@ -8,10 +8,8 @@ reference image handling, and environment style sanitization.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from app.core.config import settings
 from app.models.story_structure import Environment
 from app.services.ai_service import ai_service
 from app.services.providers.image_param_utils import compute_image_ui

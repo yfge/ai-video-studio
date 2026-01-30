@@ -4,16 +4,15 @@ Exposes ``app`` for tests and production entrypoints while keeping the project
 package importable (``from app.main import app``).
 """
 
+from app.api.v1.api import api_router
+from app.core.config import settings
+from app.core.exceptions import DomainError
+from app.core.logging import LoggingMiddleware, setup_logging
+from app.core.middleware import domain_exception_handler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
-
-from app.api.v1.api import api_router
-from app.core.config import settings
-from app.core.logging import LoggingMiddleware, setup_logging
-from app.core.middleware import domain_exception_handler
-from app.core.exceptions import DomainError
 
 # Set up structured logging once at import time so all application instances
 # share the same configuration.
@@ -79,4 +78,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
