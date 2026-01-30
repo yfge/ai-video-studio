@@ -101,8 +101,8 @@ app/services/storyboard/
 
 ## Next Steps
 
-1. Integrate StoryboardPipeline into existing API endpoints
-2. Add `use_new_pipeline` parameter to scripts_legacy.py
+1. ~~Integrate StoryboardPipeline into existing API endpoints~~ ✅
+2. ~~Add `use_new_pipeline` parameter to scripts_legacy.py~~ ✅
 3. E2E testing with Script 118 as reference
 4. Browser validation using Chrome DevTools
 5. Create storyboard API endpoint directory
@@ -110,3 +110,4 @@ app/services/storyboard/
 ## Linked Commits
 
 - feat(backend): add storyboard React validation pipeline
+- feat(backend): integrate new pipeline into generate_storyboard endpoint

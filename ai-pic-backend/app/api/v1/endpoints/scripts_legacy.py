@@ -40,6 +40,7 @@ from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
 )
 from app.services.storage.oss_service import oss_service
+from app.services.storyboard.pipeline import StoryboardPipeline
 from app.services.storyboard.storyboard_prompt_utils import (
     apply_storyboard_prompt_optimizations,
     render_keyframe_prompt,
@@ -2075,6 +2076,9 @@ async def generate_storyboard(
         None, description="逗号分隔的场景编号列表，如 1,3,4"
     ),
     use_plan: bool = Query(True, description="是否先使用分镜规划，再逐场景生成"),
+    use_new_pipeline: bool = Query(
+        False, description="是否使用新的React验证管线（实验性）"
+    ),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -2092,6 +2096,69 @@ async def generate_storyboard(
             ]
         except Exception:
             raise HTTPException(status_code=400, detail="scene_numbers 格式不正确")
+
+    # 使用新的React验证管线（实验性）
+    if use_new_pipeline:
+        episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
+        pipeline = StoryboardPipeline(db, ai_service=ai_service)
+
+        # 解析provider和model
+        prefer_provider = "openai"
+        model_id = model
+        if model_id and ":" in model_id:
+            prefer_provider, model_id = model_id.split(":", 1)
+
+        try:
+            result = await pipeline.generate(
+                script=script,
+                episode=episode,
+                frames_per_scene=frames_per_scene,
+                selected_scenes=selected_scenes,
+                model=model_id,
+                prefer_provider=prefer_provider,
+                temperature=temperature,
+                max_frames=max_frames,
+                use_langgraph=use_plan,
+            )
+        except Exception as exc:
+            logger.error(f"New pipeline failed: {exc}")
+            raise HTTPException(status_code=500, detail=f"管线执行失败: {exc}")
+
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error") or "分镜生成失败",
+            )
+
+        frames = result.get("frames", [])
+        if not frames:
+            raise HTTPException(status_code=500, detail="分镜生成失败：无帧返回")
+
+        # 持久化结果
+        sb_meta = {
+            "version": script.storyboard_version,
+            "updated_at": (
+                script.storyboard_updated_at.isoformat()
+                if script.storyboard_updated_at
+                else None
+            ),
+            "generation_source": "new_pipeline",
+            "generation_method": result.get("phase", "unknown"),
+            "provider": result.get("provider_used"),
+            "scene_scope": selected_scenes,
+            "validation_results": result.get("validation_results"),
+            "reasoning_trace": result.get("reasoning_trace"),
+        }
+        sb = {"frames": frames, "meta": sb_meta}
+        extra = dict(script.extra_metadata or {})
+        extra["storyboard"] = sb
+        script.extra_metadata = extra
+        script.storyboard_updated_at = datetime.utcnow()
+        script.storyboard_version = (script.storyboard_version or 0) + 1
+        db.commit()
+        db.refresh(script)
+
+        return {"success": True, "data": sb, "pipeline_result": result}
 
     # 以剧本结构为输入（可按选择的场景过滤），并补充故事/剧集上下文
     all_scenes = script.scenes or []
