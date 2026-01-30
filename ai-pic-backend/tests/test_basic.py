@@ -3,6 +3,7 @@
 """
 
 import pytest
+from sqlalchemy import text
 from tests.unit.test_database import reset_test_database, test_db
 
 
@@ -25,7 +26,7 @@ def test_database_connection():
 
     try:
         # 执行简单查询
-        result = session.execute("SELECT 1 as test_value")
+        result = session.execute(text("SELECT 1 as test_value"))
         value = result.scalar()
         assert value == 1
 
@@ -36,15 +37,11 @@ def test_database_connection():
 @pytest.mark.unit
 def test_imports():
     """测试重要模块导入"""
-    # 测试模型导入
-    # 测试配置导入
-    from app.core.test_config import test_settings
-    from app.core.test_database import test_db
+    from app.core.config import settings
     from app.models.user import User
     from app.models.virtual_ip import VirtualIP
 
     # 基本断言
     assert User is not None
     assert VirtualIP is not None
-    assert test_settings is not None
-    assert test_db is not None
+    assert settings is not None

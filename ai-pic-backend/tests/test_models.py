@@ -81,10 +81,11 @@ class TestVirtualIPModel:
         """测试虚拟IP名称唯一性"""
         setup_factories(db_session)
 
-        vip1 = VirtualIPFactory(name="TestIP")
+        owner = UserFactory()
+        vip1 = VirtualIPFactory(name="TestIP", owner=owner)
 
         with pytest.raises(IntegrityError):
-            VirtualIPFactory(name="TestIP")
+            VirtualIPFactory(name="TestIP", owner=owner)
 
     def test_virtual_ip_images_relationship(self, db_session: Session):
         """测试虚拟IP图像关系"""
@@ -259,28 +260,28 @@ class TestEpisodeModel:
         """测试剧集JSON字段"""
         setup_factories(db_session)
 
-        scene_descriptions = [
-            {"scene": 1, "description": "Opening scene"},
-            {"scene": 2, "description": "Conflict scene"},
+        plot_points = [
+            {"order": 1, "description": "Opening scene"},
+            {"order": 2, "description": "Conflict scene"},
         ]
         character_arcs = {
             "Character1": "Character growth arc",
             "Character2": "Redemption arc",
         }
-        key_events = ["Event1", "Event2", "Event3"]
-        emotional_beats = ["Happy", "Sad", "Exciting", "Tension"]
+        conflicts = [
+            {"type": "internal", "description": "Doubt"},
+            {"type": "external", "description": "Rival shows up"},
+        ]
 
         episode = EpisodeFactory(
-            scene_descriptions=scene_descriptions,
+            plot_points=plot_points,
             character_arcs=character_arcs,
-            key_events=key_events,
-            emotional_beats=emotional_beats,
+            conflicts=conflicts,
         )
 
-        assert episode.scene_descriptions == scene_descriptions
+        assert episode.plot_points == plot_points
         assert episode.character_arcs == character_arcs
-        assert episode.key_events == key_events
-        assert episode.emotional_beats == emotional_beats
+        assert episode.conflicts == conflicts
 
     def test_episode_scripts_relationship(self, db_session: Session):
         """测试剧集剧本关系"""
@@ -317,30 +318,42 @@ class TestScriptModel:
         """测试剧本JSON字段"""
         setup_factories(db_session)
 
-        scene_headings = ["INT. ROOM - DAY", "EXT. STREET - NIGHT"]
-        character_list = ["Character1", "Character2", "Character3"]
+        scenes = [
+            {"scene_number": 1, "slug_line": "INT. ROOM - DAY", "summary": "Opening"},
+            {
+                "scene_number": 2,
+                "slug_line": "EXT. STREET - NIGHT",
+                "summary": "Conflict",
+            },
+        ]
+        dialogues = [
+            {"scene_number": 1, "character": "Character1", "content": "Hello!"},
+            {"scene_number": 2, "character": "Character2", "content": "Stop!"},
+        ]
+        stage_directions = [
+            {"scene_number": 1, "direction": "Camera pans across the room."},
+            {"scene_number": 2, "direction": "Cut to close-up."},
+        ]
         generation_params = {"temperature": 0.8}
 
         script = ScriptFactory(
-            scene_headings=scene_headings,
-            character_list=character_list,
+            scenes=scenes,
+            dialogues=dialogues,
+            stage_directions=stage_directions,
             generation_params=generation_params,
         )
 
-        assert script.scene_headings == scene_headings
-        assert script.character_list == character_list
+        assert script.scenes == scenes
+        assert script.dialogues == dialogues
+        assert script.stage_directions == stage_directions
         assert script.generation_params == generation_params
 
     def test_script_counts(self, db_session: Session):
         """测试剧本计数字段"""
         setup_factories(db_session)
 
-        script = ScriptFactory(
-            dialogue_count=25, action_count=15, word_count=1500, character_count=7500
-        )
+        script = ScriptFactory(word_count=1500, character_count=7500)
 
-        assert script.dialogue_count == 25
-        assert script.action_count == 15
         assert script.word_count == 1500
         assert script.character_count == 7500
 
@@ -365,14 +378,10 @@ class TestStoryCharacterModel:
         """测试故事角色JSON字段"""
         setup_factories(db_session)
 
-        personality_traits = ["brave", "kind", "intelligent", "stubborn"]
         relationships = {"Character2": "friend", "Character3": "rival"}
 
-        character = StoryCharacterFactory(
-            personality_traits=personality_traits, relationships=relationships
-        )
+        character = StoryCharacterFactory(relationships=relationships)
 
-        assert character.personality_traits == personality_traits
         assert character.relationships == relationships
 
     def test_story_character_relationships(self, db_session: Session):

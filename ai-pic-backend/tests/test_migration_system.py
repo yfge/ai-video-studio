@@ -16,7 +16,7 @@ from app.core.migration_safety import (
     MigrationRollbackManager,
     MigrationValidator,
 )
-from app.core.migrations import DataSeeder, MigrationManager
+from app.core.migrations import DataSeeder, MigrationError, MigrationManager
 from sqlalchemy import create_engine, text
 
 
@@ -392,7 +392,7 @@ class TestMigrationIntegration:
 
         # 测试无效配置的情况
         with patch.object(manager, "config", None):
-            with pytest.raises(AttributeError):
+            with pytest.raises(MigrationError):
                 manager.upgrade("head")
 
 

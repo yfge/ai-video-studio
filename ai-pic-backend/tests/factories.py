@@ -79,7 +79,6 @@ class VirtualIPImageFactory(BaseFactory):
     subcategory = factory.Faker("word")
     tags = factory.LazyFunction(lambda: ["test", "image"])
     is_default = False
-    is_ai_generated = False
     created_at = factory.LazyFunction(datetime.utcnow)
 
 
@@ -137,7 +136,12 @@ class EpisodeFactory(BaseFactory):
         lambda: [{"order": 1, "description": "Opening scene"}]
     )
     character_arcs = factory.LazyFunction(lambda: {"Character1": "Development arc"})
-    conflicts = factory.LazyFunction(lambda: ["Conflict A", "Conflict B"])
+    conflicts = factory.LazyFunction(
+        lambda: [
+            {"type": "mock", "description": "Conflict A"},
+            {"type": "mock", "description": "Conflict B"},
+        ]
+    )
     duration_minutes = factory.Faker("random_int", min=5, max=30)
     scene_count = factory.Faker("random_int", min=3, max=10)
     generation_prompt = factory.Faker("text", max_nb_chars=200)

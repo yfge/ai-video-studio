@@ -1,6 +1,6 @@
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import JSON
@@ -8,6 +8,15 @@ from sqlalchemy.types import JSON
 
 class VirtualIP(SoftDeleteBusinessMixin, Base):
     __tablename__ = "virtual_ips"
+    __table_args__ = (
+        Index(
+            "ux_virtual_ips_user_name_is_deleted",
+            "user_id",
+            "name",
+            "is_deleted",
+            unique=True,
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)

@@ -25,7 +25,7 @@ def test_create_user(test_db_session: Session):
     assert user.id is not None
     assert user.username == "testuser"
     assert user.email == "test@example.com"
-    assert user.is_active is True
+    assert user.is_active is False
 
 
 @pytest.mark.unit
@@ -179,11 +179,12 @@ def test_create_script(test_db_session: Session):
         episode_id=episode.id,
         title="Script 1",
         content="Test script content",
-        format_type="standard",
-        scene_headings=["INT. ROOM - DAY"],
-        character_list=["Character1", "Character2"],
-        dialogue_count=10,
-        action_count=5,
+        format_type="screenplay",
+        scenes=[{"scene_number": 1, "slug_line": "INT. ROOM - DAY", "summary": "Test"}],
+        dialogues=[
+            {"scene_number": 1, "character": "Character1", "content": "Hello!"}
+        ],
+        stage_directions=[{"scene_number": 1, "direction": "Camera pans."}],
         word_count=500,
         character_count=2500,
         generation_params={"temperature": 0.7},

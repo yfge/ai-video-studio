@@ -124,7 +124,7 @@ def mock_ai_service(monkeypatch):
         ) -> dict:
             filename = f"mock-ai-{uuid4().hex}.png"
             file_path = uploads_dir / filename
-            file_path.write_bytes(b"mock image bytes")
+            file_path.write_bytes(b"0" * 2048)
             created_files.append(file_path)
             return {
                 "prompt": f"mock prompt for {ip_name}",
@@ -149,7 +149,7 @@ def mock_ai_service(monkeypatch):
         ) -> dict:
             filename = f"mock-variant-{uuid4().hex}.png"
             file_path = uploads_dir / filename
-            file_path.write_bytes(b"mock image bytes")
+            file_path.write_bytes(b"0" * 2048)
             created_files.append(file_path)
 
             oss_url = None
@@ -252,6 +252,7 @@ def mock_ai_service(monkeypatch):
     import app.api.v1.endpoints.episodes.regenerate as episodes_regenerate
     import app.api.v1.endpoints.scripts_legacy as scripts_legacy_ep
     import app.api.v1.endpoints.virtual_ip_images.async_tasks as vip_async
+    import app.api.v1.endpoints.virtual_ip_images.generation as vip_generation
     import app.api.v1.endpoints.virtual_ip_images.generation_helpers as vip_gen_helpers
     import app.services.episode.episode_generation_persistence as episode_generation_persistence
     import app.services.episode.episode_generation_service as episode_generation_service
@@ -261,6 +262,7 @@ def mock_ai_service(monkeypatch):
 
     monkeypatch.setattr(scripts_legacy_ep, "ai_service", mock_service)
     monkeypatch.setattr(vip_gen_helpers, "ai_service", mock_service)
+    monkeypatch.setattr(vip_generation, "ai_service", mock_service)
     monkeypatch.setattr(vip_async, "ai_service", mock_service)
     monkeypatch.setattr(episodes_async, "ai_service", mock_service)
     monkeypatch.setattr(episodes_regenerate, "ai_service", mock_service)

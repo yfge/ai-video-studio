@@ -18,6 +18,7 @@ class SoftDeleteBusinessMixin:
         String(32),
         nullable=False,
         index=True,
+        unique=True,
         default=generate_business_id,
     )
     is_deleted = Column(Boolean, nullable=False, default=False)

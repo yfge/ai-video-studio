@@ -1,12 +1,17 @@
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from datetime import datetime
 
 
 class User(SoftDeleteBusinessMixin, Base):
     __tablename__ = "users"
+    __table_args__ = (
+        Index("ux_users_email_is_deleted", "email", "is_deleted", unique=True),
+        Index("ux_users_username_is_deleted", "username", "is_deleted", unique=True),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(64), index=True, nullable=False)
@@ -71,7 +76,7 @@ class User(SoftDeleteBusinessMixin, Base):
             and self.email_verified
             and (
                 self.account_locked_until is None
-                or self.account_locked_until < func.now()
+                or self.account_locked_until < datetime.utcnow()
             )
         )
 
@@ -80,8 +85,11 @@ class User(SoftDeleteBusinessMixin, Base):
         """检查账户是否被锁定"""
         return (
             self.account_locked_until is not None
-            and self.account_locked_until > func.now()
+            and self.account_locked_until > datetime.utcnow()
         )
+
+    def __str__(self) -> str:
+        return self.username
 
 
 class UserAuditLog(SoftDeleteBusinessMixin, Base):

@@ -73,8 +73,8 @@ def test_sqlite_crud_operations():
             conn.execute(
                 text(
                     """
-                INSERT INTO users (username, email, hashed_password, full_name, is_active, is_superuser)
-                VALUES ('testuser', 'test@example.com', 'hashed_password', 'Test User', 1, 0)
+                INSERT INTO users (business_id, is_deleted, username, email, hashed_password, full_name, is_active, is_superuser)
+                VALUES ('useruseruseruseruseruseruseruser', 0, 'testuser', 'test@example.com', 'hashed_password', 'Test User', 1, 0)
             """
                 )
             )
@@ -92,8 +92,8 @@ def test_sqlite_crud_operations():
             conn.execute(
                 text(
                     """
-                INSERT INTO virtual_ips (name, description, tags, is_active, is_public)
-                VALUES ('Test IP', 'Test description', '["tag1", "tag2"]', 1, 0)
+                INSERT INTO virtual_ips (business_id, is_deleted, name, description, tags, is_active, is_public)
+                VALUES ('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv', 0, 'Test IP', 'Test description', '["tag1", "tag2"]', 1, 0)
             """
                 )
             )
@@ -111,8 +111,8 @@ def test_sqlite_crud_operations():
             conn.execute(
                 text(
                     """
-                INSERT INTO stories (title, genre, premise, synopsis, main_characters, character_relationships, generation_params)
-                VALUES ('Test Story', 'Romance', 'Test premise', 'Test synopsis', '[]', '{}', '{}')
+                INSERT INTO stories (business_id, is_deleted, title, story_format, default_aspect_ratio, genre, premise, synopsis, main_characters, character_relationships, generation_params)
+                VALUES ('storystorystorystorystorystory12', 0, 'Test Story', 'short_drama', '9:16', 'Romance', 'Test premise', 'Test synopsis', '[]', '{}', '{}')
             """
                 )
             )
@@ -162,8 +162,8 @@ def test_foreign_key_relationships():
             conn.execute(
                 text(
                     """
-                INSERT INTO virtual_ips (name, description, is_active, is_public)
-                VALUES ('Test IP', 'Test description', 1, 0)
+                INSERT INTO virtual_ips (business_id, is_deleted, name, description, is_active, is_public)
+                VALUES ('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv', 0, 'Test IP', 'Test description', 1, 0)
             """
                 )
             )
@@ -180,8 +180,8 @@ def test_foreign_key_relationships():
             conn.execute(
                 text(
                     """
-                INSERT INTO virtual_ip_images (virtual_ip_id, filename, original_filename, file_path, file_size, mime_type, category)
-                VALUES (:vip_id, 'test.jpg', 'test.jpg', '/uploads/test.jpg', 1024, 'image/jpeg', 'avatar')
+                INSERT INTO virtual_ip_images (business_id, is_deleted, virtual_ip_id, filename, original_filename, file_path, file_size, mime_type, category)
+                VALUES ('iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii', 0, :vip_id, 'test.jpg', 'test.jpg', '/uploads/test.jpg', 1024, 'image/jpeg', 'avatar')
             """
                 ),
                 {"vip_id": vip_id},
@@ -240,8 +240,8 @@ def test_json_columns():
             conn.execute(
                 text(
                     """
-                INSERT INTO virtual_ips (name, description, tags, style_reference_images, is_active, is_public)
-                VALUES ('Test IP', 'Test description', '["tag1", "tag2", "tag3"]', '["http://example.com/image.jpg"]', 1, 0)
+                INSERT INTO virtual_ips (business_id, is_deleted, name, description, tags, style_reference_images, is_active, is_public)
+                VALUES ('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv', 0, 'Test IP', 'Test description', '["tag1", "tag2", "tag3"]', '["http://example.com/image.jpg"]', 1, 0)
             """
                 )
             )
@@ -262,8 +262,8 @@ def test_json_columns():
             conn.execute(
                 text(
                     """
-                INSERT INTO stories (title, genre, premise, synopsis, main_characters, character_relationships, generation_params)
-                VALUES ('Test Story', 'Romance', 'Test premise', 'Test synopsis',
+                INSERT INTO stories (business_id, is_deleted, title, story_format, default_aspect_ratio, genre, premise, synopsis, main_characters, character_relationships, generation_params)
+                VALUES ('storystorystorystorystorystory12', 0, 'Test Story', 'short_drama', '9:16', 'Romance', 'Test premise', 'Test synopsis',
                         '[{"name": "Character1", "role": "protagonist"}]',
                         '{"Character1": {"Character2": "friend"}}',
                         '{"temperature": 0.7}')

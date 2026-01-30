@@ -2,6 +2,8 @@
 Tests for domain exception middleware.
 """
 
+import logging
+
 import pytest
 from app.core.exceptions import (
     DomainError,
@@ -165,10 +167,24 @@ class TestErrorLogging:
 
     def test_domain_error_logged(self, client, caplog):
         """Test that domain errors are logged with context."""
-        with caplog.at_level("WARNING"):
-            client.get("/test/not-found")
+        middleware_logger = logging.getLogger("app.core.middleware")
+        # Some tests configure logging with propagate disabled; attach the capture
+        # handler directly so this assertion is order-independent.
+        previous_disable = logging.root.manager.disable
+        previous_logger_disabled = middleware_logger.disabled
+        logging.disable(logging.NOTSET)
+        middleware_logger.disabled = False
+
+        middleware_logger.addHandler(caplog.handler)
+        try:
+            with caplog.at_level("WARNING", logger=middleware_logger.name):
+                client.get("/test/not-found")
+        finally:
+            middleware_logger.removeHandler(caplog.handler)
+            middleware_logger.disabled = previous_logger_disabled
+            logging.disable(previous_disable)
 
         # Check that error was logged
         assert any(
-            "Domain error occurred" in record.message for record in caplog.records
+            "Domain error occurred" in record.getMessage() for record in caplog.records
         )

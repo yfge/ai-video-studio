@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from . import episode_generation_persistence as persistence
 from . import episode_generation_utils as utils
 
+# Backward-compat: some tests/legacy callers monkeypatch this name.
 ai_service = ai_service_module.ai_service
 
 
@@ -158,7 +159,9 @@ class EpisodeGenerationService:
             },
         )
         prefer_provider, model_id = self._split_model(request.model)
-        result = await ai_service.generate_episodes(
+        # Resolve AI service dynamically so tests can monkeypatch the shared module
+        # singleton without having to patch this module-level alias.
+        result = await ai_service_module.ai_service.generate_episodes(
             story=story_data,
             episode_count=request.episode_count,
             episode_duration=request.episode_duration,

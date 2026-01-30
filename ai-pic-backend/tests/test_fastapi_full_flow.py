@@ -14,7 +14,7 @@ from app.models.virtual_ip import VirtualIP, VirtualIPImage
 
 @pytest.mark.asyncio
 async def test_fastapi_full_image_generation_flow(
-    client, db_session, skip_if_no_openai
+    client, db_session, mock_ai_service
 ):
     """测试FastAPI应用的完整图像生成流程"""
 
@@ -29,6 +29,9 @@ async def test_fastapi_full_image_generation_flow(
         email="admin@test.com",
         hashed_password=get_password_hash("Ai7dio"),
         is_active=True,
+        is_approved=True,
+        email_verified=True,
+        is_admin=True,
         is_superuser=True,
     )
     db_session.add(test_user)

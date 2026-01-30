@@ -41,12 +41,15 @@ def list_virtual_ips(
     skip: int = 0,
     limit: int = 20,
     business_id: str | None = None,
+    search: str | None = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     query = _not_deleted(db.query(VirtualIP), VirtualIP)
     if business_id:
         query = query.filter(VirtualIP.business_id == business_id)
+    if search:
+        query = query.filter(VirtualIP.name.contains(search.strip()))
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(VirtualIP.user_id == current_user.id)
     virtual_ips = query.offset(skip).limit(limit).all()
@@ -61,6 +64,7 @@ def list_virtual_ips_no_slash(
     skip: int = 0,
     limit: int = 20,
     business_id: str | None = None,
+    search: str | None = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -73,6 +77,7 @@ def list_virtual_ips_no_slash(
         skip=skip,
         limit=limit,
         business_id=business_id,
+        search=search,
         current_user=current_user,
         db=db,
     )

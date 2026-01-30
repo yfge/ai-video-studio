@@ -137,12 +137,11 @@ class MigrationManager:
             # 生成时间戳作为revision id的一部分
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-            if autogenerate:
-                command.revision(
-                    self.config, message=f"{timestamp}_{message}", autogenerate=True
-                )
-            else:
-                command.revision(self.config, message=f"{timestamp}_{message}")
+            command.revision(
+                self.config,
+                message=f"{timestamp}_{message}",
+                autogenerate=autogenerate,
+            )
 
             logger.info(f"迁移文件创建成功: {message}")
             return self.get_head_revision()

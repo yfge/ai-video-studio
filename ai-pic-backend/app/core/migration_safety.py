@@ -135,6 +135,7 @@ class DataIntegrityChecker:
         """生成数据指纹用于变更检测"""
         try:
             fingerprint_data = {}
+            is_mysql = self.engine.dialect.name == "mysql"
 
             with self.engine.connect() as conn:
                 inspector = inspect(self.engine)
@@ -148,7 +149,7 @@ class DataIntegrityChecker:
                         row_count = count_result.fetchone()[0]
 
                         # 对于MySQL，可以使用CHECKSUM TABLE
-                        if "mysql" in settings.DATABASE_URL:
+                        if is_mysql:
                             checksum_result = conn.execute(
                                 text(f"CHECKSUM TABLE {table_name}")
                             )

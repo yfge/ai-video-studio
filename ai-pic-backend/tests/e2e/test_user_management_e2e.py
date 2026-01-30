@@ -7,7 +7,12 @@
 4. 权限控制测试
 """
 
+import pytest
 import requests
+
+pytestmark = pytest.mark.skip(
+    reason="manual e2e script (requires running backend at localhost:8000)"
+)
 
 BASE_URL = "http://localhost:8000/api/v1"
 

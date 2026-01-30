@@ -5,17 +5,30 @@
 
 from datetime import datetime, timedelta
 
+import pytest
 from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
 from app.models.user import User, UserAuditLog
+from app.services.user_management_service import UserManagementService
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from tests.conftest import override_get_db
 
-# 全局测试客户端，使用测试数据库覆盖
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
+
+@pytest.fixture
+def client(db_session: Session):
+    """FastAPI test client with DB dependency override (no auth overrides)."""
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.pop(get_db, None)
 
 
 class TestUserRegistration:
@@ -156,9 +169,9 @@ class TestUserLogin:
         db.refresh(user)
         return user
 
-    def test_login_approved_user_success(self, db: Session):
+    def test_login_approved_user_success(self, db_session: Session, client):
         """测试已审批用户登录成功"""
-        user = self.create_approved_user(db)
+        user = self.create_approved_user(db_session)
 
         response = client.post(
             "/api/v1/auth/login",
@@ -170,9 +183,9 @@ class TestUserLogin:
         assert "access_token" in data
         assert data["token_type"] == "bearer"
 
-    def test_login_pending_user_fails(self, db: Session):
+    def test_login_pending_user_fails(self, db_session: Session, client):
         """测试待审批用户登录失败"""
-        user = self.create_pending_user(db)
+        user = self.create_pending_user(db_session)
 
         response = client.post(
             "/api/v1/auth/login",
@@ -184,9 +197,9 @@ class TestUserLogin:
             "邮箱" in response.json()["detail"] or "审批" in response.json()["detail"]
         )
 
-    def test_login_invalid_credentials(self, db: Session):
+    def test_login_invalid_credentials(self, db_session: Session, client):
         """测试错误凭证登录"""
-        user = self.create_approved_user(db)
+        user = self.create_approved_user(db_session)
 
         response = client.post(
             "/api/v1/auth/login",
@@ -196,9 +209,9 @@ class TestUserLogin:
         assert response.status_code == 401
         assert "用户名或密码错误" in response.json()["detail"]
 
-    def test_login_increments_failed_attempts(self, db: Session):
+    def test_login_increments_failed_attempts(self, db_session: Session, client):
         """测试失败登录增加失败次数"""
-        user = self.create_approved_user(db)
+        user = self.create_approved_user(db_session)
 
         # 连续失败登录
         for i in range(3):
@@ -207,12 +220,12 @@ class TestUserLogin:
                 data={"username": user.username, "password": "wrongpassword"},
             )
 
-        db.refresh(user)
+        db_session.refresh(user)
         assert user.failed_login_attempts == 3
 
-    def test_account_locks_after_five_failures(self, db: Session):
+    def test_account_locks_after_five_failures(self, db_session: Session, client):
         """测试5次失败后账户锁定"""
-        user = self.create_approved_user(db)
+        user = self.create_approved_user(db_session)
 
         # 连续5次失败登录
         for i in range(5):
@@ -221,7 +234,7 @@ class TestUserLogin:
                 data={"username": user.username, "password": "wrongpassword"},
             )
 
-        db.refresh(user)
+        db_session.refresh(user)
         assert user.failed_login_attempts == 5
         assert user.account_locked_until is not None
         assert user.account_locked_until > datetime.utcnow()
@@ -230,7 +243,7 @@ class TestUserLogin:
 class TestUserManagementService:
     """用户管理服务测试"""
 
-    def create_admin_user(self, db: Session):
+    def create_admin_user(self, db_session: Session):
         """创建管理员用户"""
         admin = User(
             username="admin",
@@ -241,12 +254,12 @@ class TestUserManagementService:
             email_verified=True,
             is_admin=True,
         )
-        db.add(admin)
-        db.commit()
-        db.refresh(admin)
+        db_session.add(admin)
+        db_session.commit()
+        db_session.refresh(admin)
         return admin
 
-    def create_test_user(self, db: Session, username: str = "testuser"):
+    def create_test_user(self, db_session: Session, username: str = "testuser"):
         """创建测试用户"""
         user = User(
             username=username,
@@ -256,16 +269,16 @@ class TestUserManagementService:
             is_approved=False,
             email_verified=False,
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
         return user
 
-    def test_approve_user_success(self, db: Session):
+    def test_approve_user_success(self, db_session: Session):
         """测试用户审批成功"""
-        admin = self.create_admin_user(db)
-        user = self.create_test_user(db)
-        service = UserManagementService(db)
+        admin = self.create_admin_user(db_session)
+        user = self.create_test_user(db_session)
+        service = UserManagementService(db_session)
 
         from app.schemas.user import UserApprovalRequest
 
@@ -280,11 +293,11 @@ class TestUserManagementService:
         assert result.approved_at is not None
         assert result.approved_by_user_id == admin.id
 
-    def test_reject_user_success(self, db: Session):
+    def test_reject_user_success(self, db_session: Session):
         """测试用户拒绝成功"""
-        admin = self.create_admin_user(db)
-        user = self.create_test_user(db)
-        service = UserManagementService(db)
+        admin = self.create_admin_user(db_session)
+        user = self.create_test_user(db_session)
+        service = UserManagementService(db_session)
 
         from app.schemas.user import UserApprovalRequest
 
@@ -297,11 +310,11 @@ class TestUserManagementService:
         assert result.is_approved is False
         assert result.is_active is False
 
-    def test_update_user_role(self, db: Session):
+    def test_update_user_role(self, db_session: Session):
         """测试更新用户角色"""
-        admin = self.create_admin_user(db)
-        user = self.create_test_user(db)
-        service = UserManagementService(db)
+        admin = self.create_admin_user(db_session)
+        user = self.create_test_user(db_session)
+        service = UserManagementService(db_session)
 
         result = service.update_user_role(
             user_id=user.id, admin_user=admin, is_admin=True
@@ -309,11 +322,11 @@ class TestUserManagementService:
 
         assert result.is_admin is True
 
-    def test_suspend_user(self, db: Session):
+    def test_suspend_user(self, db_session: Session):
         """测试暂停用户"""
-        admin = self.create_admin_user(db)
-        user = self.create_test_user(db)
-        service = UserManagementService(db)
+        admin = self.create_admin_user(db_session)
+        user = self.create_test_user(db_session)
+        service = UserManagementService(db_session)
 
         result = service.suspend_user(
             user_id=user.id,
@@ -325,11 +338,11 @@ class TestUserManagementService:
         assert result.is_active is False
         assert result.account_locked_until is not None
 
-    def test_reactivate_user(self, db: Session):
+    def test_reactivate_user(self, db_session: Session):
         """测试重新激活用户"""
-        admin = self.create_admin_user(db)
-        user = self.create_test_user(db)
-        service = UserManagementService(db)
+        admin = self.create_admin_user(db_session)
+        user = self.create_test_user(db_session)
+        service = UserManagementService(db_session)
 
         # 先暂停用户
         service.suspend_user(user_id=user.id, admin_user=admin)
@@ -341,10 +354,10 @@ class TestUserManagementService:
         assert result.account_locked_until is None
         assert result.failed_login_attempts == 0
 
-    def test_get_user_stats(self, db: Session):
+    def test_get_user_stats(self, db_session: Session):
         """测试获取用户统计"""
         # 创建不同状态的用户
-        admin = self.create_admin_user(db)
+        admin = self.create_admin_user(db_session)
 
         # 创建几个不同状态的用户用于统计
         for i in range(3):
@@ -356,7 +369,7 @@ class TestUserManagementService:
                 is_approved=True,
                 email_verified=True,
             )
-            db.add(user)
+            db_session.add(user)
 
         for i in range(2):
             user = User(
@@ -367,11 +380,11 @@ class TestUserManagementService:
                 is_approved=False,
                 email_verified=False,
             )
-            db.add(user)
+            db_session.add(user)
 
-        db.commit()
+        db_session.commit()
 
-        service = UserManagementService(db)
+        service = UserManagementService(db_session)
         stats = service.get_user_stats()
 
         assert stats.total_users >= 6  # admin + 3 active + 2 pending
@@ -379,11 +392,11 @@ class TestUserManagementService:
         assert stats.pending_approval >= 2
         assert stats.admin_users >= 1
 
-    def test_audit_log_creation(self, db: Session):
+    def test_audit_log_creation(self, db_session: Session):
         """测试审计日志创建"""
-        admin = self.create_admin_user(db)
-        user = self.create_test_user(db)
-        service = UserManagementService(db)
+        admin = self.create_admin_user(db_session)
+        user = self.create_test_user(db_session)
+        service = UserManagementService(db_session)
 
         from app.schemas.user import UserApprovalRequest
 
@@ -399,7 +412,7 @@ class TestUserManagementService:
 
         # 检查审计日志
         audit_log = (
-            db.query(UserAuditLog)
+            db_session.query(UserAuditLog)
             .filter(
                 UserAuditLog.user_id == user.id, UserAuditLog.action == "USER_APPROVED"
             )
@@ -417,7 +430,7 @@ class TestUserManagementService:
 class TestAdminAPI:
     """管理员API测试"""
 
-    def create_admin_user(self, db: Session):
+    def create_admin_user(self, db_session: Session):
         """创建管理员用户"""
         admin = User(
             username="admin",
@@ -428,12 +441,12 @@ class TestAdminAPI:
             email_verified=True,
             is_admin=True,
         )
-        db.add(admin)
-        db.commit()
-        db.refresh(admin)
+        db_session.add(admin)
+        db_session.commit()
+        db_session.refresh(admin)
         return admin
 
-    def create_regular_user(self, db: Session):
+    def create_regular_user(self, db_session: Session):
         """创建普通用户"""
         user = User(
             username="regularuser",
@@ -444,18 +457,18 @@ class TestAdminAPI:
             email_verified=True,
             is_admin=False,
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
         return user
 
     def get_admin_token(self, admin_user: User) -> str:
         """获取管理员token"""
         return create_access_token(data={"sub": admin_user.username})
 
-    def test_admin_can_access_user_list(self, db: Session):
+    def test_admin_can_access_user_list(self, db_session: Session, client):
         """测试管理员可以访问用户列表"""
-        admin = self.create_admin_user(db)
+        admin = self.create_admin_user(db_session)
         token = self.get_admin_token(admin)
 
         response = client.get(
@@ -468,9 +481,9 @@ class TestAdminAPI:
         assert "total" in data
         assert "page" in data
 
-    def test_regular_user_cannot_access_admin_endpoints(self, db: Session):
+    def test_regular_user_cannot_access_admin_endpoints(self, db_session: Session, client):
         """测试普通用户无法访问管理员接口"""
-        user = self.create_regular_user(db)
+        user = self.create_regular_user(db_session)
         token = self.get_admin_token(user)
 
         response = client.get(
@@ -480,9 +493,9 @@ class TestAdminAPI:
         assert response.status_code == 403
         assert "管理员权限" in response.json()["detail"]
 
-    def test_admin_can_approve_user(self, db: Session):
+    def test_admin_can_approve_user(self, db_session: Session, client):
         """测试管理员可以审批用户"""
-        admin = self.create_admin_user(db)
+        admin = self.create_admin_user(db_session)
         token = self.get_admin_token(admin)
 
         # 创建待审批用户
@@ -494,9 +507,9 @@ class TestAdminAPI:
             is_approved=False,
             email_verified=True,
         )
-        db.add(pending_user)
-        db.commit()
-        db.refresh(pending_user)
+        db_session.add(pending_user)
+        db_session.commit()
+        db_session.refresh(pending_user)
 
         response = client.put(
             f"/api/v1/admin/users/{pending_user.id}/approval",
@@ -509,9 +522,9 @@ class TestAdminAPI:
         assert data["is_approved"] is True
         assert data["is_active"] is True
 
-    def test_admin_can_get_user_stats(self, db: Session):
+    def test_admin_can_get_user_stats(self, db_session: Session, client):
         """测试管理员可以获取用户统计"""
-        admin = self.create_admin_user(db)
+        admin = self.create_admin_user(db_session)
         token = self.get_admin_token(admin)
 
         response = client.get(
@@ -525,10 +538,10 @@ class TestAdminAPI:
         assert "pending_approval" in data
         assert "admin_users" in data
 
-    def test_admin_can_suspend_user(self, db: Session):
+    def test_admin_can_suspend_user(self, db_session: Session, client):
         """测试管理员可以暂停用户"""
-        admin = self.create_admin_user(db)
-        user = self.create_regular_user(db)
+        admin = self.create_admin_user(db_session)
+        user = self.create_regular_user(db_session)
         token = self.get_admin_token(admin)
 
         response = client.put(
@@ -545,7 +558,7 @@ class TestAdminAPI:
 class TestEmailVerification:
     """邮箱验证测试"""
 
-    def test_generate_activation_token(self, db: Session):
+    def test_generate_activation_token(self, db_session: Session):
         """测试生成激活令牌"""
         user = User(
             username="testuser",
@@ -553,19 +566,19 @@ class TestEmailVerification:
             hashed_password=get_password_hash("pass"),
             email_verified=False,
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
 
-        service = UserManagementService(db)
+        service = UserManagementService(db_session)
         token = service.generate_activation_token(user.id)
 
         assert token is not None
-        db.refresh(user)
+        db_session.refresh(user)
         assert user.activation_token == token
         assert user.activation_token_expires is not None
 
-    def test_verify_activation_token_success(self, db: Session):
+    def test_verify_activation_token_success(self, db_session: Session):
         """测试验证激活令牌成功"""
         user = User(
             username="testuser",
@@ -573,11 +586,11 @@ class TestEmailVerification:
             hashed_password=get_password_hash("pass"),
             email_verified=False,
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
 
-        service = UserManagementService(db)
+        service = UserManagementService(db_session)
         token = service.generate_activation_token(user.id)
 
         result = service.verify_activation_token(token)
@@ -586,7 +599,7 @@ class TestEmailVerification:
         assert result.email_verified is True
         assert result.activation_token is None
 
-    def test_verify_expired_token_fails(self, db: Session):
+    def test_verify_expired_token_fails(self, db_session: Session):
         """测试验证过期令牌失败"""
         user = User(
             username="testuser",
@@ -596,10 +609,10 @@ class TestEmailVerification:
             activation_token="expired_token",
             activation_token_expires=datetime.utcnow() - timedelta(hours=1),
         )
-        db.add(user)
-        db.commit()
+        db_session.add(user)
+        db_session.commit()
 
-        service = UserManagementService(db)
+        service = UserManagementService(db_session)
         result = service.verify_activation_token("expired_token")
 
         assert result is None
@@ -608,7 +621,7 @@ class TestEmailVerification:
 class TestMiddleware:
     """中间件测试"""
 
-    def test_require_active_user_blocks_inactive(self, db: Session):
+    def test_require_active_user_blocks_inactive(self, db_session: Session, client):
         """测试活跃用户中间件阻止非活跃用户"""
         # 创建未激活用户
         user = User(
@@ -619,8 +632,8 @@ class TestMiddleware:
             is_approved=False,
             email_verified=False,
         )
-        db.add(user)
-        db.commit()
+        db_session.add(user)
+        db_session.commit()
 
         token = create_access_token(data={"sub": user.username})
 
@@ -634,7 +647,7 @@ class TestMiddleware:
             "审批" in response.json()["detail"] or "验证" in response.json()["detail"]
         )
 
-    def test_require_admin_blocks_regular_user(self, db: Session):
+    def test_require_admin_blocks_regular_user(self, db_session: Session, client):
         """测试管理员中间件阻止普通用户"""
         user = User(
             username="regular",
@@ -645,8 +658,8 @@ class TestMiddleware:
             email_verified=True,
             is_admin=False,
         )
-        db.add(user)
-        db.commit()
+        db_session.add(user)
+        db_session.commit()
 
         token = create_access_token(data={"sub": user.username})
 

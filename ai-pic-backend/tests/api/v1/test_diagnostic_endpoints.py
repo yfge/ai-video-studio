@@ -45,15 +45,12 @@ class TestDiagnosticEndpoints:
                 "timestamp": "2023-01-01T00:00:00",
             }
 
-            # Mock test_results属性
-            with patch.object(
-                type(mock_test.return_value),
-                "test_results",
+            # Mock global diagnostic_service.test_results used by the endpoint.
+            with patch(
+                "app.services.diagnostic_service.diagnostic_service.test_results",
                 new={"OpenAI API": mock_result},
             ):
-                response = client.post(
-                    "/api/v1/diagnostic/openai", headers=auth_headers
-                )
+                response = client.post("/api/v1/diagnostic/openai", headers=auth_headers)
 
         if auth_headers:  # 只有在有有效认证头时才测试
             assert response.status_code == 200
