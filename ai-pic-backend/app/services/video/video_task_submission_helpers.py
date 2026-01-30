@@ -53,5 +53,9 @@ def submit_provider_task(
         "execution_expires_after": opts.get("execution_expires_after"),
         "return_last_frame": opts.get("return_last_frame"),
     }
-    return anyio.run(dispatcher.submit_video_task, **payload)
 
+    # anyio.run() only supports positional args, so wrap the kwarg call.
+    async def _submit() -> Any:
+        return await dispatcher.submit_video_task(**payload)
+
+    return anyio.run(_submit)

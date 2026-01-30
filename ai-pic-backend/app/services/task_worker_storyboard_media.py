@@ -105,6 +105,8 @@ def storyboard_video_generate_task(
         "execution_expires_after": payload.get("execution_expires_after"),
         "return_last_frame": payload.get("return_last_frame"),
         "camera_control": payload.get("camera_control"),
+        # Preserve endpoint contract: allow callers to disable/enable end-frame usage.
+        "use_end_frame": payload.get("use_end_frame"),
     }
     try:
         _process_storyboard_video_task(
