@@ -4,13 +4,13 @@
 根据场景预算调用 ScriptLangGraphAgent 生成对白。
 """
 
-import logging
 from typing import Any, Dict
 
+from app.core.logging import get_logger
 from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
 from app.services.duration_orchestrator.utils import count_dialogue_words
 
-logger = logging.getLogger(__name__)
+logger = get_logger()
 
 
 async def generate_dialogue_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,8 +59,10 @@ async def generate_dialogue_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "generate_dialogue_node: 开始生成场景 %d 的对白",
         budget.scene_number,
         extra={
+            "event": "dialogue_generation_started",
+            "episode_id": state.get("episode_id"),
             "scene_number": budget.scene_number,
-            "target_duration": budget.target_duration_seconds,
+            "target_duration_seconds": budget.target_duration_seconds,
             "target_word_count": budget.target_word_count,
             "attempt": budget.attempt_count,
         },
@@ -118,10 +120,15 @@ async def generate_dialogue_node(state: Dict[str, Any]) -> Dict[str, Any]:
             "generate_dialogue_node: 场景 %d 对白生成完成",
             budget.scene_number,
             extra={
+                "event": "dialogue_generation_completed",
+                "episode_id": state.get("episode_id"),
                 "scene_number": budget.scene_number,
                 "dialogue_count": len(scene_dialogues),
                 "actual_word_count": actual_word_count,
                 "target_word_count": budget.target_word_count,
+                "word_count_ratio": round(actual_word_count / budget.target_word_count, 2)
+                if budget.target_word_count > 0
+                else 0,
             },
         )
 

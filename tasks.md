@@ -228,11 +228,11 @@
 - [x] 6.4 后端：实现结果持久化（SceneBeat 写入 + scene `extra_metadata.dialogue_audio` 更新）
 - [x] 6.5 测试：编写 API 集成测试
 
-### Phase 7: 监控与可观测性（P2，预计 1 天）
+### Phase 7: 监控与可观测性（P2）✅ 已完成
 
-- [ ] 7.1 后端：添加结构化日志（各节点日志增强）
-- [ ] 7.2 后端：添加进度回调 callbacks
-- [ ] 7.3 文档：更新 `docs/duration-orchestrator-guide.md`
+- [x] 7.1 后端：添加结构化日志（各节点日志增强，使用 event 字段便于过滤）
+- [x] 7.2 后端：添加进度回调 callbacks（`progress_callback` 参数支持）
+- [x] 7.3 文档：创建 `docs/duration-orchestrator-guide.md`
 
 ### 验收标准
 

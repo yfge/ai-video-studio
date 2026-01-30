@@ -4,13 +4,13 @@
 验证通过后提交场景，并触发后续场景的预算再平衡。
 """
 
-import logging
 from typing import Any, Dict
 
+from app.core.logging import get_logger
 from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
 from app.services.duration_orchestrator.utils import rebalance_remaining_budgets
 
-logger = logging.getLogger(__name__)
+logger = get_logger()
 
 
 def commit_scene_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -53,10 +53,15 @@ def commit_scene_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "commit_scene_node: 场景 %d 已提交",
         budget.scene_number,
         extra={
+            "event": "scene_committed",
+            "episode_id": state.get("episode_id"),
             "scene_number": budget.scene_number,
-            "actual_duration": actual_seconds,
-            "target_duration": target_seconds,
+            "actual_duration_seconds": actual_seconds,
+            "target_duration_seconds": target_seconds,
             "deviation_seconds": deviation_seconds,
+            "deviation_ratio": round(deviation_seconds / target_seconds, 3)
+            if target_seconds > 0
+            else 0,
             "attempt_count": budget.attempt_count,
         },
     )
@@ -71,6 +76,8 @@ def commit_scene_node(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(
             "commit_scene_node: 已触发预算再平衡",
             extra={
+                "event": "budget_rebalanced",
+                "episode_id": state.get("episode_id"),
                 "scene_number": budget.scene_number,
                 "deviation_seconds": deviation_seconds,
                 "remaining_scenes": len(budgets) - current_index - 1,

@@ -14,7 +14,9 @@ Duration Orchestrator Agent
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
+
+from app.core.logging import get_logger
 
 from app.services.duration_orchestrator.nodes import (
     allocate_budget_node,
@@ -38,7 +40,10 @@ try:
 except ImportError:
     LANGGRAPH_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = get_logger()
+
+# Progress callback type
+ProgressCallback = Callable[[str, Dict[str, Any]], None]
 
 
 class DurationOrchestratorAgent:
@@ -56,6 +61,7 @@ class DurationOrchestratorAgent:
         script_agent=None,
         tts_service=None,
         use_actual_tts: bool = False,
+        progress_callback: Optional[ProgressCallback] = None,
     ):
         """
         初始化 Duration Orchestrator。
@@ -64,11 +70,29 @@ class DurationOrchestratorAgent:
             script_agent: ScriptLangGraphAgent 实例，用于生成对白
             tts_service: TTS 服务实例，用于实际时长测量
             use_actual_tts: 是否使用实际 TTS（False 则使用字数估算）
+            progress_callback: 可选的进度回调函数，签名为 (event: str, data: dict) -> None
         """
         self.script_agent = script_agent
         self.tts_service = tts_service
         self.use_actual_tts = use_actual_tts
+        self.progress_callback = progress_callback
         self.logger = logger
+
+    def _emit_progress(self, event: str, data: Dict[str, Any]) -> None:
+        """Emit a progress event if callback is configured."""
+        if self.progress_callback:
+            try:
+                self.progress_callback(event, data)
+            except Exception as exc:
+                self.logger.warning(
+                    "Progress callback failed",
+                    extra={"event": event, "error": str(exc)},
+                )
+        # Also log the event for audit trail
+        self.logger.info(
+            f"duration_orchestrator_progress: {event}",
+            extra={"event": event, **data},
+        )
 
     def _build_graph(self) -> "StateGraph":
         """
@@ -180,6 +204,7 @@ class DurationOrchestratorAgent:
         story: Dict[str, Any],
         generation_config: Optional[Dict[str, Any]] = None,
         voice_config: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
     ) -> Dict[str, Any]:
         """
         执行端到端时长闭环验证。
@@ -194,10 +219,16 @@ class DurationOrchestratorAgent:
             story: Story 数据
             generation_config: 对白生成配置
             voice_config: TTS 语音配置
+            progress_callback: 可选的进度回调函数（覆盖实例级回调）
 
         Returns:
             包含所有场景对白、时长信息和推理日志的结果字典
         """
+        # Use method-level callback if provided, otherwise fall back to instance
+        callback = progress_callback or self.progress_callback
+        if callback and callback != self.progress_callback:
+            self.progress_callback = callback
+
         if not LANGGRAPH_AVAILABLE:
             self.logger.error("LangGraph not available")
             return {
@@ -241,6 +272,14 @@ class DurationOrchestratorAgent:
                 "use_actual_tts": self.use_actual_tts,
             },
         )
+
+        # Emit orchestration_started event
+        self._emit_progress("orchestration_started", {
+            "episode_id": episode_id,
+            "script_id": script_id,
+            "total_duration_minutes": total_duration_minutes,
+            "scene_count": len(scenes),
+        })
 
         # 构建并执行图
         graph = self._build_graph()
@@ -313,6 +352,22 @@ class DurationOrchestratorAgent:
             },
         )
 
+        # Emit orchestration_completed event
+        self._emit_progress("orchestration_completed", {
+            "episode_id": episode_id,
+            "success": success,
+            "scene_count": statistics.get("scene_count", len(scene_budgets)),
+            "total_actual_duration_seconds": statistics.get(
+                "total_actual_duration_seconds", 0
+            ),
+            "total_target_duration_seconds": statistics.get(
+                "total_target_duration_seconds", 0
+            ),
+            "duration_ratio": statistics.get("duration_ratio", 0),
+            "total_retries": statistics.get("total_retries", 0),
+            "error_count": len(errors),
+        })
+
         return {
             "success": success,
             "episode_id": episode_id,
@@ -347,16 +402,36 @@ async def orchestrate_episode_duration(
     use_actual_tts: bool = False,
     generation_config: Optional[Dict[str, Any]] = None,
     voice_config: Optional[Dict[str, Any]] = None,
+    progress_callback: Optional[ProgressCallback] = None,
 ) -> Dict[str, Any]:
     """
     便捷函数：执行剧集时长编排。
 
     这是 DurationOrchestratorAgent.orchestrate() 的简化封装。
+
+    Args:
+        episode_id: 剧集 ID
+        script_id: 剧本 ID
+        story_id: 故事 ID
+        total_duration_minutes: 目标总时长（分钟）
+        scenes: 场景列表（来自 Episode Agent）
+        episode: Episode 数据
+        story: Story 数据
+        script_agent: ScriptLangGraphAgent 实例
+        tts_service: TTS 服务实例
+        use_actual_tts: 是否使用实际 TTS
+        generation_config: 对白生成配置
+        voice_config: TTS 语音配置
+        progress_callback: 进度回调函数 (event: str, data: dict) -> None
+
+    Returns:
+        包含所有场景对白、时长信息和推理日志的结果字典
     """
     agent = DurationOrchestratorAgent(
         script_agent=script_agent,
         tts_service=tts_service,
         use_actual_tts=use_actual_tts,
+        progress_callback=progress_callback,
     )
 
     return await agent.orchestrate(
