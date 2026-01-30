@@ -177,12 +177,17 @@ def build_parameters_payload(
     end_url: Optional[str],
     duration: int,
     opts: Dict[str, Any],
+    *,
+    target_duration_seconds: float | None = None,
+    provider_duration_seconds: int | None = None,
 ) -> Dict[str, Any]:
-    return {
+    payload = {
         "prompt": prompt,
         "image_url": start_url,
         "end_image_url": end_url,
         "duration": duration,
+        "provider_duration_seconds": provider_duration_seconds,
+        "target_duration_seconds": target_duration_seconds,
         "fps": opts.get("fps"),
         "resolution": opts.get("resolution"),
         "ratio": opts.get("ratio"),
@@ -194,3 +199,9 @@ def build_parameters_payload(
         "execution_expires_after": opts.get("execution_expires_after"),
         "return_last_frame": opts.get("return_last_frame"),
     }
+    # Avoid leaking null keys into DB records unless explicitly provided.
+    if payload.get("provider_duration_seconds") is None:
+        payload.pop("provider_duration_seconds", None)
+    if payload.get("target_duration_seconds") is None:
+        payload.pop("target_duration_seconds", None)
+    return payload

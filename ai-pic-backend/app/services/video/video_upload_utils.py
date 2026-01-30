@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Dict, Optional
 
 from app.services.media import build_generation_metadata
 from app.services.media import upload_base64 as upload_media_base64
+from app.services.media import upload_bytes as upload_media_bytes
 from app.services.media import upload_from_url as upload_media_from_url
 from app.services.storage import oss_service
 
@@ -49,6 +51,53 @@ async def upload_video_bytes_base64_to_oss(
                     "end_image_url": end_image_url
                     or "",
                 },
+            ),
+            oss_service_override=service,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Video OSS upload (bytes) failed: %s", exc)
+        return None
+
+
+async def upload_video_bytes_to_oss(
+    *,
+    video_bytes: bytes,
+    video_mime_type: str | None,
+    prompt: str,
+    duration: int,
+    fps: int,
+    resolution: str,
+    end_image_url: str,
+    provider: str,
+    model: str,
+    logger: Any,
+    oss_service_override: Any | None = None,
+) -> Optional[Dict[str, Any]]:
+    service = oss_service_override or oss_service
+    if not video_bytes or not service:
+        return None
+
+    try:
+        ext = ".mp4"
+        if isinstance(video_mime_type, str) and "webm" in video_mime_type.lower():
+            ext = ".webm"
+        filename = f"video{ext}"
+        sha256 = hashlib.sha256(video_bytes).hexdigest()
+        return await upload_media_bytes(
+            content=video_bytes,
+            filename=filename,
+            media_type="video",
+            prefix="ai-generated/videos",
+            metadata=build_generation_metadata(
+                provider=provider,
+                model=model,
+                media_type="video",
+                mime_type=video_mime_type,
+                duration_seconds=duration,
+                fps=fps,
+                resolution=resolution,
+                sha256=sha256,
+                extra={"end_image_url": end_image_url or ""},
             ),
             oss_service_override=service,
         )

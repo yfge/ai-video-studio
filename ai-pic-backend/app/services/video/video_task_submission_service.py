@@ -4,7 +4,6 @@ import json
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-import anyio
 from app.core.logging import get_logger
 from app.models.script import Script
 from app.models.task import Task, TaskStatus
@@ -15,6 +14,10 @@ from app.repositories.video_generation_task_repository import (
 from app.services.video.video_task_dispatcher import VideoTaskDispatcher
 from app.services.video.video_task_generation_metadata import (
     build_video_generation_metadata,
+)
+from app.services.video.video_task_submission_helpers import (
+    resolve_target_duration_seconds,
+    submit_provider_task,
 )
 from app.services.video.video_task_utils import (
     build_parameters_payload,
@@ -113,14 +116,16 @@ class VideoTaskSubmissionService:
             return False, f"frame {frame_index}: {error}"
 
         prompt_value = resolve_prompt(frame, opts.get("prompt"))
-        duration_int = coerce_duration(
-            opts["duration"]
-            if opts.get("duration") is not None
-            else frame.get("duration_seconds")
-        )
+        target_duration_seconds = resolve_target_duration_seconds(frame, opts)
+        request_duration_seconds = coerce_duration(target_duration_seconds)
 
-        response = self._submit_provider_task(
-            prompt_value, start_url, end_url, duration_int, opts
+        response = submit_provider_task(
+            self.dispatcher,
+            prompt=prompt_value,
+            start_url=start_url,
+            end_url=end_url,
+            duration=request_duration_seconds,
+            opts=opts,
         )
         if not response.success:
             self._record_failure(task, script_id, frame_index, response.error)
@@ -131,6 +136,9 @@ class VideoTaskSubmissionService:
             self._record_failure(task, script_id, frame_index, "未返回任务ID")
             return False, f"frame {frame_index}: 未返回任务ID"
 
+        provider_duration_seconds = int(
+            (response.data or {}).get("duration") or request_duration_seconds
+        )
         self._create_task_record(
             task=task,
             script_id=script_id,
@@ -139,41 +147,11 @@ class VideoTaskSubmissionService:
             prompt=prompt_value,
             start_url=start_url,
             end_url=end_url,
-            duration=duration_int,
+            target_duration_seconds=target_duration_seconds,
+            provider_duration_seconds=provider_duration_seconds,
             opts=opts,
         )
         return True, None
-
-    def _submit_provider_task(
-        self,
-        prompt: Optional[str],
-        start_url: Optional[str],
-        end_url: Optional[str],
-        duration: int,
-        opts: Dict[str, Any],
-    ):
-        payload = {
-            "prompt": prompt,
-            "image_url": start_url,
-            "end_image_url": end_url,
-            "model": opts.get("model"),
-            "prefer_provider": None,
-            "duration": duration,
-            "fps": opts["fps"],
-            "resolution": opts["resolution"],
-            "ratio": opts.get("ratio"),
-            "watermark": opts.get("watermark"),
-            "seed": opts.get("seed"),
-            "camera_fixed": opts.get("camera_fixed"),
-            "camera_control": opts.get("camera_control"),
-            "service_tier": opts.get("service_tier"),
-            "execution_expires_after": opts.get("execution_expires_after"),
-            "return_last_frame": opts.get("return_last_frame"),
-        }
-        return anyio.run(self._submit_provider_task_async, payload)
-
-    async def _submit_provider_task_async(self, payload: Dict[str, Any]) -> Any:
-        return await self.dispatcher.submit_video_task(**payload)
 
     def _create_task_record(
         self,
@@ -185,12 +163,19 @@ class VideoTaskSubmissionService:
         prompt: Optional[str],
         start_url: Optional[str],
         end_url: Optional[str],
-        duration: int,
+        target_duration_seconds: float,
+        provider_duration_seconds: int,
         opts: Dict[str, Any],
     ) -> None:
         provider_task_id = str((response.data or {}).get("task_id"))
         params_payload = build_parameters_payload(
-            prompt, start_url, end_url, duration, opts
+            prompt,
+            start_url,
+            end_url,
+            provider_duration_seconds,
+            opts,
+            target_duration_seconds=round(float(target_duration_seconds), 3),
+            provider_duration_seconds=provider_duration_seconds,
         )
         self.repo.create(
             task_id=task.id,

@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional
 
 import anyio
 from app.core.logging import get_logger
-from app.models.task import Task, TaskStatus
 from app.models.video_generation_task import (
     VideoGenerationTask,
     VideoGenerationTaskStatus,
@@ -15,12 +14,14 @@ from app.repositories.video_generation_task_repository import (
     VideoGenerationTaskRepository,
 )
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
-from app.services.task_agent_run_persistence import persist_task_agent_run
 from app.services.video.video_generation_service import VideoGenerationService
 from app.services.video.video_task_generation_metadata import (
     build_video_generation_metadata,
 )
 from app.services.video.video_task_polling_logging import log_pending_tasks
+from app.services.video.video_task_polling_parent_task import (
+    refresh_parent_task_status,
+)
 from app.services.video.video_task_storyboard_updater import apply_storyboard_result
 from app.services.video.video_task_utils import load_parameters, map_provider_status
 
@@ -109,7 +110,7 @@ class VideoTaskPollingService:
             )
         item.error_message = error_message
         self.db.commit()
-        self._refresh_parent_task_status(item.task_id)
+        refresh_parent_task_status(self.db, self.repo, item.task_id)
 
     def _handle_success(
         self,
@@ -151,6 +152,7 @@ class VideoTaskPollingService:
             params.get("duration") or 5,
             params.get("fps") or 24,
             params.get("resolution") or "720p",
+            params.get("target_duration_seconds"),
         )
 
     def _persist_success(
@@ -174,7 +176,7 @@ class VideoTaskPollingService:
         self.db.commit()
         if item.script_id is not None and item.frame_index is not None:
             apply_storyboard_result(self.db, item, result_payload, params)
-        self._refresh_parent_task_status(item.task_id)
+        refresh_parent_task_status(self.db, self.repo, item.task_id)
 
     async def _fetch_task_status(self, item: VideoGenerationTask):
         provider = self.ai_manager.providers.get(item.provider)
@@ -205,57 +207,9 @@ class VideoTaskPollingService:
             metadata={"task_id": item.provider_task_id},
         )
 
-    def _refresh_parent_task_status(self, task_id: Optional[int]) -> None:
-        if not task_id:
-            return
-        task = self.db.query(Task).filter(Task.id == task_id).first()
-        if not task:
-            return
-
-        tasks = self.repo.list_by_task_id(task_id)
-        if not tasks:
-            return
-
-        terminal = {
-            VideoGenerationTaskStatus.SUCCEEDED,
-            VideoGenerationTaskStatus.FAILED,
-            VideoGenerationTaskStatus.TIMEOUT,
-        }
-        if any(t.status not in terminal for t in tasks):
-            task.status = TaskStatus.PROCESSING
-            self.db.commit()
-            return
-
-        if any(
-            t.status
-            in {VideoGenerationTaskStatus.FAILED, VideoGenerationTaskStatus.TIMEOUT}
-            for t in tasks
-        ):
-            task.status = TaskStatus.FAILED
-            if not task.error_message:
-                for sub in tasks:
-                    sub_err = getattr(sub, "error_message", None)
-                    if isinstance(sub_err, str) and sub_err.strip():
-                        task.error_message = sub_err.strip()
-                        break
-        else:
-            task.status = TaskStatus.COMPLETED
-        self.db.commit()
-        if task.status in {
-            TaskStatus.COMPLETED,
-            TaskStatus.FAILED,
-            TaskStatus.CANCELLED,
-        }:
-            persist_task_agent_run(
-                task_id=task.id,
-                user_id=task.user_id,
-                kind="video_generation",
-                db_session=self.db,
-            )
-
     def _mark_timeout(self, item: VideoGenerationTask, now: datetime) -> None:
         item.status = VideoGenerationTaskStatus.TIMEOUT
         item.completed_at = now
         item.error_message = "任务超时"
         self.db.commit()
-        self._refresh_parent_task_status(item.task_id)
+        refresh_parent_task_status(self.db, self.repo, item.task_id)

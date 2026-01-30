@@ -80,6 +80,11 @@ def build_video_generation_metadata(
     resolution = params.get("resolution")
     width, height = _parse_dimensions(str(resolution) if resolution else None, ratio)
 
+    target_duration_seconds = params.get("target_duration_seconds")
+    provider_duration_seconds = params.get("provider_duration_seconds") or params.get(
+        "duration"
+    )
+
     video_original = result_payload.get("original_video_url") or result_payload.get(
         "video_url"
     )
@@ -96,7 +101,11 @@ def build_video_generation_metadata(
         "task_id": provider_task_id,
         "provider_task_id": provider_task_id,
         "model_type": model_type,
-        "duration_seconds": result_payload.get("duration") or params.get("duration"),
+        "duration_seconds": result_payload.get("duration")
+        or target_duration_seconds
+        or provider_duration_seconds,
+        "target_duration_seconds": target_duration_seconds,
+        "provider_duration_seconds": provider_duration_seconds,
         "fps": params.get("fps"),
         "resolution": resolution,
         "ratio": ratio,

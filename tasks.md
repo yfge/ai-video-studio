@@ -43,10 +43,10 @@
 #### Phase 1: 能力抽象 + 生成向上取整 + 后期裁切（P0）
 
 - [ ] 后端：新增 video capabilities 解析层（provider/model/resolution → allowed durations/min/max），并在任务日志中可审计实际命中的能力
-- [ ] 后端：视频任务提交：按能力把 `target_duration_seconds` 向上取整到 `provider_duration_seconds`（<=max），并把两者写入 `parameters/generation_metadata`
-- [ ] 后端：视频任务完成后：若 `provider_duration_seconds > target_duration_seconds`，用 ffmpeg trim/copy 裁切到 target 并上传；result 同时保留 original 与 trimmed URL
+- [x] 后端：视频任务提交：按能力把 `target_duration_seconds` 向上取整到 `provider_duration_seconds`（<=max），并把两者写入 `parameters/generation_metadata`
+- [x] 后端：视频任务完成后：若 `provider_duration_seconds > target_duration_seconds`，用 ffmpeg trim/copy 裁切到 target 并上传；result 同时保留 original 与 trimmed URL
 - [x] 测试：单测覆盖 duration ceil 规则（5→6、7→8、8→8、>max→max+标记需拆分）
-- [ ] 验证：Docker E2E 选取 1 个 target=5s 的分镜帧生成视频（Veo），抽检最终 MP4 duration≈5s（并保留原始 6s 可追溯）
+- [x] 验证：Docker E2E 选取 1 个 target=5s 的分镜帧生成视频（Veo），抽检最终 MP4 duration≈5s（并保留原始 6s 可追溯）
 
 #### Phase 2: 分镜生成分段/合并（P1）
 

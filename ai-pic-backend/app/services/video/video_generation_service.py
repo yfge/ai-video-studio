@@ -8,12 +8,11 @@ supporting multiple providers (Keling, Volcengine, MiniMax, etc.).
 from typing import Any, Dict, Optional
 
 from app.core.logging import get_logger
+from app.services.video.video_upload_pipeline import upload_video_with_optional_trim
 from app.services.video.video_upload_utils import (
     get_oss_url_or_original,
-    upload_video_bytes_base64_to_oss,
     upload_video_last_frame_to_oss,
     upload_video_thumbnail_to_oss,
-    upload_video_url_to_oss,
 )
 
 
@@ -116,6 +115,7 @@ class VideoGenerationService:
         duration: int,
         fps: int,
         resolution: str,
+        target_duration_seconds: float | None = None,
     ) -> Dict[str, Any]:
         """Process successful video generation response with OSS uploads."""
         original_video_url = response.data.get("video_url")
@@ -124,33 +124,23 @@ class VideoGenerationService:
         video_bytes_base64 = response.data.get("video_bytes_base64")
         video_mime_type = response.data.get("video_mime_type")
         video_download_url = response.data.get("download_url") or original_video_url
+        provider_duration_seconds = int(response.data.get("duration") or duration or 0)
 
-        # Upload assets to OSS
-        if video_bytes_base64:
-            video_oss_result = await upload_video_bytes_base64_to_oss(
-                video_bytes_base64=video_bytes_base64,
-                video_mime_type=video_mime_type,
-                prompt=prompt,
-                duration=duration,
-                fps=fps,
-                resolution=resolution,
-                end_image_url=end_image_url,
-                provider=response.provider,
-                model=response.model,
-                logger=self.logger,
-            )
-        else:
-            video_oss_result = await upload_video_url_to_oss(
-                video_url=video_download_url,
-                prompt=prompt,
-                duration=duration,
-                fps=fps,
-                resolution=resolution,
-                end_image_url=end_image_url,
-                provider=response.provider,
-                model=response.model,
-                logger=self.logger,
-            )
+        video_result = await upload_video_with_optional_trim(
+            original_video_url=original_video_url,
+            video_download_url=video_download_url,
+            video_bytes_base64=video_bytes_base64,
+            video_mime_type=video_mime_type,
+            prompt=prompt,
+            end_image_url=end_image_url,
+            provider=response.provider,
+            model=response.model,
+            fps=fps,
+            resolution=resolution,
+            provider_duration_seconds=provider_duration_seconds or duration,
+            target_duration_seconds=target_duration_seconds,
+            logger=self.logger,
+        )
         thumbnail_oss_result = await upload_video_thumbnail_to_oss(
             thumbnail_url=original_thumbnail_url,
             prompt=prompt,
@@ -165,7 +155,7 @@ class VideoGenerationService:
         )
 
         return {
-            "video_url": get_oss_url_or_original(video_oss_result, original_video_url),
+            **video_result,
             "thumbnail_url": get_oss_url_or_original(
                 thumbnail_oss_result, original_thumbnail_url
             ),
@@ -175,10 +165,8 @@ class VideoGenerationService:
                 last_frame_oss_result, original_last_frame_url
             ),
             "original_last_frame_url": original_last_frame_url,
-            "video_oss_upload": video_oss_result,
             "thumbnail_oss_upload": thumbnail_oss_result,
             "last_frame_oss_upload": last_frame_oss_result,
-            "duration": response.data.get("duration", duration),
             "prompt": prompt,
             "image_url": image_url,
             "end_image_url": end_image_url,
