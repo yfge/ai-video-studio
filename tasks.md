@@ -36,6 +36,24 @@
 - [ ] 后端：生成后逻辑校验：episode→script→timeline→storyboard 一致性检查（场景数/角色引用/时长/画幅）；报告写入 `Task.parameters.agent_run`
 - [x] 验证：全流程 E2E（deepseek 文生文；google banana pro 生图；google veo3 生视频）生成 1 个 Story、1 个 Episode、1 条时间轴/音轨/视频，并抽检图/视频与剧本逻辑一致（Chrome MCP Transport closed，改用 API/curl + 下载抽检，并在 agent_chats 记录）
 
+### 4) 分镜时长 vs 视频模型能力（Veo 4/6/8 等）对齐 🔥
+
+> 目标：Storyboard 仍以音频时间轴为真（start_ms/end_ms），但视频生成必须遵守各模型允许的离散时长；最终产物 MP4 时长要严格回到分镜目标时长，避免“轴与视频不匹配”。
+
+#### Phase 1: 能力抽象 + 生成向上取整 + 后期裁切（P0）
+
+- [ ] 后端：新增 video capabilities 解析层（provider/model/resolution → allowed durations/min/max），并在任务日志中可审计实际命中的能力
+- [ ] 后端：视频任务提交：按能力把 `target_duration_seconds` 向上取整到 `provider_duration_seconds`（<=max），并把两者写入 `parameters/generation_metadata`
+- [ ] 后端：视频任务完成后：若 `provider_duration_seconds > target_duration_seconds`，用 ffmpeg trim/copy 裁切到 target 并上传；result 同时保留 original 与 trimmed URL
+- [ ] 测试：单测覆盖 duration ceil 规则（5→6、7→8、8→8、>max→max+标记需拆分）
+- [ ] 验证：Docker E2E 选取 1 个 target=5s 的分镜帧生成视频（Veo），抽检最终 MP4 duration≈5s（并保留原始 6s 可追溯）
+
+#### Phase 2: 分镜生成分段/合并（P1）
+
+- [ ] 后端：从 audio_timeline 生成 storyboard 时，按 `max_allowed_duration_seconds` 在 beat 边界拆分长镜头；短于 `min_allowed` 的 pause/action 允许合并相邻 beat
+- [ ] 后端：为拆分/合并后的 frame 写入 stable linkage（如 `parent_frame_id` / `beat_range` / `split_index`）便于回溯与 UI 展示
+- [ ] 验证：构造 1 个 >8s 的长段（如 12s），确认被拆为 2 段且最终拼接后总时长与原轴一致
+
 ## Chore: 工具链升级
 
 - [x] 前端：升级 Node 到 22.20.0（本地/生产镜像一致）
