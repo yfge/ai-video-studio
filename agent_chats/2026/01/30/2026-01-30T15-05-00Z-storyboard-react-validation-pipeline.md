@@ -103,9 +103,45 @@ app/services/storyboard/
 
 1. ~~Integrate StoryboardPipeline into existing API endpoints~~ ✅
 2. ~~Add `use_new_pipeline` parameter to scripts_legacy.py~~ ✅
-3. E2E testing with Script 118 as reference
-4. Browser validation using Chrome DevTools
+3. ~~E2E testing with Script 118 as reference~~ ✅
+4. ~~Browser validation using Chrome DevTools~~ ✅
 5. Create storyboard API endpoint directory
+
+## E2E Validation Results (Script 118)
+
+**Test Date**: 2026-01-30T16:04:49Z
+
+**API Call**:
+```
+POST /api/v1/scripts/118/storyboard/generate?use_new_pipeline=true&scene_number=1&frames_per_scene=6
+```
+
+**Results**:
+- ✅ Success: true
+- ✅ Frames Generated: 11 (6 for scene 1, 5 for scene 2)
+- ✅ Phase: completed (40 seconds)
+
+**Validation Results**:
+| Validator | Status | Message |
+|-----------|--------|---------|
+| frame_integrity_validator | ✅ PASS | All 11 frames have required fields |
+| frame_integrity_validator | ✅ PASS | Frame numbering is sequential |
+| frame_integrity_validator | ✅ PASS | All scenes have >= 1 frames |
+| character_presence_validator | ⚠️ WARN | Some speaking characters missing from frame descriptions |
+| timeline_validator | ✅ PASS | All frame durations consistent |
+| timeline_validator | ✅ PASS | Scene transitions properly marked |
+
+**Reasoning Trace**:
+```
+precheck_started → precheck_completed → plan_validated → generated_11_frames
+→ frames_validated → timeline_validated → recovery → frames_validated
+→ timeline_validated → finalized
+```
+
+**Auto-Recovery**:
+- Pipeline automatically repaired 12 issues:
+  - Generated missing frame IDs
+  - Renumbered frames 1-11
 
 ## Linked Commits
 
