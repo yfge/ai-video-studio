@@ -30,10 +30,10 @@
 
 ### 3) 生成质量闭环（上下文/校验/人物集中管理）
 
-- [ ] 后端：人物集中管理：Story 级角色注册表作为 episode/script/timeline/storyboard 单一来源；禁止生成链路引入“未知角色”（可 repair 或阻断）
+- [x] 后端：人物集中管理：Story 级角色注册表作为 episode/script/timeline/storyboard 单一来源；禁止生成链路引入“未知角色”（可 repair 或阻断）
 - [ ] 后端：补齐 readiness 检查（复用下方 `Feature: 故事/剧集生成质量闭环` Phase 3），并输出可读 blocking issues + 一键修复建议
 - [ ] 后端：生成后逻辑校验：episode→script→timeline→storyboard 一致性检查（场景数/角色引用/时长/画幅）；报告写入 `Task.parameters.agent_run`
-- [ ] 验证：全流程 E2E（deepseek 文生文；google banana pro 生图；google veo3 生视频）生成 1 个 Story、1 个 Episode、1 条时间轴/音轨/视频，并抽检图/视频与剧本逻辑一致（Chrome 记录）
+- [x] 验证：全流程 E2E（deepseek 文生文；google banana pro 生图；google veo3 生视频）生成 1 个 Story、1 个 Episode、1 条时间轴/音轨/视频，并抽检图/视频与剧本逻辑一致（Chrome MCP Transport closed，改用 API/curl + 下载抽检，并在 agent_chats 记录）
 
 ## Chore: 工具链升级
 
