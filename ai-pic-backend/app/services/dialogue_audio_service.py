@@ -745,6 +745,15 @@ def build_episode_timeline_beats(
                 if beat.beat_type == "dialogue"
                 else beat.beat_summary
             )
+            characters_involved = beat.characters_involved
+            if not isinstance(characters_involved, list):
+                characters_involved = None
+            else:
+                characters_involved = [
+                    str(item).strip()
+                    for item in characters_involved
+                    if str(item).strip()
+                ] or None
             merged.append(
                 {
                     "scene_id": scene_id,
@@ -752,6 +761,15 @@ def build_episode_timeline_beats(
                     "beat_id": int(beat.id),
                     "beat_type": beat.beat_type,
                     "speaker_name": meta.get("speaker_name"),
+                    "characters_involved": characters_involved,
+                    # Preserve dialogue metadata so downstream storyboard prompts can
+                    # distinguish spoken lines vs inner monologue/read-text.
+                    "dialogue_action": meta.get("action")
+                    if beat.beat_type == "dialogue"
+                    else None,
+                    "dialogue_emotion": meta.get("emotion")
+                    if beat.beat_type == "dialogue"
+                    else None,
                     "text": text,
                     "start_ms": offset_ms + start_ms_int,
                     "end_ms": offset_ms + end_ms_int,
@@ -826,6 +844,16 @@ async def generate_scene_dialogue_audio(
     stage = sanitize_stage_directions_for_audio(
         stage, alias_to_canonical=alias_to_canonical
     )
+    scene_character_names: list[str] = []
+    for dlg in dialogues or []:
+        if not isinstance(dlg, dict):
+            continue
+        name = (dlg.get("character") or "").strip()
+        if not name or name == "旁白":
+            continue
+        if name in scene_character_names:
+            continue
+        scene_character_names.append(name)
 
     # Use single temp directory for all phases (TTS generation + assembly)
     with tempfile.TemporaryDirectory(prefix="scene-audio-") as tmp_root:
@@ -1246,6 +1274,7 @@ async def generate_scene_dialogue_audio(
                 order_index=idx,
                 beat_type=beat.get("beat_type"),
                 beat_summary=beat.get("beat_summary"),
+                characters_involved=scene_character_names or None,
                 dialogue_excerpt=beat.get("dialogue_excerpt"),
                 duration_seconds=round(dur_ms / 1000.0, 3),
                 extra_metadata=meta,
@@ -1440,6 +1469,10 @@ def build_storyboard_frames_from_audio_timeline(
     audio_timeline: dict[str, Any],
     min_pause_duration_ms: int = 1500,
 ) -> list[dict[str, Any]]:
+    from app.services.storyboard.storyboard_audio_prompt_builder import (
+        build_visual_prompt_description,
+    )
+
     beats = audio_timeline.get("beats") if isinstance(audio_timeline, dict) else None
     if not isinstance(beats, list):
         raise RuntimeError("audio_timeline_missing_beats")
@@ -1454,6 +1487,13 @@ def build_storyboard_frames_from_audio_timeline(
         beat_type = beat.get("beat_type")
         if beat_type not in {"dialogue", "action", "pause"}:
             continue
+
+        characters_involved: list[str] = []
+        raw_chars = beat.get("characters_involved")
+        if isinstance(raw_chars, list):
+            characters_involved = [
+                str(item).strip() for item in raw_chars if str(item).strip()
+            ]
 
         start_ms = beat.get("start_ms")
         end_ms = beat.get("end_ms")
@@ -1525,6 +1565,16 @@ def build_storyboard_frames_from_audio_timeline(
                         else None
                     ),
                     "description": "（停顿）",
+                    "beat_type": "pause",
+                    "speaker_name": None,
+                    "beat_text": None,
+                    "characters": characters_involved[:5] if characters_involved else [],
+                    "prompt_description": build_visual_prompt_description(
+                        beat_type="pause",
+                        speaker_name=None,
+                        text=None,
+                        dialogue_action=None,
+                    ),
                     "duration_seconds": round(duration_ms / 1000.0, 3),
                     "generation_source": "audio_timeline",
                     "generation_method": "audio_timeline",
@@ -1538,7 +1588,13 @@ def build_storyboard_frames_from_audio_timeline(
         speaker = (
             (beat.get("speaker_name") or "旁白") if beat_type == "dialogue" else None
         )
+        dialogue_action = (
+            beat.get("dialogue_action") if beat_type == "dialogue" else None
+        )
         text = (beat.get("text") or "").strip()
+        if beat_type == "dialogue" and speaker:
+            if speaker not in characters_involved:
+                characters_involved.insert(0, speaker)
         if beat_type == "dialogue":
             description = f"{speaker}: {text}".strip() if text else str(speaker)
         elif beat_type == "pause":
@@ -1557,6 +1613,16 @@ def build_storyboard_frames_from_audio_timeline(
                     else None
                 ),
                 "description": description,
+                "beat_type": beat_type,
+                "speaker_name": speaker,
+                "beat_text": text or None,
+                "characters": characters_involved[:5] if characters_involved else [],
+                "prompt_description": build_visual_prompt_description(
+                    beat_type=str(beat_type),
+                    speaker_name=speaker,
+                    text=text,
+                    dialogue_action=dialogue_action,
+                ),
                 "duration_seconds": round(duration_ms / 1000.0, 3),
                 "generation_source": "audio_timeline",
                 "generation_method": "audio_timeline",

@@ -32,6 +32,7 @@ def submit_provider_task(
     prompt: Optional[str],
     start_url: Optional[str],
     end_url: Optional[str],
+    reference_images: Optional[list[Any]] = None,
     duration: int,
     opts: Dict[str, Any],
 ) -> Any:
@@ -39,6 +40,7 @@ def submit_provider_task(
         "prompt": prompt,
         "image_url": start_url,
         "end_image_url": end_url,
+        "reference_images": reference_images,
         "model": opts.get("model"),
         "prefer_provider": None,
         "duration": duration,

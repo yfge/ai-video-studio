@@ -192,15 +192,25 @@ def apply_storyboard_prompt_optimizations(frames: Iterable[Dict[str, Any]]) -> N
 
         _ensure_camera_fields(frame, index)
 
-        description = normalize_storyboard_text(
+        # Keep `description` as display-friendly text, but allow an explicit
+        # `prompt_description` (visual-only) to drive downstream ai_prompt.
+        display_description = normalize_storyboard_text(
             str(frame.get("description") or frame.get("ai_prompt") or "")
         )
-        if description:
-            frame["description"] = _truncate(description, 200)
+        if display_description:
+            frame["description"] = _truncate(display_description, 200)
 
         transition = resolve_transition_data(prev_frame, frame)
+        prompt_description = normalize_storyboard_text(
+            str(
+                frame.get("prompt_description")
+                or frame.get("description")
+                or frame.get("ai_prompt")
+                or ""
+            )
+        )
         prompt_text = render_storyboard_shot_prompt(
-            description=frame.get("description") or "",
+            description=prompt_description or (frame.get("description") or ""),
             frame=frame,
             transition=transition,
         )

@@ -175,6 +175,7 @@ def build_parameters_payload(
     prompt: Optional[str],
     start_url: Optional[str],
     end_url: Optional[str],
+    reference_images: List[str] | None,
     duration: int,
     opts: Dict[str, Any],
     *,
@@ -185,6 +186,7 @@ def build_parameters_payload(
         "prompt": prompt,
         "image_url": start_url,
         "end_image_url": end_url,
+        "reference_images": reference_images[:3] if reference_images else None,
         "duration": duration,
         "provider_duration_seconds": provider_duration_seconds,
         "target_duration_seconds": target_duration_seconds,
@@ -204,4 +206,6 @@ def build_parameters_payload(
         payload.pop("provider_duration_seconds", None)
     if payload.get("target_duration_seconds") is None:
         payload.pop("target_duration_seconds", None)
+    if payload.get("reference_images") is None:
+        payload.pop("reference_images", None)
     return payload

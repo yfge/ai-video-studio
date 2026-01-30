@@ -62,6 +62,15 @@ class PromptTemplate(Enum):
     STORYBOARD_KEYFRAME = "storyboard_keyframe"  # 分镜关键帧提示
     STORYBOARD_IMAGE_PROMPT = "storyboard_image_prompt"  # 分镜图像提示组装
     STORYBOARD_IMAGE_FALLBACK = "storyboard_image_fallback"  # 分镜图像缺省提示
+    STORYBOARD_AUDIO_VISUAL_DIALOGUE_SPOKEN = "storyboard_audio_visual_dialogue_spoken"
+    STORYBOARD_AUDIO_VISUAL_DIALOGUE_VOICEOVER = (
+        "storyboard_audio_visual_dialogue_voiceover"
+    )
+    STORYBOARD_AUDIO_VISUAL_DIALOGUE_READ_TEXT = (
+        "storyboard_audio_visual_dialogue_read_text"
+    )
+    STORYBOARD_AUDIO_VISUAL_ACTION = "storyboard_audio_visual_action"
+    STORYBOARD_AUDIO_VISUAL_PAUSE = "storyboard_audio_visual_pause"
 
     # 图像相关
     IMAGE_GENERATION = "image_generation"
@@ -176,6 +185,11 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.STORYBOARD_KEYFRAME: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_IMAGE_PROMPT: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_IMAGE_FALLBACK: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_AUDIO_VISUAL_DIALOGUE_SPOKEN: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_AUDIO_VISUAL_DIALOGUE_VOICEOVER: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_AUDIO_VISUAL_DIALOGUE_READ_TEXT: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_AUDIO_VISUAL_ACTION: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_AUDIO_VISUAL_PAUSE: PromptCategory.SCRIPT,
     PromptTemplate.IMAGE_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.PORTRAIT_GENERATION: PromptCategory.IMAGE,
     PromptTemplate.SCENE_IMAGE: PromptCategory.IMAGE,

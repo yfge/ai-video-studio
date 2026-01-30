@@ -49,3 +49,37 @@ def test_storyboard_scene_template_forbids_on_screen_text():
 
     assert "不要包含任何“画面中出现的文字内容”" in prompt
     assert "无可读文字" in prompt
+
+
+def test_storyboard_audio_visual_prompt_templates_exist():
+    prompt = prompt_manager.render_prompt(
+        "storyboard_audio_visual_dialogue_spoken",
+        {"speaker": "林晚", "intent": "质问/指控"},
+    )
+    assert "林晚" in prompt
+    assert "无字幕" in prompt
+
+    prompt = prompt_manager.render_prompt(
+        "storyboard_audio_visual_dialogue_voiceover",
+        {"speaker": "林晚", "intent": None},
+    )
+    assert "林晚" in prompt
+    assert "旁白" in prompt or "内心独白" in prompt
+
+    prompt = prompt_manager.render_prompt(
+        "storyboard_audio_visual_dialogue_read_text",
+        {"speaker": "林晚"},
+    )
+    assert "屏幕文字模糊不可读" in prompt
+    assert "无字幕" in prompt
+
+    prompt = prompt_manager.render_prompt(
+        "storyboard_audio_visual_action",
+        {"action": "她猛地把文件拍在桌上，怒视对方"},
+    )
+    assert "拍在桌上" in prompt
+    assert "无字幕" in prompt
+
+    prompt = prompt_manager.render_prompt("storyboard_audio_visual_pause", {})
+    assert "停顿" in prompt
+    assert "无字幕" in prompt

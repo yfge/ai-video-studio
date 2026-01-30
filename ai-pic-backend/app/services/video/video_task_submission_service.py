@@ -20,6 +20,7 @@ from app.services.video.video_task_submission_helpers import (
     submit_provider_task,
 )
 from app.services.video.video_task_utils import (
+    abs_url,
     build_parameters_payload,
     build_selection_map,
     coerce_duration,
@@ -118,12 +119,21 @@ class VideoTaskSubmissionService:
         prompt_value = resolve_prompt(frame, opts.get("prompt"))
         target_duration_seconds = resolve_target_duration_seconds(frame, opts)
         request_duration_seconds = coerce_duration(target_duration_seconds)
+        reference_images: list[str] | None = None
+        raw_refs = frame.get("reference_images")
+        if isinstance(raw_refs, list):
+            reference_images = [
+                abs_url(str(item))
+                for item in raw_refs
+                if isinstance(item, str) and item.strip()
+            ] or None
 
         response = submit_provider_task(
             self.dispatcher,
             prompt=prompt_value,
             start_url=start_url,
             end_url=end_url,
+            reference_images=reference_images,
             duration=request_duration_seconds,
             opts=opts,
         )
@@ -147,6 +157,7 @@ class VideoTaskSubmissionService:
             prompt=prompt_value,
             start_url=start_url,
             end_url=end_url,
+            reference_images=reference_images,
             target_duration_seconds=target_duration_seconds,
             provider_duration_seconds=provider_duration_seconds,
             opts=opts,
@@ -163,6 +174,7 @@ class VideoTaskSubmissionService:
         prompt: Optional[str],
         start_url: Optional[str],
         end_url: Optional[str],
+        reference_images: list[str] | None,
         target_duration_seconds: float,
         provider_duration_seconds: int,
         opts: Dict[str, Any],
@@ -172,6 +184,7 @@ class VideoTaskSubmissionService:
             prompt,
             start_url,
             end_url,
+            reference_images,
             provider_duration_seconds,
             opts,
             target_duration_seconds=round(float(target_duration_seconds), 3),

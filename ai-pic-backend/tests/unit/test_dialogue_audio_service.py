@@ -224,3 +224,60 @@ def test_build_storyboard_frames_from_audio_timeline_merges_short_pauses() -> No
     )
     assert [f["start_ms"] for f in frames] == [0, 2000, 3500]
     assert [f["end_ms"] for f in frames] == [2000, 3500, 6000]
+
+
+def test_audio_timeline_storyboard_ai_prompt_does_not_leak_dialogue_text() -> None:
+    """Dialogue text can be shown in UI via `description`, but must not leak into ai_prompt."""
+    from app.services.storyboard.storyboard_prompt_utils import (
+        apply_storyboard_prompt_optimizations,
+    )
+
+    audio_timeline = {
+        "beats": [
+            {
+                "scene_id": 1,
+                "scene_number": 1,
+                "beat_id": 11,
+                "beat_type": "dialogue",
+                "speaker_name": "林晚",
+                "text": "你给我解释清楚！",
+                "start_ms": 0,
+                "end_ms": 1000,
+            }
+        ]
+    }
+
+    frames = build_storyboard_frames_from_audio_timeline(audio_timeline=audio_timeline)
+    apply_storyboard_prompt_optimizations(frames)
+
+    assert "你给我解释清楚" in frames[0]["description"]
+    assert "你给我解释清楚" not in (frames[0].get("ai_prompt") or "")
+    assert "开口说话" in (frames[0].get("ai_prompt") or "")
+    assert "无字幕" in (frames[0].get("ai_prompt") or "")
+
+
+def test_audio_timeline_storyboard_prompt_description_blurs_readable_text() -> None:
+    from app.services.storyboard.storyboard_prompt_utils import (
+        apply_storyboard_prompt_optimizations,
+    )
+
+    audio_timeline = {
+        "beats": [
+            {
+                "scene_id": 1,
+                "scene_number": 1,
+                "beat_id": 11,
+                "beat_type": "dialogue",
+                "speaker_name": "林晚",
+                "text": "离婚协议.pdf 你到底想干什么？",
+                "start_ms": 0,
+                "end_ms": 1000,
+            }
+        ]
+    }
+
+    frames = build_storyboard_frames_from_audio_timeline(audio_timeline=audio_timeline)
+    apply_storyboard_prompt_optimizations(frames)
+
+    assert "屏幕文字模糊不可读" in (frames[0].get("ai_prompt") or "")
+    assert ".pdf" not in (frames[0].get("ai_prompt") or "").lower()
