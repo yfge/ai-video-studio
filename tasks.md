@@ -54,8 +54,8 @@
 
 #### Phase 2: 分镜生成分段/合并（P1）
 
-- [ ] 后端：从 audio_timeline 生成 storyboard 时，按 `max_allowed_duration_seconds` 在 beat 边界拆分长镜头；短于 `min_allowed` 的 pause/action 允许合并相邻 beat
-- [ ] 后端：为拆分/合并后的 frame 写入 stable linkage（如 `parent_frame_id` / `beat_range` / `split_index`）便于回溯与 UI 展示
+- [x] 后端：从 audio_timeline 生成 storyboard 时，按 `max_allowed_duration_seconds` 在 beat 边界拆分长镜头；短于 `min_allowed` 的 pause/action 允许合并相邻 beat
+- [x] 后端：为拆分/合并后的 frame 写入 stable linkage（如 `parent_frame_id` / `beat_range` / `split_index`）便于回溯与 UI 展示
 - [ ] 验证：构造 1 个 >8s 的长段（如 12s），确认被拆为 2 段且最终拼接后总时长与原轴一致
 
 ## Chore: 工具链升级

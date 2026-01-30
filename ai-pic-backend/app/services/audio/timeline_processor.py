@@ -7,12 +7,17 @@ storyboard frames from audio timeline data.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Sequence
 from uuid import uuid4
 
 from app.models.script import Episode, Script
 from app.models.story_structure import Scene, SceneBeat
+from app.services.storyboard.frame_duration_splitter import (
+    DEFAULT_MAX_DURATION_SECONDS,
+    DEFAULT_MIN_DURATION_SECONDS,
+    adjust_frame_durations,
+)
 from app.services.storyboard.storyboard_prompt_utils import (
     apply_storyboard_prompt_optimizations,
 )
@@ -21,7 +26,7 @@ from sqlalchemy.orm import Session
 
 def utc_now_iso() -> str:
     """Get current UTC time in ISO format."""
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def build_episode_timeline_beats(
@@ -264,6 +269,9 @@ def generate_storyboard_from_episode_audio_timeline(
     episode: Episode,
     overwrite_existing: bool = False,
     min_pause_duration_ms: int = 1500,
+    max_frame_duration_seconds: float = DEFAULT_MAX_DURATION_SECONDS,
+    min_frame_duration_seconds: float = DEFAULT_MIN_DURATION_SECONDS,
+    adjust_durations: bool = True,
 ) -> dict[str, Any]:
     """
     Generate storyboard frames from episode audio timeline.
@@ -276,6 +284,9 @@ def generate_storyboard_from_episode_audio_timeline(
         episode: Episode with audio timeline.
         overwrite_existing: Whether to overwrite existing storyboard.
         min_pause_duration_ms: Minimum pause duration for separate frames.
+        max_frame_duration_seconds: Maximum frame duration (splits longer frames).
+        min_frame_duration_seconds: Minimum frame duration (merges shorter frames).
+        adjust_durations: Whether to apply frame duration splitting/merging.
 
     Returns:
         Dictionary with frames and metadata.
@@ -293,6 +304,18 @@ def generate_storyboard_from_episode_audio_timeline(
         audio_timeline=audio_timeline,
         min_pause_duration_ms=min_pause_duration_ms,
     )
+
+    # Adjust frame durations: merge short frames, split long frames
+    duration_audit = None
+    if adjust_durations and frames:
+        result = adjust_frame_durations(
+            frames,
+            max_duration_seconds=max_frame_duration_seconds,
+            min_duration_seconds=min_frame_duration_seconds,
+        )
+        frames = result.frames
+        duration_audit = result.to_dict()
+
     apply_storyboard_prompt_optimizations(frames)
     if not frames:
         raise RuntimeError("no_frames_generated_from_audio_timeline")
@@ -332,9 +355,11 @@ def generate_storyboard_from_episode_audio_timeline(
             "version"
         ),
     }
+    if duration_audit:
+        sb_meta["duration_adjustment"] = duration_audit
     extra["storyboard"] = {"frames": frames, "meta": sb_meta}
     script.extra_metadata = extra
-    script.storyboard_updated_at = datetime.utcnow()
+    script.storyboard_updated_at = datetime.now(timezone.utc)
     script.storyboard_version = (script.storyboard_version or 0) + 1
     db.add(script)
     db.commit()
