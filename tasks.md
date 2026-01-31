@@ -56,10 +56,10 @@
 
 - [x] 后端：从 audio_timeline 生成 storyboard 时，按 `max_allowed_duration_seconds` 在 beat 边界拆分长镜头；短于 `min_allowed` 的 pause/action 允许合并相邻 beat
 - [x] 后端：为拆分/合并后的 frame 写入 stable linkage（如 `parent_frame_id` / `beat_range` / `split_index`）便于回溯与 UI 展示
-- [ ] 前端：分镜帧卡片展示拆分标识（如"第 2/3 段"或"（续）"徽章），点击可跳转/高亮父帧
-- [ ] 前端：分镜帧详情展示 `beat_range` 时间范围与 `parent_frame_id` 溯源链接
-- [ ] 前端：合并帧展示 `merged_beat_ids` 来源徽章（如"合并自 3 个 beat"）
-- [ ] 前端：分镜元信息面板展示 `duration_adjustment` 审计统计（拆分/合并次数）
+- [x] 前端：分镜帧卡片展示拆分标识（如"第 2/3 段"或"（续）"徽章），点击可跳转/高亮父帧
+- [x] 前端：分镜帧详情展示 `beat_range` 时间范围与 `parent_frame_id` 溯源链接
+- [x] 前端：合并帧展示 `merged_beat_ids` 来源徽章（如"合并自 3 个 beat"）
+- [x] 前端：分镜元信息面板展示 `duration_adjustment` 审计统计（拆分/合并次数）
 - [ ] 验证：构造 1 个 >8s 的长段（如 12s），确认被拆为 2 段且最终拼接后总时长与原轴一致
 
 ## Chore: 工具链升级
