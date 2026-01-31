@@ -2324,6 +2324,27 @@ export default function EpisodeStoryboardPage() {
             {storyboard.meta?.generation_model && (
               <span>模型：{storyboard.meta.generation_model}</span>
             )}
+            {storyboard.meta?.duration_adjustment && (
+              <span
+                className="text-blue-600"
+                title={
+                  storyboard.meta.duration_adjustment.audit_notes?.join("\n") ||
+                  ""
+                }
+              >
+                时长调整：
+                {storyboard.meta.duration_adjustment.splits_performed
+                  ? `拆分 ${storyboard.meta.duration_adjustment.splits_performed} 次`
+                  : ""}
+                {storyboard.meta.duration_adjustment.splits_performed &&
+                storyboard.meta.duration_adjustment.merges_performed
+                  ? "、"
+                  : ""}
+                {storyboard.meta.duration_adjustment.merges_performed
+                  ? `合并 ${storyboard.meta.duration_adjustment.merges_performed} 次`
+                  : ""}
+              </span>
+            )}
           </div>
           {(() => {
             const meta = storyboard.meta || {};
@@ -2714,11 +2735,35 @@ export default function EpisodeStoryboardPage() {
                     typeof videoDurationRaw === "number"
                       ? Math.round(videoDurationRaw)
                       : undefined;
+                  // Split/merge metadata
+                  const isSplitFrame =
+                    fr.parent_frame_id && fr.total_splits && fr.total_splits > 1;
+                  const isMergedFrame =
+                    Array.isArray(fr.merged_beat_ids) &&
+                    fr.merged_beat_ids.length > 1;
                   return (
                     <div key={idx} className="border rounded p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <div className="font-medium text-gray-900">
-                          帧 {fr.frame_number ?? absIndex + 1}
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900">
+                            帧 {fr.frame_number ?? absIndex + 1}
+                          </span>
+                          {isSplitFrame && (
+                            <span
+                              className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded"
+                              title={`父帧: ${fr.parent_frame_id}\n时间范围: ${fr.beat_range || "—"}`}
+                            >
+                              第 {(fr.split_index ?? 0) + 1}/{fr.total_splits} 段
+                            </span>
+                          )}
+                          {isMergedFrame && (
+                            <span
+                              className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
+                              title={`合并的 beat: ${fr.merged_beat_ids?.join(", ")}`}
+                            >
+                              合并自 {fr.merged_beat_ids?.length} 个 beat
+                            </span>
+                          )}
                         </div>
                         {fr.shot_type && (
                           <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
@@ -2733,6 +2778,16 @@ export default function EpisodeStoryboardPage() {
                           {String(timelineDurationSeconds ?? "—")}s
                         </div>
                       ) : null}
+                      {isSplitFrame && fr.beat_range && (
+                        <div className="mb-1 text-[11px] text-blue-500">
+                          原始 beat 范围: {fr.beat_range}ms
+                          {fr.parent_frame_id && (
+                            <span className="ml-2 text-gray-400">
+                              (父帧: {fr.parent_frame_id.slice(0, 8)}...)
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="text-xs text-gray-600 mb-1">
                         景别：
                         <select

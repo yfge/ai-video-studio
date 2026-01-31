@@ -69,7 +69,22 @@ export type StoryboardFrame = {
   status?: string;
   generated_at?: string;
   updated_at?: string;
+  // Split frame linkage (from frame_duration_splitter)
+  parent_frame_id?: string;
+  split_index?: number;
+  total_splits?: number;
+  beat_range?: string;
+  // Merged frame linkage
+  merged_beat_ids?: string[];
 } & Record<string, unknown>;
+
+// Duration adjustment audit info (from frame_duration_splitter)
+export type DurationAdjustmentAudit = {
+  frame_count?: number;
+  splits_performed?: number;
+  merges_performed?: number;
+  audit_notes?: string[];
+};
 
 // Storyboard metadata
 export type StoryboardMeta = {
@@ -80,6 +95,7 @@ export type StoryboardMeta = {
   generation_model?: string;
   provider?: string;
   scene_scope?: number[] | null;
+  duration_adjustment?: DurationAdjustmentAudit;
 } & Record<string, unknown>;
 
 // Storyboard plan frame
