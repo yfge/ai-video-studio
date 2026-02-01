@@ -93,6 +93,8 @@ def split_long_frames(
 
         # Create split segments
         cursor_ms = start_ms
+        segments_created = 0
+        absorbed_tiny_segment = False
         for i in range(num_segments):
             segment_start = cursor_ms
             segment_end = min(cursor_ms + max_ms, end_ms)
@@ -107,6 +109,14 @@ def split_long_frames(
                     prev["duration_seconds"] = round(
                         (segment_end - prev.get("start_ms", segment_start)) / 1000.0, 3
                     )
+                    # If only one segment was created and we absorbed the rest,
+                    # remove split metadata since it's not actually split
+                    if segments_created == 1:
+                        prev.pop("parent_frame_id", None)
+                        prev.pop("split_index", None)
+                        prev.pop("total_splits", None)
+                        prev.pop("beat_range", None)
+                        absorbed_tiny_segment = True
                 break
 
             split_frame = _create_split_frame(
@@ -120,8 +130,21 @@ def split_long_frames(
             )
             result_frames.append(split_frame)
             cursor_ms = segment_end
+            segments_created += 1
 
-        splits_performed += num_segments - 1  # Count additional frames created
+        # Only count as split if we actually created multiple segments
+        if segments_created > 1:
+            splits_performed += segments_created - 1
+            # Update total_splits to reflect actual segments created
+            for fr in result_frames[-segments_created:]:
+                fr["total_splits"] = segments_created
+        elif absorbed_tiny_segment:
+            # Update audit note to reflect absorption
+            if audit_notes and audit_notes[-1].startswith(f"Split frame {original_frame_id}"):
+                audit_notes[-1] = (
+                    f"Frame {original_frame_id} ({duration:.1f}s) kept as single frame "
+                    f"(remainder too short to split)"
+                )
 
     # Renumber frames
     for i, frame in enumerate(result_frames, start=1):
