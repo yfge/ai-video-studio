@@ -2755,9 +2755,10 @@ export default function EpisodeStoryboardPage() {
                     fr.parent_frame_id != null &&
                     totalSplits != null &&
                     totalSplits > 1;
-                  const isMergedFrame =
-                    Array.isArray(fr.merged_beat_ids) &&
-                    fr.merged_beat_ids.length > 1;
+                  const mergedBeatIds = Array.isArray(fr.merged_beat_ids)
+                    ? fr.merged_beat_ids.map(String)
+                    : null;
+                  const isMergedFrame = (mergedBeatIds?.length ?? 0) > 1;
                   return (
                     <div key={idx} className="border rounded p-3">
                       <div className="flex items-center justify-between mb-1">
@@ -2776,9 +2777,9 @@ export default function EpisodeStoryboardPage() {
                           {isMergedFrame && (
                             <span
                               className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
-                              title={`合并的 beat: ${fr.merged_beat_ids?.join(", ")}`}
+                              title={`合并的 beat: ${mergedBeatIds ? mergedBeatIds.join(", ") : "—"}`}
                             >
-                              合并自 {fr.merged_beat_ids?.length} 个 beat
+                              合并自 {mergedBeatIds ? mergedBeatIds.length : 0} 个 beat
                             </span>
                           )}
                         </div>
