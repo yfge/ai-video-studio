@@ -2749,8 +2749,12 @@ export default function EpisodeStoryboardPage() {
                       ? Math.round(videoDurationRaw)
                       : undefined;
                   // Split/merge metadata
+                  const totalSplits = parseNumber(fr.total_splits);
+                  const splitIndex = parseNumber(fr.split_index);
                   const isSplitFrame =
-                    fr.parent_frame_id && fr.total_splits && fr.total_splits > 1;
+                    fr.parent_frame_id != null &&
+                    totalSplits != null &&
+                    totalSplits > 1;
                   const isMergedFrame =
                     Array.isArray(fr.merged_beat_ids) &&
                     fr.merged_beat_ids.length > 1;
@@ -2766,7 +2770,7 @@ export default function EpisodeStoryboardPage() {
                               className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded"
                               title={`父帧: ${fr.parent_frame_id}\n时间范围: ${fr.beat_range || "—"}`}
                             >
-                              第 {(fr.split_index ?? 0) + 1}/{fr.total_splits} 段
+                              第 {(splitIndex ?? 0) + 1}/{totalSplits} 段
                             </span>
                           )}
                           {isMergedFrame && (
