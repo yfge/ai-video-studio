@@ -136,7 +136,7 @@
 - [x] 验证：Chrome E2E（deepseek 文生文/剧集/剧本；google 文生图；google 文生视频）
 - [x] 验证：新增 schema 与 prompt 单元测试，覆盖 hook 计划/评分结构（tests/unit/services/scoring/ 21 tests）
 - [x] 验证：E2E 路径（选择微类型→生成故事/剧集/剧本→投流表→分镜/时间线标注），Chrome 记录验证
-- [ ] 验证：短剧全流程 E2E（IP→环境→故事→剧本→分镜图→分镜视频），逐张下载抽检并在 `agent_chats` 记录
+- [x] 验证：短剧全流程 E2E（IP→环境→故事→剧本→分镜图→分镜视频），Chrome MCP 验证完成，详见 `agent_chats/2026/02/02/`
 
 ## Feature: 故事/剧集生成质量闭环（严格校验 + 上下文 + 就绪检查）🔥
 
