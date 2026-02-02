@@ -10,6 +10,7 @@ import {
   AdditionalInfoSection,
   EpisodeGeneratePanel,
   EpisodeListSection,
+  StoryReadinessPanel,
 } from "@/components/features";
 import { useStoryDetail } from "@/hooks/useStoryDetail";
 
@@ -51,6 +52,14 @@ export default function StoryDetailPage() {
     toggleFocusCharacter,
     navigateToStories,
     navigateToEpisode,
+    // Readiness check
+    readiness,
+    readinessLoading,
+    readinessError,
+    quickFixLoading,
+    canGenerate,
+    checkReadiness,
+    runQuickFix,
     // Removed: navigateToStoryboard, navigateToScript - unified workspace entry
   } = state;
 
@@ -107,6 +116,7 @@ export default function StoryDetailPage() {
           promptPreview={promptPreview}
           onPreviewPrompt={handlePreviewPrompt}
           onGenerate={handleGenerateEpisodes}
+          canGenerate={canGenerate}
           contextPackPreviewProps={{
             includeContinuityLedger,
             setIncludeContinuityLedger,
@@ -119,6 +129,18 @@ export default function StoryDetailPage() {
             contextPackError,
             onPreviewContextPack: handlePreviewContextPack,
           }}
+          readinessPanel={
+            genOpen ? (
+              <StoryReadinessPanel
+                readiness={readiness}
+                loading={readinessLoading}
+                error={readinessError}
+                quickFixLoading={quickFixLoading}
+                onRefreshReadiness={checkReadiness}
+                onQuickFix={runQuickFix}
+              />
+            ) : null
+          }
         />
 
         <EpisodeListSection

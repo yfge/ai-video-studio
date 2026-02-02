@@ -7,6 +7,9 @@ import type {
   Story,
   StoryCharacter,
   StoryGenerationRequest,
+  ReadinessResult,
+  QuickFixRequest,
+  QuickFixResponse,
 } from "../types/story.types";
 import type { ApiResponse } from "../types/common.types";
 
@@ -136,6 +139,48 @@ export async function getStoryGenres(): Promise<
 }
 
 /**
+ * Check story readiness for episode generation.
+ */
+export async function checkStoryReadiness(
+  storyIdOrBiz: number | string,
+): Promise<ApiResponse<ReadinessResult>> {
+  return httpClient<ReadinessResult>(storyPath(storyIdOrBiz, "/readiness-check"), {
+    method: "POST",
+  });
+}
+
+/**
+ * Check episode readiness for script generation.
+ */
+export async function checkEpisodeReadiness(
+  storyIdOrBiz: number | string,
+  episodeIdOrBiz: number | string,
+): Promise<ApiResponse<ReadinessResult>> {
+  const storyBase = isBusinessIdentifier(storyIdOrBiz)
+    ? `/api/v1/stories/business/${storyIdOrBiz}`
+    : `/api/v1/stories/${storyIdOrBiz}`;
+  const episodeSuffix = isBusinessIdentifier(episodeIdOrBiz)
+    ? `/episodes/business/${episodeIdOrBiz}/readiness-check`
+    : `/episodes/${episodeIdOrBiz}/readiness-check`;
+  return httpClient<ReadinessResult>(`${storyBase}${episodeSuffix}`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Auto-fix missing story fields using AI generation.
+ */
+export async function quickFixStory(
+  storyIdOrBiz: number | string,
+  request?: QuickFixRequest,
+): Promise<ApiResponse<QuickFixResponse>> {
+  return httpClient<QuickFixResponse>(storyPath(storyIdOrBiz, "/quick-fix"), {
+    method: "POST",
+    body: JSON.stringify(request || {}),
+  });
+}
+
+/**
  * Story API namespace.
  */
 export const storyAPI = {
@@ -148,4 +193,7 @@ export const storyAPI = {
   deleteStory,
   getStoryCharacters,
   getStoryGenres,
+  checkStoryReadiness,
+  checkEpisodeReadiness,
+  quickFixStory,
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { VirtualIP } from "@/utils/api";
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import type { EpisodeGenForm } from "@/hooks/useStoryDetail";
@@ -21,7 +22,9 @@ interface EpisodeGeneratePanelProps {
   promptPreview: string;
   onPreviewPrompt: () => void;
   onGenerate: () => void;
+  canGenerate?: boolean;
   contextPackPreviewProps: EpisodeContextPackPreviewProps;
+  readinessPanel?: ReactNode;
 }
 
 export function EpisodeGeneratePanel({
@@ -37,7 +40,9 @@ export function EpisodeGeneratePanel({
   promptPreview,
   onPreviewPrompt,
   onGenerate,
+  canGenerate = true,
   contextPackPreviewProps,
+  readinessPanel,
 }: EpisodeGeneratePanelProps) {
   return (
     <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -52,6 +57,9 @@ export function EpisodeGeneratePanel({
       </div>
       {genOpen && (
         <div className="mt-4 space-y-4">
+          {/* Readiness check panel */}
+          {readinessPanel}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -228,7 +236,13 @@ export function EpisodeGeneratePanel({
             <button
               type="button"
               onClick={onGenerate}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              disabled={!canGenerate}
+              className={`px-4 py-2 rounded ${
+                canGenerate
+                  ? "bg-green-600 text-white hover:bg-green-700"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
+              title={!canGenerate ? "请先修复就绪检查中的严重问题" : undefined}
             >
               开始生成
             </button>

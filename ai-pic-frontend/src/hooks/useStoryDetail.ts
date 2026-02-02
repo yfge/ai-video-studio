@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { storyAPI, episodeAPI, scriptAPI } from "@/utils/api";
 import type { Story, Episode, Script } from "@/utils/api";
 import { useStoryEpisodeGeneration } from "@/hooks/useStoryEpisodeGeneration";
+import { useStoryReadiness } from "@/hooks/useStoryReadiness";
 
 export interface UseStoryDetailOptions {
   storyKey: string;
@@ -75,6 +76,20 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
     onRefreshAfterSync: loadData,
   });
 
+  // Readiness check integration
+  const readinessHook = useStoryReadiness({
+    storyId: story?.business_id || story?.id || null,
+    showAlert,
+    onStoryUpdated: loadData,
+  });
+
+  // Auto-check readiness when episode generation panel is opened
+  useEffect(() => {
+    if (episodeGeneration.genOpen && story && !readinessHook.readiness && !readinessHook.readinessLoading) {
+      readinessHook.checkReadiness();
+    }
+  }, [episodeGeneration.genOpen, story, readinessHook]);
+
   const navigateToStories = () => router.push("/stories");
   const navigateToEpisode = (businessIdOrId: string | number) =>
     router.push(`/episodes/${businessIdOrId}/workspace`);
@@ -93,6 +108,15 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
     showPrompt,
     setShowPrompt,
     ...episodeGeneration,
+    // Readiness check
+    readiness: readinessHook.readiness,
+    readinessLoading: readinessHook.readinessLoading,
+    readinessError: readinessHook.readinessError,
+    quickFixLoading: readinessHook.quickFixLoading,
+    canGenerate: readinessHook.canGenerate,
+    checkReadiness: readinessHook.checkReadiness,
+    runQuickFix: readinessHook.runQuickFix,
+    // Navigation
     navigateToStories,
     navigateToEpisode,
     navigateToStoryboard,

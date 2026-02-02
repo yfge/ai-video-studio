@@ -106,3 +106,62 @@ export interface EpisodeGenerationRequest {
   model?: string;
   temperature?: number;
 }
+
+// Readiness check types
+export type ReadinessSeverity = "CRITICAL" | "ERROR" | "WARNING" | "INFO";
+
+export interface ReadinessCheck {
+  name: string;
+  passed: boolean;
+  severity: ReadinessSeverity;
+  message: string;
+  suggestion?: string | null;
+}
+
+export interface ReadinessResult {
+  ready: boolean;
+  can_proceed: boolean;
+  story_id: number;
+  episode_id?: number | null;
+  checks: ReadinessCheck[];
+  summary: string;
+  critical_issues: ReadinessCheck[];
+  errors: ReadinessCheck[];
+  warnings: ReadinessCheck[];
+  info_issues: ReadinessCheck[];
+  failed_count: number;
+  passed_count: number;
+}
+
+// Quick-fix types
+export interface FixApplied {
+  check_name: string;
+  field: string;
+  old_value: string | null;
+  new_value: string;
+}
+
+export interface FixSkipped {
+  check_name: string;
+  reason: string;
+}
+
+export interface QuickFixImprovement {
+  initial_failed: number;
+  final_failed: number;
+  fixed_count: number;
+}
+
+export interface QuickFixRequest {
+  dry_run?: boolean;
+}
+
+export interface QuickFixResponse {
+  story_id: number;
+  dry_run: boolean;
+  fixes_applied: FixApplied[];
+  fixes_skipped: FixSkipped[];
+  initial_readiness: ReadinessResult;
+  final_readiness: ReadinessResult;
+  improvement: QuickFixImprovement;
+}
