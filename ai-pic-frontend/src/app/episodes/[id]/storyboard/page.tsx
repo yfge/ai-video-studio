@@ -2324,27 +2324,40 @@ export default function EpisodeStoryboardPage() {
             {storyboard.meta?.generation_model && (
               <span>模型：{storyboard.meta.generation_model}</span>
             )}
-            {storyboard.meta?.duration_adjustment && (
-              <span
-                className="text-blue-600"
-                title={
-                  storyboard.meta.duration_adjustment.audit_notes?.join("\n") ||
-                  ""
-                }
-              >
-                时长调整：
-                {storyboard.meta.duration_adjustment.splits_performed
-                  ? `拆分 ${storyboard.meta.duration_adjustment.splits_performed} 次`
-                  : ""}
-                {storyboard.meta.duration_adjustment.splits_performed &&
-                storyboard.meta.duration_adjustment.merges_performed
-                  ? "、"
-                  : ""}
-                {storyboard.meta.duration_adjustment.merges_performed
-                  ? `合并 ${storyboard.meta.duration_adjustment.merges_performed} 次`
-                  : ""}
-              </span>
-            )}
+            {(() => {
+              const durationAdjustment = storyboard.meta?.duration_adjustment as
+                | {
+                    audit_notes?: string[];
+                    splits_performed?: number;
+                    merges_performed?: number;
+                  }
+                | undefined;
+
+              if (!durationAdjustment) return null;
+
+              return (
+                <span
+                  className="text-blue-600"
+                  title={
+                    Array.isArray(durationAdjustment.audit_notes)
+                      ? durationAdjustment.audit_notes.join("\n")
+                      : ""
+                  }
+                >
+                  时长调整：
+                  {durationAdjustment.splits_performed
+                    ? `拆分 ${durationAdjustment.splits_performed} 次`
+                    : ""}
+                  {durationAdjustment.splits_performed &&
+                  durationAdjustment.merges_performed
+                    ? "、"
+                    : ""}
+                  {durationAdjustment.merges_performed
+                    ? `合并 ${durationAdjustment.merges_performed} 次`
+                    : ""}
+                </span>
+              );
+            })()}
           </div>
           {(() => {
             const meta = storyboard.meta || {};
