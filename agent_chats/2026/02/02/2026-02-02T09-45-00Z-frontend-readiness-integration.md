@@ -90,4 +90,4 @@ cd ai-pic-backend && pytest tests/unit/services/readiness/ tests/integration/tes
 
 ## Linked Commits
 
-- (pending commit)
+- 9837d8a feat(frontend): integrate readiness check and quick-fix into episode generation
