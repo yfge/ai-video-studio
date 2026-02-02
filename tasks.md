@@ -36,7 +36,7 @@
 - [x] 后端：audio_timeline → storyboard：注入 Story 角色卡简述 + 自动选取 reference_images（<=3：人物锚点+环境）并贯通 Veo 视频提交，提升角色一致性
 - [x] 后端：audio_timeline → storyboard：基于 scene 对白集合注入 characters 列表（提升多角色出镜一致性/避免漏人）
 - [x] 验证：抽检至少 2 个 dialogue beat：人物嘴型/说话动作明显，且无字幕/无可读文字（见 agent_chats/2026/01/30/2026-01-30T14-19-44Z-validate-dialogue-beats.md）
-- [ ] 后端：补齐 readiness 检查（复用下方 `Feature: 故事/剧集生成质量闭环` Phase 3），并输出可读 blocking issues + 一键修复建议
+- [x] 后端：补齐 readiness 检查 API（复用下方 `Feature: 故事/剧集生成质量闭环` Phase 3），输出可读 blocking issues + 建议修复项（一键修复待实现）
 - [ ] 后端：生成后逻辑校验：episode→script→timeline→storyboard 一致性检查（场景数/角色引用/时长/画幅）；报告写入 `Task.parameters.agent_run`
 - [x] 验证：全流程 E2E（deepseek 文生文；google banana pro 生图；google veo3 生视频）生成 1 个 Story、1 个 Episode、1 条时间轴/音轨/视频，并抽检图/视频与剧本逻辑一致（Chrome MCP Transport closed，改用 API/curl + 下载抽检，并在 agent_chats 记录）
 
@@ -168,11 +168,12 @@
 
 ### Phase 3: 生成前就绪检查（P0/P1）
 
-- [ ] 后端：Story→Episode readiness 检查（必填字段/长度阈值/角色存在与归属/marketing meta 完整性）；输出可读的 blocking issues + 建议修复项
-- [ ] 后端：新增 readiness/preview API（用于前端在生成前校验，并支持“一键补齐 story outline 再生成 episode”的流程）
+- [x] 后端：Story→Episode readiness 检查（必填字段/长度阈值/角色存在与归属/marketing meta 完整性）；输出可读的 blocking issues + 建议修复项
+- [x] 后端：新增 readiness/preview API（`POST /stories/{id}/readiness-check` 和 `POST /stories/{id}/episodes/{id}/readiness-check`）
+- [ ] 后端：支持"一键补齐 story outline 再生成 episode"的流程（待实现）
 - [ ] 前端：生成按钮前展示 readiness 结果；存在 blocking issues 时阻断生成，并提供一键修复/补齐入口
-- [ ] 测试：readiness 规则单测 + API 集成测试（阻断/允许/一键修复）
-- [ ] 验证：Chrome E2E 覆盖“story 缺字段被阻断→一键补齐→生成 episode 成功”的完整链路
+- [x] 测试：readiness 规则单测 + API 集成测试（27 unit + 13 integration tests）
+- [ ] 验证：Chrome E2E 覆盖"story 缺字段被阻断→一键补齐→生成 episode 成功"的完整链路
 
 ## Feature: Duration Orchestrator Agent（端到端时长闭环验证）🔥
 
