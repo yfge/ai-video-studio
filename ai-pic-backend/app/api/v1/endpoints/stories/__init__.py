@@ -8,6 +8,7 @@ Provides modular story endpoints split by concern:
 - novel: Long-form novel export
 - characters: Story character listing
 - meta: Static metadata endpoints
+- readiness: Pre-generation readiness checks
 """
 
 from app.services.ai_service import ai_service
@@ -21,6 +22,7 @@ from .generation import router as generation_router
 from .meta import router as meta_router
 from .novel import process_story_novel_export_task
 from .novel import router as novel_router
+from .readiness import router as readiness_router
 
 router = APIRouter()
 
@@ -31,6 +33,7 @@ for sub_router in [
     novel_router,
     characters_router,
     meta_router,
+    readiness_router,
 ]:
     for route in sub_router.routes:
         router.routes.append(route)
