@@ -1545,6 +1545,34 @@ class ApiClient {
     );
   }
 
+  async checkStoryReadiness(storyIdOrBiz: number | string) {
+    return this.request(this.storyPath(storyIdOrBiz, "/readiness-check"), {
+      method: "POST",
+    });
+  }
+
+  async checkEpisodeReadiness(
+    storyIdOrBiz: number | string,
+    episodeIdOrBiz: number | string,
+  ) {
+    const episodeSuffix = this.isBusinessIdentifier(episodeIdOrBiz)
+      ? `/episodes/business/${episodeIdOrBiz}/readiness-check`
+      : `/episodes/${episodeIdOrBiz}/readiness-check`;
+    return this.request(this.storyPath(storyIdOrBiz, episodeSuffix), {
+      method: "POST",
+    });
+  }
+
+  async quickFixStory(
+    storyIdOrBiz: number | string,
+    request?: { dry_run?: boolean },
+  ) {
+    return this.request(this.storyPath(storyIdOrBiz, "/quick-fix"), {
+      method: "POST",
+      body: JSON.stringify(request || {}),
+    });
+  }
+
   // 环境资产管理
   async listEnvironments(): Promise<ApiResponse<Environment[]>> {
     return this.request("/api/v1/story-structure/environments");
@@ -2450,6 +2478,9 @@ export const storyAPI = {
   deleteStory: apiClient.deleteStory.bind(apiClient),
   getStoryCharacters: apiClient.getStoryCharacters.bind(apiClient),
   getStoryGenres: apiClient.getStoryGenres.bind(apiClient),
+  checkStoryReadiness: apiClient.checkStoryReadiness.bind(apiClient),
+  checkEpisodeReadiness: apiClient.checkEpisodeReadiness.bind(apiClient),
+  quickFixStory: apiClient.quickFixStory.bind(apiClient),
 };
 
 export const episodeAPI = {
