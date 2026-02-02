@@ -20,6 +20,8 @@ from app.services.readiness import (
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from .helpers import get_story_by_identifier
+
 router = APIRouter()
 
 
@@ -75,6 +77,18 @@ async def check_story_readiness(
     return checker.check(story)
 
 
+@router.post("/business/{story_business_id}/readiness-check", response_model=ReadinessResult)
+async def check_story_readiness_by_business_id(
+    story_business_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> ReadinessResult:
+    """Check story readiness by business_id."""
+    story = get_story_by_identifier(db, None, story_business_id, current_user)
+    checker = StoryReadinessChecker(db)
+    return checker.check(story)
+
+
 @router.post(
     "/{story_id}/episodes/{episode_id}/readiness-check",
     response_model=ReadinessResult,
@@ -123,5 +137,18 @@ async def quick_fix_story(
         QuickFixResponse with fixes applied, initial/final readiness, and improvement stats.
     """
     story = _get_story(story_id, db, current_user)
+    service = StoryQuickFixService(db)
+    return await service.fix_story(story, dry_run=request.dry_run)
+
+
+@router.post("/business/{story_business_id}/quick-fix", response_model=QuickFixResponse)
+async def quick_fix_story_by_business_id(
+    story_business_id: str,
+    request: QuickFixRequest = Body(default_factory=QuickFixRequest),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> QuickFixResponse:
+    """Auto-fix missing story fields by business_id."""
+    story = get_story_by_identifier(db, None, story_business_id, current_user)
     service = StoryQuickFixService(db)
     return await service.fix_story(story, dry_run=request.dry_run)
