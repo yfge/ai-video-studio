@@ -11,9 +11,13 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Story
 from app.models.user import User
-from app.schemas.readiness import ReadinessResult
-from app.services.readiness import EpisodeReadinessChecker, StoryReadinessChecker
-from fastapi import APIRouter, Depends, HTTPException
+from app.schemas.readiness import QuickFixRequest, QuickFixResponse, ReadinessResult
+from app.services.readiness import (
+    EpisodeReadinessChecker,
+    StoryQuickFixService,
+    StoryReadinessChecker,
+)
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -95,3 +99,29 @@ async def check_episode_readiness(
     episode = _get_episode(episode_id, story_id, db)
     checker = EpisodeReadinessChecker(db)
     return checker.check(story, episode)
+
+
+@router.post("/{story_id}/quick-fix", response_model=QuickFixResponse)
+async def quick_fix_story(
+    story_id: int,
+    request: QuickFixRequest = Body(default_factory=QuickFixRequest),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> QuickFixResponse:
+    """
+    Auto-fix missing story fields using AI generation.
+
+    Automatically fills in missing fields like:
+    - synopsis (if title/genre/premise are available)
+    - main_conflict (if synopsis/premise available)
+    - setting_time (based on genre/synopsis)
+    - world_building (based on genre/setting/synopsis)
+
+    Set dry_run=true to preview what would be fixed without applying changes.
+
+    Returns:
+        QuickFixResponse with fixes applied, initial/final readiness, and improvement stats.
+    """
+    story = _get_story(story_id, db, current_user)
+    service = StoryQuickFixService(db)
+    return await service.fix_story(story, dry_run=request.dry_run)

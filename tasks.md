@@ -170,9 +170,9 @@
 
 - [x] 后端：Story→Episode readiness 检查（必填字段/长度阈值/角色存在与归属/marketing meta 完整性）；输出可读的 blocking issues + 建议修复项
 - [x] 后端：新增 readiness/preview API（`POST /stories/{id}/readiness-check` 和 `POST /stories/{id}/episodes/{id}/readiness-check`）
-- [ ] 后端：支持"一键补齐 story outline 再生成 episode"的流程（待实现）
+- [x] 后端：一键补齐 API（`POST /stories/{id}/quick-fix`）自动生成缺失字段（synopsis/main_conflict/setting/world_building）
 - [ ] 前端：生成按钮前展示 readiness 结果；存在 blocking issues 时阻断生成，并提供一键修复/补齐入口
-- [x] 测试：readiness 规则单测 + API 集成测试（27 unit + 13 integration tests）
+- [x] 测试：readiness 规则单测 + API 集成测试（58 tests: 41 unit + 17 integration）
 - [ ] 验证：Chrome E2E 覆盖"story 缺字段被阻断→一键补齐→生成 episode 成功"的完整链路
 
 ## Feature: Duration Orchestrator Agent（端到端时长闭环验证）🔥

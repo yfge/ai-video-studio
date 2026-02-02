@@ -8,7 +8,7 @@ that validate all prerequisites before starting generation tasks.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -89,3 +89,57 @@ class ReadinessResult(BaseModel):
     def passed_count(self) -> int:
         """Count of all passed checks."""
         return sum(1 for c in self.checks if c.passed)
+
+
+class FixApplied(BaseModel):
+    """Record of a fix that was applied."""
+
+    check_name: str = Field(..., description="Name of the check that was fixed")
+    field: str = Field(..., description="Field that was updated")
+    old_value: Optional[Any] = Field(None, description="Previous value")
+    new_value: Any = Field(..., description="New value after fix")
+
+
+class FixSkipped(BaseModel):
+    """Record of a fix that was skipped."""
+
+    check_name: str = Field(..., description="Name of the check that was skipped")
+    reason: str = Field(..., description="Reason why fix was skipped")
+
+
+class QuickFixImprovement(BaseModel):
+    """Summary of improvement after quick-fix."""
+
+    initial_failed: int = Field(..., description="Failed checks before fix")
+    final_failed: int = Field(..., description="Failed checks after fix")
+    fixed_count: int = Field(..., description="Number of fixes applied")
+
+
+class QuickFixRequest(BaseModel):
+    """Request body for quick-fix endpoint."""
+
+    dry_run: bool = Field(
+        False, description="If true, only report what would be fixed without applying"
+    )
+
+
+class QuickFixResponse(BaseModel):
+    """Response from quick-fix endpoint."""
+
+    story_id: int = Field(..., description="ID of the story that was fixed")
+    dry_run: bool = Field(..., description="Whether this was a dry run")
+    fixes_applied: list[FixApplied] = Field(
+        default_factory=list, description="Fixes that were applied"
+    )
+    fixes_skipped: list[FixSkipped] = Field(
+        default_factory=list, description="Fixes that were skipped"
+    )
+    initial_readiness: ReadinessResult = Field(
+        ..., description="Readiness state before fixes"
+    )
+    final_readiness: ReadinessResult = Field(
+        ..., description="Readiness state after fixes"
+    )
+    improvement: QuickFixImprovement = Field(
+        ..., description="Summary of improvement"
+    )

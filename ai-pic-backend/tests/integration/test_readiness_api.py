@@ -328,3 +328,120 @@ class TestReadinessResultFormat:
 
         assert "summary" in data
         assert "critical" in data["summary"].lower() or "not ready" in data["summary"].lower()
+
+
+class TestQuickFixEndpoint:
+    """Tests for POST /stories/{story_id}/quick-fix."""
+
+    def test_quick_fix_dry_run(self, client, db_session, monkeypatch):
+        """Test quick-fix dry run mode."""
+        user = db_session.query(User).filter(User.username == "test_admin").first()
+        vip = _create_virtual_ip(db_session, user, has_image=True)
+        story = _create_story(
+            db_session,
+            user,
+            synopsis="",  # Missing synopsis
+            main_conflict="",  # Missing conflict
+            setting_time="",  # Missing setting
+        )
+        _create_story_character(db_session, story, vip)
+
+        # Mock AI generation
+        async def mock_generate_text(*args, **kwargs):
+            return "A" * 60  # Long enough for synopsis
+
+        from app.services.readiness import story_quick_fix
+        monkeypatch.setattr(
+            story_quick_fix.StoryQuickFixService,
+            "_generate_text",
+            mock_generate_text,
+        )
+
+        response = client.post(
+            f"/api/v1/stories/{story.id}/quick-fix",
+            json={"dry_run": True},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["dry_run"] is True
+        assert data["story_id"] == story.id
+        assert "fixes_applied" in data
+        assert "initial_readiness" in data
+        assert "final_readiness" in data
+        assert "improvement" in data
+
+    def test_quick_fix_applies_changes(self, client, db_session, monkeypatch):
+        """Test quick-fix applies changes when not dry run."""
+        user = db_session.query(User).filter(User.username == "test_admin").first()
+        vip = _create_virtual_ip(db_session, user, has_image=True)
+        story = _create_story(
+            db_session,
+            user,
+            synopsis="",
+            main_conflict="",
+            setting_time="",
+        )
+        _create_story_character(db_session, story, vip)
+
+        generated_synopsis = "A" * 60
+
+        async def mock_generate_text(self, prompt):
+            if "synopsis" in prompt.lower():
+                return generated_synopsis
+            elif "conflict" in prompt.lower():
+                return "Hero vs Villain conflict"
+            elif "setting" in prompt.lower():
+                return "Present day"
+            return "Generated content"
+
+        from app.services.readiness import story_quick_fix
+        monkeypatch.setattr(
+            story_quick_fix.StoryQuickFixService,
+            "_generate_text",
+            mock_generate_text,
+        )
+
+        response = client.post(
+            f"/api/v1/stories/{story.id}/quick-fix",
+            json={"dry_run": False},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["dry_run"] is False
+        assert len(data["fixes_applied"]) > 0
+
+        # Verify improvement
+        improvement = data["improvement"]
+        assert improvement["fixed_count"] > 0
+
+    def test_quick_fix_story_not_found(self, client, db_session):
+        """Test 404 for non-existent story."""
+        response = client.post("/api/v1/stories/99999/quick-fix")
+        assert response.status_code == 404
+
+    def test_quick_fix_no_fixes_needed(self, client, db_session):
+        """Test quick-fix when no fixes are needed."""
+        user = db_session.query(User).filter(User.username == "test_admin").first()
+        vip = _create_virtual_ip(db_session, user, has_image=True)
+        # Create story with all fields filled
+        story = _create_story(
+            db_session,
+            user,
+            synopsis="A" * 60,
+            main_conflict="Hero vs villain",
+            setting_time="Present day",
+        )
+        _create_story_character(db_session, story, vip)
+
+        response = client.post(f"/api/v1/stories/{story.id}/quick-fix")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should have few or no fixes needed
+        # (world_building might still be fixable)
+        assert data["improvement"]["fixed_count"] <= 1
