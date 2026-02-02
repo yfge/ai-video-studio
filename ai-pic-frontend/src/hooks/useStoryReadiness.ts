@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { storyAPI } from "@/utils/api";
+import { storyAPI } from "@/utils/api/endpoints";
 import type {
   ReadinessResult,
   QuickFixResponse,
