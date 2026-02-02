@@ -2751,6 +2751,7 @@ export default function EpisodeStoryboardPage() {
                   // Split/merge metadata
                   const totalSplits = parseNumber(fr.total_splits);
                   const splitIndex = parseNumber(fr.split_index);
+                  const beatRange = parseMs(fr.beat_range);
                   const isSplitFrame =
                     fr.parent_frame_id != null &&
                     totalSplits != null &&
@@ -2796,16 +2797,16 @@ export default function EpisodeStoryboardPage() {
                           {String(timelineDurationSeconds ?? "—")}s
                         </div>
                       ) : null}
-                      {isSplitFrame && fr.beat_range && (
+                      {isSplitFrame && beatRange != null ? (
                         <div className="mb-1 text-[11px] text-blue-500">
-                          原始 beat 范围: {fr.beat_range}ms
-                          {fr.parent_frame_id && (
+                          原始 beat 范围: {beatRange}ms
+                          {typeof fr.parent_frame_id === "string" ? (
                             <span className="ml-2 text-gray-400">
                               (父帧: {fr.parent_frame_id.slice(0, 8)}...)
                             </span>
-                          )}
+                          ) : null}
                         </div>
-                      )}
+                      ) : null}
                       <div className="text-xs text-gray-600 mb-1">
                         景别：
                         <select
