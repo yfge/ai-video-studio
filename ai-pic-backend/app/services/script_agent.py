@@ -33,6 +33,7 @@ from app.services.validators.scene_transition_validator import (
     SceneTransitionValidator,
     TransitionIssue,
 )
+from app.services.validators.script_quality_validator import ScriptQualityValidator
 from app.utils.json_utils import extract_json_block
 
 try:
@@ -59,6 +60,7 @@ class ScriptLangGraphAgent:
         self.service = service
         self.logger = get_logger()
         self._character_validator = CharacterConsistencyValidator()
+        self._quality_validator = ScriptQualityValidator()
 
     def _build_character_profiles(
         self, characters: List[Dict[str, Any]]
@@ -299,6 +301,41 @@ class ScriptLangGraphAgent:
             # Generate fix suggestions
             suggestions = validator.generate_fix_suggestions(issues)
             results["transition_fix_suggestions"] = suggestions
+
+        return results
+
+    def _validate_script_quality(
+        self,
+        content: Dict[str, Any],
+        story_characters: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Validate script quality including dialogue authenticity and narrative techniques.
+
+        Args:
+            content: Script content dict with scenes, dialogues, stage_directions
+            story_characters: List of character definitions
+
+        Returns:
+            Validation results dict with:
+            - script_quality_passed: bool
+            - script_quality_result: dict with scores and analysis
+            - script_quality_warnings: list of warning messages
+        """
+        results: Dict[str, Any] = {
+            "script_quality_passed": True,
+            "script_quality_result": {},
+            "script_quality_warnings": [],
+        }
+
+        quality_result = self._quality_validator.validate(content, story_characters)
+
+        results["script_quality_passed"] = quality_result.passed
+        results["script_quality_result"] = quality_result.to_dict()
+
+        for issue in quality_result.issues:
+            if issue.severity.value in ("error", "warning"):
+                results["script_quality_warnings"].append(issue.message)
 
         return results
 
@@ -1154,8 +1191,17 @@ class ScriptLangGraphAgent:
                 extra={"warnings": transition_validation["transition_warnings"]},
             )
 
+        # Run script quality validation (dialogue authenticity, show-don't-tell, etc.)
+        quality_validation = self._validate_script_quality(content, story_characters)
+        if quality_validation["script_quality_warnings"]:
+            self.logger.warning(
+                "Script quality validation warnings",
+                extra={"warnings": quality_validation["script_quality_warnings"]},
+            )
+
         # Merge validation results into result
         result.update(char_validation)
         result.update(info_gate_validation)
         result.update(transition_validation)
+        result.update(quality_validation)
         return result

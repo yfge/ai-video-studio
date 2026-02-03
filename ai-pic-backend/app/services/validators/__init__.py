@@ -36,6 +36,14 @@ from app.services.validators.scene_transition_validator import (
     TransitionIssueType,
     TransitionSeverity,
 )
+from app.services.validators.script_quality_validator import (
+    SceneEmotionalArc,
+    ScriptQualityIssue,
+    ScriptQualityIssueType,
+    ScriptQualityResult,
+    ScriptQualitySeverity,
+    ScriptQualityValidator,
+)
 from app.services.validators.story_quality_validator import (
     PacingAnalysis,
     StoryQualityIssue,
@@ -63,8 +71,14 @@ __all__ = [
     "InfoGateViolation",
     "InfoGateViolationType",
     "PacingAnalysis",
+    "SceneEmotionalArc",
     "SceneInfo",
     "SceneTransitionValidator",
+    "ScriptQualityIssue",
+    "ScriptQualityIssueType",
+    "ScriptQualityResult",
+    "ScriptQualitySeverity",
+    "ScriptQualityValidator",
     "StoryQualityIssue",
     "StoryQualityIssueType",
     "StoryQualityResult",
