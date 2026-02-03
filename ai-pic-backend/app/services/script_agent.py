@@ -25,6 +25,10 @@ from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
 )
+from app.services.validators.info_gate_validator import (
+    InfoGateValidator,
+    InfoGateViolation,
+)
 from app.utils.json_utils import extract_json_block
 
 try:
@@ -139,6 +143,95 @@ class ScriptLangGraphAgent:
                 "severity": "info",
                 "message": "All dialogue speakers are valid characters",
             })
+
+        return results
+
+    def _validate_info_gate(
+        self,
+        content: Dict[str, Any],
+        episode_number: int,
+        continuity_ledger: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Validate that dialogue doesn't reference unrevealed information.
+
+        Args:
+            content: Script content dict with dialogues
+            episode_number: Current episode number
+            continuity_ledger: Optional continuity ledger with revealed_info_timeline
+
+        Returns:
+            Validation results dict with:
+            - info_gate_validation_passed: bool
+            - info_gate_violations: list of violation dicts
+            - info_gate_warnings: list of warning messages
+        """
+        results: Dict[str, Any] = {
+            "info_gate_validation_passed": True,
+            "info_gate_violations": [],
+            "info_gate_warnings": [],
+        }
+
+        # Skip if no continuity ledger or no revealed info
+        if not continuity_ledger:
+            results["info_gate_warnings"].append("No continuity ledger provided")
+            return results
+
+        revealed_info = continuity_ledger.get("revealed_info_timeline", [])
+        if not revealed_info:
+            results["info_gate_warnings"].append("No revealed info timeline in ledger")
+            return results
+
+        # Import here to avoid circular dependency
+        from app.schemas.continuity import RevealedInfoItem
+
+        # Convert dict items to RevealedInfoItem objects
+        revealed_items = []
+        for item in revealed_info:
+            if isinstance(item, dict):
+                try:
+                    revealed_items.append(RevealedInfoItem(**item))
+                except Exception:
+                    continue
+            elif isinstance(item, RevealedInfoItem):
+                revealed_items.append(item)
+
+        if not revealed_items:
+            return results
+
+        # Create validator and register info
+        validator = InfoGateValidator()
+        validator.register_revealed_info(revealed_items)
+
+        # Build script content structure for validation
+        dialogues = content.get("dialogues", [])
+        scenes = content.get("scenes", [])
+
+        # Group dialogues by scene
+        script_content = {"scenes": []}
+        for scene in scenes:
+            scene_num = scene.get("scene_number", 0)
+            scene_dialogues = [
+                d for d in dialogues
+                if d.get("scene_number") == scene_num
+            ]
+            script_content["scenes"].append({
+                "scene_number": scene_num,
+                "dialogues": scene_dialogues,
+            })
+
+        # Run validation
+        violations = validator.validate_script_content(script_content, episode_number)
+
+        if violations:
+            results["info_gate_validation_passed"] = False
+            for v in violations:
+                results["info_gate_violations"].append(v.to_dict())
+                results["info_gate_warnings"].append(v.message)
+
+            # Generate fix suggestions
+            suggestions = validator.generate_fix_suggestions(violations)
+            results["info_gate_fix_suggestions"] = suggestions
 
         return results
 
@@ -336,6 +429,7 @@ class ScriptLangGraphAgent:
         scene_budgets: Optional[List[SceneBudget]] = None,
         duration_minutes: Optional[float] = None,
         enable_react_validation: bool = True,
+        continuity_ledger: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         if not LANGGRAPH_AVAILABLE or not self.service.ai_manager:
             return None
@@ -974,6 +1068,18 @@ class ScriptLangGraphAgent:
                 extra={"warnings": char_validation["character_warnings"]},
             )
 
+        # Run info gate validation (check for unrevealed information references)
+        episode_number = episode.get("episode_number", 1)
+        info_gate_validation = self._validate_info_gate(
+            content, episode_number, continuity_ledger
+        )
+        if info_gate_validation["info_gate_warnings"]:
+            self.logger.warning(
+                "Script info gate validation warnings",
+                extra={"warnings": info_gate_validation["info_gate_warnings"]},
+            )
+
         # Merge validation results into result
         result.update(char_validation)
+        result.update(info_gate_validation)
         return result

@@ -31,6 +31,26 @@ class ContinuityInfoAcquisitionEvent(BaseModel):
     evidence: Optional[str] = Field(None, description="证据片段/引用（可选）")
 
 
+class RevealedInfoItem(BaseModel):
+    """信息揭示记录，用于信息门控校验。"""
+
+    info_key: str = Field(..., description="信息唯一标识（如：character_identity_张三）")
+    info_content: str = Field(..., description="信息内容描述")
+    revealed_to: List[str] = Field(
+        default_factory=list,
+        description="信息揭示给谁（角色名列表，'观众' 表示观众已知但角色未知）",
+    )
+    revealed_at_episode: int = Field(..., description="揭示的集数")
+    revealed_at_scene: Optional[int] = Field(None, description="揭示的场景号（可选）")
+    info_type: str = Field(
+        "fact",
+        description="信息类型：identity/relationship/secret/event/location/motive",
+    )
+    is_public: bool = Field(
+        False, description="是否为公开信息（所有角色+观众都知道）"
+    )
+
+
 class ContinuityCharacterState(BaseModel):
     status: Optional[str] = Field(None, description="当前状态/处境（短句）")
     goal: Optional[str] = Field(None, description="当前目标（短句）")
@@ -56,6 +76,10 @@ class ContinuityLedger(BaseModel):
     )
     info_acquisition_events: List[ContinuityInfoAcquisitionEvent] = Field(
         default_factory=list, description="信息获得事件（用于知识门控）"
+    )
+    revealed_info_timeline: List[RevealedInfoItem] = Field(
+        default_factory=list,
+        description="信息揭示时间线（用于信息门控校验，记录每条信息何时向谁揭示）",
     )
     open_threads: List[str] = Field(
         default_factory=list, description="未解决线索/悬念（短句）"

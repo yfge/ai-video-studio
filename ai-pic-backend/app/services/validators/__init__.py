@@ -13,9 +13,21 @@ from app.services.validators.character_consistency_validator import (
     CharacterProfile,
     CharacterValidationResult,
 )
+from app.services.validators.info_gate_validator import (
+    InfoGateContext,
+    InfoGateSeverity,
+    InfoGateValidator,
+    InfoGateViolation,
+    InfoGateViolationType,
+)
 
 __all__ = [
     "CharacterConsistencyValidator",
     "CharacterProfile",
     "CharacterValidationResult",
+    "InfoGateContext",
+    "InfoGateSeverity",
+    "InfoGateValidator",
+    "InfoGateViolation",
+    "InfoGateViolationType",
 ]
