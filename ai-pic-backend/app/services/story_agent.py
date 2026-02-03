@@ -12,6 +12,7 @@ from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
 )
+from app.services.validators.story_quality_validator import StoryQualityValidator
 from app.utils.json_utils import extract_json_block
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class StoryLangGraphAgent:
     def __init__(self, service: "AIService") -> None:
         self.service = service
         self._character_validator = CharacterConsistencyValidator()
+        self._quality_validator = StoryQualityValidator()
 
     def _build_character_profiles(
         self, characters: List[Dict[str, Any]]
@@ -155,6 +157,39 @@ class StoryLangGraphAgent:
 
         return results
 
+    def _validate_story_quality(
+        self,
+        parsed: Dict[str, Any],
+        hook_plan: Optional[Dict[str, Any]] = None,
+        content_restrictions: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Validate story quality including structure, pacing, hooks.
+
+        Returns validation results dict with:
+        - story_quality_passed: bool
+        - story_quality_result: dict with scores and issues
+        - story_quality_warnings: list of warning messages
+        """
+        results: Dict[str, Any] = {
+            "story_quality_passed": True,
+            "story_quality_result": {},
+            "story_quality_warnings": [],
+        }
+
+        quality_result = self._quality_validator.validate(
+            parsed, hook_plan, content_restrictions
+        )
+
+        results["story_quality_passed"] = quality_result.passed
+        results["story_quality_result"] = quality_result.to_dict()
+
+        for issue in quality_result.issues:
+            if issue.severity.value in ("error", "warning"):
+                results["story_quality_warnings"].append(issue.message)
+
+        return results
+
     async def generate(
         self,
         *,
@@ -246,6 +281,15 @@ class StoryLangGraphAgent:
                         "Story character validation warnings",
                         extra={"warnings": char_validation["character_warnings"]},
                     )
+                # Run story quality validation
+                quality_validation = self._validate_story_quality(
+                    parsed, hook_plan, content_restrictions
+                )
+                if quality_validation["story_quality_warnings"]:
+                    logger.warning(
+                        "Story quality validation warnings",
+                        extra={"warnings": quality_validation["story_quality_warnings"]},
+                    )
                 return {
                     "content": latest_text,
                     "normalized": parsed,
@@ -257,6 +301,7 @@ class StoryLangGraphAgent:
                     "prompt": prompt,
                     "reasoning": reasoning + ["validated"],
                     **char_validation,
+                    **quality_validation,
                 }
         except Exception:
             pass
@@ -273,6 +318,15 @@ class StoryLangGraphAgent:
                             "Story character validation warnings (repair attempt)",
                             extra={"warnings": char_validation["character_warnings"]},
                         )
+                    # Run story quality validation
+                    quality_validation = self._validate_story_quality(
+                        parsed, hook_plan, content_restrictions
+                    )
+                    if quality_validation["story_quality_warnings"]:
+                        logger.warning(
+                            "Story quality validation warnings (repair attempt)",
+                            extra={"warnings": quality_validation["story_quality_warnings"]},
+                        )
                     return {
                         "content": latest_text,
                         "normalized": parsed,
@@ -284,6 +338,7 @@ class StoryLangGraphAgent:
                         "prompt": prompt,
                         "reasoning": reasoning + [f"validated_attempt_{attempt}"],
                         **char_validation,
+                        **quality_validation,
                     }
                 except Exception as exc:  # pragma: no cover - schema guard
                     missing_fields = _extract_missing_fields(exc)

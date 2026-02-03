@@ -27,6 +27,15 @@ from app.services.validators.scene_transition_validator import (
     TransitionIssueType,
     TransitionSeverity,
 )
+from app.services.validators.story_quality_validator import (
+    PacingAnalysis,
+    StoryQualityIssue,
+    StoryQualityIssueType,
+    StoryQualityResult,
+    StoryQualitySeverity,
+    StoryQualityValidator,
+    ThreeActAnalysis,
+)
 
 __all__ = [
     "CharacterConsistencyValidator",
@@ -37,8 +46,15 @@ __all__ = [
     "InfoGateValidator",
     "InfoGateViolation",
     "InfoGateViolationType",
+    "PacingAnalysis",
     "SceneInfo",
     "SceneTransitionValidator",
+    "StoryQualityIssue",
+    "StoryQualityIssueType",
+    "StoryQualityResult",
+    "StoryQualitySeverity",
+    "StoryQualityValidator",
+    "ThreeActAnalysis",
     "TransitionIssue",
     "TransitionIssueType",
     "TransitionSeverity",
