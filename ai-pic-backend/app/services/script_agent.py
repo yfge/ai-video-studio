@@ -21,6 +21,10 @@ from app.services.duration_orchestrator.constants import (
 )
 from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
 from app.services.script_agent_react_fill import try_fill_pending_scenes_after_react
+from app.services.validators.character_consistency_validator import (
+    CharacterConsistencyValidator,
+    CharacterProfile,
+)
 from app.utils.json_utils import extract_json_block
 
 try:
@@ -46,6 +50,97 @@ class ScriptLangGraphAgent:
     def __init__(self, service: "AIService") -> None:
         self.service = service
         self.logger = get_logger()
+        self._character_validator = CharacterConsistencyValidator()
+
+    def _build_character_profiles(
+        self, characters: List[Dict[str, Any]]
+    ) -> List[CharacterProfile]:
+        """Convert character dicts to CharacterProfile objects."""
+        profiles = []
+        for char in characters:
+            if not char.get("name"):
+                continue
+            profile = CharacterProfile(
+                name=char.get("name", ""),
+                aliases=char.get("aliases", []),
+                role_type=char.get("role_type") or char.get("role"),
+                gender=char.get("gender"),
+                age=char.get("age"),
+                personality=char.get("personality", []),
+                appearance=char.get("appearance") or char.get("description"),
+            )
+            profiles.append(profile)
+        return profiles
+
+    def _validate_script_characters(
+        self,
+        content: Dict[str, Any],
+        story_characters: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Validate that script dialogue characters are consistent with story.
+
+        Returns validation results dict with:
+        - character_validation_passed: bool
+        - character_validation_results: list of validation results
+        - character_warnings: list of warning messages
+        """
+        results: Dict[str, Any] = {
+            "character_validation_passed": True,
+            "character_validation_results": [],
+            "character_warnings": [],
+        }
+
+        # Build profiles from story characters
+        profiles = self._build_character_profiles(story_characters)
+        if not profiles:
+            results["character_warnings"].append("No story characters to validate against")
+            return results
+
+        self._character_validator = CharacterConsistencyValidator()
+        self._character_validator.register_profiles(profiles)
+
+        # Validate dialogues
+        dialogues = content.get("dialogues", [])
+        unknown_speakers: set[str] = set()
+
+        for dlg in dialogues:
+            if isinstance(dlg, dict):
+                speaker = dlg.get("character")
+                if not speaker:
+                    continue
+
+                # Check if speaker is known
+                canonical = self._character_validator.resolve_name(speaker)
+                if not canonical:
+                    unknown_speakers.add(speaker)
+
+        if unknown_speakers:
+            # Filter out narrator
+            unknown_speakers = {
+                s for s in unknown_speakers
+                if s not in CharacterConsistencyValidator.NARRATOR_NAMES
+            }
+
+        if unknown_speakers:
+            results["character_warnings"].append(
+                f"Unknown speaker(s) in dialogues: {', '.join(sorted(unknown_speakers))}"
+            )
+            results["character_validation_passed"] = False
+            results["character_validation_results"].append({
+                "passed": False,
+                "severity": "warning",
+                "message": f"Found {len(unknown_speakers)} unknown speaker(s) in dialogues",
+                "details": {"unknown_speakers": list(unknown_speakers)},
+            })
+        else:
+            results["character_validation_results"].append({
+                "passed": True,
+                "severity": "info",
+                "message": "All dialogue speakers are valid characters",
+            })
+
+        return results
 
     def _build_word_count_constraints(
         self,
@@ -870,4 +965,15 @@ class ScriptLangGraphAgent:
             )
             return None
 
+        # Run character consistency validation
+        story_characters = story.get("characters", [])
+        char_validation = self._validate_script_characters(content, story_characters)
+        if char_validation["character_warnings"]:
+            self.logger.warning(
+                "Script character validation warnings",
+                extra={"warnings": char_validation["character_warnings"]},
+            )
+
+        # Merge validation results into result
+        result.update(char_validation)
         return result
