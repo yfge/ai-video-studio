@@ -95,4 +95,4 @@ All 66 tests pass:
 
 ## Linked Commits
 
-(To be added after commit)
+- `6717d73` feat(backend): add universal agent framework with ReAct base class

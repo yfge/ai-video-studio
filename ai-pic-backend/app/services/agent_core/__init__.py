@@ -18,15 +18,42 @@ from app.services.agent_core.failure_patterns import (
     FailurePatternMatcher,
     PatternCategory,
 )
+from app.services.agent_core.context_spec import (
+    ContextSpec,
+    FieldPriority,
+    FieldSpec,
+    TruncationStrategy,
+    estimate_tokens,
+    truncate_text,
+    is_non_empty_string,
+    is_non_empty_list,
+    is_positive_int,
+    strip_whitespace,
+    normalize_newlines,
+)
 
 __all__ = [
+    # Agent base
     "AgentError",
     "AgentErrorType",
     "AgentResult",
     "AgentState",
+    "ReactAgentBase",
+    "RepairStrategy",
+    # Failure patterns
     "FailurePattern",
     "FailurePatternMatcher",
     "PatternCategory",
-    "ReactAgentBase",
-    "RepairStrategy",
+    # Context spec
+    "ContextSpec",
+    "FieldPriority",
+    "FieldSpec",
+    "TruncationStrategy",
+    "estimate_tokens",
+    "truncate_text",
+    "is_non_empty_string",
+    "is_non_empty_list",
+    "is_positive_int",
+    "strip_whitespace",
+    "normalize_newlines",
 ]
