@@ -83,4 +83,4 @@ python -m pytest tests/unit/services/agent_core/test_context_spec.py tests/unit/
 
 ## Linked Commits
 
-(To be added after commit)
+- `0eac048` feat(backend): add context injection structuring with ContextSpec system

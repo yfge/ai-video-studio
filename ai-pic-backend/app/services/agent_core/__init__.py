@@ -31,6 +31,17 @@ from app.services.agent_core.context_spec import (
     strip_whitespace,
     normalize_newlines,
 )
+from app.services.agent_core.quality_loop import (
+    DeterministicValidator,
+    FailureMode,
+    RepairAttempt,
+    RepairMetrics,
+    RepairMonitor,
+    SemanticValidator,
+    TwoLayerValidator,
+    ValidationLayer,
+    ValidationResult,
+)
 
 __all__ = [
     # Agent base
@@ -56,4 +67,14 @@ __all__ = [
     "is_positive_int",
     "strip_whitespace",
     "normalize_newlines",
+    # Quality loop
+    "DeterministicValidator",
+    "FailureMode",
+    "RepairAttempt",
+    "RepairMetrics",
+    "RepairMonitor",
+    "SemanticValidator",
+    "TwoLayerValidator",
+    "ValidationLayer",
+    "ValidationResult",
 ]
