@@ -25,6 +25,7 @@ from app.services.storyboard.recovery.retry_strategy import RetryStrategy
 from app.services.storyboard.sync.data_precheck import DataPrecheck
 from app.services.storyboard.validators import (
     CharacterPresenceValidator,
+    CinematicRulesValidator,
     ConsistencyValidator,
     FrameIntegrityValidator,
     TimelineValidator,
@@ -54,7 +55,7 @@ class StoryboardPipeline:
     3. generate_plan - Create storyboard plan
     4. validate_plan - ConsistencyValidator
     5. generate_frames - Generate storyboard frames
-    6. validate_frames - FrameIntegrityValidator + CharacterPresenceValidator
+    6. validate_frames - FrameIntegrityValidator + CharacterPresenceValidator + CinematicRulesValidator
     7. validate_timeline - TimelineValidator
     8. recovery - Repair issues if needed
     9. finalize - Persist results
@@ -80,6 +81,7 @@ class StoryboardPipeline:
             "timeline": TimelineValidator(),
             "frame_integrity": FrameIntegrityValidator(),
             "character_presence": CharacterPresenceValidator(),
+            "cinematic_rules": CinematicRulesValidator(),
         }
 
     async def generate(
@@ -216,7 +218,7 @@ class StoryboardPipeline:
 
         # Validate frames
         state.phase = PipelinePhase.VALIDATE_FRAMES
-        for validator_name in ["frame_integrity", "character_presence"]:
+        for validator_name in ["frame_integrity", "character_presence", "cinematic_rules"]:
             results = self.validators[validator_name].validate(state, context)
             for r in results:
                 state.add_validation(r)
@@ -343,7 +345,7 @@ class StoryboardPipeline:
         ctx: PipelineContext = state_dict["context"]
 
         ps.phase = PipelinePhase.VALIDATE_FRAMES
-        for name in ["frame_integrity", "character_presence"]:
+        for name in ["frame_integrity", "character_presence", "cinematic_rules"]:
             for r in self.validators[name].validate(ps, ctx):
                 ps.add_validation(r)
         ps.add_reasoning("frames_validated")

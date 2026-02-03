@@ -84,6 +84,9 @@ class BaseValidator(ABC):
 from app.services.storyboard.validators.character_presence_validator import (
     CharacterPresenceValidator,
 )
+from app.services.storyboard.validators.cinematic_rules_validator import (
+    CinematicRulesValidator,
+)
 from app.services.storyboard.validators.consistency_validator import (
     ConsistencyValidator,
 )
@@ -95,6 +98,7 @@ from app.services.storyboard.validators.timeline_validator import TimelineValida
 __all__ = [
     "BaseValidator",
     "CharacterPresenceValidator",
+    "CinematicRulesValidator",
     "ConsistencyValidator",
     "FrameIntegrityValidator",
     "TimelineValidator",
