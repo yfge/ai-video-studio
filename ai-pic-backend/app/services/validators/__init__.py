@@ -62,6 +62,15 @@ from app.services.validators.story_quality_validator import (
     StoryQualityValidator,
     ThreeActAnalysis,
 )
+from app.services.validators.duration_quality_validator import (
+    DurationQualityIssue,
+    DurationQualityIssueType,
+    DurationQualityResult,
+    DurationQualitySeverity,
+    DurationQualityValidator,
+    RetryAnalysis,
+    WordDistributionAnalysis,
+)
 
 __all__ = [
     "CharacterArc",
@@ -104,4 +113,11 @@ __all__ = [
     "TransitionIssue",
     "TransitionIssueType",
     "TransitionSeverity",
+    "DurationQualityIssue",
+    "DurationQualityIssueType",
+    "DurationQualityResult",
+    "DurationQualitySeverity",
+    "DurationQualityValidator",
+    "RetryAnalysis",
+    "WordDistributionAnalysis",
 ]
