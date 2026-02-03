@@ -29,6 +29,10 @@ from app.services.validators.info_gate_validator import (
     InfoGateValidator,
     InfoGateViolation,
 )
+from app.services.validators.scene_transition_validator import (
+    SceneTransitionValidator,
+    TransitionIssue,
+)
 from app.utils.json_utils import extract_json_block
 
 try:
@@ -232,6 +236,69 @@ class ScriptLangGraphAgent:
             # Generate fix suggestions
             suggestions = validator.generate_fix_suggestions(violations)
             results["info_gate_fix_suggestions"] = suggestions
+
+        return results
+
+    def _validate_scene_transitions(
+        self,
+        content: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Validate physical plausibility of scene transitions.
+
+        Args:
+            content: Script content dict with scenes, dialogues, stage_directions
+
+        Returns:
+            Validation results dict with:
+            - transition_validation_passed: bool
+            - transition_issues: list of issue dicts
+            - transition_warnings: list of warning messages
+        """
+        results: Dict[str, Any] = {
+            "transition_validation_passed": True,
+            "transition_issues": [],
+            "transition_warnings": [],
+        }
+
+        scenes = content.get("scenes", [])
+        if len(scenes) < 2:
+            return results  # Need at least 2 scenes
+
+        # Build scene contents for validation
+        dialogues = content.get("dialogues", [])
+        stage_directions = content.get("stage_directions", [])
+
+        scene_contents = []
+        for scene in scenes:
+            scene_num = scene.get("scene_number", 0)
+            scene_dialogues = [
+                d for d in dialogues if d.get("scene_number") == scene_num
+            ]
+            scene_stage_dirs = [
+                sd for sd in stage_directions if sd.get("scene_number") == scene_num
+            ]
+            scene_contents.append({
+                "dialogues": scene_dialogues,
+                "stage_directions": scene_stage_dirs,
+            })
+
+        # Run validation
+        validator = SceneTransitionValidator()
+        issues = validator.validate_transitions(scenes, scene_contents)
+
+        if issues:
+            # Only fail on ERROR severity issues
+            has_errors = any(i.severity.value == "error" for i in issues)
+            results["transition_validation_passed"] = not has_errors
+
+            for issue in issues:
+                results["transition_issues"].append(issue.to_dict())
+                results["transition_warnings"].append(issue.message)
+
+            # Generate fix suggestions
+            suggestions = validator.generate_fix_suggestions(issues)
+            results["transition_fix_suggestions"] = suggestions
 
         return results
 
@@ -1079,7 +1146,16 @@ class ScriptLangGraphAgent:
                 extra={"warnings": info_gate_validation["info_gate_warnings"]},
             )
 
+        # Run scene transition validation (check geographic/time/state plausibility)
+        transition_validation = self._validate_scene_transitions(content)
+        if transition_validation["transition_warnings"]:
+            self.logger.warning(
+                "Script scene transition validation warnings",
+                extra={"warnings": transition_validation["transition_warnings"]},
+            )
+
         # Merge validation results into result
         result.update(char_validation)
         result.update(info_gate_validation)
+        result.update(transition_validation)
         return result

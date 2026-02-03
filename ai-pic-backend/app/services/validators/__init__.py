@@ -20,6 +20,13 @@ from app.services.validators.info_gate_validator import (
     InfoGateViolation,
     InfoGateViolationType,
 )
+from app.services.validators.scene_transition_validator import (
+    SceneInfo,
+    SceneTransitionValidator,
+    TransitionIssue,
+    TransitionIssueType,
+    TransitionSeverity,
+)
 
 __all__ = [
     "CharacterConsistencyValidator",
@@ -30,4 +37,9 @@ __all__ = [
     "InfoGateValidator",
     "InfoGateViolation",
     "InfoGateViolationType",
+    "SceneInfo",
+    "SceneTransitionValidator",
+    "TransitionIssue",
+    "TransitionIssueType",
+    "TransitionSeverity",
 ]
