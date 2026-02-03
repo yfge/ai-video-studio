@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from app.core.logging import get_logger
 from app.prompts.templates import PromptTemplate
+from app.services.validators.character_consistency_validator import (
+    CharacterConsistencyValidator,
+    CharacterProfile,
+)
 
 from .episode_agent_episode import (
     dumps_episode_payload,
@@ -52,6 +56,101 @@ class EpisodeLangGraphAgent:
     def __init__(self, service: "AIService") -> None:
         self.service = service
         self.logger = get_logger()
+        self._character_validator = CharacterConsistencyValidator()
+
+    def _build_character_profiles(
+        self, characters: List[Dict[str, Any]]
+    ) -> List[CharacterProfile]:
+        """Convert character dicts to CharacterProfile objects."""
+        profiles = []
+        for char in characters:
+            if not char.get("name"):
+                continue
+            profile = CharacterProfile(
+                name=char.get("name", ""),
+                aliases=char.get("aliases", []),
+                role_type=char.get("role_type") or char.get("role"),
+                gender=char.get("gender"),
+                age=char.get("age"),
+                personality=char.get("personality", []),
+                appearance=char.get("appearance") or char.get("description"),
+            )
+            profiles.append(profile)
+        return profiles
+
+    def _validate_episode_characters(
+        self,
+        episodes: List[Dict[str, Any]],
+        story_characters: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Validate that episode characters are consistent with story characters.
+
+        Returns validation results dict with:
+        - character_validation_passed: bool
+        - character_validation_results: list of validation results
+        - character_warnings: list of warning messages
+        """
+        results: Dict[str, Any] = {
+            "character_validation_passed": True,
+            "character_validation_results": [],
+            "character_warnings": [],
+        }
+
+        # Build profiles from story characters
+        profiles = self._build_character_profiles(story_characters)
+        if not profiles:
+            results["character_warnings"].append("No story characters to validate against")
+            return results
+
+        self._character_validator = CharacterConsistencyValidator()
+        self._character_validator.register_profiles(profiles)
+
+        # Validate each episode
+        for episode in episodes:
+            ep_num = episode.get("episode_number", "?")
+
+            # Check episode summary/description for unknown characters
+            content_to_check = []
+            if episode.get("summary"):
+                content_to_check.append(episode["summary"])
+            if episode.get("description"):
+                content_to_check.append(episode["description"])
+            if episode.get("plot_points"):
+                content_to_check.extend(
+                    str(p) for p in episode["plot_points"] if p
+                )
+
+            if content_to_check:
+                text_results = self._character_validator.validate_names_in_text(
+                    "\n".join(content_to_check)
+                )
+                for r in text_results:
+                    r_dict = r.to_dict()
+                    r_dict["episode_number"] = ep_num
+                    results["character_validation_results"].append(r_dict)
+                    if r.severity.value == "warning":
+                        results["character_warnings"].append(
+                            f"Episode {ep_num}: {r.message}"
+                        )
+
+            # Check episode-specific characters if present
+            ep_chars = episode.get("characters", [])
+            if isinstance(ep_chars, list):
+                for char in ep_chars:
+                    if isinstance(char, dict):
+                        name = char.get("name") or char.get("character_name")
+                        if not name:
+                            continue
+
+                        canonical = self._character_validator.resolve_name(name)
+                        if not canonical:
+                            results["character_warnings"].append(
+                                f"Episode {ep_num}: Unknown character '{name}'"
+                            )
+                            results["character_validation_passed"] = False
+
+        return results
 
     async def generate(
         self,
@@ -141,6 +240,17 @@ class EpisodeLangGraphAgent:
             initial_usage=outline_result.usage,
         )
 
+        # Run character consistency validation
+        story_characters = story.get("characters", [])
+        char_validation = self._validate_episode_characters(
+            episode_result.episodes, story_characters
+        )
+        if char_validation["character_warnings"]:
+            self.logger.warning(
+                "Episode character validation warnings",
+                extra={"warnings": char_validation["character_warnings"]},
+            )
+
         return {
             "content": dumps_episode_payload(episode_result.episodes),
             "normalized": {"episodes": episode_result.episodes},
@@ -155,4 +265,5 @@ class EpisodeLangGraphAgent:
             "model_used": episode_result.model,
             "usage": episode_result.usage,
             "reasoning": episode_result.reasoning + ["episodes_done"],
+            **char_validation,
         }
