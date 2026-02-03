@@ -13,6 +13,15 @@ from app.services.validators.character_consistency_validator import (
     CharacterProfile,
     CharacterValidationResult,
 )
+from app.services.validators.episode_quality_validator import (
+    CharacterArc,
+    EpisodeQualityIssue,
+    EpisodeQualityIssueType,
+    EpisodeQualityResult,
+    EpisodeQualitySeverity,
+    EpisodeQualityValidator,
+    ForeshadowingItem,
+)
 from app.services.validators.info_gate_validator import (
     InfoGateContext,
     InfoGateSeverity,
@@ -38,9 +47,16 @@ from app.services.validators.story_quality_validator import (
 )
 
 __all__ = [
+    "CharacterArc",
     "CharacterConsistencyValidator",
     "CharacterProfile",
     "CharacterValidationResult",
+    "EpisodeQualityIssue",
+    "EpisodeQualityIssueType",
+    "EpisodeQualityResult",
+    "EpisodeQualitySeverity",
+    "EpisodeQualityValidator",
+    "ForeshadowingItem",
     "InfoGateContext",
     "InfoGateSeverity",
     "InfoGateValidator",

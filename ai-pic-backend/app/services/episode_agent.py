@@ -10,6 +10,7 @@ from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
 )
+from app.services.validators.episode_quality_validator import EpisodeQualityValidator
 
 from .episode_agent_episode import (
     dumps_episode_payload,
@@ -57,6 +58,7 @@ class EpisodeLangGraphAgent:
         self.service = service
         self.logger = get_logger()
         self._character_validator = CharacterConsistencyValidator()
+        self._quality_validator = EpisodeQualityValidator()
 
     def _build_character_profiles(
         self, characters: List[Dict[str, Any]]
@@ -149,6 +151,39 @@ class EpisodeLangGraphAgent:
                                 f"Episode {ep_num}: Unknown character '{name}'"
                             )
                             results["character_validation_passed"] = False
+
+        return results
+
+    def _validate_episode_quality(
+        self,
+        episodes: List[Dict[str, Any]],
+        story_characters: List[Dict[str, Any]],
+        continuity_ledger: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Validate episode quality including arcs, tension, and foreshadowing.
+
+        Returns validation results dict with:
+        - episode_quality_passed: bool
+        - episode_quality_result: dict with analysis
+        - episode_quality_warnings: list of warning messages
+        """
+        results: Dict[str, Any] = {
+            "episode_quality_passed": True,
+            "episode_quality_result": {},
+            "episode_quality_warnings": [],
+        }
+
+        quality_result = self._quality_validator.validate(
+            episodes, story_characters, continuity_ledger
+        )
+
+        results["episode_quality_passed"] = quality_result.passed
+        results["episode_quality_result"] = quality_result.to_dict()
+
+        for issue in quality_result.issues:
+            if issue.severity.value in ("error", "warning"):
+                results["episode_quality_warnings"].append(issue.message)
 
         return results
 
@@ -251,6 +286,18 @@ class EpisodeLangGraphAgent:
                 extra={"warnings": char_validation["character_warnings"]},
             )
 
+        # Run episode quality validation
+        quality_validation = self._validate_episode_quality(
+            episode_result.episodes,
+            story_characters,
+            episode_result.continuity_ledger,
+        )
+        if quality_validation["episode_quality_warnings"]:
+            self.logger.warning(
+                "Episode quality validation warnings",
+                extra={"warnings": quality_validation["episode_quality_warnings"]},
+            )
+
         return {
             "content": dumps_episode_payload(episode_result.episodes),
             "normalized": {"episodes": episode_result.episodes},
@@ -266,4 +313,5 @@ class EpisodeLangGraphAgent:
             "usage": episode_result.usage,
             "reasoning": episode_result.reasoning + ["episodes_done"],
             **char_validation,
+            **quality_validation,
         }
