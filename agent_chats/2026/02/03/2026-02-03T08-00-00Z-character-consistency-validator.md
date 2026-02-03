@@ -60,11 +60,13 @@ python -m pytest tests/unit/services/validators/test_character_consistency_valid
 
 ## Next Steps
 
-1. P0.1.2：实现角色名规范化（别名/昵称/拼写变体统一映射）- 部分已完成
-2. P0.1.3：实现角色属性一致性检查 - 部分已完成
-3. P0.1.4-1.6：在 Story/Episode/Script Agent 中集成校验器
-4. 更新 tasks-agent-fix.md 标记完成状态
+1. ~~P0.1.2：实现角色名规范化~~ ✅ 已完成
+2. ~~P0.1.3：实现角色属性一致性检查~~ ✅ 已完成
+3. ~~P0.1.4：在 Story Agent 中集成校验器~~ ✅ 已完成
+4. P0.1.5：在 Episode Agent 中集成校验器
+5. P0.1.6：在 Script Agent 中集成校验器
 
 ## Linked Commits
 
 - feat(backend): add character consistency validator with tests
+- feat(backend): integrate character validation into Story Agent
