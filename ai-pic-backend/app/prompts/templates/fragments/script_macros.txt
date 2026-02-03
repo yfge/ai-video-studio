@@ -1,0 +1,163 @@
+{#- Shared macros for script generation prompt templates. -#}
+{#- This file consolidates common template sections to reduce duplication. -#}
+
+{#- ============= EPISODE CONTEXT ============= -#}
+{%- macro episode_context(episode) -%}
+## 剧集信息
+{% if episode.episode_number -%}
+集数：第 {{ episode.episode_number }} 集
+{% endif -%}
+{% if episode.title -%}
+标题：{{ episode.title }}
+{% endif -%}
+{% if episode.logline -%}
+概要：{{ episode.logline }}
+{% endif -%}
+{% if episode.target_duration -%}
+目标时长：{{ episode.target_duration }}分钟
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= SCENE LIST ============= -#}
+{%- macro scene_list(scenes) -%}
+## 场景列表
+{% for scene in scenes %}
+### 场景 {{ scene.scene_number or loop.index }}
+{% if scene.title -%}
+标题：{{ scene.title }}
+{% endif -%}
+{% if scene.location -%}
+地点：{{ scene.location }}
+{% endif -%}
+{% if scene.time_of_day -%}
+时间：{{ scene.time_of_day }}
+{% endif -%}
+{% if scene.characters -%}
+角色：{{ scene.characters | join(', ') }}
+{% endif -%}
+{% if scene.description -%}
+描述：{{ scene.description }}
+{% endif -%}
+
+{% endfor %}
+{%- endmacro -%}
+
+{#- ============= SCRIPT FORMAT REQUIREMENTS ============= -#}
+{%- macro script_format_requirements(format_type="default") -%}
+## 剧本格式要求
+
+### 基本格式
+1. 场景标题：【INT/EXT】【地点】【时间】
+2. 动作描述：现在时态，第三人称
+3. 角色对白：角色名：台词内容
+4. 括号说明：（动作/情绪/语气提示）
+
+### 对白规范
+- 每句台词不超过15字（适合TTS合成）
+- 避免书面语，使用口语化表达
+- 对白要符合角色性格和身份
+- 必要时使用（停顿）或（强调）标注
+{% if format_type == "short_drama" -%}
+
+### 短剧特殊要求
+- 开场3秒内必须有冲突或悬念
+- 每分钟至少一个情节转折
+- 对白要有"金句"潜力，适合投流
+- 结尾必须留悬念
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= VISUAL DESCRIPTION REQUIREMENTS ============= -#}
+{%- macro visual_requirements() -%}
+## 视觉描述规范
+1. **可拍摄性**：所有描述必须可实际拍摄
+2. **具体动作**：用具体动词替代抽象描述
+   - ✓ "张三猛地站起，摔门而出"
+   - ✗ "张三表现出愤怒的情绪"
+3. **镜头意识**：暗示关键画面的构图
+4. **细节提示**：提供重要道具、表情、动作细节
+5. **禁止内心戏**：不能直接描写角色内心想法
+{%- endmacro -%}
+
+{#- ============= DIALOGUE QUALITY REQUIREMENTS ============= -#}
+{%- macro dialogue_quality_requirements() -%}
+## 对白质量标准
+1. **展示别讲述**：通过行动和对话展示情感，而非直接陈述
+   - ✓ "你怎么又在加班？"（关心但担忧）
+   - ✗ "我很担心你的身体"（直接陈述）
+
+2. **潜台词**：对白应有言外之意
+   - ✓ "天色不早了。"（暗示该离开了）
+   - ✗ "你该走了。"（直接命令）
+
+3. **角色声音**：每个角色的说话方式应有区分度
+
+4. **信息效率**：每句对白都应推动剧情或揭示角色
+{%- endmacro -%}
+
+{#- ============= SCRIPT OUTPUT FORMAT ============= -#}
+{%- macro script_output_format() -%}
+## 输出格式
+请以标准剧本格式输出：
+
+```
+【INT】办公室 - 日
+
+张三坐在办公桌前，眉头紧锁地盯着电脑屏幕。
+
+李四推门而入。
+
+李四：（轻声）还没下班？
+
+张三：（头也不抬）有事？
+
+李四把一份文件放在桌上。
+
+李四：看看这个。
+
+张三拿起文件，表情骤变。
+
+张三：这...这是真的？
+
+【CUT TO】
+```
+{%- endmacro -%}
+
+{#- ============= EMOTIONAL ARC ============= -#}
+{%- macro emotional_arc_guidance(arc=None) -%}
+## 情绪弧线指导
+{% if arc -%}
+{% if arc.opening -%}
+开场情绪：{{ arc.opening }}
+{% endif -%}
+{% if arc.midpoint -%}
+中段情绪：{{ arc.midpoint }}
+{% endif -%}
+{% if arc.climax -%}
+高潮情绪：{{ arc.climax }}
+{% endif -%}
+{% if arc.resolution -%}
+收尾情绪：{{ arc.resolution }}
+{% endif -%}
+{% else -%}
+请确保剧本情绪有起伏变化：
+1. 开场建立基调
+2. 中段逐步升温
+3. 高潮情绪爆发
+4. 收尾余韵回味
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= TIMING REQUIREMENTS ============= -#}
+{%- macro timing_requirements(target_duration=None, words_per_minute=150) -%}
+## 时长控制
+{% if target_duration -%}
+目标时长：{{ target_duration }}分钟
+估算字数：约{{ target_duration * words_per_minute }}字（按每分钟{{ words_per_minute }}字计算）
+{% endif -%}
+
+### 时长分配建议
+- 对白：占总时长的40-60%
+- 动作：占总时长的30-40%
+- 转场/过渡：占总时长的10-20%
+{%- endmacro -%}

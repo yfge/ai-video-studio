@@ -1,0 +1,187 @@
+{#- Shared macros for episode generation prompt templates. -#}
+{#- This file consolidates common template sections to reduce duplication. -#}
+
+{#- ============= STORY CONTEXT SECTION ============= -#}
+{%- macro story_context(story) -%}
+## 故事背景
+{% if story.title -%}
+标题：{{ story.title }}
+{% endif -%}
+{% if story.genre -%}
+类型：{{ story.genre }}
+{% endif -%}
+{% if story.premise -%}
+前提：{{ story.premise }}
+{% endif -%}
+{% if story.synopsis -%}
+概要：{{ story.synopsis }}
+{% endif -%}
+{% if story.main_conflict -%}
+主要冲突：{{ story.main_conflict }}
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= CHARACTERS CONTEXT ============= -#}
+{%- macro characters_context(story) -%}
+## 角色信息
+{% if story.main_characters -%}
+{% for char in story.main_characters %}
+### {{ char.name or char.character_name }}
+{% if char.description -%}
+描述：{{ char.description }}
+{% endif -%}
+{% if char.personality -%}
+性格：{{ char.personality }}
+{% endif -%}
+{% if char.role -%}
+角色：{{ char.role }}
+{% endif -%}
+
+{% endfor %}
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= EPISODE OUTLINE SECTION ============= -#}
+{%- macro episode_outline(outline, episode_number=None) -%}
+## 剧集大纲
+{% if episode_number -%}
+当前集数：第 {{ episode_number }} 集
+{% endif -%}
+{% if outline.title -%}
+标题：{{ outline.title }}
+{% endif -%}
+{% if outline.logline -%}
+概要：{{ outline.logline }}
+{% endif -%}
+{% if outline.key_events -%}
+关键事件：
+{% for event in outline.key_events %}
+- {{ event }}
+{% endfor %}
+{% endif -%}
+{% if outline.emotional_arc -%}
+情绪弧线：{{ outline.emotional_arc }}
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= CONTINUITY CONTEXT ============= -#}
+{%- macro continuity_context(previous_episodes=None, continuity_ledger=None) -%}
+{% if previous_episodes -%}
+## 前情提要
+{% for ep in previous_episodes %}
+### 第 {{ ep.episode_number }} 集
+{% if ep.title -%}
+标题：{{ ep.title }}
+{% endif -%}
+{% if ep.logline -%}
+概要：{{ ep.logline }}
+{% endif -%}
+{% if ep.end_state -%}
+结局状态：{{ ep.end_state }}
+{% endif -%}
+{% if ep.reveals -%}
+揭示信息：{{ ep.reveals | join(', ') }}
+{% endif -%}
+
+{% endfor %}
+{% endif -%}
+{% if continuity_ledger -%}
+## 连续性信息
+{% if continuity_ledger.facts -%}
+已确认事实：
+{% for fact in continuity_ledger.facts[:10] %}
+- {{ fact }}
+{% endfor %}
+{% endif -%}
+{% if continuity_ledger.open_threads -%}
+未解决线索：
+{% for thread in continuity_ledger.open_threads[:5] %}
+- {{ thread }}
+{% endfor %}
+{% endif -%}
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= FORMAT-SPECIFIC REQUIREMENTS ============= -#}
+{%- macro format_requirements(format_type="default") -%}
+{% if format_type == "short_drama" -%}
+## 短剧格式要求
+1. **节奏紧凑**：每分钟至少一个情节点或情绪转折
+2. **爽点密集**：每集必须有明确的"爽点落地"时刻
+3. **卡点结尾**：结尾必须留下悬念，驱动观众追更
+4. **可拍摄性**：所有场景必须可实际拍摄，避免抽象描述
+5. **投流友好**：关键片段适合剪辑为15/30/60秒素材
+{% elif format_type == "film" -%}
+## 电影格式要求
+1. **完整叙事**：在有限时长内完成完整故事弧
+2. **情绪递进**：三幕结构清晰，情绪层层递进
+3. **视觉冲击**：注重关键场景的视觉表现力
+4. **主题深度**：探索人物内心与主题意义
+{% elif format_type == "tv_series" -%}
+## 电视剧格式要求
+1. **人物塑造**：深入刻画角色成长与变化
+2. **多线并行**：主线与支线交织，丰富叙事层次
+3. **节奏把控**：张弛有度，适合连续观看
+4. **伏笔回收**：合理设置伏笔并在后续回收
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= SCENE STRUCTURE ============= -#}
+{%- macro scene_structure_requirements() -%}
+## 场景结构要求
+每个场景应包含：
+1. **场景标题**：简洁明确的场景描述
+2. **时间地点**：明确的时空定位
+3. **人物**：出场角色列表
+4. **动作**：角色行为和画面描述
+5. **对白**：角色台词（如有）
+6. **情绪**：场景情绪基调
+{%- endmacro -%}
+
+{#- ============= DIALOGUE REQUIREMENTS ============= -#}
+{%- macro dialogue_requirements() -%}
+## 对白要求
+1. **口语化**：台词要符合角色身份，自然口语化
+2. **简洁有力**：每句台词不超过15字为佳
+3. **信息量**：对白要推动剧情或揭示角色
+4. **可配音**：适合TTS语音合成
+5. **去书面语**：避免过于文学化的表达
+{%- endmacro -%}
+
+{#- ============= OUTPUT SCHEMA ============= -#}
+{%- macro episode_output_schema() -%}
+## 输出格式
+请以JSON格式输出剧集计划：
+{
+    "episode_number": 1,
+    "title": "剧集标题",
+    "logline": "一句话概要",
+    "scenes": [
+        {
+            "scene_number": 1,
+            "title": "场景标题",
+            "location": "地点",
+            "time_of_day": "日/夜/晨/昏",
+            "characters": ["角色1", "角色2"],
+            "description": "场景描述",
+            "dialogues": [
+                {
+                    "character": "角色名",
+                    "line": "台词内容",
+                    "emotion": "情绪"
+                }
+            ],
+            "action": "动作描述",
+            "mood": "场景情绪"
+        }
+    ],
+    "emotional_arc": {
+        "opening": "开场情绪",
+        "midpoint": "中段情绪",
+        "climax": "高潮情绪",
+        "resolution": "收尾情绪"
+    },
+    "key_reveals": ["揭示1", "揭示2"],
+    "cliffhanger": "结尾悬念"
+}
+{%- endmacro -%}

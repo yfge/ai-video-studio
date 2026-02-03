@@ -1,0 +1,189 @@
+{#- Shared macros for story outline prompt templates. -#}
+{#- This file consolidates common template sections to reduce duplication. -#}
+
+{#- ============= BASIC INFO SECTION ============= -#}
+{%- macro basic_info(title, genre, market_region=None, micro_genre=None, theme=None, target_audience=None, duration_minutes=None) -%}
+## 基本信息
+故事标题：{{ title }}
+类型：{{ genre }}
+{% if market_region -%}
+目标市场：{{ market_region }}
+{% endif -%}
+{% if micro_genre -%}
+微类型：{{ micro_genre }}
+{% endif -%}
+{% if theme -%}
+主题：{{ theme }}
+{% endif -%}
+{% if target_audience -%}
+目标受众：{{ target_audience }}
+{% endif -%}
+{% if duration_minutes -%}
+总时长：{{ duration_minutes }}分钟
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= CHARACTERS SECTION ============= -#}
+{%- macro characters_section(characters) -%}
+## 主要角色
+{% for character in characters %}
+### {{ character.name }}
+{% if character.description -%}
+描述：{{ character.description }}
+{% endif -%}
+{% if character.background_story -%}
+背景：{{ character.background_story }}
+{% endif -%}
+{% if character.tags -%}
+标签：{{ character.tags | join(', ') }}
+{% endif -%}
+
+{% endfor %}
+{%- endmacro -%}
+
+{#- ============= CHARACTER CONSTRAINTS ============= -#}
+{%- macro character_constraints(strict=false) -%}
+## 角色约束（重要）
+- **只允许**出现以上"主要角色"中列出的角色（名称必须一致），**不得新增任何其他有姓名的角色**。
+- 如需一次性工具人/背景人群，只能使用以下泛化小角色称谓：`路人/店员/旁白`（允许 `路人甲/路人乙/店员A` 等后缀），**禁止为其起真实姓名**。
+{% if strict -%}
+- 禁止输出"新增主角/新增反派"这类额外角色；冲突与反转必须在已给定角色之间完成。
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= SETTING INFO SECTION ============= -#}
+{%- macro setting_info(setting_time=None, setting_location=None, world_building=None) -%}
+## 设定信息
+{% if setting_time -%}
+时间背景：{{ setting_time }}
+{% endif -%}
+{% if setting_location -%}
+地点设定：{{ setting_location }}
+{% endif -%}
+{% if world_building -%}
+世界观：{{ world_building }}
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= CREATION REQUIREMENTS ============= -#}
+{%- macro creation_requirements(additional_requirements=None, style_preferences=None, content_restrictions=None) -%}
+## 创作要求
+{% if additional_requirements -%}
+额外要求：{{ additional_requirements }}
+{% endif -%}
+{% if style_preferences -%}
+风格偏好：{{ style_preferences | join(', ') }}
+{% endif -%}
+{% if content_restrictions -%}
+内容限制：{{ content_restrictions | join(', ') }}
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= PACING TEMPLATE (SHORT DRAMA) ============= -#}
+{%- macro pacing_template_section(pacing_template=None, hook_plan=None, twist_density=None, cliffhanger_plan=None, ad_snippets=None) -%}
+{% if pacing_template or hook_plan or twist_density or cliffhanger_plan or ad_snippets -%}
+## 预设节奏/投流模板（可选）
+以下信息来自"节奏模板/投流模板"或人工预设；如提供，请在生成时优先遵守，并确保输出字段与之兼容：
+{% if pacing_template -%}
+- pacing_template: {{ pacing_template }}
+{% endif -%}
+{% if hook_plan -%}
+- 预设 hook_plan: {{ hook_plan | tojson }}
+{% endif -%}
+{% if twist_density -%}
+- 预设 twist_density: {{ twist_density }}
+{% endif -%}
+{% if cliffhanger_plan -%}
+- 预设 cliffhanger_plan: {{ cliffhanger_plan | tojson }}
+{% endif -%}
+{% if ad_snippets -%}
+- 预设 ad_snippets: {{ ad_snippets | tojson }}
+{% endif -%}
+{% endif -%}
+{%- endmacro -%}
+
+{#- ============= SHORT DRAMA REQUIREMENTS ============= -#}
+{%- macro short_drama_requirements() -%}
+## 【短剧硬性要求】每集必有爽点
+请将整部短剧设计为"每集必有爽点 + 结尾卡点"的连续追更结构：
+
+1. **开场钩子**：前 10 秒必须发生高冲突/高信息量事件（抓奸、背叛、身份暴露、利益翻车等）。
+2. **爽点落地**：每集至少 1 个明确可拍的爽点事件（打脸/反击/揭露/惩罚/逆转/告白/救援等），不是抽象情绪。
+3. **结尾卡点**：每集结尾留下更大的悬念或危机升级，强驱动下一集。
+4. **可剪性**：爽点与卡点应能拆成 15/30/60 秒投流素材（台词钩子 + 画面动作 + CTA）。
+{%- endmacro -%}
+
+{#- ============= GENERATION FIELDS DESCRIPTION ============= -#}
+{%- macro generation_fields_description(format_type="default") -%}
+## 生成内容
+请创作一个完整的{% if format_type == "short_drama" %}短剧{% elif format_type == "film" %}电影{% elif format_type == "tv_series" %}电视剧{% else %}{% endif %}故事概要，以JSON格式返回，包含以下内容：
+
+1. **故事前提** (premise): 故事的核心概念和基础设定
+2. **详细概要** (synopsis): 完整的故事梗概，包含起承转合{% if format_type == "short_drama" %}，并体现短剧节奏与追更驱动力{% endif %}
+3. **主要冲突** (main_conflict): 故事的核心冲突和矛盾
+4. **解决方案** (resolution): 冲突的解决{% if format_type == "short_drama" %}方向/结局（可阶段性收束，便于多集追更）{% else %}方式和故事结局{% endif %}
+5. **角色关系** (character_relationships): 主要角色之间的关系网
+6. **主角信息** (main_characters): 重新整理的主要角色信息
+7. **情节结构** (plot_structure): 故事的三幕式结构划分{% if format_type == "short_drama" %}（用于整体叙事骨架）{% endif %}
+8. **核心价值** (core_values): 故事要传达的价值观和意义
+9. **视觉风格** (visual_style): 适合的视觉呈现风格建议{% if format_type == "short_drama" %}（镜头/美术/灯光）{% endif %}
+10. **营销卖点** (selling_points): 故事的亮点{% if format_type == "short_drama" %}与投流卖点（至少 5 条，含爽点类型）{% else %}和吸引观众的要素{% endif %}
+11. **爽点节奏** (hook_plan): 开场钩子、情绪积压与释放、关键反转规划{% if format_type == "short_drama" %}（需体现"每集必有爽点 + 结尾卡点"的规则）{% endif %}
+12. **反转密度** (twist_density): 目标反转密度（文本即可）
+13. **悬念卡点** (cliffhanger_plan): 关键卡点/悬念列表{% if format_type == "short_drama" %}（至少 6 条）{% endif %}
+14. **投流素材** (ad_snippets): 15/30/60 秒素材的钩子、画面摘要、CTA 建议{% if format_type == "short_drama" %}（至少 3 条）{% endif %}
+{%- endmacro -%}
+
+{#- ============= CREATION PRINCIPLES ============= -#}
+{%- macro creation_principles(genre, target_audience=None) -%}
+## 创作原则
+- 确保故事结构完整，有明确的开始、发展、高潮和结局
+- 角色设定要符合{{ genre }}类型的特点
+- 适合{{ target_audience or '普通观众' }}观看
+- 内容积极向上，传播正能量
+- 具有可操作性，适合视频制作
+{%- endmacro -%}
+
+{#- ============= OUTPUT FORMAT ============= -#}
+{%- macro output_format(include_intensity=false) -%}
+## 输出格式
+{
+    "premise": "...",
+    "synopsis": "...",
+    "main_conflict": "...",
+    "resolution": "...",
+    "character_relationships": {...},
+    "main_characters": [...],
+    "plot_structure": {
+        "act1": "...",
+        "act2": "...",
+        "act3": "..."
+    },
+    "core_values": "...",
+    "visual_style": "...",
+    "selling_points": [...],
+    "hook_plan": {
+        "opening_hook": "...",
+        "escalation_plan": "...",
+        "payoff_plan": "...",
+        "key_reversals": [
+            {
+                "beat_type": "reversal",
+                "description": "...",
+                "timing": "..."{% if include_intensity %},
+                "intensity": "low/medium/high"{% endif %}
+            }
+        ]
+    },
+    "twist_density": "...",
+    "cliffhanger_plan": ["..."],
+    "ad_snippets": [
+        {
+            "duration_seconds": 15,
+            "hook": "...",
+            "visual_summary": "...",
+            "call_to_action": "..."
+        }
+    ]
+}
+{%- endmacro -%}
