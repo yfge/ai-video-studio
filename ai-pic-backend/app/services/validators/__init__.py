@@ -44,6 +44,15 @@ from app.services.validators.script_quality_validator import (
     ScriptQualitySeverity,
     ScriptQualityValidator,
 )
+from app.services.validators.timeline_quality_validator import (
+    EmotionCurveAnalysis,
+    EmotionPoint,
+    TimelineQualityIssue,
+    TimelineQualityIssueType,
+    TimelineQualityResult,
+    TimelineQualitySeverity,
+    TimelineQualityValidator,
+)
 from app.services.validators.story_quality_validator import (
     PacingAnalysis,
     StoryQualityIssue,
@@ -79,6 +88,13 @@ __all__ = [
     "ScriptQualityResult",
     "ScriptQualitySeverity",
     "ScriptQualityValidator",
+    "EmotionCurveAnalysis",
+    "EmotionPoint",
+    "TimelineQualityIssue",
+    "TimelineQualityIssueType",
+    "TimelineQualityResult",
+    "TimelineQualitySeverity",
+    "TimelineQualityValidator",
     "StoryQualityIssue",
     "StoryQualityIssueType",
     "StoryQualityResult",
