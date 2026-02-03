@@ -9,6 +9,7 @@ from app.schemas.continuity import (
     EpisodeContinuityUpdatePayload,
 )
 from app.schemas.generation import EpisodePlanModel
+from app.services.continuity.ledger_compressor import compress_ledger_by_priority
 from app.utils.json_utils import extract_json_block
 
 
@@ -50,37 +51,12 @@ def init_continuity_ledger_from_story(story: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def compact_continuity_ledger_for_prompt(ledger: Dict[str, Any]) -> Dict[str, Any]:
-    """Truncate ledger payload for prompt injection."""
-    base = ledger if isinstance(ledger, dict) else {}
-    facts = (base.get("facts") if isinstance(base.get("facts"), list) else [])[:25]
-    timeline = (base.get("timeline") if isinstance(base.get("timeline"), list) else [])[
-        :30
-    ]
-    open_threads = (
-        base.get("open_threads") if isinstance(base.get("open_threads"), list) else []
-    )[:25]
-    resolved_threads = (
-        base.get("resolved_threads")
-        if isinstance(base.get("resolved_threads"), list)
-        else []
-    )[:25]
-    events = (
-        base.get("info_acquisition_events")
-        if isinstance(base.get("info_acquisition_events"), list)
-        else []
-    )[:60]
-    characters = (
-        base.get("characters") if isinstance(base.get("characters"), dict) else {}
-    )
-    return {
-        "version": int(base.get("version") or 1),
-        "facts": facts,
-        "timeline": timeline,
-        "characters": characters,
-        "info_acquisition_events": events,
-        "open_threads": open_threads,
-        "resolved_threads": resolved_threads,
-    }
+    """Compress ledger using priority-based sorting for prompt injection.
+
+    Uses importance scoring instead of FIFO truncation to preserve
+    critical continuity information when compacting for prompts.
+    """
+    return compress_ledger_by_priority(ledger)
 
 
 def build_previous_episodes_context(
