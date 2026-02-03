@@ -94,6 +94,9 @@ from app.services.storyboard.validators.frame_integrity_validator import (
     FrameIntegrityValidator,
 )
 from app.services.storyboard.validators.timeline_validator import TimelineValidator
+from app.services.storyboard.validators.visual_continuity_validator import (
+    VisualContinuityValidator,
+)
 
 __all__ = [
     "BaseValidator",
@@ -102,4 +105,5 @@ __all__ = [
     "ConsistencyValidator",
     "FrameIntegrityValidator",
     "TimelineValidator",
+    "VisualContinuityValidator",
 ]
