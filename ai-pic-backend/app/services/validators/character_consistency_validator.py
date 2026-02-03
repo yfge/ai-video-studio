@@ -351,13 +351,33 @@ class CharacterConsistencyValidator:
             return True
 
         # Gender-specific handling (male/female are distinct)
+        # Use exact match or word-boundary aware check to avoid "male" in "female"
         gender_male = {"male", "man", "boy", "男", "男性", "男人"}
         gender_female = {"female", "woman", "girl", "女", "女性", "女人"}
 
-        e_male = any(g in e for g in gender_male)
-        e_female = any(g in e for g in gender_female)
-        f_male = any(g in f for g in gender_male)
-        f_female = any(g in f for g in gender_female)
+        def is_gender(text: str, keywords: set) -> bool:
+            # First check exact match
+            if text in keywords:
+                return True
+            # Then check for keywords as whole words or Chinese chars
+            for kw in keywords:
+                if kw.isascii():
+                    # For English, use regex-style word boundary check
+                    # Check if keyword appears as a whole word
+                    import re
+                    pattern = r'\b' + re.escape(kw) + r'\b'
+                    if re.search(pattern, text):
+                        return True
+                else:
+                    # For Chinese, substring is OK
+                    if kw in text:
+                        return True
+            return False
+
+        e_male = is_gender(e, gender_male)
+        e_female = is_gender(e, gender_female)
+        f_male = is_gender(f, gender_male)
+        f_female = is_gender(f, gender_female)
 
         if (e_male or e_female) and (f_male or f_female):
             return e_male == f_male and e_female == f_female
