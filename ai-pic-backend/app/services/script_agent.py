@@ -40,6 +40,8 @@ except ImportError:  # pragma: no cover - optional dependency
     LANGGRAPH_AVAILABLE = False
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
     from .ai_service import AIService
 
 
@@ -85,9 +87,17 @@ class ScriptLangGraphAgent:
         self,
         content: Dict[str, Any],
         story_characters: List[Dict[str, Any]],
+        episode_id: Optional[int] = None,
+        db: Optional["Session"] = None,
     ) -> Dict[str, Any]:
         """
-        Validate that script dialogue characters are consistent with story.
+        Validate that script dialogue characters are consistent with story and episode.
+
+        Args:
+            content: Script content dict with dialogues
+            story_characters: List of story character dicts
+            episode_id: Optional episode ID to include episode characters
+            db: Optional database session to fetch episode characters
 
         Returns validation results dict with:
         - character_validation_passed: bool
@@ -102,6 +112,56 @@ class ScriptLangGraphAgent:
 
         # Build profiles from story characters
         profiles = self._build_character_profiles(story_characters)
+
+        # Add Episode temporary characters if available
+        if episode_id and db:
+            try:
+                from app.models.episode_character import EpisodeCharacter
+                from app.models.virtual_ip import VirtualIP
+
+                episode_chars = (
+                    db.query(EpisodeCharacter)
+                    .filter(
+                        EpisodeCharacter.episode_id == episode_id,
+                        EpisodeCharacter.is_deleted == False,
+                    )
+                    .all()
+                )
+
+                # Fetch VirtualIPs for these characters
+                if episode_chars:
+                    vip_ids = {ec.virtual_ip_id for ec in episode_chars}
+                    vips = db.query(VirtualIP).filter(VirtualIP.id.in_(vip_ids)).all()
+                    vip_by_id = {vip.id: vip for vip in vips}
+
+                    # Build profiles for episode characters
+                    for ec in episode_chars:
+                        vip = vip_by_id.get(ec.virtual_ip_id)
+                        if not vip:
+                            continue
+
+                        # Use character_name from EpisodeCharacter, fallback to VirtualIP name
+                        char_name = ec.character_name or vip.name
+                        if not char_name:
+                            continue
+
+                        # Build character dict similar to story characters
+                        char_dict = {
+                            "character_name": char_name,
+                            "personality": ec.personality or vip.background_story or "",
+                            "background": ec.background or vip.biography or "",
+                            "role_type": ec.role_type or "temporary",
+                        }
+
+                        # Build profile and add to validator
+                        episode_profiles = self._build_character_profiles([char_dict])
+                        profiles.extend(episode_profiles)
+            except Exception as e:
+                self.logger.warning(
+                    f"Failed to fetch episode characters: {e}",
+                    exc_info=True,
+                )
+
         if not profiles:
             results["character_warnings"].append(
                 "No story characters to validate against"
@@ -602,6 +662,7 @@ class ScriptLangGraphAgent:
         duration_minutes: Optional[float] = None,
         enable_react_validation: bool = True,
         continuity_ledger: Optional[Dict[str, Any]] = None,
+        db: Optional["Session"] = None,
     ) -> Optional[Dict[str, Any]]:
         if not LANGGRAPH_AVAILABLE or not self.service.ai_manager:
             return None
@@ -1272,7 +1333,9 @@ class ScriptLangGraphAgent:
 
         # Run character consistency validation
         story_characters = story.get("characters", [])
-        char_validation = self._validate_script_characters(content, story_characters)
+        char_validation = self._validate_script_characters(
+            content, story_characters, episode.get("id"), db
+        )
         if char_validation["character_warnings"]:
             self.logger.warning(
                 "Script character validation warnings",
