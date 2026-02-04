@@ -31,6 +31,15 @@ from .helpers import get_episode_by_identifier
 router = APIRouter()
 
 
+def _parse_episode_identifier(episode_id: Union[int, str]):
+    """Parse episode ID which can be either integer ID or business_id string."""
+    if isinstance(episode_id, int):
+        return episode_id, None
+    if episode_id.isdigit():
+        return int(episode_id), None
+    return None, episode_id
+
+
 @router.post("/{episode_id}/characters", response_model=EpisodeCharacterResponse)
 async def create_episode_character(
     episode_id: Union[int, str],
@@ -46,7 +55,8 @@ async def create_episode_character(
     - Episode must exist and be accessible by current user
     """
     # Verify episode access
-    episode = get_episode_by_identifier(db, episode_id, current_user)
+    ep_id, ep_business_id = _parse_episode_identifier(episode_id)
+    episode = get_episode_by_identifier(db, ep_id, ep_business_id, current_user)
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
@@ -98,7 +108,8 @@ async def list_episode_characters(
     Returns characters sorted by importance (descending) and creation time.
     """
     # Verify episode access
-    episode = get_episode_by_identifier(db, episode_id, current_user)
+    ep_id, ep_business_id = _parse_episode_identifier(episode_id)
+    episode = get_episode_by_identifier(db, ep_id, ep_business_id, current_user)
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
@@ -125,7 +136,8 @@ async def get_episode_character(
 ):
     """Get details of a specific episode character."""
     # Verify episode access
-    episode = get_episode_by_identifier(db, episode_id, current_user)
+    ep_id, ep_business_id = _parse_episode_identifier(episode_id)
+    episode = get_episode_by_identifier(db, ep_id, ep_business_id, current_user)
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
@@ -165,7 +177,8 @@ async def get_episode_character_resources(
     - display_name: character_name or VirtualIP.name
     """
     # Verify episode access
-    episode = get_episode_by_identifier(db, episode_id, current_user)
+    ep_id, ep_business_id = _parse_episode_identifier(episode_id)
+    episode = get_episode_by_identifier(db, ep_id, ep_business_id, current_user)
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
@@ -220,7 +233,8 @@ async def update_episode_character(
     Note: virtual_ip_id cannot be changed after creation.
     """
     # Verify episode access
-    episode = get_episode_by_identifier(db, episode_id, current_user)
+    ep_id, ep_business_id = _parse_episode_identifier(episode_id)
+    episode = get_episode_by_identifier(db, ep_id, ep_business_id, current_user)
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
@@ -262,7 +276,8 @@ async def delete_episode_character(
     The character is marked as deleted but not removed from the database.
     """
     # Verify episode access
-    episode = get_episode_by_identifier(db, episode_id, current_user)
+    ep_id, ep_business_id = _parse_episode_identifier(episode_id)
+    episode = get_episode_by_identifier(db, ep_id, ep_business_id, current_user)
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
