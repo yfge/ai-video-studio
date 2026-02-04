@@ -37,9 +37,9 @@ async def plan_scene_segments_intelligent(
 
     if use_intelligent_timing and ai_service:
         try:
-            from app.services.timeline_agent import TimelineLangGraphAgent
+            from app.services.timeline_agent import TimelineReactAgent
 
-            agent = TimelineLangGraphAgent(ai_service)
+            agent = TimelineReactAgent(ai_service)
             timing_plan = await agent.compute_timing(
                 dialogues=list(dialogues),
                 stage_directions=list(stage_directions),
