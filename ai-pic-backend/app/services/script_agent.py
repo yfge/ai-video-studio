@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.core.logging import get_logger
@@ -10,6 +11,7 @@ from app.core.validators.script_dialogue_quality import (
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import ScriptModel
+from app.services.agent_core import FailureMode, FailurePatternMatcher, RepairMonitor
 from app.services.duration_orchestrator.constants import (
     DIALOGUE_DENSITY_FACTOR,
     DURATION_TOLERANCE_SCENE_HIGH,
@@ -25,14 +27,8 @@ from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
 )
-from app.services.validators.info_gate_validator import (
-    InfoGateValidator,
-    InfoGateViolation,
-)
-from app.services.validators.scene_transition_validator import (
-    SceneTransitionValidator,
-    TransitionIssue,
-)
+from app.services.validators.info_gate_validator import InfoGateValidator
+from app.services.validators.scene_transition_validator import SceneTransitionValidator
 from app.services.validators.script_quality_validator import ScriptQualityValidator
 from app.utils.json_utils import extract_json_block
 
@@ -61,6 +57,9 @@ class ScriptLangGraphAgent:
         self.logger = get_logger()
         self._character_validator = CharacterConsistencyValidator()
         self._quality_validator = ScriptQualityValidator()
+        # Monitoring infrastructure from Universal Agent Framework
+        self._repair_monitor = RepairMonitor(slo_threshold=0.7, window_size=100)
+        self._failure_matcher = FailurePatternMatcher()
 
     def _build_character_profiles(
         self, characters: List[Dict[str, Any]]
@@ -104,7 +103,9 @@ class ScriptLangGraphAgent:
         # Build profiles from story characters
         profiles = self._build_character_profiles(story_characters)
         if not profiles:
-            results["character_warnings"].append("No story characters to validate against")
+            results["character_warnings"].append(
+                "No story characters to validate against"
+            )
             return results
 
         self._character_validator = CharacterConsistencyValidator()
@@ -128,7 +129,8 @@ class ScriptLangGraphAgent:
         if unknown_speakers:
             # Filter out narrator
             unknown_speakers = {
-                s for s in unknown_speakers
+                s
+                for s in unknown_speakers
                 if s not in CharacterConsistencyValidator.NARRATOR_NAMES
             }
 
@@ -137,18 +139,22 @@ class ScriptLangGraphAgent:
                 f"Unknown speaker(s) in dialogues: {', '.join(sorted(unknown_speakers))}"
             )
             results["character_validation_passed"] = False
-            results["character_validation_results"].append({
-                "passed": False,
-                "severity": "warning",
-                "message": f"Found {len(unknown_speakers)} unknown speaker(s) in dialogues",
-                "details": {"unknown_speakers": list(unknown_speakers)},
-            })
+            results["character_validation_results"].append(
+                {
+                    "passed": False,
+                    "severity": "warning",
+                    "message": f"Found {len(unknown_speakers)} unknown speaker(s) in dialogues",
+                    "details": {"unknown_speakers": list(unknown_speakers)},
+                }
+            )
         else:
-            results["character_validation_results"].append({
-                "passed": True,
-                "severity": "info",
-                "message": "All dialogue speakers are valid characters",
-            })
+            results["character_validation_results"].append(
+                {
+                    "passed": True,
+                    "severity": "info",
+                    "message": "All dialogue speakers are valid characters",
+                }
+            )
 
         return results
 
@@ -218,13 +224,14 @@ class ScriptLangGraphAgent:
         for scene in scenes:
             scene_num = scene.get("scene_number", 0)
             scene_dialogues = [
-                d for d in dialogues
-                if d.get("scene_number") == scene_num
+                d for d in dialogues if d.get("scene_number") == scene_num
             ]
-            script_content["scenes"].append({
-                "scene_number": scene_num,
-                "dialogues": scene_dialogues,
-            })
+            script_content["scenes"].append(
+                {
+                    "scene_number": scene_num,
+                    "dialogues": scene_dialogues,
+                }
+            )
 
         # Run validation
         violations = validator.validate_script_content(script_content, episode_number)
@@ -280,10 +287,12 @@ class ScriptLangGraphAgent:
             scene_stage_dirs = [
                 sd for sd in stage_directions if sd.get("scene_number") == scene_num
             ]
-            scene_contents.append({
-                "dialogues": scene_dialogues,
-                "stage_directions": scene_stage_dirs,
-            })
+            scene_contents.append(
+                {
+                    "dialogues": scene_dialogues,
+                    "stage_directions": scene_stage_dirs,
+                }
+            )
 
         # Run validation
         validator = SceneTransitionValidator()
@@ -515,6 +524,65 @@ class ScriptLangGraphAgent:
                 f"时长过长：实际 {actual_seconds:.1f}s > 目标 {budget.target_duration_seconds}s，需删减约 {reduce_words} 字",
             )
         return True, ""
+
+    def _classify_failure_mode(self, error_text: str) -> FailureMode:
+        """Classify validation error into a FailureMode.
+
+        Uses FailurePatternMatcher for pattern-based classification,
+        with fallback heuristics for script-specific errors.
+
+        Args:
+            error_text: The error message to classify.
+
+        Returns:
+            Classified FailureMode.
+        """
+        from app.services.agent_core.failure_patterns import PatternCategory
+
+        # Category to mode mapping
+        category_mapping = {
+            PatternCategory.JSON_SYNTAX: FailureMode.JSON_PARSE,
+            PatternCategory.SCHEMA_VIOLATION: FailureMode.SCHEMA_VIOLATION,
+            PatternCategory.MISSING_FIELD: FailureMode.SCHEMA_VIOLATION,
+            PatternCategory.CONTENT_LENGTH: FailureMode.CONTENT_CONSTRAINT,
+            PatternCategory.CHARACTER_INCONSISTENCY: FailureMode.CHARACTER_INCONSISTENCY,
+            PatternCategory.TIMELINE_ERROR: FailureMode.TIMELINE_ERROR,
+            PatternCategory.LOGIC_ERROR: FailureMode.LOGIC_ERROR,
+            PatternCategory.FORMAT_ERROR: FailureMode.SCHEMA_VIOLATION,
+            PatternCategory.API_ERROR: FailureMode.API_ERROR,
+        }
+
+        # Try pattern-based classification first
+        pattern = self._failure_matcher.match_first(error_text)
+        if pattern:
+            return category_mapping.get(pattern.category, FailureMode.UNKNOWN)
+
+        # Script-specific heuristics for duration validation errors
+        # These are common patterns in script agent that may not be in the
+        # common failure patterns library
+        error_lower = error_text.lower()
+
+        # Duration constraints (most common in script agent REACT loop)
+        if "时长" in error_lower or "duration" in error_lower:
+            return FailureMode.CONTENT_CONSTRAINT
+
+        # Dialogue quality issues
+        if "对白" in error_lower or "dialogue" in error_lower:
+            return FailureMode.CONTENT_CONSTRAINT
+
+        # Repetition/reuse issues (logic errors)
+        if (
+            "重复" in error_lower
+            or "reused" in error_lower
+            or "repeated" in error_lower
+        ):
+            return FailureMode.LOGIC_ERROR
+
+        # Character consistency
+        if "角色" in error_lower or "character" in error_lower:
+            return FailureMode.CHARACTER_INCONSISTENCY
+
+        return FailureMode.UNKNOWN
 
     async def generate(
         self,
@@ -781,7 +849,10 @@ class ScriptLangGraphAgent:
 
             If any scene is outside tolerance and retry count < MAX_RETRY_ATTEMPTS,
             regenerate dialogues for that scene with adjustment hints.
+
+            Also records repair attempts to RepairMonitor for observability.
             """
+            validation_start = time.time()
             dialogues = state.get("dialogues") or []
             scenes = state.get("scenes") or []
             budgets = state.get("computed_budgets") or []
@@ -869,8 +940,23 @@ class ScriptLangGraphAgent:
                     )
                     updated_budgets.append(updated_budget)
 
+            # Calculate validation duration for monitoring
+            validation_duration_ms = (time.time() - validation_start) * 1000
+
             if all_valid:
                 self.logger.info("react_validate_duration: All scenes within tolerance")
+                # Record successful validation (no repair needed)
+                # Only record if this was a retry attempt (attempt_count > 0)
+                for budget in updated_budgets:
+                    if budget.attempt_count > 0:
+                        self._repair_monitor.record(
+                            failure_mode=FailureMode.CONTENT_CONSTRAINT,
+                            strategy="duration_retry",
+                            success=True,
+                            duration_ms=validation_duration_ms,
+                            error_before=budget.adjustment_hint
+                            or "duration constraint",
+                        )
                 return {
                     **state,
                     "computed_budgets": updated_budgets,
@@ -888,6 +974,16 @@ class ScriptLangGraphAgent:
                     "react_validate_duration: REACT rejection - %s",
                     "; ".join(rejection_reasons),
                 )
+                # Record failed validation attempt (will retry)
+                for reason in rejection_reasons:
+                    failure_mode = self._classify_failure_mode(reason)
+                    self._repair_monitor.record(
+                        failure_mode=failure_mode,
+                        strategy="duration_retry",
+                        success=False,
+                        duration_ms=validation_duration_ms,
+                        error_before=reason,
+                    )
                 return {
                     **state,
                     "computed_budgets": updated_budgets,
@@ -900,6 +996,17 @@ class ScriptLangGraphAgent:
                 self.logger.warning(
                     "react_validate_duration: Max retries reached, accepting current result"
                 )
+                # Record final failure (max retries exceeded)
+                for reason in rejection_reasons:
+                    failure_mode = self._classify_failure_mode(reason)
+                    self._repair_monitor.record(
+                        failure_mode=failure_mode,
+                        strategy="duration_retry_final",
+                        success=False,
+                        duration_ms=validation_duration_ms,
+                        error_before=reason,
+                        error_after="max_retries_exceeded",
+                    )
                 pending_budgets = [
                     b for b in updated_budgets if b.status == SceneStatus.PENDING
                 ]
@@ -1204,4 +1311,17 @@ class ScriptLangGraphAgent:
         result.update(info_gate_validation)
         result.update(transition_validation)
         result.update(quality_validation)
+
+        # Add agent metrics from RepairMonitor for observability
+        repair_metrics = self._repair_monitor.get_metrics()
+        result["agent_metrics"] = {
+            "repair_success_rate": repair_metrics.success_rate,
+            "repair_attempts": repair_metrics.total_attempts,
+            "successful_repairs": repair_metrics.successful_repairs,
+            "attempts_by_mode": repair_metrics.to_dict().get("by_failure_mode", {}),
+            "attempts_by_strategy": repair_metrics.to_dict().get("by_strategy", {}),
+            "avg_repair_duration_ms": repair_metrics.avg_duration_ms,
+            "problematic_patterns": self._repair_monitor.identify_problematic_patterns(),
+        }
+
         return result
