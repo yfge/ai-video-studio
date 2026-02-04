@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Iterable
 
 from app.core.logging import get_logger
+from app.models.episode_character import EpisodeCharacter
 from app.models.script import Episode, Story, StoryCharacter
 from app.models.story_structure import Scene
 from app.models.virtual_ip import VirtualIP
@@ -77,6 +78,79 @@ def get_story_character_map(db: Session, story_id: int) -> dict[str, VirtualIP]:
         if not name:
             continue
         mapping[_norm_name(str(name))] = ip
+    return mapping
+
+
+def get_episode_character_map(db: Session, episode_id: int) -> dict[str, VirtualIP]:
+    """
+    Map normalized character_name -> VirtualIP for episode-level temporary characters.
+
+    Returns: dict mapping normalized character names to VirtualIP objects
+    """
+    rows = (
+        db.query(EpisodeCharacter)
+        .filter(
+            EpisodeCharacter.episode_id == episode_id,
+            EpisodeCharacter.is_deleted == False,
+        )
+        .all()
+    )
+    if not rows:
+        return {}
+
+    virtual_ip_ids = {row.virtual_ip_id for row in rows if row.virtual_ip_id}
+    if not virtual_ip_ids:
+        return {}
+
+    ips = db.query(VirtualIP).filter(VirtualIP.id.in_(sorted(virtual_ip_ids))).all()
+    ip_by_id = {ip.id: ip for ip in ips}
+
+    mapping: dict[str, VirtualIP] = {}
+    for row in rows:
+        ip = ip_by_id.get(row.virtual_ip_id)
+        if not ip:
+            continue
+
+        # Priority: character_name > VirtualIP.name
+        name = row.character_name or ip.name
+        if not name:
+            continue
+
+        # Clone VirtualIP and apply overrides
+        # Note: We need to handle voice_config_override
+        effective_ip = ip
+        if row.voice_config_override:
+            # Create a shallow copy with overridden voice_config
+            # This is a lightweight approach; for full isolation, consider a wrapper class
+            effective_ip = type(ip)()
+            for attr in dir(ip):
+                if not attr.startswith("_") and not callable(getattr(ip, attr)):
+                    setattr(effective_ip, attr, getattr(ip, attr))
+            effective_ip.voice_config = row.voice_config_override
+
+        mapping[_norm_name(str(name))] = effective_ip
+
+    return mapping
+
+
+def get_combined_character_map(
+    db: Session, story_id: int, episode_id: int | None = None
+) -> dict[str, VirtualIP]:
+    """
+    Merge Story and Episode character mappings with Episode priority.
+
+    If a character name exists in both Story and Episode, Episode wins.
+
+    Returns: dict mapping normalized character names to VirtualIP objects
+    """
+    # Start with Story characters
+    mapping = get_story_character_map(db, story_id)
+
+    # Overlay Episode characters (overwrite conflicts)
+    if episode_id:
+        episode_mapping = get_episode_character_map(db, episode_id)
+        mapping.update(episode_mapping)
+
     return mapping
 
 

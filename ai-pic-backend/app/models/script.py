@@ -139,6 +139,9 @@ class Episode(SoftDeleteBusinessMixin, Base):
     scripts = relationship(
         "Script", back_populates="episode", cascade="all, delete-orphan"
     )
+    episode_characters = relationship(
+        "EpisodeCharacter", back_populates="episode", cascade="all, delete-orphan"
+    )
 
 
 class Script(SoftDeleteBusinessMixin, Base):

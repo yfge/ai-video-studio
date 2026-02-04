@@ -15,6 +15,7 @@ from fastapi import APIRouter
 # Re-export the background task processor for Celery
 from .async_tasks import process_episode_generation_task
 from .async_tasks import router as async_router
+from .characters import router as characters_router
 from .crud import router as crud_router
 from .generation import router as generation_router
 
@@ -40,7 +41,7 @@ router = APIRouter()
 
 # Include sub-routers - routes are defined with their full paths in each module
 # Using include_router with prefix="" merges routes directly
-for sub_router in [crud_router, generation_router, regenerate_router, async_router]:
+for sub_router in [crud_router, generation_router, regenerate_router, async_router, characters_router]:
     for route in sub_router.routes:
         router.routes.append(route)
 
