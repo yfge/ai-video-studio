@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence
 
 from app.core.validators.character_registry import (
     build_alias_to_canonical_map,
@@ -11,6 +11,9 @@ from app.core.validators.character_registry import (
     preferred_display_name,
 )
 from app.models.script import Story, StoryCharacter
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,20 +62,115 @@ def build_story_alias_map(story: Story) -> dict[str, str]:
     )
 
 
+def build_episode_alias_map(
+    episode_id: int,
+    db: "Session",
+) -> dict[str, str]:
+    """Build alias -> canonical mapping from EpisodeCharacter registry.
+
+    Args:
+        episode_id: Episode ID to fetch characters for
+        db: Database session
+
+    Returns:
+        Dictionary mapping normalized aliases to canonical character names
+    """
+    from app.models.episode_character import EpisodeCharacter
+
+    episode_chars = (
+        db.query(EpisodeCharacter)
+        .filter(
+            EpisodeCharacter.episode_id == episode_id,
+            EpisodeCharacter.is_deleted == False,
+        )
+        .all()
+    )
+
+    canonical_names: list[str] = []
+    extra_aliases: dict[str, list[str]] = {}
+
+    for ec in episode_chars:
+        # Get display name
+        vip = getattr(ec, "virtual_ip", None)
+        vip_name = getattr(vip, "name", None) if vip else None
+        canonical = getattr(ec, "character_name", None)
+
+        if not canonical:
+            canonical = preferred_display_name(vip_name) or vip_name
+
+        canonical = normalize_character_name_token(canonical)
+        if not canonical:
+            continue
+
+        # Build aliases
+        aliases: list[str] = []
+        aliases.extend(extract_name_aliases(canonical))
+        if vip_name and vip_name != canonical:
+            aliases.extend(extract_name_aliases(vip_name))
+
+        canonical_names.append(canonical)
+        extra_aliases[canonical] = aliases
+
+    return build_alias_to_canonical_map(
+        canonical_names=canonical_names, extra_aliases=extra_aliases
+    )
+
+
+def build_combined_alias_map(
+    story: Story,
+    episode_id: Optional[int] = None,
+    db: Optional["Session"] = None,
+) -> dict[str, str]:
+    """Build combined alias map from Story and Episode characters.
+
+    Episode characters take priority over Story characters when there's a conflict.
+
+    Args:
+        story: Story object with character registry
+        episode_id: Optional episode ID to include Episode characters
+        db: Optional database session (required if episode_id is provided)
+
+    Returns:
+        Dictionary mapping normalized aliases to canonical character names
+    """
+    # Start with Story characters
+    alias_map = build_story_alias_map(story)
+
+    # Add Episode characters (overriding Story if conflicts exist)
+    if episode_id and db:
+        episode_map = build_episode_alias_map(episode_id, db)
+        alias_map.update(episode_map)
+
+    return alias_map
+
+
 def enforce_script_character_policy(
     *,
     story: Story,
     scenes: Sequence[Dict[str, Any]],
     dialogues: Sequence[Dict[str, Any]],
+    episode_id: Optional[int] = None,
+    db: Optional["Session"] = None,
 ) -> ScriptCharacterPolicyResult:
     """Normalize script character fields and detect unknown named characters.
 
     Policy:
-      - Only Story-registered characters may appear (after alias normalization).
+      - Only Story-registered and Episode-registered characters may appear.
+      - Episode characters take priority over Story characters when names conflict.
       - Allow generic roles: 路人/店员/旁白 (with optional suffix like 路人甲).
       - Missing dialogue speaker is treated as 旁白.
+
+    Args:
+        story: Story object with character registry
+        scenes: Script scenes to validate
+        dialogues: Script dialogues to validate
+        episode_id: Optional episode ID to include Episode characters
+        db: Optional database session (required if episode_id is provided)
+
+    Returns:
+        ScriptCharacterPolicyResult with validation results
     """
-    alias_to_canonical = build_story_alias_map(story)
+    alias_to_canonical = build_combined_alias_map(story, episode_id, db)
     # Backward-compatible: if a story has no registry, do not block generation.
     if not alias_to_canonical:
         for dlg in dialogues:
