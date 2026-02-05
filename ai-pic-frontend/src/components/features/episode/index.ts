@@ -17,4 +17,5 @@ export { WorkspaceScriptTabContent } from "./WorkspaceScriptTabContent";
 export { WorkspaceScriptSelector } from "./WorkspaceScriptSelector";
 export { WorkspaceTimelineTabContent } from "./WorkspaceTimelineTabContent";
 export { WorkspaceStoryboardTabContent } from "./WorkspaceStoryboardTabContent";
+export { WorkspaceCharactersTabContent } from "./WorkspaceCharactersTabContent";
 export { EpisodeAspectRatioSelect } from "./EpisodeAspectRatioSelect";

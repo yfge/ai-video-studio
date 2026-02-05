@@ -16,8 +16,8 @@ interface EpisodeWorkspaceHeaderProps {
   episode: Episode;
   script?: Script | null;
   workflowStatus: WorkflowStatus;
-  activeTab: "overview" | "script" | "timeline" | "storyboard";
-  onTabChange: (tab: "overview" | "script" | "timeline" | "storyboard") => void;
+  activeTab: "overview" | "script" | "timeline" | "storyboard" | "characters";
+  onTabChange: (tab: "overview" | "script" | "timeline" | "storyboard" | "characters") => void;
   onNavigateBack: () => void;
   onGenerateScript?: () => void;
   onGenerateTimeline?: () => void;
@@ -90,6 +90,7 @@ export function EpisodeWorkspaceHeader({
     { key: "script" as const, label: "剧本" },
     { key: "timeline" as const, label: "时间轴" },
     { key: "storyboard" as const, label: "分镜" },
+    { key: "characters" as const, label: "临时角色" },
   ];
 
   return (

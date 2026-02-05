@@ -8,6 +8,7 @@ import {
   WorkspaceScriptTabContent,
   WorkspaceTimelineTabContent,
   WorkspaceStoryboardTabContent,
+  WorkspaceCharactersTabContent,
   type WorkflowStatus,
 } from "@/components/features/episode";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
@@ -21,6 +22,7 @@ const coerceTab = (value: string | null): TabKey => {
   if (value === "script") return "script";
   if (value === "timeline") return "timeline";
   if (value === "storyboard") return "storyboard";
+  if (value === "characters") return "characters";
   return "overview";
 };
 
@@ -198,6 +200,12 @@ export default function EpisodeWorkspacePage() {
               onSelectScript={handleScriptChange}
               hasStoryboard={workflowStatus.storyboard === "ready"}
               showAlert={showAlert}
+            />
+          )}
+          {activeTab === "characters" && episode && (
+            <WorkspaceCharactersTabContent
+              episodeId={episode.id}
+              autoCreatedCharacters={[]}
             />
           )}
         </div>

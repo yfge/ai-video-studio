@@ -10,7 +10,7 @@ import {
 import { sortScriptsNewestFirst } from "./scriptSort";
 import { useEpisodeWorkspaceScriptActions } from "./useEpisodeWorkspaceScriptActions";
 
-export type TabKey = "overview" | "script" | "timeline" | "storyboard";
+export type TabKey = "overview" | "script" | "timeline" | "storyboard" | "characters";
 
 type RouterLike = {
   push: (url: string) => void;
