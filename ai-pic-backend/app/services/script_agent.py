@@ -1387,4 +1387,66 @@ class ScriptLangGraphAgent:
             "problematic_patterns": self._repair_monitor.identify_problematic_patterns(),
         }
 
+        # Auto-create Episode temporary characters for unknown names
+        unknown_names = char_validation.get("unknown_names", [])
+        if unknown_names and db and episode.get("id"):
+            try:
+                from app.services.script.auto_character_creator import (
+                    auto_create_episode_characters,
+                )
+
+                self.logger.info(
+                    f"Auto-creating {len(unknown_names)} Episode characters for unknown names"
+                )
+
+                # Get user_id from episode or use a default (should be passed in real scenario)
+                # For now, we'll need to query the episode to get user_id
+                from app.models.script import Episode as EpisodeModel
+
+                episode_record = (
+                    db.query(EpisodeModel)
+                    .filter(EpisodeModel.id == episode["id"])
+                    .first()
+                )
+
+                if episode_record and episode_record.story:
+                    user_id = episode_record.story.user_id
+
+                    auto_created = await auto_create_episode_characters(
+                        db=db,
+                        episode_id=episode["id"],
+                        script_content=content,
+                        unknown_names=unknown_names,
+                        user_id=user_id,
+                        ai_service=self.service.ai_manager if self.service else None,
+                    )
+
+                    result["auto_created_characters"] = auto_created
+
+                    if auto_created:
+                        self.logger.info(
+                            f"Successfully auto-created {len(auto_created)} Episode characters"
+                        )
+                    else:
+                        self.logger.warning(
+                            "Auto-creation completed but no characters were created"
+                        )
+                else:
+                    self.logger.warning(
+                        "Could not auto-create characters: episode or story not found"
+                    )
+
+            except Exception as e:
+                self.logger.error(
+                    f"Failed to auto-create Episode characters: {e}",
+                    exc_info=True,
+                )
+                # Don't fail the entire script generation if auto-creation fails
+                result["auto_created_characters"] = []
+                result.setdefault("warnings", []).append(
+                    f"Auto-creation of Episode characters failed: {str(e)}"
+                )
+        else:
+            result["auto_created_characters"] = []
+
         return result
