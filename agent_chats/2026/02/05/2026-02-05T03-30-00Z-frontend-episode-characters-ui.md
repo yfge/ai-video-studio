@@ -399,4 +399,4 @@ Currently displays errors as banner at top of tab. Could enhance with:
 
 ## Linked Commits
 
-(To be added after commit)
+- 364a3cc feat(frontend): add episode character management ui (p2)
