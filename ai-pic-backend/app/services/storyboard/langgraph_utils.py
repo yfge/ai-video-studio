@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 SHOT_CYCLE = ["远景", "中景", "近景", "特写"]
 MOVEMENT_CYCLE = ["固定", "推", "拉", "摇", "移", "跟", "变焦"]
@@ -73,6 +73,60 @@ def _maybe_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _dedupe_ints(values: Iterable[Any]) -> List[int]:
+    seen = set()
+    out: List[int] = []
+    for val in values:
+        num = _maybe_int(val)
+        if num is None or num in seen:
+            continue
+        seen.add(num)
+        out.append(num)
+    return out
+
+
+def compute_available_scenes(script: Dict[str, Any]) -> List[int]:
+    scenes = (script or {}).get("scenes") or []
+    if not scenes:
+        return []
+    scene_indices = (script or {}).get("scene_indices") or []
+    if isinstance(scene_indices, list) and scene_indices:
+        return _dedupe_ints(scene_indices)
+    return list(range(1, len(scenes) + 1))
+
+
+def compute_scene_scope(
+    script: Dict[str, Any],
+    *,
+    selected_scenes: Optional[List[int]],
+) -> Tuple[List[int], Optional[str]]:
+    available = compute_available_scenes(script)
+    scope = _dedupe_ints(selected_scenes if selected_scenes is not None else available)
+    if selected_scenes is None and not scope:
+        return [], "missing_scenes"
+    if selected_scenes is not None and available:
+        allowed = set(available)
+        scope = [scene_no for scene_no in scope if scene_no in allowed]
+        if not scope:
+            return [], "scene_scope_empty"
+    return scope, None
+
+
+def filter_plan_to_scope(plan: Dict[str, Any], scope: List[int]) -> Dict[str, Any]:
+    if not scope:
+        return plan
+    allowed = set(scope)
+    filtered_scenes: List[Dict[str, Any]] = []
+    for scene in plan.get("scenes", []) or []:
+        scene_no = _maybe_int(scene.get("scene_number"))
+        if scene_no is None:
+            continue
+        if scene_no in allowed:
+            filtered_scenes.append(scene)
+    plan["scenes"] = filtered_scenes
+    return plan
 
 
 def count_frames_by_scene(frames: Iterable[Dict[str, Any]]) -> Dict[int, int]:

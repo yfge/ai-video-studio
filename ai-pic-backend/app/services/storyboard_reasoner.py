@@ -10,6 +10,8 @@ from app.schemas.generation import (
     StoryboardPlanScene,
 )
 from app.services.storyboard.langgraph_utils import (
+    compute_scene_scope,
+    filter_plan_to_scope,
     find_scene_deficits,
     normalize_plan_outlines,
 )
@@ -47,15 +49,26 @@ class StoryboardReActReasoner:
         graph = StateGraph(dict)
 
         def select_node(state: Dict[str, Any]) -> Dict[str, Any]:
-            scope = selected_scenes
-            if scope is None:
-                scenes = (script or {}).get("scenes") or []
-                scope = list(range(1, len(scenes) + 1))
             reasoning = state.get("reasoning", []) + ["scenes_selected"]
+            scope, error = compute_scene_scope(
+                script, selected_scenes=selected_scenes
+            )
+            if error:
+                return {
+                    "error": error,
+                    "reasoning": reasoning + [error],
+                    "scene_scope": scope,
+                }
             return {"scene_scope": scope, "reasoning": reasoning}
 
         async def plan_node(state: Dict[str, Any]) -> Dict[str, Any]:
-            scope = state.get("scene_scope") or selected_scenes
+            scope = state.get("scene_scope")
+            if not scope:
+                return {
+                    "error": "scene_scope_empty",
+                    "reasoning": state.get("reasoning", [])
+                    + ["scene_scope_empty"],
+                }
             plan_resp = await self.service.generate_storyboard_plan(
                 script=script,
                 frames_per_scene=frames_per_scene,
@@ -90,6 +103,7 @@ class StoryboardReActReasoner:
         def critique_node(state: Dict[str, Any]) -> Dict[str, Any]:
             plan = state.get("plan") or {}
             plan, fixes = normalize_plan_outlines(plan)
+            filter_plan_to_scope(plan, state.get("scene_scope") or [])
             if fixes:
                 self.logger.info("LangGraph critique applied: %s", "; ".join(fixes))
             reasoning = state.get("reasoning", []) + ["plan_reviewed"]
@@ -229,8 +243,15 @@ class StoryboardReActReasoner:
         graph.add_node("repair", repair_node)
         graph.add_node("finalize", finalize_node)
         graph.set_entry_point("select")
-        graph.add_edge("select", "plan")
-        graph.add_edge("plan", "critique")
+
+        def _route_after_select(state: Dict[str, Any]) -> str:
+            return END if state.get("error") else "plan"
+
+        def _route_after_plan(state: Dict[str, Any]) -> str:
+            return END if state.get("error") else "critique"
+
+        graph.add_conditional_edges("select", _route_after_select)
+        graph.add_conditional_edges("plan", _route_after_plan)
         graph.add_edge("critique", "generate")
         graph.add_edge("generate", "validate")
 
