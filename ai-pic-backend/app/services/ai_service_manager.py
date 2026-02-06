@@ -1219,6 +1219,8 @@ class AIServiceManager:
 
         original_model = model
         last_model_used = original_model
+        last_error: str | None = None
+        last_provider: str | None = None
 
         if not available_providers:
             return AIResponse(
@@ -1318,10 +1320,15 @@ class AIServiceManager:
                     model=provider_model,
                     response=response,
                 )
+                if not response.success and response.error:
+                    last_error = response.error
+                    last_provider = provider_name
                 if response.success or not self.config.enable_fallback:
                     return response
 
             except Exception as e:
+                last_error = str(e)
+                last_provider = provider_name
                 if not self.config.enable_fallback:
                     return AIResponse(
                         success=False,
@@ -1335,10 +1342,13 @@ class AIServiceManager:
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
 
+        error_msg = last_error or "所有视频生成提供商都失败了"
+        if last_provider and not error_msg.lower().startswith(last_provider.lower()):
+            error_msg = f"{last_provider}: {error_msg}"
         return AIResponse(
             success=False,
-            error="所有视频生成提供商都失败了",
-            provider="ai_service_manager",
+            error=error_msg,
+            provider=last_provider or "ai_service_manager",
             model=last_model_used or "unknown",
             task_type=AITaskType.VIDEO_GENERATION,
             model_type=model_type,
@@ -1357,6 +1367,9 @@ class AIServiceManager:
         available_providers = self.get_available_providers(
             model_type=AIModelType.TEXT_TO_SPEECH
         )
+
+        last_error: str | None = None
+        last_provider: str | None = None
 
         if not available_providers:
             return AIResponse(
@@ -1409,10 +1422,15 @@ class AIServiceManager:
                     model=model,
                     response=response,
                 )
+                if not response.success and response.error:
+                    last_error = response.error
+                    last_provider = provider_name
                 if response.success or not self.config.enable_fallback:
                     return response
 
             except Exception as e:
+                last_error = str(e)
+                last_provider = provider_name
                 if not self.config.enable_fallback:
                     return AIResponse(
                         success=False,
@@ -1426,11 +1444,14 @@ class AIServiceManager:
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
 
+        error_msg = last_error or "所有语音合成提供商都失败了"
+        if last_provider and not error_msg.lower().startswith(last_provider.lower()):
+            error_msg = f"{last_provider}: {error_msg}"
         return AIResponse(
             success=False,
-            error="所有语音合成提供商都失败了",
-            provider="ai_service_manager",
-            model=model,
+            error=error_msg,
+            provider=last_provider or "ai_service_manager",
+            model=model or "unknown",
             task_type=AITaskType.VOICE_GENERATION,
             model_type=AIModelType.TEXT_TO_SPEECH,
         )

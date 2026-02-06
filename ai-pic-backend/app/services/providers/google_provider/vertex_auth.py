@@ -143,7 +143,7 @@ class VertexAccessTokenProvider:
                 return cached.access_token
             return await self._refresh_token()
 
-    async def _refresh_token(self) -> Optional[str]:
+    async def _refresh_token(self, max_retries: int = 3) -> Optional[str]:
         assertion = build_service_account_assertion(
             service_account_info=self._info,
             scope=self._scope,
@@ -153,13 +153,30 @@ class VertexAccessTokenProvider:
             self._logger.warning("Vertex OAuth assertion generation failed")
             return None
 
-        try:
-            payload = await request_access_token(
-                token_uri=self._token_uri,
-                assertion=assertion,
+        last_exc: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                payload = await request_access_token(
+                    token_uri=self._token_uri,
+                    assertion=assertion,
+                )
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                self._logger.warning(
+                    "Vertex OAuth token refresh failed (attempt %d/%d): %s",
+                    attempt + 1,
+                    max_retries,
+                    exc,
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1.0 * (attempt + 1))
+        else:
+            self._logger.error(
+                "Vertex OAuth token refresh exhausted %d retries: %s",
+                max_retries,
+                last_exc,
             )
-        except Exception as exc:  # noqa: BLE001
-            self._logger.warning("Vertex OAuth token refresh failed: %s", exc)
             return None
 
         token = payload.get("access_token")

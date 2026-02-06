@@ -44,6 +44,9 @@ celery_app.conf.update(
     enable_utc=True,
     task_acks_late=True,
     worker_max_tasks_per_child=100,
+    # Default timeout: 30 min hard limit, 25 min soft limit (raises SoftTimeLimitExceeded)
+    task_time_limit=1800,
+    task_soft_time_limit=1500,
     beat_schedule={
         "poll-video-generation-tasks": {
             "task": "tasks.video_generation_poll",

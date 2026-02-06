@@ -17,36 +17,34 @@ router = APIRouter()
 
 def _process_story_generation_task(task_id: int, request_dict: dict, user_id: int):
     """后台处理故事生成任务（供 Celery worker 调用）。"""
-    from app.core.database import SessionLocal
+    from app.core.database import get_task_db
 
-    db = SessionLocal()
-    try:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.PROCESSING
-            db.commit()
+    with get_task_db() as db:
+        try:
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if task:
+                task.status = TaskStatus.PROCESSING
+                db.commit()
 
-        import anyio
+            import anyio
 
-        async def _run():
-            service = StoryGenerationService(db)
-            return await service.generate_story_from_payload(request_dict, user_id)
+            async def _run():
+                service = StoryGenerationService(db)
+                return await service.generate_story_from_payload(request_dict, user_id)
 
-        story = anyio.run(_run)
+            story = anyio.run(_run)
 
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.COMPLETED
-            task.result_file_path = f"story:{story.id}"
-            db.commit()
-    except Exception as exc:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.FAILED
-            task.error_message = str(exc)
-            db.commit()
-    finally:
-        db.close()
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if task:
+                task.status = TaskStatus.COMPLETED
+                task.result_file_path = f"story:{story.id}"
+                db.commit()
+        except Exception as exc:
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if task:
+                task.status = TaskStatus.FAILED
+                task.error_message = str(exc)
+                db.commit()
 
 
 @router.post("/generate-async")

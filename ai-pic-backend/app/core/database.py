@@ -1,4 +1,5 @@
 import logging
+from contextlib import contextmanager
 
 from app.core.config import settings
 from sqlalchemy import create_engine
@@ -38,6 +39,23 @@ Base = declarative_base()
 
 # 依赖注入函数
 def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@contextmanager
+def get_task_db():
+    """Context manager for DB sessions in Celery task processors.
+
+    Usage::
+
+        with get_task_db() as db:
+            task = db.query(Task).filter(Task.id == task_id).first()
+            ...
+    """
     db = SessionLocal()
     try:
         yield db

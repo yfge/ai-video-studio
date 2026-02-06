@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, Optional
 
 from app.services.storage.oss_service import oss_service
+
+logger = logging.getLogger(__name__)
 
 
 class VideoGenerationMixin:
@@ -74,7 +77,7 @@ class VideoGenerationMixin:
                             },
                         )
                     except Exception as exc:
-                        print(f"视频OSS上传失败: {exc}")
+                        logger.warning("视频OSS上传失败: %s", exc)
 
                 if original_thumbnail_url and oss_service:
                     try:
@@ -90,7 +93,7 @@ class VideoGenerationMixin:
                             },
                         )
                     except Exception as exc:
-                        print(f"缩略图OSS上传失败: {exc}")
+                        logger.warning("缩略图OSS上传失败: %s", exc)
 
                 if original_last_frame_url and oss_service:
                     try:
@@ -106,9 +109,10 @@ class VideoGenerationMixin:
                             },
                         )
                     except Exception as exc:
-                        print(f"尾帧OSS上传失败: {exc}")
+                        logger.warning("尾帧OSS上传失败: %s", exc)
 
                 return {
+                    "success": True,
                     "video_url": (
                         video_oss_result.get("file_url")
                         if video_oss_result and video_oss_result.get("success")
@@ -148,7 +152,5 @@ class VideoGenerationMixin:
                 "metadata": response.metadata,
             }
         except Exception as exc:
-            print(f"视频生成失败: {exc}")
+            logger.warning("视频生成失败: %s", exc)
             return {"success": False, "error": str(exc)}
-
-        return {"success": False, "error": "视频生成失败（未知原因）"}

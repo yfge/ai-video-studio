@@ -7,6 +7,7 @@ Contains TTS functionality with async polling.
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import httpx
@@ -15,6 +16,8 @@ from ..base import AIModelType, AIResponse, AITaskType
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 # Predefined voice types for Volcengine TTS
@@ -76,8 +79,13 @@ async def poll_tts_status(
     task_id: str,
     max_attempts: int = 30,
     delay: int = 2,
-) -> Optional[Dict[str, Any]]:
-    """Poll TTS task status."""
+) -> Dict[str, Any]:
+    """Poll TTS task status.
+
+    Returns result dict on success; raises RuntimeError on failure/timeout.
+    """
+    last_error: str | None = None
+
     for attempt in range(max_attempts):
         try:
             response = await client.get(f"{base_url}/tts/query/{task_id}")
@@ -93,18 +101,31 @@ async def poll_tts_status(
                         "duration": audio_info.get("duration"),
                     }
                 elif audio_info.get("status") == "failed":
-                    return None
+                    err_msg = audio_info.get("message", "TTS任务执行失败")
+                    raise RuntimeError(f"火山引擎TTS任务失败: {err_msg}")
                 else:
                     await asyncio.sleep(delay)
                     continue
             else:
-                return None
+                err_msg = data.get("message", f"错误码: {data.get('code')}")
+                raise RuntimeError(f"火山引擎TTS查询失败: {err_msg}")
 
+        except RuntimeError:
+            raise
         except Exception as e:
-            print(f"轮询火山引擎TTS状态失败 (尝试 {attempt + 1}): {e}")
+            last_error = str(e)
+            logger.warning(
+                "轮询火山引擎TTS状态失败 (尝试 %d/%d): %s",
+                attempt + 1,
+                max_attempts,
+                e,
+            )
             await asyncio.sleep(delay)
 
-    return None
+    raise RuntimeError(
+        f"火山引擎TTS任务 {task_id} 轮询超时 ({max_attempts * delay}s)"
+        + (f", 最后错误: {last_error}" if last_error else "")
+    )
 
 
 async def text_to_speech(
@@ -153,33 +174,7 @@ async def text_to_speech(
 
         data = response.json()
 
-        if data.get("code") == 0:
-            # Async task, need to poll for result
-            task_id = data.get("task_id")
-            if task_id:
-                result = await poll_tts_status(client, base_url, task_id)
-                if result:
-                    return AIResponse(
-                        success=True,
-                        data={
-                            "audio_url": result.get("audio_url"),
-                            "duration": result.get("duration"),
-                        },
-                        provider=provider_name,
-                        model=model,
-                        task_type=AITaskType.VOICE_GENERATION,
-                        model_type=AIModelType.TEXT_TO_SPEECH,
-                        metadata={
-                            "voice_type": voice_type,
-                            "speed": speed,
-                            "volume": volume,
-                            "pitch": pitch,
-                            "emotion": emotion,
-                            "format": format,
-                            "text_length": len(text),
-                        },
-                    )
-        else:
+        if data.get("code") != 0:
             error_msg = data.get("message", "Unknown error")
             return AIResponse(
                 success=False,
@@ -190,13 +185,39 @@ async def text_to_speech(
                 model_type=AIModelType.TEXT_TO_SPEECH,
             )
 
+        # Async task, need to poll for result
+        task_id = data.get("task_id")
+        if not task_id:
+            return AIResponse(
+                success=False,
+                error="火山引擎TTS未返回task_id",
+                provider=provider_name,
+                model=model,
+                task_type=AITaskType.VOICE_GENERATION,
+                model_type=AIModelType.TEXT_TO_SPEECH,
+            )
+
+        # poll_tts_status raises RuntimeError on failure/timeout
+        result = await poll_tts_status(client, base_url, task_id)
         return AIResponse(
-            success=False,
-            error="语音生成任务失败",
+            success=True,
+            data={
+                "audio_url": result.get("audio_url"),
+                "duration": result.get("duration"),
+            },
             provider=provider_name,
             model=model,
             task_type=AITaskType.VOICE_GENERATION,
             model_type=AIModelType.TEXT_TO_SPEECH,
+            metadata={
+                "voice_type": voice_type,
+                "speed": speed,
+                "volume": volume,
+                "pitch": pitch,
+                "emotion": emotion,
+                "format": format,
+                "text_length": len(text),
+            },
         )
 
     except Exception as e:

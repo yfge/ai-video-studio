@@ -5,9 +5,12 @@
 """
 
 import asyncio
+import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 from .base import (
     AIModelType,
@@ -185,27 +188,26 @@ class JimengProvider(BaseProvider):
 
             # 即梦可能返回任务ID需要轮询，或直接返回结果
             if "task_id" in data:
-                # 异步任务，需要轮询
+                # 异步任务，需要轮询（失败/超时时 _poll_task_status 抛异常）
                 task_id = data["task_id"]
                 result = await self._poll_task_status(task_id)
-                if result:
-                    return AIResponse(
-                        success=True,
-                        data={"images": result.get("images", [])},
-                        provider=self.name,
-                        model=model,
-                        task_type=AITaskType.PORTRAIT_GENERATION,
-                        model_type=AIModelType.TEXT_TO_IMAGE,
-                        metadata={
-                            "task_id": task_id,
-                            "width": width,
-                            "height": height,
-                            "steps": steps,
-                            "cfg_scale": cfg_scale,
-                            "seed": result.get("seed"),
-                            "style": style,
-                        },
-                    )
+                return AIResponse(
+                    success=True,
+                    data={"images": result.get("images", [])},
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.PORTRAIT_GENERATION,
+                    model_type=AIModelType.TEXT_TO_IMAGE,
+                    metadata={
+                        "task_id": task_id,
+                        "width": width,
+                        "height": height,
+                        "steps": steps,
+                        "cfg_scale": cfg_scale,
+                        "seed": result.get("seed"),
+                        "style": style,
+                    },
+                )
             elif "images" in data:
                 # 直接返回结果
                 return AIResponse(
@@ -309,25 +311,24 @@ class JimengProvider(BaseProvider):
             if "task_id" in data:
                 task_id = data["task_id"]
                 result = await self._poll_task_status(task_id)
-                if result:
-                    return AIResponse(
-                        success=True,
-                        data={"images": result.get("images", [])},
-                        provider=self.name,
-                        model=model,
-                        task_type=AITaskType.SCENE_GENERATION,
-                        model_type=AIModelType.IMAGE_TO_IMAGE,
-                        metadata={
-                            "task_id": task_id,
-                            "init_image": image_url,
-                            "width": width,
-                            "height": height,
-                            "strength": strength,
-                            "steps": steps,
-                            "cfg_scale": cfg_scale,
-                            "seed": result.get("seed"),
-                        },
-                    )
+                return AIResponse(
+                    success=True,
+                    data={"images": result.get("images", [])},
+                    provider=self.name,
+                    model=model,
+                    task_type=AITaskType.SCENE_GENERATION,
+                    model_type=AIModelType.IMAGE_TO_IMAGE,
+                    metadata={
+                        "task_id": task_id,
+                        "init_image": image_url,
+                        "width": width,
+                        "height": height,
+                        "strength": strength,
+                        "steps": steps,
+                        "cfg_scale": cfg_scale,
+                        "seed": result.get("seed"),
+                    },
+                )
             elif "images" in data:
                 return AIResponse(
                     success=True,
@@ -369,8 +370,9 @@ class JimengProvider(BaseProvider):
     async def _poll_task_status(
         self, task_id: str, max_attempts: int = 30, delay: int = 2
     ) -> Optional[Dict[str, Any]]:
-        """轮询任务状态"""
+        """轮询任务状态，返回结果 dict 或在失败/超时时抛出异常。"""
         client = await self.get_client()
+        last_error: str | None = None
 
         for attempt in range(max_attempts):
             try:
@@ -378,23 +380,37 @@ class JimengProvider(BaseProvider):
                 response.raise_for_status()
 
                 data = response.json()
-                status = data.get("status")
+                task_status = data.get("status")
 
-                if status == "completed":
+                if task_status == "completed":
                     return data.get("result")
-                elif status == "failed":
-                    return None
-                elif status in ["pending", "running"]:
+                elif task_status == "failed":
+                    err_msg = data.get("error", "即梦任务执行失败")
+                    logger.warning("即梦任务 %s 失败: %s", task_id, err_msg)
+                    raise RuntimeError(f"即梦任务失败: {err_msg}")
+                elif task_status in ["pending", "running"]:
                     await asyncio.sleep(delay)
                     continue
                 else:
-                    return None
+                    logger.warning("即梦任务 %s 未知状态: %s", task_id, task_status)
+                    raise RuntimeError(f"即梦任务未知状态: {task_status}")
 
+            except RuntimeError:
+                raise
             except Exception as e:
-                print(f"轮询即梦任务状态失败 (尝试 {attempt + 1}): {e}")
+                last_error = str(e)
+                logger.warning(
+                    "轮询即梦任务状态失败 (尝试 %d/%d): %s",
+                    attempt + 1,
+                    max_attempts,
+                    e,
+                )
                 await asyncio.sleep(delay)
 
-        return None
+        raise RuntimeError(
+            f"即梦任务 {task_id} 轮询超时 ({max_attempts * delay}s)"
+            + (f", 最后错误: {last_error}" if last_error else "")
+        )
 
     async def get_styles(self) -> AIResponse:
         """获取可用的风格列表"""

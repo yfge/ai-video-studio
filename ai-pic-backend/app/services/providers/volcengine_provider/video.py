@@ -7,6 +7,7 @@ Contains video generation (Seedance) functionality with async polling.
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
@@ -16,6 +17,8 @@ from ..base import AIModelType, AIResponse, AITaskType
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 def _contains_flag(text: str, flag: str) -> bool:
@@ -118,8 +121,13 @@ async def poll_task_status(
     task_id: str,
     max_attempts: int = 60,
     delay: int = 3,
-) -> Optional[Dict[str, Any]]:
-    """Poll Volcengine content generation task status."""
+) -> Dict[str, Any]:
+    """Poll Volcengine content generation task status.
+
+    Returns result dict on success; raises RuntimeError on failure/timeout.
+    """
+    last_error: str | None = None
+
     for attempt in range(max_attempts):
         try:
             response = await client.get(
@@ -129,26 +137,46 @@ async def poll_task_status(
 
             data = response.json() if response.content else {}
             if not isinstance(data, dict):
-                return None
+                raise RuntimeError(
+                    f"火山引擎任务 {task_id} 返回非 dict 响应: {type(data).__name__}"
+                )
 
             status = str(data.get("status") or "").lower()
 
             if status == "succeeded":
                 return data
             if status in {"failed", "canceled", "cancelled"}:
-                return None
+                err_detail = data.get("error", {})
+                err_msg = (
+                    err_detail.get("message", "")
+                    if isinstance(err_detail, dict)
+                    else str(err_detail)
+                ) or f"任务状态: {status}"
+                raise RuntimeError(f"火山引擎任务失败: {err_msg}")
             if status in {"queued", "running", "processing", "pending"}:
                 await asyncio.sleep(delay)
                 continue
 
-            # Unknown status: exit to avoid infinite loop
-            return None
+            # Unknown status
+            logger.warning("火山引擎任务 %s 未知状态: %s", task_id, status)
+            raise RuntimeError(f"火山引擎任务未知状态: {status}")
 
+        except RuntimeError:
+            raise
         except Exception as e:
-            print(f"轮询火山引擎任务状态失败 (尝试 {attempt + 1}): {e}")
+            last_error = str(e)
+            logger.warning(
+                "轮询火山引擎任务状态失败 (尝试 %d/%d): %s",
+                attempt + 1,
+                max_attempts,
+                e,
+            )
             await asyncio.sleep(delay)
 
-    return None
+    raise RuntimeError(
+        f"火山引擎任务 {task_id} 轮询超时 ({max_attempts * delay}s)"
+        + (f", 最后错误: {last_error}" if last_error else "")
+    )
 
 
 async def generate_video(
@@ -268,6 +296,7 @@ async def generate_video(
             )
 
         poll_attempts = 600 if image_url else 120  # 30 min i2v, 6 min t2v
+        # poll_task_status raises RuntimeError on failure/timeout
         result = await poll_task_status(
             client,
             base_url,
@@ -275,20 +304,6 @@ async def generate_video(
             max_attempts=poll_attempts,
             delay=3,
         )
-        if not result:
-            return AIResponse(
-                success=False,
-                error="视频生成任务失败或超时",
-                provider=provider_name,
-                model=ark_model,
-                task_type=AITaskType.VIDEO_GENERATION,
-                model_type=(
-                    AIModelType.IMAGE_TO_VIDEO
-                    if image_url
-                    else AIModelType.TEXT_TO_VIDEO
-                ),
-                metadata={"task_id": task_id},
-            )
 
         content_out = result.get("content") or {}
         video_url = (

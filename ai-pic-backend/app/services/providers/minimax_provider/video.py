@@ -6,9 +6,12 @@ Contains video generation, task polling, and file retrieval.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Callable, Dict, Optional
 
 from app.services.minimax_client import MinimaxAPIError, MinimaxClient
+
+logger = logging.getLogger(__name__)
 
 from app.services.video.video_duration import resolve_duration_ceil
 
@@ -212,6 +215,5 @@ async def _retrieve_video_file(
         }
 
     except MinimaxAPIError as err:
-        # Log error but don't crash
-        print(f"Error retrieving video file {file_id}: {err}")
+        logger.warning("Error retrieving video file %s: %s", file_id, err)
         return None

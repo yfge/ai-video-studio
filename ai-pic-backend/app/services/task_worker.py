@@ -203,7 +203,7 @@ def timeline_pipeline_generate_task(
     )
 
 
-@celery_app.task(name="tasks.video_generation_poll")
+@celery_app.task(name="tasks.video_generation_poll", soft_time_limit=120, time_limit=180)
 def video_generation_poll_task(limit: int = 50) -> int:
     """集中轮询视频生成任务状态。"""
     from app.services.video.video_task_entrypoints import poll_pending_video_tasks

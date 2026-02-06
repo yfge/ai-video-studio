@@ -81,9 +81,14 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
     This function is called by Celery workers. It handles the full episode
     generation flow including outline creation and episode persistence.
     """
-    from app.core.database import SessionLocal
+    from app.core.database import get_task_db
 
-    db = SessionLocal()
+    with get_task_db() as db:
+        _run_episode_generation(db, task_id, request_dict, user_id)
+
+
+def _run_episode_generation(db, task_id: int, request_dict: dict, user_id: int):
+    """Inner episode generation logic with managed DB session."""
     created_ids: list[int] = []
     try:
         task: Task | None = db.query(Task).filter(Task.id == task_id).first()
@@ -442,8 +447,6 @@ def process_episode_generation_task(task_id: int, request_dict: dict, user_id: i
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
             update_task_progress(db, task, f"剧集生成失败：{e}")
-    finally:
-        db.close()
 
 
 def _process_fallback_result(
