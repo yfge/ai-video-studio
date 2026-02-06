@@ -775,6 +775,21 @@ class ScriptLangGraphAgent:
             # Use computed budgets from scene planning, or fall back to externally provided
             active_budgets = state.get("computed_budgets") or scene_budgets or []
 
+            # Early-exit: if upstream step failed, do not spend tokens generating dialogues.
+            if state.get("error"):
+                return {
+                    **state,
+                    "reasoning": state.get("reasoning", []) + ["dialogue_skipped_error"],
+                }
+            if not scenes:
+                return {
+                    **state,
+                    "scenes": scenes,
+                    "error": "missing_scenes",
+                    "reasoning": state.get("reasoning", [])
+                    + ["dialogue_skipped_missing_scenes"],
+                }
+
             prompt = prompt_manager.render_prompt(
                 PromptTemplate.SCRIPT_DIALOGUES.value,
                 {
@@ -1119,6 +1134,18 @@ class ScriptLangGraphAgent:
             dialogues = state.get("dialogues") or []
             stage_dir = state.get("stage_directions") or []
             scenes = state.get("scenes") or []
+
+            # Early-exit: if dialogue generation failed, skip review to avoid additional token spend.
+            if state.get("error"):
+                return {
+                    **state,
+                    "reasoning": state.get("reasoning", []) + ["review_skipped_error"],
+                }
+            if not dialogues and not stage_dir:
+                return {
+                    **state,
+                    "reasoning": state.get("reasoning", []) + ["review_skipped_empty"],
+                }
 
             # Extract character names from story for context
             characters = []
