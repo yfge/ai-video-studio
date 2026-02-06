@@ -38,7 +38,7 @@ class TestStoryboardPipelineBasics:
         assert pipeline.precheck is not None
         assert pipeline.retry_strategy is not None
         assert pipeline.repair is not None
-        assert len(pipeline.validators) == 4
+        assert len(pipeline.validators) == 5
 
 
 class TestPipelineNodes:
@@ -247,6 +247,46 @@ class TestSequentialExecution:
 
         assert result["success"] is False
         assert "Missing required data" in result.get("error", "")
+
+
+@pytest.mark.asyncio
+class TestLangGraphExecution:
+    """Test LangGraph execution behavior."""
+
+    async def test_execute_langgraph_stops_after_precheck_failure(self):
+        """LangGraph path should short-circuit when precheck fails."""
+        from app.services.storyboard.pipeline.storyboard_pipeline import (
+            LANGGRAPH_AVAILABLE,
+            StoryboardPipeline,
+        )
+
+        if not LANGGRAPH_AVAILABLE:
+            pytest.skip("langgraph not available")
+
+        mock_db = MagicMock()
+        pipeline = StoryboardPipeline(mock_db)
+
+        with patch.object(pipeline.precheck, "check_from_context") as mock_check, patch.object(
+            pipeline, "_node_validate_plan"
+        ) as mock_validate_plan:
+            mock_check.return_value = MagicMock(
+                ready=False, message="Missing required data", errors=["error1"]
+            )
+            mock_validate_plan.side_effect = AssertionError(
+                "validate_plan should not run on precheck failure"
+            )
+
+            state = PipelineState(script_id=1)
+            ctx = PipelineContext(script_id=1)
+            result = await pipeline._execute_langgraph(state, ctx, MagicMock(), None)
+
+        assert mock_validate_plan.call_count == 0
+        assert result["success"] is False
+        assert result["phase"] == PipelinePhase.FAILED.value
+        assert any(
+            v.get("validator_name") == "precheck" and "Missing required data" in v.get("message", "")
+            for v in result.get("validation_results", [])
+        )
 
 
 class TestPipelineState:

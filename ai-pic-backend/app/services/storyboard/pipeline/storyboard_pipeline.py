@@ -156,7 +156,13 @@ class StoryboardPipeline:
 
         # Define edges
         graph.set_entry_point("precheck")
-        graph.add_edge("precheck", "validate_plan")
+
+        # Short-circuit on precheck failure to avoid wasted generation and low-quality output.
+        def route_after_precheck(s: Dict[str, Any]) -> str:
+            ps = s.get("pipeline_state")
+            return "finalize" if getattr(ps, "has_errors", False) else "validate_plan"
+
+        graph.add_conditional_edges("precheck", route_after_precheck)
         graph.add_edge("validate_plan", "generate_frames")
         graph.add_edge("generate_frames", "validate_frames")
         graph.add_edge("validate_frames", "validate_timeline")
