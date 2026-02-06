@@ -4,7 +4,7 @@
  * Provides functions for managing Episode temporary characters (临时角色)
  */
 
-import { apiRequest } from "../api";
+import { httpClient } from "./client";
 
 // ============================================================================
 // Types
@@ -100,6 +100,17 @@ export interface AutoCreatedCharacter {
 // API Functions
 // ============================================================================
 
+const request = async <T>(endpoint: string, options: RequestInit = {}) => {
+  const response = await httpClient<T>(endpoint, options);
+  if (!response.success) {
+    throw new Error(response.error || response.message || "请求失败");
+  }
+  if (response.data === undefined) {
+    throw new Error("响应为空");
+  }
+  return response.data;
+};
+
 /**
  * List Episode characters (paginated)
  */
@@ -116,8 +127,8 @@ export async function listEpisodeCharacters(
   if (params?.page_size) queryParams.set("page_size", params.page_size.toString());
   if (params?.include_deleted) queryParams.set("include_deleted", "true");
 
-  const url = `/episodes/${episodeId}/characters${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-  return apiRequest(url, { method: "GET" });
+  const url = `/api/v1/episodes/${episodeId}/characters${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+  return request<EpisodeCharacterListResponse>(url, { method: "GET" });
 }
 
 /**
@@ -127,9 +138,10 @@ export async function getEpisodeCharacter(
   episodeId: number | string,
   characterId: number | string
 ): Promise<EpisodeCharacter> {
-  return apiRequest(`/episodes/${episodeId}/characters/${characterId}`, {
-    method: "GET",
-  });
+  return request<EpisodeCharacter>(
+    `/api/v1/episodes/${episodeId}/characters/${characterId}`,
+    { method: "GET" }
+  );
 }
 
 /**
@@ -139,9 +151,10 @@ export async function getEpisodeCharacterResources(
   episodeId: number | string,
   characterId: number | string
 ): Promise<EpisodeCharacterWithResources> {
-  return apiRequest(`/episodes/${episodeId}/characters/${characterId}/resources`, {
-    method: "GET",
-  });
+  return request<EpisodeCharacterWithResources>(
+    `/api/v1/episodes/${episodeId}/characters/${characterId}/resources`,
+    { method: "GET" }
+  );
 }
 
 /**
@@ -151,10 +164,13 @@ export async function createEpisodeCharacter(
   episodeId: number | string,
   data: EpisodeCharacterCreate
 ): Promise<EpisodeCharacter> {
-  return apiRequest(`/episodes/${episodeId}/characters`, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  return request<EpisodeCharacter>(
+    `/api/v1/episodes/${episodeId}/characters`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
 }
 
 /**
@@ -165,10 +181,13 @@ export async function updateEpisodeCharacter(
   characterId: number | string,
   data: EpisodeCharacterUpdate
 ): Promise<EpisodeCharacter> {
-  return apiRequest(`/episodes/${episodeId}/characters/${characterId}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+  return request<EpisodeCharacter>(
+    `/api/v1/episodes/${episodeId}/characters/${characterId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
 }
 
 /**
@@ -180,7 +199,8 @@ export async function deleteEpisodeCharacter(
   reason?: string
 ): Promise<{ message: string }> {
   const queryParams = reason ? `?reason=${encodeURIComponent(reason)}` : "";
-  return apiRequest(`/episodes/${episodeId}/characters/${characterId}${queryParams}`, {
-    method: "DELETE",
-  });
+  return request<{ message: string }>(
+    `/api/v1/episodes/${episodeId}/characters/${characterId}${queryParams}`,
+    { method: "DELETE" }
+  );
 }
