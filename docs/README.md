@@ -5,6 +5,7 @@ This directory holds design notes, API references, and testing guides. Keep this
 ## Product & Architecture
 
 - `docs/media-asset-persistence.md` — generated media persistence to OSS/CDN (naming + metadata contract).
+- `docs/db-backup-policy.md` — SQL backup handling policy (external storage + restore procedure).
 - `docs/soft-delete-business-id.md` — soft delete + business_id design.
 - `docs/story-structure-api.md` — normalized story-structure endpoints.
 - `docs/story-structure-gap-analysis.md` — historical gap analysis (pre-normalization).
