@@ -36,7 +36,6 @@ from app.services.audio.timeline_processor import (
     generate_storyboard_from_episode_audio_timeline,
     utc_now_iso,
 )
-from app.services.audio.voice_catalog import SYSTEM_VOICE_CATALOG
 from app.services.audio.voice_constants import (
     AUDIO_FORMAT_OPTIONS,
     BITRATE_OPTIONS,
@@ -50,6 +49,7 @@ from app.services.audio.voice_constants import (
     TTS_MODEL_OPTIONS,
     VOICE_TYPE_OPTIONS,
 )
+from app.services.voice_catalog import SYSTEM_VOICE_CATALOG
 
 __all__ = [
     # Speech service

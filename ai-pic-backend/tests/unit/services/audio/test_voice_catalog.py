@@ -1,6 +1,8 @@
 """Unit tests for voice catalog and constants."""
 
-from app.services.audio.voice_catalog import SYSTEM_VOICE_CATALOG
+from app.services.audio.voice_catalog import (
+    SYSTEM_VOICE_CATALOG as AUDIO_SYSTEM_VOICE_CATALOG,
+)
 from app.services.audio.voice_constants import (
     AUDIO_FORMAT_OPTIONS,
     CHANNEL_OPTIONS,
@@ -11,10 +13,15 @@ from app.services.audio.voice_constants import (
     TTS_MODEL_OPTIONS,
     VOICE_TYPE_OPTIONS,
 )
+from app.services.voice_catalog import SYSTEM_VOICE_CATALOG
 
 
 class TestSystemVoiceCatalog:
     """Tests for SYSTEM_VOICE_CATALOG constant."""
+
+    def test_audio_wrapper_aliases_core_catalog(self):
+        """Test that the compatibility wrapper points to the same list object."""
+        assert AUDIO_SYSTEM_VOICE_CATALOG is SYSTEM_VOICE_CATALOG
 
     def test_is_list(self):
         """Test that catalog is a list."""

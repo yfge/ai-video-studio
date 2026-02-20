@@ -5,9 +5,37 @@
 ## 状态概览
 
 - ✅ 稳定/收尾：叙事结构与数据模型对齐（迁移验证/权限收口待补）、对白音轨与声音驱动时间轴（主链路已验证，收尾待补）
-- ⏳ 进行中：虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐、超大文件拆分（backend `scripts_legacy.py` / frontend storyboard page / `src/utils/api.ts`）
+- ⏳ 进行中：虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐、超大文件拆分（backend `scripts_legacy.py` / frontend storyboard page / `src/utils/api.ts`）、对标 `huobao-drama` 差距补齐（轻量启动/legacy 清理/API 迁移）
 - 🔥 **高优新增**：Duration Orchestrator Agent（端到端时长闭环验证）、短剧微类型与投流驱动创作闭环（hook/爽点/素材）
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
+
+## P0: 对标 `huobao-drama` 差距补齐（2026-02）🔥
+
+:information_source: 背景：2026-02-20 基于本地 clone 对比 `chatfire-AI/huobao-drama`，当前主要差距集中在本地启动复杂度、legacy 收敛、前端 API 分层迁移与仓库治理。
+:triangular_flag_on_post: 基线（2026-02-20）：
+
+- 后端超大遗留：`ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py` 5111 行
+- 前端历史聚合：`ai-pic-frontend/src/utils/api.ts` 2784 行
+- 旧 API 入口耦合：`@/utils/api` 引用 169 处
+- 重复实现：`app/services/voice_catalog.py` 与 `app/services/audio/voice_catalog.py` 内容重复
+
+### 进度（工程化→后端→前端→验证）
+
+- [ ] 工程化：提供 lite 开发模式（SQLite + 单进程 worker/mock），保留现有 Docker 全栈；README 增加 5-10 分钟启动路径
+- [ ] 工程化：统一配置入口与样例（dev/prod），补“迁移未同步”自动诊断与一键修复脚本
+- [ ] 后端：继续下线 `scripts_legacy.py`，本期优先迁出 storyboard/dialogue-audio/timeline 路由并标记 deprecate
+- [x] 后端：去重 voice catalog（保留单一入口），删除重复实现并补回归测试
+- [ ] 前端：冻结 `src/utils/api.ts` 新增导出，新增 API 一律进入 `src/utils/api/endpoints/*`
+- [ ] 前端：迁移至少 60 处 `@/utils/api` 旧入口引用到新分层 API（endpoints/types/client）
+- [ ] 仓库治理：移除仓库跟踪的 `ai-pic-backend/backups/*.sql`，改为外部备份 + 文档化恢复流程
+- [ ] 验证：`pytest` + `npm run lint` + Chrome E2E（登录→故事→剧集/剧本→分镜主路径），并记录到 `agent_chats`
+
+### 验收指标（对标）
+
+- [ ] `scripts_legacy.py` 行数下降 ≥ 40%
+- [ ] `src/utils/api.ts` 行数下降 ≥ 40%
+- [ ] `@/utils/api` 旧入口引用从 169 降到 ≤ 100
+- [ ] 新同学在 10 分钟内完成本地启动并访问前后端主页
 
 ## P0: 用户本轮需求（画幅/资产/生成质量）🔥
 
@@ -77,7 +105,7 @@
 - [ ] 后端：拆分 `ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py`（≈4900 行）到 `app/api/v1/endpoints/scripts/*`（按 storyboard/dialogue-audio/timeline 等域拆分），并逐步下线 legacy 路由
 - [ ] 后端：拆分 `ai-pic-backend/app/services/dialogue_audio_service.py`（≈1600 行）为 `app/services/audio/*`（tts/mix/timeline/persistence），并补单测
 - [ ] 后端：拆分 `ai-pic-backend/app/services/ai_service_manager.py`（≈1480 行）按 provider/domain 拆分，收敛公共重试/鉴权/日志
-- [ ] 后端：统一 voice catalog 单一入口（`ai-pic-backend/app/services/voice_catalog.py` 与 `ai-pic-backend/app/services/audio/voice_catalog.py` 去重）
+- [x] 后端：统一 voice catalog 单一入口（`ai-pic-backend/app/services/voice_catalog.py` 与 `ai-pic-backend/app/services/audio/voice_catalog.py` 去重）
 - [x] 前端：已落地 `ai-pic-frontend/src/utils/api/{client,endpoints,types}` 目录（迁移进行中）
 - [ ] 前端：迁移并缩减 `ai-pic-frontend/src/utils/api.ts`（≈2750 行），最终仅保留 re-export/兼容层或删除
 - [ ] 前端：拆分 `ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx`（≈3300 行）为 page + hooks + components（页面 < 200 行）
