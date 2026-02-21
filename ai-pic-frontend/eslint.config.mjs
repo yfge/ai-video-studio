@@ -5,6 +5,29 @@ export default [
   ...coreWebVitals,
   ...typescript,
   {
+    name: "legacy-api-import-guard",
+    files: ["src/**/*.{ts,tsx,js,jsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/utils/api",
+              message:
+                "Legacy api.ts entrypoint is frozen. Use '@/utils/api/endpoints', '@/utils/api/types', or '@/utils/api/client' instead.",
+            },
+            {
+              name: "@/utils/api.ts",
+              message:
+                "Legacy api.ts entrypoint is frozen. Use '@/utils/api/endpoints', '@/utils/api/types', or '@/utils/api/client' instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     name: "project-overrides",
     rules: {
       "react-hooks/set-state-in-effect": "off",
