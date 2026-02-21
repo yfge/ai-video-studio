@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { storyStructureAPI } from "@/utils/api";
-import type { NormalizedScene } from "@/utils/api";
+import { storyStructureAPI } from "@/utils/api/endpoints";
+import type { NormalizedScene } from "@/utils/api/types";
 
 export function useNormalizedScenes(scriptId: number | null) {
   const [normalizedScenes, setNormalizedScenes] = useState<NormalizedScene[]>(

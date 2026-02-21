@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Episode, Script } from "@/utils/api";
+import type { Episode, Script } from "@/utils/api/types";
 import { asRecord } from "@/hooks/episodeDetailUtils";
 
 export function useEpisodeMetadata(

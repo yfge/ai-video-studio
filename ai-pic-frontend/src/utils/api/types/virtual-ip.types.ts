@@ -1,24 +1,25 @@
 /**
  * Virtual IP (character) type definitions.
  */
+import type { VoiceConfig } from "./voice.types";
 
 // Virtual IP entity
 export interface VirtualIP {
   id: number;
   business_id: string;
   name: string;
-  description?: string | null;
+  description?: string;
   tags: string[];
-  background_story?: string | null;
-  biography?: string | null;
-  style_prompt?: string | null;
-  style_reference_images?: string[] | null;
-  voice_config?: Record<string, unknown> | null;
+  background_story?: string;
+  biography?: string;
+  style_prompt?: string;
+  style_reference_images?: string[];
+  voice_config?: VoiceConfig;
   is_active: boolean;
   is_public: boolean;
-  default_avatar_url?: string | null;
+  default_avatar_url?: string;
   created_at: string;
-  updated_at?: string | null;
+  updated_at?: string;
 }
 
 // Create virtual IP request

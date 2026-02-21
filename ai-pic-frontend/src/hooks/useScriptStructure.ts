@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { storyStructureAPI } from "@/utils/api";
-import type { NormalizedScene } from "@/utils/api";
+import { storyStructureAPI } from "@/utils/api/endpoints";
+import type { NormalizedScene } from "@/utils/api/types";
 import type { SceneNode } from "@/components/features";
 
 export function useScriptStructure(scriptId?: number) {

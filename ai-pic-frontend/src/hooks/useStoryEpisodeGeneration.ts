@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { episodeAPI, virtualIPAPI } from "@/utils/api";
+import { episodeAPI, virtualIPAPI } from "@/utils/api/endpoints";
 import { httpClient } from "@/utils/api/client";
-import type { EpisodeGenerationRequest, VirtualIP } from "@/utils/api";
+import type { EpisodeGenerationRequest, VirtualIP } from "@/utils/api/types";
 import { INITIAL_EPISODE_GEN_FORM } from "@/hooks/storyEpisodeGenerationForm";
 import type { EpisodeGenForm } from "@/hooks/storyEpisodeGenerationForm";
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { episodeAPI, scriptAPI, taskAPI } from "@/utils/api";
-import type { ScriptGenerationRequest } from "@/utils/api";
+import { episodeAPI, scriptAPI, taskAPI } from "@/utils/api/endpoints";
 import type { Episode, Script, Task } from "@/utils/api/types";
+import type { ScriptGenerationRequest } from "@/utils/api/types";
 import { useNormalizedScenes } from "@/hooks/useNormalizedScenes";
 import { useTaskPolling, type TaskPollPair } from "@/hooks/useTaskPolling";
 import { useEpisodeMetadata } from "@/hooks/useEpisodeMetadata";

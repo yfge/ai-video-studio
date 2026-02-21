@@ -1,6 +1,7 @@
 /**
  * Script type definitions.
  */
+import type { AdSnippet, HookPlan } from "./story.types";
 
 // Script entity
 export interface Script {
@@ -35,12 +36,22 @@ export interface ScriptGenerationRequest {
   episode_id: number;
   format_type: string;
   language: string;
+  dialogue_style: string;
+  scene_detail_level: string;
+  market_region?: string;
+  micro_genre?: string;
+  hook_plan?: HookPlan;
+  twist_density?: string;
+  cliffhanger_plan?: string[];
+  ad_snippets?: AdSnippet[];
+  pacing_template?: string;
   page_count?: number;
   scene_count?: number;
   dialogue_ratio?: number;
   action_ratio?: number;
   style_notes?: string;
   additional_requirements?: string;
+  style_preferences?: string[];
   model?: string;
   temperature?: number;
 }

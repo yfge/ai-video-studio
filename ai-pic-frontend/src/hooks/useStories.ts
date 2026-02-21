@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { storyAPI, virtualIPAPI } from "@/utils/api";
+import { storyAPI, virtualIPAPI } from "@/utils/api/endpoints";
 import {
   STORY_GENERATE_DEFAULTS,
   STORY_GENRES,
   STORY_STATUSES,
   type StoryGenerationForm,
 } from "@/utils/storyOptions";
-import type { Story, VirtualIP } from "@/utils/api";
+import type { Story, VirtualIP } from "@/utils/api/types";
 
 export interface UseStoriesOptions {
   showAlert: (options: {

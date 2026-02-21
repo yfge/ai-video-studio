@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { storyAPI, episodeAPI, scriptAPI } from "@/utils/api";
-import type { Story, Episode, Script } from "@/utils/api";
+import { storyAPI, episodeAPI, scriptAPI } from "@/utils/api/endpoints";
+import type { Story, Episode, Script } from "@/utils/api/types";
 import { useStoryEpisodeGeneration } from "@/hooks/useStoryEpisodeGeneration";
 import { useStoryReadiness } from "@/hooks/useStoryReadiness";
 
@@ -85,7 +85,12 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
 
   // Auto-check readiness when episode generation panel is opened
   useEffect(() => {
-    if (episodeGeneration.genOpen && story && !readinessHook.readiness && !readinessHook.readinessLoading) {
+    if (
+      episodeGeneration.genOpen &&
+      story &&
+      !readinessHook.readiness &&
+      !readinessHook.readinessLoading
+    ) {
       readinessHook.checkReadiness();
     }
   }, [episodeGeneration.genOpen, story, readinessHook]);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import type { Task } from "@/utils/api";
+import type { Task } from "@/utils/api/types";
 
 export type TaskPollPair = {
   id: number | null;
