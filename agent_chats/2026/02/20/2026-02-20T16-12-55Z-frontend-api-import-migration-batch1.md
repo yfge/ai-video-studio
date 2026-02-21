@@ -60,6 +60,10 @@ summary: "Migrated first frontend hooks batch from legacy api barrel to new endp
 - `cd ai-pic-frontend && npm run lint`（通过；仅现有 warning，无新增 error）
 - `pre-commit run --files ...`（通过：prettier、ledger enforcement、frontend lint 均通过）
 - `./docker/build_prod_images.sh`（通过；backend/frontend 双平台构建与推送完成）
+- Chrome MCP 自测（2026-02-21）：
+  - 启动前端：`NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 npm run dev -- --hostname 127.0.0.1 --port 3000`
+  - 访问 `http://127.0.0.1:3000/login`，使用测试账号 `geyunfei` 登录成功，跳转首页并显示欢迎态
+  - 点击导航进入 `http://127.0.0.1:3000/stories`，故事列表正常加载（页面元素与列表卡片可见）
 - 首次/中间构建失败复盘并修正：
   - `ScriptGenerationRequest` 缺少 `dialogue_style/scene_detail_level`
   - `Story.is_public` 新旧定义可选性不一致
