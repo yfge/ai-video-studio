@@ -8,7 +8,8 @@ import {
   EnvironmentCreateOverlay,
   EnvironmentList,
 } from "@/components/features";
-import { storyStructureAPI, type Environment } from "@/utils/api";
+import { storyStructureAPI } from "@/utils/api/endpoints";
+import type { Environment } from "@/utils/api/types";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 
 function EnvironmentsPageContent() {

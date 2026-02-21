@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 
-import { episodeAPI } from "@/utils/api";
-import type { Episode, Story } from "@/utils/api";
+import { episodeAPI } from "@/utils/api/endpoints";
+import type { Episode, Story } from "@/utils/api/types";
 
 type AspectRatioValue = "9:16" | "16:9" | null;
 

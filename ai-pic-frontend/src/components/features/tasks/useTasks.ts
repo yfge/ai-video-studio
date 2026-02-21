@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { taskAPI, type Task as APITask } from "@/utils/api";
+import { taskAPI } from "@/utils/api/endpoints";
+import type { Task as APITask } from "@/utils/api/types";
 
 type LoadOptions = { silent?: boolean };
 

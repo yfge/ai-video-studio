@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-import { virtualIPImageAPI, type VirtualIPImage } from "@/utils/api";
+import { virtualIPImageAPI } from "@/utils/api/endpoints";
+import type { VirtualIPImage } from "@/utils/api/types";
 
 import type { UploadFormState } from "./virtualIpImageTypes";
 

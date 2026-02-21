@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { virtualIPAPI, AIGenerationDetails } from "@/utils/api";
+import { virtualIPAPI } from "@/utils/api/endpoints";
+import type { AIGenerationDetails } from "@/utils/api/types";
 
 interface AIGenerationProcessProps {
   isOpen: boolean;

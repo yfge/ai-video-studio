@@ -2,7 +2,7 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import type { StoryGenerationForm, StoryFormat } from "@/utils/storyOptions";
-import { AIModelType } from "@/utils/api";
+import { AIModelType } from "@/utils/api/types";
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import { PACING_TEMPLATES } from "@/utils/marketingTemplates";
 import { SHORT_DRAMA_STORY_TEMPLATES } from "@/utils/shortDramaTemplates";

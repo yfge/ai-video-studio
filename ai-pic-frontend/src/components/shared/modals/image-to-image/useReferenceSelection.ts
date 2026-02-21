@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 
-import type { AIModel } from "@/utils/api";
-import { AIModelType } from "@/utils/api";
+import { AIModelType, type AIModel } from "@/utils/api/types";
 import { extractImageGenUi, type ImageGenMode } from "@/utils/modelUi";
 
 interface UseReferenceSelectionOptions {

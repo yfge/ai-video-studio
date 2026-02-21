@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  virtualIPAPI,
-  virtualIPImageAPI,
-  type VirtualIP,
-  type VirtualIPImage,
-} from "@/utils/api";
+import { virtualIPAPI, virtualIPImageAPI } from "@/utils/api/endpoints";
+import type { VirtualIP, VirtualIPImage } from "@/utils/api/types";
 
 interface UseVirtualIPImageDataOptions {
   virtualIPKey: string;

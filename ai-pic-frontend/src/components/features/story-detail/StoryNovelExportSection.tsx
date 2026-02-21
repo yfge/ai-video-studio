@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Story } from "@/utils/api";
-import { AIModelType, taskAPI } from "@/utils/api";
+import { taskAPI } from "@/utils/api/endpoints";
+import { AIModelType, type Story } from "@/utils/api/types";
 import { MultiModelSelector } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {

@@ -1,8 +1,8 @@
 "use client";
 
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
-import { scriptAPI } from "@/utils/api";
-import type { ScriptGenerationRequest } from "@/utils/api";
+import { scriptAPI } from "@/utils/api/endpoints";
+import type { ScriptGenerationRequest } from "@/utils/api/types";
 import { ShortDramaScriptTemplateSelector } from "./ShortDramaScriptTemplateSelector";
 
 interface ScriptGenerationFormProps {

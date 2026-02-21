@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { voiceAPI, type VoiceConfig, type VoiceEnums } from "@/utils/api";
+import { voiceAPI } from "@/utils/api/endpoints";
+import type { VoiceConfig, VoiceEnums } from "@/utils/api/types";
 import type { AlertOptions } from "@/components/shared/modals/AlertModalProvider";
 
 interface UseVoicePreviewArgs {

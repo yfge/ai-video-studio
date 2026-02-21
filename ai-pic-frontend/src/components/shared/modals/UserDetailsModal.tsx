@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { adminAPI, type AdminUser } from "@/utils/api";
+import { adminAPI } from "@/utils/api/endpoints";
+import type { AdminUser } from "@/utils/api/types";
 import RoleManagementModal from "./RoleManagementModal";
 
 // Icons

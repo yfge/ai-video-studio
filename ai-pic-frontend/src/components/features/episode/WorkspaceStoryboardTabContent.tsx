@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { scriptAPI } from "@/utils/api";
-import type { Script, StoryboardFrame, StoryboardPayload } from "@/utils/api";
+import { scriptAPI } from "@/utils/api/endpoints";
+import type {
+  Script,
+  StoryboardFrame,
+  StoryboardPayload,
+} from "@/utils/api/types";
 
 interface WorkspaceStoryboardTabContentProps {
   episodeKey: string;

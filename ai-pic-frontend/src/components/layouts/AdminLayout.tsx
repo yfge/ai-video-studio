@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { authAPI, adminAPI, User, UserStatsResponse } from "@/utils/api";
+import { authAPI, adminAPI } from "@/utils/api/endpoints";
+import type { User, UserStatsResponse } from "@/utils/api/types";
 import { isAdmin, hasPendingApprovals } from "@/utils/auth";
 
 interface AdminLayoutProps {

@@ -1,4 +1,3 @@
-import type {} from "@/utils/api";
 import type {} from "@/utils/api/types";
 
 declare module "@/utils/api" {

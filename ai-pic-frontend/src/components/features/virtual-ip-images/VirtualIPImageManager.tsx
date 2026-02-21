@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { AIModelType, aiAPI, type VirtualIP } from "@/utils/api";
+import { aiAPI } from "@/utils/api/endpoints";
+import { AIModelType, type VirtualIP } from "@/utils/api/types";
 import {
   ImagePreviewModal,
   ImageToImageModal,

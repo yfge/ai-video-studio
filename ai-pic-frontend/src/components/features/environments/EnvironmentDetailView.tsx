@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 
 import { GenerationAuditWarnings } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals";
-import { storyStructureAPI, type Environment } from "@/utils/api";
+import { storyStructureAPI } from "@/utils/api/endpoints";
+import type { Environment } from "@/utils/api/types";
 
 import { EnvironmentDetailHeader } from "./EnvironmentDetailHeader";
 import { EnvironmentHeader } from "./EnvironmentHeader";

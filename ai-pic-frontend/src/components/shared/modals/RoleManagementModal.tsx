@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { adminAPI, type AdminUser } from "@/utils/api";
+import { adminAPI } from "@/utils/api/endpoints";
+import type { AdminUser } from "@/utils/api/types";
 
 // Icons
 const XIcon = ({ className = "" }) => (

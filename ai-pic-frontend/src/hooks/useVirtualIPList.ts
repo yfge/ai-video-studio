@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { virtualIPAPI, type VirtualIP } from "@/utils/api";
+import { virtualIPAPI } from "@/utils/api/endpoints";
+import type { VirtualIP } from "@/utils/api/types";
 import type { AlertOptions } from "@/components/shared/modals/AlertModalProvider";
 
 interface UseVirtualIPListOptions {

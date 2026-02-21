@@ -4,6 +4,15 @@
 
 // AI model type constants
 export const AIModelType = {
+  Text: "text_generation",
+  Image: "text_to_image",
+  Video: "text_to_video",
+  Audio: "text_to_speech",
+  SpeechToText: "speech_to_text",
+  ImageToImage: "image_to_image",
+  ImageToVideo: "image_to_video",
+  ImageUnderstanding: "image_understanding",
+  VideoUnderstanding: "video_understanding",
   TEXT_GENERATION: "text_generation",
   TEXT_TO_IMAGE: "text_to_image",
   IMAGE_TO_IMAGE: "image_to_image",
@@ -31,6 +40,8 @@ export interface AIModel {
 // Available models response
 export interface AvailableModelsResponse {
   models: AIModel[];
+  default?: string;
+  count?: number;
   default_model_id?: string;
   categories?: Record<string, AIModel[]>;
 }

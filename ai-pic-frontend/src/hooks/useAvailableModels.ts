@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  aiAPI,
-  type ApiResponse,
-  type AvailableModelsResponse,
-} from "@/utils/api";
+import { aiAPI } from "@/utils/api/endpoints";
+import type { ApiResponse, AvailableModelsResponse } from "@/utils/api/types";
 
 interface UseAvailableModelsOptions {
   modelType?: string;

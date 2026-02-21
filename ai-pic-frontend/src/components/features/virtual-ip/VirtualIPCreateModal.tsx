@@ -7,7 +7,7 @@ import {
   type FormEvent,
   type SetStateAction,
 } from "react";
-import type { VoiceConfig } from "@/utils/api";
+import type { VoiceConfig } from "@/utils/api/types";
 import { CreationOverlay, SmartInputField } from "@/components/shared";
 import type { AlertOptions } from "@/components/shared/modals/AlertModalProvider";
 import { useVoiceConfigOptions } from "@/hooks/useVoiceConfigOptions";

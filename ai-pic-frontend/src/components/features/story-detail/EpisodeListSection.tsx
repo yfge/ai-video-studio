@@ -1,6 +1,6 @@
 "use client";
 
-import type { Episode, Script, Story } from "@/utils/api";
+import type { Episode, Script, Story } from "@/utils/api/types";
 import {
   extractEpisodeScenes,
   getEpisodeSceneCount,

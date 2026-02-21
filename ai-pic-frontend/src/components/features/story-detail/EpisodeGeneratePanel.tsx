@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api/types";
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import type { EpisodeGenForm } from "@/hooks/useStoryDetail";
 import {

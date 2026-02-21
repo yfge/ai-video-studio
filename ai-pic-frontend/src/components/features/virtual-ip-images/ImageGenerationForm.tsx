@@ -1,8 +1,8 @@
 "use client";
 import { useEffect } from "react";
 
-import type { AIModel } from "@/utils/api";
-import { AIModelType, aiAPI } from "@/utils/api";
+import { aiAPI } from "@/utils/api/endpoints";
+import { AIModelType, type AIModel } from "@/utils/api/types";
 import {
   GenerationProfileSelect,
   ImageGenAdvancedFields,

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { virtualIPAPI } from "@/utils/api";
+import { virtualIPAPI } from "@/utils/api/endpoints";
 
 interface SmartInputFieldProps {
   label: string;

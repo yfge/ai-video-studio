@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  voiceAPI,
-  type VoiceConfig,
-  type VoiceEnums,
-  type VoiceList,
-  type VoiceItem,
-} from "@/utils/api";
+import { voiceAPI } from "@/utils/api/endpoints";
+import type {
+  VoiceConfig,
+  VoiceEnums,
+  VoiceList,
+  VoiceItem,
+} from "@/utils/api/types";
 
 interface UseVoiceConfigOptionsArgs {
   voiceConfig: VoiceConfig;

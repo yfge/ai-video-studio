@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { NormalizedScene, Script } from "@/utils/api";
-import { scriptAPI } from "@/utils/api";
+import { scriptAPI } from "@/utils/api/endpoints";
+import type { NormalizedScene, Script } from "@/utils/api/types";
 import { AudioTimelineSection } from "./AudioTimelineSection";
 
 interface WorkspaceTimelineTabContentProps {
