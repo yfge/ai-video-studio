@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { apiClient } from "@/utils/api";
+import { storyStructureAPI } from "@/utils/api/endpoints";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 
 export type SceneNode = {
@@ -38,25 +38,19 @@ export function SceneStructurePanel({
   canEdit: boolean;
   onStructureLoaded?: (scenes: SceneNode[]) => void;
   apiOverride?: {
-    getNormalizedScenes: (
-      scriptId: number,
-    ) => Promise<{
+    getNormalizedScenes: (scriptId: number) => Promise<{
       success: boolean;
       data?: SceneNode[];
       message?: string;
       error?: string;
     }>;
-    getNormalizedSceneBeats: (
-      sceneId: number,
-    ) => Promise<{
+    getNormalizedSceneBeats: (sceneId: number) => Promise<{
       success: boolean;
       data?: BeatNode[];
       message?: string;
       error?: string;
     }>;
-    getNormalizedSceneShots: (
-      sceneId: number,
-    ) => Promise<{
+    getNormalizedSceneShots: (sceneId: number) => Promise<{
       success: boolean;
       data?: ShotNode[];
       message?: string;
@@ -101,7 +95,18 @@ export function SceneStructurePanel({
   };
 }) {
   const { showAlert } = useAlertModal();
-  const client = apiOverride ?? apiClient;
+  const client = apiOverride ?? {
+    getNormalizedScenes: storyStructureAPI.getNormalizedScenes,
+    getNormalizedSceneBeats: storyStructureAPI.getNormalizedSceneBeats,
+    getNormalizedSceneShots: storyStructureAPI.getNormalizedSceneShots,
+    createScene: storyStructureAPI.createScene,
+    createSceneBeat: storyStructureAPI.createSceneBeat,
+    createSceneShot: storyStructureAPI.createSceneShot,
+    updateSceneBeat: storyStructureAPI.updateSceneBeat,
+    updateSceneShot: storyStructureAPI.updateSceneShot,
+    deleteSceneBeat: storyStructureAPI.deleteSceneBeat,
+    deleteSceneShot: storyStructureAPI.deleteSceneShot,
+  };
   const [scenes, setScenes] = useState<SceneNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

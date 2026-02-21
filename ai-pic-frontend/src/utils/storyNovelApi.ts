@@ -1,5 +1,5 @@
-import type { ApiResponse } from "@/utils/api";
-import { apiClient } from "@/utils/api";
+import { httpClient } from "@/utils/api/client";
+import type { ApiResponse } from "@/utils/api/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -30,7 +30,7 @@ export async function generateStoryZhihuNovelAsync(
   payload: StoryNovelExportRequest,
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   const encoded = encodeURIComponent(storyBusinessId);
-  return apiClient.makeRequest(
+  return httpClient<{ task_id: number; status: string }>(
     `/api/v1/stories/business/${encoded}/novel/generate-async`,
     {
       method: "POST",
@@ -45,7 +45,7 @@ export async function listStoryNovelExports(
 ): Promise<ApiResponse<{ items: StoryNovelExportSummary[] }>> {
   const encoded = encodeURIComponent(storyBusinessId);
   const query = new URLSearchParams({ limit: String(limit) });
-  return apiClient.makeRequest(
+  return httpClient<{ items: StoryNovelExportSummary[] }>(
     `/api/v1/stories/business/${encoded}/novel/exports?${query.toString()}`,
     { method: "GET" },
   );

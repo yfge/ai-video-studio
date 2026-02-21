@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { apiClient } from "@/utils/api";
 import { virtualIPAPI, voiceAPI } from "@/utils/api/endpoints";
 import type {
   VirtualIP,
@@ -371,10 +370,6 @@ export function useVirtualIPDetail({
   };
 
   // Effects
-  useEffect(() => {
-    apiClient.updateToken();
-  }, []);
-
   useEffect(() => {
     void fetchVoiceEnums();
   }, [fetchVoiceEnums]);
