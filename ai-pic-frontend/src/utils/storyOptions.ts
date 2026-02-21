@@ -1,4 +1,4 @@
-import type { StoryGenerationRequest } from "@/utils/api";
+import type { StoryGenerationRequest } from "@/utils/api/types";
 
 export const STORY_GENRES = [
   { value: "drama", label: "剧情" },

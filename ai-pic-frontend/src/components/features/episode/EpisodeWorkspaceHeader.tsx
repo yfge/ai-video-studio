@@ -1,6 +1,6 @@
 "use client";
 
-import type { Episode, Script } from "@/utils/api";
+import type { Episode, Script } from "@/utils/api/types";
 import {
   EpisodeWorkflowSteps,
   type WorkflowStepStatus,
@@ -17,7 +17,9 @@ interface EpisodeWorkspaceHeaderProps {
   script?: Script | null;
   workflowStatus: WorkflowStatus;
   activeTab: "overview" | "script" | "timeline" | "storyboard" | "characters";
-  onTabChange: (tab: "overview" | "script" | "timeline" | "storyboard" | "characters") => void;
+  onTabChange: (
+    tab: "overview" | "script" | "timeline" | "storyboard" | "characters",
+  ) => void;
   onNavigateBack: () => void;
   onGenerateScript?: () => void;
   onGenerateTimeline?: () => void;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Story } from "@/utils/api";
+import type { Story } from "@/utils/api/types";
 
 interface StorySummarySectionProps {
   story: Story;

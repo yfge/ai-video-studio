@@ -1,6 +1,6 @@
 "use client";
 
-import type { Story } from "@/utils/api";
+import type { Story } from "@/utils/api/types";
 import { resolveCreatorLabel } from "@/utils/creator";
 
 interface StoryDetailHeaderProps {

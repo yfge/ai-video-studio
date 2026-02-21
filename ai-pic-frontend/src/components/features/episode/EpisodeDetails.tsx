@@ -1,6 +1,6 @@
 "use client";
 
-import type { Episode } from "@/utils/api";
+import type { Episode } from "@/utils/api/types";
 import { asRecord, extractScenes, getString } from "@/hooks/useEpisodeDetail";
 
 interface EpisodeDetailsProps {

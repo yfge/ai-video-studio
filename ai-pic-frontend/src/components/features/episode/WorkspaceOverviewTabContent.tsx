@@ -1,6 +1,6 @@
 "use client";
 
-import type { Episode } from "@/utils/api";
+import type { Episode } from "@/utils/api/types";
 
 interface PlotPoint {
   timing?: string;

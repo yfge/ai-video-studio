@@ -1,4 +1,4 @@
-import type { AdSnippet, HookPlan } from "@/utils/api";
+import type { AdSnippet, HookPlan } from "@/utils/api/types";
 
 export const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object"

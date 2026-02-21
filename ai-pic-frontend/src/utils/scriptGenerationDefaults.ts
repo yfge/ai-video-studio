@@ -1,4 +1,4 @@
-import type { ScriptGenerationRequest } from "@/utils/api";
+import type { ScriptGenerationRequest } from "@/utils/api/types";
 
 export const SCRIPT_GENERATION_DEFAULTS: ScriptGenerationRequest = {
   episode_id: 0,

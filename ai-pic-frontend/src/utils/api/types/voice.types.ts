@@ -46,10 +46,13 @@ export interface VoiceList {
 
 // Voice configuration for character
 export interface VoiceConfig {
-  provider: string;
-  voice_id: string;
-  voice_type: string;
-  tts_model: string;
+  provider?: string;
+  model?: string;
+  voice_id?: string;
+  voice_type?: string;
+  tts_model?: string;
+  display_name?: string;
+  sample_url?: string;
   emotion?: string;
   speed?: number;
   vol?: number;

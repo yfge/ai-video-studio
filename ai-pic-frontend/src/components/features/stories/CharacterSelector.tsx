@@ -1,6 +1,6 @@
 "use client";
 
-import type { VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api/types";
 
 interface CharacterSelectorProps {
   virtualIPs: VirtualIP[];

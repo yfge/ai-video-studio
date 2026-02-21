@@ -1,6 +1,6 @@
 "use client";
 
-import type { Script } from "@/utils/api";
+import type { Script } from "@/utils/api/types";
 import type {
   ScriptScene,
   ScriptDialogue,

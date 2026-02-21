@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { AdSnippet, HookPlan } from "@/utils/api";
+import type { AdSnippet, HookPlan } from "@/utils/api/types";
 import {
   MARKET_REGIONS,
   MICRO_GENRES,

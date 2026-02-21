@@ -1,6 +1,6 @@
 "use client";
 
-import type { Episode } from "@/utils/api";
+import type { Episode } from "@/utils/api/types";
 import { getSceneCount } from "@/hooks/useEpisodeDetail";
 
 interface EpisodeHeaderProps {

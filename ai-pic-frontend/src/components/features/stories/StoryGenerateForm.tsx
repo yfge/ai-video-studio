@@ -1,6 +1,6 @@
 "use client";
 
-import type { VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api/types";
 import type { StoryGenerationForm } from "@/utils/storyOptions";
 import { CreationOverlay } from "@/components/shared";
 import { StoryBasicsSection } from "./StoryBasicsSection";

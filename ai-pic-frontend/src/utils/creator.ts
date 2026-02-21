@@ -1,4 +1,4 @@
-import type { CreatorInfo } from "@/utils/api";
+import type { CreatorInfo } from "@/utils/api/types";
 
 export const resolveCreatorLabel = (creator?: CreatorInfo | null) => {
   if (!creator) return "未知";

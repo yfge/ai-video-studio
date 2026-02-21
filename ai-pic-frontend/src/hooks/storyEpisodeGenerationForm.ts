@@ -1,6 +1,6 @@
 "use client";
 
-import type { HookPlan, AdSnippet } from "@/utils/api";
+import type { HookPlan, AdSnippet } from "@/utils/api/types";
 
 export interface EpisodeGenForm {
   episode_count: number;

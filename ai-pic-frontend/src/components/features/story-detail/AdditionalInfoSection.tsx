@@ -1,6 +1,6 @@
 "use client";
 
-import type { Story } from "@/utils/api";
+import type { Story } from "@/utils/api/types";
 
 interface AdditionalInfoSectionProps {
   story: Story;
