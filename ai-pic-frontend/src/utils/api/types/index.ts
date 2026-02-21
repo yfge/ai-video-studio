@@ -35,6 +35,9 @@ export * from "./virtual-ip.types";
 // Story and episode types
 export * from "./story.types";
 
+// Story novel export types
+export * from "./story-novel.types";
+
 // Script types
 export * from "./script.types";
 

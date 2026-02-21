@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
-import { fetchStoryNovelText } from "@/utils/storyNovelApi";
+import { fetchStoryNovelText } from "@/utils/api/endpoints";
 
 interface StoryNovelPreviewButtonProps {
   taskId: number;

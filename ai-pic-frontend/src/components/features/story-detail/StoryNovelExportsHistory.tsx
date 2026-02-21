@@ -5,8 +5,8 @@ import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
   downloadStoryNovel,
   listStoryNovelExports,
-  type StoryNovelExportSummary,
-} from "@/utils/storyNovelApi";
+} from "@/utils/api/endpoints";
+import { type StoryNovelExportSummary } from "@/utils/api/types";
 
 import { StoryNovelPreviewButton } from "./StoryNovelPreviewButton";
 
