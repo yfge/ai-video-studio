@@ -5,7 +5,7 @@
  *
  * Usage:
  * ```typescript
- * import { http, getAuthToken } from '@/utils/api'
+ * import { http, getAuthToken } from '@/utils/api/client'
  * import type { User, ApiResponse } from '@/utils/api/types'
  * import { authAPI, storyAPI } from '@/utils/api/endpoints'
  * ```
@@ -28,8 +28,4 @@ export * from "./types";
 // Domain-specific API endpoints (new modular structure)
 export * from "./endpoints";
 
-// Re-export apiClient from legacy api.ts for backward compatibility
-// Note: Domain-specific API objects (authAPI, storyAPI, etc.) are now
-// provided by ./endpoints which uses the new httpClient-based approach.
-// The legacy apiClient is kept for components that directly use it.
-export { apiClient } from "../api";
+// Do not export legacy apiClient from this module.

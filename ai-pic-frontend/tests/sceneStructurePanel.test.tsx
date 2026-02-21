@@ -1,11 +1,10 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import React from "react";
-import { render, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, waitFor, cleanup } from "@testing-library/react";
 import { JSDOM } from "jsdom";
-import { AlertModalProvider } from "../src/components/AlertModalProvider";
-import { SceneStructurePanel } from "../src/components/SceneStructurePanel";
-import apiClient from "../src/utils/api";
+import { AlertModalProvider } from "../src/components/shared/modals/AlertModalProvider";
+import { SceneStructurePanel } from "../src/components/features/SceneStructurePanel";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>");
 globalThis.window = dom.window as unknown as Window & typeof globalThis;
@@ -47,12 +46,6 @@ describe("SceneStructurePanel permissions and callbacks", () => {
       deleteSceneBeat: async () => ({ success: true }),
       deleteSceneShot: async () => ({ success: true }),
     };
-    (apiClient as any).getNormalizedScenes = stubClient.getNormalizedScenes;
-    (apiClient as any).getNormalizedSceneBeats =
-      stubClient.getNormalizedSceneBeats;
-    (apiClient as any).getNormalizedSceneShots =
-      stubClient.getNormalizedSceneShots;
-    (apiClient as any).createScene = stubClient.createScene;
   });
 
   afterEach(() => {
