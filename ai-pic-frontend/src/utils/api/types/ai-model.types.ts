@@ -18,12 +18,12 @@ export type AIModelTypeValue = (typeof AIModelType)[keyof typeof AIModelType];
 
 // AI model entity
 export interface AIModel {
-  id: string;
-  model_id?: string; // Backend may return enriched model_id like "provider:id"
+  model_id: string;
+  id?: string;
   name: string;
   provider: string;
-  type: AIModelTypeValue;
-  capabilities?: string[];
+  type: string;
+  capabilities: string[];
   metadata?: Record<string, unknown>;
   is_available?: boolean;
 }

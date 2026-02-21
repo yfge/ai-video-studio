@@ -1,6 +1,6 @@
 "use client";
 
-import type { AIModel } from "@/utils/api";
+import type { AIModel } from "@/utils/api/types";
 
 import { ImageModelUiFields } from "./ImageModelUiFields";
 import { VideoModelUiFields } from "./VideoModelUiFields";

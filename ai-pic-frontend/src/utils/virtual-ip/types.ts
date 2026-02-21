@@ -1,4 +1,4 @@
-import type { VoiceConfig } from "@/utils/api";
+import type { VoiceConfig } from "@/utils/api/types";
 
 export interface VirtualIPCreateFormState {
   name: string;

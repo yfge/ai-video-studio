@@ -1,6 +1,6 @@
 "use client";
 
-import type { Environment } from "@/utils/api";
+import type { Environment } from "@/utils/api/types";
 import { resolveCreatorLabel } from "@/utils/creator";
 
 interface EnvironmentListProps {

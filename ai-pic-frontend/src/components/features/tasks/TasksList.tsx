@@ -1,6 +1,6 @@
 "use client";
 
-import type { Task as APITask } from "@/utils/api";
+import type { Task as APITask } from "@/utils/api/types";
 
 import { TASK_TYPE_LABELS } from "./taskTypeOptions";
 import { TaskDetails } from "./TaskDetails";

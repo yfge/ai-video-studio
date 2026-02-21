@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { CollapsibleText } from "@/components/ui";
-import type { VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api/types";
 import type { EditFormState } from "@/hooks/useVirtualIPDetail";
 
 interface VirtualIPInfoSectionProps {

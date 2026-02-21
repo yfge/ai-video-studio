@@ -1,6 +1,6 @@
 "use client";
 
-import type { VoiceConfig, VoiceEnums } from "@/utils/api";
+import type { VoiceConfig, VoiceEnums } from "@/utils/api/types";
 
 interface VoiceSettingsPanelProps {
   editing: boolean;

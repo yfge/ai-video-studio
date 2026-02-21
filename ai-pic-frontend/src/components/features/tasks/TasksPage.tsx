@@ -2,7 +2,7 @@
 
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { Navigation } from "@/components/layouts";
-import type { Task as APITask } from "@/utils/api";
+import type { Task as APITask } from "@/utils/api/types";
 
 import { TasksList } from "./TasksList";
 import { TasksPagination } from "./TasksPagination";

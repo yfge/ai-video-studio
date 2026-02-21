@@ -26,7 +26,7 @@
 - [ ] 后端：继续下线 `scripts_legacy.py`，本期优先迁出 storyboard/dialogue-audio/timeline 路由并标记 deprecate
 - [x] 后端：去重 voice catalog（保留单一入口），删除重复实现并补回归测试
 - [ ] 前端：冻结 `src/utils/api.ts` 新增导出，新增 API 一律进入 `src/utils/api/endpoints/*`
-- [ ] 前端：迁移至少 60 处 `@/utils/api` 旧入口引用到新分层 API（endpoints/types/client）（进行中：已完成 30 处（hooks + 低风险组件/工具类型导入），`from "@/utils/api"` 剩余约 96 处）
+- [ ] 前端：迁移至少 60 处 `@/utils/api` 旧入口引用到新分层 API（endpoints/types/client）（进行中：已完成 58 处（hooks + 低风险组件/工具类型导入），`from "@/utils/api"` 剩余约 67 处）
 - [x] 仓库治理：移除仓库跟踪的 `ai-pic-backend/backups/*.sql`，改为外部备份 + 文档化恢复流程
 - [ ] 验证：`pytest` + `npm run lint` + Chrome E2E（登录→故事→剧集/剧本→分镜主路径），并记录到 `agent_chats`
 

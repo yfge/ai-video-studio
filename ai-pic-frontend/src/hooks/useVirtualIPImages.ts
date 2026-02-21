@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api/types";
 
 import { useVirtualIPImageActions } from "./virtual-ip/useVirtualIPImageActions";
 import { useVirtualIPImageData } from "./virtual-ip/useVirtualIPImageData";

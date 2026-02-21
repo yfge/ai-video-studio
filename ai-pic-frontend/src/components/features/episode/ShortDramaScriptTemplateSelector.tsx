@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ScriptGenerationRequest } from "@/utils/api";
+import type { ScriptGenerationRequest } from "@/utils/api/types";
 import { SHORT_DRAMA_SCRIPT_TEMPLATES } from "@/utils/shortDramaTemplates";
 
 interface ShortDramaScriptTemplateSelectorProps {

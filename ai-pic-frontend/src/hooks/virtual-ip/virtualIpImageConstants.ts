@@ -1,4 +1,4 @@
-import type { StyleSpec, VirtualIPImage } from "@/utils/api";
+import type { StyleSpec, VirtualIPImage } from "@/utils/api/types";
 
 type StyleSpecKey = keyof StyleSpec;
 

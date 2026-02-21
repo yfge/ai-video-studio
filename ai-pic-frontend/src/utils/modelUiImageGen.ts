@@ -1,4 +1,4 @@
-import type { AIModel } from "@/utils/api";
+import type { AIModel } from "@/utils/api/types";
 
 import type { ModelMetadata, ModelUiMetadata } from "./modelUiTypes";
 

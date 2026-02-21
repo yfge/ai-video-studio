@@ -2,7 +2,7 @@
 
 import type { StyleSpecField } from "@/components/shared/StyleSpecAdvancedPanel";
 import { StyleSpecAdvancedPanel } from "@/components/shared/StyleSpecAdvancedPanel";
-import type { StylePreset, StyleSpec } from "@/utils/api";
+import type { StylePreset, StyleSpec } from "@/utils/api/types";
 
 interface ImageToImageStyleFieldsProps {
   showStylePreset: boolean;

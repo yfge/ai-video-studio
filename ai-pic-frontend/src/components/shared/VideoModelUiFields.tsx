@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 
 import { extractVideoUi } from "@/utils/modelUi";
-import type { AIModel } from "@/utils/api";
+import type { AIModel } from "@/utils/api/types";
 
 import type { ModelUiValue } from "./modelUiTypes";
 import { VideoModelAdvancedFields } from "./VideoModelAdvancedFields";

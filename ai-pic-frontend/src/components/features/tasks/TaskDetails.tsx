@@ -1,6 +1,6 @@
 "use client";
 
-import type { Task as APITask } from "@/utils/api";
+import type { Task as APITask } from "@/utils/api/types";
 
 import type { PersistedStyleInfo } from "./utils";
 import { asRecord, renderJson } from "./utils";

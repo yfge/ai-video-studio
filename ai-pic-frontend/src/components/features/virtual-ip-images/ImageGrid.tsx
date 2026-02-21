@@ -1,6 +1,6 @@
 "use client";
 
-import type { VirtualIP, VirtualIPImage } from "@/utils/api";
+import type { VirtualIP, VirtualIPImage } from "@/utils/api/types";
 import { ImagePreviewCard } from "@/components/shared";
 import { resolveImageUrl } from "@/hooks/useVirtualIPImages";
 import { getCategoryLabel } from "./categoryLabel";

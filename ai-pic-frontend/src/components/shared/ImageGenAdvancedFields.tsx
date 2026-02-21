@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import type { AIModel } from "@/utils/api";
+import type { AIModel } from "@/utils/api/types";
 import { extractImageGenUi, type ImageGenMode } from "@/utils/modelUi";
 
 import { GenerationAuditWarnings } from "./GenerationAuditWarnings";

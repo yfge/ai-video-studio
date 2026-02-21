@@ -2,7 +2,7 @@
 
 import { CollapsibleText } from "@/components/ui";
 import type { EditFormState } from "@/hooks/useVirtualIPDetail";
-import type { VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api/types";
 
 interface VirtualIPAdditionalInfoSectionProps {
   virtualIP: VirtualIP;

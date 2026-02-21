@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { useStyleSchema } from "@/hooks/useStyleSchema";
-import type { StyleSpec } from "@/utils/api";
+import type { StyleSpec } from "@/utils/api/types";
 
 export type StyleSpecKey = keyof StyleSpec;
 

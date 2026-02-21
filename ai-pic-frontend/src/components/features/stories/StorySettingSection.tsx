@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { VirtualIP } from "@/utils/api";
+import type { VirtualIP } from "@/utils/api/types";
 import type { StoryGenerationForm } from "@/utils/storyOptions";
 import { STORY_ASPECT_RATIOS } from "@/utils/storyOptions";
 import { CharacterSelector } from "./CharacterSelector";

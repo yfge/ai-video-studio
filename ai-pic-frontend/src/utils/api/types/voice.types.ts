@@ -13,9 +13,10 @@ export interface VoiceOption {
 // Voice item from catalog
 export interface VoiceItem {
   voice_id: string;
-  voice_name: string;
-  language: string;
-  created_time?: number;
+  voice_name?: string;
+  description?: string[];
+  language?: string;
+  created_time?: string | number;
 }
 
 // Voice enums for UI configuration
@@ -31,15 +32,20 @@ export interface VoiceEnums {
   bitrates: VoiceOption[];
   channels: VoiceOption[];
   music_models: VoiceOption[];
-  defaults: Record<string, string>;
-  system_voices: VoiceOption[];
+  defaults?: {
+    tts_model?: string;
+    voice_id?: string;
+    output_format?: string;
+    music_model?: string;
+  };
+  system_voices?: Array<VoiceOption & { language?: string }>;
 }
 
 // Voice list response
 export interface VoiceList {
-  system_voice: VoiceItem[];
-  voice_cloning: VoiceItem[];
-  voice_generation: VoiceItem[];
+  system_voice?: VoiceItem[];
+  voice_cloning?: VoiceItem[];
+  voice_generation?: VoiceItem[];
   trace_id?: string;
   base_resp?: Record<string, unknown>;
 }
@@ -61,10 +67,10 @@ export interface VoiceConfig {
 
 // Voice preview response
 export interface VoicePreviewResponse {
-  audio_url?: string;
-  audio_hex?: string;
-  subtitle_file?: string;
-  trace_id?: string;
+  audio_url?: string | null;
+  audio_hex?: string | null;
+  subtitle_file?: string | null;
+  trace_id?: string | null;
   extra_info?: Record<string, unknown>;
   base_resp?: Record<string, unknown>;
 }

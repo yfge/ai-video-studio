@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { AIModel, StyleSpec } from "@/utils/api";
+import type { AIModel, StyleSpec } from "@/utils/api/types";
 import type { ImageGenAdvancedValue } from "../../imageGenAdvancedTypes";
 
 interface UseImageToImageModalStateOptions {

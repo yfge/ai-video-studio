@@ -1,4 +1,4 @@
-import type { VoiceConfig } from "@/utils/api";
+import type { VoiceConfig } from "@/utils/api/types";
 import type { VirtualIPCreateFormState } from "./types";
 
 export const createEmptyForm = (): VirtualIPCreateFormState => ({
