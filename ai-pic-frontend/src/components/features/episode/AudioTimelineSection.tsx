@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { NormalizedScene, Script } from "@/utils/api";
+import type { NormalizedScene, Script } from "@/utils/api/types";
 import { Timeline, type TimelineTrack } from "@/components/features";
 import {
   asRecord,

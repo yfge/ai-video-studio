@@ -5,7 +5,7 @@ import type {
   NormalizedShot,
   SceneBeat,
   Script,
-} from "@/utils/api";
+} from "@/utils/api/types";
 import type {
   ScriptScene,
   ScriptDialogue,

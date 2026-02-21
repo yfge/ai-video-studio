@@ -7,8 +7,8 @@ import type {
   SceneBeat,
   Script,
   ScriptGenerationRequest,
-} from "@/utils/api";
-import { storyStructureAPI, authAPI } from "@/utils/api";
+} from "@/utils/api/types";
+import { storyStructureAPI, authAPI } from "@/utils/api/endpoints";
 import {
   ScriptOverviewTab,
   ScriptScenesTab,
@@ -16,7 +16,7 @@ import {
 } from "@/components/features";
 import type { SceneNode } from "@/components/features";
 import { isAdmin } from "@/utils/auth";
-import type { User } from "@/utils/api";
+import type { User } from "@/utils/api/types";
 import { ModelSelector } from "@/components/shared/ModelSelector";
 
 type ScriptScene = {

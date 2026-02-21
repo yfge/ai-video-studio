@@ -1,16 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  apiClient,
-  virtualIPAPI,
-  voiceAPI,
-  type VirtualIP,
-  type VoiceConfig,
-  type VoiceEnums,
-  type VoiceList,
-  type VoiceItem,
-} from "@/utils/api";
+import { apiClient } from "@/utils/api";
+import { virtualIPAPI, voiceAPI } from "@/utils/api/endpoints";
+import type {
+  VirtualIP,
+  VoiceConfig,
+  VoiceEnums,
+  VoiceList,
+  VoiceItem,
+} from "@/utils/api/types";
 
 export interface UseVirtualIPDetailOptions {
   ipKey: string;

@@ -5,14 +5,14 @@ import { GenerationProfileSelect } from "@/components/shared/GenerationProfileSe
 import { ModelUiFields } from "@/components/shared/ModelUiFields";
 import { MultiModelSelector } from "@/components/shared/MultiModelSelector";
 import type { StyleSpecField } from "@/components/shared/StyleSpecAdvancedPanel";
-import { AIModelType } from "@/utils/api";
+import { AIModelType } from "@/utils/api/types";
 import type {
   AIModel,
   ApiResponse,
   AvailableModelsResponse,
   StylePreset,
   StyleSpec,
-} from "@/utils/api";
+} from "@/utils/api/types";
 import { extractImageGenUi, type ImageGenMode } from "@/utils/modelUi";
 import { supportsReferenceImage } from "@/utils/modelSupport";
 

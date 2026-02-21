@@ -6,10 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 import { ModelSelector } from "@/components/shared/ModelSelector";
 import { ModelUiFields } from "@/components/shared/ModelUiFields";
 import { extractVideoUi } from "@/utils/modelUi";
-import {
-  type AIModel,
-  type StoryboardVideoGenerationOptions,
-} from "@/utils/api";
+import type {
+  AIModel,
+  StoryboardVideoGenerationOptions,
+} from "@/utils/api/types";
 
 type CandidateSectionProps = {
   title: string;

@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { authAPI, scriptAPI, storyStructureAPI } from "@/utils/api";
+import { authAPI, scriptAPI, storyStructureAPI } from "@/utils/api/endpoints";
 import type {
   NormalizedScene,
   NormalizedShot,
   SceneBeat,
   Script,
   User,
-} from "@/utils/api";
+} from "@/utils/api/types";
 import { isAdmin } from "@/utils/auth";
 import {
   normalizeDialogues,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import api from "@/utils/api";
+import { authAPI } from "@/utils/api/endpoints";
 
 export default function Register() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function Register() {
     setServerError(null);
 
     try {
-      const res = await api.register({
+      const res = await authAPI.register({
         username: formData.username,
         email: formData.email,
         password: formData.password,

@@ -5,7 +5,7 @@ import type {
   ApiResponse,
   AvailableModelsResponse,
   StyleSpec,
-} from "@/utils/api";
+} from "@/utils/api/types";
 import type { ImageGenAdvancedValue } from "../../imageGenAdvancedTypes";
 
 export type ReferenceImageType =

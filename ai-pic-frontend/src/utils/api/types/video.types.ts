@@ -8,8 +8,17 @@ export interface StoryboardVideoGenerationOptions {
   provider?: string;
   prompt?: string;
   duration?: number;
+  fps?: number;
   resolution?: string;
   ratio?: string;
+  watermark?: boolean;
+  seed?: number;
+  camera_fixed?: boolean;
+  service_tier?: string;
+  execution_expires_after?: number;
+  return_last_frame?: boolean;
+  camera_control?: Record<string, unknown>;
+  use_end_frame?: boolean;
   mode?: string;
   cfg_scale?: number;
   motion_bucket_id?: number;

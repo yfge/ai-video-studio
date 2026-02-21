@@ -22,7 +22,7 @@
  */
 
 import { useCallback } from "react";
-import type { ApiResponse } from "@/utils/api";
+import type { ApiResponse } from "@/utils/api/types";
 
 export interface UseApiRequestOptions extends RequestInit {
   /**

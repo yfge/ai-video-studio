@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  type AIModel,
-  type ApiResponse,
-  type AvailableModelsResponse,
-} from "@/utils/api";
+import type {
+  AIModel,
+  ApiResponse,
+  AvailableModelsResponse,
+} from "@/utils/api/types";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 
 interface ModelSelectorProps {

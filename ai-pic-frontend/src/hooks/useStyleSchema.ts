@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  styleAPI,
-  type ApiResponse,
-  type StyleSchemaResponse,
-} from "@/utils/api";
+import { styleAPI } from "@/utils/api/endpoints";
+import type { ApiResponse, StyleSchemaResponse } from "@/utils/api/types";
 
 interface UseStyleSchemaOptions {
   enabled?: boolean;

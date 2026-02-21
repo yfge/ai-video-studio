@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 import {
+  AIModelType,
   type AIModel,
   type ApiResponse,
   type AvailableModelsResponse,
-  AIModelType,
-} from "@/utils/api";
+} from "@/utils/api/types";
 
 // 简化的模型类型映射，兼容旧代码
 const LEGACY_TYPE_MAP: Record<string, string> = {

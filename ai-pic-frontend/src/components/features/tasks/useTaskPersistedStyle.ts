@@ -5,9 +5,8 @@ import {
   scriptAPI,
   storyStructureAPI,
   virtualIPImageAPI,
-  type Environment,
-  type Task as APITask,
-} from "@/utils/api";
+} from "@/utils/api/endpoints";
+import type { Environment, Task as APITask } from "@/utils/api/types";
 
 import { asRecord, toInt, type PersistedStyleInfo } from "./utils";
 

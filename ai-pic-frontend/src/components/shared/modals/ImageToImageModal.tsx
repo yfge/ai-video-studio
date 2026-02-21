@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { useStylePresets } from "@/hooks/useStylePresets";
 import { extractImageGenUi, extractImageUi } from "@/utils/modelUi";
-import { AIModelType } from "@/utils/api";
+import { AIModelType } from "@/utils/api/types";
 import { GenerationAuditWarnings } from "../GenerationAuditWarnings";
 import { ImageGenAdvancedFields } from "../ImageGenAdvancedFields";
 import { ImageToImageReferencePicker } from "./image-to-image/ImageToImageReferencePicker";

@@ -13,7 +13,7 @@ import {
   ModelUiFields,
   MultiModelSelector,
 } from "@/components/shared";
-import { AIModelType, type AIModel } from "@/utils/api";
+import { AIModelType, type AIModel } from "@/utils/api/types";
 import { extractImageGenUi } from "@/utils/modelUi";
 import type { GenerationFormState } from "./types";
 import { EnvironmentReferenceImagesField } from "./EnvironmentReferenceImagesField";

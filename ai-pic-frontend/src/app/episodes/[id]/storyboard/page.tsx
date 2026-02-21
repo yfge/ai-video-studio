@@ -3,14 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  AIModelType,
   episodeAPI,
   storyAPI,
   scriptAPI,
   storyStructureAPI,
   virtualIPAPI,
+  virtualIPImageAPI,
   taskAPI,
-} from "@/utils/api";
+} from "@/utils/api/endpoints";
+import { AIModelType } from "@/utils/api/types";
 import type {
   Episode,
   Script,
@@ -23,7 +24,7 @@ import type {
   NormalizedScene,
   NormalizedShot,
   SceneBeat,
-} from "@/utils/api";
+} from "@/utils/api/types";
 import {
   useAlertModal,
   ImageToImageModal,
@@ -1314,7 +1315,7 @@ export default function EpisodeStoryboardPage() {
     for (const id of sceneCharacterIds) {
       const character = characters.find((c) => c.id === id);
       if (!character) continue;
-      const res = await virtualIPAPI.getVirtualIPImages(id);
+      const res = await virtualIPImageAPI.getImages(id);
       if (!res.success || !Array.isArray(res.data)) continue;
       const urls: string[] = [];
       for (const img of res.data) {
@@ -2325,7 +2326,8 @@ export default function EpisodeStoryboardPage() {
               <span>模型：{storyboard.meta.generation_model}</span>
             )}
             {(() => {
-              const durationAdjustment = storyboard.meta?.duration_adjustment as
+              const durationAdjustment = storyboard.meta
+                ?.duration_adjustment as
                 | {
                     audit_notes?: string[];
                     splits_performed?: number;
@@ -2770,7 +2772,9 @@ export default function EpisodeStoryboardPage() {
                           {isSplitFrame && (
                             <span
                               className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded"
-                              title={`父帧: ${fr.parent_frame_id}\n时间范围: ${fr.beat_range || "—"}`}
+                              title={`父帧: ${fr.parent_frame_id}\n时间范围: ${
+                                fr.beat_range || "—"
+                              }`}
                             >
                               第 {(splitIndex ?? 0) + 1}/{totalSplits} 段
                             </span>
@@ -2778,9 +2782,12 @@ export default function EpisodeStoryboardPage() {
                           {isMergedFrame && (
                             <span
                               className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
-                              title={`合并的 beat: ${mergedBeatIds ? mergedBeatIds.join(", ") : "—"}`}
+                              title={`合并的 beat: ${
+                                mergedBeatIds ? mergedBeatIds.join(", ") : "—"
+                              }`}
                             >
-                              合并自 {mergedBeatIds ? mergedBeatIds.length : 0} 个 beat
+                              合并自 {mergedBeatIds ? mergedBeatIds.length : 0}{" "}
+                              个 beat
                             </span>
                           )}
                         </div>
