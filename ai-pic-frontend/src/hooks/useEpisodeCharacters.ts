@@ -9,11 +9,13 @@ import {
   updateEpisodeCharacter,
   deleteEpisodeCharacter,
   getEpisodeCharacterResources,
-  type EpisodeCharacter,
-  type EpisodeCharacterCreate,
-  type EpisodeCharacterUpdate,
-  type EpisodeCharacterWithResources,
-} from "@/utils/api/episodeCharacters";
+} from "@/utils/api/endpoints";
+import type {
+  EpisodeCharacter,
+  EpisodeCharacterCreate,
+  EpisodeCharacterUpdate,
+  EpisodeCharacterWithResources,
+} from "@/utils/api/types";
 
 interface UseEpisodeCharactersParams {
   episodeId: number | string;
@@ -49,14 +51,15 @@ export function useEpisodeCharacters({
         setTotal(response.total);
         setPage(pageNum);
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to load characters";
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to load characters";
         setError(errorMessage);
         console.error("Failed to load characters:", err);
       } finally {
         setLoading(false);
       }
     },
-    [episodeId, page, pageSize]
+    [episodeId, page, pageSize],
   );
 
   // Auto-load on mount
@@ -83,7 +86,8 @@ export function useEpisodeCharacters({
 
         return newCharacter;
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to create character";
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to create character";
         setError(errorMessage);
         console.error("Failed to create character:", err);
         return null;
@@ -91,14 +95,14 @@ export function useEpisodeCharacters({
         setLoading(false);
       }
     },
-    [episodeId, page, loadCharacters]
+    [episodeId, page, loadCharacters],
   );
 
   // Update character
   const updateCharacter = useCallback(
     async (
       characterId: number | string,
-      data: EpisodeCharacterUpdate
+      data: EpisodeCharacterUpdate,
     ): Promise<EpisodeCharacter | null> => {
       if (!episodeId) return null;
 
@@ -106,16 +110,21 @@ export function useEpisodeCharacters({
       setError(null);
 
       try {
-        const updated = await updateEpisodeCharacter(episodeId, characterId, data);
+        const updated = await updateEpisodeCharacter(
+          episodeId,
+          characterId,
+          data,
+        );
 
         // Update in local state
         setCharacters((prev) =>
-          prev.map((char) => (char.id === updated.id ? updated : char))
+          prev.map((char) => (char.id === updated.id ? updated : char)),
         );
 
         return updated;
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to update character";
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to update character";
         setError(errorMessage);
         console.error("Failed to update character:", err);
         return null;
@@ -123,7 +132,7 @@ export function useEpisodeCharacters({
         setLoading(false);
       }
     },
-    [episodeId]
+    [episodeId],
   );
 
   // Delete character
@@ -143,7 +152,8 @@ export function useEpisodeCharacters({
 
         return true;
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to delete character";
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to delete character";
         setError(errorMessage);
         console.error("Failed to delete character:", err);
         return false;
@@ -151,13 +161,13 @@ export function useEpisodeCharacters({
         setLoading(false);
       }
     },
-    [episodeId]
+    [episodeId],
   );
 
   // Get character with resources
   const getCharacterResources = useCallback(
     async (
-      characterId: number | string
+      characterId: number | string,
     ): Promise<EpisodeCharacterWithResources | null> => {
       if (!episodeId) return null;
 
@@ -168,7 +178,7 @@ export function useEpisodeCharacters({
         return null;
       }
     },
-    [episodeId]
+    [episodeId],
   );
 
   // Refresh (reload current page)

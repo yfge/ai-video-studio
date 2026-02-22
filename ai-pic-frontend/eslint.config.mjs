@@ -32,6 +32,16 @@ export default [
               message:
                 "Legacy api index entrypoint is frozen. Import from '@/utils/api/endpoints', '@/utils/api/types', or '@/utils/api/client' directly.",
             },
+            {
+              name: "@/utils/api/episodeCharacters",
+              message:
+                "Legacy episodeCharacters entrypoint was split. Import endpoints from '@/utils/api/endpoints' and types from '@/utils/api/types'.",
+            },
+            {
+              name: "@/utils/api/episodeCharacters.ts",
+              message:
+                "Legacy episodeCharacters entrypoint was split. Import endpoints from '@/utils/api/endpoints' and types from '@/utils/api/types'.",
+            },
           ],
           patterns: [
             {

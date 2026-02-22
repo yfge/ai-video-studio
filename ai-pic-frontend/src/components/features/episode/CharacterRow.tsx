@@ -1,6 +1,6 @@
 "use client";
 
-import type { EpisodeCharacter } from "@/utils/api/episodeCharacters";
+import type { EpisodeCharacter } from "@/utils/api/types";
 
 interface CharacterRowProps {
   character: EpisodeCharacter;
@@ -8,7 +8,11 @@ interface CharacterRowProps {
   onDelete: () => void;
 }
 
-export function CharacterRow({ character, onEdit, onDelete }: CharacterRowProps) {
+export function CharacterRow({
+  character,
+  onEdit,
+  onDelete,
+}: CharacterRowProps) {
   const importanceLabels = ["", "次要", "重要", "主要", "核心", "关键"];
   const importanceColors = [
     "",
@@ -28,7 +32,9 @@ export function CharacterRow({ character, onEdit, onDelete }: CharacterRowProps)
               {character.character_name}
             </h3>
             <span
-              className={`px-2 py-0.5 text-xs font-medium rounded ${importanceColors[character.importance] || importanceColors[1]}`}
+              className={`px-2 py-0.5 text-xs font-medium rounded ${
+                importanceColors[character.importance] || importanceColors[1]
+              }`}
             >
               {importanceLabels[character.importance] || "次要"}
             </span>

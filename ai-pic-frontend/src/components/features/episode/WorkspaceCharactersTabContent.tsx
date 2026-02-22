@@ -7,7 +7,7 @@ import {
   type EpisodeCharacterCreate,
   type EpisodeCharacterUpdate,
   type AutoCreatedCharacter,
-} from "@/utils/api/episodeCharacters";
+} from "@/utils/api/types";
 import { CharacterFormModal } from "./CharacterFormModal";
 import { CharacterRow } from "./CharacterRow";
 
@@ -34,7 +34,7 @@ export function WorkspaceCharactersTabContent({
   const [editingCharacter, setEditingCharacter] =
     useState<EpisodeCharacter | null>(null);
   const [showAutoCreated, setShowAutoCreated] = useState(
-    autoCreatedCharacters.length > 0
+    autoCreatedCharacters.length > 0,
   );
 
   const handleCreate = async (data: EpisodeCharacterCreate) => {
@@ -46,7 +46,7 @@ export function WorkspaceCharactersTabContent({
 
   const handleUpdate = async (
     characterId: number | string,
-    data: EpisodeCharacterUpdate
+    data: EpisodeCharacterUpdate,
   ) => {
     const result = await updateCharacter(characterId, data);
     if (result) {

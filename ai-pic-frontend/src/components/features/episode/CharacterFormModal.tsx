@@ -6,7 +6,7 @@ import type {
   EpisodeCharacter,
   EpisodeCharacterCreate,
   EpisodeCharacterUpdate,
-} from "@/utils/api/episodeCharacters";
+} from "@/utils/api/types";
 import { CharacterCommonFields } from "./CharacterCommonFields";
 
 type BaseProps = {
@@ -158,10 +158,7 @@ function EditCharacterFormModal({
       }
     >
       <form id="character-form" onSubmit={handleSubmit} className="space-y-4">
-        <CharacterCommonFields
-          formData={formData}
-          setFormData={setFormData}
-        />
+        <CharacterCommonFields formData={formData} setFormData={setFormData} />
       </form>
     </Modal>
   );

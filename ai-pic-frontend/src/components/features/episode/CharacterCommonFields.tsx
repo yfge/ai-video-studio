@@ -4,7 +4,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type {
   EpisodeCharacterCreate,
   EpisodeCharacterUpdate,
-} from "@/utils/api/episodeCharacters";
+} from "@/utils/api/types";
 
 export function CharacterCommonFields<
   T extends EpisodeCharacterCreate | EpisodeCharacterUpdate,
@@ -118,4 +118,3 @@ export function CharacterCommonFields<
     </>
   );
 }
-
