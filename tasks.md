@@ -33,7 +33,7 @@
 ### 验收指标（对标）
 
 - [ ] `scripts_legacy.py` 行数下降 ≥ 40%
-- [x] `src/utils/api.ts` 行数下降 ≥ 40%（2784 -> 20，保留兼容 re-export 薄层）
+- [x] `src/utils/api.ts` 行数下降 ≥ 40%（2784 -> 0，legacy 入口文件已移除）
 - [x] `@/utils/api` 旧入口引用从 169 降到 ≤ 100（当前代码导入为 0）
 - [ ] 新同学在 10 分钟内完成本地启动并访问前后端主页
 
@@ -107,7 +107,7 @@
 - [ ] 后端：拆分 `ai-pic-backend/app/services/ai_service_manager.py`（≈1480 行）按 provider/domain 拆分，收敛公共重试/鉴权/日志
 - [x] 后端：统一 voice catalog 单一入口（`ai-pic-backend/app/services/voice_catalog.py` 与 `ai-pic-backend/app/services/audio/voice_catalog.py` 去重）
 - [x] 前端：已落地 `ai-pic-frontend/src/utils/api/{client,endpoints,types}` 目录（迁移进行中）
-- [x] 前端：迁移并缩减 `ai-pic-frontend/src/utils/api.ts`（≈2750 行），已收敛为兼容 re-export 薄层（20 行）
+- [x] 前端：迁移并缩减 `ai-pic-frontend/src/utils/api.ts`（≈2750 行），legacy 入口已删除（统一使用 `src/utils/api/{endpoints,types,client}`）
 - [ ] 前端：拆分 `ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx`（≈3300 行）为 page + hooks + components（页面 < 200 行）
 - [x] 前端：拆分 `ai-pic-frontend/src/app/tasks/page.tsx` 到 `ai-pic-frontend/src/components/features/tasks/*`（页面 < 200 行）
 - [ ] 前端：拆分超大 modal（如 `ai-pic-frontend/src/components/shared/modals/StoryboardVideoModal.tsx`），满足 ≤250 行规范
