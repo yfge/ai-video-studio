@@ -82,6 +82,11 @@ export default [
               message:
                 "Legacy api.ts/index entrypoints are frozen. Import from split modules under utils/api/endpoints, utils/api/types, or utils/api/client.",
             },
+            {
+              group: ["@/utils/api/endpoints/*", "@/utils/api/types/*"],
+              message:
+                "Use barrel imports from '@/utils/api/endpoints' and '@/utils/api/types' instead of deep module paths.",
+            },
           ],
         },
       ],

@@ -3,10 +3,7 @@
 import { useEffect, useMemo } from "react";
 
 import { useImageGenProfiles } from "@/hooks/useImageGenProfiles";
-import type {
-  ImageGenMode,
-  ImageGenProfile,
-} from "@/utils/api/types/image-gen.types";
+import type { ImageGenMode, ImageGenProfile } from "@/utils/api/types";
 
 interface GenerationProfileSelectProps {
   modelId?: string;

@@ -2,10 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { storyAPI } from "@/utils/api/endpoints";
-import type {
-  ReadinessResult,
-  QuickFixResponse,
-} from "@/utils/api/types/story.types";
+import type { ReadinessResult, QuickFixResponse } from "@/utils/api/types";
 
 interface UseStoryReadinessOptions {
   storyId: number | string | null;
@@ -54,7 +51,9 @@ export function useStoryReadiness({
       setQuickFixLoading(true);
 
       try {
-        const result = await storyAPI.quickFixStory(storyId, { dry_run: dryRun });
+        const result = await storyAPI.quickFixStory(storyId, {
+          dry_run: dryRun,
+        });
         if (result.success && result.data) {
           if (!dryRun) {
             showAlert({
@@ -84,7 +83,7 @@ export function useStoryReadiness({
         setQuickFixLoading(false);
       }
     },
-    [storyId, showAlert, onStoryUpdated]
+    [storyId, showAlert, onStoryUpdated],
   );
 
   const canGenerate = readiness?.can_proceed ?? true;

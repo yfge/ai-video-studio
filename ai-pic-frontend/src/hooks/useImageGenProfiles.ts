@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { imageGenAPI } from "@/utils/api/endpoints/image-gen.endpoints";
+import { imageGenAPI } from "@/utils/api/endpoints";
 import type {
   ImageGenMode,
   ImageGenProfile,
   ImageGenProfilesResponse,
-} from "@/utils/api/types/image-gen.types";
+} from "@/utils/api/types";
 
 interface UseImageGenProfilesOptions {
   model?: string | null;

@@ -5,7 +5,7 @@ import type {
   ReadinessResult,
   ReadinessCheck,
   QuickFixResponse,
-} from "@/utils/api/types/story.types";
+} from "@/utils/api/types";
 
 interface StoryReadinessPanelProps {
   readiness: ReadinessResult | null;
@@ -16,29 +16,66 @@ interface StoryReadinessPanelProps {
   onQuickFix: (dryRun: boolean) => Promise<QuickFixResponse | null>;
 }
 
-const SEVERITY_STYLES: Record<string, { bg: string; border: string; text: string; icon: string }> = {
-  CRITICAL: { bg: "bg-red-50", border: "border-red-200", text: "text-red-800", icon: "X" },
-  ERROR: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-800", icon: "!" },
-  WARNING: { bg: "bg-yellow-50", border: "border-yellow-200", text: "text-yellow-700", icon: "?" },
-  INFO: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", icon: "i" },
+const SEVERITY_STYLES: Record<
+  string,
+  { bg: string; border: string; text: string; icon: string }
+> = {
+  CRITICAL: {
+    bg: "bg-red-50",
+    border: "border-red-200",
+    text: "text-red-800",
+    icon: "X",
+  },
+  ERROR: {
+    bg: "bg-orange-50",
+    border: "border-orange-200",
+    text: "text-orange-800",
+    icon: "!",
+  },
+  WARNING: {
+    bg: "bg-yellow-50",
+    border: "border-yellow-200",
+    text: "text-yellow-700",
+    icon: "?",
+  },
+  INFO: {
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+    text: "text-blue-700",
+    icon: "i",
+  },
 };
 
 function CheckItem({ check }: { check: ReadinessCheck }) {
   const style = SEVERITY_STYLES[check.severity] || SEVERITY_STYLES.INFO;
   return (
-    <div className={`flex items-start gap-2 p-2 rounded ${style.bg} ${style.border} border`}>
-      <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${style.text} ${check.passed ? "bg-green-100 text-green-600" : ""}`}>
+    <div
+      className={`flex items-start gap-2 p-2 rounded ${style.bg} ${style.border} border`}
+    >
+      <span
+        className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+          style.text
+        } ${check.passed ? "bg-green-100 text-green-600" : ""}`}
+      >
         {check.passed ? "✓" : style.icon}
       </span>
       <div className="flex-1 min-w-0">
-        <div className={`text-sm font-medium ${check.passed ? "text-green-700" : style.text}`}>
+        <div
+          className={`text-sm font-medium ${
+            check.passed ? "text-green-700" : style.text
+          }`}
+        >
           {check.message}
         </div>
         {!check.passed && check.suggestion && (
           <div className="text-xs text-gray-600 mt-1">{check.suggestion}</div>
         )}
       </div>
-      <span className={`text-xs px-2 py-0.5 rounded ${check.passed ? "bg-green-100 text-green-700" : style.bg} ${style.text}`}>
+      <span
+        className={`text-xs px-2 py-0.5 rounded ${
+          check.passed ? "bg-green-100 text-green-700" : style.bg
+        } ${style.text}`}
+      >
         {check.severity}
       </span>
     </div>
@@ -54,7 +91,8 @@ export function StoryReadinessPanel({
   onQuickFix,
 }: StoryReadinessPanelProps) {
   const [showAllChecks, setShowAllChecks] = useState(false);
-  const [quickFixPreview, setQuickFixPreview] = useState<QuickFixResponse | null>(null);
+  const [quickFixPreview, setQuickFixPreview] =
+    useState<QuickFixResponse | null>(null);
 
   const handleQuickFixPreview = async () => {
     const result = await onQuickFix(true);
@@ -108,20 +146,51 @@ export function StoryReadinessPanel({
   }
 
   const hasFixableIssues = readiness.checks.some(
-    (c) => !c.passed && ["synopsis_present", "main_conflict_present", "setting_present", "world_building_present"].includes(c.name)
+    (c) =>
+      !c.passed &&
+      [
+        "synopsis_present",
+        "main_conflict_present",
+        "setting_present",
+        "world_building_present",
+      ].includes(c.name),
   );
 
   const failedChecks = readiness.checks.filter((c) => !c.passed);
   const displayChecks = showAllChecks ? readiness.checks : failedChecks;
 
   return (
-    <div className={`rounded-lg p-4 mb-4 border ${readiness.ready ? "bg-green-50 border-green-200" : readiness.can_proceed ? "bg-yellow-50 border-yellow-200" : "bg-red-50 border-red-200"}`}>
+    <div
+      className={`rounded-lg p-4 mb-4 border ${
+        readiness.ready
+          ? "bg-green-50 border-green-200"
+          : readiness.can_proceed
+          ? "bg-yellow-50 border-yellow-200"
+          : "bg-red-50 border-red-200"
+      }`}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className={`text-lg ${readiness.ready ? "text-green-600" : readiness.can_proceed ? "text-yellow-600" : "text-red-600"}`}>
+          <span
+            className={`text-lg ${
+              readiness.ready
+                ? "text-green-600"
+                : readiness.can_proceed
+                ? "text-yellow-600"
+                : "text-red-600"
+            }`}
+          >
             {readiness.ready ? "✓" : readiness.can_proceed ? "!" : "✗"}
           </span>
-          <span className={`font-medium ${readiness.ready ? "text-green-800" : readiness.can_proceed ? "text-yellow-800" : "text-red-800"}`}>
+          <span
+            className={`font-medium ${
+              readiness.ready
+                ? "text-green-800"
+                : readiness.can_proceed
+                ? "text-yellow-800"
+                : "text-red-800"
+            }`}
+          >
             {readiness.summary}
           </span>
         </div>
@@ -139,13 +208,19 @@ export function StoryReadinessPanel({
         <span>通过: {readiness.passed_count}</span>
         <span>失败: {readiness.failed_count}</span>
         {readiness.critical_issues.length > 0 && (
-          <span className="text-red-600 font-medium">严重问题: {readiness.critical_issues.length}</span>
+          <span className="text-red-600 font-medium">
+            严重问题: {readiness.critical_issues.length}
+          </span>
         )}
         {readiness.errors.length > 0 && (
-          <span className="text-orange-600">错误: {readiness.errors.length}</span>
+          <span className="text-orange-600">
+            错误: {readiness.errors.length}
+          </span>
         )}
         {readiness.warnings.length > 0 && (
-          <span className="text-yellow-600">警告: {readiness.warnings.length}</span>
+          <span className="text-yellow-600">
+            警告: {readiness.warnings.length}
+          </span>
         )}
       </div>
 
@@ -164,7 +239,9 @@ export function StoryReadinessPanel({
           onClick={() => setShowAllChecks(!showAllChecks)}
           className="text-xs text-gray-500 hover:text-gray-700 mb-3"
         >
-          {showAllChecks ? "只显示失败项" : `显示全部 ${readiness.checks.length} 项检查`}
+          {showAllChecks
+            ? "只显示失败项"
+            : `显示全部 ${readiness.checks.length} 项检查`}
         </button>
       )}
 
@@ -173,7 +250,9 @@ export function StoryReadinessPanel({
         <div className="border-t border-gray-200 pt-3 mt-3">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm font-medium text-gray-700">一键补齐</span>
-            <span className="text-xs text-gray-500">自动填充缺失的 synopsis/conflict/setting/world_building</span>
+            <span className="text-xs text-gray-500">
+              自动填充缺失的 synopsis/conflict/setting/world_building
+            </span>
           </div>
 
           {quickFixPreview ? (
@@ -188,7 +267,10 @@ export function StoryReadinessPanel({
               ))}
               {quickFixPreview.fixes_skipped.length > 0 && (
                 <div className="text-xs text-orange-600 mt-2">
-                  跳过 {quickFixPreview.fixes_skipped.length} 项: {quickFixPreview.fixes_skipped.map(s => s.reason).join(", ")}
+                  跳过 {quickFixPreview.fixes_skipped.length} 项:{" "}
+                  {quickFixPreview.fixes_skipped
+                    .map((s) => s.reason)
+                    .join(", ")}
                 </div>
               )}
               <div className="flex gap-2 mt-3">
