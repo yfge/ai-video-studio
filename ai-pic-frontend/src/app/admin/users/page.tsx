@@ -7,7 +7,8 @@ import {
   UserDetailsModal,
   UserApprovalModal,
 } from "@/components/shared/modals";
-import { adminAPI, AdminUser, UserListResponse } from "../../../utils/api";
+import { adminAPI } from "@/utils/api/endpoints";
+import type { AdminUser, UserListResponse } from "@/utils/api/types";
 import {
   getUserStatus,
   getUserStatusColor,

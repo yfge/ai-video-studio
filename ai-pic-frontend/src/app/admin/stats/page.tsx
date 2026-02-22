@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AdminLayout } from "@/components/layouts";
-import { adminAPI, UserStatsResponse } from "../../../utils/api";
+import { adminAPI } from "@/utils/api/endpoints";
+import type { UserStatsResponse } from "@/utils/api/types";
 
 // 简单的图标组件
 const UsersIcon = ({ className = "" }) => (

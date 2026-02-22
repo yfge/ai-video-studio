@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { authAPI } from "../../utils/api";
 import { useRouter } from "next/navigation";
 import { Navigation } from "@/components/layouts";
+import { authAPI } from "@/utils/api/endpoints";
 
 export default function Login() {
   const [formData, setFormData] = useState({
