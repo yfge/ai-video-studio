@@ -70,7 +70,9 @@ async def auto_create_episode_characters(
         logger.info("No unknown names to create characters for")
         return []
 
-    logger.info(f"Auto-creating Episode characters for {len(unknown_names)} unknown names")
+    logger.info(
+        f"Auto-creating Episode characters for {len(unknown_names)} unknown names"
+    )
 
     # Step 1: Extract character information from script
     logger.debug("Extracting character information from script...")
@@ -128,7 +130,9 @@ async def auto_create_episode_characters(
     # Commit all changes
     try:
         db.commit()
-        logger.info(f"Successfully created {len(created_characters)} Episode characters")
+        logger.info(
+            f"Successfully created {len(created_characters)} Episode characters"
+        )
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to commit Episode characters: {e}", exc_info=True)
@@ -245,10 +249,14 @@ def _get_or_create_default_virtual_ip(
     """
     # If specific VirtualIP ID provided, use it
     if virtual_ip_id:
-        vip = db.query(VirtualIP).filter(
-            VirtualIP.id == virtual_ip_id,
-            VirtualIP.is_deleted == False,
-        ).first()
+        vip = (
+            db.query(VirtualIP)
+            .filter(
+                VirtualIP.id == virtual_ip_id,
+                VirtualIP.is_deleted.is_(False),
+            )
+            .first()
+        )
 
         if vip:
             logger.debug(f"Using provided VirtualIP ID: {virtual_ip_id}")
@@ -257,11 +265,15 @@ def _get_or_create_default_virtual_ip(
             logger.warning(f"Provided VirtualIP ID {virtual_ip_id} not found")
 
     # Try to find existing default VirtualIP for this user
-    default_vip = db.query(VirtualIP).filter(
-        VirtualIP.user_id == user_id,
-        VirtualIP.name == "临时角色默认形象",
-        VirtualIP.is_deleted == False,
-    ).first()
+    default_vip = (
+        db.query(VirtualIP)
+        .filter(
+            VirtualIP.user_id == user_id,
+            VirtualIP.name == "临时角色默认形象",
+            VirtualIP.is_deleted.is_(False),
+        )
+        .first()
+    )
 
     if default_vip:
         logger.debug(f"Using existing default VirtualIP ID: {default_vip.id}")
@@ -275,9 +287,8 @@ def _get_or_create_default_virtual_ip(
             user_id=user_id,
             name="临时角色默认形象",
             description="用于Episode临时角色的默认形象，可后续替换为专用形象",
-            personality="通用临时角色",
             background_story="临时角色默认背景",
-            biography="",
+            biography="通用临时角色",
             style_prompt="普通人物形象",
             voice_config={
                 "provider": "minimax",

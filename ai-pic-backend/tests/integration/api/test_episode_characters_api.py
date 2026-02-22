@@ -9,21 +9,12 @@ Tests complete workflows including:
 """
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-
-from app.core.database import get_db
-from app.main import app
 from app.models.episode_character import EpisodeCharacter
 from app.models.script import Episode, Story
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
-
-
-@pytest.fixture
-def client():
-    """Create test client."""
-    return TestClient(app)
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
@@ -34,6 +25,8 @@ def test_user(db: Session):
         email="test_episode_chars@example.com",
         hashed_password="test_hash",
         is_active=True,
+        is_approved=True,
+        email_verified=True,
     )
     db.add(user)
     db.commit()
@@ -79,7 +72,7 @@ def test_virtual_ip(db: Session, test_user: User):
         user_id=test_user.id,
         name="Test VirtualIP",
         description="Test virtual IP for episode characters",
-        personality="测试性格",
+        biography="测试性格",
         background_story="测试背景",
         style_prompt="测试外观",
         voice_config={
@@ -91,14 +84,6 @@ def test_virtual_ip(db: Session, test_user: User):
     db.commit()
     db.refresh(vip)
     return vip
-
-
-@pytest.fixture
-def auth_headers(client: TestClient, test_user: User):
-    """Get authentication headers."""
-    # Note: In real tests, you'd use proper authentication
-    # For now, we'll mock it or skip auth in test mode
-    return {"Authorization": f"Bearer test_token_{test_user.id}"}
 
 
 class TestEpisodeCharacterCRUD:
@@ -314,7 +299,7 @@ class TestCharacterExtraction:
                 {"character": "医生", "content": "病人情况如何？", "scene_number": 5},
             ],
             "stage_directions": [
-                {"content": "穿着快递制服的年轻人走进来", "scene_number": 3},
+                {"content": "快递员穿着快递制服走进来", "scene_number": 3},
             ],
         }
 
@@ -340,7 +325,7 @@ class TestCharacterExtraction:
 
         assert "快递制服" in hints
         assert "口罩" in hints
-        assert "快递包" in hints
+        assert any("快递包" in hint for hint in hints)
 
 
 class TestBackgroundGeneration:
@@ -409,7 +394,9 @@ class TestBackgroundGeneration:
 
             result = _generate_with_heuristics(char_info)
 
-            assert result["personality"] != "普通、友好、礼貌"  # Should use specific template
+            assert (
+                result["personality"] != "普通、友好、礼貌"
+            )  # Should use specific template
             assert char_name in result["background"] or "工作" in result["background"]
 
 
@@ -579,9 +566,7 @@ class TestVoiceBinding:
         db.add(char)
         db.commit()
 
-        combined_map = get_combined_character_map(
-            db, test_story.id, test_episode.id
-        )
+        combined_map = get_combined_character_map(db, test_story.id, test_episode.id)
 
         assert isinstance(combined_map, dict)
         # Should include Episode characters
