@@ -165,7 +165,7 @@ src/app/
 ### 添加新页面
 
 1. 在 `src/app/` 下创建新的目录和页面文件
-2. 在 `src/utils/api.ts` 中添加相应的API类型和请求方法
+2. 在 `src/utils/api/endpoints/*` 与 `src/utils/api/types/*` 中添加相应的 API 请求方法和类型定义（HTTP 客户端放在 `src/utils/api/client.ts`）
 3. 更新导航菜单（如果需要）
 
 ### 添加新功能

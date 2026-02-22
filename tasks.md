@@ -5,7 +5,7 @@
 ## 状态概览
 
 - ✅ 稳定/收尾：叙事结构与数据模型对齐（迁移验证/权限收口待补）、对白音轨与声音驱动时间轴（主链路已验证，收尾待补）
-- ⏳ 进行中：虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐、超大文件拆分（backend `scripts_legacy.py` / frontend storyboard page / `src/utils/api.ts`）、对标 `huobao-drama` 差距补齐（轻量启动/legacy 清理/API 迁移）
+- ⏳ 进行中：虚拟 IP 图像生成与模型接入、场景/环境资产与分镜联动、分镜管理规范化对齐、超大文件拆分（backend `scripts_legacy.py` / frontend storyboard page）、对标 `huobao-drama` 差距补齐（轻量启动/legacy 清理/API 迁移）
 - 🔥 **高优新增**：Duration Orchestrator Agent（端到端时长闭环验证）、短剧微类型与投流驱动创作闭环（hook/爽点/素材）
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
 
@@ -25,7 +25,7 @@
 - [ ] 工程化：统一配置入口与样例（dev/prod），补“迁移未同步”自动诊断与一键修复脚本
 - [ ] 后端：继续下线 `scripts_legacy.py`，本期优先迁出 storyboard/dialogue-audio/timeline 路由并标记 deprecate
 - [x] 后端：去重 voice catalog（保留单一入口），删除重复实现并补回归测试
-- [x] 前端：冻结 `src/utils/api.ts` 新增导出，新增 API 一律进入 `src/utils/api/endpoints/*`（已通过 ESLint `no-restricted-imports` 禁止 `@/utils/api`、`@/utils/api/index` 及相对路径 `**/utils/api*` 旧入口导入，且 `src/utils/api/index.ts` 不再导出 legacy `apiClient`）
+- [x] 前端：冻结 `src/utils/api.ts` 新增导出，新增 API 一律进入 `src/utils/api/endpoints/*`（已通过 ESLint `no-restricted-imports` 禁止 `@/utils/api`、`@/utils/api/index` 及常见相对路径旧入口导入，且 `src/utils/api/index.ts` 不再导出 legacy `apiClient`）
 - [x] 前端：迁移至少 60 处 `@/utils/api` 旧入口引用到新分层 API（endpoints/types/client）（本轮已累计完成 125 处，`from "@/utils/api"` 与相对路径 `utils/api*` 导入均已清零；兼容类型缺口已补齐；知乎体导出 API 已迁入 `src/utils/api/endpoints/story-novel.endpoints.ts`）
 - [x] 仓库治理：移除仓库跟踪的 `ai-pic-backend/backups/*.sql`，改为外部备份 + 文档化恢复流程
 - [ ] 验证：`pytest` + `npm run lint` + Chrome E2E（登录→故事→剧集/剧本→分镜主路径），并记录到 `agent_chats`
@@ -33,7 +33,7 @@
 ### 验收指标（对标）
 
 - [ ] `scripts_legacy.py` 行数下降 ≥ 40%
-- [ ] `src/utils/api.ts` 行数下降 ≥ 40%
+- [x] `src/utils/api.ts` 行数下降 ≥ 40%（2784 -> 20，保留兼容 re-export 薄层）
 - [x] `@/utils/api` 旧入口引用从 169 降到 ≤ 100（当前代码导入为 0）
 - [ ] 新同学在 10 分钟内完成本地启动并访问前后端主页
 
@@ -107,7 +107,7 @@
 - [ ] 后端：拆分 `ai-pic-backend/app/services/ai_service_manager.py`（≈1480 行）按 provider/domain 拆分，收敛公共重试/鉴权/日志
 - [x] 后端：统一 voice catalog 单一入口（`ai-pic-backend/app/services/voice_catalog.py` 与 `ai-pic-backend/app/services/audio/voice_catalog.py` 去重）
 - [x] 前端：已落地 `ai-pic-frontend/src/utils/api/{client,endpoints,types}` 目录（迁移进行中）
-- [ ] 前端：迁移并缩减 `ai-pic-frontend/src/utils/api.ts`（≈2750 行），最终仅保留 re-export/兼容层或删除
+- [x] 前端：迁移并缩减 `ai-pic-frontend/src/utils/api.ts`（≈2750 行），已收敛为兼容 re-export 薄层（20 行）
 - [ ] 前端：拆分 `ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx`（≈3300 行）为 page + hooks + components（页面 < 200 行）
 - [x] 前端：拆分 `ai-pic-frontend/src/app/tasks/page.tsx` 到 `ai-pic-frontend/src/components/features/tasks/*`（页面 < 200 行）
 - [ ] 前端：拆分超大 modal（如 `ai-pic-frontend/src/components/shared/modals/StoryboardVideoModal.tsx`），满足 ≤250 行规范
