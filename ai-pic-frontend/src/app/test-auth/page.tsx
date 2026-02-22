@@ -71,7 +71,7 @@ export default function TestAuth() {
 
     try {
       // 动态导入API客户端（避免SSR问题）
-      const { authAPI } = await import("../../utils/api");
+      const { authAPI } = await import("@/utils/api/endpoints");
 
       const response = await authAPI.login({
         email: "admin",

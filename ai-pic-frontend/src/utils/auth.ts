@@ -1,5 +1,5 @@
 // 认证工具函数
-import { User } from "./api";
+import type { User } from "@/utils/api/types";
 
 export interface AuthUser {
   username: string;
