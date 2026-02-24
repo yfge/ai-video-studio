@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   ai-video-mysql:
     image: mysql:8.0

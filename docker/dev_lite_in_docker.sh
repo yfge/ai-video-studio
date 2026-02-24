@@ -8,7 +8,7 @@ ENV_FILE=".env.lite"
 COMPOSE_FILE="docker-compose.lite.yml"
 
 if [ ! -f "$ENV_FILE" ]; then
-  echo "[dev_lite_in_docker] Missing $ENV_FILE; copy docker/.env.lite.example first." >&2
+  echo "[dev_lite_in_docker] Missing $ENV_FILE; run ./init_env.sh lite first." >&2
   exit 1
 fi
 

@@ -5,7 +5,7 @@ SCRIPT_DIR=$(cd -- "$(dirname "$0")" && pwd)
 cd "$SCRIPT_DIR"
 
 if [ ! -f .env ]; then
-  echo "[dev_in_docker] Missing .env; copy docker/.env.example and set required keys." >&2
+  echo "[dev_in_docker] Missing .env; run ./init_env.sh dev and set required keys." >&2
   exit 1
 fi
 

@@ -15,7 +15,7 @@
 Lite 模式用于快速体验和本地联调：后端使用 SQLite，Celery 任务在进程内 eager 执行，并默认启用 AI mock 回退，不依赖 MySQL/Redis/独立 worker。
 
 1. `cd docker`
-2. `cp .env.lite.example .env.lite`
+2. `./init_env.sh lite`
 3. `./dev_lite_in_docker.sh`
 
 访问：
@@ -33,7 +33,7 @@ Lite 默认关键配置（可在 `docker/.env.lite` 调整）：
 ## 完整 Docker 开发栈（MySQL/Redis/Celery）
 
 1. `cd docker`
-2. `cp .env.example .env` 并填写必要配置（至少 `DATABASE_URL`、`REDIS_URL`、`SECRET_KEY`；AI Key 按需）
+2. `./init_env.sh dev` 并填写必要配置（至少 `DATABASE_URL`、`REDIS_URL`、`SECRET_KEY`；AI Key 按需）
 3. `./dev_in_docker.sh`
 
 服务容器名：
@@ -45,7 +45,16 @@ Lite 默认关键配置（可在 `docker/.env.lite` 调整）：
 数据库迁移：
 
 - 容器启动时会自动执行 `alembic upgrade head`（见 `docker/backend-entrypoint.sh`）。
-- 如果你**只更新了代码但没重启后端**，可能出现 “Unknown column …” 这类 500；此时运行：`docker exec ai-video-backend alembic upgrade head` 然后刷新页面。
+- 如果你**只更新了代码但没重启后端**，可能出现 “Unknown column …” 这类 500。
+- 可先执行自动诊断：`cd docker && ./migration_guard.sh check dev`
+- 一键修复：`cd docker && ./migration_guard.sh fix dev`
+- 仅预览修复动作：`cd docker && ./migration_guard.sh fix dev --dry-run`
+
+## 配置入口（dev/prod/lite）
+
+- `cd docker && ./init_env.sh dev`：初始化开发栈配置到 `docker/.env`
+- `cd docker && ./init_env.sh prod`：初始化生产栈配置到 `docker/.env`（模板：`docker/.env.prod.example`）
+- `cd docker && ./init_env.sh lite`：初始化轻量栈配置到 `docker/.env.lite`
 
 ## 本地开发（不使用 Docker）
 

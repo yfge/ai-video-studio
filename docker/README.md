@@ -7,7 +7,7 @@ Local dev stack mirroring the ai-shifu workflow: build images from the repo, the
 Use this when you want a 5-10 minute startup path without MySQL/Redis/Celery worker:
 
 1. `cd docker`
-2. `cp .env.lite.example .env.lite`
+2. `./init_env.sh lite`
 3. `./dev_lite_in_docker.sh`
 
 Lite stack services:
@@ -22,8 +22,26 @@ Lite stack services:
 ## Full quick start (MySQL + Redis + Celery)
 
 1. `cd docker`
-2. `cp .env.example .env` and fill any secrets (at minimum `SECRET_KEY`, optional AI keys). Default DB/Redis hosts match compose services.
+2. `./init_env.sh dev` and fill any secrets (at minimum `SECRET_KEY`, optional AI keys). Default DB/Redis hosts match compose services.
 3. `./dev_in_docker.sh`
+
+## Unified env entry
+
+- `./init_env.sh dev` -> writes `docker/.env` from `docker/.env.example`
+- `./init_env.sh prod` -> writes `docker/.env` from `docker/.env.prod.example`
+- `./init_env.sh lite` -> writes `docker/.env.lite` from `docker/.env.lite.example`
+
+Use `--force` to overwrite and `--dry-run` to preview.
+
+## Migration drift doctor
+
+When code updates but DB migration is not synced, run:
+
+- Check: `./migration_guard.sh check dev`
+- One-click fix: `./migration_guard.sh fix dev`
+- Preview only: `./migration_guard.sh fix dev --dry-run`
+
+For production compose, replace `dev` with `prod`.
 
 Services & ports:
 
