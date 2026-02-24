@@ -9,7 +9,21 @@ temporarily re-exported here. They will be migrated in subsequent phases.
 """
 
 # New script QC endpoints (kept out of scripts_legacy.py)
+from app.api.v1.endpoints.scripts.audio_timeline import (
+    _process_script_audio_timeline_task,
+)
+from app.api.v1.endpoints.scripts.audio_timeline import router as audio_timeline_router
+from app.api.v1.endpoints.scripts.dialogue_audio import (
+    _process_script_dialogue_audio_task,
+)
+from app.api.v1.endpoints.scripts.dialogue_audio import router as dialogue_audio_router
 from app.api.v1.endpoints.scripts.quality import router as quality_router
+from app.api.v1.endpoints.scripts.timeline_pipeline import (
+    _process_timeline_pipeline_task,
+)
+from app.api.v1.endpoints.scripts.timeline_pipeline import (
+    router as timeline_pipeline_router,
+)
 
 # Import legacy router and task helpers for storyboard and other unmigrated endpoints.
 from app.api.v1.endpoints.scripts_legacy import (
@@ -18,8 +32,6 @@ from app.api.v1.endpoints.scripts_legacy import (
     _merge_frames,
     _populate_dialogues_and_stage_if_missing,
     _process_script_audio_storyboard_task,
-    _process_script_audio_timeline_task,
-    _process_script_dialogue_audio_task,
     _process_script_generation_task,
     _process_script_regeneration_task,
     _process_storyboard_generation_task,
@@ -34,6 +46,9 @@ from app.services.ai_service import ai_service  # noqa: F401
 
 # Mount non-legacy routers onto legacy_router (legacy contains "" paths and cannot be wrapped).
 legacy_router.include_router(quality_router)
+legacy_router.include_router(dialogue_audio_router)
+legacy_router.include_router(audio_timeline_router)
+legacy_router.include_router(timeline_pipeline_router)
 
 # For now, expose the legacy router as the scripts router.
 router = legacy_router
@@ -49,6 +64,7 @@ __all__ = [
     "_process_script_dialogue_audio_task",
     "_process_script_generation_task",
     "_process_script_regeneration_task",
+    "_process_timeline_pipeline_task",
     "_process_storyboard_generation_task",
     "_process_storyboard_image_task",
     "_process_storyboard_video_task",

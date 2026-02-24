@@ -191,7 +191,7 @@ def timeline_pipeline_generate_task(
     task_id: int, payload: Dict[str, Any], user_id: int
 ) -> None:
     """一键生成时间轴流水线任务入口（对白音轨 → 时间轴 → 分镜帧占位）。"""
-    from app.api.v1.endpoints.scripts_legacy import _process_timeline_pipeline_task
+    from app.api.v1.endpoints.scripts import _process_timeline_pipeline_task
 
     _process_timeline_pipeline_task(task_id, payload, user_id)
     from app.services.task_agent_run_persistence import persist_task_agent_run
@@ -203,7 +203,9 @@ def timeline_pipeline_generate_task(
     )
 
 
-@celery_app.task(name="tasks.video_generation_poll", soft_time_limit=120, time_limit=180)
+@celery_app.task(
+    name="tasks.video_generation_poll", soft_time_limit=120, time_limit=180
+)
 def video_generation_poll_task(limit: int = 50) -> int:
     """集中轮询视频生成任务状态。"""
     from app.services.video.video_task_entrypoints import poll_pending_video_tasks

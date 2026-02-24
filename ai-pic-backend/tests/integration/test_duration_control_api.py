@@ -80,7 +80,7 @@ def _create_task(db_session, *, user_id: int, title: str) -> Task:
 def test_dialogue_audio_generate_async_includes_duration_control(
     client, db_session, monkeypatch
 ):
-    import app.api.v1.endpoints.scripts_legacy as scripts_legacy
+    import app.api.v1.endpoints.scripts.dialogue_audio as dialogue_audio_endpoint
 
     admin_user = db_session.query(User).filter(User.username == "test_admin").first()
     assert admin_user is not None
@@ -94,7 +94,9 @@ def test_dialogue_audio_generate_async_includes_duration_control(
         delay_calls["user_id"] = user_id
 
     monkeypatch.setattr(
-        scripts_legacy.script_dialogue_audio_generate_task, "delay", _fake_delay
+        dialogue_audio_endpoint.script_dialogue_audio_generate_task,
+        "delay",
+        _fake_delay,
     )
 
     payload = {"use_duration_control": True}
@@ -116,7 +118,7 @@ def test_dialogue_audio_generate_async_includes_duration_control(
 def test_process_dialogue_audio_task_uses_duration_control(
     db_session, test_db, monkeypatch
 ):
-    import app.api.v1.endpoints.scripts_legacy as scripts_legacy
+    import app.api.v1.endpoints.scripts.dialogue_audio as dialogue_audio_endpoint
 
     user = _create_user(db_session, username="duration_admin", is_admin=True)
     script, scene_ids = _create_script_with_scenes(db_session, user=user)
@@ -141,14 +143,16 @@ def test_process_dialogue_audio_task_uses_duration_control(
         return {"success": True, "statistics": {"duration_ratio": 1.0}}
 
     monkeypatch.setattr(
-        scripts_legacy,
+        dialogue_audio_endpoint,
         "generate_dialogue_with_duration_control",
         _fake_generate_dialogue_with_duration_control,
     )
     _patch_session_local(monkeypatch, test_db)
 
     payload = {"script_id": script.id, "use_duration_control": True}
-    scripts_legacy._process_script_dialogue_audio_task(task.id, payload, user.id)
+    dialogue_audio_endpoint._process_script_dialogue_audio_task(
+        task.id, payload, user.id
+    )
 
     session = test_db()
     try:
@@ -167,7 +171,7 @@ def test_process_dialogue_audio_task_uses_duration_control(
 def test_process_timeline_pipeline_task_uses_duration_control(
     db_session, test_db, monkeypatch
 ):
-    import app.api.v1.endpoints.scripts_legacy as scripts_legacy
+    import app.api.v1.endpoints.scripts.timeline_pipeline as timeline_pipeline_endpoint
 
     user = _create_user(db_session, username="pipeline_admin", is_admin=True)
     script, scene_ids = _create_script_with_scenes(db_session, user=user)
@@ -198,24 +202,26 @@ def test_process_timeline_pipeline_task_uses_duration_control(
         called["storyboard"] = True
 
     monkeypatch.setattr(
-        scripts_legacy,
+        timeline_pipeline_endpoint,
         "generate_dialogue_with_duration_control",
         _fake_generate_dialogue_with_duration_control,
     )
     monkeypatch.setattr(
-        scripts_legacy,
+        timeline_pipeline_endpoint,
         "generate_episode_audio_timeline",
         _fake_generate_episode_audio_timeline,
     )
     monkeypatch.setattr(
-        scripts_legacy,
+        timeline_pipeline_endpoint,
         "generate_storyboard_from_episode_audio_timeline",
         _fake_generate_storyboard_from_episode_audio_timeline,
     )
     _patch_session_local(monkeypatch, test_db)
 
     payload = {"script_id": script.id, "use_duration_control": True}
-    scripts_legacy._process_timeline_pipeline_task(task.id, payload, user.id)
+    timeline_pipeline_endpoint._process_timeline_pipeline_task(
+        task.id, payload, user.id
+    )
 
     session = test_db()
     try:
