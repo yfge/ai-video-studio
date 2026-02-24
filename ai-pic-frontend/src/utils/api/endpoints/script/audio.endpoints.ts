@@ -9,6 +9,8 @@ import { scriptPath } from "./paths";
 
 /**
  * Generate scene dialogue audio asynchronously.
+ *
+ * @deprecated Use `generateTimelinePipelineAsync` for end-to-end generation.
  */
 export async function generateSceneDialogueAudioAsync(
   scriptId: number | string,
@@ -31,6 +33,8 @@ export async function generateSceneDialogueAudioAsync(
 
 /**
  * Generate audio timeline asynchronously.
+ *
+ * @deprecated Use `generateTimelinePipelineAsync` for end-to-end generation.
  */
 export async function generateAudioTimelineAsync(
   scriptId: number | string,
@@ -47,6 +51,8 @@ export async function generateAudioTimelineAsync(
 
 /**
  * Generate storyboard from audio timeline asynchronously.
+ *
+ * @deprecated Use `generateTimelinePipelineAsync` for end-to-end generation.
  */
 export async function generateStoryboardFromAudioTimelineAsync(
   scriptId: number | string,

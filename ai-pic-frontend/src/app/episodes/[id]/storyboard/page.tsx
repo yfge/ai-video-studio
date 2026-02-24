@@ -150,6 +150,24 @@ export default function EpisodeStoryboardPage() {
     return `/episodes/${episodeId}/workspace?${params.toString()}`;
   }, [episode?.business_id, episodeKey, activeScript?.id, scriptIdFromQuery]);
 
+  const navigateToTimelinePipeline = useCallback(() => {
+    const episodeId = episode?.business_id || episodeKey;
+    const targetScriptId = activeScript?.id ?? scriptIdFromQuery;
+    const params = new URLSearchParams();
+    params.set("tab", "timeline");
+    if (targetScriptId != null) {
+      params.set("scriptId", String(targetScriptId));
+    }
+    params.set("autoTimelinePipeline", String(Date.now()));
+    router.push(`/episodes/${episodeId}/workspace?${params.toString()}`);
+  }, [
+    episode?.business_id,
+    episodeKey,
+    activeScript?.id,
+    scriptIdFromQuery,
+    router,
+  ]);
+
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imageModalFrameIndex, setImageModalFrameIndex] = useState<
     number | null
@@ -1107,7 +1125,7 @@ export default function EpisodeStoryboardPage() {
         return;
       }
       showAlert({
-        message: `已创建分镜占位生成任务（task_id=${response.data.task_id}），正在等待结果...`,
+        message: `已创建分镜占位生成任务（task_id=${response.data.task_id}），建议后续改用“一键时间轴流水线”。`,
         variant: "info",
       });
       await pollStoryboardTask(activeScript.id, response.data.task_id);
@@ -1956,6 +1974,17 @@ export default function EpisodeStoryboardPage() {
                   />
                 </div>
               ) : null}
+              <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                分步入口（对白音轨/时间轴/同步分镜）已标记弃用，计划于
+                2026-12-31 下线。建议使用「工作台 → 时间轴 → 一键生成全部」。
+                <button
+                  type="button"
+                  onClick={navigateToTimelinePipeline}
+                  className="ml-2 rounded border border-amber-300 bg-white px-2 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100"
+                >
+                  前往时间轴页
+                </button>
+              </div>
               <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-600">
                 <button
                   type="button"
