@@ -9,6 +9,12 @@ temporarily re-exported here. They will be migrated in subsequent phases.
 """
 
 # New script QC endpoints (kept out of scripts_legacy.py)
+from app.api.v1.endpoints.scripts.audio_storyboard import (
+    _process_script_audio_storyboard_task,
+)
+from app.api.v1.endpoints.scripts.audio_storyboard import (
+    router as audio_storyboard_router,
+)
 from app.api.v1.endpoints.scripts.audio_timeline import (
     _process_script_audio_timeline_task,
 )
@@ -31,7 +37,6 @@ from app.api.v1.endpoints.scripts_legacy import (
     _enforce_storyboard_variety,
     _merge_frames,
     _populate_dialogues_and_stage_if_missing,
-    _process_script_audio_storyboard_task,
     _process_script_generation_task,
     _process_script_regeneration_task,
     _process_storyboard_generation_task,
@@ -49,6 +54,7 @@ legacy_router.include_router(quality_router)
 legacy_router.include_router(dialogue_audio_router)
 legacy_router.include_router(audio_timeline_router)
 legacy_router.include_router(timeline_pipeline_router)
+legacy_router.include_router(audio_storyboard_router)
 
 # For now, expose the legacy router as the scripts router.
 router = legacy_router

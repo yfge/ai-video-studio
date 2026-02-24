@@ -111,6 +111,9 @@ def load_script_with_access(db: Session, script_id: int, user: User) -> Script |
         .join(Episode, Script.episode_id == Episode.id)
         .join(Story, Episode.story_id == Story.id)
         .filter(Script.id == script_id)
+        .filter(Script.is_deleted.is_(False))
+        .filter(Episode.is_deleted.is_(False))
+        .filter(Story.is_deleted.is_(False))
         .filter(
             True if user.is_admin or user.is_superuser else Story.user_id == user.id
         )

@@ -24,7 +24,7 @@
 - [x] 工程化：提供 lite 开发模式（SQLite + 单进程 worker/mock），保留现有 Docker 全栈；README 增加 5-10 分钟启动路径
 - [x] 工程化：统一配置入口与样例（dev/prod），补“迁移未同步”自动诊断与一键修复脚本
 - [x] 工程化：修复 lite eager 任务在异步请求线程执行时报 `Already running asyncio in this thread`（scripts dialogue-audio / audio-timeline 已验证）
-- [ ] 后端：继续下线 `scripts_legacy.py`，本期优先迁出 storyboard/dialogue-audio/timeline 路由并标记 deprecate（已迁出 dialogue-audio / audio-timeline / timeline-pipeline，剩余 storyboard/from-audio-timeline）
+- [ ] 后端：继续下线 `scripts_legacy.py`，本期优先迁出 storyboard/dialogue-audio/timeline 路由并标记 deprecate（已迁出 storyboard/from-audio-timeline / dialogue-audio / audio-timeline / timeline-pipeline，deprecate 标记待补）
 - [x] 后端：去重 voice catalog（保留单一入口），删除重复实现并补回归测试
 - [x] 前端：冻结 `src/utils/api.ts` 新增导出，新增 API 一律进入 `src/utils/api/endpoints/*`（已通过 ESLint `no-restricted-imports` 禁止 `@/utils/api`、`@/utils/api/index` 及常见相对路径旧入口导入，且 `src/utils/api.ts`/`src/utils/api/index.ts` 旧入口文件均已移除）
 - [x] 前端：迁移至少 60 处 `@/utils/api` 旧入口引用到新分层 API（endpoints/types/client）（本轮已累计完成 125 处，`from "@/utils/api"` 与相对路径 `utils/api*` 导入均已清零；兼容类型缺口已补齐；知乎体导出 API 与 `episodeCharacters` legacy 模块均已迁入 `src/utils/api/endpoints/*` + `src/utils/api/types/*`，深路径 alias 导入（如 `@/utils/api/endpoints/*`）也已清零并由 ESLint 禁止）
@@ -103,7 +103,7 @@
 ### 进度（后端→前端→验证）
 
 - [x] 后端：已拆出 scripts CRUD/生成到 `ai-pic-backend/app/api/v1/endpoints/scripts/`（legacy 仍需迁移）
-- [ ] 后端：拆分 `ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py`（当前 4462 行）到 `app/api/v1/endpoints/scripts/*`（按 storyboard/dialogue-audio/timeline 等域拆分，已迁出 dialogue-audio/audio-timeline/timeline-pipeline），并逐步下线 legacy 路由
+- [ ] 后端：拆分 `ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py`（当前 4323 行）到 `app/api/v1/endpoints/scripts/*`（按 storyboard/dialogue-audio/timeline 等域拆分，已迁出 storyboard/from-audio-timeline、dialogue-audio、audio-timeline、timeline-pipeline），并逐步下线 legacy 路由
 - [ ] 后端：拆分 `ai-pic-backend/app/services/dialogue_audio_service.py`（≈1600 行）为 `app/services/audio/*`（tts/mix/timeline/persistence），并补单测
 - [ ] 后端：拆分 `ai-pic-backend/app/services/ai_service_manager.py`（≈1480 行）按 provider/domain 拆分，收敛公共重试/鉴权/日志
 - [x] 后端：统一 voice catalog 单一入口（`ai-pic-backend/app/services/voice_catalog.py` 与 `ai-pic-backend/app/services/audio/voice_catalog.py` 去重）

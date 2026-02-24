@@ -31,9 +31,6 @@ from app.schemas.style import StyleSpec
 from app.services import story_structure_service as story_structure_svc
 from app.services.ai.storyboard_utils import build_storyboard_context
 from app.services.ai_service import ai_service
-from app.services.dialogue_audio_service import (
-    generate_storyboard_from_episode_audio_timeline,
-)
 from app.services.storage.oss_service import oss_service
 from app.services.storyboard.pipeline import StoryboardPipeline
 from app.services.storyboard.storyboard_prompt_utils import (
@@ -41,7 +38,6 @@ from app.services.storyboard.storyboard_prompt_utils import (
     render_keyframe_prompt,
 )
 from app.services.task_worker import (
-    script_audio_storyboard_generate_task,
     script_generate_task,
     script_regenerate_task,
     storyboard_generate_task,
@@ -1775,127 +1771,6 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
             db.commit()
-    finally:
-        db.close()
-
-
-class ScriptAudioStoryboardGenerateRequest(BaseModel):
-    overwrite_existing: bool = Field(
-        False, description="是否覆盖已有分镜结构（若已有图像/视频资产默认拒绝覆盖）"
-    )
-    min_pause_seconds: float = Field(
-        1.5,
-        ge=0.0,
-        le=10.0,
-        description="pause beat 生成帧的阈值（秒，默认 1.5s）",
-    )
-
-
-@router.post("/{script_id}/storyboard/from-audio-timeline/generate-async")
-async def generate_storyboard_from_audio_timeline_async(
-    script_id: int,
-    body: ScriptAudioStoryboardGenerateRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """异步从 episode audio_timeline 生成分镜帧占位（写入 scripts.extra_metadata.storyboard）。"""
-    script_query = (
-        _not_deleted(db.query(Script), Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-    )
-    if not (current_user.is_admin or current_user.is_superuser):
-        script_query = script_query.filter(Story.user_id == current_user.id)
-    script = script_query.first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-
-    story = script.episode.story if script.episode else None
-    episode = script.episode if script.episode else None
-
-    params = body.model_dump()
-    params["script_id"] = script_id
-    t = Task(
-        title=_friendly_task_title("分镜占位生成", script, episode, story),
-        description="根据对白时间轴生成分镜帧占位（audio_timeline）",
-        task_type=TaskType.STORYBOARD_GENERATION,
-        prompt=f"Storyboard placeholder generation from audio timeline for script {script_id}",
-        parameters=json.dumps(params, ensure_ascii=False),
-        user_id=current_user.id,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-
-    script_audio_storyboard_generate_task.delay(t.id, params, current_user.id)
-    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
-
-
-def _process_script_audio_storyboard_task(
-    task_id: int, payload: dict, user_id: int
-) -> None:
-    """后台处理从 audio_timeline 生成分镜帧占位任务（供 Celery 调用）。"""
-    import anyio
-    from app.core.database import SessionLocal
-    from app.models.user import User
-
-    db = SessionLocal()
-    try:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.PROCESSING
-            db.commit()
-
-        script_id = int(payload.get("script_id"))
-        overwrite_existing = bool(payload.get("overwrite_existing"))
-        min_pause_seconds = float(payload.get("min_pause_seconds") or 1.5)
-        min_pause_ms = max(0, int(round(min_pause_seconds * 1000)))
-
-        async def _run() -> None:
-            user = db.query(User).filter(User.id == user_id).first()
-            if not user:
-                raise RuntimeError("user_not_found")
-
-            script = (
-                db.query(Script)
-                .join(Episode, Script.episode_id == Episode.id)
-                .join(Story, Episode.story_id == Story.id)
-                .filter(Script.id == script_id)
-                .filter(
-                    True
-                    if user.is_admin or user.is_superuser
-                    else Story.user_id == user.id
-                )
-                .first()
-            )
-            if not script:
-                raise RuntimeError("script_not_found")
-            episode = script.episode
-            if not episode:
-                raise RuntimeError("episode_not_found")
-
-            _update_task_progress(db, task, "根据时间轴生成分镜帧占位中…")
-            generate_storyboard_from_episode_audio_timeline(
-                db,
-                script=script,
-                episode=episode,
-                overwrite_existing=overwrite_existing,
-                min_pause_duration_ms=min_pause_ms,
-            )
-
-        anyio.run(_run)
-
-        if task:
-            task.status = TaskStatus.COMPLETED
-            task.result_file_path = f"script:{script_id}:storyboard_from_audio_timeline"
-            _update_task_progress(db, task, "分镜帧占位生成完成")
-    except Exception as e:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.FAILED
-            task.error_message = str(e)
-            _update_task_progress(db, task, f"分镜帧占位生成失败：{e}")
     finally:
         db.close()
 
@@ -4445,10 +4320,3 @@ async def export_script(
         "content": script.content,
         "export_time": "2024-01-01T00:00:00Z",
     }
-
-
-def _update_task_progress(db: Session, task: Task | None, description: str) -> None:
-    if not task:
-        return
-    task.description = description
-    db.commit()
