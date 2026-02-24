@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+import threading
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar, cast
 
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene
 from app.models.task import Task
 from app.models.user import User
 from sqlalchemy.orm import Session
+
+T = TypeVar("T")
 
 
 def to_int(value: Any) -> int | None:
@@ -111,3 +116,36 @@ def load_script_with_access(db: Session, script_id: int, user: User) -> Script |
         )
         .first()
     )
+
+
+def run_async_task_sync(entrypoint: Callable[[], Awaitable[T]]) -> T:
+    """
+    Run async task logic from sync Celery handlers.
+
+    In eager mode, Celery may execute in the request thread where an event loop is
+    already running; in that case, run the coroutine in a dedicated thread.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        import anyio
+
+        return anyio.run(entrypoint)
+
+    result: dict[str, Any] = {}
+
+    def _runner() -> None:
+        import anyio
+
+        try:
+            result["value"] = anyio.run(entrypoint)
+        except Exception as exc:  # pragma: no cover - exercised via caller paths
+            result["error"] = exc
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
+    thread.join()
+
+    if "error" in result:
+        raise cast(Exception, result["error"])
+    return cast(T, result["value"])

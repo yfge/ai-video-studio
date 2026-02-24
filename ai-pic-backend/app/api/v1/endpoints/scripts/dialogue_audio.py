@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import anyio
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.story_structure import SceneBeat
@@ -23,6 +22,7 @@ from sqlalchemy.orm import Session
 from .audio_pipeline_utils import (
     friendly_task_title,
     load_script_with_access,
+    run_async_task_sync,
     scene_has_dialogue_audio,
     scene_number_sort_key,
     to_int,
@@ -225,7 +225,7 @@ def _process_script_dialogue_audio_task(
                     target_duration_seconds=scene_target,
                 )
 
-        anyio.run(_run)
+        run_async_task_sync(_run)
 
         if task:
             task.status = TaskStatus.COMPLETED

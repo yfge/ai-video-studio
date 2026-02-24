@@ -23,6 +23,7 @@
 
 - [x] 工程化：提供 lite 开发模式（SQLite + 单进程 worker/mock），保留现有 Docker 全栈；README 增加 5-10 分钟启动路径
 - [x] 工程化：统一配置入口与样例（dev/prod），补“迁移未同步”自动诊断与一键修复脚本
+- [x] 工程化：修复 lite eager 任务在异步请求线程执行时报 `Already running asyncio in this thread`（scripts dialogue-audio / audio-timeline 已验证）
 - [ ] 后端：继续下线 `scripts_legacy.py`，本期优先迁出 storyboard/dialogue-audio/timeline 路由并标记 deprecate（已迁出 dialogue-audio / audio-timeline / timeline-pipeline，剩余 storyboard/from-audio-timeline）
 - [x] 后端：去重 voice catalog（保留单一入口），删除重复实现并补回归测试
 - [x] 前端：冻结 `src/utils/api.ts` 新增导出，新增 API 一律进入 `src/utils/api/endpoints/*`（已通过 ESLint `no-restricted-imports` 禁止 `@/utils/api`、`@/utils/api/index` 及常见相对路径旧入口导入，且 `src/utils/api.ts`/`src/utils/api/index.ts` 旧入口文件均已移除）

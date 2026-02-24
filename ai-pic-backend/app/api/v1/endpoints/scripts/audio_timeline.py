@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import anyio
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskStatus, TaskType
@@ -19,6 +18,7 @@ from .audio_pipeline_utils import (
     episode_has_audio_timeline,
     friendly_task_title,
     load_script_with_access,
+    run_async_task_sync,
     update_task_progress,
 )
 
@@ -113,7 +113,7 @@ def _process_script_audio_timeline_task(
                 script=script,
             )
 
-        anyio.run(_run)
+        run_async_task_sync(_run)
 
         if task:
             task.status = TaskStatus.COMPLETED

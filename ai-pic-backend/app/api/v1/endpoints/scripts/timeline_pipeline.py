@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import anyio
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.story_structure import SceneBeat
@@ -28,6 +27,7 @@ from .audio_pipeline_utils import (
     episode_has_audio_timeline,
     friendly_task_title,
     load_script_with_access,
+    run_async_task_sync,
     scene_has_dialogue_audio,
     scene_number_sort_key,
     update_task_progress,
@@ -250,7 +250,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 min_pause_duration_ms=min_pause_ms,
             )
 
-        anyio.run(_run)
+        run_async_task_sync(_run)
 
         if task:
             task.status = TaskStatus.COMPLETED
