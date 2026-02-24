@@ -50,6 +50,10 @@ class AIServiceBase:
 
     def _initialize_ai_manager(self) -> Optional[AIServiceManager]:
         """初始化AI服务管理器"""
+        if settings.AI_FORCE_MOCK:
+            self.logger.warning("AI_FORCE_MOCK enabled; skip provider manager init")
+            return None
+
         if not AI_MANAGER_AVAILABLE:
             self.logger.warning("AI服务管理器不可用，使用fallback模式")
             return None

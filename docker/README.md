@@ -2,7 +2,24 @@
 
 Local dev stack mirroring the ai-shifu workflow: build images from the repo, then run a compose file with bind mounts and hot reload.
 
-## Quick start
+## Lite quick start (SQLite + eager tasks)
+
+Use this when you want a 5-10 minute startup path without MySQL/Redis/Celery worker:
+
+1. `cd docker`
+2. `cp .env.lite.example .env.lite`
+3. `./dev_lite_in_docker.sh`
+
+Lite stack services:
+
+- `ai-video-nginx` / `ai-video-frontend` / `ai-video-backend`
+- SQLite DB file: `ai-pic-backend/uploads/dev_lite.db`
+- Celery runs in eager mode (`CELERY_TASK_ALWAYS_EAGER=true`)
+- AI manager can be forced to mock (`AI_FORCE_MOCK=true`)
+- SQLite migration fallback: `SQLITE_MIGRATION_FALLBACK_CREATE_ALL=true`
+- Frontend API target defaults to `http://localhost:8089`
+
+## Full quick start (MySQL + Redis + Celery)
 
 1. `cd docker`
 2. `cp .env.example .env` and fill any secrets (at minimum `SECRET_KEY`, optional AI keys). Default DB/Redis hosts match compose services.

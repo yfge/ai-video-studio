@@ -22,6 +22,8 @@ class Settings(BaseSettings):
 
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379"
+    CELERY_TASK_ALWAYS_EAGER: bool = False
+    CELERY_TASK_EAGER_PROPAGATES: bool = True
 
     # CORS配置
     ALLOWED_HOSTS: List[str] = [
@@ -44,6 +46,7 @@ class Settings(BaseSettings):
     # OpenAI配置
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_BASE_URL: Optional[str] = None
+    AI_FORCE_MOCK: bool = False
 
     # Stability AI配置
     STABILITY_API_KEY: Optional[str] = None

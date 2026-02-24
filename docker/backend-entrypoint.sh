@@ -8,6 +8,11 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   exit 1
 fi
 
+is_sqlite=0
+if [[ "${DATABASE_URL}" == sqlite* ]]; then
+  is_sqlite=1
+fi
+
 echo "[backend-entrypoint] Waiting for database..."
 python - <<'PY'
 import os
@@ -33,8 +38,29 @@ PY
 
 echo "[backend-entrypoint] Applying migrations via alembic upgrade head..."
 if ! alembic upgrade head; then
-  echo "[backend-entrypoint] Migration failed" >&2
-  exit 1
+  if [[ "$is_sqlite" == "1" && "${SQLITE_MIGRATION_FALLBACK_CREATE_ALL:-1}" == "1" ]]; then
+    echo "[backend-entrypoint] Alembic migration failed on SQLite; reset DB and fallback to create_all"
+    python - <<'PY'
+from pathlib import Path
+
+from app.core.database import Base, engine
+import app.models  # noqa: F401 - ensure models are registered on metadata
+
+if engine.url.get_backend_name() == "sqlite":
+    db_path = engine.url.database
+    if db_path and db_path != ":memory:":
+        db_file = Path(db_path)
+        if db_file.exists():
+            db_file.unlink()
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+
+Base.metadata.create_all(bind=engine)
+print("[backend-entrypoint] SQLite schema initialized via create_all")
+PY
+  else
+    echo "[backend-entrypoint] Migration failed" >&2
+    exit 1
+  fi
 fi
 
 echo "[backend-entrypoint] Starting uvicorn..."

@@ -21,7 +21,7 @@
 
 ### 进度（工程化→后端→前端→验证）
 
-- [ ] 工程化：提供 lite 开发模式（SQLite + 单进程 worker/mock），保留现有 Docker 全栈；README 增加 5-10 分钟启动路径
+- [x] 工程化：提供 lite 开发模式（SQLite + 单进程 worker/mock），保留现有 Docker 全栈；README 增加 5-10 分钟启动路径
 - [ ] 工程化：统一配置入口与样例（dev/prod），补“迁移未同步”自动诊断与一键修复脚本
 - [ ] 后端：继续下线 `scripts_legacy.py`，本期优先迁出 storyboard/dialogue-audio/timeline 路由并标记 deprecate
 - [x] 后端：去重 voice catalog（保留单一入口），删除重复实现并补回归测试

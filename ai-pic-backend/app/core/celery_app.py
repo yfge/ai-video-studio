@@ -16,16 +16,23 @@ def _running_under_pytest() -> bool:
     return "pytest" in sys.modules
 
 
+def _task_always_eager() -> bool:
+    # pytest 和 lite 模式都走 eager，避免依赖外部 Redis/独立 worker。
+    return _running_under_pytest() or bool(
+        getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False)
+    )
+
+
 def _get_broker_url() -> str:
     # 默认复用 REDIS_URL，后续如需区分可扩展单独的 CELERY_BROKER_URL
-    if _running_under_pytest():
+    if _task_always_eager():
         return "memory://"
     return getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
 
 
 def _get_backend_url() -> str:
     # Celery does not support "memory://" as result backend.
-    if _running_under_pytest():
+    if _task_always_eager():
         return "cache+memory://"
     return getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
 
@@ -54,14 +61,10 @@ celery_app.conf.update(
             "args": (50,),
         },
     },
+    task_always_eager=_task_always_eager(),
+    task_store_eager_result=False,
+    task_eager_propagates=bool(getattr(settings, "CELERY_TASK_EAGER_PROPAGATES", True)),
 )
-
-# In pytest, execute tasks eagerly to keep endpoint tests self-contained.
-if _running_under_pytest():
-    celery_app.conf.update(
-        task_always_eager=True,
-        task_store_eager_result=False,
-    )
 
 # 确保在 Celery 应用初始化后注册所有任务
 # 任务定义位于 app.services.task_worker 等模块中，使用显式 name（如 "tasks.virtual_ip_image_generate"）

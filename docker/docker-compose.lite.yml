@@ -1,0 +1,41 @@
+services:
+  ai-video-backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend.dev
+    env_file:
+      - .env.lite
+    working_dir: /app/ai-pic-backend
+    command: ["/bin/bash", "/app/backend-entrypoint.sh"]
+    volumes:
+      - ../ai-pic-backend:/app/ai-pic-backend
+      - ../ai-pic-backend/uploads:/app/ai-pic-backend/uploads
+      - ./backend-entrypoint.sh:/app/backend-entrypoint.sh:ro
+    ports:
+      - "8000:8000"
+
+  ai-video-frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend.dev
+    env_file:
+      - .env.lite
+    working_dir: /app/ai-pic-frontend
+    command:
+      ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+    volumes:
+      - ../ai-pic-frontend:/app/ai-pic-frontend
+      - /app/ai-pic-frontend/node_modules
+      - /app/ai-pic-frontend/.next
+    depends_on:
+      - ai-video-backend
+
+  ai-video-nginx:
+    image: nginx:latest
+    depends_on:
+      - ai-video-frontend
+      - ai-video-backend
+    ports:
+      - "8089:8080"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro

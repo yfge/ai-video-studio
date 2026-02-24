@@ -10,16 +10,31 @@
 - `docs/`：设计/接口/测试指南索引（见 `docs/README.md`）
 - `tasks.md`：项目任务看板（唯一权威）
 
-## 快速开始（推荐：Docker 开发栈）
+## 快速开始（5-10 分钟 Lite 模式）
+
+Lite 模式用于快速体验和本地联调：后端使用 SQLite，Celery 任务在进程内 eager 执行，并默认启用 AI mock 回退，不依赖 MySQL/Redis/独立 worker。
 
 1. `cd docker`
-2. `cp .env.example .env` 并填写必要配置（至少 `DATABASE_URL`、`REDIS_URL`、`SECRET_KEY`；AI Key 按需）
-3. `./dev_in_docker.sh`
+2. `cp .env.lite.example .env.lite`
+3. `./dev_lite_in_docker.sh`
 
 访问：
 
 - Web（Nginx 入口）：`http://localhost:8089`
 - Backend API（直连）：`http://localhost:8000`（Swagger：`http://localhost:8000/docs`）
+
+Lite 默认关键配置（可在 `docker/.env.lite` 调整）：
+
+- `DATABASE_URL=sqlite:////app/ai-pic-backend/uploads/dev_lite.db`
+- `CELERY_TASK_ALWAYS_EAGER=true`
+- `AI_FORCE_MOCK=true`
+- `SQLITE_MIGRATION_FALLBACK_CREATE_ALL=true`（SQLite 遇到不兼容 Alembic 迁移时自动回退初始化）
+
+## 完整 Docker 开发栈（MySQL/Redis/Celery）
+
+1. `cd docker`
+2. `cp .env.example .env` 并填写必要配置（至少 `DATABASE_URL`、`REDIS_URL`、`SECRET_KEY`；AI Key 按需）
+3. `./dev_in_docker.sh`
 
 服务容器名：
 
