@@ -104,6 +104,10 @@ def test_dialogue_audio_generate_async_includes_duration_control(
         f"/api/v1/scripts/{script.id}/dialogue-audio/generate-async", json=payload
     )
     assert response.status_code == 200, response.text
+    assert response.headers.get("deprecation") == "true"
+    assert response.headers.get("x-api-deprecated") == "Use timeline-pipeline endpoint"
+    link = response.headers.get("link", "")
+    assert f"/api/v1/scripts/{script.id}/timeline-pipeline/generate-async" in link
     task_id = response.json()["data"]["task_id"]
 
     task = db_session.query(Task).filter(Task.id == task_id).first()
@@ -112,6 +116,48 @@ def test_dialogue_audio_generate_async_includes_duration_control(
     assert params["script_id"] == script.id
     assert params["use_duration_control"] is True
     assert delay_calls["params"]["use_duration_control"] is True
+    assert delay_calls["user_id"] == admin_user.id
+
+
+def test_audio_timeline_generate_async_includes_deprecation_headers(
+    client, db_session, monkeypatch
+):
+    import app.api.v1.endpoints.scripts.audio_timeline as audio_timeline_endpoint
+
+    admin_user = db_session.query(User).filter(User.username == "test_admin").first()
+    assert admin_user is not None
+    script, _ = _create_script_with_scenes(db_session, user=admin_user)
+
+    delay_calls: dict[str, object] = {}
+
+    def _fake_delay(task_id: int, params: dict, user_id: int) -> None:
+        delay_calls["task_id"] = task_id
+        delay_calls["params"] = params
+        delay_calls["user_id"] = user_id
+
+    monkeypatch.setattr(
+        audio_timeline_endpoint.script_audio_timeline_generate_task,
+        "delay",
+        _fake_delay,
+    )
+
+    response = client.post(
+        f"/api/v1/scripts/{script.id}/audio-timeline/generate-async",
+        json={"overwrite": False},
+    )
+    assert response.status_code == 200, response.text
+    assert response.headers.get("deprecation") == "true"
+    assert response.headers.get("x-api-deprecated") == "Use timeline-pipeline endpoint"
+    link = response.headers.get("link", "")
+    assert f"/api/v1/scripts/{script.id}/timeline-pipeline/generate-async" in link
+
+    task_id = response.json()["data"]["task_id"]
+    task = db_session.query(Task).filter(Task.id == task_id).first()
+    assert task is not None
+    params = json.loads(task.parameters or "{}")
+    assert params["script_id"] == script.id
+    assert params["overwrite"] is False
+    assert delay_calls["task_id"] == task_id
     assert delay_calls["user_id"] == admin_user.id
 
 

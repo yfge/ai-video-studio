@@ -89,6 +89,10 @@ def test_storyboard_from_audio_timeline_generate_async_queues_task(
         json=payload,
     )
     assert response.status_code == 200, response.text
+    assert response.headers.get("deprecation") == "true"
+    assert response.headers.get("x-api-deprecated") == "Use timeline-pipeline endpoint"
+    link = response.headers.get("link", "")
+    assert f"/api/v1/scripts/{script.id}/timeline-pipeline/generate-async" in link
 
     task_id = response.json()["data"]["task_id"]
     task = db_session.query(Task).filter(Task.id == task_id).first()

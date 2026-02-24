@@ -15,13 +15,14 @@ from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
 )
 from app.services.task_worker import script_dialogue_audio_generate_task
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from .audio_pipeline_utils import (
     friendly_task_title,
     load_script_with_access,
+    mark_pipeline_endpoint_deprecated,
     run_async_task_sync,
     scene_has_dialogue_audio,
     scene_number_sort_key,
@@ -50,10 +51,11 @@ class ScriptDialogueAudioGenerateRequest(BaseModel):
     )
 
 
-@router.post("/{script_id}/dialogue-audio/generate-async")
+@router.post("/{script_id}/dialogue-audio/generate-async", deprecated=True)
 async def generate_script_dialogue_audio_async(
     script_id: int,
     body: ScriptDialogueAudioGenerateRequest,
+    response: Response,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -79,6 +81,10 @@ async def generate_script_dialogue_audio_async(
     db.commit()
     db.refresh(task)
 
+    mark_pipeline_endpoint_deprecated(
+        response,
+        successor_path=f"/api/v1/scripts/{script_id}/timeline-pipeline/generate-async",
+    )
     script_dialogue_audio_generate_task.delay(task.id, params, current_user.id)
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 

@@ -11,9 +11,11 @@ from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene
 from app.models.task import Task
 from app.models.user import User
+from fastapi import Response
 from sqlalchemy.orm import Session
 
 T = TypeVar("T")
+PIPELINE_DEPRECATION_SUNSET = "Thu, 31 Dec 2026 23:59:59 GMT"
 
 
 def to_int(value: Any) -> int | None:
@@ -119,6 +121,18 @@ def load_script_with_access(db: Session, script_id: int, user: User) -> Script |
         )
         .first()
     )
+
+
+def mark_pipeline_endpoint_deprecated(
+    response: Response,
+    *,
+    successor_path: str,
+) -> None:
+    """Attach deprecation headers for legacy step-by-step timeline endpoints."""
+    response.headers["Deprecation"] = "true"
+    response.headers["Sunset"] = PIPELINE_DEPRECATION_SUNSET
+    response.headers["Link"] = f'<{successor_path}>; rel="successor-version"'
+    response.headers["X-API-Deprecated"] = "Use timeline-pipeline endpoint"
 
 
 def run_async_task_sync(entrypoint: Callable[[], Awaitable[T]]) -> T:

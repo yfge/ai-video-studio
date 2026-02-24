@@ -10,7 +10,7 @@ from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.services.dialogue_audio_service import generate_episode_audio_timeline
 from app.services.task_worker import script_audio_timeline_generate_task
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ from .audio_pipeline_utils import (
     episode_has_audio_timeline,
     friendly_task_title,
     load_script_with_access,
+    mark_pipeline_endpoint_deprecated,
     run_async_task_sync,
     update_task_progress,
 )
@@ -29,10 +30,11 @@ class ScriptAudioTimelineGenerateRequest(BaseModel):
     overwrite: bool = Field(False, description="Overwrite existing episode timeline")
 
 
-@router.post("/{script_id}/audio-timeline/generate-async")
+@router.post("/{script_id}/audio-timeline/generate-async", deprecated=True)
 async def generate_script_audio_timeline_async(
     script_id: int,
     body: ScriptAudioTimelineGenerateRequest,
+    response: Response,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -58,6 +60,10 @@ async def generate_script_audio_timeline_async(
     db.commit()
     db.refresh(task)
 
+    mark_pipeline_endpoint_deprecated(
+        response,
+        successor_path=f"/api/v1/scripts/{script_id}/timeline-pipeline/generate-async",
+    )
     script_audio_timeline_generate_task.delay(task.id, params, current_user.id)
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 
