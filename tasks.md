@@ -34,7 +34,7 @@
 
 ### 验收指标（对标）
 
-- [ ] `scripts_legacy.py` 行数下降 ≥ 40%
+- [x] `scripts_legacy.py` 行数下降 ≥ 40%（4322 -> 2101，-51%，storyboard 路由/任务处理/辅助函数已迁移到 storyboard/ 包）
 - [x] `src/utils/api.ts` 行数下降 ≥ 40%（2784 -> 0，legacy 入口文件已移除）
 - [x] `@/utils/api` 旧入口引用从 169 降到 ≤ 100（当前代码导入为 0）
 - [ ] 新同学在 10 分钟内完成本地启动并访问前后端主页
@@ -104,7 +104,7 @@
 ### 进度（后端→前端→验证）
 
 - [x] 后端：已拆出 scripts CRUD/生成到 `ai-pic-backend/app/api/v1/endpoints/scripts/`（legacy 仍需迁移）
-- [ ] 后端：拆分 `ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py`（当前 4323 行）到 `app/api/v1/endpoints/scripts/*`（按 storyboard/dialogue-audio/timeline 等域拆分，已迁出 storyboard/from-audio-timeline、dialogue-audio、audio-timeline、timeline-pipeline），并逐步下线 legacy 路由
+- [x] 后端：拆分 `ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py`（4322→2101 行，-51%）到 `app/api/v1/endpoints/storyboard/*`（迁出 storyboard 路由/任务处理器/帧工具/fallback 工具/图像任务/参考图构建，共 6 个新文件），并逐步下线 legacy 路由
 - [ ] 后端：拆分 `ai-pic-backend/app/services/dialogue_audio_service.py`（≈1600 行）为 `app/services/audio/*`（tts/mix/timeline/persistence），并补单测
 - [ ] 后端：拆分 `ai-pic-backend/app/services/ai_service_manager.py`（≈1480 行）按 provider/domain 拆分，收敛公共重试/鉴权/日志
 - [x] 后端：统一 voice catalog 单一入口（`ai-pic-backend/app/services/voice_catalog.py` 与 `ai-pic-backend/app/services/audio/voice_catalog.py` 去重）
