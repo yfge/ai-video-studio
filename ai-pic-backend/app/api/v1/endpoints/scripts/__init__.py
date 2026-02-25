@@ -4,8 +4,9 @@ Scripts endpoints package.
 Provides API routes for script management including CRUD, generation,
 and storyboard operations.
 
-Note: During refactoring, legacy routes from scripts_legacy.py are
-temporarily re-exported here. They will be migrated in subsequent phases.
+Note: Storyboard task processors have been migrated to the
+app.api.v1.endpoints.storyboard package. They are re-exported here
+for backward compatibility with Celery workers and tests.
 """
 
 # New script QC endpoints (kept out of scripts_legacy.py)
@@ -31,25 +32,29 @@ from app.api.v1.endpoints.scripts.timeline_pipeline import (
     router as timeline_pipeline_router,
 )
 
-# Import legacy router and task helpers for storyboard and other unmigrated endpoints.
+# Import legacy router and NON-storyboard task helpers.
 from app.api.v1.endpoints.scripts_legacy import (
-    _augment_frames,
-    _enforce_storyboard_variety,
-    _merge_frames,
     _populate_dialogues_and_stage_if_missing,
     _process_script_generation_task,
     _process_script_regeneration_task,
-    _process_storyboard_generation_task,
-    _process_storyboard_image_task,
-    _process_storyboard_video_task,
     _sync_script_scenes_to_story_structure,
 )
 from app.api.v1.endpoints.scripts_legacy import router as legacy_router  # noqa: F401
 
+# Storyboard task processors now live in the storyboard package.
+from app.api.v1.endpoints.storyboard import (  # noqa: F401
+    _augment_frames,
+    _enforce_storyboard_variety,
+    _merge_frames,
+    _process_storyboard_generation_task,
+    _process_storyboard_image_task,
+    _process_storyboard_video_task,
+)
+
 # Imported for test monkeypatching consistency across endpoint modules.
 from app.services.ai_service import ai_service  # noqa: F401
 
-# Mount non-legacy routers onto legacy_router (legacy contains "" paths and cannot be wrapped).
+# Mount non-legacy routers onto legacy_router (legacy contains "" paths).
 legacy_router.include_router(quality_router)
 legacy_router.include_router(dialogue_audio_router)
 legacy_router.include_router(audio_timeline_router)

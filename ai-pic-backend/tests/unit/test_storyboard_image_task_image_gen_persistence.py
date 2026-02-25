@@ -57,10 +57,10 @@ def test_storyboard_image_task_persists_image_gen_single(
 
     _patch_session_local(monkeypatch, test_db)
 
-    import app.api.v1.endpoints.scripts_legacy as scripts_legacy
+    import app.api.v1.endpoints.storyboard.image_task_processor as sb_image_task
 
     monkeypatch.setattr(
-        scripts_legacy.prompt_manager,
+        sb_image_task.prompt_manager,
         "render_prompt",
         lambda *_args, **_kwargs: "test-prompt",
     )
@@ -75,7 +75,7 @@ def test_storyboard_image_task_persists_image_gen_single(
         },
     )
 
-    scripts_legacy._process_storyboard_image_task(
+    sb_image_task._process_storyboard_image_task(
         task.id,
         script.id,
         [0],
@@ -128,15 +128,15 @@ def test_storyboard_image_task_persists_image_gen_start_end(
 
     _patch_session_local(monkeypatch, test_db)
 
-    import app.api.v1.endpoints.scripts_legacy as scripts_legacy
+    import app.api.v1.endpoints.storyboard.image_task_processor as sb_image_task
 
     monkeypatch.setattr(
-        scripts_legacy.prompt_manager,
+        sb_image_task.prompt_manager,
         "render_prompt",
         lambda *_args, **_kwargs: "test-prompt",
     )
     monkeypatch.setattr(
-        scripts_legacy,
+        sb_image_task,
         "render_keyframe_prompt",
         lambda base, role: f"{role}::{base}",
     )
@@ -155,7 +155,7 @@ def test_storyboard_image_task_persists_image_gen_start_end(
 
     _patch_storyboard_generate(monkeypatch, image_gen_factory=_image_gen_factory)
 
-    scripts_legacy._process_storyboard_image_task(
+    sb_image_task._process_storyboard_image_task(
         task.id,
         script.id,
         [0],

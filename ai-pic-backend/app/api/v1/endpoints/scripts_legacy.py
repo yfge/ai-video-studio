@@ -1,9 +1,7 @@
 import json
 import re
-from collections import defaultdict
-from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, urlunparse
 from uuid import UUID, uuid4
 
@@ -12,13 +10,11 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Script, Story
-from app.models.story_structure import Environment, Scene, Shot
+from app.models.story_structure import Scene, Shot
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.prompts.manager import PromptManager, prompt_manager
 from app.prompts.templates import PromptTemplate
-from app.schemas.generation import StoryboardModel
 from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.script import (
     ScriptCreate,
@@ -27,22 +23,11 @@ from app.schemas.script import (
     ScriptUpdate,
 )
 from app.schemas.story_structure import SceneCreate, ShotCreate
-from app.schemas.style import StyleSpec
 from app.services import story_structure_service as story_structure_svc
-from app.services.ai.storyboard_utils import build_storyboard_context
 from app.services.ai_service import ai_service
-from app.services.storage.oss_service import oss_service
-from app.services.storyboard.pipeline import StoryboardPipeline
-from app.services.storyboard.storyboard_prompt_utils import (
-    apply_storyboard_prompt_optimizations,
-    render_keyframe_prompt,
-)
 from app.services.task_worker import (
     script_generate_task,
     script_regenerate_task,
-    storyboard_generate_task,
-    storyboard_image_generate_task,
-    storyboard_video_generate_task,
 )
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
@@ -51,17 +36,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, load_only
 
-
 def _now_iso() -> str:
     return datetime.utcnow().isoformat()
-
 
 def _to_int(value: Any) -> Optional[int]:
     try:
         return int(value)
     except (TypeError, ValueError):
         return None
-
 
 def _coerce_uuid(value: Any) -> str:
     if not value:
@@ -70,7 +52,6 @@ def _coerce_uuid(value: Any) -> str:
         return str(UUID(str(value)))
     except Exception:
         return str(uuid4())
-
 
 def _ensure_iso_datetime(value: Any, fallback: str) -> str:
     if value is None:
@@ -81,7 +62,6 @@ def _ensure_iso_datetime(value: Any, fallback: str) -> str:
         return datetime.fromisoformat(str(value)).isoformat()
     except Exception:
         return fallback
-
 
 def _abs_url(url: str) -> str:
     if not url:
@@ -106,45 +86,6 @@ def _abs_url(url: str) -> str:
         getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
     ).rstrip("/")
     return f"{base}{url}"
-
-
-def _normalize_reference_images(refs: list[str]) -> list[str]:
-    """仅保留看起来像图片 URL 的参考图，避免将描述性文案当作 URL。"""
-    allowed_ext = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg")
-    normalized: list[str] = []
-    for raw in refs:
-        if not isinstance(raw, str):
-            continue
-        ref = raw.strip()
-        if not ref:
-            continue
-        lower = ref.lower()
-        base_path = lower.split("?", 1)[0]
-        if lower.startswith(
-            ("http://", "https://", "data:image/")
-        ) or base_path.endswith(allowed_ext):
-            normalized.append(_abs_url(ref))
-    # 去重保持顺序
-    seen = set()
-    deduped: list[str] = []
-    for u in normalized:
-        if u and u not in seen:
-            seen.add(u)
-            deduped.append(u)
-    return deduped
-
-
-def _serialize_frame(frame: Dict[str, Any]) -> Dict[str, Any]:
-    serialized: Dict[str, Any] = {}
-    for key, val in frame.items():
-        if isinstance(val, UUID):
-            serialized[key] = str(val)
-        elif isinstance(val, datetime):
-            serialized[key] = val.isoformat()
-        else:
-            serialized[key] = val
-    return serialized
-
 
 def _friendly_task_title(
     prefix: str, script: Script, episode: Episode | None, story: Story | None
@@ -175,67 +116,6 @@ def _friendly_task_title(
     else:
         parts.append(f"剧本{script.id}")
     return " - ".join(parts)
-
-
-def _load_existing_frames(script: Script) -> List[Dict[str, Any]]:
-    storyboard = (
-        (script.extra_metadata or {}).get("storyboard")
-        if script.extra_metadata
-        else None
-    )
-    frames = storyboard.get("frames") if isinstance(storyboard, dict) else None
-    if not isinstance(frames, list):
-        return []
-    return [deepcopy(frame) for frame in frames if isinstance(frame, dict)]
-
-
-def _augment_frames(
-    frames: List[Dict[str, Any]],
-    *,
-    scene_map: Dict[int, Dict[str, Any]],
-    generation_source: str,
-    generation_method: str,
-    generation_model: Optional[str],
-) -> List[Dict[str, Any]]:
-    now_iso = _now_iso()
-    augmented: List[Dict[str, Any]] = []
-    for raw in frames:
-        frame = dict(raw or {})
-        frame_id = _coerce_uuid(frame.get("frame_id"))
-        frame["frame_id"] = frame_id
-        scene_number = _to_int(frame.get("scene_number"))
-        if scene_number is None:
-            scene_number = _to_int(frame.get("scene_index"))
-        if scene_number is not None:
-            frame["scene_number"] = scene_number
-            if scene_number in scene_map:
-                frame.setdefault("scene_index", scene_number)
-            elif scene_map:
-                # 若超出范围，使用最接近的键
-                closest = min(scene_map.keys(), key=lambda k: abs(k - scene_number))
-                frame.setdefault("scene_index", closest)
-        else:
-            frame_index = frame.get("scene_index")
-            if frame_index is None and scene_map:
-                first_key = next(iter(scene_map.keys()), None)
-                if first_key is not None:
-                    frame["scene_number"] = first_key
-                    frame["scene_index"] = first_key
-            else:
-                frame["scene_index"] = frame_index
-        frame["generation_source"] = frame.get("generation_source") or generation_source
-        frame["generation_method"] = frame.get("generation_method") or generation_method
-        if generation_model:
-            frame["generation_model"] = (
-                frame.get("generation_model") or generation_model
-            )
-        frame["generated_at"] = _ensure_iso_datetime(frame.get("generated_at"), now_iso)
-        frame["updated_at"] = now_iso
-        if not isinstance(frame.get("reference_images"), list):
-            frame["reference_images"] = []
-        augmented.append(frame)
-    return augmented
-
 
 def _collect_previous_episode_summaries(
     db: Session,
@@ -270,7 +150,6 @@ def _collect_previous_episode_summaries(
             }
         )
     return summaries
-
 
 def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
     """汇总故事角色设定，为提示词提供丰富的角色介绍。"""
@@ -334,7 +213,6 @@ def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
 
     return cleaned_profiles
 
-
 def _build_episode_data(episode: Episode) -> Dict[str, Any]:
     scenes = _extract_episode_scenes(episode)
     scene_count = episode.scene_count or (len(scenes) if scenes else None)
@@ -359,7 +237,6 @@ def _build_episode_data(episode: Episode) -> Dict[str, Any]:
         "scenes": scenes,
         **marketing_meta,
     }
-
 
 def _extract_episode_scenes(episode: Episode) -> List[Dict[str, Any]]:
     """从剧集元数据中提取场景列表，保证基础字段齐全。"""
@@ -401,7 +278,6 @@ def _extract_episode_scenes(episode: Episode) -> List[Dict[str, Any]]:
 
     return cleaned
 
-
 def _build_story_data(
     story: Story,
     *,
@@ -429,7 +305,6 @@ def _build_story_data(
         "character_profiles": character_profiles,
         **marketing_meta,
     }
-
 
 def _normalize_script_content(
     ai_content: Dict[str, Any],
@@ -595,7 +470,6 @@ def _normalize_script_content(
     normalized["content"] = content_text
     return normalized
 
-
 def _build_scene_payload_from_script_data(
     scene_raw: Any,
     idx: int,
@@ -640,7 +514,6 @@ def _build_scene_payload_from_script_data(
         estimated_duration_seconds=estimated_duration,
         status="draft",
     )
-
 
 def _sync_script_scenes_to_story_structure(
     db: Session,
@@ -708,7 +581,6 @@ def _sync_script_scenes_to_story_structure(
         "skipped": len(existing) if existing and not allow_overwrite else 0,
     }
 
-
 def _populate_dialogues_and_stage_if_missing(
     scenes: List[Dict[str, Any]],
     dialogues: List[Dict[str, Any]],
@@ -732,173 +604,10 @@ def _populate_dialogues_and_stage_if_missing(
         story=story,
     )
 
-
-def _merge_frames(
-    existing_frames: List[Dict[str, Any]],
-    new_frames: List[Dict[str, Any]],
-    selected_scenes: Optional[List[int]],
-) -> List[Dict[str, Any]]:
-    has_selection = selected_scenes is not None
-    selected_set = (
-        {s for s in (selected_scenes or []) if s is not None} if has_selection else None
-    )
-    merged: List[Dict[str, Any]] = []
-    if existing_frames and selected_set:
-        for frame in existing_frames:
-            scene_number = _to_int(frame.get("scene_number"))
-            if scene_number in selected_set:
-                continue
-            merged.append(deepcopy(frame))
-    elif not has_selection:
-        # 全量生成，旧分镜不保留
-        merged = []
-    else:
-        merged = [deepcopy(frame) for frame in existing_frames]
-
-    merged.extend(new_frames)
-    merged.sort(
-        key=lambda fr: (
-            _to_int(fr.get("scene_number")) or 0,
-            fr.get("frame_number") or 0,
-        )
-    )
-    for idx, frame in enumerate(merged, start=1):
-        frame["frame_number"] = idx
-        if frame.get("scene_number") is not None and frame.get("scene_index") is None:
-            frame["scene_index"] = _to_int(frame.get("scene_number"))
-    return merged
-
-
-def _enforce_storyboard_variety(frames: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    shot_cycle = ["远景", "中景", "近景", "特写"]
-    movement_cycle = ["固定", "推", "拉", "摇", "移", "跟", "变焦"]
-    composition_cycle = ["三分法", "对称", "前后景", "对角线", "中心对称"]
-    seen: Dict[tuple[Any, str], int] = {}
-    for frame in frames:
-        desc = (frame.get("description") or "").strip()
-        scene_no = _to_int(frame.get("scene_number"))
-        key = (scene_no, desc)
-        count = seen.get(key, -1) + 1
-        seen[key] = count
-        if count > 0:
-            frame["shot_type"] = shot_cycle[(count + (scene_no or 0)) % len(shot_cycle)]
-            frame["camera_movement"] = movement_cycle[
-                (count + (scene_no or 0)) % len(movement_cycle)
-            ]
-            frame["composition"] = composition_cycle[
-                (count + (scene_no or 0)) % len(composition_cycle)
-            ]
-            base_desc = desc or f"场景{scene_no or ''}"
-            frame["description"] = (
-                f"{base_desc}（变体{count + 1}，强调{frame['camera_movement']}）"
-            )
-            old_prompt = frame.get("ai_prompt")
-            if isinstance(old_prompt, str) and old_prompt.strip():
-                frame["ai_prompt"] = f"{frame['description']}\n{old_prompt}"
-            else:
-                frame["ai_prompt"] = frame["description"]
-            frame["duration_seconds"] = max(
-                2, min(12, (frame.get("duration_seconds") or 3) + ((count % 3) - 1))
-            )
-    return frames
-
-
-def _trim_local(value: Any, limit: int = 120) -> str:
-    if value is None:
-        return ""
-    text = str(value).replace("\n", " ").strip()
-    return text[:limit] + ("…" if len(text) > limit else "")
-
-
-def _collect_dialogues_for_scene(
-    script_obj: Script, scene_number: Optional[int], limit: int = 2
-) -> List[str]:
-    results: List[str] = []
-    for item in script_obj.dialogues or []:
-        if isinstance(item, dict):
-            sn = _to_int(item.get("scene_number"))
-            content = item.get("content") or item.get("text")
-        else:
-            sn = None
-            content = str(item)
-        if scene_number is not None and sn != scene_number:
-            continue
-        if not content:
-            continue
-        results.append(_trim_local(content, 80))
-        if len(results) >= limit:
-            break
-    return results
-
-
-def _collect_stage_for_scene(
-    script_obj: Script, scene_number: Optional[int], limit: int = 2
-) -> List[str]:
-    results: List[str] = []
-    for item in script_obj.stage_directions or []:
-        if isinstance(item, dict):
-            sn = _to_int(item.get("scene_number"))
-            content = item.get("content") or item.get("direction")
-        else:
-            sn = None
-            content = str(item)
-        if scene_number is not None and sn != scene_number:
-            continue
-        if not content:
-            continue
-        results.append(_trim_local(content, 80))
-        if len(results) >= limit:
-            break
-    return results
-
-
-def _compose_fallback_text(
-    scene_payload: Any,
-    scene_number: Optional[int],
-    *,
-    script_obj: Script,
-    base_text: str,
-    shot: str,
-    movement: str,
-    composition: str,
-) -> tuple[str, str]:
-    details: List[str] = []
-    if isinstance(scene_payload, dict):
-        location = scene_payload.get("location") or scene_payload.get("place")
-        time_info = scene_payload.get("time") or scene_payload.get("period")
-        characters = scene_payload.get("characters") or scene_payload.get("cast")
-        notes = scene_payload.get("notes")
-        if location:
-            details.append(f"地点:{_trim_local(location, 50)}")
-        if time_info:
-            details.append(f"时间:{_trim_local(time_info, 40)}")
-        if characters:
-            if isinstance(characters, list):
-                details.append(
-                    f"角色:{_trim_local(', '.join(map(str, characters)), 80)}"
-                )
-            else:
-                details.append(f"角色:{_trim_local(characters, 80)}")
-        if notes:
-            details.append(f"备注:{_trim_local(notes, 80)}")
-    dialogues = _collect_dialogues_for_scene(script_obj, scene_number)
-    if dialogues:
-        details.append("对白:" + " / ".join(dialogues))
-    stage = _collect_stage_for_scene(script_obj, scene_number)
-    if stage:
-        details.append("舞台:" + " / ".join(stage))
-    details.append("内容:" + _trim_local(base_text, 140))
-
-    description = "；".join(details)[:200] if details else _trim_local(base_text, 200)
-    return description, description
-
-
 router = APIRouter()
-
 
 def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
-
 
 def _get_script_by_identifier(
     db: Session,
@@ -929,7 +638,6 @@ def _get_script_by_identifier(
         raise HTTPException(status_code=404, detail="剧本不存在")
     return script
 
-
 @router.get("/formats")
 async def get_script_formats():
     """获取剧本格式列表"""
@@ -942,7 +650,6 @@ async def get_script_formats():
         {"value": "animation", "label": "动画脚本"},
     ]
 
-
 @router.get("/languages")
 async def get_script_languages():
     """获取剧本语言列表"""
@@ -953,7 +660,6 @@ async def get_script_languages():
         {"value": "ja-JP", "label": "日语"},
         {"value": "ko-KR", "label": "韩语"},
     ]
-
 
 @router.post("/", response_model=ScriptResponse)
 async def create_script(
@@ -990,7 +696,6 @@ async def create_script(
         logger.warning("同步规范化场景失败（create）", exc_info=True)
 
     return ScriptResponse.from_orm(db_script)
-
 
 @router.post("/generate", response_model=ScriptResponse)
 async def generate_script(
@@ -1185,7 +890,6 @@ async def generate_script(
 
     return ScriptResponse.from_orm(db_script)
 
-
 @router.post("/prompt/preview")
 async def preview_script_prompt(
     request: ScriptGenerationRequest,
@@ -1243,7 +947,6 @@ async def preview_script_prompt(
         PromptTemplate.SCRIPT_GENERATION.value, variables
     )
     return {"success": True, "data": {"prompt": prompt}}
-
 
 def _process_script_generation_task(task_id: int, request_dict: dict, user_id: int):
     from app.core.database import SessionLocal
@@ -1492,7 +1195,6 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             db.commit()
     finally:
         db.close()
-
 
 def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id: int):
     """异步剧本重新生成任务处理函数。
@@ -1774,7 +1476,6 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
     finally:
         db.close()
 
-
 @router.post("/generate-async")
 async def generate_script_async(
     request: ScriptGenerationRequest,
@@ -1796,1913 +1497,6 @@ async def generate_script_async(
     # 交给 Celery worker 处理
     script_generate_task.delay(t.id, request.dict(), current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
-
-
-# 分镜（Storyboard）相关
-@router.get("/{script_id}/storyboard")
-async def get_storyboard(
-    script_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    from app.core.logging import get_logger
-
-    logger = get_logger()
-    script_query = (
-        _not_deleted(db.query(Script), Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-    )
-    if not (current_user.is_admin or current_user.is_superuser):
-        script_query = script_query.filter(Story.user_id == current_user.id)
-    script = script_query.first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-    storyboard = (
-        (script.extra_metadata or {}).get("storyboard")
-        if script.extra_metadata
-        else None
-    )
-    try:
-        frames = (storyboard or {}).get("frames") or []
-        first_url = None
-        if isinstance(frames, list) and frames:
-            first = frames[0] or {}
-            if isinstance(first, dict):
-                first_url = first.get("image_url")
-        logger.info(
-            f"Storyboard GET | script_id={script_id} frames={len(frames)} first_image={bool(first_url)}"
-        )
-    except Exception:
-        pass
-    data = dict(storyboard or {"frames": []})
-    meta = dict(data.get("meta") or {})
-    if script.storyboard_version is not None:
-        meta.setdefault("version", script.storyboard_version)
-    if script.storyboard_updated_at:
-        meta.setdefault("updated_at", script.storyboard_updated_at.isoformat())
-    data["meta"] = meta
-    if script.storyboard_plan:
-        data["plan"] = script.storyboard_plan
-    return {"success": True, "data": data}
-
-
-@router.post("/{script_id}/storyboard/preview")
-async def preview_storyboard_prompt(
-    script_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    script = db.query(Script).filter(Script.id == script_id).first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-    episode = script.episode
-    story = episode.story if episode else None
-    story_marketing = merge_marketing_meta(
-        (
-            story.extra_metadata
-            if story and isinstance(story.extra_metadata, dict)
-            else {}
-        ),
-        (
-            story.generation_params
-            if story and isinstance(story.generation_params, dict)
-            else {}
-        ),
-    )
-    episode_marketing = merge_marketing_meta(
-        (
-            episode.extra_metadata
-            if episode and isinstance(episode.extra_metadata, dict)
-            else {}
-        ),
-        (
-            episode.generation_params
-            if episode and isinstance(episode.generation_params, dict)
-            else {}
-        ),
-    )
-    scenes = script.scenes or []
-    scene_indices = list(range(1, len(scenes) + 1))
-    script_data = {
-        "content": script.content,
-        "scenes": scenes,
-        "dialogues": script.dialogues,
-        "stage_directions": script.stage_directions,
-        "scene_indices": scene_indices,
-        "episode": (
-            {
-                "episode_number": episode.episode_number if episode else None,
-                "title": episode.title if episode else None,
-                "summary": episode.summary if episode else None,
-                "duration_minutes": episode.duration_minutes if episode else None,
-                "scene_count": episode.scene_count if episode else None,
-                **episode_marketing,
-            }
-            if episode
-            else None
-        ),
-        "story": (
-            {
-                "title": story.title if story else None,
-                "genre": story.genre if story else None,
-                "theme": story.theme if story else None,
-                "setting_time": story.setting_time if story else None,
-                "setting_location": story.setting_location if story else None,
-                "world_building": story.world_building if story else None,
-                "main_characters": story.main_characters if story else None,
-                **story_marketing,
-            }
-            if story
-            else None
-        ),
-    }
-    context_text = build_storyboard_context(script_data)
-    prompt = prompt_manager.render_prompt(
-        PromptTemplate.STORYBOARD_GENERATION.value,
-        {
-            "frames_per_scene": 7,
-            "max_frames": None,
-            "context_text": context_text,
-            "style_preferences": [],
-            "additional_requirements": None,
-        },
-    )
-    return {"success": True, "data": {"prompt": prompt}}
-
-
-@router.post("/{script_id}/storyboard/generate")
-async def generate_storyboard(
-    script_id: int,
-    model: str | None = None,
-    temperature: float = Query(0.7, ge=0.0, le=1.5, description="创造性温度"),
-    frames_per_scene: int = Query(7, ge=1, le=10, description="每场景建议分镜数"),
-    max_frames: int | None = Query(None, ge=1, le=500, description="最大分镜帧数上限"),
-    scene_numbers: str | None = Query(
-        None, description="逗号分隔的场景编号列表，如 1,3,4"
-    ),
-    use_plan: bool = Query(True, description="是否先使用分镜规划，再逐场景生成"),
-    use_new_pipeline: bool = Query(
-        False, description="是否使用新的React验证管线（实验性）"
-    ),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    logger = get_logger()
-    script = db.query(Script).filter(Script.id == script_id).first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-
-    # 解析选择的场景
-    selected_scenes: list[int] | None = None
-    if scene_numbers:
-        try:
-            selected_scenes = [
-                int(x.strip()) for x in scene_numbers.split(",") if x.strip()
-            ]
-        except Exception:
-            raise HTTPException(status_code=400, detail="scene_numbers 格式不正确")
-
-    # 使用新的React验证管线（实验性）
-    if use_new_pipeline:
-        episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
-        pipeline = StoryboardPipeline(db, ai_service=ai_service)
-
-        # 解析provider和model
-        prefer_provider = "openai"
-        model_id = model
-        if model_id and ":" in model_id:
-            prefer_provider, model_id = model_id.split(":", 1)
-
-        try:
-            result = await pipeline.generate(
-                script=script,
-                episode=episode,
-                frames_per_scene=frames_per_scene,
-                selected_scenes=selected_scenes,
-                model=model_id,
-                prefer_provider=prefer_provider,
-                temperature=temperature,
-                max_frames=max_frames,
-                use_langgraph=use_plan,
-            )
-        except Exception as exc:
-            logger.error(f"New pipeline failed: {exc}")
-            raise HTTPException(status_code=500, detail=f"管线执行失败: {exc}")
-
-        if not result.get("success"):
-            raise HTTPException(
-                status_code=500,
-                detail=result.get("error") or "分镜生成失败",
-            )
-
-        frames = result.get("frames", [])
-        if not frames:
-            raise HTTPException(status_code=500, detail="分镜生成失败：无帧返回")
-
-        # 持久化结果
-        sb_meta = {
-            "version": script.storyboard_version,
-            "updated_at": (
-                script.storyboard_updated_at.isoformat()
-                if script.storyboard_updated_at
-                else None
-            ),
-            "generation_source": "new_pipeline",
-            "generation_method": result.get("phase", "unknown"),
-            "provider": result.get("provider_used"),
-            "scene_scope": selected_scenes,
-            "validation_results": result.get("validation_results"),
-            "reasoning_trace": result.get("reasoning_trace"),
-        }
-        sb = {"frames": frames, "meta": sb_meta}
-        extra = dict(script.extra_metadata or {})
-        extra["storyboard"] = sb
-        script.extra_metadata = extra
-        script.storyboard_updated_at = datetime.utcnow()
-        script.storyboard_version = (script.storyboard_version or 0) + 1
-        db.commit()
-        db.refresh(script)
-
-        return {"success": True, "data": sb, "pipeline_result": result}
-
-    # 以剧本结构为输入（可按选择的场景过滤），并补充故事/剧集上下文
-    all_scenes = script.scenes or []
-    scenes_filtered: List[Dict[str, Any]] = []
-    scene_order: List[int] = []
-    if selected_scenes:
-        selected_set = {s for s in selected_scenes}
-        for idx, sc in enumerate(all_scenes, start=1):
-            if idx in selected_set:
-                scenes_filtered.append(sc)
-                scene_order.append(idx)
-    else:
-        scenes_filtered = all_scenes
-        scene_order = list(range(1, len(all_scenes) + 1))
-
-    # 获取剧集与故事元信息
-    episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
-    story = (
-        db.query(Story).filter(Story.id == episode.story_id).first()
-        if episode
-        else None
-    )
-
-    story_marketing = merge_marketing_meta(
-        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
-        story.generation_params if isinstance(story.generation_params, dict) else {},
-    )
-    episode_marketing = merge_marketing_meta(
-        episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {},
-        (
-            episode.generation_params
-            if isinstance(episode.generation_params, dict)
-            else {}
-        ),
-    )
-    script_data = {
-        "content": script.content,
-        "scenes": scenes_filtered,
-        "dialogues": script.dialogues,
-        "stage_directions": script.stage_directions,
-        "scene_indices": scene_order,
-        "episode": (
-            {
-                "episode_number": episode.episode_number if episode else None,
-                "title": episode.title if episode else None,
-                "summary": episode.summary if episode else None,
-                "duration_minutes": episode.duration_minutes if episode else None,
-                "scene_count": episode.scene_count if episode else None,
-                **episode_marketing,
-            }
-            if episode
-            else None
-        ),
-        "story": (
-            {
-                "title": story.title if story else None,
-                "genre": story.genre if story else None,
-                "theme": story.theme if story else None,
-                "setting_time": story.setting_time if story else None,
-                "setting_location": story.setting_location if story else None,
-                "world_building": story.world_building if story else None,
-                "main_characters": story.main_characters if story else None,
-                **story_marketing,
-            }
-            if story
-            else None
-        ),
-    }
-    # 默认优先使用 OpenAI（其支持 json_schema 更可靠）
-    prefer_provider = "openai"
-    model_id = model
-    if model_id and ":" in model_id:
-        prefer_provider, model_id = model_id.split(":", 1)
-
-    # 记录请求参数
-    try:
-        logger.info(
-            f"StoryboardGen Request | script_id={script_id} model={model or 'auto'} prefer_provider={prefer_provider or 'openai'} temp={temperature} fps={frames_per_scene} max_frames={max_frames} scenes={selected_scenes or 'all'}"
-        )
-    except Exception:
-        pass
-
-    scene_map = {idx: sc for idx, sc in enumerate(all_scenes, start=1)}
-    existing_frames = _load_existing_frames(script)
-
-    frames_generated: List[Dict[str, Any]] = []
-    generation_method = "direct"
-    generation_source = f"ai:{prefer_provider or 'auto'}"
-    generation_model = model_id
-    provider_used: Optional[str] = prefer_provider
-    reasoning_trace: Optional[List[str]] = None
-    agent_usage: Optional[Dict[str, Any]] = None
-    plan_data: Optional[Dict[str, Any]] = None
-    plan_fixes: Optional[List[str]] = None
-
-    result = await ai_service.generate_storyboard(
-        script=script_data,
-        model=model_id,
-        prefer_provider=prefer_provider,
-        temperature=temperature,
-        frames_per_scene=frames_per_scene,
-        max_frames=max_frames,
-        selected_scenes=selected_scenes,
-        prefer_graph=use_plan,
-    )
-    if result:
-        try:
-            raw_text = result.get("content") if isinstance(result, dict) else None
-            if isinstance(raw_text, str):
-                logger.info(
-                    f"StoryboardGen Raw Response Preview (len={len(raw_text)}): {raw_text[:2000]}"
-                    f"{'...<truncated>' if len(raw_text) > 2000 else ''}"
-                )
-            logger.info(
-                f"StoryboardGen Provider: {result.get('provider_used')} Model: {result.get('model_used')} Usage: {result.get('usage')}"
-            )
-        except Exception:
-            pass
-        sb_raw = result.get("normalized")
-        if not isinstance(sb_raw, dict):
-            try:
-                sb_raw = result.get("content")
-                if not isinstance(sb_raw, dict):
-                    sb_raw = extract_json_block(sb_raw)
-            except Exception as exc:
-                logger.warning(f"StoryboardGen JSON parse failed: {exc}")
-                sb_raw = None
-        if isinstance(sb_raw, dict):
-            try:
-                sb_obj = StoryboardModel.model_validate(sb_raw)
-                sb_data = sb_obj.model_dump(mode="python")
-                frames_generated = sb_data.get("frames") or []
-                provider_used = result.get("provider_used") or prefer_provider
-                generation_model = result.get("model_used") or model_id
-                generation_method = result.get("generation_method") or generation_method
-                if generation_method.startswith("langgraph"):
-                    generation_source = f"langgraph:{provider_used or 'auto'}"
-                else:
-                    generation_source = f"ai:{provider_used or 'auto'}"
-                reasoning_trace = result.get("reasoning_trace")
-                agent_usage = result.get("usage")
-                plan_data = result.get("plan")
-                plan_fixes = result.get("fixes")
-            except Exception as exc:
-                logger.warning(f"StoryboardGen validation failed: {exc}")
-
-    if plan_data:
-        try:
-            script.storyboard_plan = plan_data
-            extra_meta = dict(script.extra_metadata or {})
-            extra_meta["storyboard_plan"] = plan_data
-            script.extra_metadata = extra_meta
-        except Exception:
-            logger.warning("Storyboard plan persistence failed")
-
-    # Fallback: 基于剧本快速生成简易分镜
-    if not frames_generated:
-        generation_method = "fallback"
-        generation_source = "fallback"
-        generation_model = None
-        provider_used = "fallback"
-        frames_fallback: List[Dict[str, Any]] = []
-        shot_cycle = ["远景", "中景", "近景", "特写"]
-        movement_cycle = ["固定", "推", "拉", "摇", "移", "跟", "变焦"]
-        composition_cycle = ["三分法", "对称", "前后景", "对角线", "中心对称"]
-        scenes = scenes_filtered
-        frame_no = 1
-        if scenes:
-            for sidx, sc in enumerate(scenes, start=1):
-                real_scene_number = (
-                    scene_order[sidx - 1] if (sidx - 1) < len(scene_order) else sidx
-                )
-                if max_frames and len(frames_fallback) >= max_frames:
-                    break
-                desc = (
-                    sc.get("description")
-                    if isinstance(sc, dict)
-                    else (str(sc) if sc else "")
-                )
-                segments = [
-                    seg for seg in re.split(r"[。.!?！？]", desc or "") if seg.strip()
-                ]
-                count = max(1, frames_per_scene)
-                for i in range(count):
-                    if max_frames and len(frames_fallback) >= max_frames:
-                        break
-                    text = (
-                        segments[i] if i < len(segments) else (desc or f"场景 {sidx}")
-                    )
-                    variant = frame_no - 1
-                    shot = shot_cycle[variant % len(shot_cycle)]
-                    movement = movement_cycle[variant % len(movement_cycle)]
-                    composition = composition_cycle[variant % len(composition_cycle)]
-                    description, ai_prompt = _compose_fallback_text(
-                        sc if isinstance(sc, dict) else None,
-                        real_scene_number,
-                        script_obj=script,
-                        base_text=text,
-                        shot=shot,
-                        movement=movement,
-                        composition=composition,
-                    )
-                    duration = max(2, min(12, 3 + (variant % 3) - 1))
-                    frames_fallback.append(
-                        {
-                            "frame_number": frame_no,
-                            "scene_number": real_scene_number,
-                            "shot_type": shot,
-                            "camera_movement": movement,
-                            "composition": composition,
-                            "description": description,
-                            "duration_seconds": duration,
-                            "ai_prompt": ai_prompt,
-                            "reference_images": [],
-                        }
-                    )
-                    frame_no += 1
-        else:
-            paragraphs = (script.content or "").split("\n\n")
-            for para in paragraphs:
-                if max_frames and len(frames_fallback) >= max_frames:
-                    break
-                text = para.strip().replace("\n", " ")[:200]
-                if not text:
-                    continue
-                variant = frame_no - 1
-                shot = shot_cycle[variant % len(shot_cycle)]
-                movement = movement_cycle[variant % len(movement_cycle)]
-                composition = composition_cycle[variant % len(composition_cycle)]
-                description, ai_prompt = _compose_fallback_text(
-                    None,
-                    None,
-                    script_obj=script,
-                    base_text=text,
-                    shot=shot,
-                    movement=movement,
-                    composition=composition,
-                )
-                duration = max(2, min(12, 3 + (variant % 3) - 1))
-                frames_fallback.append(
-                    {
-                        "frame_number": frame_no,
-                        "scene_number": None,
-                        "shot_type": shot,
-                        "camera_movement": movement,
-                        "composition": composition,
-                        "description": description,
-                        "duration_seconds": duration,
-                        "ai_prompt": ai_prompt,
-                        "reference_images": [],
-                    }
-                )
-                frame_no += 1
-        frames_generated = frames_fallback
-
-    if not frames_generated:
-        raise HTTPException(status_code=500, detail="分镜生成失败")
-
-    frames_augmented = _augment_frames(
-        frames_generated,
-        scene_map=scene_map,
-        generation_source=generation_source,
-        generation_method=generation_method,
-        generation_model=generation_model,
-    )
-
-    frames_list = list(frames_augmented)
-
-    if selected_scenes:
-        selected_set = {s for s in scene_order if s is not None}
-        frames_list = [
-            fr for fr in frames_list if _to_int(fr.get("scene_number")) in selected_set
-        ]
-        try:
-            logger.info(
-                f"StoryboardGen Frames after scene filter {selected_scenes}: {len(frames_list)}"
-            )
-        except Exception:
-            pass
-
-    if max_frames:
-        frames_list = frames_list[:max_frames]
-        try:
-            logger.info(
-                f"StoryboardGen Frames after max_frames({max_frames}) slice: {len(frames_list)}"
-            )
-        except Exception:
-            pass
-
-    # 若有帧，但每个场景的帧数少于 frames_per_scene，则补齐
-    try:
-        supplementary_raw: List[Dict[str, Any]] = []
-        if scene_order:
-            target_scenes = scene_order
-        else:
-            target_scenes = list(range(1, (len(all_scenes) or 0) + 1))
-        for s in target_scenes:
-            if s is None:
-                continue
-            existing_count = len(
-                [fr for fr in frames_list if _to_int(fr.get("scene_number")) == s]
-            )
-            deficit = max(0, frames_per_scene - existing_count)
-            if deficit <= 0:
-                continue
-            src = all_scenes[s - 1] if 0 <= (s - 1) < len(all_scenes) else None
-            desc = (
-                src.get("description")
-                if isinstance(src, dict)
-                else (str(src) if src else "")
-            )
-            segs = [seg for seg in re.split(r"[。.!?！？]", desc or "") if seg.strip()]
-            for i in range(deficit):
-                text = segs[i] if i < len(segs) else (desc or f"场景 {s}")
-                supplementary_raw.append(
-                    {
-                        "scene_number": s,
-                        "description": (text or "").strip()[:200],
-                        "shot_type": "中景",
-                        "camera_movement": "固定",
-                        "composition": "三分法",
-                        "duration_seconds": 3,
-                        "ai_prompt": (text or "").strip()[:200],
-                        "reference_images": [],
-                    }
-                )
-        if supplementary_raw:
-            supplementary = _augment_frames(
-                supplementary_raw,
-                scene_map=scene_map,
-                generation_source="supplement",
-                generation_method="fallback",
-                generation_model=generation_model,
-            )
-            frames_list.extend(supplementary)
-        try:
-            stats: Dict[Any, int] = {}
-            for fr in frames_list:
-                sn = _to_int(fr.get("scene_number"))
-                stats[sn] = stats.get(sn, 0) + 1
-            logger.info(f"StoryboardGen Frames after supplement (per scene): {stats}")
-        except Exception:
-            pass
-    except Exception:
-        pass
-
-    # 规范化字段，填充缺省，并增强 ai_prompt
-    try:
-        allowed_shots = {"远景", "中景", "近景", "特写"}
-        shot_map = {
-            "wide": "远景",
-            "long": "远景",
-            "establishing": "远景",
-            "ws": "远景",
-            "medium": "中景",
-            "ms": "中景",
-            "close": "近景",
-            "cs": "近景",
-            "close-up": "特写",
-            "cu": "特写",
-            "extreme close-up": "特写",
-            "ecu": "特写",
-        }
-        for fr in frames_list:
-            shot = (fr.get("shot_type") or "").strip()
-            shot_norm = shot_map.get(shot.lower()) if isinstance(shot, str) else None
-            if shot_norm:
-                fr["shot_type"] = shot_norm
-            elif shot in allowed_shots:
-                fr["shot_type"] = shot
-            else:
-                fr["shot_type"] = "中景"
-            fr["camera_movement"] = fr.get("camera_movement") or "固定"
-            fr["composition"] = fr.get("composition") or "三分法"
-            fr["duration_seconds"] = fr.get("duration_seconds") or 3
-            scene_no = _to_int(fr.get("scene_number"))
-            chars: List[str] = []
-            if scene_no and 0 < scene_no <= len(all_scenes):
-                sc = all_scenes[scene_no - 1]
-                if isinstance(sc, dict) and sc.get("characters"):
-                    try:
-                        chars = list(sc.get("characters") or [])
-                    except Exception:
-                        chars = []
-            if not chars and story and story.main_characters:
-                try:
-                    chars = [
-                        c.get("name")
-                        for c in (story.main_characters or [])
-                        if isinstance(c, dict) and c.get("name")
-                    ]
-                except Exception:
-                    pass
-            if chars:
-                fr["characters"] = chars[:5]
-    except Exception:
-        pass
-
-    merge_targets = scene_order if selected_scenes else None
-    merged_frames = _merge_frames(existing_frames, frames_list, merge_targets)
-    diversified_frames = _enforce_storyboard_variety(merged_frames)
-    apply_storyboard_prompt_optimizations(diversified_frames)
-
-    frames_serialized = [_serialize_frame(fr) for fr in diversified_frames]
-    try:
-        StoryboardModel.model_validate({"frames": frames_serialized})
-    except Exception as exc:
-        logger.error(f"Storyboard validation failed before save: {exc}")
-        raise HTTPException(status_code=500, detail="分镜结构不合法")
-
-    sb_meta = {
-        "version": script.storyboard_version,
-        "updated_at": (
-            script.storyboard_updated_at.isoformat()
-            if script.storyboard_updated_at
-            else None
-        ),
-        "generation_source": generation_source,
-        "generation_method": generation_method,
-        "generation_model": generation_model,
-        "provider": provider_used,
-        "scene_scope": scene_order if selected_scenes else None,
-    }
-    if reasoning_trace:
-        sb_meta["reasoning_trace"] = reasoning_trace
-    if agent_usage:
-        sb_meta["usage"] = agent_usage
-    if plan_fixes:
-        sb_meta["plan_fixes"] = plan_fixes
-    sb = {"frames": frames_serialized, "meta": sb_meta}
-    plan_payload = plan_data or script.storyboard_plan
-    if plan_payload:
-        sb["plan"] = plan_payload
-    extra = dict(script.extra_metadata or {})
-    extra["storyboard"] = sb
-    script.extra_metadata = extra
-    script.storyboard_updated_at = datetime.utcnow()
-    script.storyboard_version = (script.storyboard_version or 0) + 1
-
-    db.commit()
-    db.refresh(script)
-
-    return {"success": True, "data": sb}
-
-
-@router.post("/{script_id}/storyboard/generate-async")
-async def generate_storyboard_async(
-    script_id: int,
-    model: str | None = None,
-    temperature: float = Query(0.7, ge=0.0, le=1.5, description="创造性温度"),
-    frames_per_scene: int = Query(7, ge=1, le=10, description="每场景建议分镜数"),
-    max_frames: int | None = Query(None, ge=1, le=500, description="最大分镜帧数上限"),
-    scene_numbers: str | None = Query(
-        None, description="逗号分隔的场景编号列表，如 1,3,4"
-    ),
-    use_plan: bool = Query(True, description="是否先使用分镜规划，再逐场景生成"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """异步生成分镜结构：创建任务并交给 Celery 处理。"""
-    from app.models.task import Task
-
-    # 校验剧本归属，与 generate_storyboard_images 对齐
-    script_query = (
-        _not_deleted(db.query(Script), Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-    )
-    if not (current_user.is_admin or current_user.is_superuser):
-        script_query = script_query.filter(Story.user_id == current_user.id)
-    script = script_query.first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-
-    params = {
-        "script_id": script_id,
-        "model": model,
-        "temperature": temperature,
-        "frames_per_scene": frames_per_scene,
-        "max_frames": max_frames,
-        "scene_numbers": scene_numbers,
-        "use_plan": use_plan,
-    }
-    story = script.episode.story if script.episode else None
-    t = Task(
-        title=_friendly_task_title("分镜生成", script, script.episode, story),
-        description="生成分镜结构（帧列表）",
-        task_type=TaskType.STORYBOARD_GENERATION,
-        prompt=f"Storyboard generation for script {script_id}",
-        parameters=json.dumps(params, ensure_ascii=False),
-        user_id=current_user.id,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-
-    storyboard_generate_task.delay(t.id, params, current_user.id)
-    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
-
-
-def _process_storyboard_generation_task(
-    task_id: int,
-    payload: dict,
-    user_id: int,
-):
-    """后台处理分镜结构生成任务（供 Celery 调用）。"""
-    import anyio
-    from app.core.database import SessionLocal
-    from app.models.task import Task, TaskStatus
-    from app.models.user import User
-
-    db = SessionLocal()
-    try:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.PROCESSING
-            db.commit()
-
-        script_id = int(payload.get("script_id"))
-
-        async def _run():
-            user = db.query(User).filter(User.id == user_id).first()
-            model = payload.get("model")
-            temperature = float(payload.get("temperature") or 0.7)
-            frames_per_scene = int(payload.get("frames_per_scene") or 7)
-            max_frames = payload.get("max_frames")
-            max_frames_arg = int(max_frames) if max_frames is not None else None
-            scene_numbers = payload.get("scene_numbers")
-            use_plan = bool(payload.get("use_plan"))
-            # 直接复用同步路由的生成逻辑，确保行为一致
-            await generate_storyboard(
-                script_id=script_id,
-                model=model,
-                temperature=temperature,
-                frames_per_scene=frames_per_scene,
-                max_frames=max_frames_arg,
-                scene_numbers=scene_numbers,
-                use_plan=use_plan,
-                current_user=user,  # type: ignore[arg-type]
-                db=db,  # type: ignore[arg-type]
-            )
-
-        anyio.run(_run)
-
-        if task:
-            task.status = TaskStatus.COMPLETED
-            task.result_file_path = f"script:{script_id}:storyboard"
-            db.commit()
-    except Exception as e:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.FAILED
-            task.error_message = str(e)
-            db.commit()
-    finally:
-        db.close()
-
-
-class StoryboardUpdateRequest(BaseModel):
-    frames: list[dict]
-
-
-@router.post("/{script_id}/storyboard/update")
-async def update_storyboard(
-    script_id: int,
-    body: StoryboardUpdateRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """保存分镜编辑后的结果（整量更新）"""
-    script = db.query(Script).filter(Script.id == script_id).first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-    # 校验结构
-    try:
-        validated = StoryboardModel.model_validate({"frames": body.frames})
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"分镜结构不合法: {e}")
-    frames_python = validated.model_dump(mode="python").get("frames", [])
-    now_iso = _now_iso()
-    for idx, fr in enumerate(frames_python, start=1):
-        fr["frame_id"] = _coerce_uuid(fr.get("frame_id"))
-        fr["frame_number"] = idx
-        scene_number = _to_int(fr.get("scene_number"))
-        if scene_number is not None:
-            fr["scene_number"] = scene_number
-            fr.setdefault("scene_index", scene_number)
-        fr["generated_at"] = _ensure_iso_datetime(fr.get("generated_at"), now_iso)
-        fr["updated_at"] = now_iso
-    frames_serialized = [_serialize_frame(fr) for fr in frames_python]
-    extra = dict(script.extra_metadata or {})
-    updated_at_dt = datetime.utcnow()
-    script.storyboard_updated_at = updated_at_dt
-    script.storyboard_version = (script.storyboard_version or 0) + 1
-    existing_meta = {}
-    if isinstance(extra.get("storyboard"), dict):
-        existing_meta = dict(extra["storyboard"].get("meta") or {})
-    existing_meta.update(
-        {
-            "version": script.storyboard_version,
-            "updated_at": updated_at_dt.isoformat(),
-            "generation_source": existing_meta.get("generation_source") or "manual",
-            "generation_method": "manual_edit",
-        }
-    )
-    extra["storyboard"] = {"frames": frames_serialized, "meta": existing_meta}
-    script.extra_metadata = extra
-    db.commit()
-    db.refresh(script)
-    return {"success": True}
-
-
-def _build_reference_image_context(
-    labeled_references: list[dict[str, Any]] | None,
-) -> str:
-    """从带标签的参考图构建上下文说明，让AI知道每张图代表什么。
-
-    返回格式示例：
-    [参考图说明]
-    - 第1张图是角色"老拐"的参考形象
-    - 第2张图是场景环境参考
-    """
-    if not labeled_references:
-        return ""
-
-    lines = []
-    for i, ref in enumerate(labeled_references, 1):
-        ref_type = ref.get("type", "other")
-        label = ref.get("label")
-
-        if ref_type == "character" and label:
-            lines.append(f"- 第{i}张图是角色「{label}」的参考形象")
-        elif ref_type == "environment":
-            lines.append(f"- 第{i}张图是场景环境参考")
-        elif ref_type == "primary":
-            lines.append(f"- 第{i}张图是首要参考图（用于风格/构图参考）")
-        else:
-            lines.append(f"- 第{i}张图是补充参考")
-
-    if not lines:
-        return ""
-
-    return "[参考图说明]\n" + "\n".join(lines)
-
-
-def _process_storyboard_image_task(
-    task_id: int,
-    script_id: int,
-    frame_indexes: list[int] | None,
-    *,
-    prompt_override: str | None = None,
-    model: str | None = None,
-    generation_profile: str | None = None,
-    size: str | None = None,
-    width: int | None = None,
-    height: int | None = None,
-    style: str = "realistic",
-    style_preset_id: str | None = None,
-    style_spec: dict[str, Any] | None = None,
-    aspect_ratio: str | None = None,
-    seed: int | None = None,
-    steps: int | None = None,
-    cfg_scale: float | None = None,
-    negative_prompt: str | None = None,
-    strength: float | None = None,
-    reference_images: Optional[List[str]] = None,
-    labeled_references: Optional[List[dict[str, Any]]] = None,
-    count: int = 1,
-    keyframe_mode: str = "single",
-    start_enabled: bool = True,
-    end_enabled: bool = True,
-):
-    from app.core.database import SessionLocal
-    from app.models.task import Task, TaskStatus
-
-    logger = get_logger("storyboard_image_task")
-    db = SessionLocal()
-    try:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.PROCESSING
-            db.commit()
-
-        script = db.query(Script).filter(Script.id == script_id).first()
-        if not script:
-            raise RuntimeError("剧本不存在")
-        sb = (
-            (script.extra_metadata or {}).get("storyboard")
-            if script.extra_metadata
-            else None
-        )
-        if not sb or not sb.get("frames"):
-            raise RuntimeError("未找到分镜数据")
-
-        # 拷贝一份帧列表，避免直接在 SQLAlchemy 追踪的 JSON 结构上就地修改
-        import copy as _copy  # 局部导入避免循环依赖
-
-        frames_src = list((sb or {}).get("frames") or [])
-        frames: List[Dict[str, Any]] = [
-            _copy.deepcopy(fr) if isinstance(fr, dict) else fr for fr in frames_src
-        ]
-        target_indexes = frame_indexes or list(range(len(frames)))
-        start_log = (
-            f"[SBIMG] task start | script_id={script_id} task_id={task_id} "
-            f"frames_total={len(frames)} target_indexes={target_indexes} model={model} count={count} "
-            f"keyframe_mode={keyframe_mode} start_enabled={start_enabled} end_enabled={end_enabled}"
-        )
-        logger.info(start_log)
-        print(start_log, flush=True)
-
-        # 准备环境 / 角色参考图
-        scenes = db.query(Scene).filter(Scene.script_id == script_id).all()
-        scene_by_number: Dict[int, Scene] = {}
-        env_ids: set[int] = set()
-        scene_ids: list[int] = []
-        for sc in scenes:
-            try:
-                sn = int(sc.scene_number)
-                scene_by_number[sn] = sc
-            except Exception:
-                continue
-            scene_ids.append(sc.id)
-            if sc.environment_id:
-                env_ids.add(sc.environment_id)
-
-        env_map: Dict[int, Environment] = {}
-        env_images_by_scene: Dict[int, List[str]] = {}
-        if env_ids:
-            envs = db.query(Environment).filter(Environment.id.in_(env_ids)).all()
-            env_map = {env.id: env for env in envs}
-            for sc in scenes:
-                if sc.environment_id and sc.environment_id in env_map:
-                    refs = env_map[sc.environment_id].reference_images or []
-                    env_images_by_scene[int(sc.scene_number)] = [
-                        _abs_url(u) for u in refs if u
-                    ]
-
-        scene_char_ids: Dict[int, set[int]] = defaultdict(set)
-        if scene_ids:
-            shots = db.query(Shot).filter(Shot.scene_id.in_(scene_ids)).all()
-            for shot in shots:
-                for cid in shot.character_ids or []:
-                    try:
-                        scene_char_ids[shot.scene_id].add(int(cid))
-                    except Exception:
-                        continue
-
-        # Character registry: prefer explicit shot.character_ids, but always include
-        # Story-level registered characters as a fallback for prompt/name matching.
-        all_char_ids = {cid for ids in scene_char_ids.values() for cid in ids}
-        try:
-            from app.services.storyboard.storyboard_character_anchors import (
-                extract_virtual_ip_name_aliases,
-                fallback_virtual_ip_anchor_url,
-                get_story_character_virtual_ip_ids,
-                infer_character_ids_from_text,
-            )
-
-            episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
-            story_id = int(episode.story_id) if episode and episode.story_id else None
-            if story_id:
-                all_char_ids.update(get_story_character_virtual_ip_ids(db, story_id))
-        except Exception:
-            pass
-        vip_map: Dict[int, VirtualIP] = {}
-        char_image_map: Dict[int, str] = {}
-        if all_char_ids:
-            vips = db.query(VirtualIP).filter(VirtualIP.id.in_(all_char_ids)).all()
-            vip_map = {v.id: v for v in vips}
-            images = (
-                db.query(VirtualIPImage)
-                .filter(VirtualIPImage.virtual_ip_id.in_(all_char_ids))
-                .order_by(
-                    VirtualIPImage.is_default.desc(), VirtualIPImage.created_at.desc()
-                )
-                .all()
-            )
-            for img in images:
-                if img.virtual_ip_id in char_image_map:
-                    continue
-                url = img.oss_url or img.file_path
-                if url:
-                    char_image_map[img.virtual_ip_id] = _abs_url(url)
-
-        name_to_vip_id: Dict[str, int] = {}
-        for vid, vip in vip_map.items():
-            name = getattr(vip, "name", None)
-            try:
-                aliases = extract_virtual_ip_name_aliases(name)
-            except Exception:
-                aliases = [name] if isinstance(name, str) else []
-            for alias in aliases:
-                if isinstance(alias, str) and alias.strip():
-                    name_to_vip_id.setdefault(alias.strip(), int(vid))
-
-        from functools import partial as _partial
-
-        import anyio
-
-        try:
-            count_int = int(count) if count is not None else 1
-        except (TypeError, ValueError):
-            count_int = 1
-        count_int = max(1, min(count_int, 4))
-
-        width_value = width
-        height_value = height
-        if (
-            (width_value is None or height_value is None)
-            and isinstance(size, str)
-            and size.strip()
-        ):
-            from app.services.providers.image_param_utils import size_to_dimensions
-
-            dims = size_to_dimensions(size)
-            if dims:
-                width_value, height_value = dims
-        if width_value is None:
-            width_value = 1024
-        if height_value is None:
-            height_value = 1024
-
-        async def _gen_images(prompt: str, ref_imgs: List[str]) -> dict | None:
-            try:
-                from app.services.storyboard.storyboard_image_generation import (
-                    generate_storyboard_image_urls,
-                )
-
-                refs = [_abs_url(u) for u in ref_imgs if u]
-                return await generate_storyboard_image_urls(
-                    prompt=prompt,
-                    refs=refs,
-                    model=model,
-                    generation_profile=generation_profile,
-                    count=count_int,
-                    size=size,
-                    aspect_ratio=aspect_ratio,
-                    width=width_value,
-                    height=height_value,
-                    style=style,
-                    style_preset_id=style_preset_id,
-                    style_spec=style_spec,
-                    seed=seed,
-                    steps=steps,
-                    cfg_scale=cfg_scale,
-                    negative_prompt=negative_prompt,
-                    strength=strength,
-                    ai_service=ai_service,
-                )
-            except Exception as e:
-                print(f"图像生成失败: {e}")
-            return None
-
-        async def _persist_frame_image(
-            url: str,
-            idx: int,
-            provider: str,
-            model: str,
-            *,
-            keyframe_role: str = "single",
-            variant_index: int | None = None,
-        ) -> dict | None:
-            """将分镜图像下载到本地并上传 OSS，返回最终可用 URL。"""
-            try:
-                metadata = {
-                    "script_id": script_id,
-                    "frame_index": idx,
-                    "provider": provider,
-                    "model": model,
-                    "keyframe_role": keyframe_role,
-                }
-                if variant_index is not None:
-                    metadata["variant_index"] = variant_index
-                stored = await ai_service._persist_generated_image(
-                    image_data=url,
-                    ip_name=f"script-{script_id}",
-                    category="storyboard",
-                    prefix="ai-generated/storyboard",
-                    metadata=metadata,
-                    # 若已配置 OSS/CDN，则要求上传成功；否则退回本地存储
-                    require_upload=bool(oss_service),
-                )
-            except Exception as e:
-                print(f"分镜图像持久化失败 idx={idx}: {e}")
-                return None
-
-            final_url = stored.get("oss_url") or stored.get("relative_path")
-            if not final_url:
-                return None
-            return {
-                "final_url": final_url,
-                "stored": stored,
-            }
-
-        # 逐帧生成图像URL
-        resolved_style_spec_used: dict | None = None
-        resolved_style_spec_resolution_used: Any | None = None
-        for idx in target_indexes:
-            if idx < 0 or idx >= len(frames):
-                warn = (
-                    f"[SBIMG] frame index out of range | idx={idx} total={len(frames)}"
-                )
-                logger.warning(warn)
-                print(warn, flush=True)
-                continue
-            fr = frames[idx]
-            base_prompt = fr.get("ai_prompt") or fr.get("description") or ""
-            override_clean = (prompt_override or "").strip()
-            if override_clean:
-                base_prompt = override_clean
-            if not base_prompt:
-                base_prompt = prompt_manager.render_prompt(
-                    PromptTemplate.STORYBOARD_IMAGE_FALLBACK.value,
-                    {
-                        "frame_index": idx + 1,
-                        "scene_number": fr.get("scene_number"),
-                    },
-                )
-            frame_log = (
-                f"[SBIMG] generating frame | idx={idx} scene={fr.get('scene_number')} "
-                f"prompt_len={len(base_prompt)}"
-            )
-            logger.info(frame_log)
-            print(frame_log, flush=True)
-
-            scene_no = _to_int(fr.get("scene_number"))
-            reference_notes: List[Dict[str, Any]] = []
-
-            # 1) 已存在于分镜帧上的参考图（用户手动/前序管线写入）
-            frame_refs = _normalize_reference_images(fr.get("reference_images") or [])
-            if frame_refs:
-                reference_notes.append({"type": "frame"})
-
-            # 2) 前端调用时附带的额外参考图（单次请求作用域）
-            # 优先使用带标签的参考图（labeled_references），否则使用原始 reference_images
-            if labeled_references:
-                # 从带标签的参考图中提取 URL 列表
-                payload_refs = _normalize_reference_images(
-                    [ref.get("url") for ref in labeled_references if ref.get("url")]
-                )
-            else:
-                payload_refs = _normalize_reference_images(reference_images or [])
-            if payload_refs:
-                reference_notes.append({"type": "user"})
-
-            # 3) 角色锚点参考图（默认/最新的虚拟 IP 图像）
-            char_anchor_refs: List[str] = []
-            candidate_char_ids: list[int] = []
-            source: str | None = None
-            if scene_no and scene_no in scene_by_number:
-                sc_obj = scene_by_number.get(scene_no)
-                if sc_obj:
-                    bound_ids = scene_char_ids.get(sc_obj.id) or set()
-                    if bound_ids:
-                        candidate_char_ids = [int(cid) for cid in bound_ids]
-                        source = "shot"
-
-            # Fallback: when Shot bindings are missing, try to infer characters by
-            # matching Story-registered character names in the frame prompt.
-            if not candidate_char_ids and name_to_vip_id:
-                try:
-                    candidate_char_ids = infer_character_ids_from_text(
-                        base_prompt,
-                        name_to_vip_id,
-                        max_matches=4,
-                    )
-                    if candidate_char_ids:
-                        source = "prompt"
-                except Exception:
-                    candidate_char_ids = []
-
-            for cid in candidate_char_ids[:4]:
-                vip = vip_map.get(cid)
-                name = getattr(vip, "name", None) if vip else None
-                if not isinstance(name, str) or not name.strip():
-                    name = f"角色{cid}"
-
-                img_url = char_image_map.get(cid)
-                if not img_url:
-                    try:
-                        img_url = fallback_virtual_ip_anchor_url(vip)
-                    except Exception:
-                        img_url = None
-
-                if img_url:
-                    # 参考图 URL 通过 ref_images 传给 image_to_image，提示词只保留语义描述，避免在日志中泄露具体地址
-                    note = {"type": "character", "name": name}
-                    if source:
-                        note["source"] = source
-                    reference_notes.append(note)
-                    char_anchor_refs.append(_abs_url(img_url))
-
-            # 4) 场景环境参考图
-            env_refs = _normalize_reference_images(
-                env_images_by_scene.get(scene_no or -1, []) or []
-            )
-            if env_refs:
-                reference_notes.append({"type": "environment"})
-
-            # 参考图顺序：优先使用用户附带的参考图作为 base_image，
-            # 然后是帧已有参考图、角色锚点和环境参考图
-            ref_images_raw: List[str] = []
-            if payload_refs:
-                ref_images_raw.extend(payload_refs)
-            else:
-                ref_images_raw.extend(frame_refs)
-                ref_images_raw.extend(char_anchor_refs)
-                ref_images_raw.extend(env_refs)
-            ref_images = _normalize_reference_images(ref_images_raw)
-            refs_log = (
-                f"[SBIMG] frame refs | idx={idx} total_refs={len(ref_images)} "
-                f"frame_refs={len(frame_refs)} payload_refs={len(payload_refs)} "
-                f"char_anchor={len(char_anchor_refs)} env_refs={len(env_refs)}"
-            )
-            logger.info(refs_log)
-            print(refs_log, flush=True)
-
-            prompt = prompt_manager.render_prompt(
-                PromptTemplate.STORYBOARD_IMAGE_PROMPT.value,
-                {
-                    "base_prompt": base_prompt,
-                    "reference_notes": reference_notes,
-                },
-            )
-
-            # 如果前端传了带标签的参考图，添加上下文说明让AI知道每张图代表什么
-            if labeled_references:
-                ref_context = _build_reference_image_context(labeled_references)
-                if ref_context:
-                    prompt = f"{ref_context}\n\n{prompt}"
-                    context_log = (
-                        f"[SBIMG] added labeled ref context | idx={idx} "
-                        f"labeled_refs={len(labeled_references)}"
-                    )
-                    logger.info(context_log)
-                    print(context_log, flush=True)
-
-            if ref_images:
-                fr["reference_images"] = ref_images
-
-            if keyframe_mode == "start_end":
-                # 首尾关键帧：生成 start/end 两张，并保持 image_url 指向首帧用于兼容旧 UI
-                use_precomputed = not override_clean and not reference_notes
-                start_prompt = (
-                    fr.get("start_keyframe_prompt")
-                    if use_precomputed and fr.get("start_keyframe_prompt")
-                    else render_keyframe_prompt(prompt, "start")
-                )
-                end_prompt = (
-                    fr.get("end_keyframe_prompt")
-                    if use_precomputed and fr.get("end_keyframe_prompt")
-                    else render_keyframe_prompt(prompt, "end")
-                )
-
-                start_result = None
-                if start_enabled:
-                    start_result = anyio.run(_gen_images, start_prompt, ref_images)
-                    if start_result:
-                        start_image_gen = start_result.get("image_gen")
-                        if isinstance(start_image_gen, dict):
-                            fr["start_image_gen"] = start_image_gen
-                            fr["image_gen"] = start_image_gen
-                        urls_preview = start_result.get("urls") or []
-                        url_preview = urls_preview[0] if urls_preview else None
-                        if isinstance(url_preview, str) and len(url_preview) > 200:
-                            url_preview = url_preview[:200] + "..."
-                        print(
-                            f"Storyboard keyframe(start) idx={idx} url={url_preview} "
-                            f"provider={start_result.get('provider')}"
-                        )
-                        if resolved_style_spec_used is None and isinstance(
-                            start_result.get("style_spec"), dict
-                        ):
-                            resolved_style_spec_used = start_result.get("style_spec")
-                            resolved_style_spec_resolution_used = start_result.get(
-                                "style_spec_resolution"
-                            )
-                start_final_urls: list[str] = []
-                start_original_urls: list[str] = []
-                if start_result:
-                    for variant_index, raw_url in enumerate(
-                        start_result.get("urls") or [], start=1
-                    ):
-                        if not raw_url:
-                            continue
-                        start_original_urls.append(raw_url)
-                        start_persist = anyio.run(
-                            _partial(
-                                _persist_frame_image,
-                                keyframe_role="start",
-                                variant_index=variant_index,
-                            ),
-                            raw_url,
-                            idx,
-                            start_result.get("provider"),
-                            start_result.get("model"),
-                        )
-                        if start_persist and start_persist.get("final_url"):
-                            start_final_urls.append(start_persist["final_url"])
-
-                if start_final_urls:
-                    existing_start_urls = (
-                        list(fr.get("start_image_urls") or [])
-                        if isinstance(fr.get("start_image_urls"), list)
-                        else []
-                    )
-                    merged_start_urls: list[str] = []
-                    for url in existing_start_urls + start_final_urls:
-                        if url and url not in merged_start_urls:
-                            merged_start_urls.append(url)
-                    fr["start_image_urls"] = merged_start_urls or start_final_urls
-                    if merged_start_urls:
-                        fr["start_image_url"] = (
-                            fr.get("start_image_url") or merged_start_urls[0]
-                        )
-                        fr["image_url"] = fr.get("image_url") or merged_start_urls[0]
-                    if start_original_urls and not fr.get("start_image_url_original"):
-                        fr["start_image_url_original"] = start_original_urls[0]
-                    if start_original_urls and not fr.get("image_url_original"):
-                        fr["image_url_original"] = start_original_urls[0]
-
-                end_result = None
-                if end_enabled:
-                    end_result = anyio.run(_gen_images, end_prompt, ref_images)
-                    if end_result:
-                        end_image_gen = end_result.get("image_gen")
-                        if isinstance(end_image_gen, dict):
-                            fr["end_image_gen"] = end_image_gen
-                        urls_preview = end_result.get("urls") or []
-                        url_preview = urls_preview[0] if urls_preview else None
-                        if isinstance(url_preview, str) and len(url_preview) > 200:
-                            url_preview = url_preview[:200] + "..."
-                        print(
-                            f"Storyboard keyframe(end) idx={idx} url={url_preview} "
-                            f"provider={end_result.get('provider')}"
-                        )
-                        if resolved_style_spec_used is None and isinstance(
-                            end_result.get("style_spec"), dict
-                        ):
-                            resolved_style_spec_used = end_result.get("style_spec")
-                            resolved_style_spec_resolution_used = end_result.get(
-                                "style_spec_resolution"
-                            )
-                end_final_urls: list[str] = []
-                end_original_urls: list[str] = []
-                if end_result:
-                    for variant_index, raw_url in enumerate(
-                        end_result.get("urls") or [], start=1
-                    ):
-                        if not raw_url:
-                            continue
-                        end_original_urls.append(raw_url)
-                        end_persist = anyio.run(
-                            _partial(
-                                _persist_frame_image,
-                                keyframe_role="end",
-                                variant_index=variant_index,
-                            ),
-                            raw_url,
-                            idx,
-                            end_result.get("provider"),
-                            end_result.get("model"),
-                        )
-                        if end_persist and end_persist.get("final_url"):
-                            end_final_urls.append(end_persist["final_url"])
-
-                if end_final_urls:
-                    existing_end_urls = (
-                        list(fr.get("end_image_urls") or [])
-                        if isinstance(fr.get("end_image_urls"), list)
-                        else []
-                    )
-                    merged_end_urls: list[str] = []
-                    for url in existing_end_urls + end_final_urls:
-                        if url and url not in merged_end_urls:
-                            merged_end_urls.append(url)
-                    fr["end_image_urls"] = merged_end_urls or end_final_urls
-                    if merged_end_urls and not fr.get("end_image_url"):
-                        fr["end_image_url"] = merged_end_urls[0]
-                    if end_original_urls and not fr.get("end_image_url_original"):
-                        fr["end_image_url_original"] = end_original_urls[0]
-            else:
-                result = anyio.run(_gen_images, prompt, ref_images)
-                if result:
-                    image_gen = result.get("image_gen")
-                    if isinstance(image_gen, dict):
-                        fr["image_gen"] = image_gen
-                    urls_preview = result.get("urls") or []
-                    url_preview = urls_preview[0] if urls_preview else None
-                    if isinstance(url_preview, str) and len(url_preview) > 200:
-                        url_preview = url_preview[:200] + "..."
-                    print(
-                        f"Storyboard image result idx={idx} url={url_preview} "
-                        f"provider={result.get('provider')}"
-                    )
-                    if resolved_style_spec_used is None and isinstance(
-                        result.get("style_spec"), dict
-                    ):
-                        resolved_style_spec_used = result.get("style_spec")
-                        resolved_style_spec_resolution_used = result.get(
-                            "style_spec_resolution"
-                        )
-                final_urls: list[str] = []
-                original_urls: list[str] = []
-                if result:
-                    for variant_index, raw_url in enumerate(
-                        result.get("urls") or [], start=1
-                    ):
-                        if not raw_url:
-                            continue
-                        original_urls.append(raw_url)
-                        persist = anyio.run(
-                            _partial(
-                                _persist_frame_image,
-                                keyframe_role="single",
-                                variant_index=variant_index,
-                            ),
-                            raw_url,
-                            idx,
-                            result.get("provider"),
-                            result.get("model"),
-                        )
-                        if persist and persist.get("final_url"):
-                            final_urls.append(persist["final_url"])
-
-                if final_urls:
-                    before_url = fr.get("image_url")
-                    fr["image_url"] = final_urls[0]
-                    fr["start_image_url"] = final_urls[0]
-                    fr["start_image_urls"] = final_urls
-                    if original_urls:
-                        fr["image_url_original"] = original_urls[0]
-                        fr["start_image_url_original"] = original_urls[0]
-                    print(
-                        "Storyboard frame set idx=%s old_url=%s new_url=%s",
-                        idx,
-                        before_url,
-                        fr.get("image_url"),
-                    )
-
-        # 保存：拷贝一份 JSON，避免 SQLAlchemy JSON 未检测到嵌套变更
-        extra_raw = script.extra_metadata or {}
-        extra = dict(extra_raw)
-        storyboard_payload = dict(sb or {})
-        meta_payload: dict[str, Any] = {}
-        if isinstance(storyboard_payload.get("meta"), dict):
-            meta_payload = dict(storyboard_payload.get("meta") or {})
-        meta_payload.update(
-            {
-                "image_generation_updated_at": datetime.utcnow().isoformat(),
-                "image_generation_style": style,
-                "image_generation_style_preset_id": (style_preset_id or "").strip()
-                or None,
-                "image_generation_style_spec": resolved_style_spec_used
-                or (style_spec if isinstance(style_spec, dict) else None),
-                "image_generation_style_spec_resolution": resolved_style_spec_resolution_used,
-            }
-        )
-        storyboard_payload["meta"] = meta_payload
-        storyboard_payload["frames"] = frames
-        extra["storyboard"] = storyboard_payload
-        # 直接使用 UPDATE 避免 JSON 变更检测问题
-        db.query(Script).filter(Script.id == script_id).update(
-            {Script.extra_metadata: extra},
-            synchronize_session=False,
-        )
-        db.commit()
-        # 调试：确认数据库中已写入 image_url
-        try:
-            script_after = db.query(Script).filter(Script.id == script_id).first()
-            sb_after = (
-                (script_after.extra_metadata or {}).get("storyboard")
-                if script_after and script_after.extra_metadata
-                else None
-            )
-            frames_after = (sb_after or {}).get("frames") or []
-            if frames_after:
-                print(
-                    "Storyboard DB first_frame image_url after commit:",
-                    frames_after[0].get("image_url"),
-                )
-        except Exception:
-            pass
-
-        if task:
-            task.status = TaskStatus.COMPLETED
-            db.commit()
-    except Exception as e:
-        task = db.query(Task).filter(Task.id == task_id).first()
-        if task:
-            task.status = TaskStatus.FAILED
-            task.error_message = str(e)
-            db.commit()
-    finally:
-        db.close()
-
-
-class LabeledReferenceImage(BaseModel):
-    """带标签的参考图，用于告知AI每张图代表什么角色/环境"""
-
-    url: str = Field(..., description="参考图URL")
-    type: str = Field(
-        ...,
-        description="参考图类型：character=角色, environment=环境, primary=首要参考, other=其他",
-    )
-    label: Optional[str] = Field(default=None, description="标签名称，如角色名'老拐'")
-
-
-class StoryboardImageRequest(BaseModel):
-    prompt: Optional[str] = Field(
-        default=None, description="可选：覆盖默认提示词，用于本次生成"
-    )
-    frames: list[int] = Field(
-        default_factory=list, description="要生成图像的分镜索引列表（基于0的索引）"
-    )
-    model: Optional[str] = Field(
-        default=None, description="模型ID，可选 'provider:model' 形式"
-    )
-    generation_profile: Optional[str] = Field(
-        default=None,
-        description="生成参数档位（后端按 provider+model 解析默认 steps/cfg/negative_prompt）",
-    )
-    size: Optional[str] = Field(
-        default=None, description="分辨率/尺寸（例如 1024x1024 / 2K / 1K）"
-    )
-    width: Optional[int] = Field(
-        default=None, ge=64, le=4096, description="宽度（兼容旧字段）"
-    )
-    height: Optional[int] = Field(
-        default=None, ge=64, le=4096, description="高度（兼容旧字段）"
-    )
-    style: str = Field(default="realistic")
-    style_preset_id: Optional[str] = Field(
-        default=None, description="风格预设ID（后端为唯一真源）"
-    )
-    style_spec: Optional[StyleSpec] = Field(
-        default=None, description="风格 schema（允许只传部分字段）"
-    )
-    aspect_ratio: Optional[Literal["9:16", "16:9"]] = Field(
-        default=None, description="宽高比（9:16/16:9）"
-    )
-    seed: Optional[int] = Field(default=None, description="随机种子（可选）")
-    steps: Optional[int] = Field(
-        default=None, ge=1, le=60, description="采样步数（可选）"
-    )
-    cfg_scale: Optional[float] = Field(
-        default=None, ge=0.0, le=30.0, description="CFG scale（可选）"
-    )
-    negative_prompt: Optional[str] = Field(
-        default=None, description="反向提示词（可选）"
-    )
-    strength: Optional[float] = Field(
-        default=None, ge=0.0, le=1.0, description="图生图强度（可选）"
-    )
-    count: int = Field(
-        default=1,
-        ge=1,
-        le=4,
-        description="每帧生成的图像数量（keyframe_mode=start_end 时表示每个关键帧角色各生成 count 张）",
-    )
-    keyframe_mode: str = Field(
-        default="single",
-        description="生成模式：single=单张（兼容旧字段 image_url）；start_end=生成首尾关键帧（start_image_url/end_image_url）",
-    )
-    reference_images: Optional[List[str]] = Field(
-        default=None,
-        description="优先使用的参考图（环境/角色），传入则走图生图；会与场景环境/角色自动锚点合并",
-    )
-    labeled_references: Optional[List[LabeledReferenceImage]] = Field(
-        default=None,
-        description="带标签的参考图列表，包含类型和角色名等元数据，用于构造更精准的提示词",
-    )
-    start_enabled: Optional[bool] = Field(
-        default=True,
-        description="keyframe_mode=start_end 时是否生成首帧（默认生成）",
-    )
-    end_enabled: Optional[bool] = Field(
-        default=True,
-        description="keyframe_mode=start_end 时是否生成尾帧（默认生成）",
-    )
-
-
-@router.post("/{script_id}/storyboard/generate-images")
-async def generate_storyboard_images(
-    script_id: int,
-    body: StoryboardImageRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    from app.models.task import Task
-
-    # 校验剧本归属
-    script_query = (
-        _not_deleted(db.query(Script), Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-    )
-    if not (current_user.is_admin or current_user.is_superuser):
-        script_query = script_query.filter(Story.user_id == current_user.id)
-    script = script_query.first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-
-    style_spec_payload = (
-        body.style_spec.model_dump(mode="json", exclude_none=True)
-        if body.style_spec is not None
-        else None
-    )
-    episode = script.episode
-    story = episode.story if episode else None
-    from app.core.aspect_ratio import resolve_aspect_ratio
-
-    aspect_ratio = resolve_aspect_ratio(
-        request_value=body.aspect_ratio,
-        episode_value=episode.aspect_ratio if episode else None,
-        story_value=story.default_aspect_ratio if story else None,
-    )
-    # Serialize labeled_references if present
-    labeled_refs_payload = None
-    if body.labeled_references:
-        labeled_refs_payload = [
-            ref.model_dump(mode="json") for ref in body.labeled_references
-        ]
-
-    t = Task(
-        title=_friendly_task_title("分镜图像生成", script, episode, story),
-        description="根据分镜生成图像",
-        task_type=TaskType.STORYBOARD_IMAGE_GENERATION,
-        prompt=f"Storyboard image generation for script {script_id}",
-        parameters=json.dumps(
-            {
-                "script_id": script_id,
-                "prompt": body.prompt,
-                "frames": body.frames or [],
-                "model": body.model,
-                "generation_profile": body.generation_profile,
-                "width": body.width,
-                "height": body.height,
-                "style": body.style,
-                "style_preset_id": body.style_preset_id,
-                "style_spec": style_spec_payload,
-                "aspect_ratio": aspect_ratio,
-                "seed": body.seed,
-                "steps": body.steps,
-                "cfg_scale": body.cfg_scale,
-                "negative_prompt": body.negative_prompt,
-                "strength": body.strength,
-                "count": body.count,
-                "keyframe_mode": body.keyframe_mode,
-                "reference_images": body.reference_images or [],
-                "labeled_references": labeled_refs_payload,
-                "start_enabled": body.start_enabled,
-                "end_enabled": body.end_enabled,
-            },
-            ensure_ascii=False,
-        ),
-        user_id=current_user.id,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-    # 委托 Celery worker 执行分镜图像生成
-    payload = {
-        "script_id": script_id,
-        "prompt": body.prompt,
-        "frames": body.frames or [],
-        "model": body.model,
-        "generation_profile": body.generation_profile,
-        "size": body.size,
-        "width": body.width,
-        "height": body.height,
-        "style": body.style,
-        "style_preset_id": body.style_preset_id,
-        "style_spec": style_spec_payload,
-        "aspect_ratio": aspect_ratio,
-        "seed": body.seed,
-        "steps": body.steps,
-        "cfg_scale": body.cfg_scale,
-        "negative_prompt": body.negative_prompt,
-        "strength": body.strength,
-        "count": body.count,
-        "keyframe_mode": body.keyframe_mode,
-        "reference_images": body.reference_images or [],
-        "labeled_references": labeled_refs_payload,
-        "start_enabled": body.start_enabled,
-        "end_enabled": body.end_enabled,
-    }
-    storyboard_image_generate_task.delay(t.id, payload, current_user.id)
-    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
-
-
-def _process_storyboard_video_task(
-    task_id: int,
-    script_id: int,
-    frame_indexes: list[int] | None,
-    selections: list[dict[str, Any]] | None = None,
-    options: dict[str, Any] | None = None,
-):
-    from app.core.database import SessionLocal
-    from app.models.task import Task, TaskStatus
-    from app.services.video.video_task_entrypoints import submit_storyboard_video_tasks
-
-    try:
-        submit_storyboard_video_tasks(
-            task_id=task_id,
-            script_id=script_id,
-            frame_indexes=frame_indexes,
-            selections=selections,
-            options=options,
-        )
-    except Exception as e:
-        db = SessionLocal()
-        try:
-            task = db.query(Task).filter(Task.id == task_id).first()
-            if task:
-                task.status = TaskStatus.FAILED
-                task.error_message = str(e)
-                db.commit()
-        finally:
-            db.close()
-        # 让 Celery 任务也呈现失败，便于从 worker 日志快速定位
-        raise
-
-
-class StoryboardVideoSelection(BaseModel):
-    frame_index: int = Field(..., ge=0, description="分镜索引（基于0）")
-    start_image_url: Optional[str] = Field(
-        default=None, description="可选：指定该分镜使用的首帧关键帧 URL"
-    )
-    end_image_url: Optional[str] = Field(
-        default=None, description="可选：指定该分镜使用的尾帧关键帧 URL"
-    )
-
-
-class StoryboardVideoRequest(BaseModel):
-    frames: list[int] = Field(
-        default_factory=list, description="要生成视频的分镜索引列表（基于0的索引）"
-    )
-    selections: list[StoryboardVideoSelection] = Field(
-        default_factory=list,
-        description="可选：为每个分镜显式指定首/尾关键帧，用于任意组合生成视频",
-    )
-    prompt: Optional[str] = Field(
-        default=None,
-        description="可选：覆盖生成提示词（不传则使用分镜帧 description/ai_prompt）",
-    )
-    model: Optional[str] = Field(
-        default=None,
-        description="可选：视频生成模型（支持 provider:model 前缀，例如 volcengine:doubao-seedance-...）",
-    )
-    duration: Optional[int] = Field(
-        default=None, description="可选：覆盖视频时长（秒）"
-    )
-    fps: Optional[int] = Field(default=None, description="可选：帧率（默认24）")
-    resolution: Optional[str] = Field(
-        default=None, description="可选：输出分辨率（例如 480p/720p/1080p）"
-    )
-    ratio: Optional[Literal["9:16", "16:9"]] = Field(
-        default=None, description="可选：宽高比（9:16/16:9）"
-    )
-    watermark: Optional[bool] = Field(default=None, description="可选：是否包含水印")
-    seed: Optional[int] = Field(default=None, description="可选：种子整数")
-    camera_fixed: Optional[bool] = Field(
-        default=None, description="可选：是否固定摄像头"
-    )
-    service_tier: Optional[str] = Field(
-        default=None, description="可选：service_tier（default/flex）"
-    )
-    execution_expires_after: Optional[int] = Field(
-        default=None,
-        description="可选：任务超时时间（秒），仅 service_tier=flex 场景生效",
-    )
-    return_last_frame: Optional[bool] = Field(
-        default=True, description="可选：是否返回 last_frame_url（默认开启）"
-    )
-    camera_control: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="可选：摄像机运动控制参数（仅部分模型支持）",
-    )
-    use_end_frame: Optional[bool] = Field(
-        default=None,
-        description="可选：是否使用尾帧。为 False 时强制只用首帧，不再回落到分镜中已有的尾帧。",
-    )
-
-
-@router.post("/{script_id}/storyboard/generate-video")
-async def generate_storyboard_video(
-    script_id: int,
-    body: StoryboardVideoRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    # 校验剧本归属
-    script_query = (
-        _not_deleted(db.query(Script), Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-    )
-    if not (current_user.is_admin or current_user.is_superuser):
-        script_query = script_query.filter(Story.user_id == current_user.id)
-    script = script_query.first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-
-    episode = script.episode
-    story = episode.story if episode else None
-    from app.core.aspect_ratio import resolve_aspect_ratio
-
-    ratio = resolve_aspect_ratio(
-        request_value=body.ratio,
-        episode_value=episode.aspect_ratio if episode else None,
-        story_value=story.default_aspect_ratio if story else None,
-    )
-    t = Task(
-        title=_friendly_task_title("分镜视频生成", script, episode, story),
-        description="根据分镜生成视频",
-        task_type=TaskType.VIDEO_GENERATION,
-        prompt=f"Storyboard video generation for script {script_id}",
-        parameters=json.dumps(
-            {
-                "script_id": script_id,
-                "frames": body.frames or [],
-                "selections": [
-                    sel.model_dump(mode="json", exclude_none=True)
-                    for sel in (body.selections or [])
-                ],
-                "prompt": body.prompt,
-                "model": body.model,
-                "duration": body.duration,
-                "fps": body.fps,
-                "resolution": body.resolution,
-                "ratio": ratio,
-                "watermark": body.watermark,
-                "seed": body.seed,
-                "camera_fixed": body.camera_fixed,
-                "service_tier": body.service_tier,
-                "execution_expires_after": body.execution_expires_after,
-                "return_last_frame": body.return_last_frame,
-                "camera_control": body.camera_control,
-                "use_end_frame": body.use_end_frame,
-            },
-            ensure_ascii=False,
-        ),
-        user_id=current_user.id,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-
-    payload = {
-        "script_id": script_id,
-        "frames": body.frames or [],
-        "selections": [
-            sel.model_dump(mode="json", exclude_none=True)
-            for sel in (body.selections or [])
-        ],
-        "prompt": body.prompt,
-        "model": body.model,
-        "duration": body.duration,
-        "fps": body.fps,
-        "resolution": body.resolution,
-        "ratio": ratio,
-        "watermark": body.watermark,
-        "seed": body.seed,
-        "camera_fixed": body.camera_fixed,
-        "service_tier": body.service_tier,
-        "execution_expires_after": body.execution_expires_after,
-        "return_last_frame": body.return_last_frame,
-        "camera_control": body.camera_control,
-        "use_end_frame": body.use_end_frame,
-    }
-    storyboard_video_generate_task.delay(t.id, payload, current_user.id)
-    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
-
 
 @router.get("/", response_model=List[ScriptListItemResponse])
 async def get_scripts(
@@ -3774,7 +1568,6 @@ async def get_scripts(
     )
     return [ScriptListItemResponse.from_orm(script) for script in scripts]
 
-
 @router.get("", response_model=List[ScriptListItemResponse], include_in_schema=False)
 async def get_scripts_no_slash(
     episode_id: Optional[int] = Query(None),
@@ -3802,7 +1595,6 @@ async def get_scripts_no_slash(
         db=db,
     )
 
-
 @router.get("/{script_id}", response_model=ScriptResponse)
 async def get_script(
     script_id: int,
@@ -3813,7 +1605,6 @@ async def get_script(
     script = _get_script_by_identifier(db, script_id, None, current_user)
     return ScriptResponse.from_orm(script)
 
-
 @router.get("/business/{script_business_id}", response_model=ScriptResponse)
 async def get_script_by_business_id(
     script_business_id: str,
@@ -3823,7 +1614,6 @@ async def get_script_by_business_id(
     """按 business_id 获取剧本详情"""
     script = _get_script_by_identifier(db, None, script_business_id, current_user)
     return ScriptResponse.from_orm(script)
-
 
 @router.put("/{script_id}", response_model=ScriptResponse)
 async def update_script(
@@ -3856,7 +1646,6 @@ async def update_script(
 
     return ScriptResponse.from_orm(script)
 
-
 @router.put("/business/{script_business_id}", response_model=ScriptResponse)
 async def update_script_by_business_id(
     script_business_id: str,
@@ -3886,7 +1675,6 @@ async def update_script_by_business_id(
 
     return ScriptResponse.from_orm(script)
 
-
 @router.delete("/{script_id}")
 async def delete_script(
     script_id: int,
@@ -3900,7 +1688,6 @@ async def delete_script(
 
     return {"message": "剧本删除成功"}
 
-
 @router.delete("/business/{script_business_id}")
 async def delete_script_by_business_id(
     script_business_id: str,
@@ -3913,7 +1700,6 @@ async def delete_script_by_business_id(
     db.commit()
 
     return {"message": "剧本删除成功"}
-
 
 @router.get("/episode/{episode_id}", response_model=List[ScriptListItemResponse])
 async def get_episode_scripts(
@@ -3968,7 +1754,6 @@ async def get_episode_scripts(
     )
     return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
 
-
 @router.get(
     "/episode/business/{episode_business_id}",
     response_model=List[ScriptListItemResponse],
@@ -4018,7 +1803,6 @@ async def get_episode_scripts_by_business_id(
         scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
     )
     return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
-
 
 async def _regenerate_script_instance(
     *,
@@ -4156,12 +1940,10 @@ async def _regenerate_script_instance(
 
     return script
 
-
 class ScriptRegenerateRequest(BaseModel):
     """剧本重新生成请求参数"""
 
     model: Optional[str] = Field(None, description="模型ID，格式为 provider:model_id")
-
 
 def _build_script_regenerate_request(
     script: Script, episode: Episode, override_model: Optional[str] = None
@@ -4188,7 +1970,6 @@ def _build_script_regenerate_request(
         "temperature": original_params.get("temperature", 0.7),
         "duration_minutes": duration_minutes,
     }
-
 
 @router.post("/{script_id}/regenerate")
 async def regenerate_script_async(
@@ -4239,7 +2020,6 @@ async def regenerate_script_async(
         },
     }
 
-
 @router.post("/business/{script_business_id}/regenerate")
 async def regenerate_script_by_business_id_async(
     script_business_id: str,
@@ -4286,7 +2066,6 @@ async def regenerate_script_by_business_id_async(
             "message": "剧本重新生成任务已提交",
         },
     }
-
 
 @router.post("/{script_id}/export")
 async def export_script(

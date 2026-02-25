@@ -104,21 +104,29 @@ async def generate_storyboard(
             use_plan=use_plan,
         )
 
-    # Legacy generation - delegate to scripts_legacy
-    # This import is intentionally inside the function to avoid circular imports
-    from app.api.v1.endpoints.scripts_legacy import generate_storyboard as legacy_gen
+    # Legacy generation - delegate to storyboard.legacy_generate
+    from app.api.v1.endpoints.storyboard.legacy_generate import (
+        generate_storyboard_logic,
+    )
 
-    return await legacy_gen(
-        script_id=script_id,
+    # Parse selected scenes (same logic as above for new pipeline)
+    selected_scenes_parsed: list[int] | None = None
+    if scene_numbers:
+        try:
+            selected_scenes_parsed = [
+                int(x.strip()) for x in scene_numbers.split(",") if x.strip()
+            ]
+        except Exception:
+            raise HTTPException(status_code=400, detail="scene_numbers 格式不正确")
+
+    return await generate_storyboard_logic(
+        script, db,
         model=model,
         temperature=temperature,
         frames_per_scene=frames_per_scene,
         max_frames=max_frames,
-        scene_numbers=scene_numbers,
+        selected_scenes=selected_scenes_parsed,
         use_plan=use_plan,
-        use_new_pipeline=False,  # Already handled above
-        current_user=current_user,
-        db=db,
     )
 
 
