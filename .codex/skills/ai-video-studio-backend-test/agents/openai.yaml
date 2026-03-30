@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Video Backend Test"
+  short_description: "Backend pytest workflow for ai-video-studio"
+  default_prompt: "Use $ai-video-studio-backend-test at /Users/geyunfei/dev/yfge/ai-video-studio/.codex/skills/ai-video-studio-backend-test to choose and run the right backend validation flow."

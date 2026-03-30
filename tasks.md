@@ -9,6 +9,15 @@
 - 🔥 **高优新增**：Duration Orchestrator Agent（端到端时长闭环验证）、短剧微类型与投流驱动创作闭环（hook/爽点/素材）
 - 🧭 待启动：时间轴/剪辑与渲染导出（首尾帧→视频→拼接）、剧本版本与审校流水线、角色资产与关系图谱、提示词模板组件化、提示词执行评估闭环、提示词权限与发布治理、分镜提示词上下文注入、ReAct Reasoner 实战化、剧本与分镜管理界面重构
 
+## Engineering: 测试 / MCP 验证流程 Skill 化
+
+### 进度（工程化→文档→验证）
+
+- [x] 工程化：新增 repo-local Codex skills（backend-test / frontend-test / mcp-e2e），采用显式路径调用，沉淀测试与浏览器验证 SOP
+- [x] 文档：新增 `docs/testing/agent-validation-workflow.md`，并在 `docs/README.md` 建立 testing skills 入口
+- [x] 验证：对 3 个 skills 运行官方 `quick_validate.py`，确认 frontmatter、UI metadata、显式调用提示与 Validation 约束完整
+- [ ] 后续：如需自动发现，再评估同步到 `$CODEX_HOME/skills` 的机制；当前范围保持 repo-versioned only
+
 ## P0: 对标 `huobao-drama` 差距补齐（2026-02）🔥
 
 :information_source: 背景：2026-02-20 基于本地 clone 对比 `chatfire-AI/huobao-drama`，当前主要差距集中在本地启动复杂度、legacy 收敛、前端 API 分层迁移与仓库治理。

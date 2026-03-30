@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Video Frontend Test"
+  short_description: "Frontend lint and test workflow for ai-video-studio"
+  default_prompt: "Use $ai-video-studio-frontend-test at /Users/geyunfei/dev/yfge/ai-video-studio/.codex/skills/ai-video-studio-frontend-test to choose and run the right frontend validation flow."

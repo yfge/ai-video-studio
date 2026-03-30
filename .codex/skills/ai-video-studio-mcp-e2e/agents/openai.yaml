@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Video MCP E2E"
+  short_description: "Chrome DevTools E2E workflow for ai-video-studio"
+  default_prompt: "Use $ai-video-studio-mcp-e2e at /Users/geyunfei/dev/yfge/ai-video-studio/.codex/skills/ai-video-studio-mcp-e2e to plan and execute the required Chrome validation flow."

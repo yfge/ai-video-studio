@@ -29,6 +29,8 @@ This directory holds design notes, API references, and testing guides. Keep this
 ## Testing
 
 - `docs/TESTING_GUIDE.md` — browser E2E validation steps.
+- `docs/testing/agent-validation-workflow.md` — repo-local validation matrix, MCP minimum checklist, and `agent_chats` Validation template for the testing skills.
+- `/.codex/skills/` — repo-versioned Codex skills for backend testing, frontend testing, and MCP E2E validation. Invoke them explicitly by path from this repository.
 
 ## Provider Reference
 
