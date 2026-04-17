@@ -19,6 +19,15 @@ Lite stack services:
 - SQLite migration fallback: `SQLITE_MIGRATION_FALLBACK_CREATE_ALL=true`
 - Frontend API target defaults to `http://localhost:8089`
 
+Harness-first bootstrap for isolated worktrees:
+
+- `scripts/harness/bootstrap_worktree.sh --mode lite`
+- `python scripts/harness/doctor.py --run-id <run_id>`
+- `python scripts/harness/browser_flow.py --scenario login_smoke --run-id <run_id>`
+- `python scripts/harness/run_golden_path.py --scenario mock_smoke --run-id <run_id>`
+
+The bootstrap script allocates worktree-specific frontend/API/nginx ports and writes a dedicated `docker/.env.harness.<run_id>` file.
+
 ## Full quick start (MySQL + Redis + Celery)
 
 1. `cd docker`

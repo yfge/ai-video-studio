@@ -5,12 +5,19 @@
 // API base URL configuration
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
+export interface ApiTraceMeta {
+  clientRequestId?: string;
+  harnessRunId?: string;
+  requestId?: string;
+}
+
 // Generic API response wrapper
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
   error?: string;
+  trace?: ApiTraceMeta;
 }
 
 // Pagination response

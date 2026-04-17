@@ -2,6 +2,17 @@
 
 This document is the single source of truth for every coding assistant (Claude Code, Codex, Gemini, Cursor, etc.) that collaborates on this repository. Keep this file authoritative and avoid duplicating instructions elsewhere; all agent-specific instruction files must reference this document.
 
+Detailed repo maps now live in:
+
+- `ARCHITECTURE.md`
+- `FRONTEND.md`
+- `RELIABILITY.md`
+- `SECURITY.md`
+- `QUALITY_SCORE.md`
+- `docs/generated/db-schema.md`
+- `docs/exec-plans/active/`
+- `docs/exec-plans/completed/`
+
 ## Instruction Precedence & Mirrors
 
 - Respect instruction order: system / developer → user → this file → everything else.
@@ -415,7 +426,7 @@ export function UserDetailsModal() {
 
 ## Testing Standards (Mandatory)
 
-**Current State**: 75 backend test files, 0 frontend tests
+**Current State**: backend pytest is established and frontend has lint plus a lightweight test surface under `ai-pic-frontend/tests/`.
 
 ### Backend Testing
 
@@ -440,15 +451,19 @@ tests/
 - **Coverage target**: 80% (enforced in pytest.ini)
 - **Test structure**: Arrange/Act/Assert with clear comments
 
-### Frontend Testing (TODO - Not Implemented)
+### Frontend Testing
 
-**Mandatory Setup** (for future implementation):
+**Current State**:
 
-- **Install testing library**: `@testing-library/react`, `@testing-library/jest-dom`
-- **Test structure**: `src/__tests__/` mirroring `src/` structure
-- **Component tests**: Render + interaction + assertions
-- **Hook tests**: Use `@testing-library/react-hooks`
-- **Coverage target**: 70% for new code
+- `npm run lint` is the non-optional gate.
+- `npm run test` exists and should be used for hook/state/API-client behavior changes.
+- Browser validation remains mandatory for user-visible flows.
+
+**Standards**:
+
+- Keep tests close to the changed behavior, even if they live under `ai-pic-frontend/tests/` during the current transition.
+- Prefer focused hook/component/API-client tests over broad snapshot coverage.
+- Add `npm run build` for route, layout, auth, config, or hydration-sensitive changes.
 
 ## Documentation Standards
 

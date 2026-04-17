@@ -23,6 +23,7 @@
 
 import { useCallback } from "react";
 import type { ApiResponse } from "@/utils/api/types";
+import { applyTraceHeaders, readTraceHeaders } from "@/utils/api/trace";
 
 export interface UseApiRequestOptions extends RequestInit {
   /**
@@ -85,17 +86,11 @@ export interface UseApiReturn {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-/**
- * Get auth token from localStorage
- */
 function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("auth_token");
 }
 
-/**
- * Build headers with auth token
- */
 function buildHeaders(options: UseApiRequestOptions = {}): HeadersInit {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -110,42 +105,10 @@ function buildHeaders(options: UseApiRequestOptions = {}): HeadersInit {
     }
   }
 
+  applyTraceHeaders(headers as Record<string, string>);
   return headers;
 }
 
-/**
- * Hook for API requests with auth and error handling
- *
- * @returns API request methods
- *
- * @example
- * const api = useApi()
- *
- * // GET request
- * const users = await api.get<User[]>('/api/v1/users')
- *
- * @example
- * // POST request
- * const api = useApi()
- * const newUser = await api.post<User>('/api/v1/users', {
- *   username: 'john',
- *   email: 'john@example.com'
- * })
- *
- * @example
- * // With custom error handling
- * const api = useApi()
- * const response = await api.get<User>('/api/v1/users/123', {
- *   onError: (err) => console.error('Failed to load user:', err)
- * })
- *
- * @example
- * // Skip auth for public endpoints
- * const api = useApi()
- * const models = await api.get<Model[]>('/api/v1/public/models', {
- *   skipAuth: true
- * })
- */
 export function useApi(): UseApiReturn {
   const request = useCallback(
     async <T>(
@@ -156,6 +119,10 @@ export function useApi(): UseApiReturn {
 
       const url = `${API_BASE_URL}${endpoint}`;
       const headers = buildHeaders({ skipAuth, ...options });
+      const trace = {
+        clientRequestId: (headers as Record<string, string>)["X-Client-Request-ID"],
+        harnessRunId: (headers as Record<string, string>)["X-Harness-Run-ID"],
+      };
 
       try {
         const response = await fetch(url, {
@@ -175,6 +142,7 @@ export function useApi(): UseApiReturn {
           data = {
             success: response.ok,
             data: undefined as unknown as T,
+            trace: readTraceHeaders(response, trace),
           };
         }
 
@@ -195,10 +163,14 @@ export function useApi(): UseApiReturn {
             ...data,
             success: false,
             error: error.message,
+            trace: readTraceHeaders(response, trace),
           };
         }
 
-        return data;
+        return {
+          ...data,
+          trace: readTraceHeaders(response, trace),
+        };
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
 
@@ -209,6 +181,7 @@ export function useApi(): UseApiReturn {
         return {
           success: false,
           error: error.message,
+          trace,
         };
       }
     },

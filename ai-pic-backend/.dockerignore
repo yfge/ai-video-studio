@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+uploads
+logs
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+selftest.db
+test_tmp.db
+celerybeat-schedule

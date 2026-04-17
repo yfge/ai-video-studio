@@ -102,6 +102,8 @@ class Settings(BaseSettings):
     LOG_DIR: str = "logs"
     ENABLE_FILE_LOGGING: bool = True
     ENABLE_CONSOLE_LOGGING: bool = True
+    ENABLE_JSONL_LOGGING: bool = True
+    JSONL_LOG_PATH: str = "logs/ai-video-studio.jsonl"
     LOG_BACKUP_COUNT: int = 7
     FEISHU_WEBHOOK_URL: Optional[str] = None
 

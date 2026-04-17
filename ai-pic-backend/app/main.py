@@ -22,7 +22,9 @@ logger = setup_logging(
     log_dir=settings.LOG_DIR,
     enable_file_logging=settings.ENABLE_FILE_LOGGING,
     enable_console_logging=settings.ENABLE_CONSOLE_LOGGING,
+    enable_jsonl_logging=settings.ENABLE_JSONL_LOGGING,
     feishu_webhook_url=settings.FEISHU_WEBHOOK_URL,
+    jsonl_log_path=settings.JSONL_LOG_PATH,
     backup_count=settings.LOG_BACKUP_COUNT,
 )
 

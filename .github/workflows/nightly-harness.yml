@@ -1,0 +1,59 @@
+name: nightly-harness
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    env:
+      HARNESS_RUN_ID: nightly-${{ github.run_id }}-${{ github.run_attempt }}
+      HARNESS_PROVIDER_MODE: mock
+      HARNESS_WEB_PORT: 3100
+      HARNESS_API_PORT: 8100
+      HARNESS_NGINX_PORT: 9100
+      HARNESS_USER: ${{ secrets.HARNESS_USER }}
+      HARNESS_PASSWORD: ${{ secrets.HARNESS_PASSWORD }}
+      HARNESS_SCRIPT_ID: ${{ secrets.HARNESS_SCRIPT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.20.0"
+          cache: "npm"
+          cache-dependency-path: ai-pic-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ai-pic-backend/requirements.txt -r ai-pic-backend/requirements-test.txt
+          cd ai-pic-frontend && npm ci
+
+      - name: Bootstrap lite harness
+        run: |
+          chmod +x scripts/harness/bootstrap_worktree.sh
+          scripts/harness/bootstrap_worktree.sh --mode lite
+
+      - name: Doctor
+        run: python scripts/harness/doctor.py --run-id "$HARNESS_RUN_ID" --nginx-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT" --frontend-url "http://localhost:$HARNESS_WEB_PORT"
+
+      - name: Browser login smoke
+        run: python scripts/harness/browser_flow.py --scenario login_smoke --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT"
+
+      - name: Browser task trace smoke
+        if: env.HARNESS_USER != '' && env.HARNESS_PASSWORD != ''
+        run: python scripts/harness/browser_flow.py --scenario task_details_trace_smoke --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --username "$HARNESS_USER" --password "$HARNESS_PASSWORD"
+
+      - name: Golden path mock smoke
+        run: python scripts/harness/run_golden_path.py --scenario mock_smoke --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT"
+
+      - name: Timeline regression
+        if: env.HARNESS_USER != '' && env.HARNESS_PASSWORD != '' && env.HARNESS_SCRIPT_ID != ''
+        run: python scripts/harness/run_golden_path.py --scenario timeline_export_regression --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT" --username "$HARNESS_USER" --password "$HARNESS_PASSWORD" --script-id "$HARNESS_SCRIPT_ID"

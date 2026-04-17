@@ -6,6 +6,9 @@
 node_modules
 **/node_modules
 ai-pic-backend/.venv
+ai-pic-backend/uploads
+ai-pic-frontend/node_modules
+ai-pic-frontend/.next
 **/__pycache__
 **/*.pyc
 uploads
@@ -19,3 +22,6 @@ build
 .idea
 docker/mysql_data
 docker/redis_data
+artifacts
+tmp
+.cache

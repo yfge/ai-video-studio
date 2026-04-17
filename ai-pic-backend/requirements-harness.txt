@@ -1,0 +1,6 @@
+langgraph==0.4.0
+langchain-core==0.2.43
+langgraph-checkpoint==2.1.1
+langgraph-prebuilt==0.1.8
+langgraph-sdk==0.2.9
+langsmith==0.1.147

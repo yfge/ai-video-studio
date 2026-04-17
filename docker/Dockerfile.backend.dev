@@ -26,8 +26,8 @@ RUN set -eux; \
     update-ca-certificates; \
     rm -rf /var/lib/apt/lists/*
 
-COPY ai-pic-backend/requirements.txt ai-pic-backend/requirements-test.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-test.txt
+COPY requirements.txt requirements-harness.txt ./
+RUN pip install --no-cache-dir -c requirements-harness.txt -r requirements.txt
 
 # Code is bind-mounted in dev; container keeps site-packages from build layer
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

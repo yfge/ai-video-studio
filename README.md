@@ -30,6 +30,19 @@ Lite 默认关键配置（可在 `docker/.env.lite` 调整）：
 - `AI_FORCE_MOCK=true`
 - `SQLITE_MIGRATION_FALLBACK_CREATE_ALL=true`（SQLite 遇到不兼容 Alembic 迁移时自动回退初始化）
 
+## Harness 工作流
+
+默认 harness 入口：
+
+- `scripts/harness/bootstrap_worktree.sh --mode lite`
+- `python scripts/harness/doctor.py --run-id <run_id>`
+- `python scripts/harness/browser_flow.py --scenario login_smoke --run-id <run_id>`
+- `python scripts/harness/run_golden_path.py --scenario mock_smoke --run-id <run_id>`
+- `python scripts/harness/trace_run.py --run-id <run_id>`
+- `python scripts/harness/trace_task.py --task-id <task_id>`
+
+所有 harness 证据写入 `artifacts/runs/<run_id>/`，默认包含 `manifest.json`、`summary.json`、`console.json`、`network.json` 与截图目录。
+
 ## 完整 Docker 开发栈（MySQL/Redis/Celery）
 
 1. `cd docker`
@@ -184,6 +197,11 @@ cd ai-pic-frontend && npm run lint
 ## 文档入口
 
 - 总索引：`docs/README.md`
+- 架构约束：`ARCHITECTURE.md`
+- 前端规则：`FRONTEND.md`
+- 可靠性与 trace：`RELIABILITY.md`
+- 安全约束：`SECURITY.md`
+- 质量面板：`QUALITY_SCORE.md`
 - Docker 栈：`docker/README.md`
 - 后端说明：`ai-pic-backend/README.md`
 - 前端说明：`ai-pic-frontend/README.md`

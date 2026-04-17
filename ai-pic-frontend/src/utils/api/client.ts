@@ -1,9 +1,5 @@
-/**
- * HTTP Client Utilities
- *
- * Reusable fetch wrapper with auth token and error handling.
- * Extracted from api.ts to enable modular API layer.
- */
+import { applyTraceHeaders, readTraceHeaders } from "@/utils/api/trace";
+import type { ApiTraceMeta } from "@/utils/api/types";
 
 export interface HttpClientOptions extends RequestInit {
   /**
@@ -25,37 +21,26 @@ export interface HttpResponse<T = unknown> {
   data?: T;
   message?: string;
   error?: string;
+  trace?: ApiTraceMeta;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-/**
- * Get auth token from localStorage
- */
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("auth_token");
 }
 
-/**
- * Set auth token in localStorage
- */
 export function setAuthToken(token: string): void {
   if (typeof window === "undefined") return;
   localStorage.setItem("auth_token", token);
 }
 
-/**
- * Clear auth token from localStorage
- */
 export function clearAuthToken(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem("auth_token");
 }
 
-/**
- * Build headers with optional auth token
- */
 function buildHeaders(options: HttpClientOptions = {}): HeadersInit {
   const { skipAuth, body } = options;
 
@@ -90,54 +75,21 @@ function buildHeaders(options: HttpClientOptions = {}): HeadersInit {
     }
   }
 
+  applyTraceHeaders(headers);
   return headers;
 }
 
-/**
- * HTTP client for API requests
- *
- * Features:
- * - Automatic auth token from localStorage
- * - JSON request/response handling
- * - FormData support
- * - Error handling with custom callbacks
- * - Optional 401 retry with token refresh
- *
- * @param endpoint - API endpoint (will be prefixed with base URL)
- * @param options - Request options
- * @returns Promise resolving to typed response
- *
- * @example
- * // GET request
- * const users = await httpClient<User[]>('/api/v1/users')
- *
- * @example
- * // POST request
- * const newUser = await httpClient<User>('/api/v1/users', {
- *   method: 'POST',
- *   body: JSON.stringify({ username: 'john' })
- * })
- *
- * @example
- * // With error handling
- * const response = await httpClient<User>('/api/v1/users/123', {
- *   onError: (err) => console.error('Failed:', err)
- * })
- *
- * @example
- * // Skip auth for public endpoints
- * const models = await httpClient<Model[]>('/api/v1/public/models', {
- *   skipAuth: true
- * })
- */
 export async function httpClient<T = unknown>(
   endpoint: string,
   options: HttpClientOptions = {},
 ): Promise<HttpResponse<T>> {
   const { onError, skipAuth, retry, ...fetchOptions } = options;
-
   const url = `${API_BASE_URL}${endpoint}`;
   const headers = buildHeaders({ skipAuth, ...options });
+  const trace = {
+    clientRequestId: (headers as Record<string, string>)["X-Client-Request-ID"],
+    harnessRunId: (headers as Record<string, string>)["X-Harness-Run-ID"],
+  };
 
   try {
     const response = await fetch(url, {
@@ -161,6 +113,7 @@ export async function httpClient<T = unknown>(
       return {
         success: false,
         error: "登录已过期，请重新登录",
+        trace,
       };
     }
 
@@ -182,11 +135,13 @@ export async function httpClient<T = unknown>(
           data: json as T,
         };
       }
+      data.trace = readTraceHeaders(response, trace);
     } else {
       // Non-JSON response
       data = {
         success: response.ok,
         data: undefined as unknown as T,
+        trace: readTraceHeaders(response, trace),
       };
     }
 
@@ -206,10 +161,11 @@ export async function httpClient<T = unknown>(
         ...data,
         success: false,
         error: errorMessage,
+        trace: readTraceHeaders(response, trace),
       };
     }
 
-    return data;
+    return { ...data, trace: readTraceHeaders(response, trace) };
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
 
@@ -220,13 +176,11 @@ export async function httpClient<T = unknown>(
     return {
       success: false,
       error: error.message,
+      trace,
     };
   }
 }
 
-/**
- * Convenience methods for common HTTP verbs
- */
 export const http = {
   get: <T>(endpoint: string, options?: HttpClientOptions) =>
     httpClient<T>(endpoint, { ...options, method: "GET" }),

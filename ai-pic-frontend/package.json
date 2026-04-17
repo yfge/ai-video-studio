@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsx --test tests/**/*.test.tsx tests/**/*.test.ts tests/**/*.test.js"
+    "test": "tsx --test $(find tests -type f \\( -name '*.test.tsx' -o -name '*.test.ts' -o -name '*.test.js' \\))"
   },
   "dependencies": {
     "next": "^16.1.3",

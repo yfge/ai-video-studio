@@ -1,8 +1,8 @@
 services:
   ai-video-backend:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.backend.dev
+      context: ../ai-pic-backend
+      dockerfile: ../docker/Dockerfile.backend.dev
     env_file:
       - .env.lite
     working_dir: /app/ai-pic-backend
@@ -12,12 +12,12 @@ services:
       - ../ai-pic-backend/uploads:/app/ai-pic-backend/uploads
       - ./backend-entrypoint.sh:/app/backend-entrypoint.sh:ro
     ports:
-      - "8000:8000"
+      - "${HARNESS_API_PORT:-8000}:8000"
 
   ai-video-frontend:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.frontend.dev
+      context: ../ai-pic-frontend
+      dockerfile: ../docker/Dockerfile.frontend.dev
     env_file:
       - .env.lite
     working_dir: /app/ai-pic-frontend
@@ -29,6 +29,8 @@ services:
       - /app/ai-pic-frontend/.next
     depends_on:
       - ai-video-backend
+    ports:
+      - "${HARNESS_WEB_PORT:-3000}:3000"
 
   ai-video-nginx:
     image: nginx:latest
@@ -36,6 +38,6 @@ services:
       - ai-video-frontend
       - ai-video-backend
     ports:
-      - "8089:8080"
+      - "${HARNESS_NGINX_PORT:-8089}:8080"
     volumes:
       - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro

@@ -2,6 +2,12 @@
 
 This directory holds design notes, API references, and testing guides. Keep this index in sync with additions/removals.
 
+## Harness
+
+- `docs/generated/db-schema.md` — generated schema summary for agent context.
+- `docs/exec-plans/active/` — active execution plans that are not product-roadmap items.
+- `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
+
 ## Product & Architecture
 
 - `docs/media-asset-persistence.md` — generated media persistence to OSS/CDN (naming + metadata contract).

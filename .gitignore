@@ -158,6 +158,8 @@ ai-pic-backend/backups/*.sql
 # 日志文件
 *.log
 logs/
+artifacts/
+docker/.env.harness.*
 
 # 临时文件
 *.tmp
