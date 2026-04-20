@@ -25,6 +25,9 @@ Harness-first bootstrap for isolated worktrees:
 - `python scripts/harness/doctor.py --run-id <run_id>`
 - `python scripts/harness/browser_flow.py --scenario login_smoke --run-id <run_id>`
 - `python scripts/harness/run_golden_path.py --scenario mock_smoke --run-id <run_id>`
+- `python scripts/harness/query_logs.py --run-id <run_id>`
+- `python scripts/harness/query_metrics.py --run-id <run_id>`
+- `python scripts/harness/score_quality.py --run-id <run_id> --write-quality-score`
 
 The bootstrap script allocates worktree-specific frontend/API/nginx ports and writes a dedicated `docker/.env.harness.<run_id>` file.
 

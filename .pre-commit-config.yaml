@@ -50,7 +50,7 @@ repos:
 
       - id: repo-contracts
         name: repository contracts
-        entry: bash -lc 'python scripts/check_repo_contracts.py $(git diff --cached --name-only --diff-filter=ACMR)'
+        entry: bash -lc 'python scripts/check_repo_contracts.py --mode diff $(git diff --cached --name-only --diff-filter=ACMR)'
         language: system
         pass_filenames: false
         files: ^(ai-pic-backend/|ai-pic-frontend/|docker/|scripts/|AGENTS\.md|README\.md|docs/)

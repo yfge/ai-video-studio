@@ -53,7 +53,7 @@ jobs:
         run: python scripts/check_repo_docs.py
 
       - name: Check repo contracts
-        run: python scripts/check_repo_contracts.py ${{ steps.changed.outputs.files }}
+        run: python scripts/check_repo_contracts.py --mode diff --report-json "$RUNNER_TEMP/contracts-report.json" --report-md "$RUNNER_TEMP/contracts-summary.md" ${{ steps.changed.outputs.files }}
 
       - name: Backend quick regression
         working-directory: ai-pic-backend
@@ -77,3 +77,9 @@ jobs:
 
       - name: Golden path mock smoke
         run: python scripts/harness/run_golden_path.py --scenario mock_smoke --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT"
+
+      - name: Trace run
+        run: python scripts/harness/trace_run.py --run-id "$HARNESS_RUN_ID"
+
+      - name: Score quality snapshot
+        run: python scripts/harness/score_quality.py --run-id "$HARNESS_RUN_ID" --contract-report "$RUNNER_TEMP/contracts-report.json"

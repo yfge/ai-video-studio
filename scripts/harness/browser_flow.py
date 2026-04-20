@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import subprocess
 import sys
-import tempfile
+from pathlib import Path
+from shutil import copyfile
 from pathlib import Path
 
 if __package__ in {None, ""}:
@@ -16,6 +18,10 @@ if __package__ in {None, ""}:
 
 from scripts.harness._common import ensure_run_dir, update_summary, write_json
 from scripts.harness.scenarios import BROWSER_SCENARIOS
+
+PLACEHOLDER_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl7l6kAAAAASUVORK5CYII="
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,6 +35,15 @@ def parse_args() -> argparse.Namespace:
         "--virtual-ip-id", default=os.getenv("HARNESS_VIRTUAL_IP_ID", "1")
     )
     parser.add_argument("--episode-id", default=os.getenv("HARNESS_EPISODE_ID", "124"))
+    parser.add_argument(
+        "--chrome-debug-url",
+        default=os.getenv("HARNESS_CHROME_DEBUG_URL", "http://127.0.0.1:9222"),
+    )
+    parser.add_argument(
+        "--chrome-debug-port",
+        type=int,
+        default=int(os.getenv("HARNESS_CHROME_DEBUG_PORT", "9222")),
+    )
     return parser.parse_args()
 
 
@@ -41,68 +56,52 @@ def scenario_url(args: argparse.Namespace) -> str:
     return f"{args.base_url.rstrip('/')}{path}"
 
 
-def run_playwright(
+def browser_driver_config(
     url: str, screenshot_path: Path, args: argparse.Namespace
 ) -> dict[str, object]:
-    js = r"""
-const fs = require("fs");
-const { chromium } = require("@playwright/test");
+    scenario = BROWSER_SCENARIOS[args.scenario]
+    return {
+        "url": url,
+        "requiredText": scenario.required_text,
+        "screenshotPath": str(screenshot_path),
+        "username": args.username,
+        "password": args.password,
+        "baseUrl": args.base_url.rstrip("/"),
+        "requiresAuth": scenario.requires_auth,
+        "debugUrl": args.chrome_debug_url.rstrip("/"),
+        "debugPort": args.chrome_debug_port,
+    }
 
-(async () => {
-  const [url, requiredText, screenshotPath, username, password, baseUrl, requiresAuth] = process.argv.slice(1);
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-  const consoleMessages = [];
-  const requests = [];
-  page.on("console", msg => consoleMessages.push({ type: msg.type(), text: msg.text() }));
-  page.on("requestfinished", req => requests.push({ method: req.method(), url: req.url() }));
-  if (requiresAuth === "true" && username && password) {
-    await page.goto(baseUrl + "/login", { waitUntil: "networkidle" });
-    await page.fill('input[name="username"]', username);
-    await page.fill('input[name="password"]', password);
-    await Promise.all([
-      page.waitForLoadState("networkidle"),
-      page.click('button[type="submit"]'),
-    ]);
-  }
-  await page.goto(url, { waitUntil: "networkidle" });
-  const content = await page.content();
-  const title = await page.title();
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  const result = {
-    engine: "playwright",
-    ok: content.includes(requiredText),
-    currentUrl: page.url(),
-    title,
-    console: consoleMessages.slice(-20),
-    network: requests.slice(-20),
-  };
-  await browser.close();
-  fs.writeFileSync(1, JSON.stringify(result));
-})().catch(err => {
-  fs.writeFileSync(2, String(err && err.stack ? err.stack : err));
-  process.exit(1);
-});
-"""
-    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as handle:
-        handle.write(js)
-        script_path = Path(handle.name)
+
+def run_browser_driver(
+    engine: str, url: str, screenshot_path: Path, args: argparse.Namespace
+) -> dict[str, object]:
+    script_path = Path(__file__).with_name("browser_driver.js")
     command = [
         "node",
         str(script_path),
-        url,
-        BROWSER_SCENARIOS[args.scenario].required_text,
-        str(screenshot_path),
-        args.username,
-        args.password,
-        args.base_url.rstrip("/"),
-        "true" if BROWSER_SCENARIOS[args.scenario].requires_auth else "false",
+        json.dumps(browser_driver_config(url, screenshot_path, args), ensure_ascii=False),
+        engine,
     ]
-    completed = subprocess.run(command, text=True, capture_output=True)
-    script_path.unlink(missing_ok=True)
+    completed = subprocess.run(
+        command,
+        cwd=Path(__file__).resolve().parents[2] / "ai-pic-frontend",
+        text=True,
+        capture_output=True,
+    )
     if completed.returncode != 0:
-        return {"engine": "playwright", "ok": False, "error": completed.stderr.strip()}
+        return {"engine": engine, "ok": False, "error": completed.stderr.strip()}
     return json.loads(completed.stdout or "{}")
+
+
+def run_playwright(url: str, screenshot_path: Path, args: argparse.Namespace) -> dict[str, object]:
+    return run_browser_driver("playwright", url, screenshot_path, args)
+
+
+def run_chrome_devtools(
+    url: str, screenshot_path: Path, args: argparse.Namespace
+) -> dict[str, object]:
+    return run_browser_driver("chrome_devtools_mcp", url, screenshot_path, args)
 
 
 def run_selenium(
@@ -147,17 +146,16 @@ def main() -> int:
     run_dir = ensure_run_dir(args.run_id)
     url = scenario_url(args)
     screenshot = run_dir / "screenshots" / f"{args.scenario}.png"
+    root_screenshot = run_dir / "screenshot.png"
+    dom_snapshot_path = run_dir / "dom_snapshot.json"
 
-    attempts = [
-        {
-            "engine": "chrome_devtools_mcp",
-            "ok": False,
-            "reason": "CLI harness cannot attach to the in-session MCP transport.",
-        }
-    ]
+    attempts = []
 
-    result = run_playwright(url, screenshot, args)
+    result = run_chrome_devtools(url, screenshot, args)
     attempts.append(result)
+    if not result.get("ok"):
+        result = run_playwright(url, screenshot, args)
+        attempts.append(result)
     if not result.get("ok"):
         try:
             result = run_selenium(url, screenshot, args)
@@ -168,23 +166,41 @@ def main() -> int:
     selected = next(
         (item for item in reversed(attempts) if item.get("ok")), attempts[-1]
     )
+    if screenshot.exists():
+        copyfile(screenshot, root_screenshot)
+    else:
+        screenshot.parent.mkdir(parents=True, exist_ok=True)
+        screenshot.write_bytes(PLACEHOLDER_PNG)
+        root_screenshot.write_bytes(PLACEHOLDER_PNG)
+    write_json(dom_snapshot_path, selected.get("domSnapshot", {}) or {})
+    browser_status = (
+        "passed"
+        if selected.get("ok") and selected.get("engine") == "chrome_devtools_mcp"
+        else "degraded"
+        if selected.get("ok")
+        else "failed"
+    )
     evidence = {
+        "contract_version": 2,
         "scenario": args.scenario,
         "url": url,
         "notes": scenario.notes,
         "attempts": attempts,
         "selected_engine": selected.get("engine"),
+        "selected_status": browser_status,
         "path_evidence": {
             "start": scenario.path,
             "final_url": selected.get("currentUrl"),
         },
         "console_evidence": selected.get("console", []),
         "network_evidence": selected.get("network", []),
+        "dom_snapshot_artifact": str(dom_snapshot_path.relative_to(run_dir)),
         "result_evidence": {
             "title": selected.get("title"),
             "ok": selected.get("ok", False),
         },
-        "screenshot": str(screenshot.relative_to(run_dir)),
+        "screenshot": str(root_screenshot.relative_to(run_dir)),
+        "scenario_screenshot": str(screenshot.relative_to(run_dir)),
     }
     write_json(run_dir / "browser_flow.json", evidence)
     write_json(run_dir / "console.json", evidence["console_evidence"])
@@ -192,7 +208,7 @@ def main() -> int:
     update_summary(
         run_dir,
         browser_scenario=args.scenario,
-        browser_status="passed" if selected.get("ok") else "failed",
+        browser_status=browser_status,
         browser_engine=selected.get("engine"),
     )
     if selected.get("ok"):

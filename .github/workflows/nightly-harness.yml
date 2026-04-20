@@ -54,6 +54,23 @@ jobs:
       - name: Golden path mock smoke
         run: python scripts/harness/run_golden_path.py --scenario mock_smoke --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT"
 
+      - name: Golden path auth login
+        if: env.HARNESS_USER != '' && env.HARNESS_PASSWORD != ''
+        run: python scripts/harness/run_golden_path.py --scenario auth_login_and_me --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT" --username "$HARNESS_USER" --password "$HARNESS_PASSWORD"
+
+      - name: Golden path task traceability
+        if: env.HARNESS_USER != '' && env.HARNESS_PASSWORD != ''
+        run: python scripts/harness/run_golden_path.py --scenario task_traceability --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT" --username "$HARNESS_USER" --password "$HARNESS_PASSWORD"
+
       - name: Timeline regression
         if: env.HARNESS_USER != '' && env.HARNESS_PASSWORD != '' && env.HARNESS_SCRIPT_ID != ''
-        run: python scripts/harness/run_golden_path.py --scenario timeline_export_regression --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT" --username "$HARNESS_USER" --password "$HARNESS_PASSWORD" --script-id "$HARNESS_SCRIPT_ID"
+        run: python scripts/harness/run_golden_path.py --scenario timeline_export_end_to_end --run-id "$HARNESS_RUN_ID" --base-url "http://localhost:$HARNESS_NGINX_PORT" --api-url "http://localhost:$HARNESS_API_PORT" --username "$HARNESS_USER" --password "$HARNESS_PASSWORD" --script-id "$HARNESS_SCRIPT_ID"
+
+      - name: Audit repo contracts
+        run: python scripts/check_repo_contracts.py --mode audit
+
+      - name: Trace run
+        run: python scripts/harness/trace_run.py --run-id "$HARNESS_RUN_ID"
+
+      - name: Score quality snapshot
+        run: python scripts/harness/score_quality.py --run-id "$HARNESS_RUN_ID" --write-quality-score

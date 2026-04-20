@@ -23,48 +23,44 @@ REQUIRED_DOC_INDEX_ENTRIES = [
 ]
 
 
-def fail(message: str) -> None:
-    print(f"[check_repo_docs] {message}", file=sys.stderr)
-    raise SystemExit(1)
-
-
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def ensure_mirrors() -> None:
+def ensure_mirrors(errors: list[str]) -> None:
     agents = REPO_ROOT / "AGENTS.md"
     for mirror_name in ("CLAUDE.md", "GEMINI.md"):
         mirror = REPO_ROOT / mirror_name
         if not mirror.exists():
-            fail(f"Missing mirror file: {mirror_name}")
+            errors.append(f"Missing mirror file: {mirror_name}")
+            continue
         if mirror.is_symlink():
             if mirror.resolve() != agents.resolve():
-                fail(f"{mirror_name} must resolve to AGENTS.md")
+                errors.append(f"{mirror_name} must resolve to AGENTS.md")
             continue
         if read_text(mirror) != read_text(agents):
-            fail(f"{mirror_name} must match AGENTS.md exactly")
+            errors.append(f"{mirror_name} must match AGENTS.md exactly")
 
 
-def ensure_required_docs() -> None:
+def ensure_required_docs(errors: list[str]) -> None:
     for rel_path in REQUIRED_ROOT_DOCS:
         path = REPO_ROOT / rel_path
         if not path.exists():
-            fail(f"Missing required root doc: {rel_path}")
+            errors.append(f"Missing required root doc: {rel_path}")
     generated = REPO_ROOT / "docs" / "generated" / "db-schema.md"
     if not generated.exists():
-        fail("Missing generated schema summary: docs/generated/db-schema.md")
+        errors.append("Missing generated schema summary: docs/generated/db-schema.md")
     for rel_dir in ("docs/exec-plans/active", "docs/exec-plans/completed"):
         path = REPO_ROOT / rel_dir
         if not path.exists():
-            fail(f"Missing required plan directory: {rel_dir}")
+            errors.append(f"Missing required plan directory: {rel_dir}")
 
 
-def ensure_docs_index() -> None:
+def ensure_docs_index(errors: list[str]) -> None:
     index_text = read_text(REPO_ROOT / "docs" / "README.md")
     for entry in REQUIRED_DOC_INDEX_ENTRIES:
         if entry not in index_text:
-            fail(f"docs/README.md must index {entry}")
+            errors.append(f"docs/README.md must index {entry}")
 
     docs_root = REPO_ROOT / "docs"
     indexed = {
@@ -85,12 +81,13 @@ def ensure_docs_index() -> None:
         if rel not in indexed:
             missing.append(rel)
     if missing:
-        fail(
-            f"docs/README.md is missing index entries for: {', '.join(sorted(missing)[:10])}"
+        errors.append(
+            "docs/README.md is missing index entries for: "
+            + ", ".join(sorted(missing)[:10])
         )
 
 
-def ensure_frontend_test_truth() -> None:
+def ensure_frontend_test_truth(errors: list[str]) -> None:
     agents_text = read_text(REPO_ROOT / "AGENTS.md")
     package = json.loads(read_text(REPO_ROOT / "ai-pic-frontend" / "package.json"))
     test_files = list((REPO_ROOT / "ai-pic-frontend" / "tests").glob("**/*.*"))
@@ -99,10 +96,10 @@ def ensure_frontend_test_truth() -> None:
     )
     stale_claims = ["0 frontend tests", "Frontend Testing (TODO - Not Implemented)"]
     if has_frontend_tests and any(claim in agents_text for claim in stale_claims):
-        fail("AGENTS.md still claims frontend tests are not implemented")
+        errors.append("AGENTS.md still claims frontend tests are not implemented")
 
 
-def ensure_harness_commands_documented() -> None:
+def ensure_harness_commands_documented(errors: list[str]) -> None:
     readme_text = read_text(REPO_ROOT / "README.md")
     docker_text = read_text(REPO_ROOT / "docker" / "README.md")
     required = [
@@ -113,15 +110,25 @@ def ensure_harness_commands_documented() -> None:
     ]
     for command in required:
         if command not in readme_text and command not in docker_text:
-            fail(f"Harness command is undocumented: {command}")
+            errors.append(f"Harness command is undocumented: {command}")
+
+
+def collect_doc_errors() -> list[str]:
+    errors: list[str] = []
+    ensure_mirrors(errors)
+    ensure_required_docs(errors)
+    ensure_docs_index(errors)
+    ensure_frontend_test_truth(errors)
+    ensure_harness_commands_documented(errors)
+    return errors
 
 
 def main() -> int:
-    ensure_mirrors()
-    ensure_required_docs()
-    ensure_docs_index()
-    ensure_frontend_test_truth()
-    ensure_harness_commands_documented()
+    errors = collect_doc_errors()
+    if errors:
+        for error in errors:
+            print(f"[check_repo_docs] {error}", file=sys.stderr)
+        return 1
     print("[check_repo_docs] ok")
     return 0
 

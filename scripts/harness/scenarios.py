@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -13,6 +13,17 @@ class BrowserScenario:
     requires_auth: bool
     required_text: str
     notes: str
+
+
+@dataclass(frozen=True)
+class GoldenPathScenario:
+    name: str
+    description: str
+    requires_auth: bool
+    notes: str
+    requires_script_id: bool = False
+    requires_virtual_ip_id: bool = False
+    legacy_aliases: tuple[str, ...] = field(default_factory=tuple)
 
 
 BROWSER_SCENARIOS: dict[str, BrowserScenario] = {
@@ -47,20 +58,51 @@ BROWSER_SCENARIOS: dict[str, BrowserScenario] = {
 }
 
 
-GOLDEN_PATH_SCENARIOS = {
-    "mock_smoke": {
-        "description": "Health-check the lite stack and artifact pipeline in mock mode.",
-        "requires_auth": False,
-    },
-    "operator_smoke": {
-        "description": "Login and verify the operator-facing web entrypoints are reachable.",
-        "requires_auth": True,
-    },
-    "timeline_export_regression": {
-        "description": (
-            "Queue the timeline pipeline and trace the resulting task until completion "
-            "or a well-structured failure."
-        ),
-        "requires_auth": True,
-    },
+GOLDEN_PATH_SCENARIOS: dict[str, GoldenPathScenario] = {
+    "mock_smoke": GoldenPathScenario(
+        name="mock_smoke",
+        description="Health-check the lite stack and artifact pipeline in mock mode.",
+        requires_auth=False,
+        notes="Verifies the backend health endpoint and artifact plumbing.",
+    ),
+    "auth_login_and_me": GoldenPathScenario(
+        name="auth_login_and_me",
+        description="Authenticate through the API and validate the current operator identity.",
+        requires_auth=True,
+        notes="Captures request-id and run-id headers across login and /auth/me.",
+        legacy_aliases=("operator_smoke",),
+    ),
+    "task_traceability": GoldenPathScenario(
+        name="task_traceability",
+        description="List tasks after login and capture headers and task list reachability.",
+        requires_auth=True,
+        notes="Confirms authenticated task access and request trace headers.",
+    ),
+    "virtual_ip_image_generation_real_or_mock": GoldenPathScenario(
+        name="virtual_ip_image_generation_real_or_mock",
+        description="Generate a virtual IP image through the sync API path in real or mock mode.",
+        requires_auth=True,
+        notes="Uses the configured Virtual IP id and asserts the returned image metadata.",
+        requires_virtual_ip_id=True,
+    ),
+    "episode_timeline_generation": GoldenPathScenario(
+        name="episode_timeline_generation",
+        description="Queue the timeline pipeline and track the resulting task until completion.",
+        requires_auth=True,
+        notes="Asserts task creation and completion for the timeline pipeline.",
+        requires_script_id=True,
+    ),
+    "timeline_export_end_to_end": GoldenPathScenario(
+        name="timeline_export_end_to_end",
+        description="Queue the timeline pipeline and require a persisted result reference at completion.",
+        requires_auth=True,
+        notes="Treats missing result references as a contract failure, even if the task completed.",
+        requires_script_id=True,
+        legacy_aliases=("timeline_export_regression",),
+    ),
 }
+
+
+for scenario in list(GOLDEN_PATH_SCENARIOS.values()):
+    for alias in scenario.legacy_aliases:
+        GOLDEN_PATH_SCENARIOS[alias] = scenario

@@ -8,6 +8,15 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/exec-plans/active/` — active execution plans that are not product-roadmap items.
 - `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
 
+## Agent System Of Record
+
+- `docs/architecture/contracts.md` — repository contracts, diff-vs-audit policy, and choke-point rules.
+- `docs/architecture/file-size-limits.md` — file-size thresholds, refactor triggers, and layering constraints.
+- `docs/architecture/testing-policy.md` — validation matrix, browser policy, and pre-commit expectations.
+- `docs/architecture/agent-workflow.md` — ledger format, commit discipline, and evidence recording rules.
+
+Keep durable engineering rules in repository docs like the files above. Do not treat chat transcripts or temporary notes as authoritative process documentation.
+
 ## Product & Architecture
 
 - `docs/media-asset-persistence.md` — generated media persistence to OSS/CDN (naming + metadata contract).

@@ -17,6 +17,7 @@ from scripts.harness._common import (
     resolve_run_dir,
     write_json,
 )
+from scripts.harness.observability import filter_log_records, load_log_records, summarize_metrics
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,11 +30,7 @@ def main() -> int:
     args = parse_args()
     run_dir = resolve_run_dir(args.run_id)
     log_path = find_jsonl_log()
-    matching_logs = []
-    if log_path.exists():
-        for raw_line in log_path.read_text(encoding="utf-8").splitlines():
-            if args.run_id in raw_line:
-                matching_logs.append(json.loads(raw_line))
+    matching_logs = filter_log_records(load_log_records(log_path), run_id=args.run_id)
     payload = {
         "run_id": args.run_id,
         "manifest": read_json(run_dir / "manifest.json", default={}),
@@ -41,7 +38,9 @@ def main() -> int:
         "browser_flow": read_json(run_dir / "browser_flow.json", default={}),
         "golden_path": read_json(run_dir / "golden_path.json", default={}),
         "doctor": read_json(run_dir / "doctor.json", default={}),
+        "dom_snapshot": read_json(run_dir / "dom_snapshot.json", default={}),
         "logs": matching_logs[-50:],
+        "metrics": summarize_metrics(matching_logs),
     }
     write_json(run_dir / "trace-run.json", payload)
     print(json.dumps({"ok": True, "path": str(run_dir / "trace-run.json")}))

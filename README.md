@@ -38,10 +38,13 @@ Lite 默认关键配置（可在 `docker/.env.lite` 调整）：
 - `python scripts/harness/doctor.py --run-id <run_id>`
 - `python scripts/harness/browser_flow.py --scenario login_smoke --run-id <run_id>`
 - `python scripts/harness/run_golden_path.py --scenario mock_smoke --run-id <run_id>`
+- `python scripts/harness/query_logs.py --run-id <run_id>`
+- `python scripts/harness/query_metrics.py --run-id <run_id>`
 - `python scripts/harness/trace_run.py --run-id <run_id>`
 - `python scripts/harness/trace_task.py --task-id <task_id>`
+- `python scripts/harness/score_quality.py --run-id <run_id> --write-quality-score`
 
-所有 harness 证据写入 `artifacts/runs/<run_id>/`，默认包含 `manifest.json`、`summary.json`、`console.json`、`network.json` 与截图目录。
+所有 harness 证据写入 `artifacts/runs/<run_id>/`，默认包含 `manifest.json`、`summary.json`、`browser_flow.json`、`console.json`、`network.json`、`dom_snapshot.json`、`screenshot.png` 与场景截图目录。Contract audit 会写入 `artifacts/repo_audit/latest/`。
 
 ## 完整 Docker 开发栈（MySQL/Redis/Celery）
 

@@ -15,6 +15,7 @@
 
 - API clients attach `X-Harness-Run-ID` and `X-Client-Request-ID`.
 - Browser scenarios are defined in `scripts/harness/scenarios.py`.
+- Browser artifact contracts include `browser_flow.json`, `console.json`, `network.json`, `dom_snapshot.json`, and `screenshot.png`.
 - Frontend validation minimum is `npm run lint`; add `npm run test` for behavior changes and `npm run build` for route/layout/auth changes.
 
 ## Active Debt

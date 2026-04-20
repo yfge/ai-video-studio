@@ -13,10 +13,10 @@ if __package__ in {None, ""}:
 
 from scripts.harness._common import (
     ARTIFACTS_ROOT,
-    find_jsonl_log,
     read_json,
     write_json,
 )
+from scripts.harness.observability import filter_log_records, load_log_records, summarize_metrics
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,15 +40,15 @@ def main() -> int:
                 }
             )
 
-    logs = []
-    log_path = find_jsonl_log()
-    if log_path.exists():
-        for raw_line in log_path.read_text(encoding="utf-8").splitlines():
-            if task_id in raw_line:
-                logs.append(json.loads(raw_line))
+    logs = filter_log_records(load_log_records(), task_id=task_id)
 
     output_path = ARTIFACTS_ROOT / f"task-{task_id}.json"
-    payload = {"task_id": task_id, "matching_runs": matching_runs, "logs": logs[-50:]}
+    payload = {
+        "task_id": task_id,
+        "matching_runs": matching_runs,
+        "logs": logs[-50:],
+        "metrics": summarize_metrics(logs),
+    }
     write_json(output_path, payload)
     print(json.dumps({"ok": True, "path": str(output_path)}))
     return 0
