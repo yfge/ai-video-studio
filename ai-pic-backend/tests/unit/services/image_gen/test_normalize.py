@@ -355,6 +355,22 @@ def test_reference_images_dropped_with_warning_when_provider_unsupported():
 
 
 @pytest.mark.unit
+def test_oai_gpt_image_2_keeps_reference_images():
+    req = ImageGenRequest(
+        domain=ImageGenDomain.ENVIRONMENT,
+        mode=ImageGenMode.TEXT_TO_IMAGE,
+        prompt="A cozy room",
+        model="openai:gpt-image-2",
+        reference_images=["/uploads/ref.png"],
+        backend_base="http://localhost:8000",
+    )
+    normalized = normalize_image_gen_request(req)
+    assert normalized.extra_images == ["http://localhost:8000/uploads/ref.png"]
+    call = build_ai_manager_call(normalized)
+    assert call["reference_images"] == ["http://localhost:8000/uploads/ref.png"]
+
+
+@pytest.mark.unit
 def test_profile_defaults_applied_for_volcengine_seededit3_img2img():
     req = ImageGenRequest(
         domain=ImageGenDomain.ENVIRONMENT,

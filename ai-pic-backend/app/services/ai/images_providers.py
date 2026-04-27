@@ -6,6 +6,11 @@ from typing import Any, Optional
 
 import httpx
 from app.core.config import settings
+from app.utils.model_utils import (
+    DEFAULT_OPENAI_IMAGE_MODEL,
+    canonicalize_openai_image_model,
+    is_gpt_image_model,
+)
 
 
 class ImageProviderMixin:
@@ -68,51 +73,87 @@ class ImageProviderMixin:
         style: str,
         category: str,
         size: str | None = None,
+        model: str | None = None,
+        reference_images: list[str] | None = None,
     ) -> Optional[str]:
-        """使用OpenAI DALL-E生成图像"""
+        """使用 OpenAI 图像模型生成图像"""
         if not self.openai_api_key:
             return None
         base_url = settings.OPENAI_BASE_URL or "https://api.openai.com/v1"
+        model_id = canonicalize_openai_image_model(model) or DEFAULT_OPENAI_IMAGE_MODEL
 
         try:
             async with httpx.AsyncClient() as client:
+                if reference_images and is_gpt_image_model(model_id):
+                    files = await self._build_openai_edit_files(
+                        client, reference_images
+                    )
+                    response = await client.post(
+                        f"{base_url.rstrip('/')}/images/edits",
+                        headers={"Authorization": f"Bearer {self.openai_api_key}"},
+                        data={
+                            "model": model_id,
+                            "prompt": prompt[:32000],
+                            "n": 1,
+                            "size": size or "1024x1024",
+                            "quality": "auto",
+                        },
+                        files=files,
+                        timeout=120.0,
+                    )
+                    response.raise_for_status()
+                    return self._first_openai_image_result(response.json())
+
+                payload = {
+                    "model": model_id,
+                    "prompt": (
+                        prompt[:32000]
+                        if is_gpt_image_model(model_id)
+                        else prompt[:4000]
+                    ),
+                    "n": 1,
+                    "size": size or "1024x1024",
+                }
+                if is_gpt_image_model(model_id):
+                    payload["quality"] = "auto"
+                elif model_id == "dall-e-3":
+                    payload.update(
+                        {
+                            "quality": "hd",
+                            "style": (
+                                style
+                                if style in {"vivid", "natural"}
+                                else ("natural" if style == "realistic" else "vivid")
+                            ),
+                            "response_format": "b64_json",
+                        }
+                    )
+                else:
+                    payload["response_format"] = "b64_json"
+
                 response = await client.post(
                     f"{base_url.rstrip('/')}/images/generations",
                     headers={
                         "Authorization": f"Bearer {self.openai_api_key}",
                         "Content-Type": "application/json",
                     },
-                    json={
-                        "model": "dall-e-3",
-                        "prompt": prompt[:1000],  # DALL-E 3提示词限制在1000字符内
-                        "n": 1,
-                        "size": size or "1024x1024",
-                        "quality": "hd",
-                        "style": (
-                            style
-                            if style in {"vivid", "natural"}
-                            else ("natural" if style == "realistic" else "vivid")
-                        ),
-                        "response_format": "b64_json",  # 使用base64格式避免URL过期问题
-                    },
-                    timeout=60.0,
+                    json=payload,
+                    timeout=120.0 if is_gpt_image_model(model_id) else 60.0,
                 )
                 response.raise_for_status()
                 result = response.json()
 
-                # 处理base64数据
-                if "b64_json" in result["data"][0]:
-                    base64_data = result["data"][0]["b64_json"]
+                image_result = self._first_openai_image_result(result)
+                if image_result and image_result.startswith("data:image"):
                     self.logger.info(
-                        "获取到OpenAI base64图像数据，长度: %s", len(base64_data)
+                        "获取到OpenAI base64图像数据，长度: %s",
+                        len(image_result),
                     )
-                    return f"data:image/png;base64,{base64_data}"
-                # 兼容URL格式
-                image_url = result["data"][0]["url"]
-                self.logger.info(f"获取到OpenAI图像URL: {image_url[:100]}...")
-                return image_url
+                elif image_result:
+                    self.logger.info(f"获取到OpenAI图像URL: {image_result[:100]}...")
+                return image_result
         except Exception as exc:
-            self.logger.error(f"OpenAI DALL-E生成失败: {exc}")
+            self.logger.error(f"OpenAI图像生成失败: {exc}")
             if hasattr(exc, "response"):
                 try:
                     error_detail = exc.response.json()
@@ -120,6 +161,49 @@ class ImageProviderMixin:
                 except Exception:
                     self.logger.error(f"OpenAI API响应: {exc.response.text}")
             return None
+
+    async def _build_openai_edit_files(
+        self,
+        client: httpx.AsyncClient,
+        reference_images: list[str],
+    ) -> list[tuple[str, tuple[str, bytes, str]]]:
+        files: list[tuple[str, tuple[str, bytes, str]]] = []
+        for index, source in enumerate(reference_images):
+            if not source:
+                continue
+            if source.startswith("data:image"):
+                header, b64_data = source.split(",", 1)
+                content_type = (
+                    header.split(";")[0].split(":")[1] if ":" in header else "image/png"
+                )
+                image_bytes = base64.b64decode(b64_data)
+            else:
+                download_url = source
+                if download_url.lower().startswith("https://"):
+                    download_url = "http://" + download_url[len("https://") :]
+                response = await client.get(download_url)
+                response.raise_for_status()
+                content_type = response.headers.get("Content-Type", "image/png")
+                image_bytes = response.content
+            ext = (
+                content_type.split("/", 1)[1].split(";", 1)[0]
+                if "/" in content_type
+                else "png"
+            )
+            files.append(
+                ("image[]", (f"image-{index}.{ext}", image_bytes, content_type))
+            )
+        return files
+
+    @staticmethod
+    def _first_openai_image_result(result: dict[str, Any]) -> Optional[str]:
+        data = result.get("data") or []
+        if not data:
+            return None
+        first = data[0]
+        if first.get("b64_json"):
+            return f"data:image/png;base64,{first['b64_json']}"
+        return first.get("url")
 
     async def _generate_with_stability(
         self, prompt: str, style: str, category: str

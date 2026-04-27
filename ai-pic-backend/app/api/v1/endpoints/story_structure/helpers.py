@@ -14,6 +14,7 @@ from app.models.story_structure import Environment
 from app.services.ai_service import ai_service
 from app.services.providers.image_param_utils import compute_image_ui
 from app.services.storage import oss_service
+from app.utils.model_utils import is_openai_image_model
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,7 @@ def infer_provider_from_model(model: Optional[str]) -> Optional[str]:
         return "keling"
     if normalized.startswith("jimeng"):
         return "jimeng"
-    if normalized.startswith(("dall-e", "dalle")):
+    if is_openai_image_model(normalized):
         return "openai"
     if normalized.startswith("gemini"):
         return "google"

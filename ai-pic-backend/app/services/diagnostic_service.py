@@ -15,6 +15,7 @@ from app.core.logging import get_logger
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.services.ai_service import ai_service
 from app.services.storage.oss_service import oss_service
+from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
 
 
 class DiagnosticService:
@@ -384,7 +385,7 @@ class DiagnosticService:
                 description=test_virtual_ip.description or "测试用虚拟IP",
                 style="realistic",
                 category="portrait",
-                model="dall-e-3",
+                model=DEFAULT_OPENAI_IMAGE_MODEL,
                 additional_prompts=["diagnostic test"],
             )
 

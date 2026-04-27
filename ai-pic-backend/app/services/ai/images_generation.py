@@ -14,7 +14,12 @@ from app.services.image_gen import (
     normalize_image_gen_request,
 )
 from app.services.storage.oss_service import oss_service
-from app.utils.model_utils import parse_model_and_provider
+from app.utils.model_utils import (
+    DEFAULT_OPENAI_IMAGE_MODEL,
+    canonicalize_openai_image_model,
+    is_openai_image_model,
+    parse_model_and_provider,
+)
 
 
 def _get_backend_base() -> str:
@@ -33,7 +38,7 @@ class ImageGenerationMixin:
         style_preset_id: str | None = None,
         style_spec: Any | None = None,
         category: str = "portrait",
-        model: str = "dalle-3",
+        model: str = DEFAULT_OPENAI_IMAGE_MODEL,
         additional_prompts: List[str] = None,
         background_story: str = None,
         count: int = 1,
@@ -48,18 +53,14 @@ class ImageGenerationMixin:
     ) -> Optional[Dict[str, Any]]:
         """为虚拟IP生成图像"""
 
-        raw_model = model or "dalle-3"
+        raw_model = model or DEFAULT_OPENAI_IMAGE_MODEL
         pure_model, provider_hint = parse_model_and_provider(raw_model)
-        pure_model = pure_model or "dall-e-3"
+        pure_model = pure_model or DEFAULT_OPENAI_IMAGE_MODEL
 
-        # Canonicalize common OpenAI DALL-E aliases ("dalle-3" -> "dall-e-3"),
+        # Canonicalize common OpenAI image aliases ("dalle-3" -> "dall-e-3"),
         # so size/aspect-ratio normalization can apply provider UI rules reliably.
-        if (
-            provider_hint == "openai"
-            and pure_model
-            and pure_model.lower().startswith("dalle-")
-        ):
-            pure_model = pure_model.lower().replace("dalle-", "dall-e-", 1)
+        if provider_hint == "openai" and pure_model:
+            pure_model = canonicalize_openai_image_model(pure_model) or pure_model
             raw_model = f"openai:{pure_model}" if ":" in raw_model else pure_model
 
         normalized_style_preset_id = (style_preset_id or "").strip() or None
@@ -169,24 +170,26 @@ class ImageGenerationMixin:
 
             # 根据模型选择不同的AI服务
             provider_used = "openai"
-            generation_method = "openai_dalle"
+            generation_method = "openai_image"
             image_url = None
             model_used = model
 
             model_id = (normalized.model_id or pure_model).lower()
             provider_key = (normalized.provider or provider_hint or "openai").lower()
 
-            if provider_key == "openai" and model_id.startswith(("dall-e", "dalle")):
-                # 使用 OpenAI DALL-E 直连 API，并支持按官方 size 选项控制分辨率
+            if provider_key == "openai" and is_openai_image_model(model_id):
+                # 使用 OpenAI 图像直连 API，并支持按官方 size 选项控制分辨率
                 image_url = await self._generate_with_openai_dalle(
                     final_prompt,
                     openai_style,
                     category,
                     size=normalized.size or size or "1024x1024",
+                    model=model_id,
+                    reference_images=normalized.extra_images,
                 )
                 provider_used = "openai"
-                generation_method = "openai_dalle"
-                model_used = "dall-e-3"
+                generation_method = "openai_image"
+                model_used = model_id
             elif self.ai_manager:
                 response = await self.ai_manager.generate_image(**call)
                 if response.success:
@@ -199,15 +202,16 @@ class ImageGenerationMixin:
                     self.logger.error(f"AI管理器图像生成失败: {response.error}")
                     image_url = None
             else:
-                # 默认使用OpenAI DALL-E（保持向后兼容）
+                # 默认使用 OpenAI 图像模型（保持向后兼容）
                 image_url = await self._generate_with_openai_dalle(
                     final_prompt,
                     openai_style,
                     category,
+                    model=DEFAULT_OPENAI_IMAGE_MODEL,
                 )
                 provider_used = "openai"
-                generation_method = "openai_dalle"
-                model_used = "dall-e-3"
+                generation_method = "openai_image"
+                model_used = DEFAULT_OPENAI_IMAGE_MODEL
 
             if image_url:
                 try:

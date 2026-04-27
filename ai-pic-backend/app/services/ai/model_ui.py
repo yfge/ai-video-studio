@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from app.utils.model_utils import is_gpt_image_model
+
 from .manager import AIModelType
 
 
@@ -125,7 +127,20 @@ class ModelUiMixin:
         supports_aspect_ratio = False
 
         if provider == "openai":
-            if "dall-e-3" in model_id:
+            if "gpt-image-2" in model_id:
+                size_options = [
+                    "1024x1024",
+                    "1536x1024",
+                    "1024x1536",
+                    "2048x2048",
+                    "2048x1152",
+                    "3840x2160",
+                    "2160x3840",
+                    "auto",
+                ]
+            elif is_gpt_image_model(model_id):
+                size_options = ["1024x1024", "1536x1024", "1024x1536", "auto"]
+            elif "dall-e-3" in model_id:
                 size_options = ["1024x1024", "1024x1792", "1792x1024"]
             elif "dall-e-2" in model_id:
                 size_options = ["256x256", "512x512", "1024x1024"]
@@ -143,9 +158,12 @@ class ModelUiMixin:
             "size_options": size_options,
             "aspect_ratio_options": aspect_options,
             "supports_aspect_ratio": supports_aspect_ratio,
-            "supports_reference_image": "image_to_image" in caps
-            or "image_to_image" in provider
-            or provider == "keling",
+            "supports_reference_image": (
+                (provider == "openai" and is_gpt_image_model(model_id))
+                or "image_to_image" in caps
+                or "image_to_image" in provider
+                or provider == "keling"
+            ),
         }
 
         try:

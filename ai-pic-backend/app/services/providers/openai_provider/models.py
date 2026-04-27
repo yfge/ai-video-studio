@@ -1,7 +1,7 @@
 """
 OpenAI provider model definitions.
 
-Contains ModelInfo instances for GPT and DALL-E models.
+Contains ModelInfo instances for GPT and OpenAI image models.
 """
 
 from __future__ import annotations
@@ -44,11 +44,43 @@ def get_available_models() -> List[ModelInfo]:
             max_tokens=16385,
             capabilities=["text_generation", "conversation", "summarization"],
         ),
-        # DALL-E models
+        # Image models
+        ModelInfo(
+            model_id="gpt-image-2",
+            name="GPT Image 2",
+            description="OpenAI 最新的高质量图像生成与编辑模型",
+            model_type=AIModelType.TEXT_TO_IMAGE,
+            supported_formats=["png", "jpeg", "webp"],
+            capabilities=[
+                "text_to_image",
+                "image_to_image",
+                "reference_image",
+                "high_resolution",
+                "high_fidelity_input",
+            ],
+            metadata={
+                "ui": {
+                    "size_options": [
+                        "1024x1024",
+                        "1536x1024",
+                        "1024x1536",
+                        "2048x2048",
+                        "2048x1152",
+                        "3840x2160",
+                        "2160x3840",
+                        "auto",
+                    ],
+                    "aspect_ratio_options": ["1:1", "16:9", "9:16"],
+                    "supports_aspect_ratio": False,
+                    "supports_reference_image": True,
+                    "default_size": "1024x1024",
+                }
+            },
+        ),
         ModelInfo(
             model_id="dall-e-3",
             name="DALL-E 3",
-            description="最新的图像生成模型，高质量输出",
+            description="上一代高质量图像生成模型",
             model_type=AIModelType.TEXT_TO_IMAGE,
             supported_formats=["png", "jpeg"],
             capabilities=["text_to_image", "high_resolution", "detailed"],
@@ -95,7 +127,7 @@ def fallback_models(
 def infer_model_type(model_id: str) -> AIModelType:
     """Infer model type from model ID."""
     lid = model_id.lower()
-    if "dall-e" in lid or "image" in lid:
+    if "dall-e" in lid or "image" in lid or "img-gen" in lid:
         return AIModelType.TEXT_TO_IMAGE
     return AIModelType.TEXT_GENERATION
 
@@ -103,7 +135,9 @@ def infer_model_type(model_id: str) -> AIModelType:
 def infer_capabilities(model_id: str) -> List[str]:
     """Infer model capabilities from model ID."""
     lid = model_id.lower()
-    if "dall-e" in lid or "image" in lid:
+    if lid.startswith("gpt-image-2") or lid in {"img-gen-2", "image-gen-2"}:
+        return ["text_to_image", "image_to_image", "reference_image"]
+    if "dall-e" in lid or "image" in lid or "img-gen" in lid:
         return ["text_to_image"]
     caps = ["text_generation"]
     if "gpt" in lid or "o" in lid:

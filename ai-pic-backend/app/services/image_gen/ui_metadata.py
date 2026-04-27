@@ -5,6 +5,7 @@ from typing import Any, Iterable
 from app.services.providers.volcengine_provider.guidance_scale import (
     supports_guidance_scale,
 )
+from app.utils.model_utils import is_gpt_image_model
 
 from .provider_params import supported_ai_manager_keys
 from .types import ImageGenMode
@@ -38,6 +39,7 @@ def build_image_gen_ui_metadata(
 
     max_count_t2i = 4 if "n" in text_keys else 1
     max_count_i2i = 4 if "count" in image_keys else 1
+    is_openai_gpt_image = provider_key == "openai" and is_gpt_image_model(mid)
     if provider_key == "openai" and "dall-e-3" in mid.lower():
         # DALL·E 3 only supports n=1 in practice (and image_to_image is unsupported).
         max_count_t2i = 1
@@ -51,6 +53,16 @@ def build_image_gen_ui_metadata(
         max_reference_images_t2i = 1
     if provider_key == "google":
         max_reference_images_t2i = 4
+    if provider_key == "openai" and is_openai_gpt_image:
+        max_reference_images_t2i = 4
+
+    supports_reference_images_t2i = (
+        "reference_images" in text_keys
+        or "extra_images" in text_keys
+        or "image" in text_keys
+    )
+    if provider_key == "openai":
+        supports_reference_images_t2i = is_openai_gpt_image
 
     text_to_image = {
         "supports_seed": _bool("seed" in text_keys),
@@ -60,11 +72,7 @@ def build_image_gen_ui_metadata(
         "supports_style_preset_id": _bool("style_preset_id" in text_keys),
         "supports_style_spec": _bool("style_spec" in text_keys),
         "max_count": max_count_t2i,
-        "supports_reference_images": _bool(
-            "reference_images" in text_keys
-            or "extra_images" in text_keys
-            or "image" in text_keys
-        ),
+        "supports_reference_images": _bool(supports_reference_images_t2i),
     }
 
     if (
@@ -126,6 +134,11 @@ def build_image_gen_ui_metadata(
         _append_note(
             text_notes,
             "Google/Gemini 参考图会以内联方式上传：为避免 413，建议≤4张且尽量小图（后台会自动压缩）",
+        )
+    if is_openai_gpt_image and text_to_image["supports_reference_images"]:
+        _append_note(
+            text_notes,
+            "GPT Image 2 参考图会通过 OpenAI image edit 接口处理，图片输入自动按高保真计费",
         )
 
     payload: dict[str, Any] = {

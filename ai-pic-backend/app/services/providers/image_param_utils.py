@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
+from app.utils.model_utils import is_gpt_image_model
+
 DEFAULT_ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4"]
 GOOGLE_ASPECT_RATIOS = [
     "1:1",
@@ -23,6 +25,16 @@ GOOGLE_ASPECT_RATIOS = [
     "21:9",
 ]
 GOOGLE_IMAGE_SIZES = ["1K", "2K", "4K"]
+GPT_IMAGE_2_SIZES = [
+    "1024x1024",
+    "1536x1024",
+    "1024x1536",
+    "2048x2048",
+    "2048x1152",
+    "3840x2160",
+    "2160x3840",
+    "auto",
+]
 
 
 @dataclass(frozen=True)
@@ -42,7 +54,11 @@ def compute_image_ui(provider: str, model_id: str) -> ImageUiRules:
     supports_aspect_ratio = False
 
     if provider_key == "openai":
-        if "dall-e-3" in mid:
+        if "gpt-image-2" in mid:
+            size_options = GPT_IMAGE_2_SIZES
+        elif is_gpt_image_model(mid):
+            size_options = ["1024x1024", "1536x1024", "1024x1536", "auto"]
+        elif "dall-e-3" in mid:
             size_options = ["1024x1024", "1024x1792", "1792x1024"]
         elif "dall-e-2" in mid:
             size_options = ["256x256", "512x512", "1024x1024"]
@@ -144,6 +160,8 @@ def _normalize_size(
     matched = _match_option(size, rules.size_options, allow_dimensions=True)
     if matched:
         return matched
+    if _is_valid_gpt_image_2_size(size, rules):
+        return str(size).strip().lower()
     if strict:
         raise ValueError(
             f"unsupported size '{size}', allowed: {', '.join(rules.size_options)}"
@@ -188,6 +206,26 @@ def _match_option(
         if value_dims:
             for option in options:
                 option_dims = size_to_dimensions(option)
-                if option_dims and option_dims == value_dims:
-                    return option
+            if option_dims and option_dims == value_dims:
+                return option
     return None
+
+
+def _is_valid_gpt_image_2_size(value: str, rules: ImageUiRules) -> bool:
+    """Allow GPT Image 2's documented flexible custom size constraints."""
+    if "3840x2160" not in rules.size_options:
+        return False
+    dims = size_to_dimensions(str(value).strip().lower())
+    if not dims:
+        return False
+    width, height = dims
+    long_edge = max(width, height)
+    short_edge = min(width, height)
+    pixels = width * height
+    return (
+        long_edge <= 3840
+        and width % 16 == 0
+        and height % 16 == 0
+        and long_edge / short_edge <= 3
+        and 655_360 <= pixels <= 8_294_400
+    )

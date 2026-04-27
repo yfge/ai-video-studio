@@ -14,6 +14,7 @@ from app.services.image.image_generation_service import ImageGenerationService
 from app.services.providers.base import AIModelType
 from app.services.video.video_generation_service import VideoGenerationService
 from app.services.video.video_ui_utils import compute_image_ui, compute_video_ui
+from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
 
 
 class AIServiceCoordinator:
@@ -52,7 +53,7 @@ class AIServiceCoordinator:
         style_preset_id: str | None = None,
         style_spec: Any | None = None,
         category: str = "portrait",
-        model: str = "dalle-3",
+        model: str = DEFAULT_OPENAI_IMAGE_MODEL,
         additional_prompts: List[str] = None,
         background_story: str = None,
         count: int = 1,

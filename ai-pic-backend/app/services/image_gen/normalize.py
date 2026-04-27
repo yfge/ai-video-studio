@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from app.utils.model_utils import infer_provider_from_model, parse_model_and_provider
+from app.utils.model_utils import (
+    infer_provider_from_model,
+    is_gpt_image_model,
+    parse_model_and_provider,
+)
 
 from .coerce import clean_str
 from .normalize_capabilities import apply_capability_drops
@@ -105,6 +109,8 @@ def normalize_image_gen_request(
             or "extra_images" in text_keys
             or "image" in text_keys
         )
+        if provider == "openai" and not is_gpt_image_model(clean_model):
+            supports_reference_images = False
     else:
         image_keys = supported_ai_manager_keys(
             provider or "", ImageGenMode.IMAGE_TO_IMAGE

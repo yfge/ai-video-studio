@@ -1,9 +1,42 @@
 from typing import Optional, Tuple
 
+DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-2"
+
+_OPENAI_IMAGE_MODEL_ALIASES = {
+    "img-gen-2": DEFAULT_OPENAI_IMAGE_MODEL,
+    "image-gen-2": DEFAULT_OPENAI_IMAGE_MODEL,
+    "gpt-img-2": DEFAULT_OPENAI_IMAGE_MODEL,
+}
+
+
+def canonicalize_openai_image_model(model_id: Optional[str]) -> Optional[str]:
+    """Normalize common OpenAI image model aliases to official API model IDs."""
+    if not model_id:
+        return model_id
+    raw = model_id.strip()
+    if not raw:
+        return raw
+    lower = raw.lower()
+    if lower.startswith("dalle-"):
+        return lower.replace("dalle-", "dall-e-", 1)
+    return _OPENAI_IMAGE_MODEL_ALIASES.get(lower, raw)
+
+
+def is_gpt_image_model(model_id: Optional[str]) -> bool:
+    """Return True for GPT Image API model IDs."""
+    mid = (canonicalize_openai_image_model(model_id) or "").lower()
+    return mid.startswith("gpt-image-")
+
+
+def is_openai_image_model(model_id: Optional[str]) -> bool:
+    """Return True for OpenAI image generation model IDs and known aliases."""
+    mid = (canonicalize_openai_image_model(model_id) or "").lower()
+    return mid.startswith(("dall-e", "dalle", "gpt-image-"))
+
 
 def infer_provider_from_model(model_id: str) -> Optional[str]:
     """Infer provider from a model id heuristic."""
-    mid = model_id.lower()
+    mid = (canonicalize_openai_image_model(model_id) or model_id).lower()
     if (
         mid.startswith(("seedream", "volcengine"))
         or "doubao" in mid
@@ -16,7 +49,7 @@ def infer_provider_from_model(model_id: str) -> Optional[str]:
         return "keling"
     if mid.startswith("jimeng"):
         return "jimeng"
-    if mid.startswith(("dall-e", "dalle", "gpt-image-1")):
+    if is_openai_image_model(mid):
         return "openai"
     if mid.startswith(("gemini", "veo")):
         return "google"
@@ -46,6 +79,7 @@ def parse_model_and_provider(
         clean_model = clean_model or None
 
     if clean_model:
+        clean_model = canonicalize_openai_image_model(clean_model)
         inferred = infer_provider_from_model(clean_model)
         provider_hint = provider_hint or inferred
 

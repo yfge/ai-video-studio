@@ -11,6 +11,7 @@ from app.models.task import Task, TaskStatus
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.schemas.virtual_ip import VirtualIPImageCreate
 from app.services.ai_service import ai_service
+from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
 
 from .helpers import set_ip_default_avatar
 
@@ -69,15 +70,13 @@ async def _generate_and_persist_image(
     result = await ai_service.generate_virtual_ip_image(
         ip_name=payload.get("virtual_ip_name") or virtual_ip.name,
         description=(
-            payload.get("aggregated_description")
-            or virtual_ip.description
-            or ""
+            payload.get("aggregated_description") or virtual_ip.description or ""
         ),
         style=payload.get("style") or "realistic",
         style_preset_id=payload.get("style_preset_id"),
         style_spec=payload.get("style_spec"),
         category=payload.get("category") or "portrait",
-        model=payload.get("model") or "dalle-3",
+        model=payload.get("model") or DEFAULT_OPENAI_IMAGE_MODEL,
         additional_prompts=payload.get("additional_prompts") or [],
         background_story=None,
         count=int(payload.get("count") or 1),
@@ -123,9 +122,7 @@ async def _generate_and_persist_image(
 
     generation_params = _build_generation_params(result, payload)
 
-    prompt_template = result.get("prompt_template") or payload.get(
-        "prompt_template"
-    )
+    prompt_template = result.get("prompt_template") or payload.get("prompt_template")
     image_data = VirtualIPImageCreate(
         virtual_ip_id=virtual_ip.id,
         file_path=relative_path,
@@ -191,9 +188,7 @@ def _build_generation_params(
         if dim_value is not None:
             generation_params[dim_key] = dim_value
 
-    prompt_template = result.get("prompt_template") or payload.get(
-        "prompt_template"
-    )
+    prompt_template = result.get("prompt_template") or payload.get("prompt_template")
     if prompt_template is not None:
         generation_params["prompt_template"] = prompt_template
     if result.get("prompt_sha256") is not None:

@@ -12,6 +12,7 @@ from app.prompts.template_audit import build_prompt_template_audit
 from app.schemas.virtual_ip import VirtualIPImageCreate
 from app.services.ai_service import ai_service
 from app.services.image_gen.coerce import clean_str, maybe_float, maybe_int
+from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -54,10 +55,10 @@ def resolve_virtual_ip_image_params(
     category_value = payload.get("category", category) or "portrait"
     raw_model = payload.get("model", model)
     selected_model = (
-        payload.get("model_id") or model_id or raw_model or "dalle-3"
+        payload.get("model_id") or model_id or raw_model or DEFAULT_OPENAI_IMAGE_MODEL
     ).strip()
     if not selected_model:
-        selected_model = "dalle-3"
+        selected_model = DEFAULT_OPENAI_IMAGE_MODEL
 
     count_value = payload.get("count", count)
     size_value = payload.get("size", size)

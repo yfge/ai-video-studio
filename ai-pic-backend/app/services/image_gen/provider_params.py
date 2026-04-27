@@ -28,7 +28,16 @@ FALLBACK_IMAGE_TO_IMAGE_KEYS: set[str] = {
 }
 
 TEXT_TO_IMAGE_KEYS_BY_PROVIDER: dict[str, set[str]] = {
-    "openai": {"prompt", "model", "prefer_provider", "n", "size", "style"},
+    "openai": {
+        "prompt",
+        "model",
+        "prefer_provider",
+        "n",
+        "size",
+        "style",
+        "reference_images",
+        "extra_images",
+    },
     "jimeng": {
         "prompt",
         "model",
@@ -88,7 +97,16 @@ TEXT_TO_IMAGE_KEYS_BY_PROVIDER: dict[str, set[str]] = {
 }
 
 IMAGE_TO_IMAGE_KEYS_BY_PROVIDER: dict[str, set[str]] = {
-    "openai": {"image_url", "prompt", "model", "prefer_provider", "count", "size"},
+    "openai": {
+        "image_url",
+        "prompt",
+        "model",
+        "prefer_provider",
+        "count",
+        "size",
+        "extra_images",
+        "reference_images",
+    },
     "jimeng": {
         "image_url",
         "prompt",

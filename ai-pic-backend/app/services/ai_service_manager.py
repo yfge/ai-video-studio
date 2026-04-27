@@ -1117,7 +1117,7 @@ class AIServiceManager:
                         inferred_provider = "keling"
                     elif lower.startswith("jimeng"):
                         inferred_provider = "jimeng"
-                    elif lower.startswith("dall-e") or lower.startswith("dalle"):
+                    elif lower.startswith(("dall-e", "dalle", "gpt-image", "img-gen")):
                         inferred_provider = "openai"
                     elif lower.startswith("gemini"):
                         inferred_provider = "google"

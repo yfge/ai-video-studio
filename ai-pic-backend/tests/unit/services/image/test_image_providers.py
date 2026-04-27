@@ -115,7 +115,7 @@ class TestGenerateWithOpenAIDalle:
 
     @pytest.mark.asyncio
     async def test_generate_success_base64(self):
-        """Test successful DALL-E generation with base64 response."""
+        """Test successful OpenAI image generation with base64 response."""
         with patch("app.services.image.image_providers.settings") as mock_settings:
             with patch("httpx.AsyncClient") as mock_client_class:
                 mock_settings.OPENAI_API_KEY = "test-api-key"
@@ -138,10 +138,16 @@ class TestGenerateWithOpenAIDalle:
                 )
 
                 assert result == "data:image/png;base64,base64imagedata"
+                call_args = mock_client.post.call_args
+                payload = call_args.kwargs["json"]
+                assert payload["model"] == "gpt-image-2"
+                assert payload["quality"] == "auto"
+                assert "style" not in payload
+                assert "response_format" not in payload
 
     @pytest.mark.asyncio
     async def test_generate_success_url(self):
-        """Test successful DALL-E generation with URL response."""
+        """Test successful OpenAI image generation with URL response."""
         with patch("app.services.image.image_providers.settings") as mock_settings:
             with patch("httpx.AsyncClient") as mock_client_class:
                 mock_settings.OPENAI_API_KEY = "test-api-key"
@@ -186,10 +192,37 @@ class TestGenerateWithOpenAIDalle:
                     prompt="Test",
                     style="realistic",
                     category="portrait",
+                    model="dall-e-3",
                 )
 
                 call_args = mock_client.post.call_args
                 assert call_args[1]["json"]["style"] == "natural"
+
+    @pytest.mark.asyncio
+    async def test_generate_maps_img_gen_2_alias(self):
+        """Test that user-facing img-gen-2 alias maps to the official model ID."""
+        with patch("app.services.image.image_providers.settings") as mock_settings:
+            with patch("httpx.AsyncClient") as mock_client_class:
+                mock_settings.OPENAI_API_KEY = "test-api-key"
+                mock_settings.OPENAI_BASE_URL = "https://api.openai.com/v1"
+
+                mock_response = MagicMock()
+                mock_response.raise_for_status = MagicMock()
+                mock_response.json.return_value = {"data": [{"b64_json": "imagedata"}]}
+
+                mock_client = AsyncMock()
+                mock_client.post.return_value = mock_response
+                mock_client_class.return_value.__aenter__.return_value = mock_client
+
+                await generate_with_openai_dalle(
+                    prompt="Test",
+                    style="vivid",
+                    category="portrait",
+                    model="img-gen-2",
+                )
+
+                call_args = mock_client.post.call_args
+                assert call_args.kwargs["json"]["model"] == "gpt-image-2"
 
     @pytest.mark.asyncio
     async def test_generate_with_exception(self):
@@ -330,6 +363,8 @@ class TestGenerateWithCustomService:
                     base_url="https://override.example.com",
                     api_key="override-key",
                 )
+
+                assert result == "https://override.example.com/image.png"
 
                 # Verify it used the override URL
                 call_args = mock_client.post.call_args

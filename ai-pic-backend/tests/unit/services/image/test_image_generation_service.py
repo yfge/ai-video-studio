@@ -43,6 +43,14 @@ class TestImageGenerationService:
         assert service._is_dalle_model("keling") is False
         assert service._is_dalle_model("openai") is False
 
+    def test_is_oai_image_model(self):
+        """Test OpenAI image model detection."""
+        service = ImageGenerationService()
+        assert service._is_openai_image_model("gpt-image-2") is True
+        assert service._is_openai_image_model("img-gen-2") is True
+        assert service._is_openai_image_model("dall-e-3") is True
+        assert service._is_openai_image_model("keling") is False
+
     def test_build_prompt_portrait(self):
         """Test prompt building for portrait category."""
         service = ImageGenerationService()
@@ -168,7 +176,7 @@ class TestGenerateVirtualIPImage:
 
                 assert result is not None
                 assert result["model_used"] == "dall-e-3"
-                assert result["generation_method"] == "openai_dalle"
+                assert result["generation_method"] == "openai_image"
                 mock_dalle.assert_called_once()
 
     @pytest.mark.asyncio

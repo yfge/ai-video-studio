@@ -1,7 +1,7 @@
 """
 OpenAI service provider.
 
-Supports GPT text generation and DALL-E image generation.
+Supports GPT text generation and OpenAI image generation.
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 import httpx
+from app.utils.model_utils import DEFAULT_OPENAI_IMAGE_MODEL
 
 from ..base import AIModelType, AIResponse, BaseProvider, ModelInfo, ProviderConfig
 from ..image_param_utils import compute_image_ui as compute_image_ui_rules
@@ -157,14 +158,14 @@ class OpenAIProvider(BaseProvider):
     async def generate_image(
         self,
         prompt: str,
-        model: str = "dall-e-3",
+        model: str = DEFAULT_OPENAI_IMAGE_MODEL,
         size: str = "1024x1024",
-        quality: str = "standard",
+        quality: str = "auto",
         style: str = "vivid",
         n: int = 1,
         **kwargs,
     ) -> AIResponse:
-        """Generate images using DALL-E."""
+        """Generate images using OpenAI image models."""
         client = await self.get_client()
         return await image_module.generate_image(
             client=client,
@@ -177,6 +178,8 @@ class OpenAIProvider(BaseProvider):
             style=style,
             n=n,
             format_error=self.format_error,
+            api_key=self.config.api_key,
+            config_timeout=self.config.timeout,
             **kwargs,
         )
 
@@ -206,12 +209,12 @@ class OpenAIProvider(BaseProvider):
         self,
         image_url: str,
         prompt: Optional[str] = None,
-        model: str = "dall-e-2",
+        model: str = DEFAULT_OPENAI_IMAGE_MODEL,
         size: str = "1024x1024",
         n: int = 1,
         **kwargs,
     ) -> AIResponse:
-        """DALL-E image variation (DALL-E 2 only)."""
+        """Edit images using GPT Image, or create DALL-E 2 variations."""
         client = await self.get_client()
         return await image_module.image_to_image(
             client=client,

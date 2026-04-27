@@ -2,7 +2,7 @@
 Image generation service.
 
 Provides unified interface for AI-powered image generation,
-supporting multiple providers (DALL-E, Keling, Volcengine, etc.).
+supporting multiple providers (OpenAI image models, Keling, Volcengine, etc.).
 """
 
 from typing import Any, Dict, List, Optional
@@ -15,7 +15,11 @@ from app.services.image.image_providers import (
     generate_with_openai_dalle,
 )
 from app.services.storage import oss_service
-from app.utils.model_utils import parse_model_and_provider
+from app.utils.model_utils import (
+    DEFAULT_OPENAI_IMAGE_MODEL,
+    is_openai_image_model,
+    parse_model_and_provider,
+)
 
 
 class ImageGenerationService:
@@ -43,7 +47,7 @@ class ImageGenerationService:
         style_preset_id: str | None = None,
         style_spec: Any | None = None,
         category: str = "portrait",
-        model: str = "dalle-3",
+        model: str = DEFAULT_OPENAI_IMAGE_MODEL,
         additional_prompts: List[str] = None,
         background_story: str = None,
         count: int = 1,
@@ -70,9 +74,9 @@ class ImageGenerationService:
         Returns:
             Dictionary with generation results including URLs and metadata.
         """
-        raw_model = model or "dalle-3"
+        raw_model = model or DEFAULT_OPENAI_IMAGE_MODEL
         pure_model, provider_hint = parse_model_and_provider(raw_model)
-        pure_model = pure_model or "dall-e-3"
+        pure_model = pure_model or DEFAULT_OPENAI_IMAGE_MODEL
 
         # Resolve style specification
         (
@@ -252,7 +256,7 @@ class ImageGenerationService:
     ) -> tuple[Optional[str], str, str]:
         """Generate image using appropriate provider."""
         provider_used = "openai"
-        generation_method = "openai_dalle"
+        generation_method = "openai_image"
         image_url = None
 
         normalized_model = pure_model.lower()
@@ -271,12 +275,16 @@ class ImageGenerationService:
             provider_used = "keling"
             generation_method = "keling_image"
 
-        elif self._is_dalle_model(normalized_model):
+        elif self._is_openai_image_model(normalized_model):
             image_url = await generate_with_openai_dalle(
-                direct_prompt, openai_style, category, size=size or "1024x1024"
+                direct_prompt,
+                openai_style,
+                category,
+                size=size or "1024x1024",
+                model=pure_model,
             )
             provider_used = "openai"
-            generation_method = "openai_dalle"
+            generation_method = "openai_image"
 
         elif self.ai_manager:
             image_url, provider_used, generation_method = (
@@ -296,10 +304,13 @@ class ImageGenerationService:
 
         else:
             image_url = await generate_with_openai_dalle(
-                direct_prompt, openai_style, category
+                direct_prompt,
+                openai_style,
+                category,
+                model=DEFAULT_OPENAI_IMAGE_MODEL,
             )
             provider_used = "openai"
-            generation_method = "openai_dalle"
+            generation_method = "openai_image"
 
         return image_url, provider_used, generation_method
 
@@ -314,6 +325,10 @@ class ImageGenerationService:
     def _is_dalle_model(self, model: str) -> bool:
         """Check if model is a DALL-E model."""
         return model.startswith("dall-e") or model.startswith("dalle")
+
+    def _is_openai_image_model(self, model: str) -> bool:
+        """Check if model is an OpenAI image generation model."""
+        return is_openai_image_model(model)
 
     async def _generate_with_manager(
         self,

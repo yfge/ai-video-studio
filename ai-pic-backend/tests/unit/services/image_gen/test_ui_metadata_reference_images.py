@@ -11,6 +11,17 @@ def test_ui_metadata_txt2img_reference_images_false_for_openai_even_with_img2img
 
 
 @pytest.mark.unit
+def test_ui_metadata_txt2img_reference_images_true_for_gpt_image_2():
+    meta = build_image_gen_ui_metadata(
+        provider="openai",
+        model_id="gpt-image-2",
+        caps=["text_to_image", "image_to_image"],
+    )
+    assert meta["image_gen"]["text_to_image"]["supports_reference_images"] is True
+    assert meta["image_gen"]["text_to_image"].get("max_reference_images") == 4
+
+
+@pytest.mark.unit
 def test_ui_metadata_txt2img_reference_images_true_for_google():
     meta = build_image_gen_ui_metadata(
         provider="google",

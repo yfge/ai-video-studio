@@ -2,7 +2,7 @@
 Image generation provider implementations.
 
 Provides direct API integrations for image generation providers:
-- OpenAI DALL-E
+- OpenAI GPT Image / DALL-E
 - Keling AI
 - Stability AI
 """
@@ -13,6 +13,11 @@ import httpx
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.services.image.image_persistence import save_base64_image
+from app.utils.model_utils import (
+    DEFAULT_OPENAI_IMAGE_MODEL,
+    canonicalize_openai_image_model,
+    is_gpt_image_model,
+)
 
 logger = get_logger()
 
@@ -89,9 +94,11 @@ async def generate_with_openai_dalle(
     category: str,
     size: str | None = None,
     openai_api_key: str | None = None,
+    model: str | None = None,
+    reference_images: list[str] | None = None,
 ) -> Optional[str]:
     """
-    Generate image using OpenAI DALL-E.
+    Generate image using OpenAI image models.
 
     Args:
         prompt: Generation prompt (max 1000 chars).
@@ -99,6 +106,8 @@ async def generate_with_openai_dalle(
         category: Image category (for logging).
         size: Image size (e.g., '1024x1024').
         openai_api_key: Optional API key override.
+        model: OpenAI image model ID.
+        reference_images: Optional image inputs for GPT Image edits/reference flows.
 
     Returns:
         Generated image as base64 data URI or URL, or None on failure.
@@ -108,6 +117,7 @@ async def generate_with_openai_dalle(
         return None
 
     base_url = settings.OPENAI_BASE_URL or "https://api.openai.com/v1"
+    model_id = canonicalize_openai_image_model(model) or DEFAULT_OPENAI_IMAGE_MODEL
 
     # Normalize style for OpenAI
     openai_style = (
@@ -118,39 +128,67 @@ async def generate_with_openai_dalle(
 
     try:
         async with httpx.AsyncClient() as client:
+            if reference_images and is_gpt_image_model(model_id):
+                files = await _build_openai_edit_files(client, reference_images)
+                response = await client.post(
+                    f"{base_url.rstrip('/')}/images/edits",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    data={
+                        "model": model_id,
+                        "prompt": prompt[:32000],
+                        "n": 1,
+                        "size": size or "1024x1024",
+                        "quality": "auto",
+                    },
+                    files=files,
+                    timeout=120.0,
+                )
+                response.raise_for_status()
+                result = response.json()
+                return _first_openai_image_result(result)
+
+            payload = {
+                "model": model_id,
+                "prompt": (
+                    prompt[:32000] if is_gpt_image_model(model_id) else prompt[:4000]
+                ),
+                "n": 1,
+                "size": size or "1024x1024",
+            }
+            if is_gpt_image_model(model_id):
+                payload["quality"] = "auto"
+            elif model_id == "dall-e-3":
+                payload.update(
+                    {
+                        "quality": "hd",
+                        "style": openai_style,
+                        "response_format": "b64_json",
+                    }
+                )
+            else:
+                payload["response_format"] = "b64_json"
+
             response = await client.post(
                 f"{base_url.rstrip('/')}/images/generations",
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "model": "dall-e-3",
-                    "prompt": prompt[:1000],  # DALL-E 3 prompt limit
-                    "n": 1,
-                    "size": size or "1024x1024",
-                    "quality": "hd",
-                    "style": openai_style,
-                    "response_format": "b64_json",  # Avoid URL expiration
-                },
-                timeout=60.0,
+                json=payload,
+                timeout=120.0 if is_gpt_image_model(model_id) else 60.0,
             )
             response.raise_for_status()
             result = response.json()
 
-            # Handle base64 response
-            if "b64_json" in result["data"][0]:
-                base64_data = result["data"][0]["b64_json"]
-                logger.info(f"Received OpenAI base64 image, length: {len(base64_data)}")
-                return f"data:image/png;base64,{base64_data}"
-            else:
-                # Fallback to URL format
-                image_url = result["data"][0]["url"]
-                logger.info(f"Received OpenAI image URL: {image_url[:100]}...")
-                return image_url
+            image_result = _first_openai_image_result(result)
+            if image_result and image_result.startswith("data:image"):
+                logger.info("Received OpenAI base64 image")
+            elif image_result:
+                logger.info(f"Received OpenAI image URL: {image_result[:100]}...")
+            return image_result
 
     except Exception as e:
-        logger.error(f"OpenAI DALL-E generation failed: {e}")
+        logger.error(f"OpenAI image generation failed: {e}")
         if hasattr(e, "response"):
             try:
                 error_detail = e.response.json()
@@ -158,6 +196,49 @@ async def generate_with_openai_dalle(
             except Exception:
                 logger.error(f"OpenAI API response: {e.response.text}")
         return None
+
+
+async def _build_openai_edit_files(
+    client: httpx.AsyncClient,
+    reference_images: list[str],
+) -> list[tuple[str, tuple[str, bytes, str]]]:
+    import base64
+
+    files: list[tuple[str, tuple[str, bytes, str]]] = []
+    for index, source in enumerate(reference_images):
+        if not source:
+            continue
+        if source.startswith("data:image"):
+            header, b64_data = source.split(",", 1)
+            content_type = (
+                header.split(";")[0].split(":")[1] if ":" in header else "image/png"
+            )
+            image_bytes = base64.b64decode(b64_data)
+        else:
+            download_url = source
+            if download_url.lower().startswith("https://"):
+                download_url = "http://" + download_url[len("https://") :]
+            response = await client.get(download_url)
+            response.raise_for_status()
+            content_type = response.headers.get("Content-Type", "image/png")
+            image_bytes = response.content
+        ext = (
+            content_type.split("/", 1)[1].split(";", 1)[0]
+            if "/" in content_type
+            else "png"
+        )
+        files.append(("image[]", (f"image-{index}.{ext}", image_bytes, content_type)))
+    return files
+
+
+def _first_openai_image_result(result: dict[str, Any]) -> Optional[str]:
+    data = result.get("data") or []
+    if not data:
+        return None
+    first = data[0]
+    if first.get("b64_json"):
+        return f"data:image/png;base64,{first['b64_json']}"
+    return first.get("url")
 
 
 async def generate_with_stability(
