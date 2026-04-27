@@ -6,6 +6,7 @@ import { storyAPI, episodeAPI, scriptAPI } from "@/utils/api/endpoints";
 import type { Story, Episode, Script } from "@/utils/api/types";
 import { useStoryEpisodeGeneration } from "@/hooks/useStoryEpisodeGeneration";
 import { useStoryReadiness } from "@/hooks/useStoryReadiness";
+import { episodeWorkspaceHref } from "@/utils/routes";
 
 export interface UseStoryDetailOptions {
   storyKey: string;
@@ -97,9 +98,9 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
 
   const navigateToStories = () => router.push("/stories");
   const navigateToEpisode = (businessIdOrId: string | number) =>
-    router.push(`/episodes/${businessIdOrId}/workspace`);
+    router.push(episodeWorkspaceHref(businessIdOrId));
   const navigateToStoryboard = (businessIdOrId: string | number) =>
-    router.push(`/episodes/${businessIdOrId}/workspace?tab=storyboard`);
+    router.push(episodeWorkspaceHref(businessIdOrId, { tab: "storyboard" }));
   const navigateToScript = (scriptIdOrBiz: string | number) =>
     router.push(`/scripts/${scriptIdOrBiz}`);
 

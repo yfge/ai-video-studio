@@ -7,6 +7,7 @@ import {
   type Script,
   type ScriptGenerationRequest,
 } from "@/utils/api/types";
+import { episodeWorkspaceHref } from "@/utils/routes";
 import { sortScriptsNewestFirst } from "./scriptSort";
 import { useEpisodeWorkspaceScriptActions } from "./useEpisodeWorkspaceScriptActions";
 
@@ -70,17 +71,11 @@ export function useEpisodeWorkspaceController(args: {
       scriptId: number | null,
       extraParams?: Record<string, string>,
     ) => {
-      const params = new URLSearchParams();
-      params.set("tab", tab);
-      if (scriptId) {
-        params.set("scriptId", String(scriptId));
-      }
-      if (extraParams) {
-        Object.entries(extraParams).forEach(([key, value]) => {
-          params.set(key, value);
-        });
-      }
-      return `/episodes/${episodeKey}/workspace?${params.toString()}`;
+      return episodeWorkspaceHref(episodeKey, {
+        tab,
+        scriptId,
+        extraParams,
+      });
     },
     [episodeKey],
   );
@@ -187,8 +182,10 @@ export function useEpisodeWorkspaceController(args: {
   }, [buildUrl, router, selectedScriptId]);
 
   const handleGenerateStoryboard = useCallback(() => {
-    router.push(`/episodes/${episodeKey}/storyboard`);
-  }, [episodeKey, router]);
+    router.replace(buildUrl("storyboard", selectedScriptId), {
+      scroll: false,
+    });
+  }, [buildUrl, router, selectedScriptId]);
 
   return {
     activeTab,

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { episodeWorkspaceHref } from "@/utils/routes";
 
 type EpisodePageProps = {
   params: Promise<{ id: string }>;
@@ -24,13 +25,19 @@ export default async function EpisodePage({
       ? resolvedSearchParams.scriptId
       : undefined;
 
-  const outParams = new URLSearchParams();
-  outParams.set(
-    "tab",
-    tabFromQuery || (action === "generate-timeline" ? "timeline" : "overview"),
+  redirect(
+    episodeWorkspaceHref(episodeId, {
+      tab:
+        tabFromQuery === "script" ||
+        tabFromQuery === "timeline" ||
+        tabFromQuery === "storyboard" ||
+        tabFromQuery === "characters"
+          ? tabFromQuery
+          : action === "generate-timeline"
+          ? "timeline"
+          : "overview",
+      scriptId,
+      action,
+    }),
   );
-  if (scriptId) outParams.set("scriptId", scriptId);
-  if (action) outParams.set("action", action);
-
-  redirect(`/episodes/${episodeId}/workspace?${outParams.toString()}`);
 }

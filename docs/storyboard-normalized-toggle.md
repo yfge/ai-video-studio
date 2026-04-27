@@ -2,12 +2,12 @@
 
 The storyboard page always loads normalized scenes/shots when available. The old toggle has been removed; if normalized data is missing, the page falls back to legacy storyboard JSON.
 
-Page: `ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx`
+Page: `ai-pic-frontend/src/app/episodes/[id]/workspace/page.tsx?tab=storyboard`
 
 Behavior
 
 - Fetches normalized scenes for the active script via `storyStructureAPI.getNormalizedScenes`.
-- Scene navigation prefers normalized scenes; if none exist, it falls back to scene numbers in storyboard frames.
+- The workspace storyboard support view prefers normalized scenes; if none exist, it falls back to scene numbers in storyboard frames.
 - Selecting a normalized scene loads:
   - shots via `storyStructureAPI.getNormalizedSceneShots`
   - beats via `storyStructureAPI.getNormalizedSceneBeats` (timeline summary + frame timing hints)

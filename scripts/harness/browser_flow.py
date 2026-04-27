@@ -203,8 +203,11 @@ def main() -> int:
         "scenario_screenshot": str(screenshot.relative_to(run_dir)),
     }
     write_json(run_dir / "browser_flow.json", evidence)
+    write_json(run_dir / f"browser_flow.{args.scenario}.json", evidence)
     write_json(run_dir / "console.json", evidence["console_evidence"])
+    write_json(run_dir / f"console.{args.scenario}.json", evidence["console_evidence"])
     write_json(run_dir / "network.json", evidence["network_evidence"])
+    write_json(run_dir / f"network.{args.scenario}.json", evidence["network_evidence"])
     update_summary(
         run_dir,
         browser_scenario=args.scenario,

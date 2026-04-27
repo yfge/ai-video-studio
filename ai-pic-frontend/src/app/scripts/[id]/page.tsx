@@ -10,6 +10,7 @@ import {
   ScriptTrafficTab,
 } from "@/components/features";
 import { useScriptDetail, TABS } from "@/hooks/useScriptDetail";
+import { episodeWorkspaceHref } from "@/utils/routes";
 
 export default function ScriptDetailPage() {
   const router = useRouter();
@@ -83,16 +84,18 @@ export default function ScriptDetailPage() {
           onExport={handleExport}
           onNavigateToEpisode={() =>
             router.push(
-              `/episodes/${
-                script.episode_business_id || script.episode_id
-              }/workspace?tab=script&scriptId=${script.id}`,
+              episodeWorkspaceHref(script.episode_business_id || script.episode_id, {
+                tab: "script",
+                scriptId: script.id,
+              }),
             )
           }
           onNavigateToStoryboard={() =>
             router.push(
-              `/episodes/${
-                script.episode_business_id || script.episode_id
-              }/storyboard`,
+              episodeWorkspaceHref(script.episode_business_id || script.episode_id, {
+                tab: "storyboard",
+                scriptId: script.id,
+              }),
             )
           }
         />
@@ -102,9 +105,10 @@ export default function ScriptDetailPage() {
           onGoToSceneStructure={goToSceneStructure}
           onGoToStoryboard={() =>
             router.push(
-              `/episodes/${
-                script.episode_business_id || script.episode_id
-              }/storyboard`,
+              episodeWorkspaceHref(script.episode_business_id || script.episode_id, {
+                tab: "storyboard",
+                scriptId: script.id,
+              }),
             )
           }
         />

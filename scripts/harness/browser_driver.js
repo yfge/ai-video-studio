@@ -89,7 +89,10 @@ function summarizeNode(node) {
 }
 
 async function collectDomSnapshot(page) {
-  const accessibility = await page.accessibility.snapshot({ interestingOnly: true });
+  const accessibility =
+    typeof page.accessibility?.snapshot === "function"
+      ? await page.accessibility.snapshot({ interestingOnly: true })
+      : null;
   const dom = await page.evaluate(() => {
     const text = (value) => (value || "").replace(/\s+/g, " ").trim();
     return {
@@ -136,10 +139,40 @@ async function loginIfNeeded(page, config) {
   });
   await page.fill('input[name="username"]', config.username);
   await page.fill('input[name="password"]', config.password);
-  await Promise.all([
-    page.waitForLoadState("networkidle"),
-    page.click('button[type="submit"]'),
-  ]);
+  const loginResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/v1/auth/login") &&
+      response.request().method() === "POST",
+    { timeout: 10000 },
+  );
+  await page.click('button[type="submit"]');
+  const response = await loginResponse;
+  if (!response.ok()) {
+    throw new Error(`Login failed with status ${response.status()}`);
+  }
+  await page.waitForFunction(() => Boolean(localStorage.getItem("auth_token")), null, {
+    timeout: 10000,
+  });
+  await page.waitForLoadState("networkidle");
+}
+
+async function stopLaunchedChrome(launched) {
+  if (!launched) {
+    return;
+  }
+  const waitForExit = new Promise((resolve) => {
+    launched.child.once("exit", resolve);
+    setTimeout(resolve, 1500);
+  });
+  if (!launched.child.killed) {
+    launched.child.kill("SIGTERM");
+  }
+  await waitForExit;
+  try {
+    fs.rmSync(launched.userDataDir, { recursive: true, force: true, maxRetries: 3 });
+  } catch (_) {
+    // A delayed Chrome write should not turn a completed validation into a failure.
+  }
 }
 
 async function openWithEngine(engine, config) {
@@ -227,10 +260,7 @@ async function openWithEngine(engine, config) {
     } catch (_) {
       // ignore
     }
-    if (launched) {
-      launched.child.kill("SIGTERM");
-      fs.rmSync(launched.userDataDir, { recursive: true, force: true });
-    }
+    await stopLaunchedChrome(launched);
   }
 }
 

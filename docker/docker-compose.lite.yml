@@ -20,6 +20,10 @@ services:
       dockerfile: ../docker/Dockerfile.frontend.dev
     env_file:
       - .env.lite
+    environment:
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:8089}"
+      NEXT_PUBLIC_HARNESS_RUN_ID: "${NEXT_PUBLIC_HARNESS_RUN_ID:-local-harness}"
+      NEXT_PUBLIC_USE_NORMALIZED_BY_DEFAULT: "${NEXT_PUBLIC_USE_NORMALIZED_BY_DEFAULT:-false}"
     working_dir: /app/ai-pic-frontend
     command:
       ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]

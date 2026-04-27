@@ -22,7 +22,6 @@ ALLOWED_OVERSIZE = {
     "ai-pic-backend/app/services/ai_service_manager.py": 1510,
     "ai-pic-backend/app/services/script_agent.py": 1479,
     "ai-pic-backend/app/services/voice_catalog.py": 1171,
-    "ai-pic-frontend/src/app/episodes/[id]/storyboard/page.tsx": 3466,
     "ai-pic-frontend/src/components/shared/modals/UserDetailsModal.tsx": 643,
     "ai-pic-frontend/src/app/admin/users/page.tsx": 571,
 }

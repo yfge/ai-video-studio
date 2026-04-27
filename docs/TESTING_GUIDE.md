@@ -115,7 +115,7 @@
 
 > 目标：分镜生成统一走 LangGraph“规划 → 生成 → 校验/修复”管线，并在任务页可审计 plan/frames/reasoning_trace。
 
-1. 登录后打开分镜页：`http://localhost:8089/episodes/124/storyboard`。
+1. 登录后打开分镜页：`http://localhost:8089/episodes/124/workspace?tab=storyboard`。
 2. 选择一个已有剧本，点击「生成分镜」（默认走 `generate-async` + `use_plan=true`）。
 3. 等待任务完成后刷新分镜页：
    - 分镜应落库到 `script.extra_metadata.storyboard`，且 `meta.reasoning_trace` 不为空。
@@ -128,7 +128,7 @@
 
 > 目标：在不显式提交 `reference_images` 的情况下，后端能自动把 `scene.environment_id` 的环境参考图、以及 `shot.character_ids` 对应的虚拟 IP 图像注入到分镜图像生成中，保证人物与场景一致性；并在前端可直观看到「已绑定参考图：N 张」。
 
-1. 登录后打开分镜页：`http://localhost:8089/episodes/124/storyboard`。
+1. 登录后打开分镜页：`http://localhost:8089/episodes/124/workspace?tab=storyboard`。
 2. 确认页面已加载出场景/分镜帧（如无数据，可先在页面中执行一次「生成分镜」）。
 3. 绑定环境：
    - 在「绑定环境」区域选择一个已有参考图的环境（例如 `会议室`），点击「保存」。

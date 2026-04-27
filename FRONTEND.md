@@ -20,6 +20,6 @@
 
 ## Active Debt
 
-- `src/app/episodes/[id]/storyboard/page.tsx` remains far above the target size.
+- Storyboard now lives under the episode workspace as a support view; keep new entry points on `Episode -> Timeline` first.
 - Some shared modals still exceed the preferred size limit.
 - Browser scenario coverage is foundational, not complete; see `QUALITY_SCORE.md`.

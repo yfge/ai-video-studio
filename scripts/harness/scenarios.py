@@ -43,10 +43,17 @@ BROWSER_SCENARIOS: dict[str, BrowserScenario] = {
     ),
     "episode_timeline_smoke": BrowserScenario(
         name="episode_timeline_smoke",
-        path="/episodes/{episode_id}/storyboard",
+        path="/episodes/{episode_id}/workspace?tab=timeline",
+        requires_auth=True,
+        required_text="时间轴",
+        notes="Open the canonical episode workspace timeline tab and capture readiness.",
+    ),
+    "episode_workspace_storyboard_smoke": BrowserScenario(
+        name="episode_workspace_storyboard_smoke",
+        path="/episodes/{episode_id}/workspace?tab=storyboard",
         requires_auth=True,
         required_text="分镜",
-        notes="Open the episode storyboard/timeline-adjacent workspace and capture readiness.",
+        notes="Open the workspace storyboard support view; the legacy direct storyboard route is intentionally not used.",
     ),
     "task_details_trace_smoke": BrowserScenario(
         name="task_details_trace_smoke",
