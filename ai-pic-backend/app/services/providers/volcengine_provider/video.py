@@ -1,118 +1,29 @@
-"""
-Volcengine video generation module.
-
-Contains video generation (Seedance) functionality with async polling.
-"""
+"""Volcengine video generation module."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import re
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
-
-if TYPE_CHECKING:
-    pass
+from .video_request import (
+    _build_prompt_with_flags,
+    _normalize_model,
+    build_video_request,
+)
+from .video_response import extract_error, extract_output_urls, extract_task_id
 
 logger = logging.getLogger(__name__)
 
-
-def _contains_flag(text: str, flag: str) -> bool:
-    """Check if text contains a specific flag."""
-    return re.search(rf"(^|\\s){re.escape(flag)}(\\s|$)", text) is not None
-
-
-def _normalize_resolution_flag(value: Optional[str]) -> Optional[str]:
-    """Normalize resolution value to API format."""
-    if not value:
-        return None
-    v = str(value).strip().lower()
-    if v in {"480p", "720p", "1080p"}:
-        return v
-    # Handle common WxH inputs (e.g., 1280x720 / 1920x1080)
-    if "1080" in v or "1088" in v:
-        return "1080p"
-    if "720" in v:
-        return "720p"
-    if "480" in v:
-        return "480p"
-    return None
-
-
-def _normalize_model(model: Optional[str], has_image: bool) -> str:
-    """Normalize model name to actual Ark model ID."""
-    ark_model = (model or "").strip() or "doubao-seedance-1-0-pro-250528"
-    normalized = ark_model.lower()
-
-    if normalized.startswith("volcengine-video"):
-        return "doubao-seedance-1-0-pro-250528"
-
-    # Handle Seedream image-to-video aliases
-    if normalized.startswith("seedream-i2v"):
-        if normalized in {"seedream-i2v-fast", "seedream-i2v-pro-fast"}:
-            return "doubao-seedance-1-0-pro-fast-251015"
-        elif normalized in {"seedream-i2v-lite"}:
-            return "doubao-seedance-1-0-lite-i2v-250428"
-        else:
-            return "doubao-seedance-1-0-pro-250528"
-
-    return ark_model
-
-
-def _build_prompt_with_flags(
-    prompt: Optional[str],
-    resolution: Optional[str],
-    ratio: Optional[str],
-    duration: int,
-    fps: int,
-    watermark: Optional[bool],
-    seed: Optional[int],
-    camera_fixed: Optional[bool],
-) -> tuple[str, int, int, Optional[str], Optional[str]]:
-    """Build prompt with Ark parameter flags."""
-    base_prompt = (prompt or "").strip() or "生成一段符合描述的视频"
-    flags: list[str] = []
-
-    rs = _normalize_resolution_flag(resolution)
-    if rs and not _contains_flag(base_prompt, "--rs"):
-        flags.append(f"--rs {rs}")
-
-    rt = (ratio or "").strip()
-    if rt and not (
-        _contains_flag(base_prompt, "--rt") or _contains_flag(base_prompt, "--ratio")
-    ):
-        flags.append(f"--rt {rt}")
-
-    # Duration: 2~12 seconds per docs
-    dur = int(duration or 5)
-    dur = max(2, min(dur, 12))
-    if not _contains_flag(base_prompt, "--dur"):
-        flags.append(f"--dur {dur}")
-
-    fps_int = int(fps or 24)
-    if fps_int != 24:
-        fps_int = 24
-    if not _contains_flag(base_prompt, "--fps"):
-        flags.append(f"--fps {fps_int}")
-
-    if watermark is not None and not _contains_flag(base_prompt, "--wm"):
-        flags.append(f"--wm {'true' if watermark else 'false'}")
-
-    if seed is not None and not _contains_flag(base_prompt, "--seed"):
-        flags.append(f"--seed {int(seed)}")
-
-    if camera_fixed is not None and not _contains_flag(base_prompt, "--cf"):
-        flags.append(f"--cf {'true' if camera_fixed else 'false'}")
-
-    final_prompt = base_prompt
-    if flags:
-        final_prompt = f"{base_prompt} {' '.join(flags)}"
-
-    return final_prompt, dur, fps_int, rs or resolution, rt or None
+__all__ = [
+    "_build_prompt_with_flags",
+    "_normalize_model",
+    "generate_video",
+    "poll_task_status",
+]
 
 
 async def poll_task_status(
@@ -122,10 +33,7 @@ async def poll_task_status(
     max_attempts: int = 60,
     delay: int = 3,
 ) -> Dict[str, Any]:
-    """Poll Volcengine content generation task status.
-
-    Returns result dict on success; raises RuntimeError on failure/timeout.
-    """
+    """Poll Volcengine content generation task status."""
     last_error: str | None = None
 
     for attempt in range(max_attempts):
@@ -134,7 +42,6 @@ async def poll_task_status(
                 f"{base_url}/contents/generations/tasks/{task_id}",
             )
             response.raise_for_status()
-
             data = response.json() if response.content else {}
             if not isinstance(data, dict):
                 raise RuntimeError(
@@ -142,40 +49,32 @@ async def poll_task_status(
                 )
 
             status = str(data.get("status") or "").lower()
-
             if status == "succeeded":
                 return data
-            if status in {"failed", "canceled", "cancelled"}:
-                err_detail = data.get("error", {})
-                err_msg = (
-                    err_detail.get("message", "")
-                    if isinstance(err_detail, dict)
-                    else str(err_detail)
-                ) or f"任务状态: {status}"
+            if status in {"failed", "canceled", "cancelled", "expired"}:
+                err_msg = extract_error(data) or f"任务状态: {status}"
                 raise RuntimeError(f"火山引擎任务失败: {err_msg}")
             if status in {"queued", "running", "processing", "pending"}:
                 await asyncio.sleep(delay)
                 continue
 
-            # Unknown status
             logger.warning("火山引擎任务 %s 未知状态: %s", task_id, status)
             raise RuntimeError(f"火山引擎任务未知状态: {status}")
-
         except RuntimeError:
             raise
-        except Exception as e:
-            last_error = str(e)
+        except Exception as exc:
+            last_error = str(exc)
             logger.warning(
                 "轮询火山引擎任务状态失败 (尝试 %d/%d): %s",
                 attempt + 1,
                 max_attempts,
-                e,
+                exc,
             )
             await asyncio.sleep(delay)
 
+    suffix = f", 最后错误: {last_error}" if last_error else ""
     raise RuntimeError(
-        f"火山引擎任务 {task_id} 轮询超时 ({max_attempts * delay}s)"
-        + (f", 最后错误: {last_error}" if last_error else "")
+        f"火山引擎任务 {task_id} 轮询超时 ({max_attempts * delay}s){suffix}"
     )
 
 
@@ -197,58 +96,28 @@ async def generate_video(
     service_tier: Optional[str] = None,
     execution_expires_after: Optional[int] = None,
     return_last_frame: Optional[bool] = None,
-    format_error: callable = str,
-    **kwargs,
+    format_error: Callable = str,
+    **kwargs: Any,
 ) -> AIResponse:
-    """Generate video using Volcengine Ark Video Generation API (Seedance)."""
+    """Generate video using Volcengine Ark Video Generation API."""
     try:
-        ark_model = _normalize_model(model, image_url is not None)
-
-        final_prompt, dur, fps_int, rs, rt = _build_prompt_with_flags(
-            prompt,
-            resolution,
-            ratio,
-            duration,
-            fps,
-            watermark,
-            seed,
-            camera_fixed,
+        ark_model, model_type, request_data, resolved = build_video_request(
+            prompt=prompt,
+            image_url=image_url,
+            end_image_url=end_image_url,
+            model=model,
+            duration=duration,
+            fps=fps,
+            resolution=resolution,
+            ratio=ratio,
+            watermark=watermark,
+            seed=seed,
+            camera_fixed=camera_fixed,
+            service_tier=service_tier,
+            execution_expires_after=execution_expires_after,
+            return_last_frame=return_last_frame,
+            extra_kwargs=kwargs,
         )
-
-        content: list[Dict[str, Any]] = [
-            {"type": "text", "text": final_prompt},
-        ]
-        if image_url:
-            content.append(
-                {
-                    "type": "image_url",
-                    "image_url": {"url": image_url},
-                    "role": "first_frame",
-                }
-            )
-        if end_image_url:
-            content.append(
-                {
-                    "type": "image_url",
-                    "image_url": {"url": end_image_url},
-                    "role": "last_frame",
-                }
-            )
-
-        request_data: Dict[str, Any] = {"model": ark_model, "content": content}
-        if service_tier:
-            request_data["service_tier"] = service_tier
-        if execution_expires_after is not None:
-            request_data["execution_expires_after"] = int(execution_expires_after)
-        if return_last_frame is not None:
-            request_data["return_last_frame"] = bool(return_last_frame)
-
-        # Allow passthrough of future parameters (don't override existing fields)
-        for key, value in (kwargs or {}).items():
-            if key in request_data:
-                continue
-            request_data[key] = value
-
         create_resp = await client.post(
             f"{base_url}/contents/generations/tasks",
             json=request_data,
@@ -256,125 +125,80 @@ async def generate_video(
         create_resp.raise_for_status()
         create_data = create_resp.json() if create_resp.content else {}
 
-        if isinstance(create_data, dict) and create_data.get("error"):
-            err = create_data.get("error") or {}
-            return AIResponse(
-                success=False,
-                error=f"火山引擎视频生成错误: {err.get('message') or err.get('code') or 'Unknown error'}",
-                provider=provider_name,
-                model=ark_model,
-                task_type=AITaskType.VIDEO_GENERATION,
-                model_type=(
-                    AIModelType.IMAGE_TO_VIDEO
-                    if image_url
-                    else AIModelType.TEXT_TO_VIDEO
-                ),
+        error_message = extract_error(create_data)
+        if error_message:
+            return _failure_response(
+                f"火山引擎视频生成错误: {error_message}",
+                provider_name,
+                ark_model,
+                model_type,
             )
 
-        # Extract task ID from various response formats
-        task_id = (
-            create_data.get("id") if isinstance(create_data, dict) else None
-        ) or (create_data.get("task_id") if isinstance(create_data, dict) else None)
-        if not task_id and isinstance(create_data, dict):
-            nested = create_data.get("data")
-            if isinstance(nested, dict):
-                task_id = nested.get("id") or nested.get("task_id")
-
+        task_id = extract_task_id(create_data)
         if not task_id:
-            return AIResponse(
-                success=False,
-                error="火山引擎视频生成响应缺少任务ID",
-                provider=provider_name,
-                model=ark_model,
-                task_type=AITaskType.VIDEO_GENERATION,
-                model_type=(
-                    AIModelType.IMAGE_TO_VIDEO
-                    if image_url
-                    else AIModelType.TEXT_TO_VIDEO
-                ),
+            return _failure_response(
+                "火山引擎视频生成响应缺少任务ID",
+                provider_name,
+                ark_model,
+                model_type,
                 metadata={"raw": create_data},
             )
 
-        poll_attempts = 600 if image_url else 120  # 30 min i2v, 6 min t2v
-        # poll_task_status raises RuntimeError on failure/timeout
         result = await poll_task_status(
             client,
             base_url,
-            str(task_id),
-            max_attempts=poll_attempts,
+            task_id,
+            max_attempts=(600 if model_type == AIModelType.IMAGE_TO_VIDEO else 120),
             delay=3,
         )
-
-        content_out = result.get("content") or {}
-        video_url = (
-            content_out.get("video_url")
-            or content_out.get("videoUrl")
-            or content_out.get("url")
-            or result.get("video_url")
-            or result.get("videoUrl")
-            or result.get("url")
-        )
-        thumbnail_url = (
-            content_out.get("thumbnail_url")
-            or content_out.get("cover_image_url")
-            or content_out.get("cover_url")
-            or content_out.get("poster_url")
-        )
-        last_frame_url = content_out.get("last_frame_url") or content_out.get(
-            "lastFrameUrl"
-        )
-
-        if not video_url:
-            return AIResponse(
-                success=False,
-                error="火山引擎视频生成成功但未返回视频URL",
-                provider=provider_name,
-                model=ark_model,
-                task_type=AITaskType.VIDEO_GENERATION,
-                model_type=(
-                    AIModelType.IMAGE_TO_VIDEO
-                    if image_url
-                    else AIModelType.TEXT_TO_VIDEO
-                ),
+        urls = extract_output_urls(result)
+        if not urls.get("video_url"):
+            return _failure_response(
+                "火山引擎视频生成成功但未返回视频URL",
+                provider_name,
+                ark_model,
+                model_type,
                 metadata={"task_id": task_id, "raw": result},
             )
 
         return AIResponse(
             success=True,
-            data={
-                "video_url": video_url,
-                "thumbnail_url": thumbnail_url,
-                "duration": dur,
-                "last_frame_url": last_frame_url,
-            },
+            data={**urls, "duration": resolved["duration"]},
             provider=provider_name,
             model=ark_model,
             task_type=AITaskType.VIDEO_GENERATION,
-            model_type=(
-                AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
-            ),
+            model_type=model_type,
             metadata={
                 "task_id": task_id,
-                "prompt": final_prompt,
-                "duration": dur,
-                "fps": fps_int,
-                "resolution": rs or resolution,
-                "ratio": rt,
+                "prompt": request_data["content"][0]["text"],
                 "watermark": watermark,
                 "seed": seed,
-                "camera_fixed": camera_fixed,
                 "service_tier": service_tier,
+                **resolved,
             },
         )
-
-    except Exception as e:
-        return AIResponse(
-            success=False,
-            error=format_error(e),
-            provider=provider_name,
-            model=(model or "doubao-seedance-1-0-pro-250528"),
-            task_type=AITaskType.VIDEO_GENERATION,
-            model_type=(
-                AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
-            ),
+    except Exception as exc:
+        return _failure_response(
+            format_error(exc),
+            provider_name,
+            model or _normalize_model(None),
+            (AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO),
         )
+
+
+def _failure_response(
+    message: str,
+    provider_name: str,
+    model: str,
+    model_type: AIModelType,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> AIResponse:
+    return AIResponse(
+        success=False,
+        error=message,
+        provider=provider_name,
+        model=model,
+        task_type=AITaskType.VIDEO_GENERATION,
+        model_type=model_type,
+        metadata=metadata or {},
+    )
