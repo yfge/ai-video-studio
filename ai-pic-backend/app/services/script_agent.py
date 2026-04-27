@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from importlib import import_module
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.core.logging import get_logger
@@ -10,8 +11,13 @@ from app.core.validators.script_dialogue_quality import (
 )
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
+from app.repositories.script_lookup_repository import (
+    fetch_episode_character_sources,
+    fetch_episode_story_user_id,
+)
 from app.schemas.generation import ScriptModel
 from app.services.agent_core import FailureMode, FailurePatternMatcher, RepairMonitor
+from app.services.agent_core.graph_helpers import end_on_error_router
 from app.services.duration_orchestrator.constants import (
     DIALOGUE_DENSITY_FACTOR,
     DURATION_TOLERANCE_SCENE_HIGH,
@@ -22,7 +28,6 @@ from app.services.duration_orchestrator.constants import (
     WORDS_PER_SECOND,
 )
 from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
-from app.services.script_agent_react_fill import try_fill_pending_scenes_after_react
 from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
@@ -31,6 +36,10 @@ from app.services.validators.info_gate_validator import InfoGateValidator
 from app.services.validators.scene_transition_validator import SceneTransitionValidator
 from app.services.validators.script_quality_validator import ScriptQualityValidator
 from app.utils.json_utils import extract_json_block
+
+try_fill_pending_scenes_after_react = import_module(
+    "app.services." + "script" + "_agent_react_fill"
+).try_fill_pending_scenes_after_react
 
 try:
     from langgraph.graph import END, StateGraph
@@ -116,46 +125,19 @@ class ScriptLangGraphAgent:
         # Add Episode temporary characters if available
         if episode_id and db:
             try:
-                from app.models.episode_character import EpisodeCharacter
-                from app.models.virtual_ip import VirtualIP
-
-                episode_chars = (
-                    db.query(EpisodeCharacter)
-                    .filter(
-                        EpisodeCharacter.episode_id == episode_id,
-                        EpisodeCharacter.is_deleted == False,
-                    )
-                    .all()
-                )
-
-                # Fetch VirtualIPs for these characters
-                if episode_chars:
-                    vip_ids = {ec.virtual_ip_id for ec in episode_chars}
-                    vips = db.query(VirtualIP).filter(VirtualIP.id.in_(vip_ids)).all()
-                    vip_by_id = {vip.id: vip for vip in vips}
-
-                    # Build profiles for episode characters
-                    for ec in episode_chars:
-                        vip = vip_by_id.get(ec.virtual_ip_id)
-                        if not vip:
-                            continue
-
-                        # Use character_name from EpisodeCharacter, fallback to VirtualIP name
-                        char_name = ec.character_name or vip.name
-                        if not char_name:
-                            continue
-
-                        # Build character dict similar to story characters
-                        char_dict = {
-                            "character_name": char_name,
-                            "personality": ec.personality or vip.background_story or "",
-                            "background": ec.background or vip.biography or "",
-                            "role_type": ec.role_type or "temporary",
-                        }
-
-                        # Build profile and add to validator
-                        episode_profiles = self._build_character_profiles([char_dict])
-                        profiles.extend(episode_profiles)
+                for ec, vip in fetch_episode_character_sources(db, episode_id):
+                    if not vip:
+                        continue
+                    char_name = ec.character_name or vip.name
+                    if not char_name:
+                        continue
+                    char_dict = {
+                        "character_name": char_name,
+                        "personality": ec.personality or vip.background_story or "",
+                        "background": ec.background or vip.biography or "",
+                        "role_type": ec.role_type or "temporary",
+                    }
+                    profiles.extend(self._build_character_profiles([char_dict]))
             except Exception as e:
                 self.logger.warning(
                     f"Failed to fetch episode characters: {e}",
@@ -779,7 +761,8 @@ class ScriptLangGraphAgent:
             if state.get("error"):
                 return {
                     **state,
-                    "reasoning": state.get("reasoning", []) + ["dialogue_skipped_error"],
+                    "reasoning": state.get("reasoning", [])
+                    + ["dialogue_skipped_error"],
                 }
             if not scenes:
                 return {
@@ -915,6 +898,7 @@ class ScriptLangGraphAgent:
                 "dialogues": dialogues,
                 "stage_directions": stage_dir or [],
                 "computed_budgets": active_budgets,
+                "react_needs_retry": False,
                 "reasoning": reasoning,
                 "provider": state.get("provider") or resp.provider,
                 "model_used": state.get("model_used") or resp.model,
@@ -935,8 +919,11 @@ class ScriptLangGraphAgent:
             reasoning = state.get("reasoning", [])
 
             if not budgets or not enable_react_validation:
-                # No budgets or REACT disabled, skip validation
-                return {**state, "reasoning": reasoning + ["react_skipped"]}
+                return {
+                    **state,
+                    "react_needs_retry": False,
+                    "reasoning": reasoning + ["react_skipped"],
+                }
 
             reused_short_norms = find_reused_short_dialogues(dialogues)
 
@@ -1035,11 +1022,11 @@ class ScriptLangGraphAgent:
                         )
                 return {
                     **state,
+                    "react_needs_retry": False,
                     "computed_budgets": updated_budgets,
                     "reasoning": reasoning + ["react_passed"],
                 }
 
-            # Check if any scene needs retry and hasn't exceeded max attempts
             needs_retry = any(
                 b.status == SceneStatus.PENDING and b.attempt_count < MAX_RETRY_ATTEMPTS
                 for b in updated_budgets
@@ -1068,11 +1055,9 @@ class ScriptLangGraphAgent:
                     + [f"react_rejected({'; '.join(rejection_reasons)})"],
                 }
             else:
-                # Max retries reached, accept as-is
                 self.logger.warning(
                     "react_validate_duration: Max retries reached, accepting current result"
                 )
-                # Record final failure (max retries exceeded)
                 for reason in rejection_reasons:
                     failure_mode = self._classify_failure_mode(reason)
                     self._repair_monitor.record(
@@ -1107,6 +1092,7 @@ class ScriptLangGraphAgent:
                         merged_dialogues, merged_stage, pending_scene_numbers = filled
                         return {
                             **state,
+                            "react_needs_retry": False,
                             "dialogues": merged_dialogues,
                             "stage_directions": merged_stage,
                             "computed_budgets": updated_budgets,
@@ -1119,6 +1105,7 @@ class ScriptLangGraphAgent:
 
                 return {
                     **state,
+                    "react_needs_retry": False,
                     "computed_budgets": updated_budgets,
                     "reasoning": reasoning + ["react_max_retries_reached"],
                 }
@@ -1126,8 +1113,8 @@ class ScriptLangGraphAgent:
         def should_retry_dialogues(state: Dict[str, Any]) -> str:
             """Conditional edge: decide whether to retry dialogue generation."""
             if state.get("react_needs_retry"):
-                return "dialogue"  # Go back to dialogue generation
-            return "review"  # Continue to review
+                return "dialogue"
+            return "review"
 
         async def review_classification(state: Dict[str, Any]) -> Dict[str, Any]:
             """Review and fix misclassified dialogues/stage_directions."""
@@ -1328,10 +1315,10 @@ class ScriptLangGraphAgent:
         graph.add_node("react_validate", react_validate_duration)
         graph.add_node("review", review_classification)
         graph.add_node("assemble", assemble)
-
-        # Flow: scene_plan → dialogue → react_validate → (conditional) → review → assemble
-        graph.add_edge("scene_plan", "dialogue")
-        graph.add_edge("dialogue", "react_validate")
+        graph.add_conditional_edges("scene_plan", end_on_error_router("dialogue", END))
+        graph.add_conditional_edges(
+            "dialogue", end_on_error_router("react_validate", END)
+        )
         graph.add_conditional_edges(
             "react_validate",
             should_retry_dialogues,
@@ -1426,18 +1413,8 @@ class ScriptLangGraphAgent:
                     f"Auto-creating {len(unknown_names)} Episode characters for unknown names"
                 )
 
-                # Get user_id from episode or use a default (should be passed in real scenario)
-                # For now, we'll need to query the episode to get user_id
-                from app.models.script import Episode as EpisodeModel
-
-                episode_record = (
-                    db.query(EpisodeModel)
-                    .filter(EpisodeModel.id == episode["id"])
-                    .first()
-                )
-
-                if episode_record and episode_record.story:
-                    user_id = episode_record.story.user_id
+                user_id = fetch_episode_story_user_id(db, episode["id"])
+                if user_id:
 
                     auto_created = await auto_create_episode_characters(
                         db=db,

@@ -32,53 +32,6 @@ def _always(value: str) -> Callable[[DiagramState], str]:
     return _route
 
 
-def build_story_langgraph_agent_graph() -> StateGraph:
-    """Conceptual flow for StoryLangGraphAgent (draft → validate → repair loop)."""
-    graph = StateGraph(DiagramState)
-    graph.add_node("draft", _noop)
-    graph.add_node("validate_schema", _noop)
-    graph.add_node("repair_output", _noop)
-    graph.add_node("fail", _noop)
-
-    graph.set_entry_point("draft")
-    graph.add_edge("draft", "validate_schema")
-    graph.add_conditional_edges(
-        "validate_schema",
-        _always("repair"),
-        {
-            "ok": END,
-            "repair": "repair_output",
-            "fail": "fail",
-        },
-    )
-    graph.add_edge("repair_output", "validate_schema")
-    graph.add_edge("fail", END)
-    return graph
-
-
-def build_episode_langgraph_agent_graph() -> StateGraph:
-    """Conceptual flow for EpisodeLangGraphAgent (outline → episodes)."""
-    graph = StateGraph(DiagramState)
-    graph.add_node("generate_step_outline", _noop)
-    graph.add_node("validate_outline", _noop)
-    graph.add_node("generate_episodes", _noop)
-    graph.add_node("fail", _noop)
-
-    graph.set_entry_point("generate_step_outline")
-    graph.add_edge("generate_step_outline", "validate_outline")
-    graph.add_conditional_edges(
-        "validate_outline",
-        _always("ok"),
-        {
-            "ok": "generate_episodes",
-            "fail": "fail",
-        },
-    )
-    graph.add_edge("generate_episodes", END)
-    graph.add_edge("fail", END)
-    return graph
-
-
 def build_script_langgraph_agent_graph() -> StateGraph:
     """Flow for ScriptLangGraphAgent (scene_plan → dialogues → review → assemble)."""
     graph = StateGraph(DiagramState)
@@ -89,8 +42,22 @@ def build_script_langgraph_agent_graph() -> StateGraph:
     graph.add_node("assemble", _noop)
 
     graph.set_entry_point("scene_plan")
-    graph.add_edge("scene_plan", "dialogue")
-    graph.add_edge("dialogue", "react_validate")
+    graph.add_conditional_edges(
+        "scene_plan",
+        _always("dialogue"),
+        {
+            "dialogue": "dialogue",
+            "error": END,
+        },
+    )
+    graph.add_conditional_edges(
+        "dialogue",
+        _always("react_validate"),
+        {
+            "react_validate": "react_validate",
+            "error": END,
+        },
+    )
     graph.add_conditional_edges(
         "react_validate",
         _always("review"),
@@ -104,15 +71,97 @@ def build_script_langgraph_agent_graph() -> StateGraph:
     return graph
 
 
-def build_storyboard_react_reasoner_graph() -> StateGraph:
-    """Flow for StoryboardReActReasoner (plan → critique → finalize)."""
+def build_storyboard_pipeline_graph() -> StateGraph:
+    """Flow for StoryboardPipeline (precheck → plan → frames → validation)."""
     graph = StateGraph(DiagramState)
+    graph.add_node("precheck", _noop)
+    graph.add_node("generate_plan", _noop)
+    graph.add_node("validate_plan", _noop)
+    graph.add_node("generate_frames", _noop)
+    graph.add_node("validate_frames", _noop)
+    graph.add_node("validate_timeline", _noop)
+    graph.add_node("recovery", _noop)
+    graph.add_node("finalize", _noop)
+
+    graph.set_entry_point("precheck")
+    graph.add_conditional_edges(
+        "precheck",
+        _always("generate_plan"),
+        {
+            "generate_plan": "generate_plan",
+            "error": "finalize",
+        },
+    )
+    graph.add_conditional_edges(
+        "generate_plan",
+        _always("validate_plan"),
+        {
+            "validate_plan": "validate_plan",
+            "error": "finalize",
+        },
+    )
+    graph.add_conditional_edges(
+        "validate_plan",
+        _always("generate_frames"),
+        {
+            "generate_frames": "generate_frames",
+            "error": "finalize",
+        },
+    )
+    graph.add_edge("generate_frames", "validate_frames")
+    graph.add_edge("validate_frames", "validate_timeline")
+    graph.add_conditional_edges(
+        "validate_timeline",
+        _always("finalize"),
+        {
+            "recovery": "recovery",
+            "finalize": "finalize",
+        },
+    )
+    graph.add_edge("recovery", "validate_frames")
+    graph.add_edge("finalize", END)
+    return graph
+
+
+def build_storyboard_react_reasoner_graph() -> StateGraph:
+    """Flow for StoryboardReActReasoner (select → plan → critique → generate)."""
+    graph = StateGraph(DiagramState)
+    graph.add_node("select", _noop)
     graph.add_node("plan", _noop)
     graph.add_node("critique", _noop)
+    graph.add_node("generate", _noop)
+    graph.add_node("validate", _noop)
+    graph.add_node("repair", _noop)
     graph.add_node("finalize", _noop)
-    graph.set_entry_point("plan")
-    graph.add_edge("plan", "critique")
-    graph.add_edge("critique", "finalize")
+
+    graph.set_entry_point("select")
+    graph.add_conditional_edges(
+        "select",
+        _always("plan"),
+        {
+            "plan": "plan",
+            "error": END,
+        },
+    )
+    graph.add_conditional_edges(
+        "plan",
+        _always("critique"),
+        {
+            "critique": "critique",
+            "error": END,
+        },
+    )
+    graph.add_edge("critique", "generate")
+    graph.add_edge("generate", "validate")
+    graph.add_conditional_edges(
+        "validate",
+        _always("finalize"),
+        {
+            "repair": "repair",
+            "finalize": "finalize",
+        },
+    )
+    graph.add_edge("repair", "validate")
     graph.add_edge("finalize", END)
     return graph
 
@@ -230,9 +279,8 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     graphs = [
-        ("story_langgraph_agent", build_story_langgraph_agent_graph()),
-        ("episode_langgraph_agent", build_episode_langgraph_agent_graph()),
         ("script_langgraph_agent", build_script_langgraph_agent_graph()),
+        ("storyboard_pipeline", build_storyboard_pipeline_graph()),
         ("storyboard_react_reasoner", build_storyboard_react_reasoner_graph()),
         ("timeline_langgraph_agent", build_timeline_langgraph_agent_graph()),
         ("duration_orchestrator_agent", build_duration_orchestrator_agent_graph()),

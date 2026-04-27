@@ -126,30 +126,12 @@ npm run dev
 - 导出落盘：`uploads/exports/novels/`
 - 导出入库：`story_novel_exports`（关联 `tasks.id` / `stories.id`，正文存 `content_text`；下载接口在文件缺失时会回退读取数据库）
 
-## Agent 状态图（LangGraph）
+## Agent 状态图（真实 LangGraph）
 
-LangGraph 支持将状态机导出为 Mermaid/PNG。仓库内已为当前主要 Agent 生成状态图，便于理解流程与排查问题：
+LangGraph 支持将状态机导出为 Mermaid/PNG。仓库内只为实际构建 `StateGraph` 的生成链路生成状态图，便于理解流程与排查问题。`StoryLangGraphAgent` 和 `EpisodeLangGraphAgent` 当前是 structured repair loop，类名与 `generation_method` 值仅为兼容保留，不作为 LangGraph 图列出。
 
 - 生成脚本：`python scripts/generate_agent_graphs.py`
 - 输出目录：`docs/agent_graphs/`（`.png` + `.mmd`）
-
-<details>
-<summary><code>StoryLangGraphAgent</code>（故事大纲生成，概念流程）</summary>
-
-![StoryLangGraphAgent](docs/agent_graphs/story_langgraph_agent.png)
-
-源码：`docs/agent_graphs/story_langgraph_agent.mmd`
-
-</details>
-
-<details>
-<summary><code>EpisodeLangGraphAgent</code>（分集生成，概念流程）</summary>
-
-![EpisodeLangGraphAgent](docs/agent_graphs/episode_langgraph_agent.png)
-
-源码：`docs/agent_graphs/episode_langgraph_agent.mmd`
-
-</details>
 
 <details>
 <summary><code>ScriptLangGraphAgent</code>（剧本生成）</summary>
@@ -157,6 +139,15 @@ LangGraph 支持将状态机导出为 Mermaid/PNG。仓库内已为当前主要 
 ![ScriptLangGraphAgent](docs/agent_graphs/script_langgraph_agent.png)
 
 源码：`docs/agent_graphs/script_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>StoryboardPipeline</code>（显式分镜管线）</summary>
+
+![StoryboardPipeline](docs/agent_graphs/storyboard_pipeline.png)
+
+源码：`docs/agent_graphs/storyboard_pipeline.mmd`
 
 </details>
 
@@ -170,20 +161,20 @@ LangGraph 支持将状态机导出为 Mermaid/PNG。仓库内已为当前主要 
 </details>
 
 <details>
-<summary><code>TimelineLangGraphAgent</code>（对白节奏/间隔计算）</summary>
+<summary><code>TimelineLangGraphAgent</code>（legacy 对白节奏/间隔计算）</summary>
 
 ![TimelineLangGraphAgent](docs/agent_graphs/timeline_langgraph_agent.png)
 
-源码：`docs/agent_graphs/timeline_langgraph_agent.mmd`
+源码：`docs/agent_graphs/timeline_langgraph_agent.mmd`。主链路默认使用 `TimelineReactAgent`，该图保留用于兼容路径排查。
 
 </details>
 
 <details>
-<summary><code>DurationOrchestratorAgent</code>（端到端时长闭环验证）</summary>
+<summary><code>DurationOrchestratorAgent</code>（experimental 端到端时长闭环验证）</summary>
 
 ![DurationOrchestratorAgent](docs/agent_graphs/duration_orchestrator_agent.png)
 
-源码：`docs/agent_graphs/duration_orchestrator_agent.mmd`
+源码：`docs/agent_graphs/duration_orchestrator_agent.mmd`。当前按实验性时长编排链路记录，不列为默认主生产链路。
 
 </details>
 

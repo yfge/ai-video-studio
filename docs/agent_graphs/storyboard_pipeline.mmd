@@ -1,0 +1,32 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	precheck(precheck)
+	generate_plan(generate_plan)
+	validate_plan(validate_plan)
+	generate_frames(generate_frames)
+	validate_frames(validate_frames)
+	validate_timeline(validate_timeline)
+	recovery(recovery)
+	finalize(finalize)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> precheck;
+	generate_frames --> validate_frames;
+	generate_plan -. &nbsp;error&nbsp; .-> finalize;
+	generate_plan -.-> validate_plan;
+	precheck -. &nbsp;error&nbsp; .-> finalize;
+	precheck -.-> generate_plan;
+	recovery --> validate_frames;
+	validate_frames --> validate_timeline;
+	validate_plan -. &nbsp;error&nbsp; .-> finalize;
+	validate_plan -.-> generate_frames;
+	validate_timeline -.-> finalize;
+	validate_timeline -.-> recovery;
+	finalize --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

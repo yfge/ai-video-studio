@@ -5,13 +5,24 @@ config:
 ---
 graph TD;
 	__start__([<p>__start__</p>]):::first
+	select(select)
 	plan(plan)
 	critique(critique)
+	generate(generate)
+	validate(validate)
+	repair(repair)
 	finalize(finalize)
 	__end__([<p>__end__</p>]):::last
-	__start__ --> plan;
-	critique --> finalize;
-	plan --> critique;
+	__start__ --> select;
+	critique --> generate;
+	generate --> validate;
+	plan -. &nbsp;error&nbsp; .-> __end__;
+	plan -.-> critique;
+	repair --> validate;
+	select -. &nbsp;error&nbsp; .-> __end__;
+	select -.-> plan;
+	validate -.-> finalize;
+	validate -.-> repair;
 	finalize --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0

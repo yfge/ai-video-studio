@@ -86,30 +86,12 @@ Resolver implementation:
 - Output directory: `uploads/exports/novels/`
 - Persisted in DB: `story_novel_exports` (linked to `tasks.id` / `stories.id`, full text stored in `content_text`; download falls back to DB when the file is missing)
 
-## Agent state graphs (LangGraph)
+## Agent state graphs (real LangGraph)
 
-LangGraph can export state machines to Mermaid/PNG. This repo snapshots the current major agent flows as diagrams for easier onboarding and debugging:
+LangGraph can export state machines to Mermaid/PNG. This repo snapshots only generation paths that actually build a `StateGraph`. `StoryLangGraphAgent` and `EpisodeLangGraphAgent` are currently structured repair loops; their class names and `generation_method` values are kept for compatibility and are not listed as LangGraph diagrams here.
 
 - Generate diagrams: `python scripts/generate_agent_graphs.py`
 - Output directory: `docs/agent_graphs/` (`.png` + `.mmd`)
-
-<details>
-<summary><code>StoryLangGraphAgent</code> (conceptual story-outline flow)</summary>
-
-![StoryLangGraphAgent](docs/agent_graphs/story_langgraph_agent.png)
-
-Source: `docs/agent_graphs/story_langgraph_agent.mmd`
-
-</details>
-
-<details>
-<summary><code>EpisodeLangGraphAgent</code> (conceptual episode-generation flow)</summary>
-
-![EpisodeLangGraphAgent](docs/agent_graphs/episode_langgraph_agent.png)
-
-Source: `docs/agent_graphs/episode_langgraph_agent.mmd`
-
-</details>
 
 <details>
 <summary><code>ScriptLangGraphAgent</code> (script generation)</summary>
@@ -117,6 +99,15 @@ Source: `docs/agent_graphs/episode_langgraph_agent.mmd`
 ![ScriptLangGraphAgent](docs/agent_graphs/script_langgraph_agent.png)
 
 Source: `docs/agent_graphs/script_langgraph_agent.mmd`
+
+</details>
+
+<details>
+<summary><code>StoryboardPipeline</code> (explicit storyboard pipeline)</summary>
+
+![StoryboardPipeline](docs/agent_graphs/storyboard_pipeline.png)
+
+Source: `docs/agent_graphs/storyboard_pipeline.mmd`
 
 </details>
 
@@ -130,20 +121,20 @@ Source: `docs/agent_graphs/storyboard_react_reasoner.mmd`
 </details>
 
 <details>
-<summary><code>TimelineLangGraphAgent</code> (rhythm / gap timing)</summary>
+<summary><code>TimelineLangGraphAgent</code> (legacy rhythm / gap timing)</summary>
 
 ![TimelineLangGraphAgent](docs/agent_graphs/timeline_langgraph_agent.png)
 
-Source: `docs/agent_graphs/timeline_langgraph_agent.mmd`
+Source: `docs/agent_graphs/timeline_langgraph_agent.mmd`. The primary path defaults to `TimelineReactAgent`; this graph remains for compatibility-path debugging.
 
 </details>
 
 <details>
-<summary><code>DurationOrchestratorAgent</code> (end-to-end duration control loop)</summary>
+<summary><code>DurationOrchestratorAgent</code> (experimental end-to-end duration control loop)</summary>
 
 ![DurationOrchestratorAgent](docs/agent_graphs/duration_orchestrator_agent.png)
 
-Source: `docs/agent_graphs/duration_orchestrator_agent.mmd`
+Source: `docs/agent_graphs/duration_orchestrator_agent.mmd`. This is documented as an experimental duration orchestration path, not the default primary production path.
 
 </details>
 

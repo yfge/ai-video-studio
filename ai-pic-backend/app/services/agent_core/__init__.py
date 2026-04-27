@@ -5,31 +5,30 @@ robust AI agents with standardized error handling, repair loops,
 and validation patterns.
 """
 
-from app.services.agent_core.react_agent_base import (
-    AgentError,
-    AgentErrorType,
-    AgentResult,
-    AgentState,
-    ReactAgentBase,
-    RepairStrategy,
-)
-from app.services.agent_core.failure_patterns import (
-    FailurePattern,
-    FailurePatternMatcher,
-    PatternCategory,
-)
 from app.services.agent_core.context_spec import (
     ContextSpec,
     FieldPriority,
     FieldSpec,
     TruncationStrategy,
     estimate_tokens,
-    truncate_text,
-    is_non_empty_string,
     is_non_empty_list,
+    is_non_empty_string,
     is_positive_int,
-    strip_whitespace,
     normalize_newlines,
+    strip_whitespace,
+    truncate_text,
+)
+from app.services.agent_core.failure_patterns import (
+    FailurePattern,
+    FailurePatternMatcher,
+    PatternCategory,
+)
+from app.services.agent_core.graph_helpers import (
+    append_reasoning,
+    end_on_error_router,
+    has_state_error,
+    reset_control_flags,
+    route_on_error,
 )
 from app.services.agent_core.quality_loop import (
     DeterministicValidator,
@@ -41,6 +40,14 @@ from app.services.agent_core.quality_loop import (
     TwoLayerValidator,
     ValidationLayer,
     ValidationResult,
+)
+from app.services.agent_core.react_agent_base import (
+    AgentError,
+    AgentErrorType,
+    AgentResult,
+    AgentState,
+    ReactAgentBase,
+    RepairStrategy,
 )
 
 __all__ = [
@@ -67,6 +74,12 @@ __all__ = [
     "is_positive_int",
     "strip_whitespace",
     "normalize_newlines",
+    # Graph helpers
+    "append_reasoning",
+    "end_on_error_router",
+    "has_state_error",
+    "reset_control_flags",
+    "route_on_error",
     # Quality loop
     "DeterministicValidator",
     "FailureMode",
