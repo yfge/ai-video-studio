@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from app.models.script import Episode, Story
+from app.repositories.episode_repository import find_episode_by_story_number
 from app.schemas.generation import EpisodePlanItem
 from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import story_structure_service
@@ -12,6 +13,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from .episode_generation_utils import build_step_outline_rows, is_episode_payload_valid
+from .episode_scene_normalization import ensure_scenes
 from .episode_summary import build_episode_summary
 
 _KNOWN_EPISODE_KEYS = {
@@ -52,13 +54,10 @@ def create_episode_models(
     created: list[Episode] = []
     for idx, episode_data in enumerate(episodes_data[: request.episode_count]):
         episode_number = episode_data.get("episode_number") or idx + 1
-        existing = (
-            db.query(Episode)
-            .filter(
-                Episode.story_id == request.story_id,
-                Episode.episode_number == episode_number,
-            )
-            .first()
+        existing = find_episode_by_story_number(
+            db,
+            story_id=request.story_id,
+            episode_number=episode_number,
         )
         if existing:
             continue
@@ -79,12 +78,15 @@ def create_episode_models(
             )
             continue
 
+        scenes, scene_count = ensure_scenes(episode_data)
         extra_meta = {
             k: v for k, v in episode_data.items() if k not in _KNOWN_EPISODE_KEYS
         }
         summary = build_episode_summary(episode_data)
         if summary and not extra_meta.get("episode_summary"):
             extra_meta["episode_summary"] = summary
+        if scenes and "scenes" not in extra_meta:
+            extra_meta["scenes"] = scenes
         extra_metadata = extra_meta or None
         if marketing_defaults:
             extra_metadata = {**(extra_metadata or {}), **marketing_defaults}
@@ -100,7 +102,7 @@ def create_episode_models(
             character_arcs=episode_data.get("character_arcs"),
             conflicts=episode_data.get("conflicts"),
             duration_minutes=request.episode_duration,
-            scene_count=episode_data.get("scene_count"),
+            scene_count=scene_count,
             generation_prompt=result.get("prompt") or result.get("step_outline_prompt"),
             ai_model=result.get("generation_method") or result.get("model_used"),
             generation_params={

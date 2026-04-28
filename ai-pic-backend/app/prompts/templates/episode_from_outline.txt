@@ -72,6 +72,7 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
 - plot_points/timing 覆盖故事结构；若有 beats 优先对齐；无 beats 时自行拆分。
 - conflicts 至少 1 条，明确冲突类型与强度；scene_count 与场景对应。
 - scenes 需包含 scene_number/slug_line/location/time_of_day/summary；若有 beats 尽量顺序对应；无 beats 时按合理节奏拆分。
+- scene_count 必须等于 scenes 数组长度；scene_number 必须从 1 连续递增，禁止所有场景都写 1。
 - 保持 {{ pacing }} 节奏与 {{ plot_complexity }} 复杂度。
 {% if episode_duration %}- 单集目标时长：{{ episode_duration }} 分钟{% endif %}
 {% if story.hook_plan or story.cliffhanger_plan %}- 场景安排需匹配爽点/卡点节奏{% endif %}
@@ -99,14 +100,28 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
       "twist_density": "...",
       "cliffhanger_plan": ["..."],
       "ad_snippets": [{"hook": "...", "duration_seconds": 15}],
-      "scene_count": 6,
+      "scene_count": 3,
       "scenes": [
         {
           "scene_number": 1,
           "slug_line": "INT. 地点 - TIME",
           "location": "主要地点",
           "time_of_day": "day",
-          "summary": "对应 beat 的场景摘要"
+          "summary": "开场场景摘要"
+        },
+        {
+          "scene_number": 2,
+          "slug_line": "INT. 地点 - TIME",
+          "location": "主要地点",
+          "time_of_day": "day",
+          "summary": "中段推进场景摘要"
+        },
+        {
+          "scene_number": 3,
+          "slug_line": "INT. 地点 - TIME",
+          "location": "主要地点",
+          "time_of_day": "night",
+          "summary": "结尾转折场景摘要"
         }
       ]
     }

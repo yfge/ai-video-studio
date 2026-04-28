@@ -115,6 +115,7 @@
 13. **cliffhanger_plan**: 悬念/卡点规划（如有）
 14. **ad_snippets**: 投流素材建议（如有）
 15. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary
+16. **scene_count 与 scenes 一致**: scene_count 必须等于 scenes 数组长度；scene_number 必须从 1 连续递增，禁止所有场景都写 1
 
 {
     "episodes": [
@@ -139,7 +140,7 @@
                     "intensity": "低/中/高"
                 }
             ],
-            "scene_count": 5,
+            "scene_count": 3,
             "emotional_tone": "...",
             "key_moments": ["..."],
             "cliffhanger": "...",
@@ -163,7 +164,21 @@
                     "slug_line": "INT. 办公室 - 日",
                     "location": "公司总部办公室",
                     "time_of_day": "day",
-                    "summary": "场景概要，交代人物/冲突铺垫"
+                    "summary": "开场场景概要，交代人物/冲突铺垫"
+                },
+                {
+                    "scene_number": 2,
+                    "slug_line": "EXT. 街道 - 傍晚",
+                    "location": "城市街道",
+                    "time_of_day": "dusk",
+                    "summary": "中段推进场景概要，升级矛盾"
+                },
+                {
+                    "scene_number": 3,
+                    "slug_line": "INT. 客厅 - 夜",
+                    "location": "主角家客厅",
+                    "time_of_day": "night",
+                    "summary": "结尾转折场景概要，留下悬念"
                 }
             ]
         }

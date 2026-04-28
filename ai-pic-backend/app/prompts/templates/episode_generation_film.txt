@@ -80,6 +80,7 @@
 - 三幕式逻辑清晰，关键转折明确（进入第二幕/中点/进入第三幕/高潮/结局）
 - 场景推进有因果链，情绪曲线清晰
 - scenes 数组至少包含 scene_number/slug_line/location/time_of_day/summary
+- scene_count 必须等于 scenes 数组长度；scene_number 必须从 1 连续递增，禁止所有场景都写 1
 
 ## 输出格式
 请以JSON格式返回，包含episodes数组（每个元素代表一个分幕/段落/章节的规划）：
@@ -106,7 +107,7 @@
                     "intensity": "低/中/高"
                 }
             ],
-            "scene_count": 8,
+            "scene_count": 3,
             "emotional_tone": "...",
             "key_moments": ["..."],
             "cliffhanger": "...",
@@ -131,6 +132,20 @@
                     "location": "城市街道",
                     "time_of_day": "day",
                     "summary": "建立人物与世界，埋下冲突种子"
+                },
+                {
+                    "scene_number": 2,
+                    "slug_line": "INT. 公寓 - 傍晚",
+                    "location": "主角公寓",
+                    "time_of_day": "dusk",
+                    "summary": "中段转折，推动人物选择"
+                },
+                {
+                    "scene_number": 3,
+                    "slug_line": "EXT. 天台 - 夜",
+                    "location": "城市天台",
+                    "time_of_day": "night",
+                    "summary": "段落结尾，完成情绪落点"
                 }
             ]
         }

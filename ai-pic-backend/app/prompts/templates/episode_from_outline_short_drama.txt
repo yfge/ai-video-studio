@@ -84,6 +84,7 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
 - scenes 必须包含 scene_number/slug_line/location/time_of_day/summary：
   - 至少 1 个场景 summary 以“爽点：...”开头（爽点落点场景）。
   - 最后一个场景 summary 以“卡点：...”开头（结尾卡点场景）。
+- scene_count 必须等于 scenes 数组长度；scene_number 必须从 1 连续递增，禁止所有场景都写 1。
 - hook_plan/twist_density/cliffhanger_plan/ad_snippets 必须给出且不为空。
 - 可额外输出 `cliffhanger` 字段（单句卡点），并与 cliffhanger_plan[0] 一致。
 - 保持 {{ pacing }} 节奏与 {{ plot_complexity }} 复杂度。
@@ -117,7 +118,7 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
       "cliffhanger": "卡点单句（可选但推荐）",
       "cliffhanger_plan": ["卡点1（必填）", "卡点2"],
       "ad_snippets": [{ "hook": "...", "duration_seconds": 15, "visual_summary": "...", "call_to_action": "..." }],
-      "scene_count": 5,
+      "scene_count": 3,
       "scenes": [
         {
           "scene_number": 1,
@@ -127,14 +128,14 @@ Beats（如无可留空；若存在请保持顺序和节奏）：
           "summary": "开场钩子：..."
         },
         {
-          "scene_number": 4,
+          "scene_number": 2,
           "slug_line": "INT. 地点 - TIME",
           "location": "主要地点",
           "time_of_day": "night",
           "summary": "爽点：...（明确可拍事件）"
         },
         {
-          "scene_number": 5,
+          "scene_number": 3,
           "slug_line": "INT. 地点 - TIME",
           "location": "主要地点",
           "time_of_day": "night",

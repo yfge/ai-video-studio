@@ -11,8 +11,13 @@ from typing import Any, Dict, List, Optional
 from app.models.script import Episode, Story
 from app.models.task import Task
 from app.models.user import User
+from app.repositories.episode_repository import (
+    find_accessible_episode,
+    find_accessible_story,
+)
 from app.schemas.generation import EpisodeStepOutlineModel
 from app.schemas.story_structure import StoryStepOutlineCreate
+from app.services.episode.episode_scene_normalization import ensure_scenes
 from app.utils.json_utils import extract_json_block
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -31,20 +36,14 @@ def get_episode_by_identifier(
     current_user: User,
 ) -> Episode:
     """Get episode by business ID or primary key with ownership check."""
-    query = (
-        not_deleted(db.query(Episode), Episode)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Story.is_deleted.is_(False))
-    )
-    if episode_business_id:
-        query = query.filter(Episode.business_id == episode_business_id)
-    elif episode_id:
-        query = query.filter(Episode.id == episode_id)
-    else:
+    if not episode_business_id and not episode_id:
         raise HTTPException(status_code=400, detail="episode identifier missing")
-    if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(Story.user_id == current_user.id)
-    episode = query.first()
+    episode = find_accessible_episode(
+        db,
+        episode_id=episode_id,
+        episode_business_id=episode_business_id,
+        current_user=current_user,
+    )
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
     return episode
@@ -57,16 +56,14 @@ def get_story_by_identifier(
     current_user: User,
 ) -> Story:
     """Get story by business ID or primary key with ownership check."""
-    query = not_deleted(db.query(Story), Story)
-    if story_business_id:
-        query = query.filter(Story.business_id == story_business_id)
-    elif story_id:
-        query = query.filter(Story.id == story_id)
-    else:
+    if not story_business_id and not story_id:
         raise HTTPException(status_code=400, detail="story identifier missing")
-    if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(Story.user_id == current_user.id)
-    story = query.first()
+    story = find_accessible_story(
+        db,
+        story_id=story_id,
+        story_business_id=story_business_id,
+        current_user=current_user,
+    )
     if not story:
         raise HTTPException(status_code=404, detail="故事不存在")
     return story
@@ -227,134 +224,3 @@ def update_task_progress(db: Session, task: Optional[Task], description: str) ->
         return
     task.description = description
     db.commit()
-
-
-def ensure_scenes(ep_data: dict) -> tuple[list[dict], int | None]:
-    """Ensure episode data contains usable scenes.
-
-    Note: Some models/schemas may return scenes=[{}, {}, ...].
-    This function filters empty objects and auto-fills placeholder scenes
-    to avoid unstable frontend display.
-    """
-
-    def _as_nonempty_str(value: object | None) -> str | None:
-        if not isinstance(value, str):
-            return None
-        text = value.strip()
-        return text or None
-
-    def _to_int(value: object | None) -> int | None:
-        try:
-            return int(value) if value is not None else None
-        except (TypeError, ValueError):
-            return None
-
-    raw_scene_count = _to_int(ep_data.get("scene_count"))
-    target_scene_count = (
-        raw_scene_count if raw_scene_count and raw_scene_count > 0 else None
-    )
-
-    raw_scenes = ep_data.get("scenes")
-    scenes: list[dict] = []
-    if isinstance(raw_scenes, list):
-        for idx, raw in enumerate(raw_scenes, start=1):
-            if not isinstance(raw, dict):
-                continue
-
-            slug_line = _as_nonempty_str(raw.get("slug_line")) or _as_nonempty_str(
-                raw.get("title")
-            )
-            summary = (
-                _as_nonempty_str(raw.get("summary"))
-                or _as_nonempty_str(raw.get("description"))
-                or _as_nonempty_str(raw.get("beat_summary"))
-            )
-            location = (
-                _as_nonempty_str(raw.get("location"))
-                or _as_nonempty_str(raw.get("environment"))
-                or _as_nonempty_str(raw.get("setting"))
-            )
-            time_of_day = (
-                _as_nonempty_str(raw.get("time_of_day"))
-                or _as_nonempty_str(raw.get("time"))
-                or _as_nonempty_str(raw.get("period"))
-            )
-
-            # Empty object / no valid fields => invalid scene, trigger auto-fill
-            if not (slug_line or summary or location or time_of_day):
-                continue
-
-            scene_number = _to_int(raw.get("scene_number")) or idx
-            scenes.append(
-                {
-                    **raw,
-                    "scene_number": scene_number,
-                    "slug_line": slug_line or f"SCENE {scene_number} - beat",
-                    "summary": summary or "本场景推进剧情。",
-                    "time_of_day": time_of_day or "unspecified",
-                    "location": location or "unspecified",
-                }
-            )
-
-    if not scenes:
-        plot_points = ep_data.get("plot_points") or []
-        if isinstance(plot_points, list) and plot_points:
-            for idx, pp in enumerate(plot_points, start=1):
-                desc = None
-                timing = None
-                if isinstance(pp, dict):
-                    desc = _as_nonempty_str(pp.get("description"))
-                    timing = _as_nonempty_str(pp.get("timing"))
-                scenes.append(
-                    {
-                        "scene_number": idx,
-                        "slug_line": f"SCENE {idx} - {timing or 'beat'}",
-                        "summary": desc or "本场景推进剧情。",
-                        "time_of_day": "unspecified",
-                        "location": "unspecified",
-                    }
-                )
-        else:
-            scenes.append(
-                {
-                    "scene_number": 1,
-                    "slug_line": "SCENE 1 - beat",
-                    "summary": _as_nonempty_str(ep_data.get("summary"))
-                    or "本集开篇场景。",
-                    "time_of_day": "unspecified",
-                    "location": "unspecified",
-                }
-            )
-
-    # If model provided scene_count, align the count (pad or truncate)
-    if target_scene_count:
-        scenes = scenes[:target_scene_count]
-        while len(scenes) < target_scene_count:
-            idx = len(scenes) + 1
-            scenes.append(
-                {
-                    "scene_number": idx,
-                    "slug_line": f"SCENE {idx} - beat",
-                    "summary": "本场景推进剧情。",
-                    "time_of_day": "unspecified",
-                    "location": "unspecified",
-                }
-            )
-
-    # Normalize scene numbers to avoid missing/duplicate causing unstable display
-    for idx, scene in enumerate(scenes, start=1):
-        if not isinstance(scene, dict):
-            continue
-        if _to_int(scene.get("scene_number")) is None:
-            scene["scene_number"] = idx
-        scene.setdefault("slug_line", f"SCENE {idx} - beat")
-        scene.setdefault("summary", "本场景推进剧情。")
-        scene.setdefault("time_of_day", "unspecified")
-        scene.setdefault("location", "unspecified")
-
-    scene_count = target_scene_count or (len(scenes) if scenes else None)
-    # Write back to ensure downstream uses cleaned/filled scenes
-    ep_data["scenes"] = scenes
-    if scene_count is not None:
-        ep_data["scene_count"] = scene_count
-    return scenes, scene_count

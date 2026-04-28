@@ -108,6 +108,7 @@
 12. **cliffhanger_plan**: 本集悬念/卡点列表（至少 2 条）
 13. **ad_snippets**: 本集投流素材建议（至少 1 条，含 hook 与 visual_summary）
 14. **scenes**: 场景列表（数组），每个包含 scene_number, slug_line, location, time_of_day, summary；其中爽点场景的 summary 必须以“爽点：...”开头，最后一个场景 summary 必须以“卡点：...”开头
+15. **scene_count 与 scenes 一致**: scene_count 必须等于 scenes 数组长度；scene_number 必须从 1 连续递增，禁止所有场景都写 1
 
 {
     "episodes": [
@@ -125,7 +126,7 @@
             "conflicts": [
                 { "type": "人际冲突/利益冲突/身份冲突/价值观冲突", "description": "...", "intensity": "low/medium/high" }
             ],
-            "scene_count": 5,
+            "scene_count": 3,
             "cliffhanger": "...",
             "payoff": "一句话说明主角本集赢到了什么（具体可拍）",
             "hook_plan": { "opening_hook": "...", "escalation_plan": "...", "payoff_plan": "..." },
@@ -143,14 +144,14 @@
                     "summary": "开场钩子：..."
                 },
                 {
-                    "scene_number": 4,
+                    "scene_number": 2,
                     "slug_line": "INT. ... - 夜",
                     "location": "...",
                     "time_of_day": "night",
                     "summary": "爽点：...（明确事件）"
                 },
                 {
-                    "scene_number": 5,
+                    "scene_number": 3,
                     "slug_line": "INT. ... - 夜",
                     "location": "...",
                     "time_of_day": "night",
