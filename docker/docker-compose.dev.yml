@@ -27,8 +27,8 @@ services:
   ai-video-backend:
     container_name: ai-video-backend
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.backend.dev
+      context: ../ai-pic-backend
+      dockerfile: ../docker/Dockerfile.backend.dev
     env_file:
       - .env
     working_dir: /app/ai-pic-backend
@@ -46,8 +46,8 @@ services:
   ai-video-celery-worker:
     container_name: ai-video-celery-worker
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.backend.dev
+      context: ../ai-pic-backend
+      dockerfile: ../docker/Dockerfile.backend.dev
     env_file:
       - .env
     working_dir: /app/ai-pic-backend
@@ -63,8 +63,8 @@ services:
   ai-video-celery-beat:
     container_name: ai-video-celery-beat
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.backend.dev
+      context: ../ai-pic-backend
+      dockerfile: ../docker/Dockerfile.backend.dev
     env_file:
       - .env
     working_dir: /app/ai-pic-backend
@@ -80,8 +80,8 @@ services:
   ai-video-frontend:
     container_name: ai-video-frontend
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.frontend.dev
+      context: ../ai-pic-frontend
+      dockerfile: ../docker/Dockerfile.frontend.dev
     env_file:
       - .env
     working_dir: /app/ai-pic-frontend

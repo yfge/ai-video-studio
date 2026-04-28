@@ -1,6 +1,6 @@
 FROM node:22.20.0-alpine
 
-WORKDIR /app
+WORKDIR /app/ai-pic-frontend
 ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY package*.json ./

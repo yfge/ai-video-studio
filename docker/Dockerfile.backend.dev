@@ -3,7 +3,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-WORKDIR /app
+WORKDIR /app/ai-pic-backend
 
 # System deps for mysqlclient/pymysql and builds + CA 证书
 RUN set -eux; \
