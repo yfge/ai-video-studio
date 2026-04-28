@@ -7,6 +7,13 @@ DURATION_TOLERANCE_HIGH = 1.15
 DEFAULT_SCENE_DURATION_SECONDS = 30
 MAX_REACT_REGENERATE_ATTEMPTS = 3
 MAX_FALLBACK_SCENES = 12
+MIN_ACCEPTED_SCENES = 2
+DEFAULT_FALLBACK_SCENES = (
+    ("开场钩子", "开场钩子：围绕核心冲突抛出直接可拍的信息爆点。"),
+    ("升级推进", "升级推进：主角被迫做出选择，冲突继续加压。"),
+    ("爽点落点", "爽点：主角抓住证据或机会完成一次明确反击。"),
+    ("结尾卡点", "卡点：更大的危机或反转出现，推动观众追下一集。"),
+)
 
 
 def calculate_episode_duration_seconds(episode_obj: Dict[str, Any]) -> int:
@@ -44,9 +51,51 @@ def validate_episode_payload(episode_obj: Dict[str, Any]) -> tuple[bool, str | N
     conflicts = episode_obj.get("conflicts")
     if not conflicts or not isinstance(conflicts, list):
         return False, "missing_conflicts"
-    if any(isinstance(c, dict) for c in conflicts):
-        return True, None
-    return False, "invalid_conflicts"
+    if not any(isinstance(c, dict) for c in conflicts):
+        return False, "invalid_conflicts"
+
+    scenes = episode_obj.get("scenes")
+    if not isinstance(scenes, list):
+        return False, "missing_scenes"
+    valid_scene_count = sum(1 for scene in scenes if isinstance(scene, dict) and scene)
+    if valid_scene_count < MIN_ACCEPTED_SCENES:
+        return False, "too_few_scenes"
+
+    raw_scene_count = episode_obj.get("scene_count")
+    if raw_scene_count is not None:
+        try:
+            scene_count = int(raw_scene_count)
+        except (TypeError, ValueError):
+            return False, "invalid_scene_count"
+        if scene_count != len(scenes):
+            return False, "scene_count_mismatch"
+    return True, None
+
+
+def _fallback_scenes_from_logline(
+    logline: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    scenes: list[dict[str, Any]] = []
+    plot_points: list[dict[str, Any]] = []
+    for idx, (beat_title, summary) in enumerate(DEFAULT_FALLBACK_SCENES, start=1):
+        scene_summary = f"{summary} 核心情境：{logline}"
+        scenes.append(
+            {
+                "scene_number": idx,
+                "slug_line": f"SCENE {idx} - {beat_title}",
+                "location": "unspecified",
+                "time_of_day": "unspecified",
+                "summary": scene_summary,
+                "story_beat": beat_title,
+            }
+        )
+        plot_points.append(
+            {
+                "description": scene_summary,
+                "timing": beat_title,
+            }
+        )
+    return scenes, plot_points
 
 
 def stub_episode_from_outline(outline: Dict[str, Any]) -> Dict[str, Any]:
@@ -94,14 +143,17 @@ def stub_episode_from_outline(outline: Dict[str, Any]) -> Dict[str, Any]:
             if len(scenes) >= MAX_FALLBACK_SCENES:
                 break
 
+    if not scenes:
+        scenes, plot_points = _fallback_scenes_from_logline(logline)
+
     return {
         "episode_number": ep_num,
         "title": title,
         "summary": logline,
-        "plot_points": plot_points or [],
+        "plot_points": plot_points,
         "character_arcs": None,
         "conflicts": [{"description": logline, "intensity": "medium"}],
-        "scene_count": len(scenes) if scenes else None,
-        "scenes": scenes or None,
+        "scene_count": len(scenes),
+        "scenes": scenes,
         "fallback_from_outline": True,
     }

@@ -2,6 +2,7 @@ import pytest
 from app.services.episode_agent_episode_utils import (
     MAX_FALLBACK_SCENES,
     stub_episode_from_outline,
+    validate_episode_payload,
 )
 
 
@@ -57,3 +58,30 @@ def test_stub_episode_from_outline_caps_fallback_scenes():
     assert len(result["plot_points"]) == MAX_FALLBACK_SCENES
     assert result["scenes"][0]["scene_number"] == 1
     assert result["scenes"][-1]["scene_number"] == MAX_FALLBACK_SCENES
+
+
+@pytest.mark.unit
+def test_stub_episode_from_outline_without_beats_builds_multi_scene_fallback():
+    result = stub_episode_from_outline(
+        {"episode_number": 1, "title": "Test", "logline": "主角发现关键证据。"}
+    )
+
+    assert result["scene_count"] == 4
+    assert len(result["scenes"]) == 4
+    assert len(result["plot_points"]) == 4
+    assert [scene["scene_number"] for scene in result["scenes"]] == [1, 2, 3, 4]
+
+
+@pytest.mark.unit
+def test_validate_episode_payload_rejects_single_scene_payload():
+    valid, reason = validate_episode_payload(
+        {
+            "summary": "S",
+            "conflicts": [{"description": "C"}],
+            "scene_count": 1,
+            "scenes": [{"scene_number": 1, "summary": "only"}],
+        }
+    )
+
+    assert valid is False
+    assert reason == "too_few_scenes"

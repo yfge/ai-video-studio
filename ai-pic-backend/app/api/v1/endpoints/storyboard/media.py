@@ -3,23 +3,23 @@
 Handles image and video generation for storyboard frames.
 """
 
+import json
 from typing import Any, Dict, List, Optional
-
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
-from app.models.script import Episode, Script, Story
-from app.models.task import Task, TaskStatus, TaskType
+from app.models.script import Episode, Story
+from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.style import StyleSpec
 from app.services.task_worker import (
     storyboard_image_generate_task,
     storyboard_video_generate_task,
 )
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from .utils import get_script_with_auth
 
@@ -115,46 +115,12 @@ async def generate_storyboard_images(
         if not aspect_ratio and story and story.extra_metadata:
             aspect_ratio = story.extra_metadata.get("aspect_ratio")
 
-    # Create task record
-    t = Task(
-        type=TaskType.STORYBOARD_IMAGE_GENERATION,
-        status=TaskStatus.PENDING,
-        user_id=current_user.id,
-        input_params={
-            "script_id": script_id,
-            "frames": request.frames,
-            "model": request.model,
-            "prompt": request.prompt,
-            "width": request.width,
-            "height": request.height,
-            "aspect_ratio": aspect_ratio,
-            "style": request.style,
-            "style_preset_id": request.style_preset_id,
-            "style_spec": request.style_spec.dict() if request.style_spec else None,
-            "reference_images": request.reference_images,
-            "labeled_references": (
-                [r.dict() for r in request.labeled_references]
-                if request.labeled_references
-                else None
-            ),
-            "seed": request.seed,
-            "steps": request.steps,
-            "cfg_scale": request.cfg_scale,
-            "negative_prompt": request.negative_prompt,
-            "keyframe_mode": request.keyframe_mode,
-            "start_enabled": request.start_enabled,
-            "end_enabled": request.end_enabled,
-        },
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-
-    # Queue background task
     payload = {
         "script_id": script_id,
         "frame_indexes": request.frames,
+        "frames": request.frames,
         "prompt_override": request.prompt,
+        "prompt": request.prompt,
         "model": request.model,
         "width": request.width,
         "height": request.height,
@@ -176,6 +142,21 @@ async def generate_storyboard_images(
         "start_enabled": request.start_enabled,
         "end_enabled": request.end_enabled,
     }
+
+    # Create task record
+    t = Task(
+        title=f"分镜图生成 - 剧本{script_id}",
+        description="异步生成分镜图像",
+        task_type=TaskType.STORYBOARD_IMAGE_GENERATION,
+        prompt=f"Storyboard image generation for script {script_id}",
+        parameters=json.dumps(payload, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    # Queue background task
     storyboard_image_generate_task.delay(t.id, payload, current_user.id)
 
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
@@ -208,39 +189,10 @@ async def generate_storyboard_video(
         if not ratio and story and story.extra_metadata:
             ratio = story.extra_metadata.get("aspect_ratio")
 
-    # Create task record
-    t = Task(
-        type=TaskType.VIDEO_GENERATION,
-        status=TaskStatus.PENDING,
-        user_id=current_user.id,
-        input_params={
-            "script_id": script_id,
-            "frames": request.frames,
-            "selections": request.selections,
-            "prompt": request.prompt,
-            "model": request.model,
-            "duration": request.duration,
-            "fps": request.fps,
-            "resolution": request.resolution,
-            "ratio": ratio,
-            "watermark": request.watermark,
-            "seed": request.seed,
-            "camera_fixed": request.camera_fixed,
-            "camera_control": request.camera_control,
-            "service_tier": request.service_tier,
-            "execution_expires_after": request.execution_expires_after,
-            "return_last_frame": request.return_last_frame,
-            "use_end_frame": request.use_end_frame,
-        },
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-
-    # Queue background task
     payload = {
         "script_id": script_id,
         "frame_indexes": request.frames,
+        "frames": request.frames,
         "selections": request.selections,
         "prompt": request.prompt,
         "model": request.model,
@@ -257,6 +209,21 @@ async def generate_storyboard_video(
         "return_last_frame": request.return_last_frame,
         "use_end_frame": request.use_end_frame,
     }
+
+    # Create task record
+    t = Task(
+        title=f"分镜视频生成 - 剧本{script_id}",
+        description="异步生成分镜视频",
+        task_type=TaskType.VIDEO_GENERATION,
+        prompt=f"Storyboard video generation for script {script_id}",
+        parameters=json.dumps(payload, ensure_ascii=False),
+        user_id=current_user.id,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+
+    # Queue background task
     storyboard_video_generate_task.delay(t.id, payload, current_user.id)
 
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}

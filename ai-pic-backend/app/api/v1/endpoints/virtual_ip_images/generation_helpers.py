@@ -72,9 +72,14 @@ def resolve_virtual_ip_image_params(
     )
     additional_raw = payload.get("additional_prompts", additional_prompts) or ""
     is_default_value = payload.get("is_default", is_default)
-    additional_prompt_list = [
-        item.strip() for item in additional_raw.split(",") if item.strip()
-    ]
+    if isinstance(additional_raw, (list, tuple)):
+        additional_prompt_list = [
+            str(item).strip() for item in additional_raw if str(item).strip()
+        ]
+    else:
+        additional_prompt_list = [
+            item.strip() for item in str(additional_raw).split(",") if item.strip()
+        ]
     try:
         count_int = int(count_value) if count_value is not None else 1
     except (TypeError, ValueError):

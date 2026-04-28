@@ -42,7 +42,7 @@ from app.api.v1.endpoints.scripts_legacy import (
 from app.api.v1.endpoints.scripts_legacy import router as legacy_router  # noqa: F401
 
 # Storyboard task processors now live in the storyboard package.
-from app.api.v1.endpoints.storyboard import (  # noqa: F401
+from app.api.v1.endpoints.storyboard import (
     _augment_frames,
     _enforce_storyboard_variety,
     _merge_frames,
@@ -50,6 +50,7 @@ from app.api.v1.endpoints.storyboard import (  # noqa: F401
     _process_storyboard_image_task,
     _process_storyboard_video_task,
 )
+from app.api.v1.endpoints.storyboard import router as storyboard_router  # noqa: F401
 
 # Imported for test monkeypatching consistency across endpoint modules.
 from app.services.ai_service import ai_service  # noqa: F401
@@ -60,6 +61,7 @@ legacy_router.include_router(dialogue_audio_router)
 legacy_router.include_router(audio_timeline_router)
 legacy_router.include_router(timeline_pipeline_router)
 legacy_router.include_router(audio_storyboard_router)
+legacy_router.include_router(storyboard_router)
 
 # For now, expose the legacy router as the scripts router.
 router = legacy_router

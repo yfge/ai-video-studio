@@ -6,9 +6,37 @@ import pytest
 from app.api.v1.endpoints.virtual_ip_images.async_tasks import (
     process_virtual_ip_image_task,
 )
+from app.api.v1.endpoints.virtual_ip_images.generation_helpers import (
+    resolve_virtual_ip_image_params,
+)
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
+
+
+@pytest.mark.unit
+def test_resolve_virtual_ip_image_params_accepts_json_prompt_list():
+    params = resolve_virtual_ip_image_params(
+        {
+            "model": "openai:gpt-image-2",
+            "additional_prompts": ["regression portrait", "  extra detail  ", ""],
+        },
+        style=None,
+        category=None,
+        model=None,
+        model_id=None,
+        additional_prompts=None,
+        is_default=None,
+        count=None,
+        size=None,
+        aspect_ratio=None,
+        seed=None,
+        steps=None,
+        cfg_scale=None,
+        negative_prompt=None,
+    )
+
+    assert params["additional_prompts"] == ["regression portrait", "extra detail"]
 
 
 @pytest.mark.unit

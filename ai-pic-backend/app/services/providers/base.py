@@ -298,4 +298,14 @@ class BaseProvider(ABC):
 
     def format_error(self, error: Exception) -> str:
         """格式化错误信息"""
-        return f"{self.name} 错误: {str(error)}"
+        detail = str(error)
+        try:
+            import httpx
+
+            if isinstance(error, httpx.HTTPStatusError):
+                response_text = (error.response.text or "").strip()
+                if response_text:
+                    detail = f"{detail} | response={response_text[:1000]}"
+        except Exception:
+            pass
+        return f"{self.name} 错误: {detail}"

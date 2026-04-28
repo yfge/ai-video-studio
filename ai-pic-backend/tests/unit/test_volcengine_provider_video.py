@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
-from app.services.providers.base import AIModelType
+from app.services.providers.base import AIModelType, ProviderConfig
 from app.services.providers.volcengine_provider.models import (
     get_available_models,
     infer_model_type,
 )
+from app.services.providers.volcengine_provider.provider import VolcengineProvider
 from app.services.providers.volcengine_provider.video_models import (
     SEEDANCE_20_FAST_MODEL,
     SEEDANCE_20_MODEL,
@@ -64,6 +66,21 @@ def test_infer_model_type_treats_seedance_remote_models_as_video():
     assert (
         infer_model_type("doubao-seedance-2-0-260128", {}) == AIModelType.TEXT_TO_VIDEO
     )
+
+
+def test_volcengine_http_error_includes_response_body():
+    provider = VolcengineProvider(ProviderConfig(name="volcengine", api_key="test"))
+    request = httpx.Request("POST", "https://ark.example.com/tasks")
+    response = httpx.Response(
+        400,
+        request=request,
+        text='{"error":{"code":"InputImageSensitiveContentDetected.PrivacyInformation"}}',
+    )
+    error = httpx.HTTPStatusError("bad request", request=request, response=response)
+
+    message = provider.format_error(error)
+
+    assert "InputImageSensitiveContentDetected.PrivacyInformation" in message
 
 
 @pytest.mark.asyncio
@@ -144,7 +161,7 @@ async def test_submit_seedance_20_first_last_frame_skips_refs():
     )
 
     roles = [item.get("role") for item in client.posts[-1]["content"]]
-    assert roles == [None, "first_frame", "last_frame"]
+    assert roles == ["first_frame", "last_frame", None]
 
 
 @pytest.mark.asyncio

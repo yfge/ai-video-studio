@@ -141,12 +141,13 @@ def _build_content(
     ark_model: str,
     extra_kwargs: Dict[str, Any],
 ) -> list[Dict[str, Any]]:
-    content: list[Dict[str, Any]] = [{"type": "text", "text": prompt}]
+    content: list[Dict[str, Any]] = []
     first_last_mode = bool(image_url or end_image_url)
     if image_url:
         content.append(_media_item("image", image_url, "first_frame"))
     if end_image_url:
         content.append(_media_item("image", end_image_url, "last_frame"))
+    content.append({"type": "text", "text": prompt})
     if first_last_mode:
         return content
 

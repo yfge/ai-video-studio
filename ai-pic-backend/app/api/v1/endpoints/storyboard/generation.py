@@ -4,23 +4,22 @@ Handles synchronous and asynchronous storyboard frame generation.
 Uses the new React validation pipeline when use_new_pipeline=True.
 """
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
-from app.models.script import Episode, Script, Story
-from app.models.task import Task, TaskStatus, TaskType
+from app.models.script import Episode, Script
+from app.models.task import Task, TaskType
 from app.models.user import User
 from app.services.ai_service import ai_service
 from app.services.storyboard.pipeline import StoryboardPipeline
 from app.services.task_worker import storyboard_generate_task
-from app.utils.marketing_meta import merge_marketing_meta
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from .utils import get_script_with_auth
 
@@ -120,7 +119,8 @@ async def generate_storyboard(
             raise HTTPException(status_code=400, detail="scene_numbers 格式不正确")
 
     return await generate_storyboard_logic(
-        script, db,
+        script,
+        db,
         model=model,
         temperature=temperature,
         frames_per_scene=frames_per_scene,
@@ -214,22 +214,26 @@ async def generate_storyboard_async(
 
     Returns immediately with task ID for status polling.
     """
-    script = get_script_with_auth(db, script_id, current_user)
+    get_script_with_auth(db, script_id, current_user)
+
+    task_payload = {
+        "script_id": script_id,
+        "model": model,
+        "temperature": temperature,
+        "frames_per_scene": frames_per_scene,
+        "max_frames": max_frames,
+        "scene_numbers": scene_numbers,
+        "use_plan": use_plan,
+    }
 
     # Create task record
     t = Task(
-        type=TaskType.STORYBOARD_GENERATION,
-        status=TaskStatus.PENDING,
+        title=f"生成分镜 - 剧本{script_id}",
+        description="异步分镜结构生成",
+        task_type=TaskType.STORYBOARD_GENERATION,
+        prompt=f"Storyboard generation for script {script_id}",
+        parameters=json.dumps(task_payload, ensure_ascii=False),
         user_id=current_user.id,
-        input_params={
-            "script_id": script_id,
-            "model": model,
-            "temperature": temperature,
-            "frames_per_scene": frames_per_scene,
-            "max_frames": max_frames,
-            "scene_numbers": scene_numbers,
-            "use_plan": use_plan,
-        },
     )
     db.add(t)
     db.commit()
@@ -238,15 +242,7 @@ async def generate_storyboard_async(
     # Queue background task
     storyboard_generate_task.delay(
         t.id,
-        {
-            "script_id": script_id,
-            "model": model,
-            "temperature": temperature,
-            "frames_per_scene": frames_per_scene,
-            "max_frames": max_frames,
-            "scene_numbers": scene_numbers,
-            "use_plan": use_plan,
-        },
+        task_payload,
         current_user.id,
     )
 
