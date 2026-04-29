@@ -6,6 +6,7 @@ from app.schemas.script_quality import (
     ScriptLintRuleResult,
 )
 from app.services.script_quality.constants import (
+    COMMERCIAL_ACTION_MARKERS,
     EMOTION_TAG_KEYWORDS,
     HOOK_MARKERS,
     SCENE_HEADER_RE,
@@ -45,28 +46,41 @@ def check_scene_headers(
 
 def check_tempo_tags(
     all_tags: list[str],
+    non_empty: list[tuple[int, str]],
 ) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
     has_tempo = any(
         any(tag.startswith(k) or k in tag for k in TEMPO_TAGS) for tag in all_tags
     )
+    has_commercial_pacing = (
+        sum(
+            1
+            for _no, ln in non_empty
+            if ln.startswith("▲")
+            or any(marker in ln for marker in COMMERCIAL_ACTION_MARKERS)
+        )
+        >= 2
+    )
     issues: list[ScriptLintIssue] = []
-    if not has_tempo:
+    if not has_tempo and not has_commercial_pacing:
         issues.append(
             ScriptLintIssue(
                 severity="warn",
-                rule_id="tempo_tags",
-                message="未检测到【快/慢】或【加速区/减速区】标注。",
-                suggestion="在打斗/争吵段落标【快】，情绪酝酿段落标【慢】。",
+                rule_id="pacing_markers",
+                message="未检测到【快/慢】节奏标注或商用正文动作标记。",
+                suggestion="使用【快/慢】或 `▲动作/镜头/音效` 标记关键节奏点。",
             )
         )
     return (
         ScriptLintRuleResult(
-            rule_id="tempo_tags",
-            title="【快/慢】节奏区标注",
+            rule_id="pacing_markers",
+            title="节奏区/商用动作标记",
             weight=1.0,
-            score=1.0 if has_tempo else 0.0,
-            passed=has_tempo,
-            details={"detected": has_tempo},
+            score=1.0 if (has_tempo or has_commercial_pacing) else 0.0,
+            passed=has_tempo or has_commercial_pacing,
+            details={
+                "tempo_tags": has_tempo,
+                "commercial_action_markers": has_commercial_pacing,
+            },
         ),
         issues,
     )
@@ -74,28 +88,35 @@ def check_tempo_tags(
 
 def check_emotion_goal(
     all_tags: list[str],
+    dialogue_lines: list[tuple[int, str, str]],
 ) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
     has_emotion_goal = any(
         any(k in tag for k in EMOTION_TAG_KEYWORDS) for tag in all_tags
     )
+    has_dialogue_state = any(
+        "(" in ln and ")" in ln.split("：", 1)[0] for _no, ln, _c in dialogue_lines
+    )
     issues: list[ScriptLintIssue] = []
-    if not has_emotion_goal:
+    if not has_emotion_goal and not has_dialogue_state:
         issues.append(
             ScriptLintIssue(
                 severity="warn",
                 rule_id="emotion_goal",
-                message="未检测到【情绪目的】/【情绪目标】标注。",
-                suggestion="每个 Beat 标注本段的情绪目的（恐惧/诱惑/羞辱/反击等）。",
+                message="未检测到【情绪目的】标注或角色状态括注。",
+                suggestion="用【情绪目的】或 `角色(状态)：对白` 标清表演状态。",
             )
         )
     return (
         ScriptLintRuleResult(
             rule_id="emotion_goal",
-            title="【情绪目的】标注",
+            title="情绪目的/角色状态",
             weight=0.5,
-            score=1.0 if has_emotion_goal else 0.0,
-            passed=has_emotion_goal,
-            details={"detected": has_emotion_goal},
+            score=1.0 if (has_emotion_goal or has_dialogue_state) else 0.0,
+            passed=has_emotion_goal or has_dialogue_state,
+            details={
+                "emotion_goal_tag": has_emotion_goal,
+                "dialogue_state": has_dialogue_state,
+            },
         ),
         issues,
     )
@@ -104,21 +125,25 @@ def check_emotion_goal(
 def check_sfx_lines(
     stage_lines: list[tuple[int, str]],
 ) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
-    has_sfx = any(any(k in ln for k in SFX_TAG_KEYWORDS) for _no, ln in stage_lines)
+    has_sfx = any(
+        any(k in ln for k in SFX_TAG_KEYWORDS)
+        or any(marker in ln for marker in COMMERCIAL_ACTION_MARKERS)
+        for _no, ln in stage_lines
+    )
     issues: list[ScriptLintIssue] = []
     if not has_sfx:
         issues.append(
             ScriptLintIssue(
                 severity="info",
                 rule_id="sfx_lines",
-                message="未检测到明确的【音效/氛围音】单独标注行。",
-                suggestion="关键节拍前置音效行，便于导演/音效师设计节奏与情绪。",
+                message="未检测到明确的【音效/氛围音】或商用动作/镜头行。",
+                suggestion="关键节拍前置音效或 `▲动作/镜头` 行，便于制作拆解。",
             )
         )
     return (
         ScriptLintRuleResult(
             rule_id="sfx_lines",
-            title="【音效/氛围音】单独行",
+            title="音效/动作/镜头行",
             weight=0.25,
             score=1.0 if has_sfx else 0.5,
             passed=has_sfx,
@@ -129,24 +154,24 @@ def check_sfx_lines(
 
 
 def check_hook_3s(
-    non_empty: list[tuple[int, str]]
+    non_empty: list[tuple[int, str]],
 ) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
-    first_three = [ln for _no, ln in non_empty[:3]]
-    has_hook = any(any(m in ln for m in HOOK_MARKERS) for ln in first_three)
+    first_five = [ln for _no, ln in non_empty[:5]]
+    has_hook = any(any(m in ln for m in HOOK_MARKERS) for ln in first_five)
     issues: list[ScriptLintIssue] = []
     if not has_hook:
         issues.append(
             ScriptLintIssue(
                 severity="error",
                 rule_id="hook_3s",
-                message="前三行未检测到强钩子（冲突/惊呼/命令/巨响）。",
+                message="前五行未检测到强钩子（冲突/惊呼/命令/巨响）。",
                 suggestion="用“质问/耳光/摔杯/警报”等强事件开场，禁止寒暄。",
             )
         )
     return (
         ScriptLintRuleResult(
             rule_id="hook_3s",
-            title="黄金3秒钩子（前三行）",
+            title="黄金3秒钩子（前五行）",
             weight=1.5,
             score=1.0 if has_hook else 0.0,
             passed=has_hook,
@@ -157,13 +182,26 @@ def check_hook_3s(
 
 
 def check_cliffhanger(
-    non_empty: list[tuple[int, str]]
+    non_empty: list[tuple[int, str]],
 ) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
-    last_line = non_empty[-1][1] if non_empty else ""
-    has_cliff = bool(last_line) and (
-        ("?" in last_line)
-        or ("？" in last_line)
-        or last_line.rstrip().endswith(("…", "...", "——", "？！", "!?"))
+    tail = [ln for _no, ln in non_empty[-3:]]
+    last_line = tail[-1] if tail else ""
+    cliff_markers = (
+        "?",
+        "？",
+        "卡点",
+        "特写",
+        "真相",
+        "身份",
+        "猛地",
+        "定格",
+        "突然",
+        "露出",
+    )
+    has_cliff = any(
+        any(marker in ln for marker in cliff_markers)
+        or ln.rstrip().endswith(("…", "...", "——", "？！", "!?"))
+        for ln in tail
     )
     issues: list[ScriptLintIssue] = []
     if not has_cliff:
@@ -178,7 +216,7 @@ def check_cliffhanger(
     return (
         ScriptLintRuleResult(
             rule_id="cliffhanger",
-            title="悬念结尾（最后一行）",
+            title="悬念结尾（最后三行）",
             weight=1.5,
             score=1.0 if has_cliff else 0.0,
             passed=has_cliff,

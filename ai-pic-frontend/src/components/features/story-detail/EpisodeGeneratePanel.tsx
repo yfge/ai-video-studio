@@ -68,7 +68,7 @@ export function EpisodeGeneratePanel({
               <input
                 type="number"
                 min={1}
-                max={20}
+                max={100}
                 value={genForm.episode_count}
                 onChange={(e) =>
                   setGenForm((prev) => ({

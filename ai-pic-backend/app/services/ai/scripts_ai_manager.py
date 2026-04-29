@@ -68,11 +68,14 @@ class ScriptManagerMixin:
         language: str,
         dialogue_style: str,
         scene_detail_level: str,
-        additional_requirements: Optional[str],
-        style_preferences: Optional[List[str]],
-        model: Optional[str],
-        prefer_provider: Optional[str],
-        temperature: float,
+        template_style: str = "commercial_vertical_drama",
+        target_chars_per_episode: int = 1300,
+        quality_threshold: float = 9.0,
+        additional_requirements: Optional[str] = None,
+        style_preferences: Optional[List[str]] = None,
+        model: Optional[str] = None,
+        prefer_provider: Optional[str] = None,
+        temperature: float = 0.7,
     ) -> Optional[Dict[str, Any]]:
         """AI 管理器直接生成剧本的兜底实现（结构化 JSON）。"""
         if not self.ai_manager:
@@ -151,6 +154,9 @@ class ScriptManagerMixin:
                     "language": language,
                     "style_preferences": style_preferences or [],
                     "additional_requirements": scene_plan_additional_requirements,
+                    "template_style": template_style,
+                    "target_chars_per_episode": target_chars_per_episode,
+                    "quality_threshold": quality_threshold,
                     "duration_minutes": duration_minutes,
                     "min_scene_seconds": min_scene_seconds,
                     "max_scene_seconds": max_scene_seconds,
@@ -164,7 +170,7 @@ class ScriptManagerMixin:
                 max_tokens=_SCENE_PLAN_MAX_TOKENS,
                 json_schema=_SCENE_PLAN_SCHEMA_PAYLOAD,
                 system_prompt="你是专业的剧本场景规划师，请严格按 JSON 返回。",
-                stream=False,
+                stream=True,
             )
             if scene_plan_resp.success:
                 parsed_scene_plan = _parse_payload(scene_plan_resp.data)
@@ -191,6 +197,9 @@ class ScriptManagerMixin:
                 "dialogue_style": dialogue_style,
                 "language": language,
                 "format_type": format_type,
+                "template_style": template_style,
+                "target_chars_per_episode": target_chars_per_episode,
+                "quality_threshold": quality_threshold,
             },
         )
 
@@ -202,7 +211,7 @@ class ScriptManagerMixin:
             max_tokens=_DIALOGUE_MAX_TOKENS,
             json_schema=_DIALOGUE_SCHEMA_PAYLOAD,
             system_prompt="你是专业的剧本对白与舞台指示写手，请严格按 JSON 返回。",
-            stream=False,
+            stream=True,
         )
         if not response.success:
             return None
@@ -242,6 +251,9 @@ class ScriptManagerMixin:
                 "format_type": format_type,
                 "scene_detail_level": scene_detail_level,
                 "style_preferences": style_preferences or [],
+                "template_style": template_style,
+                "target_chars_per_episode": target_chars_per_episode,
+                "quality_threshold": quality_threshold,
                 "market_region": story.get("market_region")
                 or episode.get("market_region"),
                 "micro_genre": story.get("micro_genre") or episode.get("micro_genre"),
@@ -260,6 +272,10 @@ class ScriptManagerMixin:
             payload.get("stage_directions") or [],
             format_type=format_type,
             language=language,
+            episode_number=episode.get("episode_number"),
+            template_style=template_style,
+            target_chars_per_episode=target_chars_per_episode,
+            title=episode.get("title"),
         )
 
         return {

@@ -25,6 +25,9 @@ class ScriptGenerationMixin:
         language: str = "zh-CN",
         dialogue_style: str = "natural",
         scene_detail_level: str = "medium",
+        template_style: str = "commercial_vertical_drama",
+        target_chars_per_episode: int = 1300,
+        quality_threshold: float = 9.0,
         additional_requirements: Optional[str] = None,
         style_preferences: Optional[List[str]] = None,
         model: Optional[str] = None,
@@ -131,6 +134,9 @@ class ScriptGenerationMixin:
                     language=language,
                     dialogue_style=dialogue_style,
                     scene_detail_level=scene_detail_level,
+                    template_style=template_style,
+                    target_chars_per_episode=target_chars_per_episode,
+                    quality_threshold=quality_threshold,
                     additional_requirements=additional_requirements,
                     style_preferences=style_preferences,
                     model=model,
@@ -150,6 +156,10 @@ class ScriptGenerationMixin:
                         lg["content"].get("stage_directions") or [],
                         format_type=format_type,
                         language=language,
+                        episode_number=episode.get("episode_number"),
+                        template_style=template_style,
+                        target_chars_per_episode=target_chars_per_episode,
+                        title=episode.get("title"),
                     )
                     lg["content"]["content"] = assembled
                     return lg
@@ -168,6 +178,9 @@ class ScriptGenerationMixin:
             language=language,
             dialogue_style=dialogue_style,
             scene_detail_level=scene_detail_level,
+            template_style=template_style,
+            target_chars_per_episode=target_chars_per_episode,
+            quality_threshold=quality_threshold,
             additional_requirements=additional_requirements,
             style_preferences=style_preferences,
             model=model,
@@ -194,6 +207,10 @@ class ScriptGenerationMixin:
                     parsed.get("stage_directions") or [],
                     format_type=format_type,
                     language=language,
+                    episode_number=episode.get("episode_number"),
+                    template_style=template_style,
+                    target_chars_per_episode=target_chars_per_episode,
+                    title=episode.get("title"),
                 )
                 parsed["content"] = assembled
                 direct["content"] = parsed
@@ -225,6 +242,9 @@ class ScriptGenerationMixin:
             language=language,
             dialogue_style=dialogue_style,
             scene_detail_level=scene_detail_level,
+            template_style=template_style,
+            target_chars_per_episode=target_chars_per_episode,
+            quality_threshold=quality_threshold,
             additional_requirements=additional_requirements,
             style_preferences=style_preferences,
         )

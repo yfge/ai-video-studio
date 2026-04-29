@@ -3,6 +3,7 @@
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import { scriptAPI } from "@/utils/api/endpoints";
 import type { ScriptGenerationRequest } from "@/utils/api/types";
+import { CommercialScriptOptions } from "./CommercialScriptOptions";
 import { ShortDramaScriptTemplateSelector } from "./ShortDramaScriptTemplateSelector";
 
 interface ScriptGenerationFormProps {
@@ -49,6 +50,11 @@ export function ScriptGenerationForm({
       <h3 className="text-lg font-semibold mb-4">📝 生成剧本</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <CommercialScriptOptions
+          generateForm={generateForm}
+          setGenerateForm={setGenerateForm}
+        />
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             剧本格式

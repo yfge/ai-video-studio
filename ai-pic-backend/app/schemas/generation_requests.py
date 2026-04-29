@@ -67,7 +67,7 @@ class StoryGenerationRequest(BaseModel):
 
 class EpisodeGenerationRequest(BaseModel):
     story_id: int
-    episode_count: int = Field(..., ge=1, le=50, description="要生成的剧集数量")
+    episode_count: int = Field(..., ge=1, le=100, description="要生成的剧集数量")
     episode_duration: Optional[int] = Field(None, ge=1, description="每集时长（分钟）")
 
     # 市场与微类型
@@ -109,6 +109,16 @@ class ScriptGenerationRequest(BaseModel):
     episode_id: int
     format_type: str = Field("screenplay", description="剧本格式")
     language: str = Field("zh-CN", description="语言")
+    template_style: Literal["commercial_vertical_drama", "structured_json"] = Field(
+        "commercial_vertical_drama",
+        description="正文模板：commercial_vertical_drama（商用竖屏短剧正文）/ structured_json（旧结构化草稿）",
+    )
+    target_chars_per_episode: int = Field(
+        1300, ge=600, le=2500, description="单集目标正文字符数"
+    )
+    quality_threshold: float = Field(
+        9.0, ge=0.0, le=10.0, description="商用格式质量门阈值（0-10）"
+    )
 
     # 市场与微类型
     market_region: Optional[str] = Field(

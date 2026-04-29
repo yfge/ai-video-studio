@@ -36,6 +36,9 @@ export interface ScriptGenerationRequest {
   episode_id: number;
   format_type: string;
   language: string;
+  template_style?: "commercial_vertical_drama" | "structured_json";
+  target_chars_per_episode?: number;
+  quality_threshold?: number;
   dialogue_style: string;
   scene_detail_level: string;
   market_region?: string;

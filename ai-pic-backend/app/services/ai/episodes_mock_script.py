@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List, Optional
 
+from app.services.ai.script_text import build_script_text
+
 
 class EpisodeMockScriptMixin:
     def _extract_dialogues_from_summary(
@@ -113,8 +115,11 @@ class EpisodeMockScriptMixin:
         language: str,
         dialogue_style: str,
         scene_detail_level: str,
-        additional_requirements: Optional[str],
-        style_preferences: Optional[List[str]],
+        template_style: str = "commercial_vertical_drama",
+        target_chars_per_episode: int = 1300,
+        quality_threshold: float = 9.0,
+        additional_requirements: Optional[str] = None,
+        style_preferences: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """生成模拟剧本内容，保证无外部模型时的回退体验。
 
@@ -220,7 +225,20 @@ class EpisodeMockScriptMixin:
         if additional_requirements:
             script_sections.append(f"\n【制作要求】{additional_requirements}")
 
-        script_text = "\n\n".join(script_sections)
+        if template_style == "commercial_vertical_drama":
+            script_text = build_script_text(
+                scenes,
+                dialogues,
+                stage_directions,
+                format_type=format_type,
+                language=language,
+                episode_number=episode.get("episode_number"),
+                template_style=template_style,
+                target_chars_per_episode=target_chars_per_episode,
+                title=episode.get("title"),
+            )
+        else:
+            script_text = "\n\n".join(script_sections)
 
         return {
             "content": {
@@ -235,6 +253,9 @@ class EpisodeMockScriptMixin:
                     "language": language,
                     "format_type": format_type,
                     "scene_detail_level": scene_detail_level,
+                    "template_style": template_style,
+                    "target_chars_per_episode": target_chars_per_episode,
+                    "quality_threshold": quality_threshold,
                     "style_preferences": style_preferences or [],
                 },
             },

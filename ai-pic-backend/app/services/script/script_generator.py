@@ -63,6 +63,9 @@ class ScriptGenerator:
         model: Optional[str] = None,
         dialogue_style: Optional[str] = None,
         scene_detail_level: Optional[str] = None,
+        template_style: str = "commercial_vertical_drama",
+        target_chars_per_episode: int = 1300,
+        quality_threshold: float = 9.0,
         additional_requirements: Optional[str] = None,
         style_preferences: Optional[List[str]] = None,
         temperature: float = 0.7,
@@ -78,6 +81,9 @@ class ScriptGenerator:
             model: AI model to use
             dialogue_style: Dialogue style preference
             scene_detail_level: Scene detail level
+            template_style: Output text template style
+            target_chars_per_episode: Target episode script characters
+            quality_threshold: Deterministic lint pass threshold
             additional_requirements: Additional requirements
             style_preferences: Style preferences list
             temperature: Generation temperature
@@ -118,6 +124,9 @@ class ScriptGenerator:
             language=language,
             dialogue_style=dialogue_style,
             scene_detail_level=scene_detail_level,
+            template_style=template_style,
+            target_chars_per_episode=target_chars_per_episode,
+            quality_threshold=quality_threshold,
             additional_requirements=additional_requirements,
             style_preferences=style_preferences,
             model=model_id,
@@ -131,7 +140,14 @@ class ScriptGenerator:
         # Parse and normalize content
         ai_content = self._parse_ai_result(result)
         ai_content = self._normalize_content(
-            ai_content, format_type, language, episode_data.get("scenes")
+            ai_content,
+            format_type,
+            language,
+            episode_data.get("scenes"),
+            episode_number=episode.episode_number,
+            template_style=template_style,
+            target_chars_per_episode=target_chars_per_episode,
+            title=episode.title,
         )
 
         # Extract content parts
@@ -151,6 +167,10 @@ class ScriptGenerator:
                 stage_directions,
                 format_type=format_type,
                 language=language,
+                episode_number=episode.episode_number,
+                template_style=template_style,
+                target_chars_per_episode=target_chars_per_episode,
+                title=episode.title,
             )
             ai_content["content"] = script_content
         try:
@@ -172,6 +192,8 @@ class ScriptGenerator:
                     model=model_id,
                     prefer_provider=prefer_provider,
                     temperature=temperature,
+                    lint_threshold=quality_threshold,
+                    target_chars_per_episode=target_chars_per_episode,
                 )
             )
         except NarrativeQualityGateError as exc:
@@ -222,6 +244,9 @@ class ScriptGenerator:
             generation_params={
                 "dialogue_style": dialogue_style,
                 "scene_detail_level": scene_detail_level,
+                "template_style": template_style,
+                "target_chars_per_episode": target_chars_per_episode,
+                "quality_threshold": quality_threshold,
                 "additional_requirements": additional_requirements,
                 "style_preferences": style_preferences,
                 "model": model,
@@ -245,6 +270,9 @@ class ScriptGenerator:
         language: str = "zh-CN",
         dialogue_style: Optional[str] = None,
         scene_detail_level: Optional[str] = None,
+        template_style: str = "commercial_vertical_drama",
+        target_chars_per_episode: int = 1300,
+        quality_threshold: float = 9.0,
         additional_requirements: Optional[str] = None,
         style_preferences: Optional[List[str]] = None,
     ) -> str:
@@ -284,6 +312,9 @@ class ScriptGenerator:
             "language": language,
             "dialogue_style": dialogue_style,
             "scene_detail_level": scene_detail_level,
+            "template_style": template_style,
+            "target_chars_per_episode": target_chars_per_episode,
+            "quality_threshold": quality_threshold,
             "additional_requirements": additional_requirements,
             "style_preferences": style_preferences or [],
         }
@@ -334,6 +365,11 @@ class ScriptGenerator:
         format_type: str,
         language: str,
         default_scenes: Optional[List[Dict[str, Any]]] = None,
+        *,
+        episode_number: Optional[int] = None,
+        template_style: Optional[str] = None,
+        target_chars_per_episode: Optional[int] = None,
+        title: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Normalize AI content to expected format."""
         normalized = dict(ai_content or {})
@@ -369,6 +405,10 @@ class ScriptGenerator:
                 normalized["stage_directions"],
                 format_type=format_type,
                 language=language,
+                episode_number=episode_number,
+                template_style=template_style,
+                target_chars_per_episode=target_chars_per_episode,
+                title=title,
             )
         normalized["content"] = content_text
 

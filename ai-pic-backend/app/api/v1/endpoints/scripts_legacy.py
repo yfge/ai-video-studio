@@ -326,6 +326,10 @@ def _normalize_script_content(
     format_type: str,
     language: str,
     default_scenes: Optional[List[Dict[str, Any]]] = None,
+    episode_number: Optional[int] = None,
+    template_style: Optional[str] = None,
+    target_chars_per_episode: Optional[int] = None,
+    title: Optional[str] = None,
 ) -> Dict[str, Any]:
     """确保场景/对白/舞台指示结构化并符合前端期望字段。"""
     normalized = dict(ai_content or {})
@@ -480,6 +484,10 @@ def _normalize_script_content(
             stage_directions,
             format_type=format_type,
             language=language,
+            episode_number=episode_number,
+            template_style=template_style,
+            target_chars_per_episode=target_chars_per_episode,
+            title=title,
         )
     normalized["content"] = content_text
     return normalized
@@ -788,6 +796,9 @@ async def generate_script(
         language=request.language,
         dialogue_style=request.dialogue_style,
         scene_detail_level=request.scene_detail_level,
+        template_style=request.template_style,
+        target_chars_per_episode=request.target_chars_per_episode,
+        quality_threshold=request.quality_threshold,
         additional_requirements=request.additional_requirements,
         style_preferences=request.style_preferences,
         model=model_id,
@@ -834,6 +845,10 @@ async def generate_script(
         format_type=request.format_type,
         language=request.language,
         default_scenes=episode_data.get("scenes"),
+        episode_number=episode.episode_number,
+        template_style=request.template_style,
+        target_chars_per_episode=request.target_chars_per_episode,
+        title=episode.title,
     )
 
     # 提取剧本内容
@@ -851,6 +866,10 @@ async def generate_script(
             stage_directions,
             format_type=request.format_type,
             language=request.language,
+            episode_number=episode.episode_number,
+            template_style=request.template_style,
+            target_chars_per_episode=request.target_chars_per_episode,
+            title=episode.title,
         )
         ai_content["content"] = script_content
     try:
@@ -872,6 +891,8 @@ async def generate_script(
                 model=model_id,
                 prefer_provider=prefer_provider,
                 temperature=request.temperature or 0.7,
+                lint_threshold=request.quality_threshold,
+                target_chars_per_episode=request.target_chars_per_episode,
             )
         )
     except NarrativeQualityGateError as exc:
@@ -928,6 +949,9 @@ async def generate_script(
         generation_params={
             "dialogue_style": request.dialogue_style,
             "scene_detail_level": request.scene_detail_level,
+            "template_style": request.template_style,
+            "target_chars_per_episode": request.target_chars_per_episode,
+            "quality_threshold": request.quality_threshold,
             "market_region": request.market_region,
             "micro_genre": request.micro_genre,
             "hook_plan": hook_plan_payload,
@@ -1006,6 +1030,9 @@ async def preview_script_prompt(
         "language": request.language,
         "dialogue_style": request.dialogue_style,
         "scene_detail_level": request.scene_detail_level,
+        "template_style": request.template_style,
+        "target_chars_per_episode": request.target_chars_per_episode,
+        "quality_threshold": request.quality_threshold,
         "additional_requirements": request.additional_requirements,
         "style_preferences": request.style_preferences or [],
     }
@@ -1098,6 +1125,13 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                 language=request_dict.get("language", "zh-CN"),
                 dialogue_style=request_dict.get("dialogue_style", "natural"),
                 scene_detail_level=request_dict.get("scene_detail_level", "medium"),
+                template_style=request_dict.get(
+                    "template_style", "commercial_vertical_drama"
+                ),
+                target_chars_per_episode=request_dict.get(
+                    "target_chars_per_episode", 1300
+                ),
+                quality_threshold=request_dict.get("quality_threshold", 9.0),
                 additional_requirements=request_dict.get("additional_requirements"),
                 style_preferences=request_dict.get("style_preferences"),
                 model=model_id,
@@ -1143,6 +1177,12 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             format_type=request_dict.get("format_type", "screenplay"),
             language=request_dict.get("language", "zh-CN"),
             default_scenes=episode_data.get("scenes"),
+            episode_number=episode.episode_number,
+            template_style=request_dict.get(
+                "template_style", "commercial_vertical_drama"
+            ),
+            target_chars_per_episode=request_dict.get("target_chars_per_episode", 1300),
+            title=episode.title,
         )
 
         script_content = ai_content.get("content", "")
@@ -1159,6 +1199,14 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                 stage_directions,
                 format_type=request_dict.get("format_type", "screenplay"),
                 language=request_dict.get("language", "zh-CN"),
+                episode_number=episode.episode_number,
+                template_style=request_dict.get(
+                    "template_style", "commercial_vertical_drama"
+                ),
+                target_chars_per_episode=request_dict.get(
+                    "target_chars_per_episode", 1300
+                ),
+                title=episode.title,
             )
             ai_content["content"] = script_content
 
@@ -1180,6 +1228,10 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                 model=model_id,
                 prefer_provider=prefer_provider,
                 temperature=request_dict.get("temperature", 0.7),
+                lint_threshold=request_dict.get("quality_threshold", 9.0),
+                target_chars_per_episode=request_dict.get(
+                    "target_chars_per_episode", 1300
+                ),
             )
 
         result, ai_content, _quality_gate = anyio.run(_run_quality_gate)
@@ -1261,6 +1313,9 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                 for k in [
                     "dialogue_style",
                     "scene_detail_level",
+                    "template_style",
+                    "target_chars_per_episode",
+                    "quality_threshold",
                     "market_region",
                     "micro_genre",
                     "hook_plan",
@@ -1404,6 +1459,13 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
                 language=request_dict.get("language") or script.language,
                 dialogue_style=request_dict.get("dialogue_style", "natural"),
                 scene_detail_level=request_dict.get("scene_detail_level", "medium"),
+                template_style=request_dict.get(
+                    "template_style", "commercial_vertical_drama"
+                ),
+                target_chars_per_episode=request_dict.get(
+                    "target_chars_per_episode", 1300
+                ),
+                quality_threshold=request_dict.get("quality_threshold", 9.0),
                 additional_requirements=request_dict.get("additional_requirements"),
                 style_preferences=request_dict.get("style_preferences"),
                 model=model_id,
@@ -1450,6 +1512,12 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
             format_type=request_dict.get("format_type") or script.format_type,
             language=request_dict.get("language") or script.language,
             default_scenes=episode_data.get("scenes"),
+            episode_number=episode.episode_number,
+            template_style=request_dict.get(
+                "template_style", "commercial_vertical_drama"
+            ),
+            target_chars_per_episode=request_dict.get("target_chars_per_episode", 1300),
+            title=episode.title,
         )
 
         script_content = ai_content.get("content", "")
@@ -1466,6 +1534,14 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
                 stage_directions,
                 format_type=request_dict.get("format_type") or script.format_type,
                 language=request_dict.get("language") or script.language,
+                episode_number=episode.episode_number,
+                template_style=request_dict.get(
+                    "template_style", "commercial_vertical_drama"
+                ),
+                target_chars_per_episode=request_dict.get(
+                    "target_chars_per_episode", 1300
+                ),
+                title=episode.title,
             )
             ai_content["content"] = script_content
 
@@ -1487,6 +1563,10 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
                 model=model_id,
                 prefer_provider=prefer_provider,
                 temperature=request_dict.get("temperature", 0.7),
+                lint_threshold=request_dict.get("quality_threshold", 9.0),
+                target_chars_per_episode=request_dict.get(
+                    "target_chars_per_episode", 1300
+                ),
             )
 
         result, ai_content, _quality_gate = anyio.run(_run_quality_gate)
@@ -2011,6 +2091,11 @@ async def _regenerate_script_instance(
         language=script.language,
         dialogue_style=original_params.get("dialogue_style", "natural"),
         scene_detail_level=original_params.get("scene_detail_level", "medium"),
+        template_style=original_params.get(
+            "template_style", "commercial_vertical_drama"
+        ),
+        target_chars_per_episode=original_params.get("target_chars_per_episode", 1300),
+        quality_threshold=original_params.get("quality_threshold", 9.0),
         additional_requirements=f"重新生成第{episode.episode_number}集的剧本内容",
         style_preferences=original_params.get("style_preferences"),
         model=model_id,
@@ -2055,6 +2140,12 @@ async def _regenerate_script_instance(
         format_type=script.format_type,
         language=script.language,
         default_scenes=episode_data.get("scenes"),
+        episode_number=episode.episode_number,
+        template_style=original_params.get(
+            "template_style", "commercial_vertical_drama"
+        ),
+        target_chars_per_episode=original_params.get("target_chars_per_episode", 1300),
+        title=episode.title,
     )
 
     script_content = ai_content.get("content", "")
@@ -2071,6 +2162,14 @@ async def _regenerate_script_instance(
             stage_directions,
             format_type=script.format_type,
             language=script.language,
+            episode_number=episode.episode_number,
+            template_style=original_params.get(
+                "template_style", "commercial_vertical_drama"
+            ),
+            target_chars_per_episode=original_params.get(
+                "target_chars_per_episode", 1300
+            ),
+            title=episode.title,
         )
         ai_content["content"] = script_content
     try:
@@ -2092,6 +2191,10 @@ async def _regenerate_script_instance(
                 model=model_id,
                 prefer_provider=prefer_provider,
                 temperature=original_params.get("temperature", 0.7),
+                lint_threshold=original_params.get("quality_threshold", 9.0),
+                target_chars_per_episode=original_params.get(
+                    "target_chars_per_episode", 1300
+                ),
             )
         )
     except NarrativeQualityGateError as exc:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.schemas.script_quality import (
+    ScriptLintIssue,
     ScriptLintMetrics,
     ScriptLintOptions,
     ScriptLintResult,
@@ -15,7 +16,11 @@ from app.services.script_quality.checks import (
     check_tempo_tags,
     check_visual_language,
 )
-from app.services.script_quality.constants import SFX_TAG_KEYWORDS, UNIMPLEMENTED_CHECKS
+from app.services.script_quality.constants import (
+    COMMERCIAL_ACTION_MARKERS,
+    SFX_TAG_KEYWORDS,
+    UNIMPLEMENTED_CHECKS,
+)
 from app.services.script_quality.utils import (
     collect_tags,
     estimate_visible_chars,
@@ -44,8 +49,10 @@ def lint_script_content(
         if is_dialogue_line:
             dialogue_lines.append((ln_no, ln, content or ""))
             continue
-        if any(key in ln for key in SFX_TAG_KEYWORDS) or ln.startswith(
-            ("（", "(", "[")
+        if (
+            any(key in ln for key in SFX_TAG_KEYWORDS)
+            or any(marker in ln for marker in COMMERCIAL_ACTION_MARKERS)
+            or ln.startswith(("▲", "（", "(", "["))
         ):
             stage_lines.append((ln_no, ln))
 
@@ -54,8 +61,8 @@ def lint_script_content(
 
     for rule, found in (
         check_scene_headers(non_empty),
-        check_tempo_tags(all_tags),
-        check_emotion_goal(all_tags),
+        check_tempo_tags(all_tags, non_empty),
+        check_emotion_goal(all_tags, dialogue_lines),
         check_sfx_lines(stage_lines),
         check_hook_3s(non_empty),
         check_cliffhanger(non_empty),

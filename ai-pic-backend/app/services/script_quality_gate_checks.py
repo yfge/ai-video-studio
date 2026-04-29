@@ -136,10 +136,23 @@ def duration_check(result: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-def lint_check(content: Dict[str, Any], lint_threshold: float) -> Dict[str, Any]:
+def lint_check(
+    content: Dict[str, Any],
+    lint_threshold: float,
+    target_chars_per_episode: Optional[int] = None,
+) -> Dict[str, Any]:
+    target_min = None
+    target_max = None
+    if target_chars_per_episode:
+        target_min = max(1, int(target_chars_per_episode * 0.7))
+        target_max = int(target_chars_per_episode * 1.25)
     lint_result = lint_script_content(
         str(content.get("content") or ""),
-        options=ScriptLintOptions(pass_threshold=lint_threshold),
+        options=ScriptLintOptions(
+            pass_threshold=lint_threshold,
+            target_word_min=target_min,
+            target_word_max=target_max,
+        ),
     )
     return make_quality_check(
         "script_lint",

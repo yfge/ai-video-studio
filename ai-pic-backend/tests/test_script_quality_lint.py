@@ -36,3 +36,25 @@ def test_lint_flags_unfilmable_language_and_long_dialogue():
     issue_rule_ids = {i.rule_id for i in result.issues}
     assert "visual_language" in issue_rule_ids
     assert "dialogue_length" in issue_rule_ids
+
+
+@pytest.mark.unit
+def test_lint_accepts_commercial_vertical_drama_format():
+    script = """
+第1集
+1-1 内. 皇宫偏殿 - 夜
+人物： 林雪、陈默
+▲【音效】砰！殿门被撞开，烛火猛地一晃。
+林雪(冷笑)：你藏的账本，我找到了。
+陈默(后退)：你不该碰它！
+▲林雪把账本摔到案上，红色指印露出。
+林雪(逼近)：那就告诉我，谁签的字？
+陈默(压低声)：你真想知道？
+▲【特写】最后一页翻开，另一个名字压在林雪指尖。
+"""
+    result = lint_script_content(script, options=ScriptLintOptions(pass_threshold=9.0))
+
+    assert result.passed is True
+    assert result.overall_score >= 9.0
+    rule_ids = {r.rule_id for r in result.rules}
+    assert "pacing_markers" in rule_ids

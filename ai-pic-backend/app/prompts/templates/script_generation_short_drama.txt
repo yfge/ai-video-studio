@@ -112,6 +112,9 @@
 语言：{{ language }}
 对话风格：{{ dialogue_style }}
 场景描述详细程度：{{ scene_detail_level }}
+正文模板：{{ template_style|default('commercial_vertical_drama') }}
+目标正文长度：约 {{ target_chars_per_episode|default(1300) }} 字/集
+质量门阈值：{{ quality_threshold|default(9.0) }}/10
 
 {% if additional_requirements -%}
 ## 特殊要求
@@ -135,8 +138,9 @@
 ## 生成要求
 请生成一个完整的可拍摄短剧剧本，并以JSON格式返回：
 
-- `content`：完整剧本正文（符合{{ format_type }}格式）
-- `scenes`：场景列表（建议 3-6 个）；爽点场景在 `notes` 标注 `PAYOFF`，结尾卡点场景标注 `CLIFFHANGER`
+- `content`：完整剧本正文。默认使用商用竖屏短剧正文格式：
+  `第N集` / `N-M 内/外. 地点 - 日/夜` / `人物：` / `▲动作或镜头` / `角色(状态)：对白`。
+- `scenes`：场景列表（建议 1-4 个）；爽点场景在 `notes` 标注 `PAYOFF`，结尾卡点场景标注 `CLIFFHANGER`
 - `dialogues`：对白列表（信息密度高，避免空话套话；不要用“……”省略台词）
 - `stage_directions`：舞台指示/动作（帮助拍摄与表演）
 - `metadata`：包含 market_region/micro_genre/hook_plan/twist_density/cliffhanger_plan/ad_snippets，并与本集内容一致

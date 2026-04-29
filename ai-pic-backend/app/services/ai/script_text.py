@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+from app.services.ai.commercial_script_text import build_commercial_vertical_text
 
 
 def build_script_text(
@@ -9,7 +11,22 @@ def build_script_text(
     stage_directions: List[Dict[str, Any]],
     format_type: str,
     language: str,
+    *,
+    episode_number: Optional[int] = None,
+    template_style: Optional[str] = None,
+    target_chars_per_episode: Optional[int] = None,
+    title: Optional[str] = None,
 ) -> str:
+    if _uses_commercial_vertical_template(format_type, template_style):
+        return build_commercial_vertical_text(
+            scenes=scenes,
+            dialogues=dialogues,
+            stage_directions=stage_directions,
+            episode_number=episode_number or 1,
+            target_chars_per_episode=target_chars_per_episode,
+            title=title,
+        )
+
     lines: List[str] = [
         f"# {format_type} ({language})",
         "【音效】砰！画面直接切入冲突现场。",
@@ -52,6 +69,15 @@ def build_script_text(
             "【慢】【情绪目的：留下悬念】镜头停在关键线索上：接下来会发生什么？"
         )
     return "\n".join(lines)
+
+
+def _uses_commercial_vertical_template(
+    format_type: str, template_style: Optional[str]
+) -> bool:
+    return template_style == "commercial_vertical_drama" or format_type in {
+        "commercial_vertical_drama",
+        "vertical_short_drama",
+    }
 
 
 def _ends_with_question(lines: List[str]) -> bool:
