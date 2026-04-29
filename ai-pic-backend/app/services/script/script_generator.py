@@ -13,7 +13,12 @@ from app.models.user import User
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.repositories.script_repository import EpisodeRepository, StoryRepository
+from app.services.ai.script_text import build_script_text
 from app.services.ai_service import ai_service
+from app.services.narrative_quality_gate import (
+    NarrativeQualityGateError,
+    enforce_script_quality_gate_with_repair,
+)
 from app.services.script.scene_utils import to_int
 from app.services.script.script_character_policy import enforce_script_character_policy
 from app.services.script.script_utils import (
@@ -139,6 +144,46 @@ class ScriptGenerator:
         dialogues, stage_directions = self._populate_missing_parts(
             scenes, dialogues, stage_directions, story
         )
+        if not ai_content.get("dialogues") or not ai_content.get("stage_directions"):
+            script_content = build_script_text(
+                scenes,
+                dialogues,
+                stage_directions,
+                format_type=format_type,
+                language=language,
+            )
+            ai_content["content"] = script_content
+        try:
+            result, ai_content, _quality_gate = (
+                await enforce_script_quality_gate_with_repair(
+                    ai_manager=getattr(ai_service, "ai_manager", None),
+                    result=result,
+                    content={
+                        **ai_content,
+                        "content": script_content,
+                        "scenes": scenes,
+                        "dialogues": dialogues,
+                        "stage_directions": stage_directions,
+                    },
+                    story=story_data,
+                    story_model=story,
+                    episode_id=episode_id,
+                    db=self.session,
+                    model=model_id,
+                    prefer_provider=prefer_provider,
+                    temperature=temperature,
+                )
+            )
+        except NarrativeQualityGateError as exc:
+            raise GenerationFailedError(
+                "剧本",
+                f"质量校验失败: {exc}",
+                context={"quality_gate": exc.quality_gate},
+            ) from exc
+        script_content = ai_content.get("content", "")
+        scenes = ai_content.get("scenes", [])
+        dialogues = ai_content.get("dialogues", [])
+        stage_directions = ai_content.get("stage_directions", [])
 
         policy = enforce_script_character_policy(
             story=story, scenes=scenes, dialogues=dialogues
@@ -318,7 +363,7 @@ class ScriptGenerator:
             content_text = content_value or ""
 
         if not content_text:
-            content_text = ai_service._build_script_text(
+            content_text = build_script_text(
                 scenes,
                 normalized["dialogues"],
                 normalized["stage_directions"],
@@ -474,6 +519,7 @@ class ScriptGenerator:
                 "model_used": result.get("model_used"),
                 "usage": result.get("usage"),
                 "reasoning": result.get("reasoning"),
+                "quality_gate": result.get("quality_gate"),
             }
 
         if agent_run:

@@ -28,6 +28,7 @@ from app.services.duration_orchestrator.constants import (
     WORDS_PER_SECOND,
 )
 from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
+from app.services.narrative_context import extract_story_characters
 from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
@@ -117,6 +118,7 @@ class ScriptLangGraphAgent:
             "character_validation_passed": True,
             "character_validation_results": [],
             "character_warnings": [],
+            "unknown_names": [],
         }
 
         # Build profiles from story characters
@@ -177,6 +179,7 @@ class ScriptLangGraphAgent:
             }
 
         if unknown_speakers:
+            results["unknown_names"] = sorted(unknown_speakers)
             results["character_warnings"].append(
                 f"Unknown speaker(s) in dialogues: {', '.join(sorted(unknown_speakers))}"
             )
@@ -1135,13 +1138,11 @@ class ScriptLangGraphAgent:
                 }
 
             # Extract character names from story for context
-            characters = []
-            if story.get("characters"):
-                for char in story["characters"]:
-                    if isinstance(char, dict):
-                        characters.append(char.get("name", ""))
-                    elif isinstance(char, str):
-                        characters.append(char)
+            characters = [
+                char.get("name", "")
+                for char in extract_story_characters(story)
+                if char.get("name")
+            ]
 
             prompt = prompt_manager.render_prompt(
                 PromptTemplate.SCRIPT_REVIEW.value,
@@ -1346,7 +1347,7 @@ class ScriptLangGraphAgent:
             return None
 
         # Run character consistency validation
-        story_characters = story.get("characters", [])
+        story_characters = extract_story_characters(story)
         char_validation = self._validate_script_characters(
             content, story_characters, episode.get("id"), db
         )

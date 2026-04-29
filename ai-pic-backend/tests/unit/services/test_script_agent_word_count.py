@@ -216,3 +216,28 @@ class TestEstimateDialogueDuration:
             {"scene_number": 2, "content": "5678"},
         ]
         assert agent._estimate_dialogue_duration(dialogues, 1) > 0
+
+
+class TestCharacterValidation:
+    """测试角色校验结果字段"""
+
+    @pytest.fixture
+    def agent(self):
+        service = MagicMock()
+        service.ai_manager = MagicMock()
+        return ScriptLangGraphAgent(service)
+
+    def test_unknown_speakers_are_returned_as_unknown_names(self, agent):
+        content = {
+            "dialogues": [
+                {"scene_number": 1, "character": "陈哲", "content": "我来处理。"},
+                {"scene_number": 1, "character": "陌生人", "content": "跟我走。"},
+                {"scene_number": 1, "character": "旁白", "content": "夜色压低。"},
+            ]
+        }
+
+        result = agent._validate_script_characters(content, [{"name": "陈哲"}])
+
+        assert result["character_validation_passed"] is False
+        assert result["unknown_names"] == ["陌生人"]
+        assert "陌生人" in result["character_warnings"][0]

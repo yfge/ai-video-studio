@@ -151,7 +151,7 @@ async def test_script_agent_clears_react_retry_flag_after_successful_retry():
     ):
         result = await agent.generate(
             episode={"id": 1, "title": "ep", "episode_number": 1},
-            story={"id": 1, "title": "story", "characters": [{"name": "A"}]},
+            story={"id": 1, "title": "story", "character_profiles": [{"name": "A"}]},
             format_type="short_video",
             language="zh",
             dialogue_style="natural",
@@ -172,3 +172,5 @@ async def test_script_agent_clears_react_retry_flag_after_successful_retry():
         "script_dialogues",
         "script_review",
     ]
+    assert result["character_validation_passed"] is True
+    assert "No story characters to validate against" not in result["character_warnings"]

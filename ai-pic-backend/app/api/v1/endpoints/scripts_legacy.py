@@ -1,5 +1,4 @@
 import json
-import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, urlunparse
@@ -10,10 +9,10 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Script, Story
-from app.models.story_structure import Scene, Shot
+from app.models.story_structure import Scene
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.prompts.manager import PromptManager, prompt_manager
+from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.script import (
@@ -24,11 +23,14 @@ from app.schemas.script import (
 )
 from app.schemas.story_structure import SceneCreate, ShotCreate
 from app.services import story_structure_service as story_structure_svc
+from app.services.ai.script_text import build_script_text
 from app.services.ai_service import ai_service
-from app.services.task_worker import (
-    script_generate_task,
-    script_regenerate_task,
+from app.services.narrative_quality_gate import (
+    NarrativeQualityGateError,
+    attach_quality_gate_failure_to_task,
+    enforce_script_quality_gate_with_repair,
 )
+from app.services.task_worker import script_generate_task, script_regenerate_task
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.script_parser import extract_script_structure
@@ -36,14 +38,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, load_only
 
+
 def _now_iso() -> str:
     return datetime.utcnow().isoformat()
+
 
 def _to_int(value: Any) -> Optional[int]:
     try:
         return int(value)
     except (TypeError, ValueError):
         return None
+
 
 def _coerce_uuid(value: Any) -> str:
     if not value:
@@ -52,6 +57,7 @@ def _coerce_uuid(value: Any) -> str:
         return str(UUID(str(value)))
     except Exception:
         return str(uuid4())
+
 
 def _ensure_iso_datetime(value: Any, fallback: str) -> str:
     if value is None:
@@ -62,6 +68,7 @@ def _ensure_iso_datetime(value: Any, fallback: str) -> str:
         return datetime.fromisoformat(str(value)).isoformat()
     except Exception:
         return fallback
+
 
 def _abs_url(url: str) -> str:
     if not url:
@@ -86,6 +93,7 @@ def _abs_url(url: str) -> str:
         getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
     ).rstrip("/")
     return f"{base}{url}"
+
 
 def _friendly_task_title(
     prefix: str, script: Script, episode: Episode | None, story: Story | None
@@ -116,6 +124,7 @@ def _friendly_task_title(
     else:
         parts.append(f"剧本{script.id}")
     return " - ".join(parts)
+
 
 def _collect_previous_episode_summaries(
     db: Session,
@@ -150,6 +159,7 @@ def _collect_previous_episode_summaries(
             }
         )
     return summaries
+
 
 def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
     """汇总故事角色设定，为提示词提供丰富的角色介绍。"""
@@ -213,6 +223,7 @@ def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
 
     return cleaned_profiles
 
+
 def _build_episode_data(episode: Episode) -> Dict[str, Any]:
     scenes = _extract_episode_scenes(episode)
     scene_count = episode.scene_count or (len(scenes) if scenes else None)
@@ -237,6 +248,7 @@ def _build_episode_data(episode: Episode) -> Dict[str, Any]:
         "scenes": scenes,
         **marketing_meta,
     }
+
 
 def _extract_episode_scenes(episode: Episode) -> List[Dict[str, Any]]:
     """从剧集元数据中提取场景列表，保证基础字段齐全。"""
@@ -278,6 +290,7 @@ def _extract_episode_scenes(episode: Episode) -> List[Dict[str, Any]]:
 
     return cleaned
 
+
 def _build_story_data(
     story: Story,
     *,
@@ -305,6 +318,7 @@ def _build_story_data(
         "character_profiles": character_profiles,
         **marketing_meta,
     }
+
 
 def _normalize_script_content(
     ai_content: Dict[str, Any],
@@ -460,7 +474,7 @@ def _normalize_script_content(
     else:
         content_text = content_value or ""
     if not content_text:
-        content_text = ai_service._build_script_text(
+        content_text = build_script_text(
             scenes,
             dialogues,
             stage_directions,
@@ -469,6 +483,7 @@ def _normalize_script_content(
         )
     normalized["content"] = content_text
     return normalized
+
 
 def _build_scene_payload_from_script_data(
     scene_raw: Any,
@@ -514,6 +529,7 @@ def _build_scene_payload_from_script_data(
         estimated_duration_seconds=estimated_duration,
         status="draft",
     )
+
 
 def _sync_script_scenes_to_story_structure(
     db: Session,
@@ -581,6 +597,7 @@ def _sync_script_scenes_to_story_structure(
         "skipped": len(existing) if existing and not allow_overwrite else 0,
     }
 
+
 def _populate_dialogues_and_stage_if_missing(
     scenes: List[Dict[str, Any]],
     dialogues: List[Dict[str, Any]],
@@ -604,10 +621,13 @@ def _populate_dialogues_and_stage_if_missing(
         story=story,
     )
 
+
 router = APIRouter()
+
 
 def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
+
 
 def _get_script_by_identifier(
     db: Session,
@@ -638,6 +658,7 @@ def _get_script_by_identifier(
         raise HTTPException(status_code=404, detail="剧本不存在")
     return script
 
+
 @router.get("/formats")
 async def get_script_formats():
     """获取剧本格式列表"""
@@ -650,6 +671,7 @@ async def get_script_formats():
         {"value": "animation", "label": "动画脚本"},
     ]
 
+
 @router.get("/languages")
 async def get_script_languages():
     """获取剧本语言列表"""
@@ -660,6 +682,7 @@ async def get_script_languages():
         {"value": "ja-JP", "label": "日语"},
         {"value": "ko-KR", "label": "韩语"},
     ]
+
 
 @router.post("/", response_model=ScriptResponse)
 async def create_script(
@@ -696,6 +719,7 @@ async def create_script(
         logger.warning("同步规范化场景失败（create）", exc_info=True)
 
     return ScriptResponse.from_orm(db_script)
+
 
 @router.post("/generate", response_model=ScriptResponse)
 async def generate_script(
@@ -820,6 +844,47 @@ async def generate_script(
     dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
         scenes, dialogues_raw, stage_directions_raw, story=story
     )
+    if not dialogues_raw or not stage_directions_raw:
+        script_content = build_script_text(
+            scenes,
+            dialogues,
+            stage_directions,
+            format_type=request.format_type,
+            language=request.language,
+        )
+        ai_content["content"] = script_content
+    try:
+        result, ai_content, _quality_gate = (
+            await enforce_script_quality_gate_with_repair(
+                ai_manager=getattr(ai_service, "ai_manager", None),
+                result=result,
+                content={
+                    **ai_content,
+                    "content": script_content,
+                    "scenes": scenes,
+                    "dialogues": dialogues,
+                    "stage_directions": stage_directions,
+                },
+                story=story_data,
+                story_model=story,
+                episode_id=episode.id,
+                db=db,
+                model=model_id,
+                prefer_provider=prefer_provider,
+                temperature=request.temperature or 0.7,
+            )
+        )
+    except NarrativeQualityGateError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"剧本质量校验失败: {exc}",
+        ) from exc
+    script_content = ai_content.get("content", "")
+    scenes = ai_content.get("scenes", [])
+    dialogues = ai_content.get("dialogues", [])
+    stage_directions = ai_content.get("stage_directions", [])
+    if agent_run:
+        agent_run = {**agent_run, "quality_gate": result.get("quality_gate")}
 
     # 计算统计信息
     word_count = len(script_content.split()) if script_content else 0
@@ -890,6 +955,7 @@ async def generate_script(
 
     return ScriptResponse.from_orm(db_script)
 
+
 @router.post("/prompt/preview")
 async def preview_script_prompt(
     request: ScriptGenerationRequest,
@@ -947,6 +1013,7 @@ async def preview_script_prompt(
         PromptTemplate.SCRIPT_GENERATION.value, variables
     )
     return {"success": True, "data": {"prompt": prompt}}
+
 
 def _process_script_generation_task(task_id: int, request_dict: dict, user_id: int):
     from app.core.database import SessionLocal
@@ -1085,6 +1152,43 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
             scenes, dialogues_raw, stage_directions_raw, story=story
         )
+        if not dialogues_raw or not stage_directions_raw:
+            script_content = build_script_text(
+                scenes,
+                dialogues,
+                stage_directions,
+                format_type=request_dict.get("format_type", "screenplay"),
+                language=request_dict.get("language", "zh-CN"),
+            )
+            ai_content["content"] = script_content
+
+        async def _run_quality_gate():
+            return await enforce_script_quality_gate_with_repair(
+                ai_manager=getattr(ai_service, "ai_manager", None),
+                result=result,
+                content={
+                    **ai_content,
+                    "content": script_content,
+                    "scenes": scenes,
+                    "dialogues": dialogues,
+                    "stage_directions": stage_directions,
+                },
+                story=story_data,
+                story_model=story,
+                episode_id=episode.id,
+                db=db,
+                model=model_id,
+                prefer_provider=prefer_provider,
+                temperature=request_dict.get("temperature", 0.7),
+            )
+
+        result, ai_content, _quality_gate = anyio.run(_run_quality_gate)
+        script_content = ai_content.get("content", "")
+        scenes = ai_content.get("scenes", [])
+        dialogues = ai_content.get("dialogues", [])
+        stage_directions = ai_content.get("stage_directions", [])
+        if agent_run:
+            agent_run = {**agent_run, "quality_gate": result.get("quality_gate")}
         extra_meta = {
             k: v
             for k, v in ai_content.items()
@@ -1192,9 +1296,12 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if task:
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
+            if isinstance(e, NarrativeQualityGateError):
+                attach_quality_gate_failure_to_task(task, e.quality_gate)
             db.commit()
     finally:
         db.close()
+
 
 def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id: int):
     """异步剧本重新生成任务处理函数。
@@ -1352,6 +1459,43 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
         dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
             scenes, dialogues_raw, stage_directions_raw, story=story
         )
+        if not dialogues_raw or not stage_directions_raw:
+            script_content = build_script_text(
+                scenes,
+                dialogues,
+                stage_directions,
+                format_type=request_dict.get("format_type") or script.format_type,
+                language=request_dict.get("language") or script.language,
+            )
+            ai_content["content"] = script_content
+
+        async def _run_quality_gate():
+            return await enforce_script_quality_gate_with_repair(
+                ai_manager=getattr(ai_service, "ai_manager", None),
+                result=result,
+                content={
+                    **ai_content,
+                    "content": script_content,
+                    "scenes": scenes,
+                    "dialogues": dialogues,
+                    "stage_directions": stage_directions,
+                },
+                story=story_data,
+                story_model=story,
+                episode_id=episode.id,
+                db=db,
+                model=model_id,
+                prefer_provider=prefer_provider,
+                temperature=request_dict.get("temperature", 0.7),
+            )
+
+        result, ai_content, _quality_gate = anyio.run(_run_quality_gate)
+        script_content = ai_content.get("content", "")
+        scenes = ai_content.get("scenes", [])
+        dialogues = ai_content.get("dialogues", [])
+        stage_directions = ai_content.get("stage_directions", [])
+        if agent_run:
+            agent_run = {**agent_run, "quality_gate": result.get("quality_gate")}
 
         # 创建新剧本而非覆盖原有剧本
         # 解析原版本号并递增
@@ -1472,9 +1616,12 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
         if task:
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
+            if isinstance(e, NarrativeQualityGateError):
+                attach_quality_gate_failure_to_task(task, e.quality_gate)
             db.commit()
     finally:
         db.close()
+
 
 @router.post("/generate-async")
 async def generate_script_async(
@@ -1497,6 +1644,7 @@ async def generate_script_async(
     # 交给 Celery worker 处理
     script_generate_task.delay(t.id, request.dict(), current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
+
 
 @router.get("/", response_model=List[ScriptListItemResponse])
 async def get_scripts(
@@ -1568,6 +1716,7 @@ async def get_scripts(
     )
     return [ScriptListItemResponse.from_orm(script) for script in scripts]
 
+
 @router.get("", response_model=List[ScriptListItemResponse], include_in_schema=False)
 async def get_scripts_no_slash(
     episode_id: Optional[int] = Query(None),
@@ -1595,6 +1744,7 @@ async def get_scripts_no_slash(
         db=db,
     )
 
+
 @router.get("/{script_id}", response_model=ScriptResponse)
 async def get_script(
     script_id: int,
@@ -1605,6 +1755,7 @@ async def get_script(
     script = _get_script_by_identifier(db, script_id, None, current_user)
     return ScriptResponse.from_orm(script)
 
+
 @router.get("/business/{script_business_id}", response_model=ScriptResponse)
 async def get_script_by_business_id(
     script_business_id: str,
@@ -1614,6 +1765,7 @@ async def get_script_by_business_id(
     """按 business_id 获取剧本详情"""
     script = _get_script_by_identifier(db, None, script_business_id, current_user)
     return ScriptResponse.from_orm(script)
+
 
 @router.put("/{script_id}", response_model=ScriptResponse)
 async def update_script(
@@ -1646,6 +1798,7 @@ async def update_script(
 
     return ScriptResponse.from_orm(script)
 
+
 @router.put("/business/{script_business_id}", response_model=ScriptResponse)
 async def update_script_by_business_id(
     script_business_id: str,
@@ -1675,6 +1828,7 @@ async def update_script_by_business_id(
 
     return ScriptResponse.from_orm(script)
 
+
 @router.delete("/{script_id}")
 async def delete_script(
     script_id: int,
@@ -1688,6 +1842,7 @@ async def delete_script(
 
     return {"message": "剧本删除成功"}
 
+
 @router.delete("/business/{script_business_id}")
 async def delete_script_by_business_id(
     script_business_id: str,
@@ -1700,6 +1855,7 @@ async def delete_script_by_business_id(
     db.commit()
 
     return {"message": "剧本删除成功"}
+
 
 @router.get("/episode/{episode_id}", response_model=List[ScriptListItemResponse])
 async def get_episode_scripts(
@@ -1754,6 +1910,7 @@ async def get_episode_scripts(
     )
     return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
 
+
 @router.get(
     "/episode/business/{episode_business_id}",
     response_model=List[ScriptListItemResponse],
@@ -1803,6 +1960,7 @@ async def get_episode_scripts_by_business_id(
         scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
     )
     return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
+
 
 async def _regenerate_script_instance(
     *,
@@ -1906,6 +2064,47 @@ async def _regenerate_script_instance(
     dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
         scenes, dialogues_raw, stage_directions_raw, story=story
     )
+    if not dialogues_raw or not stage_directions_raw:
+        script_content = build_script_text(
+            scenes,
+            dialogues,
+            stage_directions,
+            format_type=script.format_type,
+            language=script.language,
+        )
+        ai_content["content"] = script_content
+    try:
+        result, ai_content, _quality_gate = (
+            await enforce_script_quality_gate_with_repair(
+                ai_manager=getattr(ai_service, "ai_manager", None),
+                result=result,
+                content={
+                    **ai_content,
+                    "content": script_content,
+                    "scenes": scenes,
+                    "dialogues": dialogues,
+                    "stage_directions": stage_directions,
+                },
+                story=story_data,
+                story_model=story,
+                episode_id=episode.id,
+                db=db,
+                model=model_id,
+                prefer_provider=prefer_provider,
+                temperature=original_params.get("temperature", 0.7),
+            )
+        )
+    except NarrativeQualityGateError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"剧本质量校验失败: {exc}",
+        ) from exc
+    script_content = ai_content.get("content", "")
+    scenes = ai_content.get("scenes", [])
+    dialogues = ai_content.get("dialogues", [])
+    stage_directions = ai_content.get("stage_directions", [])
+    if agent_run:
+        agent_run = {**agent_run, "quality_gate": result.get("quality_gate")}
     script.content = script_content
     script.scenes = scenes
     script.dialogues = dialogues
@@ -1940,10 +2139,12 @@ async def _regenerate_script_instance(
 
     return script
 
+
 class ScriptRegenerateRequest(BaseModel):
     """剧本重新生成请求参数"""
 
     model: Optional[str] = Field(None, description="模型ID，格式为 provider:model_id")
+
 
 def _build_script_regenerate_request(
     script: Script, episode: Episode, override_model: Optional[str] = None
@@ -1970,6 +2171,7 @@ def _build_script_regenerate_request(
         "temperature": original_params.get("temperature", 0.7),
         "duration_minutes": duration_minutes,
     }
+
 
 @router.post("/{script_id}/regenerate")
 async def regenerate_script_async(
@@ -2020,6 +2222,7 @@ async def regenerate_script_async(
         },
     }
 
+
 @router.post("/business/{script_business_id}/regenerate")
 async def regenerate_script_by_business_id_async(
     script_business_id: str,
@@ -2066,6 +2269,7 @@ async def regenerate_script_by_business_id_async(
             "message": "剧本重新生成任务已提交",
         },
     }
+
 
 @router.post("/{script_id}/export")
 async def export_script(

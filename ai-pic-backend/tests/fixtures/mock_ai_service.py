@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Iterable, List
+from typing import Any, Iterable, List
 from uuid import uuid4
 
 import pytest
@@ -217,9 +217,22 @@ def mock_ai_service(monkeypatch):
                 "generation_method": "mock-provider:episodes",
             }
 
-        async def generate_script(self, **_: str) -> dict:
+        async def generate_script(self, **_: Any) -> dict:
+            character_name = "旁白"
+
             script_payload = {
-                "content": "INT. ROOM - DAY\nMock dialogue.",
+                "content": (
+                    "【音效】砰！画面直接切入冲突现场。\n"
+                    "# screenplay (zh-CN)\n"
+                    "## 场景\n"
+                    f"- [场景 1] Scene 1: {character_name} finds the hidden key.\n"
+                    f"【快】【情绪目的：推进冲突】{character_name} grabs the key before the door opens.\n"
+                    "\n## 对白\n"
+                    f"[场景 1] {character_name}: Stop now?\n"
+                    "\n## 舞台指示\n"
+                    f"[场景 1][mid] {character_name} hides the key under the lamp.\n"
+                    "【慢】【情绪目的：留下悬念】Which door does the key open?"
+                ),
                 "scenes": [
                     {
                         "scene_number": 1,
@@ -229,7 +242,11 @@ def mock_ai_service(monkeypatch):
                     }
                 ],
                 "dialogues": [
-                    {"scene_number": 1, "character": "Hero", "content": "Hello there!"}
+                    {
+                        "scene_number": 1,
+                        "character": character_name,
+                        "content": "Stop now?",
+                    }
                 ],
                 "stage_directions": [
                     {"scene_number": 1, "direction": "Camera pans across the room."}

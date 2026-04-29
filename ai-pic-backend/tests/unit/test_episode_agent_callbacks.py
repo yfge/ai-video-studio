@@ -2,7 +2,10 @@ import asyncio
 import json
 
 import pytest
+from app.services import episode_agent as episode_agent_module
 from app.services.episode_agent import EpisodeGenerationCallbacks, EpisodeLangGraphAgent
+from app.services.episode_agent_episode import EpisodeGenerationResult
+from app.services.episode_agent_outline import OutlineGenerationResult
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 
 
@@ -171,3 +174,69 @@ async def test_episode_agent_callbacks_emit_and_fallback(monkeypatch):
     ]
     assert episode_prompts
     assert "重点角色：文闻" in episode_prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_episode_agent_validates_character_profiles(monkeypatch):
+    monkeypatch.setattr("app.services.episode_agent.LANGGRAPH_AVAILABLE", True)
+
+    async def fake_generate_step_outlines(**_: object):
+        return OutlineGenerationResult(
+            step_outlines={"episodes": [{"episode_number": 1, "logline": "林雪行动"}]},
+            raw_text="{}",
+            prompt="outline prompt",
+            provider="mock",
+            model="mock-model",
+            usage=None,
+            reasoning=["outline_ok"],
+        )
+
+    async def fake_generate_episodes_from_outlines(**kwargs: object):
+        reasoning = kwargs["reasoning"]
+        assert isinstance(reasoning, list)
+        return EpisodeGenerationResult(
+            episodes=[
+                {
+                    "episode_number": 1,
+                    "summary": "林雪发现线索。",
+                    "plot_points": [{"description": "林雪行动", "timing": "开场"}],
+                    "characters": [{"name": "林雪"}],
+                }
+            ],
+            provider="mock",
+            model="mock-model",
+            usage=None,
+            reasoning=reasoning,
+            continuity_ledger={},
+        )
+
+    monkeypatch.setattr(
+        episode_agent_module, "generate_step_outlines", fake_generate_step_outlines
+    )
+    monkeypatch.setattr(
+        episode_agent_module,
+        "generate_episodes_from_outlines",
+        fake_generate_episodes_from_outlines,
+    )
+
+    class Svc:
+        ai_manager = object()
+
+    agent = EpisodeLangGraphAgent(Svc())
+    result = await agent.generate(
+        story={"character_profiles": [{"name": "林雪"}]},
+        episode_count=1,
+        episode_duration=None,
+        focus_characters=None,
+        plot_complexity="medium",
+        pacing="medium",
+        additional_requirements=None,
+        style_preferences=None,
+        model=None,
+        prefer_provider=None,
+        temperature=0.7,
+    )
+
+    assert result is not None
+    assert result["character_validation_passed"] is True
+    assert "No story characters to validate against" not in result["character_warnings"]

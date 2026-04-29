@@ -42,6 +42,9 @@ def build_agent_run_info(result: Dict[str, Any]) -> Dict[str, Any]:
     first_attempt = result.get("first_attempt")
     if first_attempt:
         payload["first_attempt"] = first_attempt
+    quality_gate = result.get("quality_gate")
+    if quality_gate:
+        payload["quality_gate"] = quality_gate
 
     return {k: v for k, v in payload.items() if v is not None}
 

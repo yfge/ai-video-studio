@@ -10,6 +10,10 @@ from app.services.continuity.episode_plan_postprocess import (
     postprocess_episode_plan_list,
 )
 from app.services.episode_agent import EpisodeGenerationCallbacks
+from app.services.narrative_quality_gate import (
+    NarrativeQualityGateError,
+    enforce_episode_quality_gate_with_repair,
+)
 
 
 class EpisodeGenerationMixin:
@@ -47,11 +51,21 @@ class EpisodeGenerationMixin:
                     callbacks=callbacks,
                 )
                 if lg_result and not lg_result.get("error"):
-                    return lg_result
+                    return await enforce_episode_quality_gate_with_repair(
+                        ai_manager=self.ai_manager,
+                        result=lg_result,
+                        story=story,
+                        episode_count=episode_count,
+                        model=model,
+                        prefer_provider=prefer_provider,
+                        temperature=temperature,
+                    )
                 self.logger.warning(
                     "LangGraph episode agent returned error; falling back",
                     extra={"error": lg_result.get("error") if lg_result else None},
                 )
+            except NarrativeQualityGateError:
+                raise
             except Exception as exc:
                 self.logger.warning(f"LangGraph episode agent failed: {exc}")
         # 首先尝试使用AI服务管理器
@@ -71,7 +85,17 @@ class EpisodeGenerationMixin:
                     temperature=temperature,
                 )
                 if direct_result:
-                    return direct_result
+                    return await enforce_episode_quality_gate_with_repair(
+                        ai_manager=self.ai_manager,
+                        result=direct_result,
+                        story=story,
+                        episode_count=episode_count,
+                        model=model,
+                        prefer_provider=prefer_provider,
+                        temperature=temperature,
+                    )
+            except NarrativeQualityGateError:
+                raise
             except Exception as exc:
                 print(f"AI服务管理器剧集生成失败: {exc}")
         # 如果AI服务管理器失败，尝试传统方法
@@ -102,7 +126,7 @@ class EpisodeGenerationMixin:
                     prompt, "episode_generation", story_format=story.get("story_format")
                 )
                 if result:
-                    return {
+                    fallback_result = {
                         "content": result,
                         "prompt": prompt,
                         "generation_method": "ai_fallback",
@@ -111,6 +135,17 @@ class EpisodeGenerationMixin:
                         "model_used": "unknown",
                         "usage": {},
                     }
+                    return await enforce_episode_quality_gate_with_repair(
+                        ai_manager=self.ai_manager,
+                        result=fallback_result,
+                        story=story,
+                        episode_count=episode_count,
+                        model=model,
+                        prefer_provider=prefer_provider,
+                        temperature=temperature,
+                    )
+            except NarrativeQualityGateError:
+                raise
             except Exception as exc:
                 print(f"传统剧集生成方法失败: {exc}")
         # 最终回退到模拟服务
@@ -126,8 +161,17 @@ class EpisodeGenerationMixin:
                 },
             )
             return None
-        return await self._generate_mock_episodes(
+        mock_result = await self._generate_mock_episodes(
             story, episode_count, episode_duration
+        )
+        return await enforce_episode_quality_gate_with_repair(
+            ai_manager=self.ai_manager,
+            result=mock_result,
+            story=story,
+            episode_count=episode_count,
+            model=model,
+            prefer_provider=prefer_provider,
+            temperature=temperature,
         )
 
     async def _call_ai_manager_episode(

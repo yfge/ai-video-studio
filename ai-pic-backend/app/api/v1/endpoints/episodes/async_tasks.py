@@ -7,6 +7,7 @@ Handles asynchronous episode generation via Celery workers.
 import json
 from typing import Any, Dict
 
+import anyio
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Story
@@ -24,6 +25,11 @@ from app.services.context_pack.story_context_pack_builder import (
 )
 from app.services.episode.episode_summary import build_episode_summary
 from app.services.episode_agent import EpisodeGenerationCallbacks
+from app.services.narrative_quality_gate import (
+    NarrativeQualityGateError,
+    attach_quality_gate_failure_to_task,
+    enforce_episode_quality_gate_with_repair,
+)
 from app.services.task_worker import episode_generate_task
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
@@ -110,8 +116,6 @@ def _run_episode_generation(db, task_id: int, request_dict: dict, user_id: int):
         step_outlines: Dict[str, Any] | None = None
         outline_agent_run: Dict[str, Any] = {}
         treatment = None
-        used_callbacks = False
-
         story_data = _build_story_data(story)
         marketing_overrides = {
             "market_region": request_dict.get("market_region"),
@@ -160,15 +164,12 @@ def _run_episode_generation(db, task_id: int, request_dict: dict, user_id: int):
                     {"id": vip.id, "name": vip.name, "description": vip.description}
                 )
 
-        import anyio
-
         def _progress(message: str) -> None:
             if task:
                 update_task_progress(db, task, message)
 
         def _on_outline(outlines: Dict[str, Any], meta: Dict[str, Any]) -> None:
-            nonlocal step_outlines, outline_agent_run, treatment, used_callbacks
-            used_callbacks = True
+            nonlocal step_outlines, outline_agent_run, treatment
             step_outlines = outlines
             outline_agent_run = {
                 "generation_method": meta.get("generation_method"),
@@ -215,147 +216,6 @@ def _run_episode_generation(db, task_id: int, request_dict: dict, user_id: int):
                     extra={"error": str(exc), "story_id": story.id},
                 )
 
-        def _on_episode(episode_data: Dict[str, Any], meta: Dict[str, Any]) -> None:
-            nonlocal created_ids, used_callbacks
-            used_callbacks = True
-
-            outline = meta.get("outline") if isinstance(meta, dict) else None
-            outline_dict = outline if isinstance(outline, dict) else None
-            payload = dict(episode_data or {})
-            if (
-                outline_dict
-                and outline_dict.get("episode_number")
-                and not payload.get("episode_number")
-            ):
-                payload["episode_number"] = outline_dict["episode_number"]
-            episode_number = payload.get("episode_number")
-            if not episode_number:
-                return
-
-            exists = (
-                db.query(Episode)
-                .filter(
-                    Episode.story_id == story.id,
-                    Episode.episode_number == episode_number,
-                    Episode.is_deleted.is_(False),
-                )
-                .first()
-            )
-            if exists:
-                _progress(f"生成第{episode_number}集：已存在，跳过")
-                return
-
-            try:
-                EpisodePlanItem.model_validate(payload)
-            except ValidationError as exc:
-                _progress(f"生成第{episode_number}集：schema校验失败")
-                raise RuntimeError(
-                    f"生成第{episode_number}集失败：输出不符合 EpisodePlanItem schema"
-                ) from exc
-            if not is_episode_payload_valid(payload):
-                _progress(f"生成第{episode_number}集：内容校验失败")
-                raise RuntimeError(
-                    f"生成第{episode_number}集失败：输出不符合最小内容约束"
-                )
-
-            scenes, scene_count = ensure_scenes(payload)
-            known_keys = {
-                "episode_number",
-                "title",
-                "summary",
-                "plot_points",
-                "character_arcs",
-                "conflicts",
-                "scene_count",
-            }
-            extra_meta = {k: v for k, v in payload.items() if k not in known_keys} or {}
-            summary = build_episode_summary(payload)
-            if summary and not extra_meta.get("episode_summary"):
-                extra_meta["episode_summary"] = summary
-            if scenes and "scenes" not in extra_meta:
-                extra_meta["scenes"] = scenes
-            marketing_defaults = merge_marketing_meta(story_data, marketing_overrides)
-            if marketing_defaults:
-                extra_meta = {**extra_meta, **marketing_defaults}
-
-            episode_agent_run = {
-                "generation_method": meta.get("generation_method")
-                or "langgraph_episode_step_outline",
-                "provider_used": meta.get("provider"),
-                "model_used": meta.get("model"),
-                "usage": meta.get("usage"),
-                "fallback_from_outline": meta.get("fallback_from_outline"),
-                "react_attempts": meta.get("react_attempts"),
-                "duration_accepted": meta.get("duration_accepted"),
-                "continuity_snapshot": meta.get("continuity_snapshot"),
-            }
-            raw = meta.get("raw")
-            if isinstance(raw, str) and raw.strip():
-                episode_agent_run["raw_content"] = raw
-            episode_agent_run["normalized"] = payload
-            ep = Episode(
-                story_id=story.id,
-                episode_number=episode_number,
-                title=payload.get("title", f"第{episode_number}集"),
-                summary=payload.get("summary"),
-                plot_points=payload.get("plot_points"),
-                character_arcs=payload.get("character_arcs"),
-                conflicts=payload.get("conflicts"),
-                duration_minutes=request_dict.get("episode_duration"),
-                scene_count=scene_count,
-                generation_prompt=meta.get("prompt"),
-                ai_model=meta.get("model")
-                or meta.get("provider")
-                or episode_agent_run.get("generation_method"),
-                generation_params={
-                    k: request_dict.get(k)
-                    for k in [
-                        "focus_characters",
-                        "plot_complexity",
-                        "pacing",
-                        "market_region",
-                        "micro_genre",
-                        "hook_plan",
-                        "twist_density",
-                        "cliffhanger_plan",
-                        "ad_snippets",
-                        "additional_requirements",
-                        "style_preferences",
-                        "model",
-                        "temperature",
-                    ]
-                },
-                extra_metadata={
-                    **(extra_meta or {}),
-                    "agent_run": episode_agent_run,
-                },
-                status="draft",
-            )
-            db.add(ep)
-            db.commit()
-            db.refresh(ep)
-            created_ids.append(ep.id)
-            _progress(f"生成第{episode_number}集：已落库")
-
-            if treatment and step_outlines:
-                try:
-                    outline_rows = build_outline_rows(
-                        outlines=step_outlines,
-                        treatment=treatment,
-                        story=story,
-                        episode_id_map={episode_number: ep.id},
-                        agent_run=outline_agent_run or episode_agent_run,
-                    )
-                    if outline_rows:
-                        story_structure_service.bulk_create_step_outlines(
-                            db, outline_rows
-                        )
-                except Exception as exc:
-                    ai_service.logger.warning(
-                        "Failed to persist step outlines in async task",
-                        extra={"error": str(exc), "story_id": story.id},
-                    )
-
         async def _run():
             prefer_provider = None
             model_id = request_dict.get("model")
@@ -376,7 +236,7 @@ def _run_episode_generation(db, task_id: int, request_dict: dict, user_id: int):
                 callbacks=EpisodeGenerationCallbacks(
                     on_progress=_progress,
                     on_outline=_on_outline,
-                    on_episode=_on_episode,
+                    on_episode=None,
                 ),
             )
 
@@ -384,16 +244,14 @@ def _run_episode_generation(db, task_id: int, request_dict: dict, user_id: int):
         if not result:
             raise RuntimeError("AI剧集生成失败")
 
-        # Fallback path if callbacks were not used
-        if not used_callbacks:
-            _process_fallback_result(
-                db=db,
-                result=result,
-                story=story,
-                request_dict=request_dict,
-                created_ids=created_ids,
-                progress_fn=_progress,
-            )
+        _process_fallback_result(
+            db=db,
+            result=result,
+            story=story,
+            request_dict=request_dict,
+            created_ids=created_ids,
+            progress_fn=_progress,
+        )
 
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
@@ -444,6 +302,8 @@ def _run_episode_generation(db, task_id: int, request_dict: dict, user_id: int):
                 )
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
+            if isinstance(e, NarrativeQualityGateError):
+                attach_quality_gate_failure_to_task(task, e.quality_gate)
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
             update_task_progress(db, task, f"剧集生成失败：{e}")
@@ -555,8 +415,45 @@ def _process_fallback_result(
         episodes_data = build_stub_episodes_from_outlines(
             parsed_outlines, episode_count
         )
+        result = {
+            **result,
+            "normalized": {"episodes": episodes_data},
+            "content": json.dumps({"episodes": episodes_data}, ensure_ascii=False),
+        }
         agent_run = {**agent_run, "fallback_from_outline": True}
         progress_fn("模型输出无效，使用大纲兜底生成")
+
+    if episodes_data:
+        result = {
+            **result,
+            "normalized": {"episodes": episodes_data},
+            "content": json.dumps({"episodes": episodes_data}, ensure_ascii=False),
+        }
+    if not isinstance(result.get("quality_gate"), dict) or not result[
+        "quality_gate"
+    ].get("passed"):
+        prefer_provider = None
+        model_id = request_dict.get("model")
+        if model_id and ":" in model_id:
+            prefer_provider, model_id = model_id.split(":", 1)
+
+        async def _run_quality_gate() -> Dict[str, Any]:
+            return await enforce_episode_quality_gate_with_repair(
+                ai_manager=getattr(ai_service, "ai_manager", None),
+                result=result,
+                story=story_data,
+                episode_count=episode_count,
+                model=model_id,
+                prefer_provider=prefer_provider,
+                temperature=request_dict.get("temperature", 0.3),
+            )
+
+        result = anyio.run(_run_quality_gate)
+        content = result.get("normalized") if isinstance(result, dict) else None
+        episodes_data = content.get("episodes", []) if content else []
+    quality_gate = result.get("quality_gate") if isinstance(result, dict) else None
+    if isinstance(quality_gate, dict):
+        agent_run["quality_gate"] = quality_gate
     if not episodes_data:
         raise RuntimeError("AI生成内容格式错误")
     if len(episodes_data) < episode_count:

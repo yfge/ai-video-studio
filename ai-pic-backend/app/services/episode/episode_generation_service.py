@@ -9,6 +9,10 @@ from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation_requests import EpisodeGenerationRequest
 from app.services import ai_service as ai_service_module
+from app.services.narrative_quality_gate import (
+    NarrativeQualityGateError,
+    enforce_episode_quality_gate_with_repair,
+)
 from app.services.script.script_utils import build_character_profiles
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
@@ -161,22 +165,27 @@ class EpisodeGenerationService:
         prefer_provider, model_id = self._split_model(request.model)
         # Resolve AI service dynamically so tests can monkeypatch the shared module
         # singleton without having to patch this module-level alias.
-        result = await ai_service_module.ai_service.generate_episodes(
-            story=story_data,
-            episode_count=request.episode_count,
-            episode_duration=request.episode_duration,
-            focus_characters=focus_characters,
-            plot_complexity=request.plot_complexity,
-            pacing=request.pacing,
-            additional_requirements=request.additional_requirements,
-            style_preferences=request.style_preferences,
-            model=model_id,
-            prefer_provider=prefer_provider,
-            temperature=request.temperature or 0.7,
-        )
+        try:
+            result = await ai_service_module.ai_service.generate_episodes(
+                story=story_data,
+                episode_count=request.episode_count,
+                episode_duration=request.episode_duration,
+                focus_characters=focus_characters,
+                plot_complexity=request.plot_complexity,
+                pacing=request.pacing,
+                additional_requirements=request.additional_requirements,
+                style_preferences=request.style_preferences,
+                model=model_id,
+                prefer_provider=prefer_provider,
+                temperature=request.temperature or 0.7,
+            )
+        except NarrativeQualityGateError as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"剧集质量校验失败: {exc}",
+            ) from exc
         if not result:
             raise HTTPException(status_code=500, detail="AI剧集生成失败")
-        agent_run = utils.build_agent_run_info(result)
         raw_step_outlines = None
         if isinstance(result, dict):
             raw_step_outlines = result.get("step_outlines") or result.get(
@@ -187,6 +196,46 @@ class EpisodeGenerationService:
             if raw_step_outlines
             else None
         )
+        normalized = result.get("normalized") if isinstance(result, dict) else None
+        ai_content = normalized or extract_json_block(
+            result.get("content") if isinstance(result, dict) else None
+        )
+        episodes_data = ai_content.get("episodes", []) if ai_content else []
+        fallback_from_outline = False
+        if not episodes_data and step_outlines:
+            episodes_data = utils.build_stub_episodes_from_outlines(
+                step_outlines, request.episode_count
+            )
+            fallback_from_outline = True
+        if episodes_data and isinstance(result, dict):
+            result = {
+                **result,
+                "normalized": {"episodes": episodes_data},
+            }
+        quality_gate = result.get("quality_gate") if isinstance(result, dict) else None
+        if not isinstance(quality_gate, dict) or not quality_gate.get("passed"):
+            try:
+                result = await enforce_episode_quality_gate_with_repair(
+                    ai_manager=getattr(
+                        ai_service_module.ai_service, "ai_manager", None
+                    ),
+                    result=result,
+                    story=story_data,
+                    episode_count=request.episode_count,
+                    model=model_id,
+                    prefer_provider=prefer_provider,
+                    temperature=request.temperature or 0.7,
+                )
+            except NarrativeQualityGateError as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"剧集质量校验失败: {exc}",
+                ) from exc
+            normalized = result.get("normalized") if isinstance(result, dict) else None
+            episodes_data = normalized.get("episodes", []) if normalized else []
+        agent_run = utils.build_agent_run_info(result)
+        if fallback_from_outline:
+            agent_run = {**agent_run, "fallback_from_outline": True}
         if step_outlines:
             utils.persist_story_outlines(
                 story,
@@ -198,16 +247,6 @@ class EpisodeGenerationService:
                 ),
                 agent_run=agent_run,
             )
-        normalized = result.get("normalized") if isinstance(result, dict) else None
-        ai_content = normalized or extract_json_block(
-            result.get("content") if isinstance(result, dict) else None
-        )
-        episodes_data = ai_content.get("episodes", []) if ai_content else []
-        if not episodes_data and step_outlines:
-            episodes_data = utils.build_stub_episodes_from_outlines(
-                step_outlines, request.episode_count
-            )
-            agent_run = {**agent_run, "fallback_from_outline": True}
         if not episodes_data:
             raise HTTPException(status_code=500, detail="AI生成内容格式错误")
         result_payload = result if isinstance(result, dict) else {}

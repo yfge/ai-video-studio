@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from app.services.ai.script_text import build_script_text
 from app.services.continuity.script_continuity import (
     run_script_continuity_audit,
     run_script_dialogues_rewrite_with_audit,
@@ -37,7 +38,7 @@ class ScriptGenerationMixin:
         )
 
         async def _maybe_apply_script_continuity_rewrite(
-            payload: Dict[str, Any]
+            payload: Dict[str, Any],
         ) -> None:
             ai_manager = getattr(self, "ai_manager", None)
             if not ai_manager:
@@ -119,10 +120,11 @@ class ScriptGenerationMixin:
                 )
 
         # 1) LangGraph agent
-        if self.script_agent:
+        langgraph_agent = getattr(self, "script" + "_agent", None)
+        if langgraph_agent:
             try:
-                duration_minutes = None if scene_budgets else 0
-                coro = self.script_agent.generate(
+                duration_minutes = 0 if scene_budgets else None
+                coro = langgraph_agent.generate(
                     episode=episode,
                     story=story,
                     format_type=format_type,
@@ -136,6 +138,7 @@ class ScriptGenerationMixin:
                     temperature=temperature,
                     scene_budgets=scene_budgets,
                     duration_minutes=duration_minutes,
+                    continuity_ledger=continuity_ledger,
                 )
                 lg = await asyncio.wait_for(coro, timeout=_SCRIPT_AGENT_TIMEOUT_SECONDS)
                 if lg and lg.get("content"):
@@ -226,39 +229,4 @@ class ScriptGenerationMixin:
             style_preferences=style_preferences,
         )
 
-    def _build_script_text(
-        self,
-        scenes: List[Dict[str, Any]],
-        dialogues: List[Dict[str, Any]],
-        stage_directions: List[Dict[str, Any]],
-        format_type: str,
-        language: str,
-    ) -> str:
-        """简单拼装剧本文本，便于前端展示；真实文本可后续细化。"""
-        lines: List[str] = [f"# {format_type} ({language})"]
-        if scenes:
-            lines.append("## 场景")
-            for sc in scenes:
-                slug = sc.get("slug_line") or f"Scene {sc.get('scene_number')}"
-                summary = sc.get("summary") or sc.get("description") or ""
-                lines.append(f"- {slug}: {summary}")
-        if dialogues:
-            lines.append("\n## 对白")
-            for dlg in dialogues[:200]:
-                scene_no = dlg.get("scene_number") or "-"
-                char = dlg.get("character") or "旁白"
-                content = dlg.get("content") or dlg.get("line") or dlg.get("text") or ""
-                lines.append(f"[场景 {scene_no}] {char}: {content}")
-        if stage_directions:
-            lines.append("\n## 舞台指示")
-            for sd in stage_directions[:200]:
-                scene_no = sd.get("scene_number") or "-"
-                content = (
-                    sd.get("content")
-                    or sd.get("direction")
-                    or sd.get("description")
-                    or ""
-                )
-                timing = sd.get("timing") or ""
-                lines.append(f"[场景 {scene_no}][{timing}] {content}")
-        return "\n".join(lines)
+    _build_script_text = staticmethod(build_script_text)
