@@ -48,6 +48,13 @@ BROWSER_SCENARIOS: dict[str, BrowserScenario] = {
         required_text="时间轴",
         notes="Open the canonical episode workspace timeline tab and capture readiness.",
     ),
+    "episode_script_generation_form_smoke": BrowserScenario(
+        name="episode_script_generation_form_smoke",
+        path="/episodes/{episode_id}/workspace?tab=script",
+        requires_auth=True,
+        required_text="生产级异步链路",
+        notes="Open the episode script tab and confirm the production async generation controls render.",
+    ),
     "episode_workspace_storyboard_smoke": BrowserScenario(
         name="episode_workspace_storyboard_smoke",
         path="/episodes/{episode_id}/workspace?tab=storyboard",

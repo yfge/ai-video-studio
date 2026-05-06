@@ -2,6 +2,8 @@ import type { ScriptGenerationRequest } from "@/utils/api/types";
 
 export const SCRIPT_GENERATION_DEFAULTS: ScriptGenerationRequest = {
   episode_id: 0,
+  generation_mode: "production",
+  auto_timeline_pipeline: true,
   format_type: "screenplay",
   language: "zh-CN",
   template_style: "commercial_vertical_drama",

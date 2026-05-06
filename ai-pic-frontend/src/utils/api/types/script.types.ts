@@ -34,6 +34,8 @@ export interface Script {
 // Script generation request
 export interface ScriptGenerationRequest {
   episode_id: number;
+  generation_mode?: "standard" | "production";
+  auto_timeline_pipeline?: boolean | null;
   format_type: string;
   language: string;
   template_style?: "commercial_vertical_drama" | "structured_json";

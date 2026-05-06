@@ -68,12 +68,25 @@ async def generate_script_async(
     创建异步任务生成剧本，立即返回任务ID。
     可通过任务接口查询生成进度和结果。
     """
+    params = request.dict()
+    fields_set = getattr(request, "model_fields_set", None)
+    if fields_set is None:
+        fields_set = getattr(request, "__fields_set__", set())
+    if "generation_mode" not in fields_set:
+        params["generation_mode"] = "production"
+    elif not params.get("generation_mode"):
+        params["generation_mode"] = "production"
+    if (
+        params["generation_mode"] == "production"
+        and params.get("auto_timeline_pipeline") is None
+    ):
+        params["auto_timeline_pipeline"] = True
     task = Task(
         title=f"生成剧本 - 剧集{request.episode_id}",
         description="异步剧本生成",
         task_type=TaskType.SCRIPT_GENERATION,
         prompt=f"Script for episode {request.episode_id}",
-        parameters=json.dumps(request.dict(), ensure_ascii=False),
+        parameters=json.dumps(params, ensure_ascii=False),
         user_id=current_user.id,
     )
     db.add(task)
@@ -81,7 +94,7 @@ async def generate_script_async(
     db.refresh(task)
 
     # 交给 Celery worker 处理
-    script_generate_task.delay(task.id, request.dict(), current_user.id)
+    script_generate_task.delay(task.id, params, current_user.id)
     return {"success": True, "data": {"task_id": task.id, "status": task.status}}
 
 

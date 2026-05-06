@@ -67,10 +67,14 @@ def setup_test_environment():
         return False
 
     # 设置测试数据库
-    if not run_command(
-        'python -c "from app.core.test_database import setup_test_database; setup_test_database()"',
-        "设置测试数据库",
-    ):
+    setup_test_database_cmd = (
+        'python -c "import importlib.util;'
+        " name='app.core.test_database' if importlib.util.find_spec('app.core.test_database')"
+        " else 'tests.unit.test_database';"
+        " mod=__import__(name, fromlist=['setup_test_database']);"
+        ' mod.setup_test_database()"'
+    )
+    if not run_command(setup_test_database_cmd, "设置测试数据库"):
         return False
 
     return True

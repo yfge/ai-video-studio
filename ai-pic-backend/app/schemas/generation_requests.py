@@ -107,6 +107,19 @@ class EpisodeGenerationRequest(BaseModel):
 
 class ScriptGenerationRequest(BaseModel):
     episode_id: int
+    generation_mode: Literal["standard", "production"] = Field(
+        "standard",
+        description=(
+            "生成链路：standard（轻量/同步调试）/ production（评分返修+时间轴分镜）"
+        ),
+    )
+    auto_timeline_pipeline: Optional[bool] = Field(
+        None,
+        description=(
+            "production 模式下是否自动生成对白音轨、audio_timeline 和分镜占位；"
+            "未指定时异步 production 默认为 true"
+        ),
+    )
     format_type: str = Field("screenplay", description="剧本格式")
     language: str = Field("zh-CN", description="语言")
     template_style: Literal["commercial_vertical_drama", "structured_json"] = Field(

@@ -3,7 +3,9 @@
 import { MarketingFields, MultiModelSelector } from "@/components/shared";
 import { scriptAPI } from "@/utils/api/endpoints";
 import type { ScriptGenerationRequest } from "@/utils/api/types";
+import { ScriptAsyncModeToggle } from "./ScriptAsyncModeToggle";
 import { CommercialScriptOptions } from "./CommercialScriptOptions";
+import { ScriptProductionPipelineOptions } from "./ScriptProductionPipelineOptions";
 import { ShortDramaScriptTemplateSelector } from "./ShortDramaScriptTemplateSelector";
 
 interface ScriptGenerationFormProps {
@@ -146,6 +148,12 @@ export function ScriptGenerationForm({
 
       <ShortDramaScriptTemplateSelector setGenerateForm={setGenerateForm} />
 
+      <ScriptProductionPipelineOptions
+        generateForm={generateForm}
+        setGenerateForm={setGenerateForm}
+        useAsync={useAsync}
+      />
+
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           额外要求
@@ -197,14 +205,11 @@ export function ScriptGenerationForm({
           />
         </div>
         <div className="flex items-end">
-          <label className="text-sm text-gray-700 flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={useAsync}
-              onChange={(e) => setUseAsync(e.target.checked)}
-            />{" "}
-            异步任务
-          </label>
+          <ScriptAsyncModeToggle
+            useAsync={useAsync}
+            setUseAsync={setUseAsync}
+            setGenerateForm={setGenerateForm}
+          />
         </div>
       </div>
 

@@ -40,6 +40,12 @@ export function useEpisodeWorkspaceGenerateScript(args: {
       const payload = {
         ...generateForm,
         episode_id: episode.id,
+        generation_mode: useAsync
+          ? generateForm.generation_mode || "production"
+          : "standard",
+        auto_timeline_pipeline: useAsync
+          ? generateForm.auto_timeline_pipeline ?? true
+          : false,
       };
       if (useAsync) {
         const res = await scriptAPI.generateScriptAsync(payload);

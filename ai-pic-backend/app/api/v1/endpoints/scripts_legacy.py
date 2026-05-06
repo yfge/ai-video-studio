@@ -30,6 +30,10 @@ from app.services.narrative_quality_gate import (
     attach_quality_gate_failure_to_task,
     enforce_script_quality_gate_with_repair,
 )
+from app.services.script.production_pipeline import (
+    run_auto_timeline_placeholders,
+    run_production_script_generation,
+)
 from app.services.task_worker import script_generate_task, script_regenerate_task
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
@@ -606,6 +610,29 @@ def _sync_script_scenes_to_story_structure(
     }
 
 
+def _merge_production_pipeline_metadata(
+    db: Session,
+    script: Script,
+    *,
+    production_meta: Dict[str, Any],
+    scoring_artifacts: Optional[Dict[str, Any]],
+) -> None:
+    extra = dict(script.extra_metadata or {})
+    extra["production_pipeline"] = production_meta
+    if scoring_artifacts is not None:
+        extra["scoring"] = scoring_artifacts
+    agent_run = dict(extra.get("agent_run") or {})
+    agent_run["generation_mode"] = "production"
+    agent_run["production_pipeline"] = production_meta
+    if scoring_artifacts is not None:
+        agent_run["scoring"] = scoring_artifacts
+    extra["agent_run"] = agent_run
+    script.extra_metadata = extra
+    db.add(script)
+    db.commit()
+    db.refresh(script)
+
+
 def _populate_dialogues_and_stage_if_missing(
     scenes: List[Dict[str, Any]],
     dialogues: List[Dict[str, Any]],
@@ -947,6 +974,8 @@ async def generate_script(
         generation_prompt=result.get("prompt"),
         ai_model=result.get("generation_method"),
         generation_params={
+            "generation_mode": request.generation_mode,
+            "auto_timeline_pipeline": request.auto_timeline_pipeline,
             "dialogue_style": request.dialogue_style,
             "scene_detail_level": request.scene_detail_level,
             "template_style": request.template_style,
@@ -1089,26 +1118,6 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         }
         apply_marketing_overrides(story_data, marketing_overrides)
         apply_marketing_overrides(episode_data, marketing_overrides)
-        marketing_overrides = {
-            "market_region": request_dict.get("market_region"),
-            "micro_genre": request_dict.get("micro_genre"),
-            "hook_plan": request_dict.get("hook_plan"),
-            "twist_density": request_dict.get("twist_density"),
-            "cliffhanger_plan": request_dict.get("cliffhanger_plan"),
-            "ad_snippets": request_dict.get("ad_snippets"),
-        }
-        apply_marketing_overrides(story_data, marketing_overrides)
-        apply_marketing_overrides(episode_data, marketing_overrides)
-        marketing_overrides = {
-            "market_region": request_dict.get("market_region"),
-            "micro_genre": request_dict.get("micro_genre"),
-            "hook_plan": request_dict.get("hook_plan"),
-            "twist_density": request_dict.get("twist_density"),
-            "cliffhanger_plan": request_dict.get("cliffhanger_plan"),
-            "ad_snippets": request_dict.get("ad_snippets"),
-        }
-        apply_marketing_overrides(story_data, marketing_overrides)
-        apply_marketing_overrides(episode_data, marketing_overrides)
 
         import anyio
 
@@ -1117,8 +1126,15 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if model_id and ":" in model_id:
             prefer_provider, model_id = model_id.split(":", 1)
 
-        async def _run():
-            return await ai_service.generate_script(
+        generation_mode = request_dict.get("generation_mode") or "production"
+        auto_timeline_pipeline = request_dict.get("auto_timeline_pipeline")
+        if auto_timeline_pipeline is None:
+            auto_timeline_pipeline = generation_mode == "production"
+
+        async def _generate_prepared_attempt(
+            attempt_no: int, additional_requirements: str
+        ) -> Dict[str, Any]:
+            result = await ai_service.generate_script(
                 episode=episode_data,
                 story=story_data,
                 format_type=request_dict.get("format_type", "screenplay"),
@@ -1132,73 +1148,50 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                     "target_chars_per_episode", 1300
                 ),
                 quality_threshold=request_dict.get("quality_threshold", 9.0),
-                additional_requirements=request_dict.get("additional_requirements"),
+                additional_requirements=additional_requirements,
                 style_preferences=request_dict.get("style_preferences"),
                 model=model_id,
                 prefer_provider=prefer_provider,
                 temperature=request_dict.get("temperature", 0.7),
             )
+            if not result:
+                raise RuntimeError("AI剧本生成失败")
 
-        result = anyio.run(_run)
-        if not result:
-            raise RuntimeError("AI剧本生成失败")
-
-        agent_run: Dict[str, Any] = {}
-        if isinstance(result, dict):
-            agent_run = {
-                "generation_method": result.get("generation_method"),
-                "template_used": result.get("template_used"),
-                "provider_used": result.get("provider_used"),
-                "model_used": result.get("model_used"),
-                "usage": result.get("usage"),
-                "reasoning": result.get("reasoning"),
-            }
-
-        raw_content = result.get("content")
-        if isinstance(raw_content, dict):
-            ai_content = raw_content
-        else:
-            parsed = extract_json_block(raw_content)
-            if parsed:
-                ai_content = parsed
-            else:
-                source_text = raw_content or ""
-                extracted = extract_script_structure(source_text)
-                ai_content = {
-                    "content": extracted.get("content", source_text),
-                    "scenes": extracted.get("scenes", []),
-                    "dialogues": extracted.get("dialogues", []),
-                    "stage_directions": extracted.get("stage_directions", []),
-                    "metadata": extracted.get("metadata", {}),
+            agent_run: Dict[str, Any] = {}
+            if isinstance(result, dict):
+                agent_run = {
+                    "generation_method": result.get("generation_method"),
+                    "template_used": result.get("template_used"),
+                    "provider_used": result.get("provider_used"),
+                    "model_used": result.get("model_used"),
+                    "usage": result.get("usage"),
+                    "reasoning": result.get("reasoning"),
+                    "attempt": attempt_no,
                 }
 
-        ai_content = _normalize_script_content(
-            ai_content,
-            format_type=request_dict.get("format_type", "screenplay"),
-            language=request_dict.get("language", "zh-CN"),
-            default_scenes=episode_data.get("scenes"),
-            episode_number=episode.episode_number,
-            template_style=request_dict.get(
-                "template_style", "commercial_vertical_drama"
-            ),
-            target_chars_per_episode=request_dict.get("target_chars_per_episode", 1300),
-            title=episode.title,
-        )
+            raw_content = result.get("content")
+            if isinstance(raw_content, dict):
+                ai_content = raw_content
+            else:
+                parsed = extract_json_block(raw_content)
+                if parsed:
+                    ai_content = parsed
+                else:
+                    source_text = raw_content or ""
+                    extracted = extract_script_structure(source_text)
+                    ai_content = {
+                        "content": extracted.get("content", source_text),
+                        "scenes": extracted.get("scenes", []),
+                        "dialogues": extracted.get("dialogues", []),
+                        "stage_directions": extracted.get("stage_directions", []),
+                        "metadata": extracted.get("metadata", {}),
+                    }
 
-        script_content = ai_content.get("content", "")
-        scenes = ai_content.get("scenes", [])
-        dialogues_raw = ai_content.get("dialogues", [])
-        stage_directions_raw = ai_content.get("stage_directions", [])
-        dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
-            scenes, dialogues_raw, stage_directions_raw, story=story
-        )
-        if not dialogues_raw or not stage_directions_raw:
-            script_content = build_script_text(
-                scenes,
-                dialogues,
-                stage_directions,
+            ai_content = _normalize_script_content(
+                ai_content,
                 format_type=request_dict.get("format_type", "screenplay"),
                 language=request_dict.get("language", "zh-CN"),
+                default_scenes=episode_data.get("scenes"),
                 episode_number=episode.episode_number,
                 template_style=request_dict.get(
                     "template_style", "commercial_vertical_drama"
@@ -1208,39 +1201,138 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                 ),
                 title=episode.title,
             )
-            ai_content["content"] = script_content
 
-        async def _run_quality_gate():
-            return await enforce_script_quality_gate_with_repair(
-                ai_manager=getattr(ai_service, "ai_manager", None),
-                result=result,
-                content={
-                    **ai_content,
-                    "content": script_content,
-                    "scenes": scenes,
-                    "dialogues": dialogues,
-                    "stage_directions": stage_directions,
-                },
+            script_content = ai_content.get("content", "")
+            scenes = ai_content.get("scenes", [])
+            dialogues_raw = ai_content.get("dialogues", [])
+            stage_directions_raw = ai_content.get("stage_directions", [])
+            dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
+                scenes, dialogues_raw, stage_directions_raw, story=story
+            )
+            if not dialogues_raw or not stage_directions_raw:
+                script_content = build_script_text(
+                    scenes,
+                    dialogues,
+                    stage_directions,
+                    format_type=request_dict.get("format_type", "screenplay"),
+                    language=request_dict.get("language", "zh-CN"),
+                    episode_number=episode.episode_number,
+                    template_style=request_dict.get(
+                        "template_style", "commercial_vertical_drama"
+                    ),
+                    target_chars_per_episode=request_dict.get(
+                        "target_chars_per_episode", 1300
+                    ),
+                    title=episode.title,
+                )
+                ai_content["content"] = script_content
+
+            result, ai_content, _quality_gate = (
+                await enforce_script_quality_gate_with_repair(
+                    ai_manager=getattr(ai_service, "ai_manager", None),
+                    result=result,
+                    content={
+                        **ai_content,
+                        "content": script_content,
+                        "scenes": scenes,
+                        "dialogues": dialogues,
+                        "stage_directions": stage_directions,
+                    },
+                    story=story_data,
+                    story_model=story,
+                    episode_id=episode.id,
+                    db=db,
+                    model=model_id,
+                    prefer_provider=prefer_provider,
+                    temperature=request_dict.get("temperature", 0.7),
+                    lint_threshold=request_dict.get("quality_threshold", 9.0),
+                    target_chars_per_episode=request_dict.get(
+                        "target_chars_per_episode", 1300
+                    ),
+                )
+            )
+            if agent_run:
+                agent_run = {**agent_run, "quality_gate": result.get("quality_gate")}
+            return {
+                "result": result,
+                "agent_run": agent_run,
+                "ai_content": ai_content,
+                "script_content": ai_content.get("content", ""),
+                "scenes": ai_content.get("scenes", []),
+                "dialogues": ai_content.get("dialogues", []),
+                "stage_directions": ai_content.get("stage_directions", []),
+            }
+
+        async def _score_prepared_attempt(generated: Dict[str, Any]) -> Dict[str, Any]:
+            from app.services.scoring.artifacts import generate_scoring_artifacts
+
+            episode_ctx = dict(episode_data or {})
+            episode_ctx.setdefault("episode_number", episode.episode_number)
+            episode_ctx.setdefault("title", episode.title)
+            episode_ctx.setdefault("summary", episode.summary)
+            marketing_defaults = merge_marketing_meta(
+                story_data,
+                episode_data,
+                marketing_overrides,
+            )
+            return await generate_scoring_artifacts(
+                ai_service=ai_service,
+                script_content=generated.get("script_content") or "",
                 story=story_data,
-                story_model=story,
-                episode_id=episode.id,
-                db=db,
-                model=model_id,
+                episode=episode_ctx,
+                scenes=generated.get("scenes") or [],
+                dialogues=generated.get("dialogues") or [],
+                hook_plan=marketing_defaults.get("hook_plan"),
                 prefer_provider=prefer_provider,
-                temperature=request_dict.get("temperature", 0.7),
-                lint_threshold=request_dict.get("quality_threshold", 9.0),
-                target_chars_per_episode=request_dict.get(
-                    "target_chars_per_episode", 1300
-                ),
+                prefer_model=model_id,
             )
 
-        result, ai_content, _quality_gate = anyio.run(_run_quality_gate)
-        script_content = ai_content.get("content", "")
-        scenes = ai_content.get("scenes", [])
-        dialogues = ai_content.get("dialogues", [])
-        stage_directions = ai_content.get("stage_directions", [])
-        if agent_run:
-            agent_run = {**agent_run, "quality_gate": result.get("quality_gate")}
+        production_meta: Dict[str, Any] = {}
+        scoring_artifacts: Optional[Dict[str, Any]] = None
+        if generation_mode == "production":
+
+            async def _run_production():
+                return await run_production_script_generation(
+                    story=story_data,
+                    episode=episode_data,
+                    marketing_overrides=marketing_overrides,
+                    base_additional_requirements=request_dict.get(
+                        "additional_requirements"
+                    ),
+                    generate_attempt=_generate_prepared_attempt,
+                    score_attempt=_score_prepared_attempt,
+                )
+
+            production_result = anyio.run(_run_production)
+            selected = production_result.selected
+            production_meta = production_result.metadata()
+            scoring_artifacts = selected.get("scoring")
+            result = selected["result"]
+            ai_content = selected["ai_content"]
+            script_content = selected["script_content"]
+            scenes = selected["scenes"]
+            dialogues = selected["dialogues"]
+            stage_directions = selected["stage_directions"]
+            agent_run = {
+                **(selected.get("agent_run") or {}),
+                "generation_mode": "production",
+                "scoring": scoring_artifacts,
+                "production_pipeline": production_meta,
+            }
+        else:
+            prepared = anyio.run(
+                _generate_prepared_attempt(
+                    1, request_dict.get("additional_requirements") or ""
+                )
+            )
+            result = prepared["result"]
+            ai_content = prepared["ai_content"]
+            script_content = prepared["script_content"]
+            scenes = prepared["scenes"]
+            dialogues = prepared["dialogues"]
+            stage_directions = prepared["stage_directions"]
+            agent_run = prepared.get("agent_run") or {}
+
         extra_meta = {
             k: v
             for k, v in ai_content.items()
@@ -1255,28 +1347,19 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         if marketing_defaults:
             extra_meta = {**extra_meta, **marketing_defaults}
 
-        if marketing_defaults:
+        if generation_mode != "production" and marketing_defaults:
             try:
-                from app.services.scoring.artifacts import generate_scoring_artifacts
 
-                async def _run_scoring():
-                    episode_ctx = dict(episode_data or {})
-                    episode_ctx.setdefault("episode_number", episode.episode_number)
-                    episode_ctx.setdefault("title", episode.title)
-                    episode_ctx.setdefault("summary", episode.summary)
-                    return await generate_scoring_artifacts(
-                        ai_service=ai_service,
-                        script_content=script_content,
-                        story=story_data,
-                        episode=episode_ctx,
-                        scenes=scenes,
-                        dialogues=dialogues,
-                        hook_plan=marketing_defaults.get("hook_plan"),
-                        prefer_provider=prefer_provider,
-                        prefer_model=model_id,
+                async def _run_standard_scoring():
+                    return await _score_prepared_attempt(
+                        {
+                            "script_content": script_content,
+                            "scenes": scenes,
+                            "dialogues": dialogues,
+                        }
                     )
 
-                scoring_artifacts = anyio.run(_run_scoring)
+                scoring_artifacts = anyio.run(_run_standard_scoring)
                 extra_meta = {**(extra_meta or {}), "scoring": scoring_artifacts}
                 if agent_run:
                     agent_run = {**agent_run, "scoring": scoring_artifacts}
@@ -1284,6 +1367,22 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                 logger.warning("生成评分/投流表失败（generate-async）", exc_info=True)
                 if agent_run is not None:
                     agent_run = {**agent_run, "scoring_error": "failed_to_generate"}
+        if generation_mode == "production":
+            production_meta["auto_timeline_pipeline"] = {
+                "enabled": bool(auto_timeline_pipeline),
+                "status": "pending" if auto_timeline_pipeline else "skipped",
+            }
+            extra_meta = {
+                **(extra_meta or {}),
+                "production_pipeline": production_meta,
+                "scoring": scoring_artifacts,
+            }
+            if agent_run is not None:
+                agent_run = {
+                    **agent_run,
+                    "production_pipeline": production_meta,
+                    "scoring": scoring_artifacts,
+                }
         if agent_run:
             extra_meta = {
                 **(extra_meta or {}),
@@ -1311,6 +1410,8 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
             generation_params={
                 k: request_dict.get(k)
                 for k in [
+                    "generation_mode",
+                    "auto_timeline_pipeline",
                     "dialogue_style",
                     "scene_detail_level",
                     "template_style",
@@ -1340,6 +1441,42 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
         except Exception:
             logger = get_logger()
             logger.warning("同步规范化场景失败（generate-async）", exc_info=True)
+
+        if generation_mode == "production" and production_meta:
+            if auto_timeline_pipeline:
+                try:
+
+                    async def _run_auto_timeline():
+                        return await run_auto_timeline_placeholders(
+                            db,
+                            story=story,
+                            episode=episode,
+                            script=sc,
+                            hook_schedule=production_meta.get("hook_schedule") or {},
+                            scoring=scoring_artifacts,
+                        )
+
+                    auto_result = anyio.run(_run_auto_timeline)
+                    production_meta["auto_timeline_pipeline"] = {
+                        "enabled": True,
+                        **auto_result,
+                    }
+                except Exception as exc:
+                    logger.warning(
+                        "生产级自动时间轴/分镜占位失败（generate-async）",
+                        exc_info=True,
+                    )
+                    production_meta["auto_timeline_pipeline"] = {
+                        "enabled": True,
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+            _merge_production_pipeline_metadata(
+                db,
+                sc,
+                production_meta=production_meta,
+                scoring_artifacts=scoring_artifacts,
+            )
 
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
@@ -1709,12 +1846,25 @@ async def generate_script_async(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    params = request.dict()
+    fields_set = getattr(request, "model_fields_set", None)
+    if fields_set is None:
+        fields_set = getattr(request, "__fields_set__", set())
+    if "generation_mode" not in fields_set:
+        params["generation_mode"] = "production"
+    else:
+        params["generation_mode"] = params.get("generation_mode") or "production"
+    if params["generation_mode"] == "standard":
+        # Async is the operator-facing path; keep explicit standard requests light.
+        params["auto_timeline_pipeline"] = bool(params.get("auto_timeline_pipeline"))
+    elif params.get("auto_timeline_pipeline") is None:
+        params["auto_timeline_pipeline"] = True
     t = Task(
         title=f"生成剧本 - 剧集{request.episode_id}",
         description="异步剧本生成",
         task_type=TaskType.SCRIPT_GENERATION,
         prompt=f"Script for episode {request.episode_id}",
-        parameters=json.dumps(request.dict(), ensure_ascii=False),
+        parameters=json.dumps(params, ensure_ascii=False),
         user_id=current_user.id,
     )
     db.add(t)
@@ -1722,7 +1872,7 @@ async def generate_script_async(
     db.refresh(t)
 
     # 交给 Celery worker 处理
-    script_generate_task.delay(t.id, request.dict(), current_user.id)
+    script_generate_task.delay(t.id, params, current_user.id)
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 
