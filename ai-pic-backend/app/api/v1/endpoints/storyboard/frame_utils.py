@@ -7,8 +7,10 @@ and reference image normalization.
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse, urlunparse
 from uuid import UUID, uuid4
 
+from app.core.config import settings
 from app.models.script import Script
 
 
@@ -44,14 +46,34 @@ def _ensure_iso_datetime(value: Any, fallback: str) -> str:
 
 
 def _abs_url(url: str) -> str:
-    """Thin wrapper delegating to the canonical scripts_legacy implementation."""
-    from app.api.v1.endpoints.scripts_legacy import _abs_url as _legacy_abs_url
-    return _legacy_abs_url(url)
+    if not url:
+        return ""
+    if url.startswith("http"):
+        parsed = urlparse(url)
+        if parsed.hostname in {"localhost", "127.0.0.1"}:
+            base = (
+                getattr(settings, "INTERNAL_BACKEND_URL", None)
+                or "http://localhost:8000"
+            ).rstrip("/")
+            base_parsed = urlparse(base)
+            rebuilt = parsed._replace(
+                netloc=base_parsed.netloc,
+                scheme=base_parsed.scheme,
+            )
+            return urlunparse(rebuilt)
+        return url
+    if not url.startswith("/"):
+        url = "/" + url
+    base = (
+        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
+    ).rstrip("/")
+    return f"{base}{url}"
 
 
 # ---------------------------------------------------------------------------
 # Serialization & loading
 # ---------------------------------------------------------------------------
+
 
 def _serialize_frame(frame: Dict[str, Any]) -> Dict[str, Any]:
     serialized: Dict[str, Any] = {}
@@ -80,6 +102,7 @@ def _load_existing_frames(script: Script) -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Augmentation
 # ---------------------------------------------------------------------------
+
 
 def _augment_frames(
     frames: List[Dict[str, Any]],
@@ -116,7 +139,9 @@ def _augment_frames(
         frame["generation_source"] = frame.get("generation_source") or generation_source
         frame["generation_method"] = frame.get("generation_method") or generation_method
         if generation_model:
-            frame["generation_model"] = frame.get("generation_model") or generation_model
+            frame["generation_model"] = (
+                frame.get("generation_model") or generation_model
+            )
         frame["generated_at"] = _ensure_iso_datetime(frame.get("generated_at"), now_iso)
         frame["updated_at"] = now_iso
         if not isinstance(frame.get("reference_images"), list):
@@ -128,6 +153,7 @@ def _augment_frames(
 # ---------------------------------------------------------------------------
 # Merging
 # ---------------------------------------------------------------------------
+
 
 def _merge_frames(
     existing_frames: List[Dict[str, Any]],
@@ -167,6 +193,7 @@ def _merge_frames(
 # Variety enforcement
 # ---------------------------------------------------------------------------
 
+
 def _enforce_storyboard_variety(frames: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     shot_cycle = ["远景", "中景", "近景", "特写"]
     movement_cycle = ["固定", "推", "拉", "摇", "移", "跟", "变焦"]
@@ -204,6 +231,7 @@ def _enforce_storyboard_variety(frames: List[Dict[str, Any]]) -> List[Dict[str, 
 # ---------------------------------------------------------------------------
 # Reference image filtering
 # ---------------------------------------------------------------------------
+
 
 def _normalize_reference_images(refs: list) -> list:
     """Keep only entries that look like image URLs."""

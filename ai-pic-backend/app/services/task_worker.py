@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 from app.core.celery_app import celery_app
 
-# Re-export asset/image tasks for legacy imports (e.g. scripts_legacy.py).
+# Re-export asset/image tasks for compatibility imports.
 from app.services.task_worker_assets import (  # noqa: F401
     environment_image_generate_task,
     environment_image_variant_task,
@@ -18,7 +18,7 @@ from app.services.task_worker_assets import (  # noqa: F401
     virtual_ip_image_variant_task,
 )
 
-# Re-export storyboard media tasks for legacy imports (e.g. scripts_legacy.py).
+# Re-export storyboard media tasks for compatibility imports.
 from app.services.task_worker_storyboard_media import (  # noqa: F401
     storyboard_image_generate_task,
     storyboard_video_generate_task,

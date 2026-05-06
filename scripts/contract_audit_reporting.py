@@ -45,8 +45,8 @@ def build_report(mode: str, paths: list[Path], *, fail_on_violations: bool) -> d
         "docs_drift": {"errors": collect_doc_errors()},
         "violations": {
             "oversized_files": collect_oversized_files(paths, mode=mode),
-            "route_handlers": collect_route_handlers(paths),
-            "direct_queries": collect_direct_queries(paths),
+            "route_handlers": collect_route_handlers(paths, mode=mode),
+            "direct_queries": collect_direct_queries(paths, mode=mode),
             "legacy_references": collect_legacy_references(paths),
         },
     }

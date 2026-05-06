@@ -9,7 +9,6 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Script, Story
-from app.models.story_structure import Scene
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
 from app.prompts.manager import PromptManager
@@ -21,8 +20,6 @@ from app.schemas.script import (
     ScriptResponse,
     ScriptUpdate,
 )
-from app.schemas.story_structure import SceneCreate, ShotCreate
-from app.services import story_structure_service as story_structure_svc
 from app.services.ai.script_text import build_script_text
 from app.services.ai_service import ai_service
 from app.services.narrative_quality_gate import (
@@ -30,9 +27,36 @@ from app.services.narrative_quality_gate import (
     attach_quality_gate_failure_to_task,
     enforce_script_quality_gate_with_repair,
 )
+from app.services.script.content_normalization import (
+    normalize_script_content as _normalize_script_content_impl,
+)
+from app.services.script.context_payloads import (
+    build_character_profiles as _build_character_profiles_impl,
+)
+from app.services.script.context_payloads import (
+    build_episode_data as _build_episode_data_impl,
+)
+from app.services.script.context_payloads import (
+    build_story_data as _build_story_data_impl,
+)
+from app.services.script.context_payloads import (
+    collect_previous_episode_summaries as _collect_previous_episode_summaries_impl,
+)
+from app.services.script.production_metadata import (
+    merge_production_pipeline_metadata as _merge_production_pipeline_metadata_impl,
+)
 from app.services.script.production_pipeline import (
     run_auto_timeline_placeholders,
     run_production_script_generation,
+)
+from app.services.script.scene_utils import (
+    extract_episode_scenes as _extract_episode_scenes_impl,
+)
+from app.services.script.story_structure_sync import (
+    build_scene_payload_from_script_data as _build_scene_payload_from_script_data_impl,
+)
+from app.services.script.story_structure_sync import (
+    sync_script_scenes_to_story_structure as _sync_script_scenes_to_story_structure_impl,
 )
 from app.services.task_worker import script_generate_task, script_regenerate_task
 from app.utils.json_utils import extract_json_block
@@ -136,163 +160,24 @@ def _collect_previous_episode_summaries(
     current_episode_number: int,
     limit: int = 3,
 ) -> List[Dict[str, Any]]:
-    """收集前情提要信息，默认回溯最近几集。"""
-    if current_episode_number <= 1:
-        return []
-
-    previous_episodes = (
-        db.query(Episode)
-        .filter(
-            Episode.story_id == story_id,
-            Episode.episode_number < current_episode_number,
-        )
-        .order_by(Episode.episode_number.desc())
-        .limit(limit)
-        .all()
+    return _collect_previous_episode_summaries_impl(
+        db,
+        story_id,
+        current_episode_number,
+        limit=limit,
     )
-
-    summaries: List[Dict[str, Any]] = []
-    for ep in reversed(previous_episodes):
-        summaries.append(
-            {
-                "episode_number": ep.episode_number,
-                "title": ep.title,
-                "summary": ep.summary or "",
-                "plot_points": ep.plot_points or [],
-                "conflicts": ep.conflicts or [],
-            }
-        )
-    return summaries
 
 
 def _build_character_profiles(story: Story) -> List[Dict[str, Any]]:
-    """汇总故事角色设定，为提示词提供丰富的角色介绍。"""
-
-    profiles: Dict[str, Dict[str, Any]] = {}
-
-    def _ensure_profile(name: str) -> Dict[str, Any]:
-        profile = profiles.setdefault(name, {"name": name})
-        return profile
-
-    main_chars = (
-        story.main_characters if isinstance(story.main_characters, list) else []
-    )
-    for raw in main_chars:
-        if isinstance(raw, dict):
-            name = raw.get("name") or raw.get("character_name") or raw.get("id")
-            if not name:
-                continue
-            profile = _ensure_profile(str(name))
-            profile.setdefault(
-                "role", raw.get("role") or raw.get("type") or raw.get("role_type")
-            )
-            profile.setdefault(
-                "description", raw.get("description") or raw.get("summary")
-            )
-            profile.setdefault(
-                "personality", raw.get("personality") or raw.get("traits")
-            )
-            profile.setdefault("motivation", raw.get("motivation") or raw.get("goal"))
-            profile.setdefault("arc", raw.get("arc") or raw.get("character_arc"))
-        elif isinstance(raw, str):
-            profile = _ensure_profile(raw)
-            profile.setdefault("description", "主要角色")
-
-    story_characters = getattr(story, "story_characters", []) or []
-    for sc in story_characters:
-        name = getattr(sc, "character_name", None)
-        if not name and getattr(sc, "virtual_ip", None):
-            name = getattr(sc.virtual_ip, "name", None)
-        if not name:
-            continue
-        profile = _ensure_profile(str(name))
-        profile.setdefault("role", getattr(sc, "role_type", None))
-        profile.setdefault("description", getattr(sc, "background", None))
-        profile.setdefault("personality", getattr(sc, "personality", None))
-        profile.setdefault("motivation", getattr(sc, "motivation", None))
-        profile.setdefault("arc", getattr(sc, "character_arc", None))
-        relationships = getattr(sc, "relationships", None)
-        if relationships and not profile.get("relationships"):
-            profile["relationships"] = relationships
-        if getattr(sc, "virtual_ip", None):
-            vip_desc = getattr(sc.virtual_ip, "description", None)
-            if vip_desc and not profile.get("description"):
-                profile["description"] = vip_desc
-
-    cleaned_profiles: List[Dict[str, Any]] = []
-    for profile in profiles.values():
-        cleaned_profiles.append(
-            {k: v for k, v in profile.items() if v not in (None, "", [], {}, set())}
-        )
-
-    return cleaned_profiles
+    return _build_character_profiles_impl(story)
 
 
 def _build_episode_data(episode: Episode) -> Dict[str, Any]:
-    scenes = _extract_episode_scenes(episode)
-    scene_count = episode.scene_count or (len(scenes) if scenes else None)
-    marketing_meta = merge_marketing_meta(
-        episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {},
-        (
-            episode.generation_params
-            if isinstance(episode.generation_params, dict)
-            else {}
-        ),
-    )
-    return {
-        "episode_number": episode.episode_number,
-        "title": episode.title,
-        "story_format": getattr(getattr(episode, "story", None), "story_format", None),
-        "summary": episode.summary,
-        "plot_points": episode.plot_points,
-        "character_arcs": episode.character_arcs,
-        "conflicts": episode.conflicts,
-        "duration_minutes": episode.duration_minutes,
-        "scene_count": scene_count,
-        "scenes": scenes,
-        **marketing_meta,
-    }
+    return _build_episode_data_impl(episode)
 
 
 def _extract_episode_scenes(episode: Episode) -> List[Dict[str, Any]]:
-    """从剧集元数据中提取场景列表，保证基础字段齐全。"""
-    if not episode:
-        return []
-
-    meta = episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {}
-    scenes_src = meta.get("scenes") if isinstance(meta, dict) else []
-    if not isinstance(scenes_src, list):
-        return []
-
-    cleaned: List[Dict[str, Any]] = []
-    for idx, raw in enumerate(scenes_src, start=1):
-        if not isinstance(raw, dict):
-            continue
-        base = dict(raw)
-        scene_no = _to_int(base.get("scene_number")) or idx
-        base["scene_number"] = scene_no
-        summary = (
-            base.get("summary") or base.get("description") or base.get("beat_summary")
-        )
-        location = base.get("location") or base.get("place") or base.get("setting")
-        time_of_day = base.get("time_of_day") or base.get("time")
-        if summary:
-            base.setdefault("summary", summary)
-            base.setdefault("description", summary)
-        if location:
-            base.setdefault("location", location)
-        if time_of_day:
-            base.setdefault("time_of_day", time_of_day)
-        if not base.get("slug_line"):
-            if location and time_of_day:
-                base["slug_line"] = f"{location} - {time_of_day}"
-            elif summary:
-                base["slug_line"] = str(summary)[:80]
-            else:
-                base["slug_line"] = f"Scene {scene_no}"
-        cleaned.append(base)
-
-    return cleaned
+    return _extract_episode_scenes_impl(episode)
 
 
 def _build_story_data(
@@ -301,27 +186,11 @@ def _build_story_data(
     previous_episode_summaries: List[Dict[str, Any]],
     character_profiles: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    marketing_meta = merge_marketing_meta(
-        story.extra_metadata if isinstance(story.extra_metadata, dict) else {},
-        story.generation_params if isinstance(story.generation_params, dict) else {},
+    return _build_story_data_impl(
+        story,
+        previous_episode_summaries=previous_episode_summaries,
+        character_profiles=character_profiles,
     )
-    return {
-        "title": story.title,
-        "story_format": getattr(story, "story_format", None),
-        "genre": story.genre,
-        "theme": story.theme,
-        "synopsis": story.synopsis,
-        "main_conflict": story.main_conflict,
-        "resolution": story.resolution,
-        "main_characters": story.main_characters,
-        "character_relationships": story.character_relationships,
-        "world_building": story.world_building,
-        "setting_time": story.setting_time,
-        "setting_location": story.setting_location,
-        "previous_episode_summaries": previous_episode_summaries,
-        "character_profiles": character_profiles,
-        **marketing_meta,
-    }
 
 
 def _normalize_script_content(
@@ -335,211 +204,27 @@ def _normalize_script_content(
     target_chars_per_episode: Optional[int] = None,
     title: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """确保场景/对白/舞台指示结构化并符合前端期望字段。"""
-    normalized = dict(ai_content or {})
-    fallback_scenes = default_scenes or []
-
-    def _safe_int(value: Any) -> Optional[int]:
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return None
-
-    raw_scenes = normalized.get("scenes")
-    if not isinstance(raw_scenes, list) or len(raw_scenes) == 0:
-        raw_scenes = fallback_scenes
-    scenes: List[Dict[str, Any]] = []
-    for idx, scene in enumerate(raw_scenes, start=1):
-        base = (
-            dict(scene)
-            if isinstance(scene, dict)
-            else {"description": str(scene) if scene is not None else ""}
-        )
-        scene_no = _safe_int(base.get("scene_number")) or idx
-        desc = (
-            base.get("description")
-            or base.get("summary")
-            or base.get("slug_line")
-            or base.get("story_beat")
-            or base.get("title")
-        )
-        base["scene_number"] = scene_no
-        if desc:
-            base.setdefault("description", desc)
-            base.setdefault("summary", desc)
-        if not base.get("slug_line"):
-            location = base.get("location") or base.get("place")
-            time_of_day = base.get("time_of_day") or base.get("time")
-            if location and time_of_day:
-                base["slug_line"] = f"{location} - {time_of_day}"
-            elif desc:
-                base["slug_line"] = desc[:80]
-        scenes.append(base)
-
-    metadata = normalized.get("metadata") or {}
-    if scenes and not metadata.get("total_scenes"):
-        metadata["total_scenes"] = len(scenes)
-    normalized["metadata"] = metadata
-    normalized["scenes"] = scenes
-
-    raw_dialogues = normalized.get("dialogues") or []
-    dialogues: List[Dict[str, Any]] = []
-    for idx, item in enumerate(raw_dialogues, start=1):
-        if isinstance(item, str):
-            dialogues.append(
-                {
-                    "scene_number": (
-                        scenes[idx - 1]["scene_number"]
-                        if idx - 1 < len(scenes)
-                        else idx
-                    ),
-                    "content": item,
-                }
-            )
-            continue
-        if not isinstance(item, dict):
-            continue
-        dialog = dict(item)
-        content = (
-            dialog.get("content")
-            or dialog.get("line")
-            or dialog.get("text")
-            or dialog.get("dialogue")
-        )
-        if not content:
-            continue
-        dialog["content"] = content
-        sn = _safe_int(dialog.get("scene_number"))
-        if sn is None:
-            dialog["scene_number"] = (
-                scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
-            )
-        dialogues.append(dialog)
-
-    raw_stage = normalized.get("stage_directions") or []
-    stage_directions: List[Dict[str, Any]] = []
-    for idx, item in enumerate(raw_stage, start=1):
-        if isinstance(item, str):
-            stage_directions.append(
-                {
-                    "scene_number": (
-                        scenes[idx - 1]["scene_number"]
-                        if idx - 1 < len(scenes)
-                        else idx
-                    ),
-                    "content": item,
-                }
-            )
-            continue
-        if not isinstance(item, dict):
-            continue
-        direction = dict(item)
-        content = (
-            direction.get("content")
-            or direction.get("direction")
-            or direction.get("description")
-        )
-        if not content:
-            continue
-        direction["content"] = content
-        sn = _safe_int(direction.get("scene_number"))
-        if sn is None:
-            direction["scene_number"] = (
-                scenes[idx - 1]["scene_number"] if idx - 1 < len(scenes) else idx
-            )
-        stage_directions.append(direction)
-
-    # 若未提供场景但对白/舞台指示包含 scene_number，则补充占位场景
-    if not scenes:
-        scene_numbers = {
-            item.get("scene_number")
-            for item in dialogues
-            if isinstance(item, dict) and item.get("scene_number")
-        }
-        scene_numbers |= {
-            item.get("scene_number")
-            for item in stage_directions
-            if isinstance(item, dict) and item.get("scene_number")
-        }
-        scene_numbers = {sn for sn in scene_numbers if sn is not None}
-        for idx, sn in enumerate(sorted(scene_numbers)):
-            scenes.append(
-                {
-                    "scene_number": _safe_int(sn) or idx + 1,
-                    "slug_line": f"Scene {sn}",
-                    "summary": "",
-                    "description": "",
-                }
-            )
-
-    normalized["scenes"] = scenes
-    normalized["dialogues"] = dialogues
-    normalized["stage_directions"] = stage_directions
-
-    content_value = normalized.get("content")
-    if isinstance(content_value, dict):
-        content_text = content_value.get("content") or ""
-    else:
-        content_text = content_value or ""
-    if not content_text:
-        content_text = build_script_text(
-            scenes,
-            dialogues,
-            stage_directions,
-            format_type=format_type,
-            language=language,
-            episode_number=episode_number,
-            template_style=template_style,
-            target_chars_per_episode=target_chars_per_episode,
-            title=title,
-        )
-    normalized["content"] = content_text
-    return normalized
+    return _normalize_script_content_impl(
+        ai_content,
+        format_type=format_type,
+        language=language,
+        default_scenes=default_scenes,
+        episode_number=episode_number,
+        template_style=template_style,
+        target_chars_per_episode=target_chars_per_episode,
+        title=title,
+    )
 
 
 def _build_scene_payload_from_script_data(
     scene_raw: Any,
     idx: int,
     script_id: int,
-) -> Optional[SceneCreate]:
-    """将剧本中的场景数据转换为 SceneCreate."""
-    if isinstance(scene_raw, dict):
-        base = dict(scene_raw)
-    elif isinstance(scene_raw, str):
-        base = {"summary": scene_raw, "description": scene_raw}
-    else:
-        return None
-
-    scene_no = _to_int(base.get("scene_number")) or idx
-    summary = base.get("summary") or base.get("description")
-    location = base.get("location") or base.get("place")
-    time_of_day = base.get("time_of_day") or base.get("time")
-
-    slug_line = base.get("slug_line")
-    if not slug_line:
-        if location and time_of_day:
-            slug_line = f"{location} - {time_of_day}"
-        elif summary:
-            slug_line = str(summary)[:80]
-        else:
-            slug_line = f"Scene {scene_no}"
-
-    # 提取预估时长（秒），支持多种字段名
-    estimated_duration = _to_int(
-        base.get("estimated_duration_seconds")
-        or base.get("duration_seconds")
-        or base.get("estimated_duration")
-    )
-
-    return SceneCreate(
-        script_id=script_id,
-        scene_number=str(scene_no),
-        slug_line=str(slug_line),
-        location=location,
-        time_of_day=time_of_day,
-        summary=summary,
-        estimated_duration_seconds=estimated_duration,
-        status="draft",
+) -> Any:
+    return _build_scene_payload_from_script_data_impl(
+        scene_raw,
+        idx,
+        script_id,
     )
 
 
@@ -549,65 +234,11 @@ def _sync_script_scenes_to_story_structure(
     *,
     allow_overwrite: bool = False,
 ) -> Dict[str, int]:
-    """
-    将 Script.scenes 写入规范化 story_structure，若已有场景且未允许覆盖则跳过。
-    返回创建统计，内部吞掉异常以避免打断主流程。
-    """
-    logger = get_logger()
-    if not script or not script.id:
-        return {"created": 0, "shots_created": 0, "skipped": 0}
-
-    existing = story_structure_svc.list_scenes_by_script(db, script.id)
-    if existing and not allow_overwrite:
-        return {"created": 0, "shots_created": 0, "skipped": len(existing)}
-
-    if allow_overwrite and existing:
-        for sc in existing:
-            try:
-                story_structure_svc.delete_scene(db, sc.id)
-            except Exception as exc:  # pragma: no cover - protective
-                logger.warning("删除旧规范化场景失败: %s", exc)
-
-    scenes_src = script.scenes or []
-    if not scenes_src and isinstance(script.extra_metadata, dict):
-        scenes_src = script.extra_metadata.get("scenes") or []
-
-    created_scenes: List[Scene] = []
-    seen_numbers: set[str] = set()
-    for idx, raw in enumerate(scenes_src, start=1):
-        payload = _build_scene_payload_from_script_data(raw, idx, script.id)
-        if not payload:
-            continue
-        scene_key = payload.scene_number
-        if scene_key in seen_numbers:
-            continue
-        seen_numbers.add(scene_key)
-        try:
-            created = story_structure_svc.create_scene(db, payload)
-            created_scenes.append(created)
-        except Exception as exc:  # pragma: no cover - protective
-            logger.warning("写入规范化场景失败 scene=%s: %s", scene_key, exc)
-
-    shots_created = 0
-    for sc in created_scenes:
-        try:
-            story_structure_svc.create_shot(
-                db,
-                ShotCreate(
-                    scene_id=sc.id,
-                    shot_number="1",
-                    status="planned",
-                ),
-            )
-            shots_created += 1
-        except Exception as exc:  # pragma: no cover - protective
-            logger.warning("为场景创建占位镜头失败 scene_id=%s: %s", sc.id, exc)
-
-    return {
-        "created": len(created_scenes),
-        "shots_created": shots_created,
-        "skipped": len(existing) if existing and not allow_overwrite else 0,
-    }
+    return _sync_script_scenes_to_story_structure_impl(
+        db,
+        script,
+        allow_overwrite=allow_overwrite,
+    )
 
 
 def _merge_production_pipeline_metadata(
@@ -617,20 +248,12 @@ def _merge_production_pipeline_metadata(
     production_meta: Dict[str, Any],
     scoring_artifacts: Optional[Dict[str, Any]],
 ) -> None:
-    extra = dict(script.extra_metadata or {})
-    extra["production_pipeline"] = production_meta
-    if scoring_artifacts is not None:
-        extra["scoring"] = scoring_artifacts
-    agent_run = dict(extra.get("agent_run") or {})
-    agent_run["generation_mode"] = "production"
-    agent_run["production_pipeline"] = production_meta
-    if scoring_artifacts is not None:
-        agent_run["scoring"] = scoring_artifacts
-    extra["agent_run"] = agent_run
-    script.extra_metadata = extra
-    db.add(script)
-    db.commit()
-    db.refresh(script)
+    _merge_production_pipeline_metadata_impl(
+        db,
+        script,
+        production_meta=production_meta,
+        scoring_artifacts=scoring_artifacts,
+    )
 
 
 def _populate_dialogues_and_stage_if_missing(
@@ -2190,207 +1813,6 @@ async def get_episode_scripts_by_business_id(
         scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
     )
     return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
-
-
-async def _regenerate_script_instance(
-    *,
-    db: Session,
-    script: Script,
-    episode: Episode,
-    story: Story,
-    override_model: Optional[str] = None,
-) -> Script:
-    """复用的剧本重新生成逻辑，供业务ID/主键路由调用。
-
-    Args:
-        override_model: 可选，覆盖原有模型设置，格式为 "provider:model_id" 或 "model_id"
-    """
-    previous_episode_summaries = _collect_previous_episode_summaries(
-        db, story.id, episode.episode_number
-    )
-    character_profiles = _build_character_profiles(story)
-
-    episode_data = _build_episode_data(episode)
-    story_data = _build_story_data(
-        story,
-        previous_episode_summaries=previous_episode_summaries,
-        character_profiles=character_profiles,
-    )
-
-    original_params = script.generation_params or {}
-    marketing_overrides = {
-        "market_region": original_params.get("market_region"),
-        "micro_genre": original_params.get("micro_genre"),
-        "hook_plan": original_params.get("hook_plan"),
-        "twist_density": original_params.get("twist_density"),
-        "cliffhanger_plan": original_params.get("cliffhanger_plan"),
-        "ad_snippets": original_params.get("ad_snippets"),
-    }
-    apply_marketing_overrides(story_data, marketing_overrides)
-    apply_marketing_overrides(episode_data, marketing_overrides)
-    prefer_provider = None
-    # 如果提供了 override_model，使用它；否则使用原有模型
-    model_id = override_model if override_model else original_params.get("model")
-    if isinstance(model_id, str) and ":" in model_id:
-        prefer_provider, model_id = model_id.split(":", 1)
-
-    result = await ai_service.generate_script(
-        episode=episode_data,
-        story=story_data,
-        format_type=script.format_type,
-        language=script.language,
-        dialogue_style=original_params.get("dialogue_style", "natural"),
-        scene_detail_level=original_params.get("scene_detail_level", "medium"),
-        template_style=original_params.get(
-            "template_style", "commercial_vertical_drama"
-        ),
-        target_chars_per_episode=original_params.get("target_chars_per_episode", 1300),
-        quality_threshold=original_params.get("quality_threshold", 9.0),
-        additional_requirements=f"重新生成第{episode.episode_number}集的剧本内容",
-        style_preferences=original_params.get("style_preferences"),
-        model=model_id,
-        prefer_provider=prefer_provider,
-        temperature=original_params.get("temperature", 0.7),
-    )
-
-    if not result:
-        raise HTTPException(status_code=500, detail="AI剧本重新生成失败")
-
-    agent_run: Dict[str, Any] = {}
-    if isinstance(result, dict):
-        agent_run = {
-            "generation_method": result.get("generation_method"),
-            "template_used": result.get("template_used"),
-            "provider_used": result.get("provider_used"),
-            "model_used": result.get("model_used"),
-            "usage": result.get("usage"),
-            "reasoning": result.get("reasoning"),
-        }
-
-    raw_content = result.get("content")
-    if isinstance(raw_content, dict):
-        ai_content = raw_content
-    else:
-        parsed = extract_json_block(raw_content)
-        if parsed:
-            ai_content = parsed
-        else:
-            source_text = raw_content or ""
-            extracted = extract_script_structure(source_text)
-            ai_content = {
-                "content": extracted.get("content", source_text),
-                "scenes": extracted.get("scenes", []),
-                "dialogues": extracted.get("dialogues", []),
-                "stage_directions": extracted.get("stage_directions", []),
-                "metadata": extracted.get("metadata", {}),
-            }
-
-    ai_content = _normalize_script_content(
-        ai_content,
-        format_type=script.format_type,
-        language=script.language,
-        default_scenes=episode_data.get("scenes"),
-        episode_number=episode.episode_number,
-        template_style=original_params.get(
-            "template_style", "commercial_vertical_drama"
-        ),
-        target_chars_per_episode=original_params.get("target_chars_per_episode", 1300),
-        title=episode.title,
-    )
-
-    script_content = ai_content.get("content", "")
-    scenes = ai_content.get("scenes", [])
-    dialogues_raw = ai_content.get("dialogues", [])
-    stage_directions_raw = ai_content.get("stage_directions", [])
-    dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
-        scenes, dialogues_raw, stage_directions_raw, story=story
-    )
-    if not dialogues_raw or not stage_directions_raw:
-        script_content = build_script_text(
-            scenes,
-            dialogues,
-            stage_directions,
-            format_type=script.format_type,
-            language=script.language,
-            episode_number=episode.episode_number,
-            template_style=original_params.get(
-                "template_style", "commercial_vertical_drama"
-            ),
-            target_chars_per_episode=original_params.get(
-                "target_chars_per_episode", 1300
-            ),
-            title=episode.title,
-        )
-        ai_content["content"] = script_content
-    try:
-        result, ai_content, _quality_gate = (
-            await enforce_script_quality_gate_with_repair(
-                ai_manager=getattr(ai_service, "ai_manager", None),
-                result=result,
-                content={
-                    **ai_content,
-                    "content": script_content,
-                    "scenes": scenes,
-                    "dialogues": dialogues,
-                    "stage_directions": stage_directions,
-                },
-                story=story_data,
-                story_model=story,
-                episode_id=episode.id,
-                db=db,
-                model=model_id,
-                prefer_provider=prefer_provider,
-                temperature=original_params.get("temperature", 0.7),
-                lint_threshold=original_params.get("quality_threshold", 9.0),
-                target_chars_per_episode=original_params.get(
-                    "target_chars_per_episode", 1300
-                ),
-            )
-        )
-    except NarrativeQualityGateError as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"剧本质量校验失败: {exc}",
-        ) from exc
-    script_content = ai_content.get("content", "")
-    scenes = ai_content.get("scenes", [])
-    dialogues = ai_content.get("dialogues", [])
-    stage_directions = ai_content.get("stage_directions", [])
-    if agent_run:
-        agent_run = {**agent_run, "quality_gate": result.get("quality_gate")}
-    script.content = script_content
-    script.scenes = scenes
-    script.dialogues = dialogues
-    script.stage_directions = stage_directions
-    script.generation_prompt = result.get("prompt")
-    script.ai_model = result.get("generation_method")
-
-    if agent_run:
-        meta = dict(script.extra_metadata or {})
-        marketing_defaults = merge_marketing_meta(
-            story_data,
-            episode_data,
-            marketing_overrides,
-        )
-        if marketing_defaults:
-            meta.update(marketing_defaults)
-        meta["agent_run"] = agent_run
-        script.extra_metadata = meta
-
-    script.word_count = len(script_content.split()) if script_content else 0
-    script.character_count = len(script_content) if script_content else 0
-    script.page_count = max(1, script.character_count // 2000)
-
-    db.commit()
-    db.refresh(script)
-
-    try:
-        _sync_script_scenes_to_story_structure(db, script)
-    except Exception:
-        logger = get_logger()
-        logger.warning("同步规范化场景失败（regenerate）", exc_info=True)
-
-    return script
 
 
 class ScriptRegenerateRequest(BaseModel):

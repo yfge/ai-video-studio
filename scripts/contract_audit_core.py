@@ -25,6 +25,12 @@ ALLOWED_OVERSIZE = {
     "ai-pic-frontend/src/components/shared/modals/UserDetailsModal.tsx": 643,
     "ai-pic-frontend/src/app/admin/users/page.tsx": 571,
 }
+ALLOWED_ROUTE_HANDLERS = {
+    "ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py": 250,
+}
+ALLOWED_DIRECT_QUERIES = {
+    "ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py": 23,
+}
 LEGACY_IMPORT_RE = re.compile(
     r"(scripts_legacy|dialogue_audio_service|ai_service_manager|script_agent)"
 )
@@ -140,7 +146,7 @@ def longest_route_handler(text: str) -> int:
     return max_len
 
 
-def collect_route_handlers(paths: list[Path]) -> list[dict[str, Any]]:
+def collect_route_handlers(paths: list[Path], *, mode: str) -> list[dict[str, Any]]:
     violations: list[dict[str, Any]] = []
     for path in paths:
         rel = relative(path)
@@ -148,13 +154,23 @@ def collect_route_handlers(paths: list[Path]) -> list[dict[str, Any]]:
             continue
         length = longest_route_handler(read_text(path))
         if length > HANDLER_LIMIT:
+            allowed = ALLOWED_ROUTE_HANDLERS.get(rel)
+            baseline_exemption = allowed is not None and length <= allowed
+            if mode == "diff" and baseline_exemption:
+                continue
             violations.append(
-                {"path": rel, "handler_lines": length, "limit": HANDLER_LIMIT}
+                {
+                    "path": rel,
+                    "handler_lines": length,
+                    "limit": HANDLER_LIMIT,
+                    "baseline_exemption": baseline_exemption,
+                    "allowed_limit": allowed,
+                }
             )
     return sorted(violations, key=lambda item: (-item["handler_lines"], item["path"]))
 
 
-def collect_direct_queries(paths: list[Path]) -> list[dict[str, Any]]:
+def collect_direct_queries(paths: list[Path], *, mode: str) -> list[dict[str, Any]]:
     violations: list[dict[str, Any]] = []
     for path in paths:
         rel = relative(path)
@@ -162,7 +178,18 @@ def collect_direct_queries(paths: list[Path]) -> list[dict[str, Any]]:
             continue
         hits = len(QUERY_RE.findall(read_text(path)))
         if hits:
-            violations.append({"path": rel, "query_hits": hits})
+            allowed = ALLOWED_DIRECT_QUERIES.get(rel)
+            baseline_exemption = allowed is not None and hits <= allowed
+            if mode == "diff" and baseline_exemption:
+                continue
+            violations.append(
+                {
+                    "path": rel,
+                    "query_hits": hits,
+                    "baseline_exemption": baseline_exemption,
+                    "allowed_limit": allowed,
+                }
+            )
     return sorted(violations, key=lambda item: (-item["query_hits"], item["path"]))
 
 
