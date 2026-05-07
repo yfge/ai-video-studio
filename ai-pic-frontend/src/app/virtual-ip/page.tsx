@@ -1,7 +1,6 @@
 "use client";
 
-import { AuthGuard } from "@/components/shared";
-import { Navigation } from "@/components/layouts";
+import { AuthGuard, OperatorPanel, OperatorShell } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
   VirtualIPCreateModal,
@@ -40,22 +39,29 @@ function VirtualIPListContent() {
   } = useVirtualIPCreateForm({ showAlert, onCreated: prependVirtualIP });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation title="虚拟IP管理" />
+    <OperatorShell
+      title="IP 项目"
+      subtitle="IP 资产是故事、剧集和生成任务的入口"
+    >
+      <OperatorPanel className="mb-5 p-4">
+        <h2 className="text-sm font-semibold text-gray-950">迁移状态</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          IP 资产正在迁移到新的生产工作台；当前列表继续承载现有 IP
+          管理，新故事优先从这里选择角色资产。
+        </p>
+      </OperatorPanel>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <VirtualIPListSection
-          loading={loading}
-          virtualIPs={virtualIPs}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          allTags={allTags}
-          selectedTags={selectedTags}
-          onToggleTag={toggleTag}
-          onOpenCreate={() => setShowCreateForm(true)}
-          onDelete={handleDeleteIP}
-        />
-      </main>
+      <VirtualIPListSection
+        loading={loading}
+        virtualIPs={virtualIPs}
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+        allTags={allTags}
+        selectedTags={selectedTags}
+        onToggleTag={toggleTag}
+        onOpenCreate={() => setShowCreateForm(true)}
+        onDelete={handleDeleteIP}
+      />
 
       <VirtualIPCreateModal
         open={showCreateForm}
@@ -71,7 +77,7 @@ function VirtualIPListContent() {
         addTag={addTag}
         removeTag={removeTag}
       />
-    </div>
+    </OperatorShell>
   );
 }
 

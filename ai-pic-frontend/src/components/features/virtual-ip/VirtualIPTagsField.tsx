@@ -20,13 +20,13 @@ export function VirtualIPTagsField({
         {tags.map((tag) => (
           <span
             key={tag}
-            className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full flex items-center"
+            className="flex items-center rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700"
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
-              className="ml-1 text-blue-600 hover:text-blue-800"
+              className="ml-1 text-blue-500 hover:text-blue-700"
             >
               ×
             </button>
@@ -45,7 +45,7 @@ export function VirtualIPTagsField({
               input.value = "";
             }
           }}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="h-8 flex-1 rounded-md border border-gray-200 px-3 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         <button
           type="button"
@@ -55,7 +55,7 @@ export function VirtualIPTagsField({
             addTag(input.value.trim());
             input.value = "";
           }}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+          className="h-8 rounded-md border border-gray-200 bg-white px-3 text-xs text-gray-700 hover:bg-gray-50"
         >
           添加
         </button>

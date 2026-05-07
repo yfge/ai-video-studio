@@ -22,8 +22,10 @@ const formatReferenceImages = (items: string[]) => items.join("\n");
 const statusBadge = (enabled: boolean, onLabel: string, offLabel: string) => (
   <span
     className={[
-      "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-      enabled ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600",
+      "inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium",
+      enabled
+        ? "border-green-200 bg-green-50 text-green-700"
+        : "border-gray-200 bg-gray-50 text-gray-600",
     ].join(" ")}
   >
     {enabled ? onLabel : offLabel}
@@ -42,9 +44,9 @@ export function VirtualIPAdditionalInfoSection({
     (virtualIP.style_reference_images || []).length > 0;
 
   return (
-    <div className="p-6 sm:p-8 border-b border-gray-100 space-y-6">
+    <div className="space-y-5 border-b border-gray-100 p-5">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900">其他信息</h3>
+        <h3 className="text-sm font-semibold text-gray-950">补充信息</h3>
         <p className="text-sm text-gray-500">
           补充人物小传、风格提示词与公开状态。
         </p>
@@ -62,7 +64,7 @@ export function VirtualIPAdditionalInfoSection({
                 setEditForm({ ...editForm, biography: e.target.value })
               }
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               placeholder="补充角色的小传、经历或性格补充"
             />
           ) : hasBiography ? (
@@ -86,7 +88,7 @@ export function VirtualIPAdditionalInfoSection({
                 setEditForm({ ...editForm, style_prompt: e.target.value })
               }
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               placeholder="用于图像生成的风格描述"
             />
           ) : hasStylePrompt ? (
@@ -114,7 +116,7 @@ export function VirtualIPAdditionalInfoSection({
               })
             }
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             placeholder="每行一个参考图 URL"
           />
         ) : hasStyleReferences ? (
@@ -137,7 +139,7 @@ export function VirtualIPAdditionalInfoSection({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between rounded-md border border-gray-200 px-4 py-3">
           <div>
             <p className="text-sm font-medium text-gray-700">可用状态</p>
             <p className="text-xs text-gray-500">停用后不可用于生成</p>
@@ -159,7 +161,7 @@ export function VirtualIPAdditionalInfoSection({
           )}
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between rounded-md border border-gray-200 px-4 py-3">
           <div>
             <p className="text-sm font-medium text-gray-700">公开状态</p>
             <p className="text-xs text-gray-500">公开后可被他人查看</p>

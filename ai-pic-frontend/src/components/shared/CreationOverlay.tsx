@@ -26,18 +26,18 @@ export function CreationOverlay({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/45 px-4">
       <div
-        className={`relative w-full ${widthClassName} rounded-2xl bg-white shadow-2xl`}
+        className={`relative w-full ${widthClassName} rounded-lg border border-gray-200 bg-white shadow-xl`}
       >
-        <div className="flex items-start gap-3 border-b px-6 py-5">
+        <div className="flex items-start gap-3 border-b border-gray-200 px-5 py-4">
           {icon ? (
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gray-950 text-white">
               {icon}
             </div>
           ) : null}
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+            <h2 className="text-base font-semibold text-gray-950">{title}</h2>
             {subtitle ? (
               <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
             ) : null}
@@ -45,7 +45,7 @@ export function CreationOverlay({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
             aria-label="关闭"
           >
             <svg
@@ -64,10 +64,10 @@ export function CreationOverlay({
           </button>
         </div>
 
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">{children}</div>
+        <div className="max-h-[72vh] overflow-y-auto px-5 py-4">{children}</div>
 
         {footer ? (
-          <div className="flex justify-end gap-3 border-t px-6 py-4">
+          <div className="flex justify-end gap-3 border-t border-gray-200 px-5 py-4">
             {footer}
           </div>
         ) : null}

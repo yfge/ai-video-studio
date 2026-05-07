@@ -1,7 +1,7 @@
 "use client";
 
 import type { VirtualIP, VirtualIPImage } from "@/utils/api/types";
-import { ImagePreviewCard } from "@/components/shared";
+import { ImagePreviewCard, OperatorState } from "@/components/shared";
 import { resolveImageUrl } from "@/hooks/useVirtualIPImages";
 import { getCategoryLabel } from "./categoryLabel";
 
@@ -25,17 +25,11 @@ export function ImageGrid({
   const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
   if (images.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-gray-400 text-6xl mb-4">图片</div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">暂无图片</h3>
-        <p className="text-gray-600">开始上传或生成图片吧！</p>
-      </div>
-    );
+    return <OperatorState title="暂无图片" detail="开始上传或生成图片。" />;
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
       {images.map((image) => {
         const primarySrc = resolveImageUrl(image);
         const fallbackSrc = (() => {
@@ -50,7 +44,7 @@ export function ImageGrid({
         return (
           <div
             key={image.id}
-            className="bg-white rounded-lg shadow-md overflow-hidden"
+            className="overflow-hidden rounded-lg border border-gray-200 bg-white"
           >
             <ImagePreviewCard
               src={primarySrc}
@@ -81,7 +75,7 @@ export function ImageGrid({
                     ]
               }
             />
-            <div className="p-4">
+            <div className="p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-900">
                   {getCategoryLabel(image.category)}
@@ -96,7 +90,7 @@ export function ImageGrid({
                     {image.tags.slice(0, 3).map((tag, index) => (
                       <span
                         key={index}
-                        className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs"
+                        className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600"
                       >
                         {tag}
                       </span>

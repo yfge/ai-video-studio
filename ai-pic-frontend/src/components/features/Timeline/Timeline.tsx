@@ -1,6 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  BASE_PX_PER_MS,
+  buildTimelineTicks,
+  clamp,
+  formatTimelineMs,
+  resolveTimelineRange,
+} from "./timelineScale";
 
 export type TimelineItem = {
   id: string;
@@ -25,75 +32,8 @@ export type TimelineProps = {
   endMs?: number;
   currentTimeMs?: number;
   onSelect?: (item: TimelineItem) => void;
+  selectedItemId?: string | null;
   initialZoom?: number;
-};
-
-type Tick = { positionMs: number; label: string };
-
-const BASE_PX_PER_MS = 0.05; // 50px per second at zoom=1
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max);
-
-const formatMs = (ms: number) => {
-  const safe = Math.max(0, Math.trunc(ms));
-  const totalSeconds = Math.floor(safe / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  const millis = safe % 1000;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
-    2,
-    "0",
-  )}.${String(millis).padStart(3, "0")}`;
-};
-
-const niceStep = (rangeMs: number) => {
-  // Pick a human-friendly tick step (ms)
-  const candidates = [
-    100, 200, 250, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000,
-  ];
-  const target = rangeMs / 8;
-  for (const step of candidates) {
-    if (step >= target) return step;
-  }
-  return candidates[candidates.length - 1];
-};
-
-const buildTicks = (startMs: number, endMs: number): Tick[] => {
-  if (endMs <= startMs) return [];
-  const step = niceStep(endMs - startMs);
-  const ticks: Tick[] = [];
-  const first = Math.ceil(startMs / step) * step;
-  for (let t = first; t <= endMs; t += step) {
-    ticks.push({ positionMs: t, label: formatMs(t) });
-  }
-  return ticks;
-};
-
-const resolveRange = (
-  tracks: TimelineTrack[],
-  startMs?: number,
-  endMs?: number,
-) => {
-  const minStart =
-    startMs ??
-    tracks.reduce((acc, track) => {
-      track.items.forEach((item) => {
-        acc = Math.min(acc, item.startMs);
-      });
-      return acc;
-    }, Number.POSITIVE_INFINITY);
-  const maxEnd =
-    endMs ??
-    tracks.reduce((acc, track) => {
-      track.items.forEach((item) => {
-        acc = Math.max(acc, item.endMs ?? item.startMs);
-      });
-      return acc;
-    }, Number.NEGATIVE_INFINITY);
-  const safeMin = Number.isFinite(minStart) ? minStart : 0;
-  const safeMax = Number.isFinite(maxEnd) ? maxEnd : safeMin + 10000;
-  return { minStart: safeMin, maxEnd: Math.max(safeMax, safeMin + 1000) };
 };
 
 export function Timeline({
@@ -102,27 +42,32 @@ export function Timeline({
   endMs,
   currentTimeMs,
   onSelect,
+  selectedItemId,
   initialZoom = 1,
 }: TimelineProps) {
   const [zoom, setZoom] = useState(clamp(initialZoom, 0.25, 4));
 
   const { minStart, maxEnd } = useMemo(
-    () => resolveRange(tracks, startMs, endMs),
+    () => resolveTimelineRange(tracks, startMs, endMs),
     [endMs, startMs, tracks],
   );
 
   const totalMs = Math.max(1, maxEnd - minStart);
   const pxPerMs = BASE_PX_PER_MS * zoom;
   const contentWidth = Math.max(600, totalMs * pxPerMs);
-  const ticks = useMemo(() => buildTicks(minStart, maxEnd), [maxEnd, minStart]);
+  const ticks = useMemo(
+    () => buildTimelineTicks(minStart, maxEnd),
+    [maxEnd, minStart],
+  );
 
-  const colorForTrack = (track: TimelineTrack) => track.color || "#4f46e5"; // default indigo; per-track override allowed
+  const colorForTrack = (track: TimelineTrack) => track.color || "#2563eb";
 
   const renderItem = (item: TimelineItem, trackColor: string) => {
     const startOffset = (item.startMs - minStart) * pxPerMs;
     const duration = Math.max(item.endMs - item.startMs, 0);
     const width = Math.max(duration * pxPerMs, 6);
     const isMarker = duration <= 0;
+    const isSelected = selectedItemId === item.id;
     const style = isMarker
       ? {
           left: startOffset,
@@ -141,15 +86,19 @@ export function Timeline({
         key={item.id}
         title={
           item.label
-            ? `${item.label} (${formatMs(item.startMs)}–${formatMs(
+            ? `${item.label} (${formatTimelineMs(
+                item.startMs,
+              )}–${formatTimelineMs(item.endMs)})`
+            : `${formatTimelineMs(item.startMs)}–${formatTimelineMs(
                 item.endMs,
-              )})`
-            : `${formatMs(item.startMs)}–${formatMs(item.endMs)}`
+              )}`
         }
         onClick={() => onSelect?.(item)}
-        className={`absolute top-1 bottom-1 rounded ${
+        className={`absolute bottom-1 top-1 rounded-sm ${
           isMarker ? "" : "border"
-        } ${onSelect ? "cursor-pointer" : "cursor-default"} overflow-hidden`}
+        } ${isSelected ? "ring-2 ring-blue-500 ring-offset-1" : ""} ${
+          onSelect ? "cursor-pointer" : "cursor-default"
+        } overflow-hidden`}
         style={style}
       >
         {!isMarker ? (
@@ -162,11 +111,11 @@ export function Timeline({
   };
 
   return (
-    <div className="w-full rounded border border-gray-200 bg-white">
+    <div className="w-full rounded-md border border-gray-200 bg-white">
       <div className="flex items-center justify-between px-3 py-2 text-xs text-gray-700">
         <div className="flex items-center gap-3">
           <span className="text-[11px] text-gray-500">
-            时间轴窗口 {formatMs(minStart)} – {formatMs(maxEnd)}
+            时间轴窗口 {formatTimelineMs(minStart)} – {formatTimelineMs(maxEnd)}
           </span>
           <span className="text-[11px] text-gray-500">
             时长 {(totalMs / 1000).toFixed(1)}s
@@ -187,7 +136,7 @@ export function Timeline({
           <button
             type="button"
             onClick={() => setZoom(1)}
-            className="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50"
+            className="rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50"
           >
             1x
           </button>
@@ -201,7 +150,6 @@ export function Timeline({
             minHeight: `${60 + tracks.length * 42}px`,
           }}
         >
-          {/* Ticks */}
           <div className="absolute left-0 right-0 top-0 h-8">
             {ticks.map((tick) => {
               const left = (tick.positionMs - minStart) * pxPerMs;
@@ -217,14 +165,13 @@ export function Timeline({
               );
             })}
           </div>
-          {/* Tracks */}
           <div className="absolute left-0 right-0 top-8">
             {tracks.map((track) => {
               const color = colorForTrack(track);
               return (
                 <div
                   key={track.id}
-                  className="relative mb-4 border-t border-gray-100 pt-1"
+                  className="relative mb-3 border-t border-gray-100 bg-white pt-1"
                   style={{ minHeight: 40 }}
                 >
                   <div className="absolute left-0 top-2 flex h-5 items-center gap-2 pl-1 text-[12px] text-gray-700">
@@ -247,7 +194,7 @@ export function Timeline({
               style={{ left: (currentTimeMs - minStart) * pxPerMs }}
             >
               <div className="absolute -top-5 -translate-x-1/2 rounded bg-blue-500 px-1 py-0.5 text-[10px] text-white">
-                {formatMs(currentTimeMs)}
+                {formatTimelineMs(currentTimeMs)}
               </div>
             </div>
           ) : null}

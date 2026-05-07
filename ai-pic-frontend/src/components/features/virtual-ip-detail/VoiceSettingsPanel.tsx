@@ -34,10 +34,10 @@ export function VoiceSettingsPanel({
   onPreviewVoice,
 }: VoiceSettingsPanelProps) {
   return (
-    <div className="p-6 sm:p-8 border-b border-gray-100 space-y-6">
+    <div className="space-y-5 border-b border-gray-100 p-5">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">配音设置</h3>
+          <h3 className="text-sm font-semibold text-gray-950">声音设置</h3>
           <p className="text-sm text-gray-500">
             按“服务商 → 模型 → 声音”绑定角色配音
           </p>
@@ -67,7 +67,7 @@ export function VoiceSettingsPanel({
               }));
             }}
             disabled={!editing}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             {(voiceEnums?.providers || []).map((p) => (
               <option key={p.value} value={p.value}>
@@ -90,7 +90,7 @@ export function VoiceSettingsPanel({
               }))
             }
             disabled={!editing}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             {(voiceEnums?.tts_models || []).map((m) => (
               <option key={m.value} value={m.value}>
@@ -108,7 +108,7 @@ export function VoiceSettingsPanel({
             value={voiceTypeFilter}
             onChange={(e) => setVoiceTypeFilter(e.target.value)}
             disabled={!editing}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             {(voiceEnums?.voice_types || []).map((item) => (
               <option key={item.value} value={item.value}>
@@ -134,7 +134,7 @@ export function VoiceSettingsPanel({
               }))
             }
             disabled={!editing || voiceLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             <option value="">选择声音</option>
             {voiceOptions.map((item) => (
@@ -158,7 +158,7 @@ export function VoiceSettingsPanel({
           value={voicePreviewText}
           onChange={(e) => setVoicePreviewText(e.target.value)}
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           placeholder="输入用于试听的文本"
         />
         <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export function VoiceSettingsPanel({
             type="button"
             onClick={onPreviewVoice}
             disabled={previewLoading}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-60"
+            className="h-8 rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
             {previewLoading ? "生成中..." : "试听"}
           </button>

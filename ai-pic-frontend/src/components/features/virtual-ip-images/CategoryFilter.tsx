@@ -14,14 +14,16 @@ export function CategoryFilter({
   onSelectCategory,
 }: CategoryFilterProps) {
   return (
-    <div className="mb-6">
-      <div className="flex gap-2 flex-wrap">
+    <div className="rounded-lg border border-gray-200 bg-white p-3">
+      <h3 className="mb-3 text-sm font-semibold text-gray-950">图片分类</h3>
+      <div className="space-y-1">
         <button
+          type="button"
           onClick={() => onSelectCategory("")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+          className={`flex h-8 w-full items-center justify-between rounded-md px-2 text-xs font-medium ${
             selectedCategory === ""
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              ? "bg-blue-50 text-blue-700"
+              : "text-gray-600 hover:bg-gray-50"
           }`}
         >
           全部
@@ -29,11 +31,12 @@ export function CategoryFilter({
         {categories.map((category) => (
           <button
             key={category}
+            type="button"
             onClick={() => onSelectCategory(category)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            className={`flex h-8 w-full items-center justify-between rounded-md px-2 text-xs font-medium ${
               selectedCategory === category
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                ? "bg-blue-50 text-blue-700"
+                : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             {getCategoryLabel(category)}

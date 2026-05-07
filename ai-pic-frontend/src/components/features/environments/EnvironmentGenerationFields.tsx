@@ -12,6 +12,8 @@ import {
   ImageGenAdvancedFields,
   ModelUiFields,
   MultiModelSelector,
+  operatorInputClass,
+  operatorSelectClass,
 } from "@/components/shared";
 import { AIModelType, type AIModel } from "@/utils/api/types";
 import { extractImageGenUi } from "@/utils/modelUi";
@@ -96,9 +98,13 @@ export function EnvironmentGenerationFields({
   }, [generation.count, maxCount, setGeneration]);
 
   return (
-    <div className={`${withDivider ? "border-t pt-4" : ""} space-y-4`}>
+    <div
+      className={`${
+        withDivider ? "border-t border-gray-200 pt-4" : ""
+      } space-y-4`}
+    >
       {showToggle && (
-        <label className="flex items-center gap-2 text-sm text-gray-700">
+        <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
           <input
             type="checkbox"
             checked={generation.enabled}
@@ -110,16 +116,18 @@ export function EnvironmentGenerationFields({
       )}
 
       {showFields && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-xs font-medium text-gray-700">
               补充提示词（可选）
             </label>
             <textarea
               value={generation.prompt}
               onChange={(e) => updateField("prompt", e.target.value)}
               rows={3}
-              className="w-full rounded border px-3 py-2 text-sm"
+              className={operatorInputClass(
+                "h-auto min-h-20 w-full py-2 text-sm",
+              )}
               placeholder="不填则使用环境名称/描述生成"
             />
           </div>
@@ -146,7 +154,10 @@ export function EnvironmentGenerationFields({
               allowAuto={false}
               multiple={false}
               autoSelectDefault
-              helperText="选择用于环境参考图生成的模型"
+              helperText={
+                selectedModel?.capabilities?.join(", ") ||
+                "选择用于环境参考图生成的模型"
+              }
               className="space-y-1"
               onModelsLoaded={(models, defaultModel) => {
                 setAvailableModels(models);
@@ -157,9 +168,6 @@ export function EnvironmentGenerationFields({
                 });
               }}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              {selectedModel?.capabilities?.join(", ") || "加载模型能力中..."}
-            </p>
           </div>
           <div>
             <GenerationProfileSelect
@@ -170,13 +178,13 @@ export function EnvironmentGenerationFields({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-1 block text-xs font-medium text-gray-700">
               生成风格
             </label>
             <select
               value={generation.style}
               onChange={(e) => updateField("style", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={operatorSelectClass("w-full")}
             >
               <option value="realistic">写实</option>
               <option value="anime">二次元</option>
@@ -184,7 +192,7 @@ export function EnvironmentGenerationFields({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-1 block text-xs font-medium text-gray-700">
               生成数量
             </label>
             <select
@@ -199,7 +207,7 @@ export function EnvironmentGenerationFields({
                 )
               }
               disabled={effectiveMaxCount <= 1}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={operatorSelectClass("w-full")}
             >
               {countOptions.map((value) => (
                 <option key={value} value={value}>
@@ -207,9 +215,6 @@ export function EnvironmentGenerationFields({
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-gray-500">
-              一次最多 {effectiveMaxCount} 张，部分模型会返回多张候选图片。
-            </p>
           </div>
           <div className="md:col-span-2">
             <ModelUiFields

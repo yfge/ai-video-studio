@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     virtual_ip,
     virtual_ip_images,
     virtual_ip_voice_samples,
+    workbench,
 )
 from fastapi import APIRouter
 
@@ -68,6 +69,9 @@ api_router.include_router(diagnostic.router, prefix="/diagnostic", tags=["diagno
 
 # 任务相关路由
 api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
+
+# 工作台聚合路由
+api_router.include_router(workbench.router, prefix="/workbench", tags=["workbench"])
 
 # 剧本评分与投流表相关路由
 api_router.include_router(scoring.router, prefix="/scoring", tags=["scoring"])

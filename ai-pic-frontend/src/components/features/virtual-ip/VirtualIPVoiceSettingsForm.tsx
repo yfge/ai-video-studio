@@ -63,7 +63,7 @@ export function VirtualIPVoiceSettingsForm({
                 voice_id: undefined,
               }));
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             <option value="">暂不配置</option>
             {(voiceEnums?.providers || []).map((p) => (
@@ -87,7 +87,7 @@ export function VirtualIPVoiceSettingsForm({
               }))
             }
             disabled={!hasProvider}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50"
           >
             <option value="">选择模型</option>
             {(voiceEnums?.tts_models || []).map((m) => (
@@ -106,7 +106,7 @@ export function VirtualIPVoiceSettingsForm({
             value={voiceTypeFilter}
             onChange={(e) => setVoiceTypeFilter(e.target.value)}
             disabled={!hasProvider}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50"
           >
             {(voiceEnums?.voice_types || []).map((item) => (
               <option key={item.value} value={item.value}>
@@ -132,7 +132,7 @@ export function VirtualIPVoiceSettingsForm({
               }))
             }
             disabled={!hasProvider || voiceLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50"
           >
             <option value="">选择声音</option>
             {voiceOptions.map((item) => (

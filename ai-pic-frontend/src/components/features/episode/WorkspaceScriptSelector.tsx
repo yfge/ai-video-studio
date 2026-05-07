@@ -1,6 +1,7 @@
 "use client";
 
 import type { Script } from "@/utils/api/types";
+import { operatorSelectClass } from "@/components/shared";
 
 export function WorkspaceScriptSelector(props: {
   scripts: Script[];
@@ -12,9 +13,9 @@ export function WorkspaceScriptSelector(props: {
   if (!scripts || scripts.length === 0) return null;
 
   return (
-    <div className="mt-4 bg-white rounded-lg shadow p-4">
+    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-3">
       <div className="flex items-center gap-4">
-        <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+        <label className="whitespace-nowrap text-sm font-medium text-gray-700">
           当前剧本
         </label>
         <select
@@ -23,7 +24,7 @@ export function WorkspaceScriptSelector(props: {
             const next = Number(e.target.value);
             onSelectScript(Number.isFinite(next) ? next : null);
           }}
-          className="flex-1 max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          className={operatorSelectClass("max-w-md flex-1")}
         >
           <option value="" disabled>
             请选择剧本

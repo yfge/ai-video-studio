@@ -18,7 +18,7 @@ export function episodeWorkspaceHref(
   options: EpisodeWorkspaceHrefOptions = {},
 ): string {
   const params = new URLSearchParams();
-  params.set("tab", options.tab ?? "overview");
+  params.set("tab", options.tab ?? "timeline");
 
   if (options.scriptId !== undefined && options.scriptId !== null) {
     params.set("scriptId", String(options.scriptId));

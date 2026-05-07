@@ -12,6 +12,7 @@ export * from "./admin.endpoints";
 
 // Task endpoints
 export * from "./task.endpoints";
+export * from "./workbench.endpoints";
 
 // Image endpoints
 export * from "./image.endpoints";

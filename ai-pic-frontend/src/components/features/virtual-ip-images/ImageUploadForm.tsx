@@ -1,5 +1,6 @@
 "use client";
 
+import { operatorButtonClass } from "@/components/shared";
 import type { UploadFormState } from "@/hooks/useVirtualIPImages";
 
 interface ImageUploadFormProps {
@@ -16,9 +17,9 @@ export function ImageUploadForm({
   onUpload,
 }: ImageUploadFormProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h3 className="text-lg font-semibold mb-4">上传图片</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-gray-950">上传图片</h3>
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             选择文件
@@ -32,7 +33,7 @@ export function ImageUploadForm({
                 file: e.target.files?.[0] || null,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </div>
         <div>
@@ -47,7 +48,7 @@ export function ImageUploadForm({
                 category: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             <option value="portrait">肖像</option>
             <option value="full_body">全身</option>
@@ -67,7 +68,7 @@ export function ImageUploadForm({
               setUploadForm((prev) => ({ ...prev, tags: e.target.value }))
             }
             placeholder="例如：微笑、晴天、户外"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-8 w-full rounded-md border border-gray-200 px-3 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </div>
         <div className="flex items-center">
@@ -91,7 +92,7 @@ export function ImageUploadForm({
         <button
           onClick={onUpload}
           disabled={uploading || !uploadForm.file}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className={operatorButtonClass("primary")}
         >
           {uploading ? "上传中..." : "上传图片"}
         </button>

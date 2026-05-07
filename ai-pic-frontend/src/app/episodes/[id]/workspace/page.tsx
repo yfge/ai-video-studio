@@ -3,14 +3,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import {
   EpisodeWorkspaceHeader,
-  WorkspaceOverviewTabContent,
+  WorkspaceActiveTabContent,
   WorkspaceScriptSelector,
-  WorkspaceScriptTabContent,
-  WorkspaceTimelineTabContent,
-  WorkspaceStoryboardTabContent,
-  WorkspaceCharactersTabContent,
   type WorkflowStatus,
 } from "@/components/features/episode";
+import { OperatorState } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
 import {
@@ -23,7 +20,8 @@ const coerceTab = (value: string | null): TabKey => {
   if (value === "timeline") return "timeline";
   if (value === "storyboard") return "storyboard";
   if (value === "characters") return "characters";
-  return "overview";
+  if (value === "overview") return "overview";
+  return "timeline";
 };
 
 export default function EpisodeWorkspacePage() {
@@ -117,22 +115,22 @@ export default function EpisodeWorkspacePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f6f8]">
+        <OperatorState title="加载剧集工作台..." />
       </div>
     );
   }
 
   if (!loading && !episode) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-red-500">剧集不存在</div>
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f6f8]">
+        <OperatorState title="剧集不存在" tone="red" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f5f6f8]">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <EpisodeWorkspaceHeader
           episode={episode!}
@@ -151,63 +149,36 @@ export default function EpisodeWorkspacePage() {
           onSelectScript={handleScriptChange}
         />
         <div className="mt-6">
-          {activeTab === "overview" && episode && (
-            <WorkspaceOverviewTabContent
-              episode={episode}
-              scriptSceneCount={mainScriptSceneCount}
-            />
-          )}
-          {activeTab === "script" && (
-            <WorkspaceScriptTabContent
-              script={mainScript}
-              generateForm={generateForm}
-              setGenerateForm={setGenerateForm}
-              formats={formats}
-              languages={languages}
-              useAsync={useAsync}
-              setUseAsync={setUseAsync}
-              promptPreview={promptPreview}
-              setPromptPreview={setPromptPreview}
-              generating={generating}
-              onGenerate={handleGenerateScript}
-              onRegenerateScript={
-                mainScript ? handleRegenerateScript : undefined
-              }
-              regenerating={regenerating}
-            />
-          )}
-          {activeTab === "timeline" && episode && (
-            <WorkspaceTimelineTabContent
-              scripts={orderedScripts}
-              selectedScriptId={selectedScriptId}
-              selectedScript={selectedScript}
-              selectedAudioTimeline={selectedAudioTimeline}
-              selectedStoryboard={selectedStoryboard}
-              normalizedScenes={normalizedScenes}
-              normalizedScenesLoading={normalizedScenesLoading}
-              normalizedScenesError={normalizedScenesError}
-              timingModel={timingModel}
-              setTimingModel={setTimingModel}
-              showAlert={showAlert}
-            />
-          )}
-          {activeTab === "storyboard" && (
-            <WorkspaceStoryboardTabContent
-              episodeKey={episodeKey}
-              scripts={orderedScripts}
-              selectedScriptId={selectedScriptId}
-              selectedScript={selectedScript}
-              onSelectScript={handleScriptChange}
-              hasStoryboard={workflowStatus.storyboard === "ready"}
-              showAlert={showAlert}
-            />
-          )}
-          {activeTab === "characters" && episode && (
-            <WorkspaceCharactersTabContent
-              episodeId={episode.id}
-              autoCreatedCharacters={[]}
-            />
-          )}
+          <WorkspaceActiveTabContent
+            activeTab={activeTab}
+            episode={episode!}
+            episodeKey={episodeKey}
+            orderedScripts={orderedScripts}
+            selectedScriptId={selectedScriptId}
+            selectedScript={selectedScript}
+            scriptSceneCount={mainScriptSceneCount}
+            selectedAudioTimeline={selectedAudioTimeline}
+            selectedStoryboard={selectedStoryboard}
+            normalizedScenes={normalizedScenes}
+            normalizedScenesLoading={normalizedScenesLoading}
+            normalizedScenesError={normalizedScenesError}
+            timingModel={timingModel}
+            setTimingModel={setTimingModel}
+            generateForm={generateForm}
+            setGenerateForm={setGenerateForm}
+            formats={formats}
+            languages={languages}
+            useAsync={useAsync}
+            setUseAsync={setUseAsync}
+            promptPreview={promptPreview}
+            setPromptPreview={setPromptPreview}
+            generating={generating}
+            regenerating={regenerating}
+            hasStoryboard={workflowStatus.storyboard === "ready"}
+            showAlert={showAlert}
+            onGenerateScript={handleGenerateScript}
+            onRegenerateScript={mainScript ? handleRegenerateScript : undefined}
+          />
         </div>
       </div>
     </div>

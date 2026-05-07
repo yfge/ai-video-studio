@@ -14,6 +14,10 @@ import { useVoiceConfigOptions } from "@/hooks/useVoiceConfigOptions";
 import { useVoicePreview } from "@/hooks/useVoicePreview";
 import type { VirtualIPCreateFormState } from "@/utils/virtual-ip/types";
 import { VirtualIPAIIntroSection } from "./VirtualIPAIIntroSection";
+import {
+  VirtualIPCreateFooter,
+  VirtualIPStatusSettings,
+} from "./VirtualIPCreateModalParts";
 import { VirtualIPTagsField } from "./VirtualIPTagsField";
 import { VirtualIPVoicePreviewSection } from "./VirtualIPVoicePreviewSection";
 import { VirtualIPVoiceSettingsForm } from "./VirtualIPVoiceSettingsForm";
@@ -117,26 +121,16 @@ export function VirtualIPCreateModal({
   return (
     <CreationOverlay
       open={open}
-      title="创建虚拟IP"
-      subtitle="点击「AI一键生成」一次性填充基础设定，再微调细节"
+      title="创建 IP"
+      subtitle="从角色资产开始组织故事和剧集"
       onClose={onClose}
-      icon={
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-          />
-        </svg>
-      }
+      widthClassName="max-w-5xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+          IP 资产迁移中，新建 IP 将作为故事生产入口。
+        </div>
+
         <SmartInputField
           label="名称 *"
           value={formState.name}
@@ -226,31 +220,12 @@ export function VirtualIPCreateModal({
           canPreview={canPreview}
         />
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            状态设置
-          </label>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={formState.is_active}
-                onChange={(e) => updateField("is_active", e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              启用角色
-            </label>
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={formState.is_public}
-                onChange={(e) => updateField("is_public", e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              公开展示
-            </label>
-          </div>
-        </div>
+        <VirtualIPStatusSettings
+          isActive={formState.is_active}
+          isPublic={formState.is_public}
+          onActiveChange={(value) => updateField("is_active", value)}
+          onPublicChange={(value) => updateField("is_public", value)}
+        />
 
         <VirtualIPTagsField
           tags={formState.tags}
@@ -258,21 +233,7 @@ export function VirtualIPCreateModal({
           removeTag={removeTag}
         />
 
-        <div className="flex justify-end gap-3 border-t pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-          >
-            取消
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg"
-          >
-            创建虚拟IP
-          </button>
-        </div>
+        <VirtualIPCreateFooter onClose={onClose} />
       </form>
     </CreationOverlay>
   );

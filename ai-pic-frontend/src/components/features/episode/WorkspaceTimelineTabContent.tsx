@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { scriptAPI } from "@/utils/api/endpoints";
 import type { NormalizedScene, Script } from "@/utils/api/types";
-import { AudioTimelineSection } from "./AudioTimelineSection";
+import { OperatorState } from "@/components/shared";
+import { EpisodeTimelineWorkspace } from "./EpisodeTimelineWorkspace";
 
 interface WorkspaceTimelineTabContentProps {
   scripts: Script[];
@@ -130,15 +131,15 @@ export function WorkspaceTimelineTabContent({
 
   if (scripts.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">暂无剧本</h3>
-        <p className="text-gray-500 mb-4">请先生成剧本，然后才能创建时间轴</p>
-      </div>
+      <OperatorState
+        title="暂无剧本"
+        detail="请先生成剧本，然后才能创建时间轴"
+      />
     );
   }
 
   return (
-    <AudioTimelineSection
+    <EpisodeTimelineWorkspace
       selectedScriptId={selectedScriptId}
       selectedScript={selectedScript}
       selectedAudioTimeline={selectedAudioTimeline}

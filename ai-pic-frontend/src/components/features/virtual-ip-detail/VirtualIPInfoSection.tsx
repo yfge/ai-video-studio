@@ -27,16 +27,16 @@ export function VirtualIPInfoSection({
   formId,
 }: VirtualIPInfoSectionProps) {
   return (
-    <div className="p-6 sm:p-8 border-b border-gray-100">
-      <div className="flex items-start space-x-6">
-        <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+    <div className="border-b border-gray-100 p-5">
+      <div className="flex items-start gap-5">
+        <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50">
           {virtualIP.default_avatar_url ? (
             <Image
               src={virtualIP.default_avatar_url}
               alt={virtualIP.name}
               width={96}
               height={96}
-              className="w-24 h-24 rounded-full object-cover"
+              className="h-24 w-24 rounded-lg object-cover"
               unoptimized
             />
           ) : (
@@ -70,7 +70,7 @@ export function VirtualIPInfoSection({
                   onChange={(e) =>
                     setEditForm({ ...editForm, name: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="h-8 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
@@ -83,7 +83,7 @@ export function VirtualIPInfoSection({
                   onChange={(e) =>
                     setEditForm({ ...editForm, description: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   rows={3}
                 />
               </div>
@@ -96,13 +96,13 @@ export function VirtualIPInfoSection({
                   {editForm.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full flex items-center"
+                      className="flex items-center rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700"
                     >
                       {tag}
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
-                        className="ml-1 text-blue-600 hover:text-blue-800"
+                        className="ml-1 text-blue-500 hover:text-blue-700"
                       >
                         x
                       </button>
@@ -121,7 +121,7 @@ export function VirtualIPInfoSection({
                         input.value = "";
                       }
                     }}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="h-8 flex-1 rounded-md border border-gray-200 px-3 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                   <button
                     type="button"
@@ -131,7 +131,7 @@ export function VirtualIPInfoSection({
                       addTag(input.value.trim());
                       input.value = "";
                     }}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                    className="h-8 rounded-md border border-gray-200 bg-white px-3 text-xs text-gray-700 hover:bg-gray-50"
                   >
                     添加
                   </button>
@@ -140,7 +140,7 @@ export function VirtualIPInfoSection({
             </form>
           ) : (
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              <h2 className="mb-2 text-xl font-semibold text-gray-950">
                 {virtualIP.name}
               </h2>
               {virtualIP.description ? (
@@ -158,7 +158,7 @@ export function VirtualIPInfoSection({
                   {virtualIP.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                      className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600"
                     >
                       {tag}
                     </span>

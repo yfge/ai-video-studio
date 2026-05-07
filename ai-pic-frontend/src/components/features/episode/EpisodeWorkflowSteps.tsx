@@ -9,31 +9,12 @@ export interface WorkflowStep {
   status: WorkflowStepStatus;
   actionLabel: string;
   onAction: () => void;
-  color: "blue" | "indigo" | "purple";
 }
 
 interface EpisodeWorkflowStepsProps {
   steps: WorkflowStep[];
   compact?: boolean;
 }
-
-const colorMap = {
-  blue: {
-    bg: "from-blue-50 to-white",
-    text: "text-blue-700",
-    button: "bg-blue-600 hover:bg-blue-700",
-  },
-  indigo: {
-    bg: "from-indigo-50 to-white",
-    text: "text-indigo-700",
-    button: "bg-indigo-600 hover:bg-indigo-700",
-  },
-  purple: {
-    bg: "from-purple-50 to-white",
-    text: "text-purple-700",
-    button: "bg-purple-600 hover:bg-purple-700",
-  },
-};
 
 const statusIcon = (status: WorkflowStepStatus) => {
   switch (status) {
@@ -52,7 +33,7 @@ export function EpisodeWorkflowSteps({
 }: EpisodeWorkflowStepsProps) {
   if (compact) {
     return (
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-xs">
         {steps.map((step, index) => (
           <div key={step.key} className="flex items-center gap-1">
             {statusIcon(step.status)}
@@ -64,7 +45,7 @@ export function EpisodeWorkflowSteps({
               {step.label}
             </span>
             {index < steps.length - 1 && (
-              <span className="text-gray-300 mx-1">→</span>
+              <span className="mx-1 text-gray-300">→</span>
             )}
           </div>
         ))}
@@ -73,54 +54,35 @@ export function EpisodeWorkflowSteps({
   }
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow">
-      <div className="flex flex-col md:flex-row items-stretch gap-2">
+    <section className="rounded-lg border border-gray-200 bg-white p-3">
+      <div className="flex flex-col items-stretch gap-2 md:flex-row">
         {steps.map((step, index) => {
-          const colors = colorMap[step.color];
           return (
-            <div key={step.key} className="flex items-center flex-1">
-              {/* Step Card */}
-              <div
-                className={`flex-1 rounded-xl border border-gray-100 bg-gradient-to-br ${colors.bg} p-4`}
-              >
+            <div key={step.key} className="flex flex-1 items-center">
+              <div className="flex-1 rounded-md border border-gray-200 bg-white p-3">
                 <div className="flex items-center justify-between">
-                  <div
-                    className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}
-                  >
+                  <div className="text-xs font-semibold text-blue-700">
                     步骤 {index + 1}
                   </div>
                   {statusIcon(step.status)}
                 </div>
-                <div className="mt-1 text-base font-semibold text-gray-900">
+                <div className="mt-1 text-sm font-semibold text-gray-900">
                   {step.label}
                 </div>
                 <p className="mt-1 text-xs text-gray-600">{step.description}</p>
                 <button
                   onClick={step.onAction}
                   disabled={step.status === "generating"}
-                  className={`mt-3 inline-flex items-center rounded-lg ${colors.button} px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50`}
+                  className="mt-3 inline-flex h-8 items-center rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {step.status === "generating"
                     ? "生成中..."
                     : step.actionLabel}
                 </button>
               </div>
-              {/* Arrow Connector */}
               {index < steps.length - 1 && (
-                <div className="hidden md:flex items-center justify-center px-2">
-                  <svg
-                    className="w-8 h-8 text-gray-300"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
+                <div className="hidden items-center justify-center px-2 text-gray-300 md:flex">
+                  →
                 </div>
               )}
             </div>

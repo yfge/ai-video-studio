@@ -2,17 +2,27 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import {
+  OperatorPanel,
+  OperatorSectionHeader,
+  OperatorShell,
+  OperatorState,
+  operatorButtonClass,
+} from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
-  VirtualIPDetailHeader,
   VirtualIPAdditionalInfoSection,
   VirtualIPInfoSection,
   VirtualIPImageManager,
   VoiceSettingsPanel,
 } from "@/components/features";
 import { useVirtualIPDetail } from "@/hooks/useVirtualIPDetail";
-import { CollapsibleText } from "@/components/ui";
-import { resolveCreatorLabel } from "@/utils/creator";
+import {
+  ReadinessRow,
+  VirtualIPBackgroundStorySection,
+  VirtualIPMetaStrip,
+  VirtualIPMigrationNotice,
+} from "./VirtualIPDetailPageParts";
 
 export default function VirtualIPDetail() {
   const params = useParams();
@@ -20,9 +30,7 @@ export default function VirtualIPDetail() {
   const { showAlert } = useAlertModal();
   const ipKey = params?.id?.toString() || "";
   const editFormId = "virtual-ip-edit-form";
-
   const state = useVirtualIPDetail({ ipKey, showAlert, router });
-
   const {
     virtualIP,
     loading,
@@ -50,132 +58,152 @@ export default function VirtualIPDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <OperatorShell title="IP 详情" subtitle="加载 IP 资产...">
+        <OperatorState title="加载 IP 资产..." />
+      </OperatorShell>
     );
   }
 
   if (!virtualIP) {
     return (
-      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            未找到虚拟IP
-          </h2>
-          <Link
-            href="/virtual-ip"
-            className="text-blue-600 hover:text-blue-800"
-          >
-            返回虚拟IP列表
-          </Link>
-        </div>
-      </div>
+      <OperatorShell
+        title="IP 详情"
+        subtitle="IP 资产是故事、剧集和生成任务的入口"
+      >
+        <OperatorState
+          title="未找到 IP"
+          tone="red"
+          action={
+            <Link
+              href="/virtual-ip"
+              className={operatorButtonClass("secondary")}
+            >
+              返回 IP 项目
+            </Link>
+          }
+        />
+      </OperatorShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <VirtualIPDetailHeader
-        ipKey={ipKey}
-        businessId={virtualIP.business_id}
-        editing={editing}
-        setEditing={setEditing}
-        editFormId={editFormId}
-        onCancel={() => setEditing(false)}
-        onDelete={handleDeleteIP}
-      />
+    <OperatorShell
+      title="IP 详情"
+      subtitle="IP 资产是故事、剧集和生成任务的入口"
+    >
+      <div className="space-y-5">
+        <VirtualIPMigrationNotice />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-2xl overflow-hidden">
-          <VirtualIPInfoSection
-            virtualIP={virtualIP}
-            editing={editing}
-            editForm={editForm}
-            setEditForm={setEditForm}
-            onSubmit={handleUpdateIP}
-            addTag={addTag}
-            removeTag={removeTag}
-            formId={editFormId}
-          />
+        <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
+          <OperatorPanel>
+            <VirtualIPInfoSection
+              virtualIP={virtualIP}
+              editing={editing}
+              editForm={editForm}
+              setEditForm={setEditForm}
+              onSubmit={handleUpdateIP}
+              addTag={addTag}
+              removeTag={removeTag}
+              formId={editFormId}
+            />
+            <VirtualIPBackgroundStorySection
+              virtualIP={virtualIP}
+              editing={editing}
+              editForm={editForm}
+              setEditForm={setEditForm}
+            />
+            <VirtualIPAdditionalInfoSection
+              virtualIP={virtualIP}
+              editing={editing}
+              editForm={editForm}
+              setEditForm={setEditForm}
+            />
+            <VoiceSettingsPanel
+              editing={editing}
+              voiceEnums={voiceEnums}
+              voiceTypeFilter={voiceTypeFilter}
+              setVoiceTypeFilter={setVoiceTypeFilter}
+              voiceSettings={voiceSettings}
+              setVoiceSettings={setVoiceSettings}
+              voicePreviewText={voicePreviewText}
+              setVoicePreviewText={setVoicePreviewText}
+              voiceLoading={voiceLoading}
+              previewLoading={previewLoading}
+              previewAudioUrl={previewAudioUrl}
+              voiceOptions={voiceOptions}
+              onPreviewVoice={handlePreviewVoice}
+            />
+            <VirtualIPMetaStrip virtualIP={virtualIP} />
+          </OperatorPanel>
 
-          {(editing || virtualIP.background_story) && (
-            <div className="p-6 sm:p-8 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                背景故事
-              </h3>
-              {editing ? (
-                <textarea
-                  value={editForm.background_story}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      background_story: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={6}
+          <aside className="space-y-5">
+            <OperatorPanel>
+              <OperatorSectionHeader title="生产就绪检查" />
+              <div className="space-y-3 p-4 text-sm">
+                <ReadinessRow label="IP 资料" ready={Boolean(virtualIP.name)} />
+                <ReadinessRow
+                  label="背景故事"
+                  ready={Boolean(virtualIP.background_story)}
                 />
-              ) : (
-                <div className="prose max-w-none">
-                  {virtualIP.background_story ? (
-                    <CollapsibleText
-                      text={virtualIP.background_story}
-                      collapsedLines={4}
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-400">未填写</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <VirtualIPAdditionalInfoSection
-            virtualIP={virtualIP}
-            editing={editing}
-            editForm={editForm}
-            setEditForm={setEditForm}
-          />
-
-          <VoiceSettingsPanel
-            editing={editing}
-            voiceEnums={voiceEnums}
-            voiceTypeFilter={voiceTypeFilter}
-            setVoiceTypeFilter={setVoiceTypeFilter}
-            voiceSettings={voiceSettings}
-            setVoiceSettings={setVoiceSettings}
-            voicePreviewText={voicePreviewText}
-            setVoicePreviewText={setVoicePreviewText}
-            voiceLoading={voiceLoading}
-            previewLoading={previewLoading}
-            previewAudioUrl={previewAudioUrl}
-            voiceOptions={voiceOptions}
-            onPreviewVoice={handlePreviewVoice}
-          />
-
-          <div className="p-6 sm:p-8 bg-gray-50/60">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-              <div>
-                <span className="font-medium">创建者：</span>{" "}
-                {resolveCreatorLabel(virtualIP.creator)}
+                <ReadinessRow
+                  label="声音"
+                  ready={Boolean(virtualIP.voice_config?.voice_id)}
+                />
+                <ReadinessRow
+                  label="形象素材"
+                  ready={Boolean(virtualIP.default_avatar_url)}
+                />
               </div>
-              <div>
-                <span className="font-medium">创建时间：</span>{" "}
-                {new Date(virtualIP.created_at).toLocaleString()}
+            </OperatorPanel>
+            <OperatorPanel>
+              <OperatorSectionHeader title="资产管理" />
+              <div className="space-y-3 p-4">
+                <a
+                  href="#ip-images"
+                  className={operatorButtonClass("secondary", "w-full")}
+                >
+                  图片管理
+                </a>
+                {editing ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      className={operatorButtonClass("secondary")}
+                    >
+                      取消编辑
+                    </button>
+                    <button
+                      type="submit"
+                      form={editFormId}
+                      className={operatorButtonClass("primary")}
+                    >
+                      保存
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className={operatorButtonClass("primary", "w-full")}
+                  >
+                    编辑 IP
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleDeleteIP}
+                  className="h-8 rounded-md px-2 text-xs font-medium text-red-600 hover:bg-red-50"
+                >
+                  删除 IP
+                </button>
               </div>
-              {virtualIP.updated_at && (
-                <div>
-                  <span className="font-medium">更新时间：</span>{" "}
-                  {new Date(virtualIP.updated_at).toLocaleString()}
-                </div>
-              )}
-            </div>
-          </div>
+            </OperatorPanel>
+          </aside>
         </div>
 
         <VirtualIPImageManager virtualIPKey={ipKey} virtualIP={virtualIP} />
-      </main>
-    </div>
+      </div>
+    </OperatorShell>
   );
 }

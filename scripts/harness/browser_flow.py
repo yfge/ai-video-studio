@@ -11,7 +11,6 @@ import subprocess
 import sys
 from pathlib import Path
 from shutil import copyfile
-from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
@@ -34,6 +33,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--virtual-ip-id", default=os.getenv("HARNESS_VIRTUAL_IP_ID", "1")
     )
+    parser.add_argument(
+        "--environment-id", default=os.getenv("HARNESS_ENVIRONMENT_ID", "1")
+    )
     parser.add_argument("--episode-id", default=os.getenv("HARNESS_EPISODE_ID", "124"))
     parser.add_argument(
         "--chrome-debug-url",
@@ -51,6 +53,7 @@ def scenario_url(args: argparse.Namespace) -> str:
     scenario = BROWSER_SCENARIOS[args.scenario]
     path = scenario.path.format(
         virtual_ip_id=args.virtual_ip_id,
+        environment_id=args.environment_id,
         episode_id=args.episode_id,
     )
     return f"{args.base_url.rstrip('/')}{path}"

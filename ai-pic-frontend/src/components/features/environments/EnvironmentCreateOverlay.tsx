@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { CreationOverlay } from "@/components/shared";
+import {
+  CreationOverlay,
+  operatorButtonClass,
+  operatorInputClass,
+  operatorSelectClass,
+} from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { storyStructureAPI } from "@/utils/api/endpoints";
 import type { Environment, EnvironmentCreate } from "@/utils/api/types";
 
-import { EnvironmentCreateIcon } from "./EnvironmentCreateIcon";
 import { EnvironmentGenerationFields } from "./EnvironmentGenerationFields";
 import {
   EMPTY_ENV_FORM,
@@ -124,33 +128,36 @@ export function EnvironmentCreateOverlay({
   return (
     <CreationOverlay
       open={open}
-      title="创建环境资产"
-      subtitle="补充基础信息，可选生成参考图"
+      title="创建环境"
+      subtitle="环境资产池与 IP 生产链路迁移中"
       onClose={onClose}
-      icon={<EnvironmentCreateIcon />}
+      widthClassName="max-w-5xl"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          环境资产暂未完全迁移到 IP 生产链路，创建后将先进入环境资产池。
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-xs font-medium text-gray-700">
               名称 *
             </label>
             <input
               type="text"
               value={formState.name}
               onChange={(e) => updateField("name", e.target.value)}
-              className="w-full px-3 py-2 border rounded"
+              className={operatorInputClass("w-full")}
               placeholder="如：办公室、校园、商场"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-xs font-medium text-gray-700">
               类别
             </label>
             <select
               value={formState.category}
               onChange={(e) => updateField("category", e.target.value)}
-              className="w-full px-3 py-2 border rounded"
+              className={operatorSelectClass("w-full")}
             >
               <option value="indoor">室内</option>
               <option value="outdoor">室外</option>
@@ -158,7 +165,7 @@ export function EnvironmentCreateOverlay({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-xs font-medium text-gray-700">
               标签（逗号分隔）
             </label>
             <input
@@ -173,12 +180,12 @@ export function EnvironmentCreateOverlay({
                     .filter(Boolean),
                 )
               }
-              className="w-full px-3 py-2 border rounded"
+              className={operatorInputClass("w-full")}
               placeholder="现代, 写字楼, 开放式"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-xs font-medium text-gray-700">
               参考图 URL（逗号分隔）
             </label>
             <input
@@ -193,19 +200,21 @@ export function EnvironmentCreateOverlay({
                     .filter(Boolean),
                 )
               }
-              className="w-full px-3 py-2 border rounded"
+              className={operatorInputClass("w-full")}
               placeholder="http://.../bg1.png, http://.../bg2.png"
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-xs font-medium text-gray-700">
             描述
           </label>
           <textarea
             value={formState.description}
             onChange={(e) => updateField("description", e.target.value)}
-            className="w-full px-3 py-2 border rounded"
+            className={operatorInputClass(
+              "h-auto min-h-20 w-full py-2 text-sm",
+            )}
             rows={3}
             placeholder="简述环境特点、光线、风格等"
           />
@@ -224,14 +233,14 @@ export function EnvironmentCreateOverlay({
               resetForm();
               onClose();
             }}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+            className={operatorButtonClass("secondary")}
           >
             取消
           </button>
           <button
             type="submit"
             disabled={creating}
-            className="px-4 py-2 rounded bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
+            className={operatorButtonClass("primary")}
           >
             {creating ? "创建中..." : "创建环境"}
           </button>

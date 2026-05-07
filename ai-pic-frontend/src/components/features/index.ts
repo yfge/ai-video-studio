@@ -5,6 +5,7 @@
  */
 
 export { default as AIGenerationProcess } from "./AIGenerationProcess";
+export { WorkbenchDashboard } from "./workbench/WorkbenchDashboard";
 export { SceneStructurePanel, type SceneNode } from "./SceneStructurePanel";
 export {
   default as StoryboardFrameCard,
@@ -60,6 +61,7 @@ export {
   StoriesFilter,
   StoryCard,
   StoryGenerateForm,
+  StoryProductionBoard,
 } from "./stories";
 export {
   StoryDetailHeader,

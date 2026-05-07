@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { operatorButtonClass } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals";
 import { storyStructureAPI } from "@/utils/api/endpoints";
 
@@ -101,34 +102,35 @@ export function EnvironmentSidePanel({
   const containerClassName =
     variant === "embedded"
       ? "space-y-5"
-      : "bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 space-y-5";
+      : "space-y-5 rounded-lg border border-gray-200 bg-white p-4";
 
   return (
     <div className={containerClassName}>
       <div>
-        <h3 className="text-lg font-semibold text-gray-900">上传参考图</h3>
-        <p className="text-sm text-gray-500">
+        <h3 className="text-sm font-semibold text-gray-950">上传参考图</h3>
+        <p className="mt-0.5 text-xs text-gray-500">
           支持常见图片格式，自动走 OSS 持久化。
         </p>
         <input
           type="file"
           accept="image/*"
           onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-          className="mt-2 w-full text-sm"
+          className="mt-3 w-full text-xs text-gray-600"
         />
         <button
+          type="button"
           onClick={handleUpload}
           disabled={uploading || !selectedFile}
-          className="mt-3 w-full rounded bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+          className={operatorButtonClass("primary", "mt-3 w-full")}
         >
           {uploading ? "上传中..." : "上传图片"}
         </button>
       </div>
 
-      <div className="border-t border-gray-100 pt-4 space-y-3">
+      <div className="space-y-3 border-t border-gray-200 pt-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">AI 生成参考图</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="text-sm font-semibold text-gray-950">AI 生成参考图</h3>
+          <p className="mt-0.5 text-xs text-gray-500">
             可选提示词，不填则按环境描述生成。
           </p>
         </div>
@@ -140,9 +142,10 @@ export function EnvironmentSidePanel({
           withDivider={false}
         />
         <button
+          type="button"
           onClick={handleGenerate}
           disabled={generating}
-          className="w-full rounded bg-green-600 px-3 py-2 text-white hover:bg-green-700 disabled:opacity-50"
+          className={operatorButtonClass("primary", "w-full")}
         >
           {generating ? "提交任务中..." : "创建生成任务"}
         </button>

@@ -25,7 +25,7 @@ class ScriptGenerationMixin:
         language: str = "zh-CN",
         dialogue_style: str = "natural",
         scene_detail_level: str = "medium",
-        template_style: str = "commercial_vertical_drama",
+        template_style: str = "structured_json",
         target_chars_per_episode: int = 1300,
         quality_threshold: float = 9.0,
         additional_requirements: Optional[str] = None,
@@ -118,8 +118,7 @@ class ScriptGenerationMixin:
                     }
             except Exception as exc:
                 self.logger.warning(
-                    "Script continuity rewrite failed",
-                    extra={"error": str(exc)},
+                    "Script continuity rewrite failed", extra={"error": str(exc)}
                 )
 
         # 1) LangGraph agent

@@ -12,6 +12,7 @@ import {
 import { extractImageGenUi } from "@/utils/modelUi";
 import type { ImageGenerationFormState } from "@/hooks/useVirtualIPImages";
 import { ImageGenerationOptionsFields } from "./ImageGenerationOptionsFields";
+import { ImageGenerationActions } from "./ImageGenerationFormParts";
 import { ImageGenerationStyleFields } from "./ImageGenerationStyleFields";
 import { VirtualIPReferenceImagesField } from "./VirtualIPReferenceImagesField";
 
@@ -100,9 +101,9 @@ export function ImageGenerationForm({
   ]);
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h3 className="text-lg font-semibold mb-4">AI 图片生成</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-gray-950">生成图片</h3>
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <MultiModelSelector
             label="AI 模型"
@@ -126,9 +127,6 @@ export function ImageGenerationForm({
               }
             }}
           />
-          <p className="text-xs text-gray-500 mt-1">
-            {selectedModel?.capabilities?.join(", ") || "加载模型能力中..."}
-          </p>
         </div>
         <div>
           <GenerationProfileSelect
@@ -218,7 +216,7 @@ export function ImageGenerationForm({
           maxCount={maxCount}
         />
 
-        <div className="md:col-span-3">
+        <div>
           <ImageGenAdvancedFields
             mode="text_to_image"
             model={selectedModel}
@@ -241,21 +239,11 @@ export function ImageGenerationForm({
           />
         </div>
       </div>
-      <div className="mt-4 flex gap-2 flex-wrap">
-        <button
-          onClick={onGenerate}
-          disabled={generating}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
-        >
-          {generating ? "提交中..." : "提交生成任务"}
-        </button>
-        <button
-          onClick={onCancel}
-          className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-        >
-          取消
-        </button>
-      </div>
+      <ImageGenerationActions
+        generating={generating}
+        onGenerate={onGenerate}
+        onCancel={onCancel}
+      />
     </div>
   );
 }

@@ -54,6 +54,7 @@ def validate_episode_payload(episode_obj: Dict[str, Any]) -> tuple[bool, str | N
     if not any(isinstance(c, dict) for c in conflicts):
         return False, "invalid_conflicts"
 
+    _fill_missing_scenes_from_outline_stub(episode_obj)
     scenes = episode_obj.get("scenes")
     if not isinstance(scenes, list):
         return False, "missing_scenes"
@@ -70,6 +71,23 @@ def validate_episode_payload(episode_obj: Dict[str, Any]) -> tuple[bool, str | N
         if scene_count != len(scenes):
             return False, "scene_count_mismatch"
     return True, None
+
+
+def _fill_missing_scenes_from_outline_stub(episode_obj: Dict[str, Any]) -> None:
+    if isinstance(episode_obj.get("scenes"), list):
+        return
+    fallback = stub_episode_from_outline(
+        {
+            "episode_number": episode_obj.get("episode_number"),
+            "title": episode_obj.get("title"),
+            "logline": episode_obj.get("summary"),
+        }
+    )
+    episode_obj["scenes"] = fallback["scenes"]
+    episode_obj["scene_count"] = fallback["scene_count"]
+    if not episode_obj.get("plot_points"):
+        episode_obj["plot_points"] = fallback["plot_points"]
+    episode_obj["fallback_from_outline"] = True
 
 
 def _fallback_scenes_from_logline(

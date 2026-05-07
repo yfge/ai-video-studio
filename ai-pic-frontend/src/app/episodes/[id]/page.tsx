@@ -24,18 +24,18 @@ export default async function EpisodePage({
     typeof resolvedSearchParams.scriptId === "string"
       ? resolvedSearchParams.scriptId
       : undefined;
+  const tab =
+    tabFromQuery === "script" ||
+    tabFromQuery === "timeline" ||
+    tabFromQuery === "storyboard" ||
+    tabFromQuery === "characters" ||
+    tabFromQuery === "overview"
+      ? tabFromQuery
+      : "timeline";
 
   redirect(
     episodeWorkspaceHref(episodeId, {
-      tab:
-        tabFromQuery === "script" ||
-        tabFromQuery === "timeline" ||
-        tabFromQuery === "storyboard" ||
-        tabFromQuery === "characters"
-          ? tabFromQuery
-          : action === "generate-timeline"
-          ? "timeline"
-          : "overview",
+      tab,
       scriptId,
       action,
     }),
