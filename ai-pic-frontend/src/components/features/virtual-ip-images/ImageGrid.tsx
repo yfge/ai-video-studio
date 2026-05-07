@@ -29,7 +29,7 @@ export function ImageGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 2xl:grid-cols-3">
       {images.map((image) => {
         const primarySrc = resolveImageUrl(image);
         const fallbackSrc = (() => {
@@ -50,7 +50,7 @@ export function ImageGrid({
               src={primarySrc}
               fallbackSrc={fallbackSrc}
               alt={`${virtualIP.name} - ${getCategoryLabel(image.category)}`}
-              aspectClass="aspect-[4/5]"
+              aspectClass="aspect-[3/4]"
               showActionsOnHover
               badges={[
                 ...(image.is_default
@@ -75,29 +75,29 @@ export function ImageGrid({
                     ]
               }
             />
-            <div className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-900">
+            <div className="p-2.5">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-semibold text-gray-900">
                   {getCategoryLabel(image.category)}
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className="shrink-0 text-[11px] text-gray-500">
                   {new Date(image.created_at).toLocaleDateString()}
                 </span>
               </div>
               {image.tags.length > 0 && (
-                <div className="mb-3">
+                <div className="mb-2">
                   <div className="flex flex-wrap gap-1">
-                    {image.tags.slice(0, 3).map((tag, index) => (
+                    {image.tags.slice(0, 2).map((tag, index) => (
                       <span
                         key={index}
-                        className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600"
+                        className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] text-gray-600"
                       >
                         {tag}
                       </span>
                     ))}
-                    {image.tags.length > 3 && (
-                      <span className="text-gray-500 text-xs">
-                        +{image.tags.length - 3}
+                    {image.tags.length > 2 && (
+                      <span className="text-[11px] text-gray-500">
+                        +{image.tags.length - 2}
                       </span>
                     )}
                   </div>

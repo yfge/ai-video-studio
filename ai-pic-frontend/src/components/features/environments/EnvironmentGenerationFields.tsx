@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   GenerationProfileSelect,
   ImageGenAdvancedFields,
@@ -27,6 +21,7 @@ interface EnvironmentGenerationFieldsProps {
   showToggle?: boolean;
   toggleLabel?: string;
   withDivider?: boolean;
+  compact?: boolean;
 }
 
 export function EnvironmentGenerationFields({
@@ -36,6 +31,7 @@ export function EnvironmentGenerationFields({
   showToggle = true,
   toggleLabel = "创建后自动生成参考图（可选模型参数）",
   withDivider = true,
+  compact = false,
 }: EnvironmentGenerationFieldsProps) {
   const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
   const selectedModel = useMemo(
@@ -57,6 +53,10 @@ export function EnvironmentGenerationFields({
     [effectiveMaxCount],
   );
   const showFields = showToggle ? generation.enabled : true;
+  const bodyClass = compact
+    ? "flex min-w-0 flex-col gap-3"
+    : "grid grid-cols-1 gap-4 md:grid-cols-2";
+  const spanClass = compact ? "min-w-0 w-full" : "min-w-0 md:col-span-2";
 
   const updateField = <K extends keyof GenerationFormState>(
     key: K,
@@ -69,11 +69,7 @@ export function EnvironmentGenerationFields({
     if (supportsReferenceImages) return;
     if (generation.reference_images.length === 0) return;
     setGeneration((prev) => ({ ...prev, reference_images: [] }));
-  }, [
-    generation.reference_images.length,
-    setGeneration,
-    supportsReferenceImages,
-  ]);
+  }, [generation.reference_images.length, setGeneration, supportsReferenceImages]);
 
   useEffect(() => {
     if (!supportsReferenceImages) return;
@@ -84,12 +80,7 @@ export function EnvironmentGenerationFields({
       ...prev,
       reference_images: prev.reference_images.slice(-maxReferenceImages),
     }));
-  }, [
-    generation.reference_images,
-    maxReferenceImages,
-    setGeneration,
-    supportsReferenceImages,
-  ]);
+  }, [generation.reference_images, maxReferenceImages, setGeneration, supportsReferenceImages]);
 
   useEffect(() => {
     if (typeof maxCount !== "number" || maxCount <= 0) return;
@@ -98,11 +89,7 @@ export function EnvironmentGenerationFields({
   }, [generation.count, maxCount, setGeneration]);
 
   return (
-    <div
-      className={`${
-        withDivider ? "border-t border-gray-200 pt-4" : ""
-      } space-y-4`}
-    >
+    <div className={`${withDivider ? "border-t border-gray-200 pt-4" : ""} space-y-4`}>
       {showToggle && (
         <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
           <input
@@ -116,17 +103,17 @@ export function EnvironmentGenerationFields({
       )}
 
       {showFields && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-gray-700">
-              补充提示词（可选）
+        <div className={bodyClass}>
+          <div className={spanClass}>
+            <label className="mb-1 block whitespace-nowrap text-xs font-medium text-gray-700">
+              {compact ? "提示词（可选）" : "补充提示词（可选）"}
             </label>
             <textarea
               value={generation.prompt}
               onChange={(e) => updateField("prompt", e.target.value)}
-              rows={3}
+              rows={compact ? 2 : 3}
               className={operatorInputClass(
-                "h-auto min-h-20 w-full py-2 text-sm",
+                `h-auto w-full py-2 text-sm ${compact ? "min-h-16" : "min-h-20"}`,
               )}
               placeholder="不填则使用环境名称/描述生成"
             />
@@ -144,7 +131,7 @@ export function EnvironmentGenerationFields({
               }}
             />
           ) : null}
-          <div>
+          <div className="min-w-0">
             <MultiModelSelector
               label="AI 模型"
               value={generation.model ? [generation.model] : []}
@@ -169,7 +156,7 @@ export function EnvironmentGenerationFields({
               }}
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <GenerationProfileSelect
               modelId={generation.model}
               mode="text_to_image"
@@ -177,8 +164,8 @@ export function EnvironmentGenerationFields({
               onChange={(next) => updateField("generation_profile", next || "")}
             />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
+          <div className="min-w-0">
+            <label className="mb-1 block whitespace-nowrap text-xs font-medium text-gray-700">
               生成风格
             </label>
             <select
@@ -191,8 +178,8 @@ export function EnvironmentGenerationFields({
               <option value="cartoon">卡通</option>
             </select>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
+          <div className="min-w-0">
+            <label className="mb-1 block whitespace-nowrap text-xs font-medium text-gray-700">
               生成数量
             </label>
             <select
@@ -216,7 +203,7 @@ export function EnvironmentGenerationFields({
               ))}
             </select>
           </div>
-          <div className="md:col-span-2">
+          <div className={spanClass}>
             <ModelUiFields
               mode="image"
               model={selectedModel}
@@ -233,7 +220,7 @@ export function EnvironmentGenerationFields({
               }}
             />
           </div>
-          <div className="md:col-span-2">
+          <div className={spanClass}>
             <ImageGenAdvancedFields
               mode="text_to_image"
               model={selectedModel}

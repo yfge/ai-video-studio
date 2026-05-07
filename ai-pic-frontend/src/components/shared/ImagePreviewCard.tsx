@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Badge = { label: string; tone?: "blue" | "green" | "red" | "gray" };
 type Action = {
@@ -56,6 +56,12 @@ export function ImagePreviewCard({
 }: ImagePreviewCardProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(src);
+  const [imageFailed, setImageFailed] = useState(!src);
+
+  useEffect(() => {
+    setCurrentSrc(src);
+    setImageFailed(!src);
+  }, [src]);
 
   const handlePreview = () => {
     if (onPreview) {
@@ -81,19 +87,27 @@ export function ImagePreviewCard({
         className={`relative overflow-hidden ${aspectClass} cursor-zoom-in group`}
         onClick={handlePreview}
       >
-        <Image
-          src={currentSrc}
-          alt={alt || "图片"}
-          fill
-          sizes="100%"
-          className="object-cover"
-          unoptimized
-          onError={() => {
-            if (fallbackSrc && currentSrc !== fallbackSrc) {
-              setCurrentSrc(fallbackSrc);
-            }
-          }}
-        />
+        {imageFailed ? (
+          <div className="flex h-full w-full items-center justify-center bg-gray-50 text-xs text-gray-400">
+            图片不可用
+          </div>
+        ) : (
+          <Image
+            src={currentSrc}
+            alt={alt || "图片"}
+            fill
+            sizes="100%"
+            className="object-cover"
+            unoptimized
+            onError={() => {
+              if (fallbackSrc && currentSrc !== fallbackSrc) {
+                setCurrentSrc(fallbackSrc);
+                return;
+              }
+              setImageFailed(true);
+            }}
+          />
+        )}
         {badges.length > 0 && (
           <div className="absolute left-2 top-2 flex flex-wrap gap-1">
             {badges.map((b, idx) => (

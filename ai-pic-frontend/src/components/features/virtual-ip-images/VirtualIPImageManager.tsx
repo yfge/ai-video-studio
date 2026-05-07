@@ -91,7 +91,7 @@ export function VirtualIPImageManager({
 
   return (
     <section id="ip-images" className="scroll-mt-24">
-      <OperatorPanel>
+      <OperatorPanel className="overflow-hidden">
         <OperatorSectionHeader
           title={`${activeVirtualIP.name} - 图片管理`}
           subtitle="按 IP 资产维护头像、半身、动作和参考图"
@@ -105,8 +105,8 @@ export function VirtualIPImageManager({
             </button>
           }
         />
-        <div className="grid gap-4 p-4 xl:grid-cols-[180px_minmax(0,1fr)_360px]">
-          <aside className="space-y-4">
+        <div className="grid h-[calc(100vh-8rem)] min-h-[680px] gap-4 overflow-hidden p-4 xl:grid-cols-[160px_minmax(0,1fr)_340px]">
+          <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
             <CategoryFilter
               categories={categories}
               selectedCategory={selectedCategory}
@@ -118,7 +118,7 @@ export function VirtualIPImageManager({
               tone="blue"
             />
           </aside>
-          <div>
+          <div className="min-h-0 overflow-y-auto pr-1">
             {loading ? (
               <OperatorState title="加载图片中..." />
             ) : (
@@ -140,7 +140,7 @@ export function VirtualIPImageManager({
               />
             )}
           </div>
-          <aside className="rounded-lg border border-gray-200 bg-white p-4">
+          <aside className="min-h-0 overflow-y-auto rounded-lg border border-gray-200 bg-white p-4">
             <div className="mb-4 flex gap-2">
               <button
                 type="button"

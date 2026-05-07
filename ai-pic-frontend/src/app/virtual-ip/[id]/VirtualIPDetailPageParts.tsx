@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import {
   OperatorPanel,
+  OperatorSectionHeader,
   StatusPill,
   operatorButtonClass,
   operatorInputClass,
@@ -89,6 +90,84 @@ export function ReadinessRow({
         {ready ? "已通过" : "待补充"}
       </StatusPill>
     </div>
+  );
+}
+
+export function VirtualIPInspectorPanel({
+  virtualIP,
+  editing,
+  editFormId,
+  setEditing,
+  onDelete,
+}: {
+  virtualIP: VirtualIP;
+  editing: boolean;
+  editFormId: string;
+  setEditing: (editing: boolean) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <aside className="space-y-5 xl:sticky xl:top-20 xl:self-start">
+      <OperatorPanel>
+        <OperatorSectionHeader title="生产就绪检查" />
+        <div className="space-y-3 p-4 text-sm">
+          <ReadinessRow label="IP 资料" ready={Boolean(virtualIP.name)} />
+          <ReadinessRow
+            label="背景故事"
+            ready={Boolean(virtualIP.background_story)}
+          />
+          <ReadinessRow
+            label="声音"
+            ready={Boolean(virtualIP.voice_config?.voice_id)}
+          />
+          <ReadinessRow
+            label="形象素材"
+            ready={Boolean(virtualIP.default_avatar_url)}
+          />
+        </div>
+      </OperatorPanel>
+      <OperatorPanel>
+        <OperatorSectionHeader title="资产管理" />
+        <div className="space-y-3 p-4">
+          <a href="#ip-images" className={operatorButtonClass("secondary", "w-full")}>
+            图片管理
+          </a>
+          {editing ? (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className={operatorButtonClass("secondary")}
+              >
+                取消编辑
+              </button>
+              <button
+                type="submit"
+                form={editFormId}
+                className={operatorButtonClass("primary")}
+              >
+                保存
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className={operatorButtonClass("primary", "w-full")}
+            >
+              编辑 IP
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="h-8 rounded-md px-2 text-xs font-medium text-red-600 hover:bg-red-50"
+          >
+            删除 IP
+          </button>
+        </div>
+      </OperatorPanel>
+    </aside>
   );
 }
 

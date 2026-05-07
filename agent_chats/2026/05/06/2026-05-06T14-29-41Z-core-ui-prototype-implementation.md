@@ -54,6 +54,7 @@ related_paths:
   - ai-pic-frontend/src/components/features/virtual-ip-images/ImageGrid.tsx
   - ai-pic-frontend/src/components/features/virtual-ip-images/ImageUploadForm.tsx
   - ai-pic-frontend/src/components/features/virtual-ip-images/VirtualIPImageManager.tsx
+  - ai-pic-frontend/src/components/shared/ImagePreviewCard.tsx
   - ai-pic-frontend/src/components/features/workbench/WorkbenchDashboard.tsx
   - scripts/harness/browser_flow.py
   - scripts/harness/scenarios.py
@@ -110,6 +111,10 @@ Follow-up prompts requested backend validation cleanup, V2 global operator UI al
 - Brought `/environments/[id]` into the operator shell and split detail state/layout into `EnvironmentDetailState.ts`, `EnvironmentDetailViewParts.tsx`, and the slim `EnvironmentDetailView.tsx`.
 - Restyled the environment creation overlay, environment detail header, image pool, upload/generation side panel, and generation fields while preserving existing environment APIs and image generation flows.
 - Added browser harness coverage for `virtual_ip_detail_smoke` and `environment_detail_smoke`; `browser_flow.py` now accepts `--environment-id` and injects it into scenario URL formatting.
+- Tightened the V3 workspaces from the real smoke screenshots: the IP detail page now switches to a side-by-side main panel plus sticky inspector at `xl` width, so production checks and asset actions stay beside the profile panel at 1365px desktop width.
+- Converted the embedded IP image manager into a bounded three-column workspace with internal scrolling for categories, image grid, and generation/upload inspector; image cards were compressed to reduce metadata height.
+- Added a broken-image fallback to `ImagePreviewCard` so missing asset URLs render a compact "图片不可用" placeholder instead of an empty white image block.
+- Tightened the environment detail inspector with a sticky, internally scrollable right rail and compact single-column generation fields for the inspector width.
 
 ## Validation
 
@@ -175,6 +180,20 @@ Follow-up prompts requested backend validation cleanup, V2 global operator UI al
   - `environment_migration_smoke`
   - `environment_detail_smoke`
 - IP/environment trace passed: `python scripts/harness/trace_run.py --run-id ui-ip-env-align-20260507T092901Z` wrote `artifacts/runs/ui-ip-env-align-20260507T092901Z/trace-run.json`.
+- V3 workspace tightening: changed frontend TS/TSX files were checked for file size; the largest touched file is `EnvironmentGenerationFields.tsx` at 248 lines and remains within the repo contract.
+- V3 workspace tightening: `cd ai-pic-frontend && npm run lint` passed with `0 errors, 19 warnings`; warnings match the existing StoryboardEditor hook-dependency warnings, existing `<img>` warnings, and eslint config default-export warning.
+- V3 workspace tightening: `cd ai-pic-frontend && npm run test` passed: `7 passed`.
+- V3 workspace tightening: `cd ai-pic-frontend && npm run build` passed.
+- V3 workspace tightening: `python scripts/check_repo_docs.py` passed.
+- V3 workspace tightening: `python scripts/check_repo_contracts.py --mode diff <changed files>` passed.
+- V3 workspace browser doctor passed: `python scripts/harness/doctor.py --run-id ui-workspace-tighten-20260507T115701Z --nginx-url http://localhost:8089 --api-url http://localhost:8000 --frontend-url http://localhost:8089 --env-file docker/.env.lite`.
+- V3 workspace browser evidence stored under `artifacts/runs/ui-workspace-tighten-20260507T115701Z/`.
+- V3 workspace browser scenarios passed with Playwright fallback after Chrome DevTools timed out at `http://127.0.0.1:9222`:
+  - `virtual_ip_detail_smoke` ended at `http://localhost:8089/virtual-ip/233525e9045146d580a1d18ef4a28161`
+  - `virtual_ip_image_generation_smoke` ended at `http://localhost:8089/virtual-ip/233525e9045146d580a1d18ef4a28161`, preserving the existing image-route redirect behavior.
+  - `environment_detail_smoke` ended at `http://localhost:8089/environments/5da63b15b5a640b380ef22cc30dc192b`
+- V3 visual acceptance from screenshots: IP detail inspector is beside the profile panel at 1365px, the IP image manager is bounded with internal grid scroll, broken images have a placeholder state, and environment generation controls fit in the right inspector without text overlap.
+- V3 trace passed: `python scripts/harness/trace_run.py --run-id ui-workspace-tighten-20260507T115701Z` wrote `artifacts/runs/ui-workspace-tighten-20260507T115701Z/trace-run.json`.
 - Pre-commit before commit was attempted with `pre-commit run --all-files` and failed on existing broad repository baseline noise outside this change:
   - `end-of-file-fixer` attempted to modify many old storyboard/agent_chats files; those hook-created unrelated changes were reverted before staging.
   - `ruff` reported existing violations in old migration/template/provider/storyboard files outside this change.

@@ -53,7 +53,7 @@ export function EnvironmentDetailView() {
       <div className="space-y-5">
         <EnvironmentMigrationNotice />
         <EnvironmentAuditPanels metadata={state.env.metadata} />
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="space-y-5">
             <OperatorPanel>
               <OperatorSectionHeader
@@ -97,7 +97,7 @@ export function EnvironmentDetailView() {
             </OperatorPanel>
           </div>
 
-          <aside className="space-y-5">
+          <aside className="space-y-5 xl:sticky xl:top-20 xl:max-h-[calc(100vh-5rem)] xl:self-start xl:overflow-y-auto xl:overflow-x-hidden">
             <EnvironmentReadinessPanel
               imageCount={state.images.length}
               onBack={() => router.push("/environments")}

@@ -106,7 +106,7 @@ export function EnvironmentSidePanel({
 
   return (
     <div className={containerClassName}>
-      <div>
+      <div className="min-w-0">
         <h3 className="text-sm font-semibold text-gray-950">上传参考图</h3>
         <p className="mt-0.5 text-xs text-gray-500">
           支持常见图片格式，自动走 OSS 持久化。
@@ -127,7 +127,7 @@ export function EnvironmentSidePanel({
         </button>
       </div>
 
-      <div className="space-y-3 border-t border-gray-200 pt-4">
+      <div className="min-w-0 space-y-3 border-t border-gray-200 pt-4">
         <div>
           <h3 className="text-sm font-semibold text-gray-950">AI 生成参考图</h3>
           <p className="mt-0.5 text-xs text-gray-500">
@@ -138,6 +138,7 @@ export function EnvironmentSidePanel({
           envKey={envKey}
           generation={generation}
           setGeneration={setGeneration}
+          compact
           showToggle={false}
           withDivider={false}
         />
