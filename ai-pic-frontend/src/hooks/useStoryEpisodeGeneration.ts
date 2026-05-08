@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
-import { episodeAPI, virtualIPAPI } from "@/utils/api/endpoints";
+import { episodeAPI } from "@/utils/api/endpoints";
 import { httpClient } from "@/utils/api/client";
-import type { EpisodeGenerationRequest, VirtualIP } from "@/utils/api/types";
+import type { EpisodeGenerationRequest } from "@/utils/api/types";
 import { INITIAL_EPISODE_GEN_FORM } from "@/hooks/storyEpisodeGenerationForm";
 import type { EpisodeGenForm } from "@/hooks/storyEpisodeGenerationForm";
 
@@ -28,8 +28,6 @@ export function useStoryEpisodeGeneration({
   );
   const [promptPreview, setPromptPreview] = useState("");
   const [useAsync, setUseAsync] = useState(true);
-  const [vips, setVips] = useState<VirtualIP[]>([]);
-  const [focusCharacters, setFocusCharacters] = useState<number[]>([]);
 
   // Context Pack preview + toggles (for debugging/context transparency).
   const [contextPackPreview, setContextPackPreview] = useState("");
@@ -61,21 +59,9 @@ export function useStoryEpisodeGeneration({
         : undefined,
       model: genForm.model || undefined,
       temperature: genForm.temperature,
-      focus_characters: focusCharacters.length ? focusCharacters : undefined,
     }),
-    [focusCharacters, genForm, storyId],
+    [genForm, storyId],
   );
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const vr = await virtualIPAPI.getVirtualIPs();
-      if (active && vr.success && vr.data) setVips(vr.data);
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const handlePreviewPrompt = useCallback(async () => {
     setPromptPreview("加载中...");
@@ -162,12 +148,6 @@ export function useStoryEpisodeGeneration({
     }
   }, [buildEpisodePayload, onRefreshAfterSync, showAlert, useAsync]);
 
-  const toggleFocusCharacter = useCallback((id: number, checked: boolean) => {
-    setFocusCharacters((prev) =>
-      checked ? [...prev, id] : prev.filter((cid) => cid !== id),
-    );
-  }, []);
-
   return {
     genOpen,
     setGenOpen,
@@ -176,9 +156,6 @@ export function useStoryEpisodeGeneration({
     promptPreview,
     useAsync,
     setUseAsync,
-    vips,
-    focusCharacters,
-    toggleFocusCharacter,
     handlePreviewPrompt,
     handleGenerateEpisodes,
 

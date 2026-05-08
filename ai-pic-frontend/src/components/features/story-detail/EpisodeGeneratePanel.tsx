@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { VirtualIP } from "@/utils/api/types";
 import {
   OperatorSectionHeader,
   operatorButtonClass,
@@ -18,9 +17,6 @@ interface EpisodeGeneratePanelProps {
   setGenOpen: (open: boolean) => void;
   genForm: EpisodeGenForm;
   setGenForm: React.Dispatch<React.SetStateAction<EpisodeGenForm>>;
-  vips: VirtualIP[];
-  focusCharacters: number[];
-  onToggleFocusCharacter: (id: number, checked: boolean) => void;
   useAsync: boolean;
   setUseAsync: (value: boolean) => void;
   promptPreview: string;
@@ -36,9 +32,6 @@ export function EpisodeGeneratePanel({
   setGenOpen,
   genForm,
   setGenForm,
-  vips,
-  focusCharacters,
-  onToggleFocusCharacter,
   useAsync,
   setUseAsync,
   promptPreview,
@@ -71,9 +64,6 @@ export function EpisodeGeneratePanel({
           <EpisodeGeneratePanelFields
             genForm={genForm}
             setGenForm={setGenForm}
-            vips={vips}
-            focusCharacters={focusCharacters}
-            onToggleFocusCharacter={onToggleFocusCharacter}
           />
 
           <div className="flex items-center gap-4">

@@ -49,8 +49,6 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     promptPreview,
     useAsync,
     setUseAsync,
-    vips,
-    focusCharacters,
     includeContinuityLedger,
     setIncludeContinuityLedger,
     includeCharacterCards,
@@ -63,7 +61,6 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     handlePreviewPrompt,
     handlePreviewContextPack,
     handleGenerateEpisodes,
-    toggleFocusCharacter,
     readiness,
     readinessLoading,
     readinessError,
@@ -138,6 +135,33 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
           </div>
         </OperatorPanel>
 
+        <OperatorPanel id="episode-generation" className="scroll-mt-24 p-5">
+          <EpisodeGeneratePanel
+            genOpen={genOpen}
+            setGenOpen={setGenOpen}
+            genForm={genForm}
+            setGenForm={setGenForm}
+            useAsync={useAsync}
+            setUseAsync={setUseAsync}
+            promptPreview={promptPreview}
+            onPreviewPrompt={handlePreviewPrompt}
+            onGenerate={handleGenerateEpisodes}
+            canGenerate={canGenerate}
+            contextPackPreviewProps={{
+              includeContinuityLedger,
+              setIncludeContinuityLedger,
+              includeCharacterCards,
+              setIncludeCharacterCards,
+              recentEpisodesCount,
+              setRecentEpisodesCount,
+              contextPackPreview,
+              contextPackLoading,
+              contextPackError,
+              onPreviewContextPack: handlePreviewContextPack,
+            }}
+          />
+        </OperatorPanel>
+
         <OperatorPanel>
           <OperatorSectionHeader
             title="剧集生产状态"
@@ -194,7 +218,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
         </OperatorMainCanvas>
       }
       inspector={
-        <OperatorInspector title="生产控制" subtitle="就绪检查、剧集生成和上下文预览">
+        <OperatorInspector title="生产控制" subtitle="就绪检查和生产准备">
           <h2 className="text-sm font-semibold">IP 生产准备</h2>
           <div className="mt-4">
             <StoryReadinessPanel
@@ -205,35 +229,6 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
               onRefreshReadiness={checkReadiness}
               onQuickFix={runQuickFix}
             />
-          </div>
-          <div id="episode-generation" className="mt-5 scroll-mt-24 border-t border-gray-200 pt-5">
-        <EpisodeGeneratePanel
-          genOpen={genOpen}
-          setGenOpen={setGenOpen}
-          genForm={genForm}
-          setGenForm={setGenForm}
-          vips={vips}
-          focusCharacters={focusCharacters}
-          onToggleFocusCharacter={toggleFocusCharacter}
-          useAsync={useAsync}
-          setUseAsync={setUseAsync}
-          promptPreview={promptPreview}
-          onPreviewPrompt={handlePreviewPrompt}
-          onGenerate={handleGenerateEpisodes}
-          canGenerate={canGenerate}
-          contextPackPreviewProps={{
-            includeContinuityLedger,
-            setIncludeContinuityLedger,
-            includeCharacterCards,
-            setIncludeCharacterCards,
-            recentEpisodesCount,
-            setRecentEpisodesCount,
-            contextPackPreview,
-            contextPackLoading,
-            contextPackError,
-            onPreviewContextPack: handlePreviewContextPack,
-          }}
-        />
           </div>
         </OperatorInspector>
       }

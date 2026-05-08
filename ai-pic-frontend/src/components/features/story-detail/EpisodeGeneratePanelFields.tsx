@@ -1,7 +1,6 @@
 "use client";
 
 import type { Dispatch, ReactNode, SetStateAction } from "react";
-import type { VirtualIP } from "@/utils/api/types";
 import {
   MarketingFields,
   MultiModelSelector,
@@ -14,15 +13,9 @@ import type { EpisodeGenForm } from "@/hooks/useStoryDetail";
 export function EpisodeGeneratePanelFields({
   genForm,
   setGenForm,
-  vips,
-  focusCharacters,
-  onToggleFocusCharacter,
 }: {
   genForm: EpisodeGenForm;
   setGenForm: Dispatch<SetStateAction<EpisodeGenForm>>;
-  vips: VirtualIP[];
-  focusCharacters: number[];
-  onToggleFocusCharacter: (id: number, checked: boolean) => void;
 }) {
   return (
     <>
@@ -114,31 +107,6 @@ export function EpisodeGeneratePanelFields({
           rows={2}
           className={operatorTextareaClass("w-full")}
         />
-      </div>
-      <div>
-        <FieldLabel>聚焦角色（可选）</FieldLabel>
-        <div className="flex flex-wrap gap-2">
-          {vips.map((vip) => (
-            <label
-              key={vip.id}
-              className={`cursor-pointer rounded-md border px-2 py-1 text-xs ${
-                focusCharacters.includes(vip.id)
-                  ? "border-blue-200 bg-blue-50 text-blue-700"
-                  : "border-gray-300 bg-white text-gray-700"
-              }`}
-            >
-              <input
-                type="checkbox"
-                className="hidden"
-                checked={focusCharacters.includes(vip.id)}
-                onChange={(event) =>
-                  onToggleFocusCharacter(vip.id, event.target.checked)
-                }
-              />
-              {vip.name}
-            </label>
-          ))}
-        </div>
       </div>
     </>
   );
