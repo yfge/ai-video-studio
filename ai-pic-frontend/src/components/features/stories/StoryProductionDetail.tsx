@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   OperatorPanel,
   OperatorInspector,
@@ -34,6 +36,7 @@ import {
 
 export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
   const { showAlert } = useAlertModal();
+  const searchParams = useSearchParams();
   const state = useStoryDetail({ storyKey, showAlert });
   const {
     story,
@@ -73,6 +76,12 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     storyEnvironmentLinks,
   } = state;
 
+  useEffect(() => {
+    if (searchParams.get("generate") === "episodes") {
+      setGenOpen(true);
+    }
+  }, [searchParams, setGenOpen]);
+
   if (loading) {
     return <OperatorState title="加载故事详情..." />;
   }
@@ -106,9 +115,18 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
                 <span>更新 {formatStoryTime(story.updated_at)}</span>
               </div>
             </div>
-            <button className={operatorButtonClass("secondary")}>
-              编辑故事
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setGenOpen(true)}
+                className={operatorButtonClass("primary", "whitespace-nowrap")}
+              >
+                生成剧集
+              </button>
+              <button className={operatorButtonClass("secondary")}>
+                编辑故事
+              </button>
+            </div>
           </div>
           <p className="mt-4 line-clamp-6 max-w-3xl text-sm leading-6 text-gray-700">
             {storyDisplayText(story.synopsis, story.premise)}

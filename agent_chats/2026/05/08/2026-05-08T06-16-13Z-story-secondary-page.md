@@ -14,6 +14,7 @@ PLEASE IMPLEMENT THIS PLAN: 故事列表改为 IP/环境式二级页面。
 - Split the list panel into `StoryListSection` to keep the page component within repository size limits.
 - Removed query-string story selection and embedded `StoryProductionDetail` rendering from `/stories`.
 - Kept `StoryGenerateForm` on the list page and routed story detail actions to `/stories/{business_id}`.
+- Restored an explicit episode generation entry: story cards now link to `/stories/{business_id}?generate=episodes`, and story detail auto-expands the episode generation panel for that query.
 
 ## Validation
 
@@ -25,6 +26,7 @@ PLEASE IMPLEMENT THIS PLAN: 故事列表改为 IP/环境式二级页面。
 - Browser validation on `http://localhost:3010/stories` confirmed the page renders the list entry layout with no embedded `剧集生产状态` detail.
 - Browser validation clicked a story detail link and confirmed `/stories/be3f0a9a256e430b8e3ce24a8022da1f` shows `剧集生产状态`, `IP 生产准备`, and existing `进入时间轴` links.
 - Browser validation opened the `AI生成故事` creation overlay and the delete confirmation without confirming deletion.
+- Follow-up browser validation confirmed story cards expose `生成剧集`; clicking it opens `/stories/be3f0a9a256e430b8e3ce24a8022da1f?generate=episodes` with the episode generation panel expanded.
 
 ## Next Steps
 
