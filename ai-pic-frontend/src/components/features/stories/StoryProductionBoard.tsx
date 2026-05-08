@@ -1,30 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
-  OperatorContextRail,
-  OperatorListRow,
-  OperatorMainCanvas,
+  OperatorPanel,
   OperatorShell,
-  OperatorState,
-  OperatorWorkspace,
-  StatusPill,
   operatorButtonClass,
 } from "@/components/shared";
 import { useStories, type UseStoriesOptions } from "@/hooks/useStories";
-import type { Story } from "@/utils/api/types";
 import { StoryGenerateForm } from "./StoryGenerateForm";
-import { StoryProductionDetail } from "./StoryProductionDetail";
-import { storyDisplayText } from "./StoryProductionModel";
+import { StoryListSection } from "./StoryListSection";
 
 export function StoryProductionBoard({
   showAlert,
 }: {
   showAlert: UseStoriesOptions["showAlert"];
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const state = useStories({ showAlert });
   const {
     stories,
@@ -38,7 +27,12 @@ export function StoryProductionBoard({
     showPromptPreview,
     useAsync,
     setUseAsync,
+    selectedGenre,
+    setSelectedGenre,
+    selectedStatus,
+    setSelectedStatus,
     handleGenerateStory,
+    handleDeleteStory,
     handleCharacterToggle,
     handlePreviewPrompt,
     openGenerateForm,
@@ -46,36 +40,23 @@ export function StoryProductionBoard({
     navigateToVirtualIP,
   } = state;
 
-  const selectedStoryKey =
-    searchParams.get("story") || stories[0]?.business_id || "";
-
-  useEffect(() => {
-    if (!searchParams.get("story") && stories[0]?.business_id) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("story", stories[0].business_id);
-      router.replace(`/stories?${params.toString()}`, { scroll: false });
-    }
-  }, [router, searchParams, stories]);
-
-  const selectStory = (story: Story) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("story", story.business_id);
-    router.replace(`/stories?${params.toString()}`, { scroll: false });
-  };
-
   return (
     <OperatorShell
       title="IP 故事生产"
       subtitle="围绕 IP 组织故事、剧集和生成准备"
       breadcrumb={["IP 中心", "故事生产"]}
     >
-      <OperatorWorkspace
-        variant="rail-main"
-        rail={
-          <OperatorContextRail
-            title="故事列表"
-            subtitle="选择故事"
-            action={
+      <div className="space-y-5">
+        <OperatorPanel className="p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-950">故事入口</h2>
+              <p className="mt-1 text-xs text-gray-500">
+                故事用于承接 IP
+                角色、环境资产和剧集生产；详情页内继续处理就绪检查与剧集生成。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={openGenerateForm}
@@ -83,51 +64,21 @@ export function StoryProductionBoard({
               >
                 从 IP 新建
               </button>
-            }
-          >
-            {loading ? (
-              <div className="p-1 text-sm text-gray-500">加载中...</div>
-            ) : (
-              <div className="space-y-2">
-              {stories.map((story) => (
-                <OperatorListRow
-                  key={story.id}
-                  onClick={() => selectStory(story)}
-                  selected={selectedStoryKey === story.business_id}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-gray-950">
-                        {story.title}
-                      </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        {story.genre}
-                        {story.theme ? ` · ${story.theme}` : ""}
-                      </div>
-                    </div>
-                    <StatusPill tone={story.status === "published" ? "green" : "gray"}>
-                      {story.status}
-                    </StatusPill>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-xs text-gray-600">
-                    {storyDisplayText(story.synopsis, story.premise)}
-                  </p>
-                </OperatorListRow>
-              ))}
-              </div>
-            )}
-          </OperatorContextRail>
-        }
-        main={
-          <OperatorMainCanvas>
-            {selectedStoryKey ? (
-              <StoryProductionDetail storyKey={selectedStoryKey} />
-            ) : (
-              <OperatorState title="暂无故事，请先创建故事。" />
-            )}
-          </OperatorMainCanvas>
-        }
-      />
+            </div>
+          </div>
+        </OperatorPanel>
+
+        <StoryListSection
+          stories={stories}
+          loading={loading}
+          selectedGenre={selectedGenre}
+          onSelectedGenreChange={setSelectedGenre}
+          selectedStatus={selectedStatus}
+          onSelectedStatusChange={setSelectedStatus}
+          onOpenGenerateForm={openGenerateForm}
+          onDelete={handleDeleteStory}
+        />
+      </div>
 
       <StoryGenerateForm
         open={showGenerateForm}
