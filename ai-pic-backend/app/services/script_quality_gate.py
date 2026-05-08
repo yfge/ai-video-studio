@@ -23,7 +23,7 @@ from app.services.script_quality_gate_checks import (
 )
 
 
-def evaluate_script_quality_gate(
+async def evaluate_script_quality_gate(
     *,
     content: Dict[str, Any],
     story: Dict[str, Any],
@@ -34,6 +34,9 @@ def evaluate_script_quality_gate(
     repair_attempts: Optional[list[Dict[str, Any]]] = None,
     lint_threshold: float = 9.0,
     target_chars_per_episode: Optional[int] = None,
+    ai_manager: Any = None,
+    model: Optional[str] = None,
+    prefer_provider: Optional[str] = None,
 ) -> Dict[str, Any]:
     result = result or {}
     checks = [schema_check(content)]
@@ -73,7 +76,16 @@ def evaluate_script_quality_gate(
         checks.append(quality_check)
 
     checks.append(duration_check(result))
-    checks.append(lint_check(content, lint_threshold, target_chars_per_episode))
+    checks.append(
+        await lint_check(
+            content,
+            lint_threshold,
+            target_chars_per_episode,
+            ai_manager=ai_manager,
+            model=model,
+            prefer_provider=prefer_provider,
+        )
+    )
     return build_quality_gate_report(
         kind="script", checks=checks, repair_attempts=repair_attempts
     )
@@ -97,7 +109,7 @@ async def enforce_script_quality_gate_with_repair(
 ) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     attempts: list[Dict[str, Any]] = []
     content = deepcopy(content)
-    gate = evaluate_script_quality_gate(
+    gate = await evaluate_script_quality_gate(
         content=content,
         story=story,
         result=result,
@@ -106,6 +118,9 @@ async def enforce_script_quality_gate_with_repair(
         db=db,
         lint_threshold=lint_threshold,
         target_chars_per_episode=target_chars_per_episode,
+        ai_manager=ai_manager,
+        model=model,
+        prefer_provider=prefer_provider,
     )
     if gate["passed"]:
         return _with_script_gate(result, content, gate), content, gate
@@ -131,7 +146,7 @@ async def enforce_script_quality_gate_with_repair(
         if not repaired:
             continue
         content = repaired
-        gate = evaluate_script_quality_gate(
+        gate = await evaluate_script_quality_gate(
             content=content,
             story=story,
             result=result,
@@ -141,6 +156,9 @@ async def enforce_script_quality_gate_with_repair(
             repair_attempts=deepcopy(attempts),
             lint_threshold=lint_threshold,
             target_chars_per_episode=target_chars_per_episode,
+            ai_manager=ai_manager,
+            model=model,
+            prefer_provider=prefer_provider,
         )
         attempts[-1]["output_gate"] = quality_gate_attempt_snapshot(gate)
         if gate["passed"]:

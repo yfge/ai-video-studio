@@ -8,8 +8,9 @@ from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.script_quality import ScriptLintOptions, ScriptLintResult
+from app.services.ai_service import ai_service
 from app.services.script import ScriptService, get_script_service
-from app.services.script_quality import lint_script_content
+from app.services.script_quality import lint_script_content_async
 from app.services.task_worker_script_quality import script_quality_check_task
 from fastapi import APIRouter, Body, Depends
 from sqlalchemy.orm import Session
@@ -28,9 +29,13 @@ async def quality_check_script(
     current_user: User = Depends(get_current_active_user),
     service: ScriptService = Depends(_service),
 ) -> ScriptLintResult:
-    """同步质检剧本（仅做 deterministic lint，不调用大模型）。"""
+    """同步质检剧本，包含 LLM 悬念结尾判断。"""
     script = service.get_script(script_id=script_id, user=current_user)
-    return lint_script_content(script.content or "", options=options)
+    return await lint_script_content_async(
+        script.content or "",
+        options=options,
+        ai_manager=getattr(ai_service, "ai_manager", None),
+    )
 
 
 @router.post("/{script_id}/quality-check-async")

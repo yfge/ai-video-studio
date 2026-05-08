@@ -1,10 +1,13 @@
 """
 Script quality (industrial lint) services.
 
-Provides deterministic lint checks for screenplay-like scripts, focused on
-"visual-only" constraints (可拍性、台词长度、钩子/断点等).
+Provides screenplay lint checks for production constraints, including
+prompt-based cliffhanger judgement and deterministic structure checks.
 """
 
-from app.services.script_quality.lint_engine import lint_script_content
+from app.services.script_quality.lint_engine import (
+    lint_script_content,
+    lint_script_content_async,
+)
 
-__all__ = ["lint_script_content"]
+__all__ = ["lint_script_content", "lint_script_content_async"]

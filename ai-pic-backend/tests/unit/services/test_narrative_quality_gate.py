@@ -46,7 +46,6 @@ def _script_content(text: str | None = None) -> dict[str, Any]:
             {
                 "scene_number": 1,
                 "description": "林雪在客厅逼问陈默。",
-                "location": "客厅",
             }
         ],
         "dialogues": [
@@ -54,21 +53,17 @@ def _script_content(text: str | None = None) -> dict[str, Any]:
                 "scene_number": 1,
                 "character": "林雪",
                 "content": "别动！账本上为什么有你的名字？",
-                "emotion": "愤怒",
             },
             {
                 "scene_number": 1,
                 "character": "陈默",
                 "content": "不是我，嗯...有人改过它。",
-                "emotion": "恐惧",
             },
         ],
         "stage_directions": [
             {
                 "scene_number": 1,
-                "timing": "opening",
                 "content": "林雪抓住账本，警报声逼近。",
-                "type": "action",
             }
         ],
         "metadata": {},
@@ -94,11 +89,38 @@ def _passing_script_text() -> str:
 
 
 class _RepairManager:
-    def __init__(self, payloads: list[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        payloads: list[dict[str, Any]],
+        *,
+        cliffhanger_passes: list[bool] | None = None,
+    ) -> None:
         self.payloads = list(payloads)
+        self.cliffhanger_passes = list(cliffhanger_passes or [])
         self.calls = 0
+        self.cliffhanger_calls = 0
 
-    async def generate_text(self, **_: Any) -> Any:
+    async def generate_text(self, **kwargs: Any) -> Any:
+        schema = kwargs.get("json_schema") or {}
+        if schema.get("name") == "script_cliffhanger_judgement":
+            self.cliffhanger_calls += 1
+            passed = (
+                self.cliffhanger_passes.pop(0)
+                if self.cliffhanger_passes
+                else True
+            )
+            return SimpleNamespace(
+                success=True,
+                provider=kwargs.get("prefer_provider") or "fake",
+                model=kwargs.get("model") or "fake-model",
+                data={
+                    "passed": passed,
+                    "score": 1.0 if passed else 0.0,
+                    "reason": "ok" if passed else "weak ending",
+                    "evidence": "tail",
+                    "suggestion": "补强结尾卡点",
+                },
+            )
         self.calls += 1
         payload = self.payloads.pop(0) if self.payloads else {}
         return SimpleNamespace(success=True, data=payload)
@@ -156,13 +178,15 @@ async def test_episode_gate_repairs_for_two_rounds_then_passes() -> None:
 
 
 @pytest.mark.unit
-def test_script_gate_blocks_low_lint_score_and_unknown_speaker() -> None:
+@pytest.mark.asyncio
+async def test_script_gate_blocks_low_lint_score_and_unknown_speaker() -> None:
     content = _script_content("普通文本，没有生产标记，也没有悬念结尾。")
     content["dialogues"][0]["character"] = "陌生人"
-    gate = evaluate_script_quality_gate(
+    gate = await evaluate_script_quality_gate(
         content=content,
         story={"characters": [{"name": "林雪"}, {"name": "陈默"}]},
         result={},
+        ai_manager=_RepairManager([], cliffhanger_passes=[False]),
     )
 
     blocking_ids = {issue["id"] for issue in gate["blocking_issues"]}

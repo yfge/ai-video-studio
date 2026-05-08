@@ -15,7 +15,7 @@ from app.core.celery_app import celery_app
 def script_quality_check_task(
     task_id: int, payload: Dict[str, Any], user_id: int
 ) -> None:
-    """Run deterministic script QC and persist results."""
+    """Run script QC and persist results."""
     from app.services.script_quality.task_entrypoints import process_script_quality_task
 
     process_script_quality_task(task_id, payload, user_id)

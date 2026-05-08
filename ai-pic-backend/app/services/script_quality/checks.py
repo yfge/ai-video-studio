@@ -12,9 +12,10 @@ from app.services.script_quality.constants import (
     SCENE_HEADER_RE,
     SFX_TAG_KEYWORDS,
     TEMPO_TAGS,
-    UNFILMABLE_PHRASES,
 )
-from app.services.script_quality.utils import estimate_visible_chars, is_dialogue
+from app.services.script_quality.cliffhanger import check_cliffhanger
+from app.services.script_quality.utils import estimate_visible_chars
+from app.services.script_quality.visual_language import check_visual_language
 
 
 def check_scene_headers(
@@ -42,7 +43,6 @@ def check_scene_headers(
         ),
         issues,
     )
-
 
 def check_tempo_tags(
     all_tags: list[str],
@@ -181,51 +181,6 @@ def check_hook_3s(
     )
 
 
-def check_cliffhanger(
-    non_empty: list[tuple[int, str]],
-) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
-    tail = [ln for _no, ln in non_empty[-3:]]
-    last_line = tail[-1] if tail else ""
-    cliff_markers = (
-        "?",
-        "？",
-        "卡点",
-        "特写",
-        "真相",
-        "身份",
-        "猛地",
-        "定格",
-        "突然",
-        "露出",
-    )
-    has_cliff = any(
-        any(marker in ln for marker in cliff_markers)
-        or ln.rstrip().endswith(("…", "...", "——", "？！", "!?"))
-        for ln in tail
-    )
-    issues: list[ScriptLintIssue] = []
-    if not has_cliff:
-        issues.append(
-            ScriptLintIssue(
-                severity="error",
-                rule_id="cliffhanger",
-                message="结尾未检测到强悬念/新问题。",
-                suggestion="最后一句/最后一个动作提出新问题或爆点揭示，避免收束。",
-            )
-        )
-    return (
-        ScriptLintRuleResult(
-            rule_id="cliffhanger",
-            title="悬念结尾（最后三行）",
-            weight=1.5,
-            score=1.0 if has_cliff else 0.0,
-            passed=has_cliff,
-            details={"detected": has_cliff, "last_line": last_line[:80]},
-        ),
-        issues,
-    )
-
-
 def check_dialogue_length(
     dialogue_lines: list[tuple[int, str, str]],
     options: ScriptLintOptions,
@@ -258,44 +213,6 @@ def check_dialogue_length(
             score=score_dialogue,
             passed=len(too_long) == 0,
             details={"too_long_lines": len(too_long)},
-        ),
-        issues,
-    )
-
-
-def check_visual_language(
-    non_empty: list[tuple[int, str]],
-) -> tuple[ScriptLintRuleResult, list[ScriptLintIssue]]:
-    hits = 0
-    issues: list[ScriptLintIssue] = []
-
-    for ln_no, ln in non_empty:
-        is_dialogue_line, _speaker, _content = is_dialogue(ln)
-        if is_dialogue_line:
-            continue
-        for rule in UNFILMABLE_PHRASES:
-            if rule.phrase in ln:
-                hits += 1
-                issues.append(
-                    ScriptLintIssue(
-                        severity=rule.severity,  # type: ignore[arg-type]
-                        rule_id="visual_language",
-                        message=f"疑似不可拍表述：包含「{rule.phrase}」",
-                        line=ln_no,
-                        excerpt=ln[:160],
-                        suggestion=rule.suggestion,
-                    )
-                )
-
-    score_visual = 1.0 if hits == 0 else max(0.0, 1.0 - min(1.0, hits / 5.0))
-    return (
-        ScriptLintRuleResult(
-            rule_id="visual_language",
-            title="拒绝不可拍心理/氛围词（视觉指令化）",
-            weight=3.0,
-            score=score_visual,
-            passed=hits == 0,
-            details={"hits": hits},
         ),
         issues,
     )

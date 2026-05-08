@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime
 from typing import Any
 
 from app.core.database import SessionLocal
-from app.models.script import Script
 from app.models.task import Task, TaskStatus
+from app.repositories.script_repository import ScriptRepository
+from app.repositories.task_repository import TaskRepository
 from app.schemas.script_quality import ScriptLintOptions
-from app.services.script_quality.lint_engine import lint_script_content
+from app.services.ai_service import ai_service
+from app.services.script_quality.lint_engine import lint_script_content_async
 
 
 def _load_task_parameters(task: Task) -> dict[str, Any]:
@@ -29,7 +32,7 @@ def process_script_quality_task(
     task_id: int, payload: dict[str, Any], user_id: int
 ) -> None:
     """
-    Celery entrypoint: run deterministic script QC and persist results.
+    Celery entrypoint: run script QC and persist results.
 
     - Updates Task.status/description/error_message
     - Persists result into Task.parameters.result and Script.extra_metadata.script_quality
@@ -37,7 +40,7 @@ def process_script_quality_task(
     db = SessionLocal()
     task: Task | None = None
     try:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task = TaskRepository(db).get_by_id(task_id)
         if task is None:
             return
         task.status = TaskStatus.PROCESSING
@@ -45,12 +48,9 @@ def process_script_quality_task(
         db.commit()
 
         script_id = int(payload.get("script_id"))
-        script = (
-            db.query(Script)
-            .filter(Script.id == script_id)
-            .filter(Script.is_deleted.is_(False))
-            .first()
-        )
+        script = ScriptRepository(db).get_by_id(script_id)
+        if script is not None and script.is_deleted:
+            script = None
         if script is None:
             raise RuntimeError("script_not_found")
 
@@ -60,7 +60,13 @@ def process_script_quality_task(
             if isinstance(options_dict, dict)
             else ScriptLintOptions()
         )
-        result = lint_script_content(script.content or "", options=options)
+        result = asyncio.run(
+            lint_script_content_async(
+                script.content or "",
+                options=options,
+                ai_manager=getattr(ai_service, "ai_manager", None),
+            )
+        )
         result_payload = result.model_dump(mode="json")
 
         # Persist on script.extra_metadata (SQLAlchemy JSON needs reassignment; in-place mutation won't persist)

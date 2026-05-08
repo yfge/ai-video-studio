@@ -6,7 +6,7 @@ from app.schemas.generation import ScriptModel
 from app.schemas.script_quality import ScriptLintOptions
 from app.services.narrative_context import extract_story_characters
 from app.services.quality_gate_core import make_quality_check
-from app.services.script_quality import lint_script_content
+from app.services.script_quality import lint_script_content_async
 from app.services.validators.script_quality_validator import ScriptQualityValidator
 
 
@@ -136,28 +136,34 @@ def duration_check(result: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-def lint_check(
+async def lint_check(
     content: Dict[str, Any],
     lint_threshold: float,
     target_chars_per_episode: Optional[int] = None,
+    ai_manager: Any = None,
+    model: Optional[str] = None,
+    prefer_provider: Optional[str] = None,
 ) -> Dict[str, Any]:
     target_min = None
     target_max = None
     if target_chars_per_episode:
         target_min = max(1, int(target_chars_per_episode * 0.7))
         target_max = int(target_chars_per_episode * 1.25)
-    lint_result = lint_script_content(
+    lint_result = await lint_script_content_async(
         str(content.get("content") or ""),
         options=ScriptLintOptions(
             pass_threshold=lint_threshold,
             target_word_min=target_min,
             target_word_max=target_max,
         ),
+        ai_manager=ai_manager,
+        model=model,
+        prefer_provider=prefer_provider,
     )
     return make_quality_check(
         "script_lint",
         lint_result.passed,
-        "deterministic script lint must pass",
+        "script lint must pass",
         score=lint_result.overall_score / 10.0,
         details=lint_result.model_dump(),
     )

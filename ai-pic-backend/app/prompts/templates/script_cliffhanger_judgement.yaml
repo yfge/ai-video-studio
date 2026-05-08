@@ -1,0 +1,43 @@
+name: script_cliffhanger_judgement
+description: 短剧剧本结尾悬念/卡点评估模板
+category: script
+version: "1.0"
+
+variables:
+  script_content:
+    type: string
+    description: 剧本全文
+    required: true
+  tail_lines:
+    type: array
+    description: 剧本最后三条非空行
+    required: true
+
+output_format: json
+output_schema:
+  type: object
+  additionalProperties: false
+  required:
+    - passed
+    - score
+    - reason
+    - evidence
+    - suggestion
+  properties:
+    passed:
+      type: boolean
+    score:
+      type: number
+      minimum: 0
+      maximum: 1
+    reason:
+      type: string
+    evidence:
+      type: string
+    suggestion:
+      type: string
+
+tags:
+  - short_drama
+  - script
+  - quality_gate

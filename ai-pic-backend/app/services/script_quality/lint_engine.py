@@ -6,6 +6,7 @@ from app.schemas.script_quality import (
     ScriptLintOptions,
     ScriptLintResult,
 )
+from app.services.script_quality.cliffhanger import check_cliffhanger_with_prompt
 from app.services.script_quality.checks import (
     check_cliffhanger,
     check_dialogue_length,
@@ -31,9 +32,41 @@ from app.services.script_quality.utils import (
 def lint_script_content(
     script_content: str, options: ScriptLintOptions | None = None
 ) -> ScriptLintResult:
-    """Deterministic script lint focused on industrial constraints (no LLM)."""
+    """Compatibility lint entrypoint.
+
+    The cliffhanger rule requires an LLM judgement. Production callers should use
+    lint_script_content_async so weak endings cannot pass via keyword heuristics.
+    """
 
     opts = options or ScriptLintOptions()
+    prepared = _prepare_lint_inputs(script_content)
+    cliffhanger = check_cliffhanger(prepared["non_empty"])
+    return _build_lint_result(script_content, opts, prepared, cliffhanger)
+
+
+async def lint_script_content_async(
+    script_content: str,
+    options: ScriptLintOptions | None = None,
+    *,
+    ai_manager=None,
+    model: str | None = None,
+    prefer_provider: str | None = None,
+) -> ScriptLintResult:
+    """Run script lint with prompt-based cliffhanger judgement."""
+
+    opts = options or ScriptLintOptions()
+    prepared = _prepare_lint_inputs(script_content)
+    cliffhanger = await check_cliffhanger_with_prompt(
+        non_empty=prepared["non_empty"],
+        script_content=script_content,
+        ai_manager=ai_manager,
+        model=model,
+        prefer_provider=prefer_provider,
+    )
+    return _build_lint_result(script_content, opts, prepared, cliffhanger)
+
+
+def _prepare_lint_inputs(script_content: str) -> dict[str, list]:
     raw_lines = script_content.splitlines()
     lines = [(idx + 1, ln.rstrip("\n")) for idx, ln in enumerate(raw_lines)]
     non_empty = [(ln_no, ln.strip()) for ln_no, ln in lines if ln.strip()]
@@ -56,8 +89,26 @@ def lint_script_content(
         ):
             stage_lines.append((ln_no, ln))
 
+    return {
+        "non_empty": non_empty,
+        "dialogue_lines": dialogue_lines,
+        "stage_lines": stage_lines,
+        "all_tags": all_tags,
+    }
+
+
+def _build_lint_result(
+    script_content: str,
+    opts: ScriptLintOptions,
+    prepared: dict[str, list],
+    cliffhanger_result: tuple[ScriptLintRuleResult, list[ScriptLintIssue]],
+) -> ScriptLintResult:
     rule_results = []
     issues = []
+    non_empty = prepared["non_empty"]
+    dialogue_lines = prepared["dialogue_lines"]
+    stage_lines = prepared["stage_lines"]
+    all_tags = prepared["all_tags"]
 
     for rule, found in (
         check_scene_headers(non_empty),
@@ -65,7 +116,7 @@ def lint_script_content(
         check_emotion_goal(all_tags, dialogue_lines),
         check_sfx_lines(stage_lines),
         check_hook_3s(non_empty),
-        check_cliffhanger(non_empty),
+        cliffhanger_result,
         check_dialogue_length(dialogue_lines, opts),
         check_visual_language(non_empty),
     ):
