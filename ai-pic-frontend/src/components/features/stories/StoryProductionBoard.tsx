@@ -74,7 +74,7 @@ export function StoryProductionBoard({
         rail={
           <OperatorContextRail
             title="故事列表"
-            subtitle="选择已迁移或已关联的故事"
+            subtitle="选择故事"
             action={
               <button
                 type="button"

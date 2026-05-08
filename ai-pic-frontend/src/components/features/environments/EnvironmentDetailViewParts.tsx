@@ -56,7 +56,7 @@ export function EnvironmentDetailActions({
   );
 }
 
-export function EnvironmentMigrationNotice() {
+export function EnvironmentProductionNotice() {
   return (
     <OperatorState
       tone="blue"

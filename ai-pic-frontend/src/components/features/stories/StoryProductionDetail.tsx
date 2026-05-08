@@ -120,7 +120,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
               ))
             ) : (
               <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
-                IP 关联待迁移
+                暂未关联 IP
               </span>
             )}
             <StoryEnvironmentCoverage links={storyEnvironmentLinks} />

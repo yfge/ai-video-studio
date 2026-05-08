@@ -128,7 +128,7 @@ export function VirtualIPCreateModal({
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-          IP 资产迁移中，新建 IP 将作为故事生产入口。
+          新建 IP 将作为故事生产入口，可继续组织角色资产和剧集内容。
         </div>
 
         <SmartInputField

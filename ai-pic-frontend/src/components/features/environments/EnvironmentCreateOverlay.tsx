@@ -31,8 +31,7 @@ export function EnvironmentCreateOverlay({
   onCreated,
 }: EnvironmentCreateOverlayProps) {
   const { showAlert } = useAlertModal();
-  const [formState, setFormState] =
-    useState<EnvironmentFormState>(EMPTY_ENV_FORM);
+  const [formState, setFormState] = useState<EnvironmentFormState>(EMPTY_ENV_FORM);
   const [generation, setGeneration] =
     useState<GenerationFormState>(EMPTY_GENERATION);
   const [creating, setCreating] = useState(false);
@@ -129,13 +128,13 @@ export function EnvironmentCreateOverlay({
     <CreationOverlay
       open={open}
       title="创建环境"
-      subtitle="环境资产池与 IP 生产链路迁移中"
+      subtitle="创建可复用的环境资产"
       onClose={onClose}
       widthClassName="max-w-5xl"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          环境资产暂未完全迁移到 IP 生产链路，创建后将先进入环境资产池。
+          创建后将进入环境资产池，可在剧集生产中绑定到具体场景。
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>

@@ -82,10 +82,10 @@ export function WorkbenchDashboard() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="text-sm font-semibold text-gray-950">
-                    IP / 环境迁移状态
+                    IP / 环境生产状态
                   </h2>
                   <p className="mt-1 text-xs text-gray-500">
-                    IP 和环境资产仍在迁移中，当前生产先沿用已有关联的故事与剧集；新内容优先从 IP 项目进入。
+                    当前生产围绕 IP、故事、剧集和环境资产推进；新内容优先从 IP 项目进入。
                   </p>
                 </div>
                 <Link href="/virtual-ip" className={operatorButtonClass("primary")}>
@@ -108,7 +108,7 @@ export function WorkbenchDashboard() {
             <OperatorPanel>
               <OperatorSectionHeader
                 title="继续制作"
-                subtitle="从已迁移内容继续推进到剧集时间轴"
+                subtitle="从现有内容继续推进到剧集时间轴"
                 action={
                   <Link href="/stories" className={operatorButtonClass("secondary")}>
                     查看全部

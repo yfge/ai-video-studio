@@ -113,7 +113,7 @@ export function VirtualIPImageManager({
               onSelectCategory={setSelectedCategory}
             />
             <OperatorState
-              title="迁移状态"
+              title="图片资产"
               detail="图片资产将随 IP 项目进入故事生产。"
               tone="blue"
             />

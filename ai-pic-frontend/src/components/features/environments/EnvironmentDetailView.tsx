@@ -20,7 +20,7 @@ import { EnvironmentVariantModal } from "./EnvironmentVariantModal";
 import {
   EnvironmentAuditPanels,
   EnvironmentDetailActions,
-  EnvironmentMigrationNotice,
+  EnvironmentProductionNotice,
   EnvironmentNotFound,
   EnvironmentReadinessPanel,
 } from "./EnvironmentDetailViewParts";
@@ -66,7 +66,7 @@ export function EnvironmentDetailView() {
       breadcrumb={["IP 中心", "环境资产", state.env.name]}
     >
       <div className="space-y-5">
-        <EnvironmentMigrationNotice />
+        <EnvironmentProductionNotice />
         <EnvironmentAuditPanels metadata={state.env.metadata} />
         <OperatorWorkspace
           variant="main-inspector"

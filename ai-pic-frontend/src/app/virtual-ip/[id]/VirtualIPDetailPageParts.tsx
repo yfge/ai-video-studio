@@ -13,12 +13,12 @@ import type { EditFormState } from "@/hooks/useVirtualIPDetail";
 import type { VirtualIP } from "@/utils/api/types";
 import { resolveCreatorLabel } from "@/utils/creator";
 
-export function VirtualIPMigrationNotice() {
+export function VirtualIPProductionNotice() {
   return (
     <OperatorPanel className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs text-blue-700">
-          IP 资产已接入新的生产工作台，部分字段仍可编辑。
+          IP 资产可用于故事、剧集和生成任务，部分字段仍可编辑。
         </div>
         <Link href="/virtual-ip" className={operatorButtonClass("ghost")}>
           返回 IP 项目

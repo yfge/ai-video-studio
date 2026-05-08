@@ -45,10 +45,9 @@ function VirtualIPListContent() {
       breadcrumb={["IP 中心", "IP 项目"]}
     >
       <OperatorPanel className="mb-5 p-4">
-        <h2 className="text-sm font-semibold text-gray-950">迁移状态</h2>
+        <h2 className="text-sm font-semibold text-gray-950">生产入口</h2>
         <p className="mt-1 text-xs text-gray-500">
-          IP 资产正在迁移到新的生产工作台；当前列表继续承载现有 IP
-          管理，新故事优先从这里选择角色资产。
+          IP 资产用于组织角色、故事和剧集；新故事优先从这里选择角色资产。
         </p>
       </OperatorPanel>
 

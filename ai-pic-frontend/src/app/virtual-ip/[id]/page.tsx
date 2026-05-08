@@ -24,7 +24,7 @@ import {
   VirtualIPBackgroundStorySection,
   VirtualIPInspectorPanel,
   VirtualIPMetaStrip,
-  VirtualIPMigrationNotice,
+  VirtualIPProductionNotice,
 } from "./VirtualIPDetailPageParts";
 
 export default function VirtualIPDetail() {
@@ -102,7 +102,7 @@ export default function VirtualIPDetail() {
       breadcrumb={["IP 中心", "IP 项目", virtualIP.name]}
     >
       <div className="space-y-5">
-        <VirtualIPMigrationNotice />
+        <VirtualIPProductionNotice />
 
         <OperatorWorkspace
           variant="main-inspector"
