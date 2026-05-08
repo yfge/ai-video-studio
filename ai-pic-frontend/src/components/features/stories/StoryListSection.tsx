@@ -176,7 +176,7 @@ function StoryProjectCard({
         </span>
         <div className="flex gap-2">
           <Link
-            href={`/stories/${storyKey}?generate=episodes`}
+            href={`/stories/${storyKey}?generate=episodes#episode-generation`}
             className={operatorButtonClass("primary", "whitespace-nowrap")}
           >
             生成剧集

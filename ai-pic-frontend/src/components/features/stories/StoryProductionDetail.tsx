@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   OperatorPanel,
   OperatorInspector,
@@ -33,10 +31,10 @@ import {
   ReadyCell,
   StoryEnvironmentCoverage,
 } from "./StoryProductionDetailParts";
+import { useEpisodeGenerationAnchor } from "./useEpisodeGenerationAnchor";
 
 export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
   const { showAlert } = useAlertModal();
-  const searchParams = useSearchParams();
   const state = useStoryDetail({ storyKey, showAlert });
   const {
     story,
@@ -75,12 +73,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     runQuickFix,
     storyEnvironmentLinks,
   } = state;
-
-  useEffect(() => {
-    if (searchParams.get("generate") === "episodes") {
-      setGenOpen(true);
-    }
-  }, [searchParams, setGenOpen]);
+  const openEpisodeGeneration = useEpisodeGenerationAnchor(setGenOpen);
 
   if (loading) {
     return <OperatorState title="加载故事详情..." />;
@@ -118,7 +111,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setGenOpen(true)}
+                onClick={openEpisodeGeneration}
                 className={operatorButtonClass("primary", "whitespace-nowrap")}
               >
                 生成剧集
@@ -213,7 +206,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
               onQuickFix={runQuickFix}
             />
           </div>
-          <div className="mt-5 border-t border-gray-200 pt-5">
+          <div id="episode-generation" className="mt-5 scroll-mt-24 border-t border-gray-200 pt-5">
         <EpisodeGeneratePanel
           genOpen={genOpen}
           setGenOpen={setGenOpen}
