@@ -1,6 +1,7 @@
 "use client";
 
 import type { EpisodeCharacter } from "@/utils/api/types";
+import { StatusPill, operatorButtonClass } from "@/components/shared";
 
 interface CharacterRowProps {
   character: EpisodeCharacter;
@@ -14,34 +15,22 @@ export function CharacterRow({
   onDelete,
 }: CharacterRowProps) {
   const importanceLabels = ["", "次要", "重要", "主要", "核心", "关键"];
-  const importanceColors = [
-    "",
-    "bg-gray-100 text-gray-700",
-    "bg-blue-100 text-blue-700",
-    "bg-indigo-100 text-indigo-700",
-    "bg-purple-100 text-purple-700",
-    "bg-pink-100 text-pink-700",
-  ];
 
   return (
     <div className="p-4 hover:bg-gray-50">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-sm font-medium text-gray-900">
               {character.character_name}
             </h3>
-            <span
-              className={`px-2 py-0.5 text-xs font-medium rounded ${
-                importanceColors[character.importance] || importanceColors[1]
-              }`}
-            >
+            <StatusPill tone={character.importance >= 4 ? "blue" : "gray"}>
               {importanceLabels[character.importance] || "次要"}
-            </span>
+            </StatusPill>
             {character.role_type && (
-              <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+              <StatusPill tone="gray">
                 {character.role_type}
-              </span>
+              </StatusPill>
             )}
           </div>
 
@@ -94,14 +83,16 @@ export function CharacterRow({
 
         <div className="flex items-center gap-2 ml-4">
           <button
+            type="button"
             onClick={onEdit}
-            className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+            className={operatorButtonClass("secondary")}
           >
             编辑
           </button>
           <button
+            type="button"
             onClick={onDelete}
-            className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+            className={operatorButtonClass("ghost", "text-red-700")}
           >
             删除
           </button>

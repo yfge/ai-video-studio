@@ -2,7 +2,7 @@
 
 import type { VirtualIP } from "@/utils/api/types";
 import type { StoryGenerationForm } from "@/utils/storyOptions";
-import { CreationOverlay } from "@/components/shared";
+import { CreationOverlay, operatorButtonClass } from "@/components/shared";
 import { StoryBasicsSection } from "./StoryBasicsSection";
 import { StorySettingSection } from "./StorySettingSection";
 
@@ -45,7 +45,6 @@ export function StoryGenerateForm({
       title="AI生成故事"
       subtitle="与环境/虚拟IP一致的创建面板，补充角色与设定后提交生成"
       onClose={onClose}
-      icon={<span className="text-lg">📚</span>}
       widthClassName="max-w-5xl"
     >
       <form className="space-y-5">
@@ -66,12 +65,12 @@ export function StoryGenerateForm({
           <button
             type="button"
             onClick={onPreviewPrompt}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+            className={operatorButtonClass("secondary")}
           >
             生成提示词预览
           </button>
           {showPromptPreview && (
-            <div className="mt-3 p-3 border rounded bg-gray-50 max-h-64 overflow-auto">
+            <div className="mt-3 max-h-64 overflow-auto rounded-md border border-gray-200 bg-gray-50 p-3">
               <pre className="whitespace-pre-wrap break-words text-sm font-mono text-gray-800">
                 {promptPreview}
               </pre>
@@ -96,7 +95,7 @@ export function StoryGenerateForm({
           <button
             type="button"
             onClick={onClose}
-            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
+            className={operatorButtonClass("secondary")}
           >
             取消
           </button>
@@ -104,7 +103,7 @@ export function StoryGenerateForm({
             type="button"
             onClick={onSubmit}
             disabled={generating}
-            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+            className={operatorButtonClass("primary")}
           >
             {generating ? "生成中..." : useAsync ? "创建异步任务" : "开始生成"}
           </button>

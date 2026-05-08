@@ -1,4 +1,6 @@
 export { OperatorShell } from "./OperatorShell";
+export { OperatorAdminShell } from "./OperatorAdminShell";
+export { OperatorAuthFrame } from "./OperatorAuthFrame";
 export { ProgressBar } from "./ProgressBar";
 export { StatusPill, taskStatusTone } from "./StatusPill";
 export {

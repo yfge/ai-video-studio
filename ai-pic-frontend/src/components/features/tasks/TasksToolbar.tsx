@@ -1,6 +1,7 @@
 "use client";
 
 import { TASK_TYPE_OPTIONS } from "./taskTypeOptions";
+import { operatorButtonClass, operatorSelectClass } from "@/components/shared";
 
 type TasksToolbarProps = {
   poll: boolean;
@@ -18,13 +19,13 @@ export function TasksToolbar({
   onTaskTypeFilterChange,
 }: TasksToolbarProps) {
   return (
-    <div className="flex items-center space-x-4">
-      <label className="text-sm text-gray-600 flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-3">
+      <label className="flex items-center gap-2 text-xs text-gray-600">
         类型
         <select
           value={taskTypeFilter}
           onChange={(event) => onTaskTypeFilterChange(event.target.value)}
-          className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700"
+          className={operatorSelectClass()}
         >
           {TASK_TYPE_OPTIONS.map((opt) => (
             <option key={opt.value || "all"} value={opt.value}>
@@ -33,7 +34,7 @@ export function TasksToolbar({
           ))}
         </select>
       </label>
-      <label className="text-sm text-gray-600 flex items-center gap-2">
+      <label className="flex items-center gap-2 text-xs text-gray-600">
         <input
           type="checkbox"
           checked={poll}
@@ -42,8 +43,9 @@ export function TasksToolbar({
         自动刷新
       </label>
       <button
+        type="button"
         onClick={onRefresh}
-        className="text-sm text-blue-600 hover:text-blue-800"
+        className={operatorButtonClass("secondary")}
       >
         刷新
       </button>

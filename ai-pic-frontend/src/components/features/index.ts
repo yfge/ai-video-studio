@@ -4,7 +4,6 @@
  * Complex components specific to application features.
  */
 
-export { default as AIGenerationProcess } from "./AIGenerationProcess";
 export { WorkbenchDashboard } from "./workbench/WorkbenchDashboard";
 export { SceneStructurePanel, type SceneNode } from "./SceneStructurePanel";
 export {
@@ -20,10 +19,7 @@ export {
   type TimelineProps,
 } from "./Timeline/Timeline";
 export {
-  EpisodeHeader,
-  EpisodeDetails,
   EpisodeAspectRatioSelect,
-  AudioTimelineSection,
   ScriptGenerationForm,
   ScriptList,
   EpisodeWorkspaceHeader,
@@ -35,7 +31,6 @@ export {
   type WorkflowStep,
 } from "./episode";
 export {
-  ImagePageHeader,
   ImageGenerationForm,
   ImageUploadForm,
   CategoryFilter,
@@ -50,7 +45,6 @@ export {
   ScriptTrafficTab,
 } from "./script";
 export {
-  VirtualIPDetailHeader,
   VirtualIPAdditionalInfoSection,
   VirtualIPEnvironmentPanel,
   VirtualIPInfoSection,
@@ -58,20 +52,11 @@ export {
 } from "./virtual-ip-detail";
 export { VirtualIPListSection, VirtualIPCreateModal } from "./virtual-ip";
 export {
-  StoriesHeader,
-  StoriesFilter,
-  StoryCard,
   StoryGenerateForm,
   StoryProductionBoard,
 } from "./stories";
 export {
-  StoryDetailHeader,
-  StorySummarySection,
-  StoryNovelExportSection,
-  CharactersSection,
-  AdditionalInfoSection,
   EpisodeGeneratePanel,
-  EpisodeListSection,
   StoryReadinessPanel,
 } from "./story-detail";
 export { EnvironmentCreateOverlay, EnvironmentList } from "./environments";

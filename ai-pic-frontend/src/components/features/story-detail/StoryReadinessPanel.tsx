@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import type {
-  ReadinessResult,
-  ReadinessCheck,
   QuickFixResponse,
+  ReadinessCheck,
+  ReadinessResult,
 } from "@/utils/api/types";
+import {
+  OperatorState,
+  StatusPill,
+  operatorButtonClass,
+} from "@/components/shared";
 
 interface StoryReadinessPanelProps {
   readiness: ReadinessResult | null;
@@ -16,71 +21,19 @@ interface StoryReadinessPanelProps {
   onQuickFix: (dryRun: boolean) => Promise<QuickFixResponse | null>;
 }
 
-const SEVERITY_STYLES: Record<
-  string,
-  { bg: string; border: string; text: string; icon: string }
-> = {
-  CRITICAL: {
-    bg: "bg-red-50",
-    border: "border-red-200",
-    text: "text-red-800",
-    icon: "X",
-  },
-  ERROR: {
-    bg: "bg-orange-50",
-    border: "border-orange-200",
-    text: "text-orange-800",
-    icon: "!",
-  },
-  WARNING: {
-    bg: "bg-yellow-50",
-    border: "border-yellow-200",
-    text: "text-yellow-700",
-    icon: "?",
-  },
-  INFO: {
-    bg: "bg-blue-50",
-    border: "border-blue-200",
-    text: "text-blue-700",
-    icon: "i",
-  },
-};
+const fixableNames = new Set([
+  "synopsis_present",
+  "main_conflict_present",
+  "setting_present",
+  "world_building_present",
+]);
 
-function CheckItem({ check }: { check: ReadinessCheck }) {
-  const style = SEVERITY_STYLES[check.severity] || SEVERITY_STYLES.INFO;
-  return (
-    <div
-      className={`flex items-start gap-2 p-2 rounded ${style.bg} ${style.border} border`}
-    >
-      <span
-        className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-          style.text
-        } ${check.passed ? "bg-green-100 text-green-600" : ""}`}
-      >
-        {check.passed ? "✓" : style.icon}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div
-          className={`text-sm font-medium ${
-            check.passed ? "text-green-700" : style.text
-          }`}
-        >
-          {check.message}
-        </div>
-        {!check.passed && check.suggestion && (
-          <div className="text-xs text-gray-600 mt-1">{check.suggestion}</div>
-        )}
-      </div>
-      <span
-        className={`text-xs px-2 py-0.5 rounded ${
-          check.passed ? "bg-green-100 text-green-700" : style.bg
-        } ${style.text}`}
-      >
-        {check.severity}
-      </span>
-    </div>
-  );
-}
+const severityTone = (check: ReadinessCheck) => {
+  if (check.passed) return "green";
+  if (check.severity === "CRITICAL" || check.severity === "ERROR") return "red";
+  if (check.severity === "WARNING") return "amber";
+  return "blue";
+};
 
 export function StoryReadinessPanel({
   readiness,
@@ -94,221 +47,194 @@ export function StoryReadinessPanel({
   const [quickFixPreview, setQuickFixPreview] =
     useState<QuickFixResponse | null>(null);
 
-  const handleQuickFixPreview = async () => {
-    const result = await onQuickFix(true);
-    setQuickFixPreview(result);
-  };
-
-  const handleQuickFixApply = async () => {
-    await onQuickFix(false);
-    setQuickFixPreview(null);
-    onRefreshReadiness();
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-gray-50 rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-          <span className="text-sm text-gray-600">检查生成就绪状态...</span>
-        </div>
-      </div>
-    );
-  }
-
+  if (loading) return <OperatorState title="检查生成就绪状态..." />;
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-red-700">就绪检查失败: {error}</span>
+      <OperatorState
+        title={`就绪检查失败: ${error}`}
+        tone="red"
+        action={
           <button
+            type="button"
             onClick={onRefreshReadiness}
-            className="text-xs text-red-600 hover:text-red-800 underline"
+            className={operatorButtonClass("secondary")}
           >
             重试
           </button>
-        </div>
-      </div>
+        }
+      />
     );
   }
-
   if (!readiness) {
     return (
-      <div className="bg-gray-50 rounded-lg p-4 mb-4">
-        <button
-          onClick={onRefreshReadiness}
-          className="text-sm text-blue-600 hover:text-blue-800"
-        >
-          检查生成就绪状态
-        </button>
-      </div>
+      <OperatorState
+        title="尚未检查生成就绪状态"
+        action={
+          <button
+            type="button"
+            onClick={onRefreshReadiness}
+            className={operatorButtonClass("secondary")}
+          >
+            开始检查
+          </button>
+        }
+      />
     );
   }
 
+  const failedChecks = readiness.checks.filter((check) => !check.passed);
+  const displayChecks = showAllChecks ? readiness.checks : failedChecks;
   const hasFixableIssues = readiness.checks.some(
-    (c) =>
-      !c.passed &&
-      [
-        "synopsis_present",
-        "main_conflict_present",
-        "setting_present",
-        "world_building_present",
-      ].includes(c.name),
+    (check) => !check.passed && fixableNames.has(check.name),
   );
 
-  const failedChecks = readiness.checks.filter((c) => !c.passed);
-  const displayChecks = showAllChecks ? readiness.checks : failedChecks;
-
   return (
-    <div
-      className={`rounded-lg p-4 mb-4 border ${
-        readiness.ready
-          ? "bg-green-50 border-green-200"
-          : readiness.can_proceed
-          ? "bg-yellow-50 border-yellow-200"
-          : "bg-red-50 border-red-200"
-      }`}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={`text-lg ${
-              readiness.ready
-                ? "text-green-600"
-                : readiness.can_proceed
-                ? "text-yellow-600"
-                : "text-red-600"
-            }`}
+    <div className="space-y-3">
+      <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-medium text-gray-950">
+              {readiness.summary}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <StatusPill tone={readiness.ready ? "green" : "amber"}>
+                通过 {readiness.passed_count}
+              </StatusPill>
+              <StatusPill tone={readiness.failed_count ? "red" : "gray"}>
+                失败 {readiness.failed_count}
+              </StatusPill>
+              {readiness.warnings.length ? (
+                <StatusPill tone="amber">
+                  警告 {readiness.warnings.length}
+                </StatusPill>
+              ) : null}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onRefreshReadiness}
+            className={operatorButtonClass("ghost")}
           >
-            {readiness.ready ? "✓" : readiness.can_proceed ? "!" : "✗"}
-          </span>
-          <span
-            className={`font-medium ${
-              readiness.ready
-                ? "text-green-800"
-                : readiness.can_proceed
-                ? "text-yellow-800"
-                : "text-red-800"
-            }`}
-          >
-            {readiness.summary}
-          </span>
+            刷新
+          </button>
         </div>
-        <button
-          onClick={onRefreshReadiness}
-          className="text-xs text-gray-500 hover:text-gray-700"
-          title="刷新检查"
-        >
-          刷新
-        </button>
       </div>
 
-      {/* Stats bar */}
-      <div className="flex items-center gap-4 text-xs text-gray-600 mb-3">
-        <span>通过: {readiness.passed_count}</span>
-        <span>失败: {readiness.failed_count}</span>
-        {readiness.critical_issues.length > 0 && (
-          <span className="text-red-600 font-medium">
-            严重问题: {readiness.critical_issues.length}
-          </span>
-        )}
-        {readiness.errors.length > 0 && (
-          <span className="text-orange-600">
-            错误: {readiness.errors.length}
-          </span>
-        )}
-        {readiness.warnings.length > 0 && (
-          <span className="text-yellow-600">
-            警告: {readiness.warnings.length}
-          </span>
-        )}
-      </div>
-
-      {/* Failed checks */}
-      {displayChecks.length > 0 && (
-        <div className="space-y-2 mb-3">
+      {displayChecks.length ? (
+        <div className="space-y-2">
           {displayChecks.map((check) => (
             <CheckItem key={check.name} check={check} />
           ))}
         </div>
+      ) : (
+        <OperatorState title="所有检查已通过" tone="green" />
       )}
 
-      {/* Toggle all checks */}
-      {readiness.passed_count > 0 && (
+      {readiness.passed_count > 0 ? (
         <button
-          onClick={() => setShowAllChecks(!showAllChecks)}
-          className="text-xs text-gray-500 hover:text-gray-700 mb-3"
+          type="button"
+          onClick={() => setShowAllChecks((value) => !value)}
+          className={operatorButtonClass("ghost")}
         >
-          {showAllChecks
-            ? "只显示失败项"
-            : `显示全部 ${readiness.checks.length} 项检查`}
+          {showAllChecks ? "只显示失败项" : `显示全部 ${readiness.checks.length} 项`}
         </button>
-      )}
+      ) : null}
 
-      {/* Quick fix section */}
-      {hasFixableIssues && !readiness.ready && (
-        <div className="border-t border-gray-200 pt-3 mt-3">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium text-gray-700">一键补齐</span>
-            <span className="text-xs text-gray-500">
-              自动填充缺失的 synopsis/conflict/setting/world_building
-            </span>
+      {hasFixableIssues && !readiness.ready ? (
+        <QuickFixBox
+          preview={quickFixPreview}
+          loading={quickFixLoading}
+          onPreview={async () => setQuickFixPreview(await onQuickFix(true))}
+          onCancel={() => setQuickFixPreview(null)}
+          onApply={async () => {
+            await onQuickFix(false);
+            setQuickFixPreview(null);
+            onRefreshReadiness();
+          }}
+        />
+      ) : null}
+
+      {!readiness.can_proceed ? (
+        <OperatorState
+          title="存在严重问题，无法继续生成剧集"
+          detail="请先修复 CRITICAL 项。"
+          tone="red"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function CheckItem({ check }: { check: ReadinessCheck }) {
+  return (
+    <div className="rounded-md border border-gray-200 bg-white p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-gray-900">{check.message}</div>
+          {!check.passed && check.suggestion ? (
+            <div className="mt-1 text-xs text-gray-500">{check.suggestion}</div>
+          ) : null}
+        </div>
+        <StatusPill tone={severityTone(check)}>{check.severity}</StatusPill>
+      </div>
+    </div>
+  );
+}
+
+function QuickFixBox({
+  preview,
+  loading,
+  onPreview,
+  onCancel,
+  onApply,
+}: {
+  preview: QuickFixResponse | null;
+  loading: boolean;
+  onPreview: () => Promise<void>;
+  onCancel: () => void;
+  onApply: () => Promise<void>;
+}) {
+  if (!preview) {
+    return (
+      <button
+        type="button"
+        onClick={() => void onPreview()}
+        disabled={loading}
+        className={operatorButtonClass("primary")}
+      >
+        {loading ? "生成中..." : "预览修复"}
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+      <div className="text-sm font-medium text-gray-950">
+        将修复 {preview.improvement.fixed_count} 项
+      </div>
+      <div className="mt-2 space-y-1 text-xs text-gray-600">
+        {preview.fixes_applied.slice(0, 4).map((fix, index) => (
+          <div key={index}>
+            {fix.field}: {fix.new_value.slice(0, 60)}
           </div>
-
-          {quickFixPreview ? (
-            <div className="bg-white rounded p-3 border mb-3">
-              <div className="text-sm font-medium text-gray-800 mb-2">
-                预览: 将修复 {quickFixPreview.improvement.fixed_count} 项
-              </div>
-              {quickFixPreview.fixes_applied.map((fix, i) => (
-                <div key={i} className="text-xs text-gray-600 mb-1">
-                  • {fix.field}: {fix.new_value.slice(0, 50)}...
-                </div>
-              ))}
-              {quickFixPreview.fixes_skipped.length > 0 && (
-                <div className="text-xs text-orange-600 mt-2">
-                  跳过 {quickFixPreview.fixes_skipped.length} 项:{" "}
-                  {quickFixPreview.fixes_skipped
-                    .map((s) => s.reason)
-                    .join(", ")}
-                </div>
-              )}
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleQuickFixApply}
-                  disabled={quickFixLoading}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                >
-                  {quickFixLoading ? "应用中..." : "确认应用"}
-                </button>
-                <button
-                  onClick={() => setQuickFixPreview(null)}
-                  className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={handleQuickFixPreview}
-              disabled={quickFixLoading}
-              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            >
-              {quickFixLoading ? "生成中..." : "预览修复"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Generation blocked warning */}
-      {!readiness.can_proceed && (
-        <div className="bg-red-100 border border-red-300 rounded p-2 mt-3">
-          <span className="text-sm text-red-800 font-medium">
-            存在严重问题，无法继续生成剧集。请先修复上述标记为 CRITICAL 的问题。
-          </span>
-        </div>
-      )}
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => void onApply()}
+          disabled={loading}
+          className={operatorButtonClass("primary")}
+        >
+          确认应用
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className={operatorButtonClass("secondary")}
+        >
+          取消
+        </button>
+      </div>
     </div>
   );
 }

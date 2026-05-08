@@ -5,62 +5,75 @@ import React from "react";
 /**
  * Hook 类型对应的样式配置
  */
-const HOOK_STYLES: Record<string, { bg: string; text: string; label: string }> =
-  {
+const HOOK_STYLES: Record<
+  string,
+  { bg: string; text: string; label: string; code: string }
+> = {
     hook: {
-      bg: "bg-orange-100 dark:bg-orange-900/30",
-      text: "text-orange-700 dark:text-orange-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "钩子",
+      code: "H",
     },
     reversal: {
-      bg: "bg-purple-100 dark:bg-purple-900/30",
-      text: "text-purple-700 dark:text-purple-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "反转",
+      code: "R",
     },
     payoff: {
-      bg: "bg-green-100 dark:bg-green-900/30",
-      text: "text-green-700 dark:text-green-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "爽点",
+      code: "P",
     },
     cliffhanger: {
-      bg: "bg-red-100 dark:bg-red-900/30",
-      text: "text-red-700 dark:text-red-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "卡点",
+      code: "C",
     },
     betrayal: {
-      bg: "bg-red-100 dark:bg-red-900/30",
-      text: "text-red-700 dark:text-red-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "背叛",
+      code: "B",
     },
     reveal: {
-      bg: "bg-blue-100 dark:bg-blue-900/30",
-      text: "text-blue-700 dark:text-blue-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "揭露",
+      code: "V",
     },
     revenge: {
-      bg: "bg-amber-100 dark:bg-amber-900/30",
-      text: "text-amber-700 dark:text-amber-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "复仇",
+      code: "X",
     },
     reunion: {
-      bg: "bg-pink-100 dark:bg-pink-900/30",
-      text: "text-pink-700 dark:text-pink-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "重逢",
+      code: "U",
     },
     threat: {
-      bg: "bg-gray-100 dark:bg-gray-900/30",
+      bg: "bg-gray-100 dark:bg-gray-800",
       text: "text-gray-700 dark:text-gray-300",
       label: "威胁",
+      code: "T",
     },
     taboo: {
-      bg: "bg-rose-100 dark:bg-rose-900/30",
-      text: "text-rose-700 dark:text-rose-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "禁忌",
+      code: "N",
     },
     "power-shift": {
-      bg: "bg-indigo-100 dark:bg-indigo-900/30",
-      text: "text-indigo-700 dark:text-indigo-300",
+      bg: "bg-gray-100 dark:bg-gray-800",
+      text: "text-gray-700 dark:text-gray-300",
       label: "权力转移",
+      code: "S",
     },
   };
 
@@ -68,6 +81,7 @@ const DEFAULT_STYLE = {
   bg: "bg-gray-100 dark:bg-gray-800",
   text: "text-gray-600 dark:text-gray-400",
   label: "标记",
+  code: "M",
 };
 
 interface HookTagBadgeProps {
@@ -117,42 +131,10 @@ export function HookTagBadge({
       onClick={onClick}
       title={`${style.label}${intensity ? ` (${intensity})` : ""}`}
     >
-      <HookIcon type={normalizedType} />
+      <span className="font-mono text-[10px]">{style.code}</span>
       {showLabel && <span>{style.label}</span>}
     </span>
   );
-}
-
-/**
- * Hook 类型图标
- */
-function HookIcon({ type }: { type: string }) {
-  switch (type) {
-    case "hook":
-      return <span>🪝</span>;
-    case "reversal":
-      return <span>🔄</span>;
-    case "payoff":
-      return <span>🎯</span>;
-    case "cliffhanger":
-      return <span>⏸️</span>;
-    case "betrayal":
-      return <span>🗡️</span>;
-    case "reveal":
-      return <span>👁️</span>;
-    case "revenge":
-      return <span>⚔️</span>;
-    case "reunion":
-      return <span>🤝</span>;
-    case "threat":
-      return <span>⚠️</span>;
-    case "taboo":
-      return <span>🚫</span>;
-    case "power-shift":
-      return <span>👑</span>;
-    default:
-      return <span>📌</span>;
-  }
 }
 
 export default HookTagBadge;

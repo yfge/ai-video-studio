@@ -85,7 +85,9 @@ export function HookPlanPanel({
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-2">
-          <span className="text-lg">🎬</span>
+          <span className="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            HK
+          </span>
           <span className="font-medium text-gray-900 dark:text-gray-100">
             Hook 计划
           </span>
@@ -107,25 +109,22 @@ export function HookPlanPanel({
               {hookPlan.opening_hook && (
                 <HookSection
                   title="开场钩子"
-                  icon="🪝"
+                  code="01"
                   content={hookPlan.opening_hook}
-                  color="orange"
                 />
               )}
               {hookPlan.escalation_plan && (
                 <HookSection
                   title="情绪升级"
-                  icon="📈"
+                  code="02"
                   content={hookPlan.escalation_plan}
-                  color="blue"
                 />
               )}
               {hookPlan.payoff_plan && (
                 <HookSection
                   title="爽点释放"
-                  icon="🎯"
+                  code="03"
                   content={hookPlan.payoff_plan}
-                  color="green"
                 />
               )}
             </div>
@@ -176,7 +175,7 @@ export function HookPlanPanel({
                     key={idx}
                     className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs"
                   >
-                    <span>⏸️</span>
+                    <span className="font-mono text-[10px]">停</span>
                     {cliff}
                   </span>
                 ))}
@@ -213,27 +212,19 @@ export function HookPlanPanel({
  */
 function HookSection({
   title,
-  icon,
+  code,
   content,
-  color,
 }: {
   title: string;
-  icon: string;
+  code: string;
   content: string;
-  color: "orange" | "blue" | "green";
 }) {
-  const colorClasses = {
-    orange:
-      "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800",
-    blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
-    green:
-      "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-  };
-
   return (
-    <div className={`rounded-lg border p-3 ${colorClasses[color]}`}>
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
       <div className="flex items-center gap-1.5 mb-1.5">
-        <span>{icon}</span>
+        <span className="font-mono text-[10px] text-gray-500 dark:text-gray-400">
+          {code}
+        </span>
         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
           {title}
         </span>

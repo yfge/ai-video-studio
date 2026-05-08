@@ -1,7 +1,13 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { Script } from "@/utils/api/types";
 import { formatDate } from "@/hooks/useScriptDetail";
+import {
+  OperatorPanel,
+  OperatorSectionHeader,
+  operatorButtonClass,
+} from "@/components/shared";
 
 interface ScriptHeaderProps {
   script: Script;
@@ -21,68 +27,66 @@ export function ScriptHeader({
   onNavigateToStoryboard,
 }: ScriptHeaderProps) {
   return (
-    <header className="rounded-2xl bg-white p-6 shadow">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="flex items-center gap-3 text-sm text-gray-500">
+    <OperatorPanel>
+      <OperatorSectionHeader
+        title="剧本资产"
+        subtitle={`剧本 #${script.id}`}
+        action={
+          <div className="flex gap-2">
             <button
+              type="button"
               onClick={onNavigateToEpisode}
-              className="text-blue-600 hover:text-blue-800"
+              className={operatorButtonClass("secondary")}
             >
               返回剧集
             </button>
-            <span>•</span>
-            <span>剧本 #{script.id}</span>
+            <button
+              type="button"
+              onClick={onNavigateToStoryboard}
+              className={operatorButtonClass("secondary")}
+            >
+              打开分镜
+            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className={operatorButtonClass("primary")}
+              >
+                导出剧本
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 z-10 mt-2 w-36 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
+                  {["txt", "pdf", "docx"].map((format) => (
+                    <button
+                      key={format}
+                      type="button"
+                      onClick={() => onExport(format)}
+                      className="block w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50"
+                    >
+                      导出 {format.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">
+        }
+      />
+      <div className="p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold text-gray-950">
             {script.title}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
+            </h1>
+            <p className="mt-1 text-xs text-gray-500">
             {script.format_type?.toUpperCase() || "剧本"} ·{" "}
             {script.language?.toUpperCase()} · 版本 {script.version || "1.0"}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onNavigateToStoryboard}
-            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-          >
-            打开分镜
-          </button>
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              导出剧本
-            </button>
-            {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-md border border-gray-100 bg-white shadow-lg">
-                <button
-                  onClick={() => onExport("txt")}
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  导出 TXT
-                </button>
-                <button
-                  onClick={() => onExport("pdf")}
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  导出 PDF
-                </button>
-                <button
-                  onClick={() => onExport("docx")}
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  导出 DOCX
-                </button>
-              </div>
-            )}
+            </p>
           </div>
         </div>
-      </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <InfoCard label="字数" value={script.word_count || 0} hint="字数统计" />
         <InfoCard
           label="字符数"
@@ -115,11 +119,12 @@ export function ScriptHeader({
           }
         />
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-4 text-sm text-gray-500 md:grid-cols-2">
-        <div>创建时间：{formatDate(script.created_at)}</div>
-        <div>更新时间：{formatDate(script.updated_at)}</div>
+        <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-gray-500 md:grid-cols-2">
+          <div>创建时间：{formatDate(script.created_at)}</div>
+          <div>更新时间：{formatDate(script.updated_at)}</div>
+        </div>
       </div>
-    </header>
+    </OperatorPanel>
   );
 }
 
@@ -130,7 +135,7 @@ function InfoCard({
   tone = "default",
 }: {
   label: string;
-  value: React.ReactNode;
+  value: ReactNode;
   hint?: string;
   tone?: "default" | "success" | "warning";
 }) {
@@ -139,13 +144,13 @@ function InfoCard({
       ? "border-green-200 bg-green-50 text-green-700"
       : tone === "warning"
       ? "border-yellow-200 bg-yellow-50 text-yellow-700"
-      : "border-gray-200 bg-white text-gray-900";
+      : "border-gray-200 bg-gray-50 text-gray-900";
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>
-      <div className="text-xs uppercase tracking-wide text-gray-500">
+    <div className={`rounded-md border p-3 ${toneClass}`}>
+      <div className="text-xs text-gray-500">
         {label}
       </div>
-      <div className="mt-2 text-lg font-semibold leading-6">{value}</div>
+      <div className="mt-1 text-sm font-semibold leading-6">{value}</div>
       {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
     </div>
   );

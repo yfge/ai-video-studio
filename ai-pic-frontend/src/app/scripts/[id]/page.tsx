@@ -9,6 +9,7 @@ import {
   ScriptScenesTab,
   ScriptTrafficTab,
 } from "@/components/features";
+import { OperatorShell, OperatorState, OperatorTabs } from "@/components/shared";
 import { useScriptDetail, TABS } from "@/hooks/useScriptDetail";
 import { episodeWorkspaceHref } from "@/utils/routes";
 
@@ -50,10 +51,7 @@ export default function ScriptDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">加载中...</p>
-        </div>
+        <OperatorState title="加载剧本..." />
       </div>
     );
   }
@@ -61,22 +59,29 @@ export default function ScriptDetailPage() {
   if (!script) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <div className="text-center">
-          <h2 className="mb-4 text-2xl font-bold text-gray-900">未找到剧本</h2>
+        <OperatorState
+          title="未找到剧本"
+          tone="red"
+          action={
           <button
             onClick={() => router.push("/stories")}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            className="text-xs font-medium text-red-700 underline"
           >
             返回故事列表
           </button>
-        </div>
+          }
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    <OperatorShell
+      title="剧本详情"
+      subtitle={script.title}
+      breadcrumb={["IP 中心", "剧本", script.title]}
+    >
+      <div className="space-y-4">
         <ScriptHeader
           script={script}
           showExportMenu={showExportMenu}
@@ -113,21 +118,11 @@ export default function ScriptDetailPage() {
           }
         />
 
-        <nav className="flex flex-wrap gap-2">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                activeTab === tab.id
-                  ? "border-blue-600 bg-blue-50 text-blue-700"
-                  : "border-gray-200 bg-white text-gray-600 hover:border-blue-200"
-              }`}
-            >
-              {tab.name}
-            </button>
-          ))}
-        </nav>
+        <OperatorTabs
+          tabs={TABS.map((tab) => ({ key: tab.id, label: tab.name }))}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
 
         {activeTab === "overview" && (
           <ScriptOverviewTab
@@ -161,6 +156,6 @@ export default function ScriptDetailPage() {
 
         {activeTab === "traffic" && <ScriptTrafficTab script={script} />}
       </div>
-    </div>
+    </OperatorShell>
   );
 }

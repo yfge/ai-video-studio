@@ -1,7 +1,12 @@
 "use client";
 
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
-import { Navigation } from "@/components/layouts";
+import {
+  OperatorPanel,
+  OperatorSectionHeader,
+  OperatorShell,
+  OperatorState,
+} from "@/components/shared";
 import type { Task as APITask } from "@/utils/api/types";
 
 import { TasksList } from "./TasksList";
@@ -81,12 +86,17 @@ export function TasksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">任务管理</h1>
+    <OperatorShell
+      title="任务"
+      subtitle="生成队列、失败重试和审计信息"
+      breadcrumb={["IP 中心", "任务"]}
+    >
+      <div className="space-y-4">
+        <OperatorPanel>
+          <OperatorSectionHeader
+            title="任务队列"
+            subtitle={`共 ${total} 个任务，当前第 ${page} / ${totalPages || 1} 页`}
+            action={
           <TasksToolbar
             poll={poll}
             onPollChange={setPoll}
@@ -97,15 +107,18 @@ export function TasksPage() {
               setPage(1);
             }}
           />
-        </div>
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">任务列表</h2>
-            {fetchError && (
-              <p className="mt-2 text-sm text-red-600">{fetchError}</p>
-            )}
-            {loading && <p className="mt-2 text-sm text-gray-500">加载中...</p>}
-          </div>
+            }
+          />
+          {fetchError ? (
+            <div className="p-4">
+              <OperatorState title={fetchError} tone="red" />
+            </div>
+          ) : null}
+          {loading ? (
+            <div className="p-4">
+              <OperatorState title="加载任务列表..." />
+            </div>
+          ) : null}
           <TasksList
             tasks={tasks}
             loading={loading}
@@ -129,8 +142,8 @@ export function TasksPage() {
               onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
             />
           ) : null}
-        </div>
-      </main>
-    </div>
+        </OperatorPanel>
+      </div>
+    </OperatorShell>
   );
 }

@@ -1,6 +1,11 @@
 "use client";
 
 import type { Task as APITask } from "@/utils/api/types";
+import {
+  StatusPill,
+  operatorButtonClass,
+  taskStatusTone,
+} from "@/components/shared";
 
 import { TASK_TYPE_LABELS } from "./taskTypeOptions";
 import { TaskDetails } from "./TaskDetails";
@@ -18,21 +23,6 @@ type TasksListProps = {
   deletingTaskId: number | null;
   onStart: (taskId: number) => void;
   onDelete: (taskId: number) => void;
-};
-
-const getStatusColor = (status: APITask["status"]) => {
-  switch (status) {
-    case "pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "processing":
-      return "bg-blue-100 text-blue-800";
-    case "completed":
-      return "bg-green-100 text-green-800";
-    case "failed":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
 };
 
 const getStatusText = (status: APITask["status"]) => {
@@ -75,33 +65,31 @@ export function TasksList({
   }
 
   return (
-    <div className="divide-y divide-gray-200">
+    <div className="divide-y divide-gray-100">
       {tasks.map((task) => (
-        <div key={task.id} className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                <h3 className="text-lg font-medium text-gray-900">
+        <div key={task.id} className="px-4 py-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 flex items-center gap-2">
+                <h3 className="truncate text-sm font-medium text-gray-950">
                   {task.title}
                 </h3>
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                    task.status,
-                  )}`}
-                >
+                <StatusPill tone={taskStatusTone(task.status)}>
                   {getStatusText(task.status)}
-                </span>
+                </StatusPill>
               </div>
               {task.progress_detail && (
-                <p className="text-sm text-gray-700 mb-2">
+                <p className="mb-2 text-xs text-gray-700">
                   进度：
                   <span className="text-gray-800">{task.progress_detail}</span>
                 </p>
               )}
               {task.prompt && (
-                <p className="text-gray-600 mb-3">{task.prompt}</p>
+                <p className="mb-3 line-clamp-2 text-xs text-gray-600">
+                  {task.prompt}
+                </p>
               )}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
                 <span>
                   创建时间：
                   {task.created_at
@@ -126,37 +114,15 @@ export function TasksList({
                 />
               ) : null}
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex shrink-0 items-center gap-2">
               {task.status === "processing" && (
-                <div className="flex items-center space-x-2">
-                  <svg
-                    className="animate-spin h-5 w-5 text-blue-600"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  <span className="text-blue-600">生成中...</span>
-                </div>
+                <span className="text-xs text-blue-700">生成中...</span>
               )}
               {task.status === "pending" && (
                 <button
                   onClick={() => onStart(task.id)}
                   disabled={isStartingId === task.id}
-                  className="text-blue-600 hover:text-blue-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={operatorButtonClass("primary")}
                 >
                   {isStartingId === task.id ? "启动中..." : "开始"}
                 </button>
@@ -164,13 +130,13 @@ export function TasksList({
               <button
                 onClick={() => onDelete(task.id)}
                 disabled={deletingTaskId === task.id}
-                className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className={operatorButtonClass("ghost", "text-red-700")}
               >
                 {deletingTaskId === task.id ? "删除中..." : "删除"}
               </button>
               <button
                 onClick={() => onToggleExpanded(task)}
-                className="text-gray-600 hover:text-gray-800 text-sm"
+                className={operatorButtonClass("secondary")}
               >
                 {expanded[task.id] ? "收起详情" : "详情"}
               </button>

@@ -6,7 +6,10 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { operatorButtonClass, operatorInputClass } from "./OperatorPrimitives";
 
-const navItems = [
+type OperatorNavItem = { href: string; label: string; mark: string };
+type OperatorShellMode = "production" | "admin";
+
+const productionNavItems: OperatorNavItem[] = [
   { href: "/", label: "工作台", mark: "W" },
   { href: "/virtual-ip", label: "IP 项目", mark: "I" },
   { href: "/stories", label: "故事生产", mark: "S" },
@@ -14,22 +17,43 @@ const navItems = [
   { href: "/tasks", label: "任务", mark: "T" },
 ];
 
+const adminNavItems: OperatorNavItem[] = [
+  { href: "/admin/users", label: "用户管理", mark: "U" },
+  { href: "/admin/stats", label: "统计数据", mark: "A" },
+  { href: "/admin/settings", label: "系统设置", mark: "C" },
+];
+
 export function OperatorShell({
   children,
   title,
   subtitle,
   breadcrumb,
+  mode = "production",
+  rightSlot,
+  userLabel,
+  onLogout,
 }: {
   children: ReactNode;
   title?: string;
   subtitle?: string;
   breadcrumb?: string[];
+  mode?: OperatorShellMode;
+  rightSlot?: ReactNode;
+  userLabel?: string;
+  onLogout?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [username, setUsername] = useState("operator");
+  const navItems = mode === "admin" ? adminNavItems : productionNavItems;
+  const shellTitle = mode === "admin" ? "管理控制台" : "短剧制作台";
+  const shellSubtitle = mode === "admin" ? "Admin Console" : "Operator Console";
 
   useEffect(() => {
+    if (userLabel) {
+      setUsername(userLabel);
+      return;
+    }
     const raw = localStorage.getItem("user_info");
     if (!raw) return;
     try {
@@ -38,9 +62,13 @@ export function OperatorShell({
     } catch {
       setUsername("operator");
     }
-  }, []);
+  }, [userLabel]);
 
   const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+      return;
+    }
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user_info");
     router.push("/login");
@@ -54,8 +82,8 @@ export function OperatorShell({
             AI
           </div>
           <div className="ml-3">
-            <div className="text-sm font-semibold">短剧制作台</div>
-            <div className="text-xs text-gray-500">Operator Console</div>
+            <div className="text-sm font-semibold">{shellTitle}</div>
+            <div className="text-xs text-gray-500">{shellSubtitle}</div>
           </div>
         </div>
         <nav className="space-y-1 px-3 py-4">
@@ -89,15 +117,21 @@ export function OperatorShell({
             </div>
             {title || subtitle ? (
               <div className="truncate text-xs text-gray-500">
-                {breadcrumb?.length && title ? `${title} · ` : ""}
-                {subtitle || ""}
+              {breadcrumb?.length && title ? `${title} · ` : ""}
+              {subtitle || ""}
               </div>
             ) : null}
           </div>
           <div className="flex items-center gap-3">
-            <div className={operatorInputClass("hidden w-44 text-gray-500 md:block lg:w-56")}>
-              搜索 IP、故事、剧集
-            </div>
+            {rightSlot || (
+              <div
+                className={operatorInputClass(
+                  "hidden w-44 text-gray-500 md:block lg:w-56",
+                )}
+              >
+                {mode === "admin" ? "搜索用户、权限、审计" : "搜索 IP、故事、剧集"}
+              </div>
+            )}
             <span className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600">
               {username}
             </span>

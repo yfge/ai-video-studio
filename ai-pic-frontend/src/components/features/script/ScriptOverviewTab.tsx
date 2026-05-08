@@ -8,6 +8,7 @@ import type {
 } from "@/hooks/useScriptDetail";
 import { toSceneNumber } from "@/hooks/useScriptDetail";
 import { formatText } from "@/components/features/StoryboardFrameCard";
+import { OperatorPanel, OperatorSectionHeader } from "@/components/shared";
 
 interface ScriptOverviewTabProps {
   script: Script;
@@ -24,10 +25,10 @@ export function ScriptOverviewTab({
 }: ScriptOverviewTabProps) {
   return (
     <Section title="剧本概览" description="剧本内容与核心要素速览">
-      <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-2">
         <div>
           <h3 className="text-sm font-semibold text-gray-700">剧本文本节选</h3>
-          <div className="mt-2 max-h-72 overflow-auto rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-700">
+          <div className="mt-2 max-h-72 overflow-auto rounded-md border border-gray-200 bg-gray-50 p-3 text-xs leading-6 text-gray-700">
             {(script.content || "暂无内容")
               .split("\n")
               .slice(0, 120)
@@ -50,7 +51,7 @@ export function ScriptOverviewTab({
               {scenes.slice(0, 6).map((scene, idx) => (
                 <div
                   key={idx}
-                  className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-700"
+                  className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium">
@@ -70,7 +71,7 @@ export function ScriptOverviewTab({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                 对白
               </h4>
@@ -85,7 +86,7 @@ export function ScriptOverviewTab({
                 </p>
               ))}
             </div>
-            <div className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                 舞台指令
               </h4>
@@ -117,12 +118,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-        {description && <p className="text-sm text-gray-500">{description}</p>}
-      </div>
-      <div className="rounded-xl bg-white shadow">{children}</div>
-    </section>
+    <OperatorPanel>
+      <OperatorSectionHeader title={title} subtitle={description} />
+      {children}
+    </OperatorPanel>
   );
 }

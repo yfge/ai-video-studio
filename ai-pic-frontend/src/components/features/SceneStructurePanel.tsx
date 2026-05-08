@@ -1,8 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { storyStructureAPI } from "@/utils/api/endpoints";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
+import {
+  OperatorPanel,
+  OperatorSectionHeader,
+  OperatorState,
+  operatorButtonClass,
+} from "@/components/shared";
 
 export type SceneNode = {
   id: number;
@@ -28,6 +34,35 @@ type ShotNode = {
   scene_beat_id?: number;
 };
 
+type StructureApi = {
+  getNormalizedScenes: (scriptId: number) => Promise<ApiResult<SceneNode[]>>;
+  getNormalizedSceneBeats: (sceneId: number) => Promise<ApiResult<BeatNode[]>>;
+  getNormalizedSceneShots: (sceneId: number) => Promise<ApiResult<ShotNode[]>>;
+  createScene: (
+    scriptId: number,
+    payload: { script_id: number; scene_number: string; slug_line: string; status?: string },
+  ) => Promise<ApiResult<unknown>>;
+  createSceneBeat: (
+    sceneId: number,
+    payload: { scene_id: number; order_index: number; beat_summary?: string },
+  ) => Promise<ApiResult<unknown>>;
+  createSceneShot: (
+    sceneId: number,
+    payload: { scene_id: number; shot_number: string; scene_beat_id?: number; shot_type?: string },
+  ) => Promise<ApiResult<unknown>>;
+  updateSceneBeat: (beatId: number, payload: Partial<{ order_index: number }>) => Promise<ApiResult<unknown>>;
+  updateSceneShot: (shotId: number, payload: Partial<{ shot_number: string }>) => Promise<ApiResult<unknown>>;
+  deleteSceneBeat: (beatId: number) => Promise<ApiResult<unknown>>;
+  deleteSceneShot: (shotId: number) => Promise<ApiResult<unknown>>;
+};
+
+type ApiResult<T> = {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+};
+
 export function SceneStructurePanel({
   scriptId,
   canEdit,
@@ -37,76 +72,10 @@ export function SceneStructurePanel({
   scriptId: number;
   canEdit: boolean;
   onStructureLoaded?: (scenes: SceneNode[]) => void;
-  apiOverride?: {
-    getNormalizedScenes: (scriptId: number) => Promise<{
-      success: boolean;
-      data?: SceneNode[];
-      message?: string;
-      error?: string;
-    }>;
-    getNormalizedSceneBeats: (sceneId: number) => Promise<{
-      success: boolean;
-      data?: BeatNode[];
-      message?: string;
-      error?: string;
-    }>;
-    getNormalizedSceneShots: (sceneId: number) => Promise<{
-      success: boolean;
-      data?: ShotNode[];
-      message?: string;
-      error?: string;
-    }>;
-    createScene: (
-      scriptId: number,
-      payload: {
-        script_id: number;
-        scene_number: string;
-        slug_line: string;
-        status?: string;
-      },
-    ) => Promise<{ success: boolean; message?: string }>;
-    createSceneBeat: (
-      sceneId: number,
-      payload: { scene_id: number; order_index: number; beat_summary?: string },
-    ) => Promise<{ success: boolean; message?: string }>;
-    createSceneShot: (
-      sceneId: number,
-      payload: {
-        scene_id: number;
-        shot_number: string;
-        scene_beat_id?: number;
-        shot_type?: string;
-      },
-    ) => Promise<{ success: boolean; message?: string }>;
-    updateSceneBeat: (
-      beatId: number,
-      payload: Partial<{ order_index: number }>,
-    ) => Promise<{ success: boolean; message?: string }>;
-    updateSceneShot: (
-      shotId: number,
-      payload: Partial<{ shot_number: string }>,
-    ) => Promise<{ success: boolean; message?: string }>;
-    deleteSceneBeat: (
-      beatId: number,
-    ) => Promise<{ success: boolean; message?: string }>;
-    deleteSceneShot: (
-      shotId: number,
-    ) => Promise<{ success: boolean; message?: string }>;
-  };
+  apiOverride?: StructureApi;
 }) {
   const { showAlert } = useAlertModal();
-  const client = apiOverride ?? {
-    getNormalizedScenes: storyStructureAPI.getNormalizedScenes,
-    getNormalizedSceneBeats: storyStructureAPI.getNormalizedSceneBeats,
-    getNormalizedSceneShots: storyStructureAPI.getNormalizedSceneShots,
-    createScene: storyStructureAPI.createScene,
-    createSceneBeat: storyStructureAPI.createSceneBeat,
-    createSceneShot: storyStructureAPI.createSceneShot,
-    updateSceneBeat: storyStructureAPI.updateSceneBeat,
-    updateSceneShot: storyStructureAPI.updateSceneShot,
-    deleteSceneBeat: storyStructureAPI.deleteSceneBeat,
-    deleteSceneShot: storyStructureAPI.deleteSceneShot,
-  };
+  const client: StructureApi = (apiOverride ?? storyStructureAPI) as StructureApi;
   const [scenes, setScenes] = useState<SceneNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,28 +84,27 @@ export function SceneStructurePanel({
     setLoading(true);
     setError(null);
     try {
-      const resScenes = await client.getNormalizedScenes(scriptId);
-      if (!resScenes.success || !resScenes.data) {
-        const msg = resScenes.message || resScenes.error || "加载场景失败";
-        setError(msg);
-        showAlert({ message: msg, variant: "error" });
-        return;
+      const sceneRes = await client.getNormalizedScenes(scriptId);
+      if (!sceneRes.success || !sceneRes.data) {
+        throw new Error(sceneRes.message || sceneRes.error || "加载场景失败");
       }
-      const fetched = await Promise.all(
-        resScenes.data.map(async (scene) => {
-          const beatsRes = await client.getNormalizedSceneBeats(scene.id);
-          const shotsRes = await client.getNormalizedSceneShots(scene.id);
+      const hydrated = await Promise.all(
+        sceneRes.data.map(async (scene) => {
+          const [beatsRes, shotsRes] = await Promise.all([
+            client.getNormalizedSceneBeats(scene.id),
+            client.getNormalizedSceneShots(scene.id),
+          ]);
           return {
             ...scene,
             beats: beatsRes.data || [],
             shots: shotsRes.data || [],
-          } as SceneNode;
+          };
         }),
       );
-      setScenes(fetched);
-      onStructureLoaded?.(fetched);
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "加载结构失败";
+      setScenes(hydrated);
+      onStructureLoaded?.(hydrated);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "加载结构失败";
       setError(message);
       showAlert({ message, variant: "error" });
     } finally {
@@ -145,399 +113,132 @@ export function SceneStructurePanel({
   };
 
   useEffect(() => {
-    loadStructure();
+    void loadStructure();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptId]);
 
-  const handleAddScene = async () => {
+  const addScene = async () => {
     if (!canEdit) {
-      showAlert({
-        message: "当前为只读模式，需管理员权限",
-        variant: "warning",
-      });
+      showAlert({ message: "当前为只读模式，需管理员权限", variant: "warning" });
       return;
     }
-    const sceneNo = (scenes.length + 1).toString();
-    try {
-      const res = await client.createScene(scriptId, {
-        script_id: scriptId,
-        scene_number: sceneNo,
-        slug_line: `SCENE ${sceneNo}`,
-        status: "draft",
-      });
-      if (res.success) {
-        showAlert({ message: `已创建场景 ${sceneNo}`, variant: "success" });
-        await loadStructure();
-      } else {
-        const message = res.message || "创建场景失败";
-        setError(message);
-        showAlert({ message, variant: "error" });
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "创建场景失败";
-      setError(message);
-      showAlert({ message, variant: "error" });
-    }
+    const sceneNo = String(scenes.length + 1);
+    const res = await client.createScene(scriptId, {
+      script_id: scriptId,
+      scene_number: sceneNo,
+      slug_line: `SCENE ${sceneNo}`,
+      status: "draft",
+    });
+    if (!res.success) setError(res.message || "创建场景失败");
+    await loadStructure();
   };
 
-  const handleAddBeat = async (sceneId: number, currentBeats: BeatNode[]) => {
-    if (!canEdit) {
-      showAlert({
-        message: "当前为只读模式，需管理员权限",
-        variant: "warning",
-      });
-      return;
-    }
-    const order = (currentBeats.length || 0) + 1;
-    try {
-      const res = await client.createSceneBeat(sceneId, {
-        scene_id: sceneId,
-        order_index: order,
-        beat_summary: `节拍 ${order}`,
-      });
-      if (res.success) {
-        showAlert({ message: `已新增节拍 #${order}`, variant: "success" });
-        await loadStructure();
-      } else {
-        const message = res.message || "创建节拍失败";
-        setError(message);
-        showAlert({ message, variant: "error" });
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "创建节拍失败";
-      setError(message);
-      showAlert({ message, variant: "error" });
-    }
+  const addBeat = async (scene: SceneNode) => {
+    if (!canEdit) return;
+    const order = scene.beats.length + 1;
+    await client.createSceneBeat(scene.id, {
+      scene_id: scene.id,
+      order_index: order,
+      beat_summary: `节拍 ${order}`,
+    });
+    await loadStructure();
   };
 
-  const handleAddShot = async (
-    sceneId: number,
-    beats: BeatNode[],
-    shots: ShotNode[],
-  ) => {
-    if (!canEdit) {
-      showAlert({
-        message: "当前为只读模式，需管理员权限",
-        variant: "warning",
-      });
-      return;
-    }
-    const shotNo = `${shots.length + 1}`;
-    try {
-      const res = await client.createSceneShot(sceneId, {
-        scene_id: sceneId,
-        shot_number: shotNo,
-        scene_beat_id: beats[0]?.id,
-        shot_type: "WS",
-      });
-      if (res.success) {
-        showAlert({ message: `已新增镜头 ${shotNo}`, variant: "success" });
-        await loadStructure();
-      } else {
-        const message = res.message || "创建镜头失败";
-        setError(message);
-        showAlert({ message, variant: "error" });
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "创建镜头失败";
-      setError(message);
-      showAlert({ message, variant: "error" });
-    }
-  };
-
-  const moveBeat = async (
-    sceneId: number,
-    beat: BeatNode,
-    direction: -1 | 1,
-  ) => {
-    if (!canEdit) {
-      showAlert({
-        message: "当前为只读模式，需管理员权限",
-        variant: "warning",
-      });
-      return;
-    }
-    const beats = scenes.find((s) => s.id === sceneId)?.beats || [];
-    const idx = beats.findIndex((b) => b.id === beat.id);
-    const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= beats.length) return;
-    const targetBeat = beats[targetIdx];
-    try {
-      await client.updateSceneBeat(beat.id, {
-        order_index: targetBeat.order_index,
-      });
-      await client.updateSceneBeat(targetBeat.id, {
-        order_index: beat.order_index,
-      });
-      await loadStructure();
-      showAlert({ message: "节拍顺序已调整", variant: "success" });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "节拍顺序调整失败";
-      setError(message);
-      showAlert({ message, variant: "error" });
-    }
-  };
-
-  const moveShot = async (
-    sceneId: number,
-    shot: ShotNode,
-    direction: -1 | 1,
-  ) => {
-    if (!canEdit) {
-      showAlert({
-        message: "当前为只读模式，需管理员权限",
-        variant: "warning",
-      });
-      return;
-    }
-    const shots = scenes.find((s) => s.id === sceneId)?.shots || [];
-    const idx = shots.findIndex((sh) => sh.id === shot.id);
-    const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= shots.length) return;
-    const targetShot = shots[targetIdx];
-    try {
-      await client.updateSceneShot(shot.id, {
-        shot_number: targetShot.shot_number,
-      });
-      await client.updateSceneShot(targetShot.id, {
-        shot_number: shot.shot_number,
-      });
-      await loadStructure();
-      showAlert({ message: "镜头顺序已调整", variant: "success" });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "镜头顺序调整失败";
-      setError(message);
-      showAlert({ message, variant: "error" });
-    }
-  };
-
-  const deleteBeat = async (beatId: number) => {
-    if (!canEdit) {
-      showAlert({
-        message: "当前为只读模式，需管理员权限",
-        variant: "warning",
-      });
-      return;
-    }
-    try {
-      const res = await client.deleteSceneBeat(beatId);
-      if (res.success) {
-        await loadStructure();
-        showAlert({ message: "节拍已删除", variant: "success" });
-      } else {
-        const message = res.message || "删除节拍失败";
-        setError(message);
-        showAlert({ message, variant: "error" });
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "删除节拍失败";
-      setError(message);
-      showAlert({ message, variant: "error" });
-    }
-  };
-
-  const deleteShot = async (shotId: number) => {
-    if (!canEdit) {
-      showAlert({
-        message: "当前为只读模式，需管理员权限",
-        variant: "warning",
-      });
-      return;
-    }
-    try {
-      const res = await client.deleteSceneShot(shotId);
-      if (res.success) {
-        await loadStructure();
-        showAlert({ message: "镜头已删除", variant: "success" });
-      } else {
-        const message = res.message || "删除镜头失败";
-        setError(message);
-        showAlert({ message, variant: "error" });
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "删除镜头失败";
-      setError(message);
-      showAlert({ message, variant: "error" });
-    }
+  const addShot = async (scene: SceneNode) => {
+    if (!canEdit) return;
+    await client.createSceneShot(scene.id, {
+      scene_id: scene.id,
+      shot_number: String(scene.shots.length + 1),
+      scene_beat_id: scene.beats[0]?.id,
+      shot_type: "WS",
+    });
+    await loadStructure();
   };
 
   return (
-    <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-800">
-            结构化场景 / 镜头
-          </h3>
-          <p className="text-xs text-gray-500">
-            同步 `story_step_outlines` / `scenes` / `beats` / `shots`
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {!canEdit && (
-            <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">
-              只读 · 需管理员权限
-            </span>
-          )}
-          <button
-            onClick={loadStructure}
-            className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-gray-300"
-            disabled={loading}
-          >
-            刷新
-          </button>
-          {canEdit && (
+    <OperatorPanel>
+      <OperatorSectionHeader
+        title="结构化场景 / 镜头"
+        subtitle="同步 scenes / beats / shots"
+        action={
+          <div className="flex gap-2">
+            {!canEdit ? (
+              <span className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-500">
+                只读 · 需管理员权限
+              </span>
+            ) : null}
             <button
-              onClick={handleAddScene}
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+              type="button"
+              onClick={() => void loadStructure()}
               disabled={loading}
+              className={operatorButtonClass("secondary")}
             >
-              新增场景
+              刷新
             </button>
-          )}
-        </div>
-      </div>
-      {error && (
-        <div className="rounded bg-red-50 p-2 text-xs text-red-700">
-          {error}
-        </div>
-      )}
-      {loading && <div className="text-sm text-gray-500">加载结构中...</div>}
-      <div className="space-y-3">
-        {scenes.length === 0 && !loading && (
-          <p className="text-sm text-gray-500">暂无结构化场景。</p>
-        )}
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() => void addScene()}
+                disabled={loading}
+                className={operatorButtonClass("primary")}
+              >
+                新增场景
+              </button>
+            ) : null}
+          </div>
+        }
+      />
+      <div className="space-y-3 p-4">
+        {error ? <OperatorState title={error} tone="red" /> : null}
+        {loading ? <OperatorState title="加载结构中..." /> : null}
+        {!loading && scenes.length === 0 ? <OperatorState title="暂无结构化场景。" /> : null}
         {scenes.map((scene) => (
-          <div
-            key={scene.id}
-            className="rounded-lg border border-gray-100 bg-gray-50 p-3"
-          >
-            <div className="flex items-center justify-between text-sm text-gray-800">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold">场景 {scene.scene_number}</span>
-                {scene.slug_line && (
-                  <span className="text-gray-500">{scene.slug_line}</span>
-                )}
-                {scene.location && (
-                  <span className="text-gray-500">地点: {scene.location}</span>
-                )}
-                {scene.time_of_day && (
-                  <span className="text-gray-500">
-                    时间: {scene.time_of_day}
-                  </span>
-                )}
+          <div key={scene.id} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium text-gray-950">
+                  场景 {scene.scene_number} · {scene.slug_line || "未命名"}
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  {scene.location || "未设地点"} · {scene.time_of_day || "未设时间"}
+                </div>
               </div>
+              {canEdit ? (
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => void addBeat(scene)} className={operatorButtonClass("secondary")}>
+                    + 节拍
+                  </button>
+                  <button type="button" onClick={() => void addShot(scene)} className={operatorButtonClass("secondary")}>
+                    + 镜头
+                  </button>
+                </div>
+              ) : null}
             </div>
-            <div className="mt-2 grid gap-3 md:grid-cols-2">
-              <div className="rounded border border-gray-200 bg-white p-2">
-                <div className="mb-2 flex items-center justify-between text-xs font-semibold text-gray-600">
-                  <span>节拍 ({scene.beats.length})</span>
-                  {canEdit && (
-                    <button
-                      onClick={() => handleAddBeat(scene.id, scene.beats)}
-                      className="rounded bg-blue-50 px-2 py-1 text-[11px] text-blue-700 hover:bg-blue-100"
-                    >
-                      + 节拍
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-1 text-xs text-gray-700">
-                  {scene.beats.map((beat) => (
-                    <div
-                      key={beat.id}
-                      className="flex items-center justify-between rounded border border-gray-100 bg-gray-50 px-2 py-1"
-                    >
-                      <div>
-                        <span className="font-semibold">
-                          #{beat.order_index}
-                        </span>{" "}
-                        {beat.beat_summary || "—"}
-                      </div>
-                      {canEdit && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            className="text-gray-400 hover:text-gray-700"
-                            onClick={() => moveBeat(scene.id, beat, -1)}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            className="text-gray-400 hover:text-gray-700"
-                            onClick={() => moveBeat(scene.id, beat, 1)}
-                          >
-                            ↓
-                          </button>
-                          <button
-                            className="text-red-500 hover:text-red-700"
-                            onClick={() => deleteBeat(beat.id)}
-                          >
-                            删
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded border border-gray-200 bg-white p-2">
-                <div className="mb-2 flex items-center justify-between text-xs font-semibold text-gray-600">
-                  <span>镜头 ({scene.shots.length})</span>
-                  {canEdit && (
-                    <button
-                      onClick={() =>
-                        handleAddShot(scene.id, scene.beats, scene.shots)
-                      }
-                      className="rounded bg-blue-50 px-2 py-1 text-[11px] text-blue-700 hover:bg-blue-100"
-                    >
-                      + 镜头
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-1 text-xs text-gray-700">
-                  {scene.shots.map((shot) => (
-                    <div
-                      key={shot.id}
-                      className="flex items-center justify-between rounded border border-gray-100 bg-gray-50 px-2 py-1"
-                    >
-                      <div>
-                        <span className="font-semibold">
-                          {shot.shot_number}
-                        </span>{" "}
-                        {shot.shot_type || "—"}
-                        {shot.scene_beat_id && (
-                          <span className="ml-2 text-gray-400">
-                            节拍: {shot.scene_beat_id}
-                          </span>
-                        )}
-                      </div>
-                      {canEdit && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            className="text-gray-400 hover:text-gray-700"
-                            onClick={() => moveShot(scene.id, shot, -1)}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            className="text-gray-400 hover:text-gray-700"
-                            onClick={() => moveShot(scene.id, shot, 1)}
-                          >
-                            ↓
-                          </button>
-                          <button
-                            className="text-red-500 hover:text-red-700"
-                            onClick={() => deleteShot(shot.id)}
-                          >
-                            删
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <NodeList title={`节拍 (${scene.beats.length})`} items={scene.beats.map((beat) => `#${beat.order_index} ${beat.beat_summary || ""}`)} />
+              <NodeList title={`镜头 (${scene.shots.length})`} items={scene.shots.map((shot) => `${shot.shot_number} ${shot.shot_type || ""}`)} />
             </div>
           </div>
         ))}
+      </div>
+    </OperatorPanel>
+  );
+}
+
+function NodeList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-md border border-gray-200 bg-white p-2">
+      <div className="mb-2 text-xs font-medium text-gray-600">{title}</div>
+      <div className="space-y-1">
+        {items.length ? (
+          items.map((item, index) => (
+            <div key={index} className="rounded border border-gray-100 bg-gray-50 px-2 py-1 text-xs text-gray-700">
+              {item || "-"}
+            </div>
+          ))
+        ) : (
+          <div className="text-xs text-gray-400">暂无数据</div>
+        )}
       </div>
     </div>
   );

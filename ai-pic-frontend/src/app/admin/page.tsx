@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { OperatorState } from "@/components/shared";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -12,8 +13,8 @@ export default function AdminPage() {
   }, [router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    <div className="flex min-h-screen items-center justify-center bg-[#f5f6f8]">
+      <OperatorState title="进入管理控制台..." />
     </div>
   );
 }

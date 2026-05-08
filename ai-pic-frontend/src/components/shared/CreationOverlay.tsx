@@ -28,7 +28,7 @@ export function CreationOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/45 px-4">
       <div
-        className={`relative w-full ${widthClassName} rounded-lg border border-gray-200 bg-white shadow-xl`}
+        className={`relative w-full ${widthClassName} rounded-lg border border-gray-200 bg-white shadow-lg`}
       >
         <div className="flex items-start gap-3 border-b border-gray-200 px-5 py-4">
           {icon ? (

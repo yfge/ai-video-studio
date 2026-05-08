@@ -37,6 +37,7 @@ def parse_args() -> argparse.Namespace:
         "--environment-id", default=os.getenv("HARNESS_ENVIRONMENT_ID", "1")
     )
     parser.add_argument("--episode-id", default=os.getenv("HARNESS_EPISODE_ID", "124"))
+    parser.add_argument("--script-id", default=os.getenv("HARNESS_SCRIPT_ID", "1"))
     parser.add_argument(
         "--chrome-debug-url",
         default=os.getenv("HARNESS_CHROME_DEBUG_URL", "http://127.0.0.1:9222"),
@@ -55,6 +56,7 @@ def scenario_url(args: argparse.Namespace) -> str:
         virtual_ip_id=args.virtual_ip_id,
         environment_id=args.environment_id,
         episode_id=args.episode_id,
+        script_id=args.script_id,
     )
     return f"{args.base_url.rstrip('/')}{path}"
 
