@@ -59,9 +59,9 @@ export function EnvironmentDetailActions({
 export function EnvironmentMigrationNotice() {
   return (
     <OperatorState
-      tone="amber"
-      title="环境资产迁移中"
-      detail="环境资产暂未完全迁移到 IP 生产链路；当前页面继续作为环境图片、生成参数和任务状态的工作区。"
+      tone="blue"
+      title="环境已接入 IP 中心"
+      detail="环境可作为 IP 资产池的一部分，并在剧集 Timeline 中绑定到具体场景。"
     />
   );
 }
@@ -98,22 +98,27 @@ export function EnvironmentAuditPanels({
 }
 
 export function EnvironmentReadinessPanel({
+  env,
   imageCount,
   onBack,
 }: {
+  env: Environment;
   imageCount: number;
   onBack: () => void;
 }) {
+  const linkedCount = env.linked_virtual_ip_count || 0;
   return (
     <OperatorPanel>
       <OperatorSectionHeader
-        title="迁移与生成状态"
-        subtitle="详情、图片池和生成任务保持现有业务逻辑"
+        title="关联与生成状态"
+        subtitle="IP 关联、图片池和生成任务"
       />
       <div className="space-y-4 p-4">
         <div className="flex items-center justify-between gap-3 text-xs">
-          <span className="text-gray-500">IP 生产链路</span>
-          <StatusPill tone="amber">迁移中</StatusPill>
+          <span className="text-gray-500">IP 关联</span>
+          <StatusPill tone={linkedCount > 0 ? "green" : "amber"}>
+            {linkedCount > 0 ? `${linkedCount} 个 IP` : "未关联"}
+          </StatusPill>
         </div>
         <div className="flex items-center justify-between gap-3 text-xs">
           <span className="text-gray-500">环境图片</span>

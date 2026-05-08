@@ -112,7 +112,7 @@ async def update_scene(
     db: Session = Depends(get_db),
 ):
     try:
-        obj = svc.update_scene(db, scene_id, body.model_dump(exclude_none=True))
+        obj = svc.update_scene(db, scene_id, body.model_dump(exclude_unset=True))
     except ValueError as exc:
         if str(exc) == "environment_not_found":
             raise HTTPException(status_code=404, detail="environment not found")
@@ -133,7 +133,7 @@ async def update_scene_by_business_id(
     if not scene:
         raise HTTPException(status_code=404, detail="scene not found")
     try:
-        obj = svc.update_scene(db, scene.id, body.model_dump(exclude_none=True))
+        obj = svc.update_scene(db, scene.id, body.model_dump(exclude_unset=True))
     except ValueError as exc:
         if str(exc) == "environment_not_found":
             raise HTTPException(status_code=404, detail="environment not found")

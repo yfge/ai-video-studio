@@ -1989,7 +1989,7 @@ export default function StoryboardEditor() {
                 <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-sm font-medium text-gray-800">
-                      场景属性（实验）
+                      场景环境
                     </div>
                     {envLoading && (<span className="text-xs text-gray-500">
                         环境加载中...
@@ -1998,7 +1998,7 @@ export default function StoryboardEditor() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
                     <div>
                       <label className="block text-xs text-gray-700 mb-1">
-                        绑定环境
+                        绑定场景环境
                       </label>
                       <div className="flex items-center gap-2">
                         <select value={selectedEnvId !== null && selectedEnvId !== void 0 ? selectedEnvId : ""} onChange={(e) => setSelectedEnvId(e.target.value ? Number(e.target.value) : null)} className="px-2 py-1 border rounded text-sm min-w-[200px]">

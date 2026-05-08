@@ -3,7 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, List, Optional
 
-from app.schemas.user import UserSummary
+from app.schemas.environment_assets import (
+    EnvironmentCreate,
+    EnvironmentImageResponse,
+    EnvironmentImagesResponse,
+    EnvironmentResponse,
+    EnvironmentSummaryResponse,
+    EnvironmentUpdate,
+    LinkedVirtualIPSummary,
+)
 from pydantic import BaseModel, Field
 
 
@@ -238,62 +246,6 @@ class ShotUpdate(BaseModel):
     audio_notes: Optional[str] = None
     status: Optional[str] = None
     metadata: Optional[dict[str, Any]] = None
-
-
-class EnvironmentCreate(BaseModel):
-    name: str
-    category: Optional[str] = None  # indoor/outdoor/custom
-    tags: Optional[list[str]] = None
-    description: Optional[str] = None
-    reference_images: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
-
-
-class EnvironmentUpdate(BaseModel):
-    name: Optional[str] = None
-    category: Optional[str] = None
-    tags: Optional[list[str]] = None
-    description: Optional[str] = None
-    reference_images: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
-
-
-class EnvironmentResponse(ORMModel):
-    id: int
-    business_id: str
-    name: str
-    category: Optional[str]
-    tags: Optional[list[str]]
-    description: Optional[str]
-    reference_images: Optional[list[str]]
-    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
-    creator: Optional[UserSummary] = Field(None, validation_alias="owner")
-    created_at: datetime
-    updated_at: datetime
-
-
-class EnvironmentSummaryResponse(ORMModel):
-    """Environment list DTO: excludes heavyweight reference_images."""
-
-    id: int
-    business_id: str
-    name: str
-    category: Optional[str]
-    tags: Optional[list[str]]
-    description: Optional[str]
-    metadata: Optional[dict[str, Any]] = Field(None, validation_alias="extra_metadata")
-    creator: Optional[UserSummary] = Field(None, validation_alias="owner")
-    created_at: datetime
-    updated_at: datetime
-
-
-class EnvironmentImageResponse(BaseModel):
-    url: str
-
-
-class EnvironmentImagesResponse(BaseModel):
-    images: list[EnvironmentImageResponse] = Field(default_factory=list)
-    count: int = 0
 
 
 class SceneWithChildren(SceneResponse):

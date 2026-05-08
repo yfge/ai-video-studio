@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 type Tone = "neutral" | "blue" | "green" | "amber" | "red";
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
@@ -36,15 +36,24 @@ export const operatorInputClass = (className?: string) =>
     className,
   );
 
+export const operatorTextareaClass = (className?: string) =>
+  join(
+    "min-h-20 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800",
+    "placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100",
+    "disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400",
+    className,
+  );
+
 export function OperatorPanel({
   children,
   className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+  ...props
+}: ComponentPropsWithoutRef<"section">) {
   return (
-    <section className={join("rounded-lg border border-gray-200 bg-white", className)}>
+    <section
+      {...props}
+      className={join("rounded-lg border border-gray-200 bg-white", className)}
+    >
       {children}
     </section>
   );
@@ -112,3 +121,5 @@ export const operatorTableHeadClass =
   "bg-gray-50 text-xs font-medium text-gray-500";
 export const operatorTableRowClass =
   "bg-white transition-colors hover:bg-blue-50/40";
+
+export { join as operatorClassNames };

@@ -4,6 +4,7 @@ import {
   OperatorPanel,
   OperatorSectionHeader,
   OperatorState,
+  StatusPill,
   operatorButtonClass,
 } from "@/components/shared";
 import type { Environment } from "@/utils/api/types";
@@ -28,7 +29,7 @@ export function EnvironmentList({
     <OperatorPanel>
       <OperatorSectionHeader
         title="环境列表"
-        subtitle="迁移完成前仅作为场景资产池维护"
+        subtitle="按 IP 项目复用的场景资产池"
         action={
           <button
             type="button"
@@ -67,6 +68,11 @@ export function EnvironmentList({
                     {new Date(env.created_at).toLocaleDateString("zh-CN")}
                   </p>
                 </div>
+                <StatusPill tone={(env.linked_virtual_ip_count || 0) > 0 ? "green" : "amber"}>
+                  {(env.linked_virtual_ip_count || 0) > 0
+                    ? `已接入 ${env.linked_virtual_ip_count} IP`
+                    : "未关联 IP"}
+                </StatusPill>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -99,6 +105,18 @@ export function EnvironmentList({
                       className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600"
                     >
                       {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {env.linked_virtual_ips && env.linked_virtual_ips.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {env.linked_virtual_ips.slice(0, 3).map((ip) => (
+                    <span
+                      key={ip.id}
+                      className="rounded-md border border-blue-100 bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                    >
+                      IP: {ip.name}
                     </span>
                   ))}
                 </div>

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { storyAPI, episodeAPI, scriptAPI } from "@/utils/api/endpoints";
-import type { Story, Episode, Script } from "@/utils/api/types";
+import { storyAPI, episodeAPI, scriptAPI, virtualIPAPI } from "@/utils/api/endpoints";
+import type { Story, Episode, Script, VirtualIPEnvironmentLink } from "@/utils/api/types";
 import { useStoryEpisodeGeneration } from "@/hooks/useStoryEpisodeGeneration";
 import { useStoryReadiness } from "@/hooks/useStoryReadiness";
 import { episodeWorkspaceHref } from "@/utils/routes";
@@ -32,6 +32,9 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
   const [scriptsByEpisode, setScriptsByEpisode] = useState<
     Record<number, Script[]>
   >({});
+  const [storyEnvironmentLinks, setStoryEnvironmentLinks] = useState<
+    VirtualIPEnvironmentLink[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [loadingScripts, setLoadingScripts] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -45,7 +48,20 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
         episodeAPI.getStoryEpisodes(storyKey),
       ]);
 
-      if (storyRes.success && storyRes.data) setStory(storyRes.data);
+      if (storyRes.success && storyRes.data) {
+        setStory(storyRes.data);
+        const characters =
+          storyRes.data.story_characters || storyRes.data.characters || [];
+        const vipIds = Array.from(
+          new Set(characters.map((item) => item.virtual_ip_id).filter(Boolean)),
+        );
+        const linkResults = await Promise.all(
+          vipIds.map((vipId) => virtualIPAPI.listVirtualIPEnvironments(vipId)),
+        );
+        setStoryEnvironmentLinks(
+          linkResults.flatMap((res) => (res.success && res.data ? res.data : [])),
+        );
+      }
       if (epsRes.success && epsRes.data) setEpisodes(epsRes.data);
 
       if (epsRes.success && epsRes.data && epsRes.data.length > 0) {
@@ -107,6 +123,7 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
   return {
     // Core state
     story,
+    storyEnvironmentLinks,
     episodes,
     scriptsByEpisode,
     loading,

@@ -4,8 +4,11 @@ import Link from "next/link";
 import {
   OperatorShell,
   OperatorPanel,
+  OperatorInspector,
+  OperatorMainCanvas,
   OperatorSectionHeader,
   OperatorState,
+  OperatorWorkspace,
   ProgressBar,
   StatusPill,
   operatorButtonClass,
@@ -52,6 +55,7 @@ export function WorkbenchDashboard() {
     <OperatorShell
       title="IP 生产工作台"
       subtitle="以 IP 为中心继续故事、剧集和任务"
+      breadcrumb={["IP 中心", "生产工作台"]}
     >
       {loading ? (
         <OperatorState title="加载工作台数据..." />
@@ -70,8 +74,10 @@ export function WorkbenchDashboard() {
           }
         />
       ) : summary ? (
-        <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-          <div className="space-y-5">
+        <OperatorWorkspace
+          variant="main-inspector"
+          main={
+            <OperatorMainCanvas className="space-y-5">
             <OperatorPanel className="p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -166,19 +172,19 @@ export function WorkbenchDashboard() {
                 </table>
               </div>
             </OperatorPanel>
-          </div>
-
-          <aside className="space-y-5">
-            <OperatorPanel>
-              <OperatorSectionHeader
-                title="任务队列"
-                action={
-                  <Link href="/tasks" className={operatorButtonClass("ghost")}>
-                    查看全部
-                  </Link>
-                }
-              />
-              <div className="space-y-4 p-5">
+            </OperatorMainCanvas>
+          }
+          inspector={
+            <OperatorInspector title="任务与审计">
+              <div className="space-y-5">
+                <div>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h2 className="text-sm font-semibold text-gray-950">任务队列</h2>
+                    <Link href="/tasks" className={operatorButtonClass("ghost")}>
+                      查看全部
+                    </Link>
+                  </div>
+                  <div className="space-y-4">
                 {summary.task_queue.map((task) => (
                   <div key={task.id} className="space-y-2">
                     <div className="flex items-start justify-between gap-3">
@@ -207,20 +213,22 @@ export function WorkbenchDashboard() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </OperatorPanel>
+                  </div>
+                </div>
 
-            <OperatorPanel className="p-5">
-              <h2 className="text-sm font-semibold">运行审计</h2>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-600">
-                <AuditItem label="脚本校验" value="通过" />
-                <AuditItem label="分镜校验" value="通过" />
-                <AuditItem label="时长校验" value="待复核" tone="amber" />
-                <AuditItem label="敏感内容" value="通过" />
+                <div className="border-t border-gray-200 pt-4">
+                  <h2 className="text-sm font-semibold">运行审计</h2>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-600">
+                    <AuditItem label="脚本校验" value="通过" />
+                    <AuditItem label="分镜校验" value="通过" />
+                    <AuditItem label="时长校验" value="待复核" tone="amber" />
+                    <AuditItem label="敏感内容" value="通过" />
+                  </div>
+                </div>
               </div>
-            </OperatorPanel>
-          </aside>
-        </div>
+            </OperatorInspector>
+          }
+        />
       ) : null}
     </OperatorShell>
   );

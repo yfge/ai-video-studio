@@ -1,9 +1,21 @@
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import JSON
+
+BIGINT_PK = BigInteger().with_variant(Integer, "sqlite")
 
 
 class VirtualIP(SoftDeleteBusinessMixin, Base):
@@ -45,6 +57,9 @@ class VirtualIP(SoftDeleteBusinessMixin, Base):
     images = relationship(
         "VirtualIPImage", back_populates="virtual_ip", cascade="all, delete-orphan"
     )
+    environment_links = relationship(
+        "VirtualIPEnvironment", back_populates="virtual_ip", cascade="all, delete-orphan"
+    )
 
 
 class VirtualIPImage(SoftDeleteBusinessMixin, Base):
@@ -84,3 +99,39 @@ class VirtualIPImage(SoftDeleteBusinessMixin, Base):
 
     # 关系
     virtual_ip = relationship("VirtualIP", back_populates="images")
+
+
+class VirtualIPEnvironment(SoftDeleteBusinessMixin, Base):
+    """Reusable environment asset linked into an IP production pool."""
+
+    __tablename__ = "virtual_ip_environments"
+    __table_args__ = (
+        Index(
+            "ux_virtual_ip_environments_pair_deleted",
+            "virtual_ip_id",
+            "environment_id",
+            "is_deleted",
+            unique=True,
+        ),
+        Index("ix_virtual_ip_environments_user_id", "user_id"),
+        Index("ix_virtual_ip_environments_virtual_ip_id", "virtual_ip_id"),
+        Index("ix_virtual_ip_environments_environment_id", "environment_id"),
+    )
+
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    virtual_ip_id = Column(Integer, ForeignKey("virtual_ips.id"), nullable=False)
+    virtual_ip_business_id = Column(String(32), index=True, nullable=True)
+    environment_id = Column(
+        BIGINT_PK, ForeignKey("environments.id"), nullable=False
+    )
+    environment_business_id = Column(String(32), index=True, nullable=True)
+    usage_type = Column(String(32), nullable=False, default="scene_pool")
+    usage_note = Column(Text, nullable=True)
+    sort_order = Column(Integer, nullable=False, default=0)
+    is_default = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    virtual_ip = relationship("VirtualIP", back_populates="environment_links")
+    environment = relationship("Environment", back_populates="virtual_ip_links")

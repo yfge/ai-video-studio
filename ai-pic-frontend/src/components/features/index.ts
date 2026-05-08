@@ -52,6 +52,7 @@ export {
 export {
   VirtualIPDetailHeader,
   VirtualIPAdditionalInfoSection,
+  VirtualIPEnvironmentPanel,
   VirtualIPInfoSection,
   VoiceSettingsPanel,
 } from "./virtual-ip-detail";

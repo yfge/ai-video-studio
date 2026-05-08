@@ -70,13 +70,14 @@ function EnvironmentsPageContent() {
 
   return (
     <OperatorShell
-      title="环境迁移"
-      subtitle="环境资产暂未完全迁移到 IP 生产链路"
+      title="环境资产"
+      subtitle="为 IP、故事和剧集场景维护可复用环境"
+      breadcrumb={["IP 中心", "环境资产"]}
     >
       <OperatorPanel className="mb-5">
         <OperatorSectionHeader
           title="环境资产"
-          subtitle="列表仅展示概要信息，图片在详情内管理；后续会按 IP 项目关联"
+          subtitle="可直接接入 IP 环境池，也可在剧集时间轴绑定到场景"
           action={
             <div className="flex gap-2">
               <button

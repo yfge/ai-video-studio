@@ -3,8 +3,11 @@
 import Link from "next/link";
 import {
   OperatorPanel,
+  OperatorInspector,
+  OperatorMainCanvas,
   OperatorSectionHeader,
   OperatorState,
+  OperatorWorkspace,
   StatusPill,
   operatorButtonClass,
   operatorTableClass,
@@ -15,7 +18,6 @@ import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { EpisodeGeneratePanel } from "@/components/features/story-detail/EpisodeGeneratePanel";
 import { StoryReadinessPanel } from "@/components/features/story-detail/StoryReadinessPanel";
 import { useStoryDetail } from "@/hooks/useStoryDetail";
-import type { StoryCharacter } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import {
   formatStoryTime,
@@ -24,6 +26,11 @@ import {
   latestScript,
   storyDisplayText,
 } from "./StoryProductionModel";
+import {
+  CharacterChip,
+  ReadyCell,
+  StoryEnvironmentCoverage,
+} from "./StoryProductionDetailParts";
 
 export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
   const { showAlert } = useAlertModal();
@@ -63,6 +70,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     canGenerate,
     checkReadiness,
     runQuickFix,
+    storyEnvironmentLinks,
   } = state;
 
   if (loading) {
@@ -76,8 +84,10 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
   const linkedCharacters = story.story_characters || story.characters || [];
 
   return (
-    <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="space-y-5">
+    <OperatorWorkspace
+      variant="main-inspector"
+      main={
+        <OperatorMainCanvas className="space-y-5">
         <OperatorPanel className="p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -113,6 +123,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
                 IP 关联待迁移
               </span>
             )}
+            <StoryEnvironmentCoverage links={storyEnvironmentLinks} />
           </div>
         </OperatorPanel>
 
@@ -169,10 +180,10 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
             </table>
           </div>
         </OperatorPanel>
-      </section>
-
-      <aside className="space-y-5">
-        <OperatorPanel className="p-5">
+        </OperatorMainCanvas>
+      }
+      inspector={
+        <OperatorInspector title="生产控制" subtitle="就绪检查、剧集生成和上下文预览">
           <h2 className="text-sm font-semibold">IP 生产准备</h2>
           <div className="mt-4">
             <StoryReadinessPanel
@@ -184,7 +195,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
               onQuickFix={runQuickFix}
             />
           </div>
-        </OperatorPanel>
+          <div className="mt-5 border-t border-gray-200 pt-5">
         <EpisodeGeneratePanel
           genOpen={genOpen}
           setGenOpen={setGenOpen}
@@ -212,26 +223,9 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
             onPreviewContextPack: handlePreviewContextPack,
           }}
         />
-      </aside>
-    </div>
-  );
-}
-
-function ReadyCell({ ready }: { ready: boolean }) {
-  return (
-    <td className="px-4 py-4">
-      <StatusPill tone={ready ? "green" : "gray"}>
-        {ready ? "已就绪" : "未开始"}
-      </StatusPill>
-    </td>
-  );
-}
-
-function CharacterChip({ character }: { character: StoryCharacter }) {
-  const name = character.character_name || character.name || "未命名 IP";
-  return (
-    <span className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600">
-      IP: {name}
-    </span>
+          </div>
+        </OperatorInspector>
+      }
+    />
   );
 }

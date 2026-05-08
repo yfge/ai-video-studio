@@ -12,8 +12,16 @@ export interface Environment {
   description?: string | null;
   reference_images?: string[] | null;
   metadata?: Record<string, unknown>;
+  linked_virtual_ips?: LinkedVirtualIPSummary[];
+  linked_virtual_ip_count?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface LinkedVirtualIPSummary {
+  id: number;
+  business_id: string;
+  name: string;
 }
 
 // Create environment request

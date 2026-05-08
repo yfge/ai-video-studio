@@ -4,11 +4,18 @@ from .episode_character import EpisodeCharacter
 from .image import Image
 from .script import Episode, Script, ScriptTemplate, Story, StoryCharacter
 from .story_novel_export import StoryNovelExport
-from .story_structure import Scene, SceneBeat, Shot, StoryStepOutline, StoryTreatment
+from .story_structure import (
+    Environment,
+    Scene,
+    SceneBeat,
+    Shot,
+    StoryStepOutline,
+    StoryTreatment,
+)
 from .task import Task
 from .user import User, UserAuditLog
 from .video_generation_task import VideoGenerationTask
-from .virtual_ip import VirtualIP, VirtualIPImage
+from .virtual_ip import VirtualIP, VirtualIPEnvironment, VirtualIPImage
 
 __all__ = [
     "Base",
@@ -19,6 +26,7 @@ __all__ = [
     "VideoGenerationTask",
     "VirtualIP",
     "VirtualIPImage",
+    "VirtualIPEnvironment",
     "Story",
     "Episode",
     "EpisodeCharacter",
@@ -28,6 +36,7 @@ __all__ = [
     "StoryNovelExport",
     "StoryTreatment",
     "StoryStepOutline",
+    "Environment",
     "Scene",
     "SceneBeat",
     "Shot",

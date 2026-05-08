@@ -1,7 +1,12 @@
 "use client";
 
 import type { Episode, Script } from "@/utils/api/types";
-import { operatorButtonClass } from "@/components/shared";
+import {
+  OperatorEntityHeader,
+  OperatorTabs,
+  OperatorToolbar,
+  operatorButtonClass,
+} from "@/components/shared";
 import {
   EpisodeWorkflowSteps,
   type WorkflowStepStatus,
@@ -95,45 +100,27 @@ export function EpisodeWorkspaceHeader({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <OperatorEntityHeader
+        eyebrow="IP 剧集工作台"
+        title={`第${episode.episode_number}集: ${episode.title}`}
+        subtitle={`${episode.duration_minutes}分钟 · Timeline-first 生产路径`}
+        meta={<EpisodeWorkflowSteps steps={workflowSteps} compact />}
+        action={
           <button
             type="button"
             onClick={onNavigateBack}
-            className={operatorButtonClass("ghost", "mb-1 -ml-2")}
+            className={operatorButtonClass("ghost")}
           >
-            ← 返回故事
+            返回故事
           </button>
-          <h1 className="text-xl font-semibold text-gray-950">
-            第{episode.episode_number}集: {episode.title}
-          </h1>
-          <p className="mt-1 text-sm text-gray-600">
-            {episode.duration_minutes}分钟 · IP 剧集工作台
-          </p>
-        </div>
-        <EpisodeWorkflowSteps steps={workflowSteps} compact />
-      </div>
+        }
+      />
 
       <EpisodeWorkflowSteps steps={workflowSteps} />
 
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex gap-4">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => onTabChange(tab.key)}
-              className={`border-b-2 px-1 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <OperatorToolbar>
+        <OperatorTabs tabs={tabs} active={activeTab} onChange={onTabChange} />
+      </OperatorToolbar>
     </div>
   );
 }

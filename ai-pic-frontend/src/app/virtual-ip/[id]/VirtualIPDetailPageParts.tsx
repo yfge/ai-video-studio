@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import {
   OperatorPanel,
-  OperatorSectionHeader,
+  OperatorInspector,
   StatusPill,
   operatorButtonClass,
   operatorInputClass,
@@ -97,20 +97,23 @@ export function VirtualIPInspectorPanel({
   virtualIP,
   editing,
   editFormId,
+  linkedEnvironmentCount,
   setEditing,
   onDelete,
 }: {
   virtualIP: VirtualIP;
   editing: boolean;
   editFormId: string;
+  linkedEnvironmentCount: number;
   setEditing: (editing: boolean) => void;
   onDelete: () => void;
 }) {
   return (
-    <aside className="space-y-5 xl:sticky xl:top-20 xl:self-start">
-      <OperatorPanel>
-        <OperatorSectionHeader title="生产就绪检查" />
-        <div className="space-y-3 p-4 text-sm">
+    <OperatorInspector title="IP Inspector" subtitle="生产就绪、资产和编辑操作">
+      <div className="space-y-5">
+        <section>
+          <h3 className="text-sm font-semibold text-gray-950">生产就绪检查</h3>
+          <div className="mt-3 space-y-3 text-sm">
           <ReadinessRow label="IP 资料" ready={Boolean(virtualIP.name)} />
           <ReadinessRow
             label="背景故事"
@@ -124,13 +127,20 @@ export function VirtualIPInspectorPanel({
             label="形象素材"
             ready={Boolean(virtualIP.default_avatar_url)}
           />
-        </div>
-      </OperatorPanel>
-      <OperatorPanel>
-        <OperatorSectionHeader title="资产管理" />
-        <div className="space-y-3 p-4">
+          <ReadinessRow label="环境资产" ready={linkedEnvironmentCount > 0} />
+          </div>
+        </section>
+        <section className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold text-gray-950">资产管理</h3>
+          <div className="mt-3 space-y-3">
           <a href="#ip-images" className={operatorButtonClass("secondary", "w-full")}>
             图片管理
+          </a>
+          <a
+            href="#ip-environments"
+            className={operatorButtonClass("secondary", "w-full")}
+          >
+            环境资产
           </a>
           {editing ? (
             <div className="grid grid-cols-2 gap-2">
@@ -165,9 +175,10 @@ export function VirtualIPInspectorPanel({
           >
             删除 IP
           </button>
-        </div>
-      </OperatorPanel>
-    </aside>
+          </div>
+        </section>
+      </div>
+    </OperatorInspector>
   );
 }
 

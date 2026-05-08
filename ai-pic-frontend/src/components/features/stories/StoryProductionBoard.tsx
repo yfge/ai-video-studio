@@ -3,10 +3,12 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  OperatorPanel,
-  OperatorSectionHeader,
+  OperatorContextRail,
+  OperatorListRow,
+  OperatorMainCanvas,
   OperatorShell,
   OperatorState,
+  OperatorWorkspace,
   StatusPill,
   operatorButtonClass,
 } from "@/components/shared";
@@ -62,11 +64,16 @@ export function StoryProductionBoard({
   };
 
   return (
-    <OperatorShell title="IP 故事生产" subtitle="围绕 IP 组织故事、剧集和生成准备">
-      <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <OperatorPanel className="overflow-hidden">
-          <OperatorSectionHeader
-            title="IP 故事列表"
+    <OperatorShell
+      title="IP 故事生产"
+      subtitle="围绕 IP 组织故事、剧集和生成准备"
+      breadcrumb={["IP 中心", "故事生产"]}
+    >
+      <OperatorWorkspace
+        variant="rail-main"
+        rail={
+          <OperatorContextRail
+            title="故事列表"
             subtitle="选择已迁移或已关联的故事"
             action={
               <button
@@ -77,21 +84,16 @@ export function StoryProductionBoard({
                 从 IP 新建
               </button>
             }
-          />
-          {loading ? (
-            <div className="p-4 text-sm text-gray-500">加载中...</div>
-          ) : (
-            <div className="max-h-[calc(100vh-150px)] overflow-y-auto p-3">
+          >
+            {loading ? (
+              <div className="p-1 text-sm text-gray-500">加载中...</div>
+            ) : (
+              <div className="space-y-2">
               {stories.map((story) => (
-                <button
-                  type="button"
+                <OperatorListRow
                   key={story.id}
                   onClick={() => selectStory(story)}
-                  className={`mb-2 block w-full rounded-md border p-3 text-left ${
-                    selectedStoryKey === story.business_id
-                      ? "border-blue-200 bg-blue-50"
-                      : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                  }`}
+                  selected={selectedStoryKey === story.business_id}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -110,18 +112,22 @@ export function StoryProductionBoard({
                   <p className="mt-2 line-clamp-2 text-xs text-gray-600">
                     {storyDisplayText(story.synopsis, story.premise)}
                   </p>
-                </button>
+                </OperatorListRow>
               ))}
-            </div>
-          )}
-        </OperatorPanel>
-
-        {selectedStoryKey ? (
-          <StoryProductionDetail storyKey={selectedStoryKey} />
-        ) : (
-          <OperatorState title="暂无故事，请先创建故事。" />
-        )}
-      </div>
+              </div>
+            )}
+          </OperatorContextRail>
+        }
+        main={
+          <OperatorMainCanvas>
+            {selectedStoryKey ? (
+              <StoryProductionDetail storyKey={selectedStoryKey} />
+            ) : (
+              <OperatorState title="暂无故事，请先创建故事。" />
+            )}
+          </OperatorMainCanvas>
+        }
+      />
 
       <StoryGenerateForm
         open={showGenerateForm}

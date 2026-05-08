@@ -1,13 +1,18 @@
 "use client";
 
-import { MarketingFields, MultiModelSelector } from "@/components/shared";
+import {
+  MarketingFields,
+  MultiModelSelector,
+  operatorButtonClass,
+  operatorSelectClass,
+  operatorTextareaClass,
+} from "@/components/shared";
 import { scriptAPI } from "@/utils/api/endpoints";
 import type { ScriptGenerationRequest } from "@/utils/api/types";
 import { ScriptAsyncModeToggle } from "./ScriptAsyncModeToggle";
 import { CommercialScriptOptions } from "./CommercialScriptOptions";
 import { ScriptProductionPipelineOptions } from "./ScriptProductionPipelineOptions";
 import { ShortDramaScriptTemplateSelector } from "./ShortDramaScriptTemplateSelector";
-
 interface ScriptGenerationFormProps {
   generateForm: ScriptGenerationRequest;
   setGenerateForm: React.Dispatch<
@@ -23,7 +28,6 @@ interface ScriptGenerationFormProps {
   onGenerate: () => void;
   onCancel: () => void;
 }
-
 export function ScriptGenerationForm({
   generateForm,
   setGenerateForm,
@@ -46,10 +50,9 @@ export function ScriptGenerationForm({
       setPromptPreview("生成提示词失败");
     }
   };
-
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h3 className="text-lg font-semibold mb-4">📝 生成剧本</h3>
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-gray-950">生成剧本</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <CommercialScriptOptions
@@ -69,7 +72,7 @@ export function ScriptGenerationForm({
                 format_type: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={operatorSelectClass("w-full")}
           >
             {formats.map((format) => (
               <option key={format.value} value={format.value}>
@@ -88,7 +91,7 @@ export function ScriptGenerationForm({
             onChange={(e) =>
               setGenerateForm((prev) => ({ ...prev, language: e.target.value }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={operatorSelectClass("w-full")}
           >
             {languages.map((language) => (
               <option key={language.value} value={language.value}>
@@ -110,7 +113,7 @@ export function ScriptGenerationForm({
                 dialogue_style: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={operatorSelectClass("w-full")}
           >
             <option value="formal">正式</option>
             <option value="natural">自然</option>
@@ -130,7 +133,7 @@ export function ScriptGenerationForm({
                 scene_detail_level: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={operatorSelectClass("w-full")}
           >
             <option value="minimal">简洁</option>
             <option value="medium">中等</option>
@@ -168,11 +171,10 @@ export function ScriptGenerationForm({
           }
           placeholder="对剧本生成的特殊要求"
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={operatorTextareaClass("w-full")}
         />
       </div>
 
-      {/* Model and temperature */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
         <MultiModelSelector
           label="模型"
@@ -213,18 +215,17 @@ export function ScriptGenerationForm({
         </div>
       </div>
 
-      {/* Prompt preview */}
       <div className="mb-2">
         <button
           type="button"
           onClick={handlePreviewPrompt}
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          className={operatorButtonClass("secondary")}
         >
           提示词预览
         </button>
       </div>
       {promptPreview && (
-        <div className="mt-2 bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">
+        <div className="mt-2 whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
           {promptPreview}
         </div>
       )}
@@ -233,13 +234,13 @@ export function ScriptGenerationForm({
         <button
           onClick={onGenerate}
           disabled={generating}
-          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+          className={operatorButtonClass("primary")}
         >
           {generating ? "生成中..." : "开始生成"}
         </button>
         <button
           onClick={onCancel}
-          className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
+          className={operatorButtonClass("secondary")}
         >
           取消
         </button>

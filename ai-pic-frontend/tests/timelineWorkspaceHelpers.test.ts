@@ -5,6 +5,7 @@ import {
   firstTimelineItemId,
   resolveTimelineSelection,
 } from "../src/components/features/Timeline/timelineViewModel";
+import { sceneForTimelineMeta } from "../src/components/features/episode/EpisodeTimelineWorkspaceModel";
 import type { TimelineTrack } from "../src/components/features/Timeline/Timeline";
 import { episodeWorkspaceHref } from "../src/utils/routes";
 
@@ -53,5 +54,24 @@ describe("timeline workspace helpers", () => {
       item: null,
       track: null,
     });
+  });
+
+  it("maps a selected timeline item to the normalized scene environment", () => {
+    const scene = sceneForTimelineMeta(
+      [
+        {
+          id: 7,
+          scene_number: "2",
+          slug_line: "INT. 公寓 - 夜",
+          status: "draft",
+          environment_id: 11,
+        },
+      ],
+      { scene_number: "2" },
+      { 7: 12 },
+    );
+
+    assert.equal(scene?.id, 7);
+    assert.equal(scene?.environment_id, 12);
   });
 });

@@ -7,7 +7,7 @@ import {
   WorkspaceScriptSelector,
   type WorkflowStatus,
 } from "@/components/features/episode";
-import { OperatorState } from "@/components/shared";
+import { OperatorShell, OperatorState } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
 import {
@@ -130,8 +130,12 @@ export default function EpisodeWorkspacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8]">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <OperatorShell
+      title="剧集工作台"
+      subtitle={`第${episode!.episode_number}集 · ${episode!.title}`}
+      breadcrumb={["IP 中心", "故事生产", `第${episode!.episode_number}集`]}
+    >
+      <div className="space-y-4">
         <EpisodeWorkspaceHeader
           episode={episode!}
           script={mainScript}
@@ -181,6 +185,6 @@ export default function EpisodeWorkspacePage() {
           />
         </div>
       </div>
-    </div>
+    </OperatorShell>
   );
 }

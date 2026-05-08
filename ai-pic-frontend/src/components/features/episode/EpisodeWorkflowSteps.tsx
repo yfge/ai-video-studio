@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPill, operatorButtonClass } from "@/components/shared";
+
 export type WorkflowStepStatus = "pending" | "ready" | "generating";
 
 export interface WorkflowStep {
@@ -16,16 +18,19 @@ interface EpisodeWorkflowStepsProps {
   compact?: boolean;
 }
 
-const statusIcon = (status: WorkflowStepStatus) => {
+const statusLabel = (status: WorkflowStepStatus) => {
   switch (status) {
     case "ready":
-      return <span className="text-green-600">✓</span>;
+      return "已就绪";
     case "generating":
-      return <span className="animate-pulse text-yellow-600">●</span>;
+      return "生成中";
     default:
-      return <span className="text-gray-400">○</span>;
+      return "待处理";
   }
 };
+
+const statusTone = (status: WorkflowStepStatus) =>
+  status === "ready" ? "green" : status === "generating" ? "amber" : "gray";
 
 export function EpisodeWorkflowSteps({
   steps,
@@ -36,16 +41,9 @@ export function EpisodeWorkflowSteps({
       <div className="flex items-center gap-2 text-xs">
         {steps.map((step, index) => (
           <div key={step.key} className="flex items-center gap-1">
-            {statusIcon(step.status)}
-            <span
-              className={
-                step.status === "ready" ? "text-green-700" : "text-gray-600"
-              }
-            >
-              {step.label}
-            </span>
+            <StatusPill tone={statusTone(step.status)}>{step.label}</StatusPill>
             {index < steps.length - 1 && (
-              <span className="mx-1 text-gray-300">→</span>
+              <span className="mx-1 text-gray-300">/</span>
             )}
           </div>
         ))}
@@ -64,7 +62,9 @@ export function EpisodeWorkflowSteps({
                   <div className="text-xs font-semibold text-blue-700">
                     步骤 {index + 1}
                   </div>
-                  {statusIcon(step.status)}
+                  <StatusPill tone={statusTone(step.status)}>
+                    {statusLabel(step.status)}
+                  </StatusPill>
                 </div>
                 <div className="mt-1 text-sm font-semibold text-gray-900">
                   {step.label}
@@ -73,7 +73,7 @@ export function EpisodeWorkflowSteps({
                 <button
                   onClick={step.onAction}
                   disabled={step.status === "generating"}
-                  className="mt-3 inline-flex h-8 items-center rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className={operatorButtonClass("secondary", "mt-3")}
                 >
                   {step.status === "generating"
                     ? "生成中..."
@@ -82,7 +82,7 @@ export function EpisodeWorkflowSteps({
               </div>
               {index < steps.length - 1 && (
                 <div className="hidden items-center justify-center px-2 text-gray-300 md:flex">
-                  →
+                  /
                 </div>
               )}
             </div>

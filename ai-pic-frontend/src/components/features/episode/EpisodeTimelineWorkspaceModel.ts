@@ -2,6 +2,7 @@
 
 import type { TimelineItem, TimelineTrack } from "@/components/features";
 import { asRecord, getString, parseMs } from "@/hooks/useEpisodeDetail";
+import type { NormalizedScene } from "@/utils/api/types";
 
 export const formatTimelineMs = (ms: number) => {
   const seconds = Math.floor(ms / 1000);
@@ -12,6 +13,37 @@ export const formatTimelineMs = (ms: number) => {
 
 export const timelineItemMeta = (item: TimelineItem | null) =>
   asRecord(item?.meta) ?? {};
+
+export function timelineSceneNumber(meta: Record<string, unknown>) {
+  const raw =
+    getString(meta.scene_number) ||
+    getString(meta.scene) ||
+    getString(meta.scene_id);
+  if (raw) return raw.replace(/^scene-/i, "");
+  const index = Number(meta.scene_index);
+  if (Number.isFinite(index)) return String(index + 1);
+  return null;
+}
+
+export function sceneForTimelineMeta(
+  scenes: NormalizedScene[],
+  meta: Record<string, unknown>,
+  overrides: Record<number, number | null> = {},
+) {
+  const sceneNumber = timelineSceneNumber(meta);
+  if (!sceneNumber) return null;
+  const matched = scenes.find(
+    (scene) => String(scene.scene_number) === String(sceneNumber),
+  );
+  if (!matched) return null;
+  return {
+    ...matched,
+    environment_id:
+      Object.prototype.hasOwnProperty.call(overrides, matched.id)
+        ? overrides[matched.id]
+        : matched.environment_id,
+  };
+}
 
 const hasVideoAsset = (record: Record<string, unknown>) => {
   const urls = record.video_urls;

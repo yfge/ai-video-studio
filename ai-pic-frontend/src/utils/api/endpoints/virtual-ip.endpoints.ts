@@ -11,6 +11,9 @@ import type {
   VirtualIPAIGenerationRequest,
   VirtualIPAIGenerationResponse,
   VirtualIPAIGenerationDetailedResponse,
+  VirtualIPEnvironmentLink,
+  LinkVirtualIPEnvironmentRequest,
+  UpdateVirtualIPEnvironmentLinkRequest,
 } from "../types/virtual-ip.types";
 import type { ApiResponse } from "../types/common.types";
 
@@ -143,6 +146,45 @@ export async function createVirtualIPWithAI(
   });
 }
 
+export async function listVirtualIPEnvironments(
+  id: number | string,
+): Promise<ApiResponse<VirtualIPEnvironmentLink[]>> {
+  return httpClient<VirtualIPEnvironmentLink[]>(virtualIPPath(id, "/environments"));
+}
+
+export async function linkVirtualIPEnvironment(
+  id: number | string,
+  data: LinkVirtualIPEnvironmentRequest,
+): Promise<ApiResponse<VirtualIPEnvironmentLink>> {
+  return httpClient<VirtualIPEnvironmentLink>(virtualIPPath(id, "/environments"), {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateVirtualIPEnvironmentLink(
+  id: number | string,
+  environmentId: number | string,
+  data: UpdateVirtualIPEnvironmentLinkRequest,
+): Promise<ApiResponse<VirtualIPEnvironmentLink>> {
+  return httpClient<VirtualIPEnvironmentLink>(
+    virtualIPPath(id, `/environments/${environmentId}`),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    },
+  );
+}
+
+export async function unlinkVirtualIPEnvironment(
+  id: number | string,
+  environmentId: number | string,
+): Promise<ApiResponse<void>> {
+  return httpClient<void>(virtualIPPath(id, `/environments/${environmentId}`), {
+    method: "DELETE",
+  });
+}
+
 /**
  * Virtual IP API namespace.
  */
@@ -155,4 +197,8 @@ export const virtualIPAPI = {
   generateAIContent,
   generateAIContentDetailed,
   createVirtualIPWithAI,
+  listVirtualIPEnvironments,
+  linkVirtualIPEnvironment,
+  updateVirtualIPEnvironmentLink,
+  unlinkVirtualIPEnvironment,
 };

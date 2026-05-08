@@ -42,6 +42,7 @@ function VirtualIPListContent() {
     <OperatorShell
       title="IP 项目"
       subtitle="IP 资产是故事、剧集和生成任务的入口"
+      breadcrumb={["IP 中心", "IP 项目"]}
     >
       <OperatorPanel className="mb-5 p-4">
         <h2 className="text-sm font-semibold text-gray-950">迁移状态</h2>

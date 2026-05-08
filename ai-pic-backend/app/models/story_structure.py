@@ -229,3 +229,6 @@ class Environment(SoftDeleteBusinessMixin, Base):
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+
+    # relations
+    virtual_ip_links = relationship("VirtualIPEnvironment", back_populates="environment")

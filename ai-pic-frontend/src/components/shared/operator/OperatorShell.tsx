@@ -10,18 +10,20 @@ const navItems = [
   { href: "/", label: "工作台", mark: "W" },
   { href: "/virtual-ip", label: "IP 项目", mark: "I" },
   { href: "/stories", label: "故事生产", mark: "S" },
+  { href: "/environments", label: "环境资产", mark: "E" },
   { href: "/tasks", label: "任务", mark: "T" },
-  { href: "/environments", label: "环境迁移", mark: "E" },
 ];
 
 export function OperatorShell({
   children,
   title,
   subtitle,
+  breadcrumb,
 }: {
   children: ReactNode;
   title?: string;
   subtitle?: string;
+  breadcrumb?: string[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -83,10 +85,13 @@ export function OperatorShell({
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white/95 px-4 backdrop-blur sm:px-6">
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-gray-950">
-              {title || "生产工作台"}
+              {breadcrumb?.length ? breadcrumb.join(" / ") : title || "生产工作台"}
             </div>
-            {subtitle ? (
-              <div className="truncate text-xs text-gray-500">{subtitle}</div>
+            {title || subtitle ? (
+              <div className="truncate text-xs text-gray-500">
+                {breadcrumb?.length && title ? `${title} · ` : ""}
+                {subtitle || ""}
+              </div>
             ) : null}
           </div>
           <div className="flex items-center gap-3">

@@ -4,9 +4,12 @@ import { useParams, useRouter } from "next/navigation";
 
 import {
   OperatorPanel,
+  OperatorInspector,
+  OperatorMainCanvas,
   OperatorSectionHeader,
   OperatorShell,
   OperatorState,
+  OperatorWorkspace,
 } from "@/components/shared";
 
 import { EnvironmentHeader } from "./EnvironmentHeader";
@@ -30,7 +33,11 @@ export function EnvironmentDetailView() {
 
   if (state.loading) {
     return (
-      <OperatorShell title="环境详情" subtitle="加载环境资产">
+      <OperatorShell
+        title="环境详情"
+        subtitle="加载环境资产"
+        breadcrumb={["IP 中心", "环境资产", "加载中"]}
+      >
         <OperatorState
           tone="blue"
           title="加载环境详情中"
@@ -42,19 +49,29 @@ export function EnvironmentDetailView() {
 
   if (!state.env) {
     return (
-      <OperatorShell title="环境详情" subtitle="环境资产池">
+      <OperatorShell
+        title="环境详情"
+        subtitle="环境资产池"
+        breadcrumb={["IP 中心", "环境资产"]}
+      >
         <EnvironmentNotFound onBack={() => router.push("/environments")} />
       </OperatorShell>
     );
   }
 
   return (
-    <OperatorShell title="环境详情" subtitle={state.env.name}>
+    <OperatorShell
+      title="环境详情"
+      subtitle={state.env.name}
+      breadcrumb={["IP 中心", "环境资产", state.env.name]}
+    >
       <div className="space-y-5">
         <EnvironmentMigrationNotice />
         <EnvironmentAuditPanels metadata={state.env.metadata} />
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="space-y-5">
+        <OperatorWorkspace
+          variant="main-inspector"
+          main={
+            <OperatorMainCanvas className="space-y-5">
             <OperatorPanel>
               <OperatorSectionHeader
                 title="基础资料"
@@ -95,28 +112,28 @@ export function EnvironmentDetailView() {
                 />
               </div>
             </OperatorPanel>
-          </div>
-
-          <aside className="space-y-5 xl:sticky xl:top-20 xl:max-h-[calc(100vh-5rem)] xl:self-start xl:overflow-y-auto xl:overflow-x-hidden">
+            </OperatorMainCanvas>
+          }
+          inspector={
+            <OperatorInspector title="环境 Inspector" subtitle="IP 关联、生成和任务提交">
             <EnvironmentReadinessPanel
+              env={state.env}
               imageCount={state.images.length}
               onBack={() => router.push("/environments")}
             />
-            <OperatorPanel>
-              <OperatorSectionHeader
-                title="环境生成"
-                subtitle="上传、文生图和任务提交"
-              />
-              <div className="p-4">
+            <div className="mt-5 border-t border-gray-200 pt-5">
+              <h3 className="text-sm font-semibold text-gray-950">环境生成</h3>
+              <div className="mt-3">
                 <EnvironmentSidePanel
                   envKey={envKey}
                   onImageUploaded={state.handleImageUploaded}
                   variant="embedded"
                 />
               </div>
-            </OperatorPanel>
-          </aside>
-        </div>
+            </div>
+            </OperatorInspector>
+          }
+        />
       </div>
       <EnvironmentVariantModal
         envKey={envKey}

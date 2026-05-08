@@ -2,6 +2,7 @@
  * Virtual IP (character) type definitions.
  */
 import type { VoiceConfig } from "./voice.types";
+import type { Environment } from "./environment.types";
 
 // Virtual IP entity
 export interface VirtualIP {
@@ -48,6 +49,38 @@ export interface UpdateVirtualIPRequest {
   voice_config?: VoiceConfig;
   is_active?: boolean;
   is_public?: boolean;
+}
+
+export interface VirtualIPEnvironmentLink {
+  id: number;
+  business_id: string;
+  user_id?: number | null;
+  virtual_ip_id: number;
+  virtual_ip_business_id?: string | null;
+  environment_id: number;
+  environment_business_id?: string | null;
+  usage_type: string;
+  usage_note?: string | null;
+  sort_order: number;
+  is_default: boolean;
+  environment: Environment;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface LinkVirtualIPEnvironmentRequest {
+  environment_id: number;
+  usage_type?: string;
+  usage_note?: string;
+  sort_order?: number;
+  is_default?: boolean;
+}
+
+export interface UpdateVirtualIPEnvironmentLinkRequest {
+  usage_type?: string;
+  usage_note?: string | null;
+  sort_order?: number;
+  is_default?: boolean;
 }
 
 // AI-generated virtual IP creation request

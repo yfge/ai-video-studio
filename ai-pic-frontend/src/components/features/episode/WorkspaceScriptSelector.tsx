@@ -1,7 +1,7 @@
 "use client";
 
 import type { Script } from "@/utils/api/types";
-import { operatorSelectClass } from "@/components/shared";
+import { OperatorToolbar, operatorSelectClass } from "@/components/shared";
 
 export function WorkspaceScriptSelector(props: {
   scripts: Script[];
@@ -13,7 +13,7 @@ export function WorkspaceScriptSelector(props: {
   if (!scripts || scripts.length === 0) return null;
 
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-3">
+    <OperatorToolbar className="mt-4">
       <div className="flex items-center gap-4">
         <label className="whitespace-nowrap text-sm font-medium text-gray-700">
           当前剧本
@@ -48,6 +48,6 @@ export function WorkspaceScriptSelector(props: {
           共 {scripts.length} 个剧本
         </span>
       </div>
-    </div>
+    </OperatorToolbar>
   );
 }
