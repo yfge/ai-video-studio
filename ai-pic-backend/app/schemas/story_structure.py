@@ -155,7 +155,7 @@ class SceneBeatCreate(BaseModel):
     order_index: int
     beat_type: Optional[str] = None
     beat_summary: Optional[str] = None
-    characters_involved: Optional[dict[str, Any]] = None
+    characters_involved: Optional[dict[str, Any] | list[Any]] = None
     dialogue_excerpt: Optional[str] = None
     camera_notes: Optional[str] = None
     duration_seconds: Optional[float] = Field(None, ge=0)
@@ -170,7 +170,7 @@ class SceneBeatResponse(ORMModel):
     order_index: int
     beat_type: Optional[str]
     beat_summary: Optional[str]
-    characters_involved: Optional[dict[str, Any]]
+    characters_involved: Optional[dict[str, Any] | list[Any]]
     dialogue_excerpt: Optional[str]
     camera_notes: Optional[str]
     duration_seconds: Optional[float]
@@ -182,7 +182,7 @@ class SceneBeatResponse(ORMModel):
 class SceneBeatUpdate(BaseModel):
     beat_type: Optional[str] = None
     beat_summary: Optional[str] = None
-    characters_involved: Optional[dict[str, Any]] = None
+    characters_involved: Optional[dict[str, Any] | list[Any]] = None
     dialogue_excerpt: Optional[str] = None
     camera_notes: Optional[str] = None
     duration_seconds: Optional[float] = Field(None, ge=0)
