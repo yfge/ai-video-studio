@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     story_structure,
     styles,
     tasks,
+    timelines,
     virtual_ip,
     virtual_ip_images,
     virtual_ip_voice_samples,
@@ -44,6 +45,7 @@ api_router.include_router(scripts.router, prefix="/scripts", tags=["scripts"])
 api_router.include_router(
     story_structure.router, prefix="/story-structure", tags=["story-structure"]
 )
+api_router.include_router(timelines.router, tags=["timelines"])
 
 # 数据库迁移相关路由
 api_router.include_router(migrations.router, prefix="/migrations", tags=["migrations"])

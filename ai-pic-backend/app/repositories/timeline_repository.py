@@ -1,0 +1,115 @@
+from typing import List, Optional
+
+from app.models.script import Episode, Story
+from app.models.timeline import MediaAsset, RenderJob, Timeline
+from app.repositories.base import BaseRepository
+from sqlalchemy.orm import Session, joinedload
+
+
+class TimelineRepository(BaseRepository[Timeline]):
+    """Timeline persistence with episode/story access filtering."""
+
+    def __init__(self, session: Session):
+        super().__init__(Timeline, session)
+
+    def list_for_episode(
+        self,
+        episode_id: int,
+        user_id: Optional[int] = None,
+        include_deleted: bool = False,
+        limit: int = 50,
+    ) -> List[Timeline]:
+        query = (
+            self.session.query(Timeline)
+            .join(Episode, Timeline.episode_id == Episode.id)
+            .join(Story, Episode.story_id == Story.id)
+            .options(joinedload(Timeline.episode), joinedload(Timeline.script))
+            .filter(Timeline.episode_id == episode_id)
+        )
+
+        if not include_deleted:
+            query = query.filter(Timeline.is_deleted.is_(False))
+            query = query.filter(Episode.is_deleted.is_(False))
+            query = query.filter(Story.is_deleted.is_(False))
+
+        if user_id is not None:
+            query = query.filter(Story.user_id == user_id)
+
+        return (
+            query.order_by(Timeline.updated_at.desc(), Timeline.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_accessible(
+        self,
+        timeline_id: int,
+        user_id: Optional[int] = None,
+        include_deleted: bool = False,
+    ) -> Optional[Timeline]:
+        query = (
+            self.session.query(Timeline)
+            .join(Episode, Timeline.episode_id == Episode.id)
+            .join(Story, Episode.story_id == Story.id)
+            .options(
+                joinedload(Timeline.episode).joinedload(Episode.story),
+                joinedload(Timeline.script),
+            )
+            .filter(Timeline.id == timeline_id)
+        )
+
+        if not include_deleted:
+            query = query.filter(Timeline.is_deleted.is_(False))
+            query = query.filter(Episode.is_deleted.is_(False))
+            query = query.filter(Story.is_deleted.is_(False))
+
+        if user_id is not None:
+            query = query.filter(Story.user_id == user_id)
+
+        return query.first()
+
+
+class MediaAssetRepository(BaseRepository[MediaAsset]):
+    """Media asset persistence for timeline and render artifacts."""
+
+    def __init__(self, session: Session):
+        super().__init__(MediaAsset, session)
+
+
+class RenderJobRepository(BaseRepository[RenderJob]):
+    """Render job persistence with idempotency lookup."""
+
+    def __init__(self, session: Session):
+        super().__init__(RenderJob, session)
+
+    def list_for_timeline(
+        self, timeline_id: int, include_deleted: bool = False, limit: int = 50
+    ) -> List[RenderJob]:
+        query = self.session.query(RenderJob).filter(
+            RenderJob.timeline_id == timeline_id
+        )
+        if not include_deleted:
+            query = query.filter(RenderJob.is_deleted.is_(False))
+        return (
+            query.order_by(RenderJob.created_at.desc(), RenderJob.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_idempotent(
+        self,
+        *,
+        timeline_id: int,
+        timeline_version: int,
+        render_type: str,
+        preset_hash: str,
+    ) -> Optional[RenderJob]:
+        return (
+            self.session.query(RenderJob)
+            .filter(RenderJob.timeline_id == timeline_id)
+            .filter(RenderJob.timeline_version == timeline_version)
+            .filter(RenderJob.render_type == render_type)
+            .filter(RenderJob.preset_hash == preset_hash)
+            .filter(RenderJob.is_deleted.is_(False))
+            .first()
+        )

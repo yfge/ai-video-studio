@@ -21,7 +21,7 @@
 
 ## 状态概览
 
-- P0：Timeline Spec v1 文档已收敛为主规范，下一步把实现迁入该规范，结束 `audio_timeline` / `scene_beats` / `storyboard.frames` 三套事实并存。
+- P0：Timeline Spec v1 文档与 DB/API foundation 已落地，下一步把 `audio_timeline` 导入桥迁入该规范，结束 `audio_timeline` / `scene_beats` / `storyboard.frames` 三套事实并存。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
 - P1：把默认操作路径从 `Episode -> Storyboard` 改成 `Episode -> Timeline`。
@@ -32,15 +32,16 @@
 
 当前阻塞：
 
-- `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，实现还没有迁入 `Timeline Spec v1`。
+- `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，导入桥还没有迁入 `Timeline Spec v1`。
 - 渲染结果仍有一部分写回临时 metadata，而不是稳定的 timeline/versioned jobs。
 
 ### 任务（功能→后端→验证）
 
 - [x] 文档冻结 `Timeline Spec v1`，定义 `tracks / clips / assets / source / version` 的目标字段和约束。
 - [x] 文档明确现有 `audio_timeline`、`scene_beats`、`storyboard.frames` 到 `Timeline Spec v1` 的导入规则、优先级和冲突处理。
-- [ ] 完成 `timelines`、`render_jobs`、`media_assets` 数据模型与迁移，明确和现有图片/视频记录的关系。
-- [ ] 实现 timeline CRUD、版本号、自增保存、回滚和幂等导出触发。
+- [x] 完成 `timelines`、`render_jobs`、`media_assets` 数据模型与迁移，明确和现有图片/视频记录的关系。
+- [x] 实现 timeline list/create/read/update、版本锁、自增保存和 render-job 幂等入队/读取 API。
+- [ ] 补齐 timeline delete/rollback、真实 export 触发和 completed render output 回写。
 - [x] 文档定义稳定 `clip_id` 生成规则，保证后续 re-dub / re-cut / re-render 不丢身份。
 - [ ] 渲染结果统一回写到 timeline/versioned render jobs，不再只写 ad hoc metadata。
 - [ ] 为 Timeline Spec 增加 schema 校验、导入校验、权限校验和导出幂等测试。

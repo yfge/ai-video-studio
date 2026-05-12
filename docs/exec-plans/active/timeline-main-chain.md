@@ -12,6 +12,15 @@ This plan starts after the docs/spec-only pass that freezes the contract in
 `docs/timeline-rendering-pipeline.md` and
 `docs/dialogue-audio-timeline-spec.md`.
 
+Current status:
+
+- Phase 1 docs/spec-only baseline is complete.
+- Phase 2 DB/API foundation is implemented with models, migration, timeline
+  APIs, render job APIs, version locking, access filtering, and idempotent
+  enqueue tests.
+- Phase 3 import bridge, Phase 4 real render/export execution, and Phase 5
+  operator UI remain pending.
+
 ## Phase 1: Spec And Contracts
 
 - Keep `Timeline Spec v1` as the episode output SSOT.
@@ -27,11 +36,11 @@ Exit criteria:
 
 ## Phase 2: DB And API Foundation
 
-- Add `timelines`, `media_assets`, and `render_jobs` models, repositories,
-  schemas, and Alembic migration.
-- Add timeline list/read/update APIs with version locking.
-- Add render-job enqueue/read APIs with idempotency by timeline version and
-  preset hash.
+- [x] Add `timelines`, `media_assets`, and `render_jobs` models, repositories,
+      schemas, and Alembic migration.
+- [x] Add timeline list/read/update APIs with version locking.
+- [x] Add render-job enqueue/read APIs with idempotency by timeline version and
+      preset hash.
 
 Exit criteria:
 
@@ -44,7 +53,7 @@ Exit criteria:
   `/api/v1/scripts/{script_id}/timeline-pipeline/generate-async` path so it can
   import `audio_timeline.beats` into Timeline Spec v1.
 - Generate stable `clip_id` values from `track_type + scene_id + beat_id +
-  ordinal`.
+ordinal`.
 - Preserve source references to `scene_beats`, `audio_timeline` version, and
   storyboard frame ids where available.
 
