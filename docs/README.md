@@ -6,6 +6,9 @@ This directory holds design notes, API references, and testing guides. Keep this
 
 - `docs/generated/db-schema.md` — generated schema summary for agent context.
 - `docs/exec-plans/active/` — active execution plans that are not product-roadmap items.
+- `docs/exec-plans/active/timeline-main-chain-optimization.md` — post-bridge
+  review and optimization plan for script -> Timeline Spec -> storyboard
+  support.
 - `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
 
 ## Agent System Of Record
