@@ -1077,6 +1077,7 @@ def _process_script_generation_task(task_id: int, request_dict: dict, user_id: i
                             script=sc,
                             hook_schedule=production_meta.get("hook_schedule") or {},
                             scoring=scoring_artifacts,
+                            user_id=user_id,
                         )
 
                     auto_result = anyio.run(_run_auto_timeline)

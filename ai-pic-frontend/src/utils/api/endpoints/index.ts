@@ -36,6 +36,7 @@ export * from "./story-novel.endpoints";
 // Episode endpoints
 export * from "./episode.endpoints";
 export * from "./episode-character.endpoints";
+export * from "./timeline.endpoints";
 
 // Script endpoints (includes storyboard)
 export * from "./script.endpoints";

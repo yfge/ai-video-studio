@@ -8,7 +8,9 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.services.dialogue_audio_service import (
+from app.repositories.task_repository import TaskRepository
+from app.repositories.user_repository import UserRepository
+from app.services.audio.storyboard_from_timeline import (
     generate_storyboard_from_episode_audio_timeline,
 )
 from app.services.task_worker import script_audio_storyboard_generate_task
@@ -94,7 +96,9 @@ def _process_script_audio_storyboard_task(
 
     db = SessionLocal()
     try:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task_repo = TaskRepository(db)
+        user_repo = UserRepository(db)
+        task = task_repo.get_by_id(task_id)
         if task:
             task.status = TaskStatus.PROCESSING
             db.commit()
@@ -105,7 +109,7 @@ def _process_script_audio_storyboard_task(
         min_pause_ms = max(0, int(round(min_pause_seconds * 1000)))
 
         async def _run() -> None:
-            user = db.query(User).filter(User.id == user_id).first()
+            user = user_repo.get_by_id(user_id)
             if not user:
                 raise RuntimeError("user_not_found")
 
@@ -124,6 +128,7 @@ def _process_script_audio_storyboard_task(
                 episode=episode,
                 overwrite_existing=overwrite_existing,
                 min_pause_duration_ms=min_pause_ms,
+                legacy_support_view=True,
             )
 
         run_async_task_sync(_run)
@@ -133,7 +138,7 @@ def _process_script_audio_storyboard_task(
             task.result_file_path = f"script:{script_id}:storyboard_from_audio_timeline"
             update_task_progress(db, task, "分镜帧占位生成完成")
     except Exception as exc:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task = TaskRepository(db).get_by_id(task_id)
         if task:
             task.status = TaskStatus.FAILED
             task.error_message = str(exc)

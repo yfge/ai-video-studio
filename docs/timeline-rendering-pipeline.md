@@ -238,9 +238,9 @@ POST /api/v1/scripts/{script_id}/timeline-pipeline/generate-async
 ```
 
 It is the compatibility entrypoint for generating dialogue audio, transitional
-`audio_timeline`, and storyboard placeholders. The next implementation slice
-must add an import step that produces Timeline Spec v1 from
-`audio_timeline.beats`.
+`audio_timeline`, Timeline Spec v1, and storyboard placeholders. The default
+production script generation path and deprecated audio-timeline endpoint also
+import `audio_timeline.beats` into Timeline Spec v1 as compatibility bridges.
 
 Import rules:
 
@@ -254,16 +254,17 @@ Import rules:
   `beat_id` into clip source/audit fields.
 - Write `source_audio_timeline_version` on the timeline envelope.
 
-## API Contract To Implement Later
+## Timeline API Contract
 
-Target timeline APIs:
+Implemented timeline APIs:
 
 - `GET /api/v1/episodes/{episode_id}/timelines`: list timeline versions.
-- `POST /api/v1/episodes/{episode_id}/timelines/import-audio`: import current
-  `audio_timeline` into Timeline Spec v1.
 - `GET /api/v1/timelines/{timeline_id}`: read timeline spec and render state.
 - `PATCH /api/v1/timelines/{timeline_id}`: update with version lock.
 - `POST /api/v1/timelines/{timeline_id}/render`: queue proxy/final render job.
+
+A dedicated `POST /api/v1/episodes/{episode_id}/timelines/import-audio` may be
+added later, but current imports happen through generation bridges.
 
 Write APIs must require `expected_version`. If the persisted version has moved,
 return a version conflict rather than merging silently.

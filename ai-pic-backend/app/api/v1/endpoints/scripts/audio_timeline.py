@@ -8,8 +8,11 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.services.dialogue_audio_service import generate_episode_audio_timeline
+from app.repositories.task_repository import TaskRepository
+from app.repositories.user_repository import UserRepository
+from app.services.audio.episode_audio_builder import generate_episode_audio_timeline
 from app.services.task_worker import script_audio_timeline_generate_task
+from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -78,7 +81,9 @@ def _process_script_audio_timeline_task(
 
     db = SessionLocal()
     try:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task_repo = TaskRepository(db)
+        user_repo = UserRepository(db)
+        task = task_repo.get_by_id(task_id)
         if task:
             task.status = TaskStatus.PROCESSING
             db.commit()
@@ -87,7 +92,7 @@ def _process_script_audio_timeline_task(
         overwrite = bool(payload.get("overwrite"))
 
         async def _run() -> None:
-            user = db.query(User).filter(User.id == user_id).first()
+            user = user_repo.get_by_id(user_id)
             if not user:
                 raise RuntimeError("user_not_found")
 
@@ -103,20 +108,34 @@ def _process_script_audio_timeline_task(
             if not story:
                 raise RuntimeError("story_not_found")
 
+            audio_timeline_payload = None
             if not overwrite and episode_has_audio_timeline(episode, script_id):
                 update_task_progress(
                     db,
                     task,
-                    "已存在 episode 时间轴，跳过生成（如需重算请开启 overwrite）",
+                    "已存在 episode 时间轴，导入 Timeline Spec（如需重算请开启 overwrite）",
                 )
-                return
+            else:
+                update_task_progress(db, task, "拼接场景音轨并生成时间轴中…")
+                audio_timeline_payload = await generate_episode_audio_timeline(
+                    db,
+                    story=story,
+                    episode=episode,
+                    script=script,
+                )
 
-            update_task_progress(db, task, "拼接场景音轨并生成时间轴中…")
-            await generate_episode_audio_timeline(
+            import_result = import_audio_timeline_to_timeline_spec(
                 db,
-                story=story,
                 episode=episode,
                 script=script,
+                audio_timeline=audio_timeline_payload,
+                overwrite=overwrite,
+                user_id=user.id,
+            )
+            update_task_progress(
+                db,
+                task,
+                f"Timeline Spec v1 {import_result.action}",
             )
 
         run_async_task_sync(_run)
@@ -126,7 +145,7 @@ def _process_script_audio_timeline_task(
             task.result_file_path = f"script:{script_id}:audio_timeline"
             update_task_progress(db, task, "时间轴生成完成")
     except Exception as exc:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task = TaskRepository(db).get_by_id(task_id)
         if task:
             task.status = TaskStatus.FAILED
             task.error_message = str(exc)

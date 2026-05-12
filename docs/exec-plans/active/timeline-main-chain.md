@@ -18,9 +18,10 @@ Current status:
 - Phase 2 DB/API foundation is implemented with models, migration, timeline
   APIs, render job APIs, version locking, access filtering, and idempotent
   enqueue tests.
-- Phase 3 import bridge is implemented for `audio_timeline.beats -> Timeline
-Spec v1`; Phase 4 real render/export execution and Phase 5 operator UI remain
-  pending.
+- Phase 3 import bridge is implemented for explicit one-click generation,
+  default production script generation, and deprecated audio-timeline
+  compatibility. Phase 4 real render/export execution and full Phase 5 operator
+  UI remain pending.
 
 ## Phase 1: Spec And Contracts
 
@@ -53,10 +54,13 @@ Exit criteria:
 - [x] Extend the existing
       `/api/v1/scripts/{script_id}/timeline-pipeline/generate-async` path so it can
       import `audio_timeline.beats` into Timeline Spec v1.
+- [x] Import production `auto_timeline_pipeline` and deprecated
+      `/audio-timeline/generate-async` outputs into Timeline Spec v1.
 - [x] Generate stable `clip_id` values from `track_type + scene_id + beat_id +
 ordinal`.
-- [x] Preserve source references to `scene_beats`, `audio_timeline` version, and
-      storyboard frame ids where available.
+- [x] Preserve source references to `scene_beats` and `audio_timeline` version.
+- [ ] Preserve storyboard frame ids where available when storyboard support
+      views are linked back into Timeline Spec clips.
 
 Exit criteria:
 
@@ -66,6 +70,8 @@ Exit criteria:
 ## Phase 4: Render And Export
 
 - Link existing storyboard image/video outputs to `media_assets`.
+- Link storyboard support frame ids back into Timeline Spec video clips where
+  available.
 - Render proxy/final outputs from a locked timeline version.
 - Persist render output as `media_assets` and `render_jobs.output_asset_id`.
 

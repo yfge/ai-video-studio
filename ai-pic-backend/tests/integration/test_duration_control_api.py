@@ -4,6 +4,7 @@ from typing import Callable
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene
 from app.models.task import Task, TaskStatus, TaskType
+from app.models.timeline import Timeline
 from app.models.user import User
 
 
@@ -159,6 +160,78 @@ def test_audio_timeline_generate_async_includes_deprecation_headers(
     assert params["overwrite"] is False
     assert delay_calls["task_id"] == task_id
     assert delay_calls["user_id"] == admin_user.id
+
+
+def test_process_audio_timeline_task_imports_timeline_spec(
+    db_session, test_db, monkeypatch
+):
+    import app.api.v1.endpoints.scripts.audio_timeline as audio_timeline_endpoint
+
+    user = _create_user(db_session, username="audio_timeline_admin", is_admin=True)
+    script, scene_ids = _create_script_with_scenes(db_session, user=user)
+    task = _create_task(db_session, user_id=user.id, title="Audio timeline")
+
+    async def _fake_generate_episode_audio_timeline(
+        db_session,  # noqa: ANN001
+        *,
+        script: Script,
+        **_: object,
+    ) -> dict:
+        return {
+            "script_id": script.id,
+            "episode_audio": {
+                "oss_url": "https://cdn.example.com/episode.mp3",
+                "duration_seconds": 2.0,
+                "version": 6,
+            },
+            "beats": [
+                {
+                    "scene_id": scene_ids[0],
+                    "scene_number": 1,
+                    "beat_id": 601,
+                    "beat_type": "dialogue",
+                    "text": "hello",
+                    "start_ms": 0,
+                    "end_ms": 1000,
+                },
+                {
+                    "scene_id": scene_ids[1],
+                    "scene_number": 2,
+                    "beat_id": 602,
+                    "beat_type": "dialogue",
+                    "text": "world",
+                    "start_ms": 1000,
+                    "end_ms": 2000,
+                },
+            ],
+        }
+
+    monkeypatch.setattr(
+        audio_timeline_endpoint,
+        "generate_episode_audio_timeline",
+        _fake_generate_episode_audio_timeline,
+    )
+    _patch_session_local(monkeypatch, test_db)
+
+    audio_timeline_endpoint._process_script_audio_timeline_task(
+        task.id, {"script_id": script.id, "overwrite": True}, user.id
+    )
+
+    session = test_db()
+    try:
+        refreshed = session.query(Task).filter(Task.id == task.id).first()
+        assert refreshed is not None
+        assert refreshed.status == TaskStatus.COMPLETED
+        timeline = (
+            session.query(Timeline)
+            .filter(Timeline.episode_id == script.episode_id)
+            .filter(Timeline.script_id == script.id)
+            .one()
+        )
+        assert timeline.source_audio_timeline_version == 6
+        assert timeline.created_by == user.id
+    finally:
+        session.close()
 
 
 def test_process_dialogue_audio_task_uses_duration_control(

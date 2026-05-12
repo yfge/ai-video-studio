@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.script.production_pipeline import (
     annotate_storyboard_frames_with_hooks,
     build_hook_schedule,

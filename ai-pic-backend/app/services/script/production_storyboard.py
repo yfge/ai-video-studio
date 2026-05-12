@@ -9,6 +9,7 @@ from app.services.audio.scene_audio_generator import generate_scene_dialogue_aud
 from app.services.audio.storyboard_from_timeline import (
     generate_storyboard_from_episode_audio_timeline,
 )
+from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 from sqlalchemy.orm import Session
 
 ProgressCallback = Callable[[str], None]
@@ -44,9 +45,11 @@ def annotate_storyboard_frames_with_hooks(
         changed += _set_frame_hook(
             payoff_frame,
             "payoff",
-            ad_snippets[1]
-            if len(ad_snippets) > 1
-            else _schedule_ad_snippet(hook_schedule, 1),
+            (
+                ad_snippets[1]
+                if len(ad_snippets) > 1
+                else _schedule_ad_snippet(hook_schedule, 1)
+            ),
         )
 
     last = non_pause[-1]
@@ -71,6 +74,7 @@ async def run_auto_timeline_placeholders(
     timing_model: Optional[str] = None,
     min_pause_duration_ms: int = 1500,
     progress_callback: Optional[ProgressCallback] = None,
+    user_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Generate dialogue audio, episode audio timeline, and storyboard placeholders."""
 
@@ -83,7 +87,9 @@ async def run_auto_timeline_placeholders(
     for idx, scene in enumerate(scenes, start=1):
         if progress_callback:
             progress_callback(f"生产级链路：对白音轨 {idx}/{total}")
-        if story_structure_svc.list_beats_by_scene(db, scene.id):
+        has_dialogue_audio = _scene_has_dialogue_audio(scene, script.id)
+        has_scene_beats = bool(story_structure_svc.list_beats_by_scene(db, scene.id))
+        if has_dialogue_audio and has_scene_beats:
             continue
         await generate_scene_dialogue_audio(
             db,
@@ -104,6 +110,14 @@ async def run_auto_timeline_placeholders(
         story=story,
         episode=episode,
         script=script,
+    )
+    import_result = import_audio_timeline_to_timeline_spec(
+        db,
+        episode=episode,
+        script=script,
+        audio_timeline=timeline,
+        overwrite=True,
+        user_id=user_id or getattr(story, "user_id", None),
     )
 
     if progress_callback:
@@ -136,9 +150,23 @@ async def run_auto_timeline_placeholders(
         "audio_timeline_version": ((timeline or {}).get("episode_audio") or {}).get(
             "version"
         ),
+        "timeline_spec": {
+            "id": import_result.timeline.id,
+            "version": import_result.timeline.version,
+            "source_audio_timeline_version": (
+                import_result.timeline.source_audio_timeline_version
+            ),
+            "action": import_result.action,
+        },
         "storyboard_version": script.storyboard_version,
         "hook_annotation_count": changed,
     }
+
+
+def _scene_has_dialogue_audio(scene: Any, script_id: int) -> bool:
+    meta = _safe_dict(getattr(scene, "extra_metadata", None))
+    payload = _safe_dict(meta.get("dialogue_audio"))
+    return payload.get("script_id") == script_id and bool(payload.get("oss_url"))
 
 
 def _traffic_ad_snippets(scoring: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -147,7 +175,9 @@ def _traffic_ad_snippets(scoring: Dict[str, Any]) -> List[Dict[str, Any]]:
     for asset in _as_list(traffic.get("assets")):
         if not isinstance(asset, dict):
             continue
-        hook = asset.get("key_line") or asset.get("visual_hook") or asset.get("hook_type")
+        hook = (
+            asset.get("key_line") or asset.get("visual_hook") or asset.get("hook_type")
+        )
         if not hook:
             continue
         snippets.append(

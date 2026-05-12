@@ -32,7 +32,7 @@
 
 当前阻塞：
 
-- `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline 已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
+- `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - 渲染结果仍有一部分写回临时 metadata，而不是稳定的 timeline/versioned jobs。
 
 ### 任务（功能→后端→验证）
@@ -41,7 +41,7 @@
 - [x] 文档明确现有 `audio_timeline`、`scene_beats`、`storyboard.frames` 到 `Timeline Spec v1` 的导入规则、优先级和冲突处理。
 - [x] 完成 `timelines`、`render_jobs`、`media_assets` 数据模型与迁移，明确和现有图片/视频记录的关系。
 - [x] 实现 timeline list/create/read/update、版本锁、自增保存和 render-job 幂等入队/读取 API。
-- [x] 将现有 timeline-pipeline 的 `audio_timeline.beats` 导入 `timelines.spec`，生成 dialogue/video/subtitle clips。
+- [x] 将现有 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口的 `audio_timeline.beats` 导入 `timelines.spec`，生成 dialogue/video/subtitle clips。
 - [ ] 补齐 timeline delete/rollback、真实 export 触发和 completed render output 回写。
 - [x] 文档定义稳定 `clip_id` 生成规则，保证后续 re-dub / re-cut / re-render 不丢身份。
 - [ ] 渲染结果统一回写到 timeline/versioned render jobs，不再只写 ad hoc metadata。

@@ -122,11 +122,13 @@ def test_process_storyboard_from_audio_timeline_task(db_session, test_db, monkey
         episode,
         overwrite_existing: bool,
         min_pause_duration_ms: int,
+        legacy_support_view: bool,
     ) -> None:
         called["script_id"] = script.id
         called["episode_id"] = episode.id
         called["overwrite_existing"] = overwrite_existing
         called["min_pause_duration_ms"] = min_pause_duration_ms
+        called["legacy_support_view"] = legacy_support_view
 
     monkeypatch.setattr(
         audio_storyboard_endpoint,
@@ -161,3 +163,4 @@ def test_process_storyboard_from_audio_timeline_task(db_session, test_db, monkey
     assert called["script_id"] == script.id
     assert called["overwrite_existing"] is True
     assert called["min_pause_duration_ms"] == 2250
+    assert called["legacy_support_view"] is True

@@ -143,6 +143,7 @@ def generate_storyboard_from_episode_audio_timeline(
     episode: Episode,
     overwrite_existing: bool = False,
     min_pause_duration_ms: int = 1500,
+    legacy_support_view: bool = False,
 ) -> dict[str, Any]:
     """Generate storyboard frames from episode audio timeline and persist."""
     ep_meta = episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {}
@@ -183,6 +184,11 @@ def generate_storyboard_from_episode_audio_timeline(
         "generated_at": _utc_now_iso(),
         "generation_source": "audio_timeline",
         "generation_method": "audio_timeline",
+        "source_role": (
+            "legacy_audio_timeline_support_view"
+            if legacy_support_view
+            else "storyboard_support_view"
+        ),
         "script_id": script.id,
         "episode_id": episode.id,
         "audio_timeline_version": (
