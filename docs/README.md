@@ -19,14 +19,14 @@ Keep durable engineering rules in repository docs like the files above. Do not t
 
 ## Product & Architecture
 
-- `docs/media-asset-persistence.md` — generated media persistence to OSS/CDN (naming + metadata contract).
+- `docs/media-asset-persistence.md` — generated media persistence plus target `media_assets` contract for timeline clips and render jobs.
 - `docs/db-backup-policy.md` — SQL backup handling policy (external storage + restore procedure).
 - `docs/soft-delete-business-id.md` — soft delete + business_id design.
 - `docs/story-structure-api.md` — normalized story-structure endpoints.
 - `docs/story-structure-gap-analysis.md` — historical gap analysis (pre-normalization).
 - `docs/storyboard-normalized-toggle.md` — storyboard normalized integration notes.
-- `docs/dialogue-audio-timeline-spec.md` — dialogue audio + timeline spec.
-- `docs/timeline-rendering-pipeline.md` — timeline/rendering pipeline design.
+- `docs/dialogue-audio-timeline-spec.md` — dialogue audio transition spec feeding Timeline Spec v1.
+- `docs/timeline-rendering-pipeline.md` — Timeline Spec v1 and render/export main-chain contract.
 - `docs/agent_graphs/` — generated agent state graphs (Mermaid + PNG).
 
 ## Design Documents

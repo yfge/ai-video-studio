@@ -1,81 +1,205 @@
-# 对白音轨与声音驱动时间轴 — Spec（MVP）
+# Dialogue Audio Timeline Transition Spec
 
-> 目标：Episode 生成后，在单集内一键产出「场景对白混音音轨（1 scene = 1 track）→ scene_beats → episode 时间轴 → 分镜帧占位」，并确保**所有最终音频均上传 OSS**。时长以声音为准（TTS 实际时长）。
+## Status
 
-## 1. 输入与范围
+This spec describes the existing audio-first transition layer that feeds
+Timeline Spec v1. It is not the final source of truth for episode output.
 
-- 输入数据源：
-  - `scripts.dialogues[]`（按 list 顺序视为对白顺序；`scene_number` + `character` + `content`）
-  - `scripts.stage_directions[]`（`scene_number` + `content` + 可选 `timing`）
-  - 规范化场景：`scenes`（`script_id` 下按 `scene_number` 排序）
-- MVP 输出粒度：
-  - **每个 Scene 生成 1 条对白音轨**（把该场景的对白片段按顺序拼接，并按规则补足留白）
-  - Scene 级 beats 落库到 `scene_beats`（不在 episode 级存 beats 表）
-  - Episode 级时间轴以 JSON 形式落到 `episodes.extra_metadata`（后续可迁移到 Timeline Spec/EDL）
+Current storage:
 
-## 2. 音色绑定（VirtualIP / 衍生角色）
+- Scene audio metadata lives in `scenes.metadata.dialogue_audio`.
+- Scene-local segments live in `scene_beats`.
+- Episode-level merged audio lives in `episodes.extra_metadata.audio_timeline`.
+- Storyboard placeholders live in `scripts.extra_metadata.storyboard.frames`.
 
-### 2.1 VirtualIP（已有 IP 库角色）
+Target source of truth:
 
-- 若 `virtual_ips.voice_config` 缺失：运行 agent 从系统音色候选集中选择 `voice_id`，并**自动落库**到 `virtual_ips.voice_config`（无需人工确认）。
+- `Timeline Spec v1` as defined in `docs/timeline-rendering-pipeline.md`.
 
-### 2.2 衍生角色（脚本出现但 IP 库不存在）
+## Scope
 
-- 定义：脚本 `dialogues[].character` 出现，但无法映射到 Story 的 `StoryCharacter.virtual_ip_id` 的角色名（例如「路人」「店员」）。
-- 使用 agent 判断 voice binding scope：
-  - `scene` / `episode` / `story`
-- voice binding 的存储位置（JSON）：
-  - `scene`：`scenes.metadata.derived_character_voice_bindings`
-  - `episode`：`episodes.extra_metadata.derived_character_voice_bindings`
-  - `story`：`stories.extra_metadata.derived_character_voice_bindings`
+The audio pipeline creates a deterministic bridge from script text to timeline
+clips:
 
-## 3. Scene 音轨生成
+```text
+scripts.dialogues/stage_directions
+  -> scene dialogue audio
+  -> scene_beats
+  -> episodes.extra_metadata.audio_timeline.beats
+  -> Timeline Spec v1 clips
+  -> storyboard.frames support output
+```
 
-### 3.1 Segment 类型（用于 beats 与音频拼接）
+`audio_timeline` remains a compatibility and import payload. New render/export
+work must consume Timeline Spec v1 after the import bridge exists.
 
-- `dialogue`：对白（TTS）
-- `action`：舞台指示/留白（MVP 用静音补足；后续可扩展为环境音/旁白）
-- `pause`：对白间停顿（静音）
+## Input Sources
 
-### 3.2 默认补足规则（可后续参数化）
+- `scripts.dialogues[]`: ordered dialogue source with `scene_number`,
+  `character`, and `content`.
+- `scripts.stage_directions[]`: action/pause source with `scene_number`,
+  `content`, and optional timing hints.
+- `scenes`: normalized scenes for the script, ordered by `scene_number`.
+- Story/IP bindings: used to resolve voices and character audit metadata.
 
-- 每条对白后追加 `pause`（默认 300ms）
-- `action` 静音时长（默认 800ms；可根据文本长度线性放大）
-- 当某 Scene 无任何对白/舞台指示时：生成 2s 静音音轨并产出 1 个 `action` beat
+## Voice Binding
 
-### 3.3 Scene 级落库
+For Virtual IP roles:
 
-- Scene 音频落库（JSON，存于 `scenes.metadata.dialogue_audio`）：
-  - `oss_url`: string
-  - `duration_seconds`: number
-  - `generated_at`: ISO8601
-  - `version`: int（自增）
-  - `script_id`: int
-- Beats 落库到 `scene_beats`（每个 segment 1 行）：
-  - `beat_type`: `dialogue` | `action` | `pause`
-  - `dialogue_excerpt`: 对白文本（仅 dialogue），或留空
-  - `beat_summary`: 舞台指示文本（仅 action），或留空
-  - `duration_seconds`: segment 实际时长（来自音频）
-  - `metadata`（建议字段）：
-    - `start_ms` / `end_ms`
-    - `speaker_name`（dialogue）
-    - `speaker_kind`: `virtual_ip` | `derived` | `narrator`
-    - `voice_config`（快照，便于审计）
-    - `source`: `dialogue_audio_pipeline`
+- If `virtual_ips.voice_config` is missing, the pipeline may choose a `voice_id`
+  from configured candidates and persist it to `virtual_ips.voice_config`.
 
-## 4. Episode 音轨拼接与时间轴
+For derived roles:
 
-- Episode 音频：按场景顺序拼接 `scenes.metadata.dialogue_audio.oss_url`，产出 1 条 episode 级音频并上传 OSS。
-- Episode 级时间轴：把各 scene 的 beats 做 offset 合并（`start_ms/end_ms` + cumulative scene duration）。
-- Episode 级落库（JSON，存于 `episodes.extra_metadata.audio_timeline`）：
-  - `script_id`: int
-  - `episode_audio`: `{ oss_url, duration_seconds, generated_at, version }`
-  - `beats[]`: `scene_id/scene_number/beat_id/beat_type/speaker_name/text/start_ms/end_ms`
+- A derived role is a script character that cannot map to the story's
+  `StoryCharacter.virtual_ip_id`.
+- The selected voice binding scope may be `scene`, `episode`, or `story`.
+- Store scoped bindings in the closest existing JSON metadata:
+  - `scenes.metadata.derived_character_voice_bindings`
+  - `episodes.extra_metadata.derived_character_voice_bindings`
+  - `stories.extra_metadata.derived_character_voice_bindings`
 
-## 5. 从时间轴生成分镜帧占位
+## Scene Audio And Beats
 
-- MVP：从 episode `audio_timeline.beats` 生成 `storyboard.frames`（结构占位，无图像 URL）。
-- 默认策略：
-  - 仅为 `dialogue` 与 `action` beats 生成帧；`pause` 默认跳过（除非 > 1.5s）
-  - `duration_seconds` 来自 beat
-  - 额外字段可写入 frame（如 `start_ms/end_ms`）用于后续剪辑
+Each scene produces one dialogue audio track. The track concatenates dialogue,
+action, and pause segments in scene order.
+
+Segment types:
+
+- `dialogue`: TTS output for spoken content.
+- `action`: silence or future environment audio for stage direction/action.
+- `pause`: silence between dialogue segments.
+
+Default timing:
+
+- Dialogue duration comes from generated TTS audio.
+- Dialogue pause defaults to 300 ms.
+- Action silence defaults to 800 ms and may scale by text length.
+- Empty scenes produce a 2 second action beat.
+
+Scene audio metadata:
+
+- `oss_url`
+- `duration_seconds`
+- `generated_at`
+- `version`
+- `script_id`
+
+Required `scene_beats` fields:
+
+- `scene_id`
+- `order_index`
+- `beat_type`: `dialogue` | `action` | `pause`
+- `dialogue_excerpt`
+- `beat_summary`
+- `duration_seconds`
+- `metadata.start_ms`
+- `metadata.end_ms`
+- `metadata.speaker_name`
+- `metadata.speaker_kind`: `virtual_ip` | `derived` | `narrator`
+- `metadata.voice_config`
+- `metadata.source`: `dialogue_audio_pipeline`
+
+`scene_beats` are the scene-local source segments. They are not the final
+episode timeline because their times are local to each scene.
+
+## Episode Audio Timeline
+
+The episode audio timeline concatenates scene audio in scene order and offsets
+scene-local beats into episode time.
+
+Episode audio metadata:
+
+- `script_id`
+- `episode_audio.oss_url`
+- `episode_audio.duration_seconds`
+- `episode_audio.generated_at`
+- `episode_audio.version`
+- `beats[]`
+
+Required beat fields:
+
+- `scene_id`
+- `scene_number`
+- `beat_id`
+- `beat_type`
+- `speaker_name`
+- `characters_involved`
+- `dialogue_action`
+- `dialogue_emotion`
+- `text`
+- `start_ms`
+- `end_ms`
+
+`episodes.extra_metadata.audio_timeline` is a transition payload. It is the
+required input for importing Timeline Spec v1, but it must not be used as the
+render/export source after the import exists.
+
+## Mapping To Timeline Spec v1
+
+Each eligible `audio_timeline.beats[]` item imports into matching Timeline Spec
+v1 clips.
+
+Dialogue beats:
+
+- Create one `dialogue` clip with `audio_asset_id` once the scene/episode audio
+  has a `media_assets` row.
+- Create one `subtitle` clip using `text`, `start_ms`, and `end_ms`.
+- Create one `video` placeholder clip with the same timing.
+
+Action beats:
+
+- Create one `video` placeholder clip.
+- Create one `subtitle` clip only when visible text or operator notes are
+  needed.
+
+Pause beats:
+
+- Skip by default when shorter than the storyboard minimum pause threshold.
+- Import when the beat is intentionally preserved as visual time.
+
+Stable `clip_id` format:
+
+```text
+{track_type}:scene-{scene_id}:beat-{beat_id}:ord-{ordinal}
+```
+
+Mapping rules:
+
+- `start_ms/end_ms/duration_ms` come from `audio_timeline.beats`.
+- `timing_source` is `tts_duration` for dialogue and `scene_beat` for action or
+  imported pauses unless manually edited later.
+- `voice_source` comes from beat metadata when present.
+- `source.kind` is `audio_timeline_beat`.
+- `source.audio_timeline_version` is copied from
+  `episode_audio.version`.
+- The timeline envelope `source_audio_timeline_version` uses the same version.
+
+## Storyboard Support Output
+
+`storyboard.frames` remains a compatibility output and support view.
+
+Allowed usage:
+
+- Show visual placeholders derived from beats.
+- Hold generated prompt descriptions, reference images, and frame/video legacy
+  URLs during the transition.
+- Link back to Timeline Spec clips through `scene_id`, `beat_id`, timing fields,
+  and optional `storyboard_frame_id`.
+
+Disallowed usage:
+
+- Do not treat storyboard frame order or duration as the final render/export
+  source once Timeline Spec v1 exists.
+- Do not rely on storyboard frame index as clip identity.
+
+## Validation Requirements
+
+The import bridge must validate:
+
+- every imported clip has stable `clip_id`;
+- clip timing is monotonic and non-negative;
+- total timeline duration matches the episode audio duration within tolerance;
+- `source_audio_timeline_version` is present;
+- source beat references can be traced back to `scene_beats` when `beat_id`
+  exists.

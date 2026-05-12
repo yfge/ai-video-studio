@@ -21,7 +21,7 @@
 
 ## 状态概览
 
-- P0：冻结 Timeline Spec v1，结束 `audio_timeline` / `scene_beats` / `storyboard.frames` 三套事实并存。
+- P0：Timeline Spec v1 文档已收敛为主规范，下一步把实现迁入该规范，结束 `audio_timeline` / `scene_beats` / `storyboard.frames` 三套事实并存。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
 - P1：把默认操作路径从 `Episode -> Storyboard` 改成 `Episode -> Timeline`。
@@ -32,16 +32,16 @@
 
 当前阻塞：
 
-- `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，导入规则和版本边界不明确。
+- `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，实现还没有迁入 `Timeline Spec v1`。
 - 渲染结果仍有一部分写回临时 metadata，而不是稳定的 timeline/versioned jobs。
 
 ### 任务（功能→后端→验证）
 
-- [ ] 冻结 `Timeline Spec v1`，定义 `tracks / clips / assets / source / version` 的最终字段和约束。
-- [ ] 明确现有 `audio_timeline`、`scene_beats`、`storyboard.frames` 到 `Timeline Spec v1` 的导入规则、优先级和冲突处理。
+- [x] 文档冻结 `Timeline Spec v1`，定义 `tracks / clips / assets / source / version` 的目标字段和约束。
+- [x] 文档明确现有 `audio_timeline`、`scene_beats`、`storyboard.frames` 到 `Timeline Spec v1` 的导入规则、优先级和冲突处理。
 - [ ] 完成 `timelines`、`render_jobs`、`media_assets` 数据模型与迁移，明确和现有图片/视频记录的关系。
 - [ ] 实现 timeline CRUD、版本号、自增保存、回滚和幂等导出触发。
-- [ ] 为每个 clip 定义稳定 `clip_id`，保证后续 re-dub / re-cut / re-render 不丢身份。
+- [x] 文档定义稳定 `clip_id` 生成规则，保证后续 re-dub / re-cut / re-render 不丢身份。
 - [ ] 渲染结果统一回写到 timeline/versioned render jobs，不再只写 ad hoc metadata。
 - [ ] 为 Timeline Spec 增加 schema 校验、导入校验、权限校验和导出幂等测试。
 
@@ -56,9 +56,9 @@
 
 ### 任务（功能→后端→验证）
 
-- [ ] 最终冻结 `scene -> episode audio -> beats -> timeline` 映射规则，补齐 `scene_beats` 与 episode offset 合并文档和测试。
+- [x] 文档冻结 `scene -> episode audio -> beats -> timeline` 映射规则，补齐 `scene_beats` 与 episode offset 合并说明。
 - [ ] 在短剧模式下，把 dialogue/audio timing 明确为默认 clip duration source，并在任务审计中记录来源。
-- [ ] 为 timeline clip 增加 `timing_source`、`voice_source`、`clip_replacement_of`、`render_source_version` 等审计字段。
+- [x] 文档定义 timeline clip 的 `timing_source`、`voice_source`、`clip_replacement_of`、`render_source_version` 等审计字段。
 - [ ] 支持基于稳定 `clip_id` 的 re-dub、re-cut、re-render，不允许靠临时 frame index 追踪资产。
 - [ ] 确保 storyboard placeholder 只消费 timeline facts，不再依赖自由估算时长。
 - [ ] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。

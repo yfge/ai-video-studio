@@ -79,6 +79,51 @@ Current fields (best-effort):
 - `duration_seconds`, `fps`, `resolution`, `ratio`, `width`, `height`
 - `assets.video|thumbnail|last_frame` (URL/object_key/file_size/mime_type/sha256)
 
+## Target `media_assets` Contract
+
+Timeline Spec v1 needs a unified DB asset row for image, video, audio, and
+subtitle outputs. The target `media_assets` table does not replace current OSS
+metadata, `images`, or `video_generation_tasks` in one step; it gives timeline
+clips and render jobs one stable id space.
+
+Minimum target fields:
+
+- `id`
+- `asset_type`: `image` | `video` | `audio` | `subtitle`
+- `origin`: `ai_generated` | `user_uploaded` | `imported` | `rendered`
+- `file_url`
+- `object_key`
+- `file_path`
+- `mime_type`
+- `duration_ms`
+- `width`
+- `height`
+- `hash`
+- `metadata`
+- `created_by`
+- `created_at`
+
+Timeline references:
+
+- Dialogue clips use `audio_asset_id`.
+- Video clips use `start_frame_asset_id`, `end_frame_asset_id`, and
+  `video_asset_id`.
+- Subtitle clips use `subtitle_asset_id` only when a standalone subtitle file is
+  emitted; inline subtitle text may remain in the clip spec for editing.
+- Render jobs write `output_asset_id` for proxy/final exports.
+
+Transition rules:
+
+- Existing `scripts.extra_metadata.storyboard.frames[*].image_url` and
+  `video_url` remain compatibility fields until migrated.
+- Existing `video_generation_tasks` remains the provider polling/audit record.
+  Its normalized `generation_metadata.assets.*` fields should map to
+  `media_assets` rows when the target table exists.
+- OSS object metadata remains ASCII-only and lightweight. Rich prompts,
+  non-ASCII text, provider payloads, and timeline source references belong in
+  DB JSON fields such as `Task.parameters`, `video_generation_tasks`, timeline
+  clips, or `media_assets.metadata`.
+
 ## Expected Flow (Storyboard Video)
 
 For storyboard video generation:
@@ -88,3 +133,5 @@ For storyboard video generation:
 3. Poller detects completion, uploads media to OSS/CDN, and writes the final URLs into:
    - `video_generation_tasks.result` (JSON string)
    - `scripts.extra_metadata.storyboard.frames[*].video_url` (for the relevant frame)
+4. Target timeline implementation additionally creates or links `media_assets`
+   rows and references those ids from Timeline Spec v1 clips.
