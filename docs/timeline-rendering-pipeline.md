@@ -92,16 +92,16 @@ main chain.
 Every clip must have a stable `clip_id`. The importer must derive it from:
 
 ```text
-{track_type}:scene-{scene_id}:beat-{beat_id}:ord-{ordinal}
+{track_type}_scene_{scene_id}_beat_{beat_id}_{ordinal:03d}
 ```
 
 Examples:
 
-- `dialogue:scene-501:beat-9001:ord-1`
-- `video:scene-501:beat-9001:ord-1`
-- `subtitle:scene-501:beat-9001:ord-1`
+- `dialogue_scene_501_beat_9001_001`
+- `video_scene_501_beat_9001_001`
+- `subtitle_scene_501_beat_9001_001`
 
-If `beat_id` is unavailable, use `beat-missing` and include the original
+If `beat_id` is unavailable, use `beat_unknown` and include the original
 `source.ordinal`. Re-dub, re-cut, re-render, replacement clips, and provider
 retries must not mutate the original `clip_id`; they add metadata such as
 `clip_replacement_of`, `render_source_version`, or a new asset reference.
@@ -138,9 +138,9 @@ Required audit fields when available:
 - `render_source_version`
 - `clip_replacement_of`
 
-Asset references are always ids into the target `media_assets` table, not raw
-URLs. During transition, raw legacy URLs may be stored inside `source.legacy`,
-but new consumers should prefer asset ids.
+Asset references target `media_assets` ids once media persistence is complete.
+During transition, clip `asset_ref` may contain raw legacy URLs, but new
+consumers should prefer asset ids whenever they are present.
 
 ### Minimal JSON Shape
 
@@ -161,7 +161,7 @@ but new consumers should prefer asset ids.
       "type": "dialogue",
       "clips": [
         {
-          "clip_id": "dialogue:scene-501:beat-9001:ord-1",
+          "clip_id": "dialogue_scene_501_beat_9001_001",
           "track_type": "dialogue",
           "ordinal": 1,
           "scene_id": 501,
@@ -187,7 +187,7 @@ but new consumers should prefer asset ids.
       "type": "video",
       "clips": [
         {
-          "clip_id": "video:scene-501:beat-9001:ord-1",
+          "clip_id": "video_scene_501_beat_9001_001",
           "track_type": "video",
           "ordinal": 1,
           "scene_id": 501,

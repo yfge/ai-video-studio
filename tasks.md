@@ -21,7 +21,7 @@
 
 ## 状态概览
 
-- P0：Timeline Spec v1 文档、DB/API foundation 和 `audio_timeline.beats` 导入桥已落地，下一步把真实 render/export 回写迁入 versioned timeline jobs。
+- P0：Timeline Spec v1 文档、DB/API foundation、`audio_timeline.beats` 导入桥、Timeline readiness 优先级、默认 storyboard support 生成源和 dry-run backfill 已落地，下一步把真实 render/export 回写迁入 versioned timeline jobs。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
 - P1：把默认操作路径从 `Episode -> Storyboard` 改成 `Episode -> Timeline`。
@@ -53,17 +53,17 @@
 
 当前阻塞：
 
-- 场景音轨、episode 音轨、beats、分镜占位已经有雏形，但 clip 级 lineage 和 timing source 还不稳定。
+- 场景音轨、episode 音轨、beats、分镜占位已经收敛到 Timeline Spec 导入；clip 级 lineage 和 timing source 已在导入桥中落字段，资产级关联仍未完成。
 - 重新配音、重新切分、重新导出还没有统一挂在稳定 clip identity 上。
 
 ### 任务（功能→后端→验证）
 
 - [x] 文档冻结 `scene -> episode audio -> beats -> timeline` 映射规则，补齐 `scene_beats` 与 episode offset 合并说明。
-- [ ] 在短剧模式下，把 dialogue/audio timing 明确为默认 clip duration source，并在任务审计中记录来源。
+- [x] 在短剧模式下，把 dialogue/audio timing 明确为默认 clip duration source，并在任务审计中记录来源。
 - [x] 文档定义 timeline clip 的 `timing_source`、`voice_source`、`clip_replacement_of`、`render_source_version` 等审计字段。
 - [x] 在导入桥中按 `track_type + scene_id + beat_id + ordinal` 生成稳定 `clip_id`。
 - [ ] 支持基于稳定 `clip_id` 的 re-dub、re-cut、re-render，不允许靠临时 frame index 追踪资产。
-- [ ] 确保 storyboard placeholder 只消费 timeline facts，不再依赖自由估算时长。
+- [x] 确保默认 production/timeline-pipeline 的 storyboard placeholder 消费 Timeline Spec clips，不再依赖自由估算时长；deprecated audio-timeline 入口保留 legacy support view。
 - [ ] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。
 - [ ] 写通一条回归链路：`scene audio -> episode timeline -> storyboard placeholder -> clip render -> export`。
 

@@ -31,6 +31,8 @@ def build_timeline_spec_from_audio_timeline(
         "script_business_id": script.business_id,
         "version": version,
         "source_audio_timeline_version": source_version,
+        "fps": 24,
+        "resolution": "1080x1920",
         "duration_ms": duration_ms,
         "source": {
             "type": "audio_timeline",
@@ -154,6 +156,12 @@ def _clip(
         "end_ms": beat["end_ms"],
         "duration_ms": beat["duration_ms"],
         "timing_source": "audio_timeline.beats",
+        "source": {
+            "kind": "audio_timeline_beat",
+            "scene_id": scene_id,
+            "beat_id": beat_id,
+            "audio_timeline_version": source_version,
+        },
         "source_refs": {
             "scene_beat_id": beat_id,
             "audio_timeline_version": source_version,

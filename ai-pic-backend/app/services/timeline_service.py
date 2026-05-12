@@ -63,6 +63,8 @@ class TimelineService:
             created_by=current_user.id,
             updated_by=current_user.id,
         )
+        self.db.flush()
+        timeline.spec = self._spec_with_identity(timeline)
         self.db.commit()
         self.db.refresh(timeline)
         return self._timeline_response(timeline)
@@ -86,6 +88,7 @@ class TimelineService:
             setattr(timeline, field, value)
         timeline.version = (timeline.version or 0) + 1
         timeline.updated_by = current_user.id
+        timeline.spec = self._spec_with_identity(timeline)
 
         self.db.commit()
         self.db.refresh(timeline)
@@ -182,6 +185,15 @@ class TimelineService:
             preset, ensure_ascii=False, sort_keys=True, separators=(",", ":")
         )
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _spec_with_identity(timeline: Timeline) -> Dict[str, Any]:
+        spec = timeline.spec if isinstance(timeline.spec, dict) else {}
+        return {
+            **spec,
+            "timeline_id": timeline.id,
+            "version": timeline.version,
+        }
 
     @staticmethod
     def _timeline_response(timeline: Timeline) -> TimelineResponse:

@@ -66,6 +66,9 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
 
     spec = timeline.spec
     assert spec["spec_version"] == "timeline.v1"
+    assert spec["timeline_id"] == timeline.id
+    assert spec["fps"] == 24
+    assert spec["resolution"] == "1080x1920"
     assert spec["duration_ms"] == 2000
     tracks = {track["track_type"]: track for track in spec["tracks"]}
     assert set(tracks) == {"dialogue", "video", "subtitle"}
@@ -77,7 +80,14 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
     assert dialogue_clip["clip_id"] == stable_clip_id(
         track_type="dialogue", scene_id=11, beat_id=101, ordinal=1
     )
+    assert dialogue_clip["clip_id"] == "dialogue_scene_11_beat_101_001"
     assert dialogue_clip["asset_ref"]["url"] == "https://cdn.example.com/episode.mp3"
+    assert dialogue_clip["source"] == {
+        "kind": "audio_timeline_beat",
+        "scene_id": 11,
+        "beat_id": 101,
+        "audio_timeline_version": 3,
+    }
     assert dialogue_clip["source_refs"]["scene_beat_id"] == 101
 
 
@@ -112,4 +122,5 @@ def test_import_audio_timeline_skips_then_updates_with_stable_clip_ids(db_sessio
     assert updated.action == "updated"
     assert updated.timeline.version == 2
     assert updated.timeline.source_audio_timeline_version == 2
+    assert updated.timeline.spec["timeline_id"] == created.timeline.id
     assert updated_clip_id == first_clip_id

@@ -2,8 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { storyAPI, episodeAPI, scriptAPI, virtualIPAPI } from "@/utils/api/endpoints";
-import type { Story, Episode, Script, VirtualIPEnvironmentLink } from "@/utils/api/types";
+import {
+  storyAPI,
+  episodeAPI,
+  scriptAPI,
+  timelineAPI,
+  virtualIPAPI,
+} from "@/utils/api/endpoints";
+import type {
+  Story,
+  Episode,
+  Script,
+  VirtualIPEnvironmentLink,
+} from "@/utils/api/types";
+import type { TimelineResponse } from "@/utils/api/types";
 import { useStoryEpisodeGeneration } from "@/hooks/useStoryEpisodeGeneration";
 import { useStoryReadiness } from "@/hooks/useStoryReadiness";
 import { episodeWorkspaceHref } from "@/utils/routes";
@@ -32,6 +44,9 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
   const [scriptsByEpisode, setScriptsByEpisode] = useState<
     Record<number, Script[]>
   >({});
+  const [timelinesByEpisode, setTimelinesByEpisode] = useState<
+    Record<number, TimelineResponse[]>
+  >({});
   const [storyEnvironmentLinks, setStoryEnvironmentLinks] = useState<
     VirtualIPEnvironmentLink[]
   >([]);
@@ -59,7 +74,9 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
           vipIds.map((vipId) => virtualIPAPI.listVirtualIPEnvironments(vipId)),
         );
         setStoryEnvironmentLinks(
-          linkResults.flatMap((res) => (res.success && res.data ? res.data : [])),
+          linkResults.flatMap((res) =>
+            res.success && res.data ? res.data : [],
+          ),
         );
       }
       if (epsRes.success && epsRes.data) setEpisodes(epsRes.data);
@@ -67,12 +84,19 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
       if (epsRes.success && epsRes.data && epsRes.data.length > 0) {
         setLoadingScripts(true);
         const scriptsMap: Record<number, Script[]> = {};
+        const timelinesMap: Record<number, TimelineResponse[]> = {};
         const tasks = epsRes.data.map(async (ep) => {
-          const sr = await scriptAPI.getEpisodeScripts(ep.id);
+          const [sr, tr] = await Promise.all([
+            scriptAPI.getEpisodeScripts(ep.id),
+            timelineAPI.listEpisodeTimelines(ep.id),
+          ]);
           scriptsMap[ep.id] = sr.success && sr.data ? sr.data : [];
+          timelinesMap[ep.id] =
+            tr.success && tr.data ? tr.data.items ?? [] : [];
         });
         await Promise.all(tasks);
         setScriptsByEpisode(scriptsMap);
+        setTimelinesByEpisode(timelinesMap);
       }
     } catch (e) {
       console.error("加载故事详情失败", e);
@@ -126,6 +150,7 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
     storyEnvironmentLinks,
     episodes,
     scriptsByEpisode,
+    timelinesByEpisode,
     loading,
     loadingScripts,
     showPrompt,

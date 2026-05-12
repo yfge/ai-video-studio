@@ -42,6 +42,7 @@ export default function EpisodeWorkspacePage() {
     normalizedScenesLoading,
     normalizedScenesError,
     selectedAudioTimeline,
+    selectedTimelineSpec,
     selectedStoryboard,
     timingModel,
     setTimingModel,
@@ -75,7 +76,7 @@ export default function EpisodeWorkspacePage() {
   // Calculate workflow status based on data
   const workflowStatus: WorkflowStatus = useMemo(() => {
     const hasScript = scripts.length > 0;
-    const hasTimeline = Boolean(selectedAudioTimeline);
+    const hasTimeline = Boolean(selectedTimelineSpec || selectedAudioTimeline);
     const hasStoryboard = Boolean(selectedStoryboard);
 
     return {
@@ -83,7 +84,12 @@ export default function EpisodeWorkspacePage() {
       timeline: hasTimeline ? "ready" : "pending",
       storyboard: hasStoryboard ? "ready" : "pending",
     };
-  }, [scripts.length, selectedAudioTimeline, selectedStoryboard]);
+  }, [
+    scripts.length,
+    selectedAudioTimeline,
+    selectedTimelineSpec,
+    selectedStoryboard,
+  ]);
 
   const {
     activeTab,
@@ -161,6 +167,7 @@ export default function EpisodeWorkspacePage() {
             selectedScriptId={selectedScriptId}
             selectedScript={selectedScript}
             scriptSceneCount={mainScriptSceneCount}
+            selectedTimelineSpec={selectedTimelineSpec}
             selectedAudioTimeline={selectedAudioTimeline}
             selectedStoryboard={selectedStoryboard}
             normalizedScenes={normalizedScenes}

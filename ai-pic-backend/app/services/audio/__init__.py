@@ -30,10 +30,16 @@ from app.services.audio.dialogue_processor import (
     sanitize_dialogue_content,
 )
 from app.services.audio.speech_service import SpeechService, get_speech_service
-from app.services.audio.timeline_processor import (
-    build_episode_timeline_beats,
+from app.services.audio.storyboard_from_timeline import (
     build_storyboard_frames_from_audio_timeline,
     generate_storyboard_from_episode_audio_timeline,
+)
+from app.services.audio.storyboard_from_timeline_spec import (
+    build_storyboard_frames_from_timeline_spec,
+    generate_storyboard_support_from_timeline_spec,
+)
+from app.services.audio.timeline_processor import (
+    build_episode_timeline_beats,
     utc_now_iso,
 )
 from app.services.audio.voice_constants import (
@@ -77,7 +83,9 @@ __all__ = [
     "utc_now_iso",
     "build_episode_timeline_beats",
     "build_storyboard_frames_from_audio_timeline",
+    "build_storyboard_frames_from_timeline_spec",
     "generate_storyboard_from_episode_audio_timeline",
+    "generate_storyboard_support_from_timeline_spec",
     # Voice catalog and constants
     "SYSTEM_VOICE_CATALOG",
     "DEFAULT_MINIMAX_VOICE_ID",

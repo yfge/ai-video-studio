@@ -129,7 +129,7 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
         db.commit()
         return payload
 
-    def _fake_generate_storyboard_from_episode_audio_timeline(
+    def _fake_generate_storyboard_support_from_timeline_spec(
         *_: object, **__: object
     ) -> dict:
         return {"frames": [{"frame_id": "frame-1", "description": "hello"}], "meta": {}}
@@ -148,8 +148,8 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
     )
     monkeypatch.setattr(
         production_storyboard,
-        "generate_storyboard_from_episode_audio_timeline",
-        _fake_generate_storyboard_from_episode_audio_timeline,
+        "generate_storyboard_support_from_timeline_spec",
+        _fake_generate_storyboard_support_from_timeline_spec,
     )
 
     result = await run_auto_timeline_placeholders(

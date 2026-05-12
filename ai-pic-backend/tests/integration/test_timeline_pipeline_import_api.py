@@ -118,7 +118,7 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
             ],
         }
 
-    def _fake_generate_storyboard_from_episode_audio_timeline(
+    def _fake_generate_storyboard_support_from_timeline_spec(
         *_: object, **__: object
     ) -> None:
         called["storyboard"] = True
@@ -135,8 +135,8 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
     )
     monkeypatch.setattr(
         timeline_pipeline_endpoint,
-        "generate_storyboard_from_episode_audio_timeline",
-        _fake_generate_storyboard_from_episode_audio_timeline,
+        "generate_storyboard_support_from_timeline_spec",
+        _fake_generate_storyboard_support_from_timeline_spec,
     )
     _patch_session_local(monkeypatch, test_db)
 

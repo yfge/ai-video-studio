@@ -40,6 +40,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     story,
     episodes,
     scriptsByEpisode,
+    timelinesByEpisode,
     loading,
     loadingScripts,
     genOpen,
@@ -87,134 +88,146 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
       variant="main-inspector"
       main={
         <OperatorMainCanvas className="space-y-5">
-        <OperatorPanel className="p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-lg font-semibold text-gray-950">
-                  {story.title}
-                </h1>
-                <StatusPill tone="green">{story.status}</StatusPill>
+          <OperatorPanel className="p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-lg font-semibold text-gray-950">
+                    {story.title}
+                  </h1>
+                  <StatusPill tone="green">{story.status}</StatusPill>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                  <span>{story.genre}</span>
+                  {story.theme ? <span>{story.theme}</span> : null}
+                  {story.duration_minutes ? (
+                    <span>{story.duration_minutes} 分钟</span>
+                  ) : null}
+                  <span>更新 {formatStoryTime(story.updated_at)}</span>
+                </div>
               </div>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
-                <span>{story.genre}</span>
-                {story.theme ? <span>{story.theme}</span> : null}
-                {story.duration_minutes ? (
-                  <span>{story.duration_minutes} 分钟</span>
-                ) : null}
-                <span>更新 {formatStoryTime(story.updated_at)}</span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={openEpisodeGeneration}
+                  className={operatorButtonClass(
+                    "primary",
+                    "whitespace-nowrap",
+                  )}
+                >
+                  生成剧集
+                </button>
+                <button className={operatorButtonClass("secondary")}>
+                  编辑故事
+                </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={openEpisodeGeneration}
-                className={operatorButtonClass("primary", "whitespace-nowrap")}
-              >
-                生成剧集
-              </button>
-              <button className={operatorButtonClass("secondary")}>
-                编辑故事
-              </button>
+            <p className="mt-4 line-clamp-6 max-w-3xl text-sm leading-6 text-gray-700">
+              {storyDisplayText(story.synopsis, story.premise)}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {linkedCharacters.length ? (
+                linkedCharacters.map((character) => (
+                  <CharacterChip key={character.id} character={character} />
+                ))
+              ) : (
+                <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  暂未关联 IP
+                </span>
+              )}
+              <StoryEnvironmentCoverage links={storyEnvironmentLinks} />
             </div>
-          </div>
-          <p className="mt-4 line-clamp-6 max-w-3xl text-sm leading-6 text-gray-700">
-            {storyDisplayText(story.synopsis, story.premise)}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {linkedCharacters.length ? (
-              linkedCharacters.map((character) => (
-                <CharacterChip key={character.id} character={character} />
-              ))
-            ) : (
-              <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
-                暂未关联 IP
-              </span>
-            )}
-            <StoryEnvironmentCoverage links={storyEnvironmentLinks} />
-          </div>
-        </OperatorPanel>
+          </OperatorPanel>
 
-        <OperatorPanel id="episode-generation" className="scroll-mt-24 p-5">
-          <EpisodeGeneratePanel
-            genOpen={genOpen}
-            setGenOpen={setGenOpen}
-            genForm={genForm}
-            setGenForm={setGenForm}
-            useAsync={useAsync}
-            setUseAsync={setUseAsync}
-            promptPreview={promptPreview}
-            onPreviewPrompt={handlePreviewPrompt}
-            onGenerate={handleGenerateEpisodes}
-            canGenerate={canGenerate}
-            contextPackPreviewProps={{
-              includeContinuityLedger,
-              setIncludeContinuityLedger,
-              includeCharacterCards,
-              setIncludeCharacterCards,
-              recentEpisodesCount,
-              setRecentEpisodesCount,
-              contextPackPreview,
-              contextPackLoading,
-              contextPackError,
-              onPreviewContextPack: handlePreviewContextPack,
-            }}
-          />
-        </OperatorPanel>
+          <OperatorPanel id="episode-generation" className="scroll-mt-24 p-5">
+            <EpisodeGeneratePanel
+              genOpen={genOpen}
+              setGenOpen={setGenOpen}
+              genForm={genForm}
+              setGenForm={setGenForm}
+              useAsync={useAsync}
+              setUseAsync={setUseAsync}
+              promptPreview={promptPreview}
+              onPreviewPrompt={handlePreviewPrompt}
+              onGenerate={handleGenerateEpisodes}
+              canGenerate={canGenerate}
+              contextPackPreviewProps={{
+                includeContinuityLedger,
+                setIncludeContinuityLedger,
+                includeCharacterCards,
+                setIncludeCharacterCards,
+                recentEpisodesCount,
+                setRecentEpisodesCount,
+                contextPackPreview,
+                contextPackLoading,
+                contextPackError,
+                onPreviewContextPack: handlePreviewContextPack,
+              }}
+            />
+          </OperatorPanel>
 
-        <OperatorPanel>
-          <OperatorSectionHeader
-            title="剧集生产状态"
-            action={
-              <span className="text-xs text-gray-500">
-                {loadingScripts ? "剧本加载中" : `共 ${episodes.length} 集`}
-              </span>
-            }
-          />
-          <div className="overflow-x-auto">
-            <table className={`${operatorTableClass} min-w-[760px]`}>
-              <thead className={operatorTableHeadClass}>
-                <tr>
-                  <th className="px-5 py-3 text-left font-medium">集数</th>
-                  <th className="px-4 py-3 text-left font-medium">标题</th>
-                  <th className="px-4 py-3 text-left font-medium">剧本</th>
-                  <th className="px-4 py-3 text-left font-medium">时间轴</th>
-                  <th className="px-4 py-3 text-left font-medium">分镜</th>
-                  <th className="px-5 py-3 text-right font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {episodes.map((episode) => {
-                  const script = latestScript(scriptsByEpisode[episode.id] || []);
-                  const timelineReady = hasTimeline(episode, script);
-                  const storyboardReady = hasStoryboard(script);
-                  return (
-                    <tr key={episode.id} className={operatorTableRowClass}>
-                      <td className="px-5 py-4 font-medium">
-                        第{episode.episode_number}集
-                      </td>
-                      <td className="px-4 py-4">{episode.title}</td>
-                      <ReadyCell ready={Boolean(script)} />
-                      <ReadyCell ready={timelineReady} />
-                      <ReadyCell ready={storyboardReady} />
-                      <td className="px-5 py-4 text-right">
-                        <Link
-                          href={episodeWorkspaceHref(
-                            episode.business_id || episode.id,
-                            { tab: "timeline", scriptId: script?.id },
-                          )}
-                          className={operatorButtonClass("primary", "whitespace-nowrap")}
-                        >
-                          进入时间轴
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </OperatorPanel>
+          <OperatorPanel>
+            <OperatorSectionHeader
+              title="剧集生产状态"
+              action={
+                <span className="text-xs text-gray-500">
+                  {loadingScripts ? "剧本加载中" : `共 ${episodes.length} 集`}
+                </span>
+              }
+            />
+            <div className="overflow-x-auto">
+              <table className={`${operatorTableClass} min-w-[760px]`}>
+                <thead className={operatorTableHeadClass}>
+                  <tr>
+                    <th className="px-5 py-3 text-left font-medium">集数</th>
+                    <th className="px-4 py-3 text-left font-medium">标题</th>
+                    <th className="px-4 py-3 text-left font-medium">剧本</th>
+                    <th className="px-4 py-3 text-left font-medium">时间轴</th>
+                    <th className="px-4 py-3 text-left font-medium">分镜</th>
+                    <th className="px-5 py-3 text-right font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {episodes.map((episode) => {
+                    const script = latestScript(
+                      scriptsByEpisode[episode.id] || [],
+                    );
+                    const timelineReady = hasTimeline(
+                      episode,
+                      script,
+                      timelinesByEpisode[episode.id] || [],
+                    );
+                    const storyboardReady = hasStoryboard(script);
+                    return (
+                      <tr key={episode.id} className={operatorTableRowClass}>
+                        <td className="px-5 py-4 font-medium">
+                          第{episode.episode_number}集
+                        </td>
+                        <td className="px-4 py-4">{episode.title}</td>
+                        <ReadyCell ready={Boolean(script)} />
+                        <ReadyCell ready={timelineReady} />
+                        <ReadyCell ready={storyboardReady} />
+                        <td className="px-5 py-4 text-right">
+                          <Link
+                            href={episodeWorkspaceHref(
+                              episode.business_id || episode.id,
+                              { tab: "timeline", scriptId: script?.id },
+                            )}
+                            className={operatorButtonClass(
+                              "primary",
+                              "whitespace-nowrap",
+                            )}
+                          >
+                            进入时间轴
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </OperatorPanel>
         </OperatorMainCanvas>
       }
       inspector={

@@ -8,6 +8,8 @@ from typing import Any
 
 from app.models.script import Episode, Script
 from app.models.task import Task, TaskStatus
+from app.models.timeline import Timeline
+from app.repositories.timeline_repository import TimelineRepository
 from app.repositories.workbench_repository import WorkbenchRepository
 from app.schemas.workbench import (
     WorkbenchEpisode,
@@ -28,7 +30,10 @@ def _latest_script(scripts: list[Script]) -> Script | None:
         return None
     return sorted(
         active,
-        key=lambda script: (script.updated_at or script.created_at or datetime.min, script.id),
+        key=lambda script: (
+            script.updated_at or script.created_at or datetime.min,
+            script.id,
+        ),
         reverse=True,
     )[0]
 
@@ -44,6 +49,10 @@ def _timeline_ready(episode: Episode, script: Script | None) -> bool:
         return int(script_id) == script.id
     except (TypeError, ValueError):
         return False
+
+
+def _timeline_row_ready(timeline: Timeline | None) -> bool:
+    return timeline is not None and not getattr(timeline, "is_deleted", False)
 
 
 def _storyboard_ready(script: Script | None) -> bool:
@@ -91,6 +100,7 @@ def _task_progress(task: Task) -> int:
 class WorkbenchService:
     def __init__(self, db: Session):
         self.repository = WorkbenchRepository(db)
+        self.timelines = TimelineRepository(db)
 
     def summary_for_user(self, user_id: int) -> WorkbenchSummary:
         status_counts = self.repository.count_tasks_by_status(user_id)
@@ -102,7 +112,9 @@ class WorkbenchService:
                 pending_tasks=status_counts.get(TaskStatus.PENDING, 0),
                 running_tasks=status_counts.get(TaskStatus.PROCESSING, 0),
                 failed_tasks=status_counts.get(TaskStatus.FAILED, 0),
-                continuable_episodes=self.repository.count_continuable_episodes(user_id),
+                continuable_episodes=self.repository.count_continuable_episodes(
+                    user_id
+                ),
             ),
             recent_episodes=[self._serialize_episode(episode) for episode in episodes],
             task_queue=[self._serialize_task(task) for task in tasks],
@@ -111,7 +123,17 @@ class WorkbenchService:
     def _serialize_episode(self, episode: Episode) -> WorkbenchEpisode:
         script = _latest_script(list(episode.scripts or []))
         script_ready = script is not None
-        timeline_ready = _timeline_ready(episode, script)
+        timeline = (
+            self.timelines.get_latest_for_episode_script(
+                episode_id=episode.id,
+                script_id=script.id,
+            )
+            if script is not None
+            else None
+        )
+        timeline_ready = _timeline_row_ready(timeline) or _timeline_ready(
+            episode, script
+        )
         storyboard_ready = _storyboard_ready(script)
         stage, label = _episode_stage(script_ready, timeline_ready, storyboard_ready)
         story = episode.story
@@ -126,6 +148,12 @@ class WorkbenchService:
             episode_title=episode.title,
             latest_script_id=script.id if script else None,
             latest_script_business_id=script.business_id if script else None,
+            timeline_id=timeline.id if timeline else None,
+            timeline_version=timeline.version if timeline else None,
+            timeline_status=timeline.status if timeline else None,
+            source_audio_timeline_version=(
+                timeline.source_audio_timeline_version if timeline else None
+            ),
             current_stage=stage,
             current_stage_label=label,
             script_ready=script_ready,
@@ -143,8 +171,14 @@ class WorkbenchService:
             id=task.id,
             business_id=task.business_id,
             title=task.title,
-            task_type=task.task_type.value if hasattr(task.task_type, "value") else str(task.task_type),
-            status=task.status.value if hasattr(task.status, "value") else str(task.status),
+            task_type=(
+                task.task_type.value
+                if hasattr(task.task_type, "value")
+                else str(task.task_type)
+            ),
+            status=(
+                task.status.value if hasattr(task.status, "value") else str(task.status)
+            ),
             progress=_task_progress(task),
             progress_detail=progress_detail,
             error_message=task.error_message,

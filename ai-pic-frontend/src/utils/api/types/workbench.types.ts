@@ -15,6 +15,10 @@ export interface WorkbenchEpisode {
   episode_title: string;
   latest_script_id?: number | null;
   latest_script_business_id?: string | null;
+  timeline_id?: number | null;
+  timeline_version?: number | null;
+  timeline_status?: string | null;
+  source_audio_timeline_version?: number | null;
   current_stage: string;
   current_stage_label: string;
   script_ready: boolean;

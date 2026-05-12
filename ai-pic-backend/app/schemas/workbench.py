@@ -21,6 +21,10 @@ class WorkbenchEpisode(BaseModel):
     episode_title: str
     latest_script_id: Optional[int] = None
     latest_script_business_id: Optional[str] = None
+    timeline_id: Optional[int] = None
+    timeline_version: Optional[int] = None
+    timeline_status: Optional[str] = None
+    source_audio_timeline_version: Optional[int] = None
     current_stage: str
     current_stage_label: str
     script_ready: bool

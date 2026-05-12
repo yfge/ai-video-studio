@@ -1,4 +1,5 @@
 import type { Episode, Script } from "@/utils/api/types";
+import type { TimelineResponse } from "@/utils/api/types";
 
 export const formatStoryTime = (value: string) =>
   new Date(value).toLocaleString("zh-CN", {
@@ -11,8 +12,15 @@ export const formatStoryTime = (value: string) =>
 export const latestScript = (scripts: Script[]) =>
   [...scripts].sort((a, b) => b.id - a.id)[0] ?? null;
 
-export const hasTimeline = (episode: Episode, script: Script | null) => {
+export const hasTimeline = (
+  episode: Episode,
+  script: Script | null,
+  timelines: TimelineResponse[] = [],
+) => {
   if (!script) return false;
+  if (timelines.some((timeline) => timeline.script_id === script.id)) {
+    return true;
+  }
   const meta = (episode.extra_metadata ?? episode.metadata ?? {}) as Record<
     string,
     unknown

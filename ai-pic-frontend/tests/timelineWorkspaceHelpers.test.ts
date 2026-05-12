@@ -5,8 +5,13 @@ import {
   firstTimelineItemId,
   resolveTimelineSelection,
 } from "../src/components/features/Timeline/timelineViewModel";
-import { sceneForTimelineMeta } from "../src/components/features/episode/EpisodeTimelineWorkspaceModel";
+import {
+  buildEpisodeTimelineTracks,
+  sceneForTimelineMeta,
+} from "../src/components/features/episode/EpisodeTimelineWorkspaceModel";
+import { hasTimeline } from "../src/components/features/stories/StoryProductionModel";
 import type { TimelineTrack } from "../src/components/features/Timeline/Timeline";
+import type { TimelineResponse } from "../src/utils/api/types";
 import { episodeWorkspaceHref } from "../src/utils/routes";
 
 const tracks: TimelineTrack[] = [
@@ -73,5 +78,94 @@ describe("timeline workspace helpers", () => {
 
     assert.equal(scene?.id, 7);
     assert.equal(scene?.environment_id, 12);
+  });
+
+  it("builds workspace tracks from native Timeline Spec before legacy beats", () => {
+    const timeline = {
+      id: 3,
+      business_id: "timeline_3",
+      episode_id: 1,
+      script_id: 2,
+      title: "Timeline",
+      status: "draft",
+      version: 1,
+      created_at: "2026-05-12T00:00:00Z",
+      updated_at: "2026-05-12T00:00:00Z",
+      spec: {
+        spec_version: "timeline.v1",
+        episode_id: 1,
+        script_id: 2,
+        version: 1,
+        tracks: [
+          {
+            track_type: "dialogue",
+            clips: [
+              {
+                clip_id: "dialogue_scene_1_beat_1_001",
+                track_type: "dialogue",
+                start_ms: 0,
+                end_ms: 1200,
+                text: "native dialogue",
+              },
+            ],
+          },
+        ],
+      },
+    } satisfies TimelineResponse;
+
+    const result = buildEpisodeTimelineTracks(
+      timeline,
+      {
+        beats: [
+          {
+            start_ms: 0,
+            end_ms: 1200,
+            text: "legacy dialogue",
+          },
+        ],
+      },
+      null,
+    );
+
+    assert.equal(result[0].id, "dialogue");
+    assert.equal(result[0].items[0].label, "native dialogue");
+  });
+
+  it("falls back to legacy audio timeline tracks when Timeline Spec is absent", () => {
+    const result = buildEpisodeTimelineTracks(
+      null,
+      {
+        beats: [
+          {
+            start_ms: 0,
+            end_ms: 1200,
+            text: "legacy dialogue",
+          },
+        ],
+      },
+      null,
+    );
+
+    assert.equal(result[0].id, "dialogue");
+    assert.equal(result[0].items[0].label, "legacy dialogue");
+  });
+
+  it("uses Timeline rows for story production readiness", () => {
+    assert.equal(
+      hasTimeline(
+        { id: 1, extra_metadata: {} } as Parameters<typeof hasTimeline>[0],
+        { id: 2 } as Parameters<typeof hasTimeline>[1],
+        [{ script_id: 2 } as TimelineResponse],
+      ),
+      true,
+    );
+    assert.equal(
+      hasTimeline(
+        { id: 1, extra_metadata: {} } as Parameters<typeof hasTimeline>[0],
+        { id: 2 } as Parameters<typeof hasTimeline>[1],
+        [{ script_id: 3 } as TimelineResponse],
+      ),
+      false,
+    );
   });
 });

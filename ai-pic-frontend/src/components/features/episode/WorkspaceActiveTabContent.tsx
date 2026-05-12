@@ -7,6 +7,7 @@ import type {
   NormalizedScene,
   Script,
   ScriptGenerationRequest,
+  TimelineResponse,
 } from "@/utils/api/types";
 import { WorkspaceCharactersTabContent } from "./WorkspaceCharactersTabContent";
 import { WorkspaceOverviewTabContent } from "./WorkspaceOverviewTabContent";
@@ -27,6 +28,7 @@ interface WorkspaceActiveTabContentProps {
   selectedScriptId: number | null;
   selectedScript: Script | null;
   scriptSceneCount?: number;
+  selectedTimelineSpec: TimelineResponse | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
@@ -58,6 +60,7 @@ export function WorkspaceActiveTabContent({
   selectedScriptId,
   selectedScript,
   scriptSceneCount,
+  selectedTimelineSpec,
   selectedAudioTimeline,
   selectedStoryboard,
   normalizedScenes,
@@ -113,6 +116,7 @@ export function WorkspaceActiveTabContent({
         scripts={orderedScripts}
         selectedScriptId={selectedScriptId}
         selectedScript={selectedScript}
+        selectedTimelineSpec={selectedTimelineSpec}
         selectedAudioTimeline={selectedAudioTimeline}
         selectedStoryboard={selectedStoryboard}
         normalizedScenes={normalizedScenes}

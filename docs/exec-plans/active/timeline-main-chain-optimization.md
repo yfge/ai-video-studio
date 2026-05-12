@@ -16,8 +16,9 @@ production script generation
 -> Episode Timeline workspace
 ```
 
-This document is an optimization plan. It does not mark render/export complete
-and it does not require a new table before the listed Phase 4 work.
+This document began as an optimization plan. The P0-P2 ownership alignment
+slice is now implemented; it does not mark render/export complete and it does
+not require a new table before the listed Phase 4 work.
 
 ## Current Chain Check
 
@@ -27,7 +28,7 @@ The default production path is now wired into Timeline Spec v1:
   `run_auto_timeline_placeholders`.
 - `production_storyboard.py` generates scene dialogue audio when needed,
   builds episode `audio_timeline`, imports it into Timeline Spec v1, then
-  generates storyboard placeholders.
+  generates storyboard support placeholders from Timeline Spec clips.
 - `timeline_pipeline.py` and deprecated `audio_timeline.py` also import
   existing or newly generated `audio_timeline.beats` into Timeline Spec v1.
 - `audio_storyboard.py` remains available as a deprecated compatibility path
@@ -35,31 +36,51 @@ The default production path is now wired into Timeline Spec v1:
 - `useEpisodeMetadata.ts` asks `/episodes/{episode_id}/timelines` first and
   falls back to `episodes.extra_metadata.audio_timeline` only when no matching
   Timeline Spec is available.
+- `EpisodeTimelineWorkspaceModel.ts` builds tracks from native Timeline Spec
+  before using the legacy audio-timeline adapter.
+- `backfill_timeline_specs.py` can dry-run or apply Timeline Spec imports for
+  older episodes.
 
 No immediate blocker was found in the default production chain. The main
-remaining problem is not connection, but ownership drift: several consumers and
-helpers still treat transition/support data as if it were the operational
-source of truth.
+remaining problem is now downstream execution: render/export workers and output
+assets still need to consume locked Timeline versions.
+
+## Implementation Status
+
+- P0 contract alignment is implemented: the public `clip_id` grammar uses the
+  underscore form, clips carry `source.kind=audio_timeline_beat`, specs include
+  default `fps`, `resolution`, and persisted `timeline_id`, and importer tests
+  assert the stored row output.
+- P1 ownership alignment is implemented for readiness and support views:
+  workbench summaries read the latest Timeline row first, and default
+  production/timeline-pipeline storyboard support generation reads Timeline Spec
+  clips while deprecated storyboard-from-audio remains legacy.
+- P2 frontend/backfill alignment is implemented: the workspace accepts native
+  Timeline Spec tracks, task metadata includes Timeline references, and the
+  backfill command is dry-run by default.
+- P3 render/export execution remains pending.
 
 ## Findings
 
 ### P0: Align Timeline Spec Contract And Import Shape
 
-The spec document describes clip identity and clip source fields that do not
-fully match the importer implementation.
+The spec document and importer previously described clip identity and clip
+source fields differently.
 
-Current implementation:
+Implemented alignment:
 
 - `timeline_spec_builder.py` produces ids such as
   `dialogue_scene_11_beat_101_001`.
-- Clip source references live under `source_refs`.
-- The generated spec omits some normative envelope fields such as `fps`,
-  `resolution`, and persisted `timeline_id`.
+- Clips now carry `source.kind`, `source.scene_id`, `source.beat_id`, and
+  `source.audio_timeline_version`.
+- `source_refs` remains only as a compatibility alias during transition.
+- Generated specs include default `fps=24`, `resolution=1080x1920`, and the
+  persisted `timeline_id`.
 
-Current contract:
+Decision for this implementation slice:
 
-- `docs/timeline-rendering-pipeline.md` describes ids such as
-  `dialogue:scene-501:beat-9001:ord-1`.
+- `docs/timeline-rendering-pipeline.md` uses the current underscore grammar:
+  `dialogue_scene_501_beat_9001_001`.
 - Clip provenance is described as `source.kind`, `source.scene_id`,
   `source.beat_id`, and `source.audio_timeline_version`.
 - Asset references should ultimately point at `media_assets` ids rather than
@@ -82,16 +103,17 @@ Exit criteria:
 
 ### P1: Make Readiness Checks Read Timeline Rows
 
-Workbench and story production readiness still infer "timeline ready" from
-`episodes.extra_metadata.audio_timeline`.
+Workbench and story production readiness previously inferred "timeline ready"
+from `episodes.extra_metadata.audio_timeline`.
 
 Observed consumers:
 
 - `workbench_service.py`
 - `StoryProductionModel.ts`
 
-This can show a timeline-ready state when only the transitional audio timeline
-exists, or miss newer `timelines.spec` rows if the legacy metadata is stale.
+That could show a timeline-ready state when only the transitional audio
+timeline existed, or miss newer `timelines.spec` rows if the legacy metadata
+was stale.
 
 Optimization:
 
@@ -111,9 +133,9 @@ Exit criteria:
 
 ### P1: Move Storyboard Support Generation To Timeline Clips
 
-The current storyboard support builder still reads
-`episodes.extra_metadata.audio_timeline`. That is acceptable for compatibility,
-but it keeps storyboard generation coupled to transitional data.
+The default storyboard support path now reads Timeline Spec clips. The legacy
+audio-timeline builder remains available for compatibility and deprecated
+entrypoints.
 
 Optimization:
 
@@ -159,11 +181,11 @@ Exit criteria:
 
 ### P2: Give Frontend A Native Timeline Workspace Model
 
-The frontend currently converts Timeline Spec dialogue clips into an
-`audio_timeline`-shaped object so the existing timeline view can render.
+The frontend previously converted Timeline Spec dialogue clips into an
+`audio_timeline`-shaped object so the existing timeline view could render.
 
-This is a practical bridge, but it hides Timeline Spec fields from the operator
-surface and keeps the workspace model coupled to legacy `beats`.
+That bridge hid Timeline Spec fields from the operator surface and kept the
+workspace model coupled to legacy `beats`.
 
 Optimization:
 
@@ -183,15 +205,15 @@ Exit criteria:
 
 ### P2: Make Task And Agent-Run Metadata Timeline-Aware
 
-Task agent run builders still summarize timeline/storyboard work mostly through
-`audio_timeline_version` and `generation_method=audio_timeline`.
+Task agent run builders previously summarized timeline/storyboard work mostly
+through `audio_timeline_version` and `generation_method=audio_timeline`.
 
-Optimization:
+Implemented alignment:
 
 - Add `timeline_id`, `timeline_version`,
   `source_audio_timeline_version`, and `source_role` to generated task metadata.
-- For render/export phases, add `render_job_id`, `render_type`, and
-  `output_asset_id`.
+- For render/export phases, still add `render_job_id`, `render_type`, and
+  `output_asset_id` in P3.
 
 Exit criteria:
 
@@ -203,7 +225,7 @@ Exit criteria:
 The bridge now writes Timeline Spec during generation, but older episodes may
 only have `audio_timeline`.
 
-Optimization:
+Implemented alignment:
 
 - Add an admin/backfill command that scans episodes with matching
   `audio_timeline.script_id` and no latest Timeline row.
@@ -250,6 +272,9 @@ Exit criteria:
 6. Backfill: import old audio timelines into Timeline Spec with dry-run first.
 7. Render/export: consume locked timeline versions and persist media assets.
 
+Steps 1-6 are implemented for this slice. Step 7 is the next implementation
+boundary.
+
 ## Validation Matrix
 
 Backend:
@@ -257,14 +282,13 @@ Backend:
 - `pytest tests/test_timeline_import_service.py -q`
 - `pytest tests/integration/test_timeline_pipeline_import_api.py -q`
 - `pytest tests/unit/services/script/test_production_storyboard_timeline_import.py -q`
-- Add readiness tests for workbench/story summaries once they read Timeline
-  rows.
-- Add support-view tests once storyboard generation reads Timeline Spec.
+- Readiness tests cover workbench and story summaries reading Timeline rows.
+- Support-view tests cover storyboard generation from Timeline Spec.
 
 Frontend:
 
 - `cd ai-pic-frontend && npm run lint`
-- Add focused tests for native Timeline Spec track building.
+- Focused tests cover native Timeline Spec track building and legacy fallback.
 - Browser E2E after render/export becomes visible in the operator workflow.
 
 Repo checks:
@@ -273,11 +297,16 @@ Repo checks:
 - `python scripts/check_repo_contracts.py --mode diff <changed files>`
 - `git diff --check`
 
-## Open Questions
+## Resolved Decisions
 
-- Should the public `clip_id` grammar keep the current underscore form for URL
-  and CSS friendliness, or switch to the colon form already documented?
-- Should Timeline rows represent mutable current drafts only, or should every
-  saved version be immutable as a separate row?
-- Should storyboard support frames remain under `scripts.extra_metadata`, or be
-  moved into a first-class support-view table once render/export is complete?
+- The public `clip_id` grammar keeps the current underscore form:
+  `{track_type}_scene_{scene_id}_beat_{beat_id}_{ordinal:03d}`.
+- Timeline rows continue to use the current single-row, incrementing-version
+  model for each `episode_id + script_id` pair.
+- Storyboard support frames remain under `scripts.extra_metadata.storyboard`
+  for this slice.
+
+## Remaining Question
+
+- Should storyboard support frames move into a first-class support-view table
+  once render/export and media-asset output are complete?

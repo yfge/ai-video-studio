@@ -22,6 +22,10 @@ Current status:
   default production script generation, and deprecated audio-timeline
   compatibility. Phase 4 real render/export execution and full Phase 5 operator
   UI remain pending.
+- P0-P2 ownership alignment is implemented: importer output matches the
+  underscore `clip_id` contract, readiness checks prefer Timeline rows,
+  storyboard support generation prefers Timeline Spec clips, the workspace can
+  build native Timeline tracks, and a dry-run backfill command exists.
 
 ## Phase 1: Spec And Contracts
 
@@ -59,6 +63,8 @@ Exit criteria:
 - [x] Generate stable `clip_id` values from `track_type + scene_id + beat_id +
 ordinal`.
 - [x] Preserve source references to `scene_beats` and `audio_timeline` version.
+- [x] Generate storyboard support views from Timeline Spec clips on the default
+      production and timeline-pipeline paths.
 - [ ] Preserve storyboard frame ids where available when storyboard support
       views are linked back into Timeline Spec clips.
 
@@ -82,6 +88,8 @@ Exit criteria:
 
 ## Phase 5: Operator UI And E2E
 
+- [x] Build the workspace timeline tracks from native Timeline Spec with legacy
+      `audio_timeline` fallback.
 - Make `Episode -> Timeline` the primary operator surface for clip status,
   source audio, source frames, render status, retry, replace, and export.
 - Keep storyboard as the visual support view.

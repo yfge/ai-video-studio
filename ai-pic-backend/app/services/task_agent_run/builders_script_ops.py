@@ -2,25 +2,30 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from app.repositories.script_repository import ScriptRepository
+from app.services.task_agent_run.builders_storyboard_images import (
+    build_storyboard_image_agent_run,
+)
+from app.services.task_agent_run.timeline_refs import timeline_ref_for_script
 from app.services.task_agent_run.utils import (
     loads_task_parameters,
     maybe_int,
     parse_result_id,
     safe_dict,
-    split_provider_model,
 )
+
+__all__ = [
+    "build_dialogue_audio_agent_run",
+    "build_storyboard_from_audio_timeline_agent_run",
+    "build_storyboard_generation_agent_run",
+    "build_storyboard_image_agent_run",
+    "build_timeline_generation_agent_run",
+    "build_timeline_pipeline_agent_run",
+]
 
 
 def _load_script_owned(db, *, script_id: int, user_id: int):
-    from app.models.script import Episode, Script, Story
-
-    return (
-        db.query(Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id, Story.user_id == user_id)
-        .first()
-    )
+    return ScriptRepository(db).get_with_relations(script_id=script_id, user_id=user_id)
 
 
 def _resolve_script_id(task) -> int | None:
@@ -92,6 +97,7 @@ def build_timeline_generation_agent_run(db, task, *, user_id: int) -> Dict[str, 
 
     audio_payload = safe_dict(timeline_meta.get("episode_audio"))
     version = audio_payload.get("version")
+    timeline_ref = timeline_ref_for_script(db, script)
 
     return {
         "generation_method": "audio_timeline",
@@ -103,6 +109,7 @@ def build_timeline_generation_agent_run(db, task, *, user_id: int) -> Dict[str, 
             "episode_id": getattr(script, "episode_id", None),
             "episode_business_id": getattr(script, "episode_business_id", None),
             "audio_timeline_version": version,
+            **timeline_ref,
         },
     }
 
@@ -137,6 +144,8 @@ def build_storyboard_generation_agent_run(db, task, *, user_id: int) -> Dict[str
             "episode_id": getattr(script, "episode_id", None),
             "episode_business_id": getattr(script, "episode_business_id", None),
             "storyboard_version": getattr(script, "storyboard_version", None),
+            "source_role": meta.get("source_role"),
+            **timeline_ref_for_script(db, script),
         },
     }
     if isinstance(frames, list):
@@ -179,6 +188,8 @@ def build_storyboard_from_audio_timeline_agent_run(
             "episode_business_id": getattr(script, "episode_business_id", None),
             "audio_timeline_version": meta.get("audio_timeline_version"),
             "storyboard_version": getattr(script, "storyboard_version", None),
+            "source_role": meta.get("source_role"),
+            **timeline_ref_for_script(db, script),
         },
     }
 
@@ -202,6 +213,7 @@ def build_timeline_pipeline_agent_run(db, task, *, user_id: int) -> Dict[str, An
         timeline_meta = safe_dict(episode.extra_metadata.get("audio_timeline"))
         audio_payload = safe_dict(timeline_meta.get("episode_audio"))
         audio_version = audio_payload.get("version")
+    timeline_ref = timeline_ref_for_script(db, script)
 
     payload: Dict[str, Any] = {
         "generation_method": "timeline_pipeline",
@@ -217,57 +229,7 @@ def build_timeline_pipeline_agent_run(db, task, *, user_id: int) -> Dict[str, An
             "episode_business_id": getattr(script, "episode_business_id", None),
             "audio_timeline_version": audio_version,
             "storyboard_version": getattr(script, "storyboard_version", None),
+            **timeline_ref,
         },
     }
-    return payload
-
-
-def build_storyboard_image_agent_run(db, task, *, user_id: int) -> Dict[str, Any]:
-    params = loads_task_parameters(getattr(task, "parameters", None))
-    script_id = _resolve_script_id(task)
-    if script_id is None:
-        return {}
-
-    script = _load_script_owned(db, script_id=script_id, user_id=user_id)
-    if not script:
-        return {}
-
-    requested_model = params.get("model")
-    provider_used, model_used = split_provider_model(requested_model)
-    if (
-        model_used is None
-        and isinstance(requested_model, str)
-        and requested_model.strip()
-    ):
-        model_used = requested_model.strip()
-
-    frames = params.get("frames") or []
-    if not isinstance(frames, list):
-        frames = []
-
-    prompt_override = params.get("prompt")
-
-    payload: Dict[str, Any] = {
-        "generation_method": "storyboard_image",
-        "provider_used": provider_used,
-        "model_used": model_used,
-        "prompt": (
-            prompt_override
-            if isinstance(prompt_override, str)
-            else getattr(task, "prompt", None)
-        ),
-        "result_ref": {
-            "script_id": getattr(script, "id", None),
-            "script_business_id": getattr(script, "business_id", None),
-            "episode_id": getattr(script, "episode_id", None),
-            "episode_business_id": getattr(script, "episode_business_id", None),
-            "frame_indexes": frames,
-        },
-    }
-    keyframe_mode = params.get("keyframe_mode")
-    if isinstance(keyframe_mode, str) and keyframe_mode.strip():
-        payload["keyframe_mode"] = keyframe_mode
-    generation_profile = params.get("generation_profile")
-    if isinstance(generation_profile, str) and generation_profile.strip():
-        payload["generation_profile"] = generation_profile
     return payload

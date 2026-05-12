@@ -78,21 +78,24 @@ def build_storyboard_frames_from_audio_timeline(
             if try_merge_pause(frames, start_ms, end_ms, duration_ms, scene_number_int):
                 continue
             frames.append(
-                make_frame(
-                    scene_id_int=scene_id_int,
-                    scene_number_int=scene_number_int,
-                    scene_index_map=scene_index_map,
-                    beat_type="pause",
-                    speaker=None,
-                    text=None,
-                    dialogue_action=None,
-                    characters=characters_involved,
-                    description="（停顿）",
-                    duration_ms=duration_ms,
-                    start_ms=start_ms,
-                    end_ms=end_ms,
-                    frame_number=len(frames) + 1,
-                    build_prompt=build_visual_prompt_description,
+                _annotate_frame_source(
+                    make_frame(
+                        scene_id_int=scene_id_int,
+                        scene_number_int=scene_number_int,
+                        scene_index_map=scene_index_map,
+                        beat_type="pause",
+                        speaker=None,
+                        text=None,
+                        dialogue_action=None,
+                        characters=characters_involved,
+                        description="（停顿）",
+                        duration_ms=duration_ms,
+                        start_ms=start_ms,
+                        end_ms=end_ms,
+                        frame_number=len(frames) + 1,
+                        build_prompt=build_visual_prompt_description,
+                    ),
+                    beat,
                 )
             )
             continue
@@ -115,21 +118,24 @@ def build_storyboard_frames_from_audio_timeline(
             description = text or "（动作）"
 
         frames.append(
-            make_frame(
-                scene_id_int=scene_id_int,
-                scene_number_int=scene_number_int,
-                scene_index_map=scene_index_map,
-                beat_type=beat_type,
-                speaker=speaker,
-                text=text,
-                dialogue_action=dialogue_action,
-                characters=characters_involved,
-                description=description,
-                duration_ms=duration_ms,
-                start_ms=start_ms,
-                end_ms=end_ms,
-                frame_number=len(frames) + 1,
-                build_prompt=build_visual_prompt_description,
+            _annotate_frame_source(
+                make_frame(
+                    scene_id_int=scene_id_int,
+                    scene_number_int=scene_number_int,
+                    scene_index_map=scene_index_map,
+                    beat_type=beat_type,
+                    speaker=speaker,
+                    text=text,
+                    dialogue_action=dialogue_action,
+                    characters=characters_involved,
+                    description=description,
+                    duration_ms=duration_ms,
+                    start_ms=start_ms,
+                    end_ms=end_ms,
+                    frame_number=len(frames) + 1,
+                    build_prompt=build_visual_prompt_description,
+                ),
+                beat,
             )
         )
 
@@ -203,3 +209,27 @@ def generate_storyboard_from_episode_audio_timeline(
     db.commit()
     db.refresh(script)
     return {"frames": frames, "meta": sb_meta}
+
+
+def _annotate_frame_source(
+    frame: dict[str, Any], beat: dict[str, Any]
+) -> dict[str, Any]:
+    generation_source = beat.get("generation_source")
+    generation_method = beat.get("generation_method")
+    if generation_source:
+        frame["generation_source"] = generation_source
+    if generation_method:
+        frame["generation_method"] = generation_method
+    for key in (
+        "timeline_clip_id",
+        "timeline_track_type",
+        "timeline_id",
+        "timeline_version",
+        "source_audio_timeline_version",
+    ):
+        if beat.get(key) is not None:
+            frame[key] = beat.get(key)
+    source = beat.get("source")
+    if isinstance(source, dict):
+        frame["source"] = source
+    return frame

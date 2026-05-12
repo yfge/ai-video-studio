@@ -14,8 +14,8 @@ from app.repositories.user_repository import UserRepository
 from app.services import story_structure_service as story_structure_svc
 from app.services.audio.episode_audio_builder import generate_episode_audio_timeline
 from app.services.audio.scene_audio_generator import generate_scene_dialogue_audio
-from app.services.audio.storyboard_from_timeline import (
-    generate_storyboard_from_episode_audio_timeline,
+from app.services.audio.storyboard_from_timeline_spec import (
+    generate_storyboard_support_from_timeline_spec,
 )
 from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
@@ -258,10 +258,11 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
             )
 
             update_task_progress(db, task, "步骤 3/3：生成分镜帧占位…")
-            generate_storyboard_from_episode_audio_timeline(
+            generate_storyboard_support_from_timeline_spec(
                 db,
                 script=script,
                 episode=episode,
+                timeline=import_result.timeline,
                 overwrite_existing=overwrite_storyboard,
                 min_pause_duration_ms=min_pause_ms,
             )

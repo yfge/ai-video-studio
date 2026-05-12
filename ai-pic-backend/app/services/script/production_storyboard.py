@@ -6,8 +6,8 @@ from app.models.script import Episode, Script, Story
 from app.services import story_structure_service as story_structure_svc
 from app.services.audio.episode_audio_builder import generate_episode_audio_timeline
 from app.services.audio.scene_audio_generator import generate_scene_dialogue_audio
-from app.services.audio.storyboard_from_timeline import (
-    generate_storyboard_from_episode_audio_timeline,
+from app.services.audio.storyboard_from_timeline_spec import (
+    generate_storyboard_support_from_timeline_spec,
 )
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 from sqlalchemy.orm import Session
@@ -122,10 +122,11 @@ async def run_auto_timeline_placeholders(
 
     if progress_callback:
         progress_callback("生产级链路：生成分镜占位")
-    storyboard = generate_storyboard_from_episode_audio_timeline(
+    storyboard = generate_storyboard_support_from_timeline_spec(
         db,
         script=script,
         episode=episode,
+        timeline=import_result.timeline,
         overwrite_existing=True,
         min_pause_duration_ms=min_pause_duration_ms,
     )

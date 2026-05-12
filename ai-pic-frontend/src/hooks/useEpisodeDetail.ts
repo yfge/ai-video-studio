@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { episodeAPI, scriptAPI, taskAPI } from "@/utils/api/endpoints";
-import type { Episode, Script, Task } from "@/utils/api/types";
-import type { ScriptGenerationRequest } from "@/utils/api/types";
+import type {
+  Episode,
+  Script,
+  ScriptGenerationRequest,
+  Task,
+} from "@/utils/api/types";
 import { useNormalizedScenes } from "@/hooks/useNormalizedScenes";
 import { useTaskPolling, type TaskPollPair } from "@/hooks/useTaskPolling";
 import { useEpisodeMetadata } from "@/hooks/useEpisodeMetadata";
@@ -175,11 +179,9 @@ export function useEpisodeDetail({
       void loadData();
     }
   }, [storyboardTask?.status, loadData]);
-  const { episodeMeta, selectedAudioTimeline, selectedStoryboard } =
-    useEpisodeMetadata(episode, selectedScript);
+  const metadata = useEpisodeMetadata(episode, selectedScript);
 
   return {
-    // Data
     episode,
     scripts,
     loading,
@@ -189,13 +191,13 @@ export function useEpisodeDetail({
     normalizedScenes,
     normalizedScenesLoading,
     normalizedScenesError,
-    episodeMeta,
-    selectedAudioTimeline,
-    selectedStoryboard,
+    episodeMeta: metadata.episodeMeta,
+    selectedAudioTimeline: metadata.selectedAudioTimeline,
+    selectedTimelineSpec: metadata.selectedTimelineSpec,
+    selectedStoryboard: metadata.selectedStoryboard,
     formats,
     languages,
 
-    // Generation form
     generating,
     setGenerating,
     showGenerateForm,
@@ -207,7 +209,6 @@ export function useEpisodeDetail({
     generateForm,
     setGenerateForm,
 
-    // Overwrite options
     overwriteSceneAudio,
     setOverwriteSceneAudio,
     overwriteTimeline,
@@ -221,7 +222,6 @@ export function useEpisodeDetail({
     useDurationControl,
     setUseDurationControl,
 
-    // Busy states
     sceneAudioBusy,
     setSceneAudioBusy,
     timelineBusy,
@@ -229,7 +229,6 @@ export function useEpisodeDetail({
     storyboardBusy,
     setStoryboardBusy,
 
-    // Tasks
     sceneAudioTaskId,
     setSceneAudioTaskId,
     timelineTaskId,
@@ -240,7 +239,6 @@ export function useEpisodeDetail({
     timelineTask,
     storyboardTask,
 
-    // Actions
     loadData,
     setScripts,
     showAlert,

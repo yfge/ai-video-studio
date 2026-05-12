@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { scriptAPI } from "@/utils/api/endpoints";
-import type { NormalizedScene, Script } from "@/utils/api/types";
+import type {
+  NormalizedScene,
+  Script,
+  TimelineResponse,
+} from "@/utils/api/types";
 import { OperatorState } from "@/components/shared";
 import { EpisodeTimelineWorkspace } from "./EpisodeTimelineWorkspace";
 
@@ -11,6 +15,7 @@ interface WorkspaceTimelineTabContentProps {
   scripts: Script[];
   selectedScriptId: number | null;
   selectedScript: Script | null;
+  selectedTimelineSpec: TimelineResponse | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
@@ -32,6 +37,7 @@ export function WorkspaceTimelineTabContent({
   scripts,
   selectedScriptId,
   selectedScript,
+  selectedTimelineSpec,
   selectedAudioTimeline,
   selectedStoryboard,
   normalizedScenes,
@@ -142,6 +148,7 @@ export function WorkspaceTimelineTabContent({
     <EpisodeTimelineWorkspace
       selectedScriptId={selectedScriptId}
       selectedScript={selectedScript}
+      selectedTimelineSpec={selectedTimelineSpec}
       selectedAudioTimeline={selectedAudioTimeline}
       selectedStoryboard={selectedStoryboard}
       normalizedScenes={normalizedScenes}

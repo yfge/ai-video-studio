@@ -1,9 +1,9 @@
 import json
 
 import pytest
-
 from app.models.script import Episode, Script, Story
 from app.models.task import Task, TaskStatus, TaskType
+from app.models.timeline import Timeline
 from app.models.user import User
 
 
@@ -75,6 +75,32 @@ def _create_story_episode_script(db_session, user: User, *, with_timeline: bool)
         db_session.refresh(episode)
 
     return story, episode, script
+
+
+def _create_timeline_spec(db_session, episode: Episode, script: Script) -> Timeline:
+    timeline = Timeline(
+        episode_id=episode.id,
+        episode_business_id=episode.business_id,
+        script_id=script.id,
+        script_business_id=script.business_id,
+        title="Timeline Spec",
+        status="draft",
+        version=4,
+        source_audio_timeline_version=9,
+        spec={
+            "spec_version": "timeline.v1",
+            "episode_id": episode.id,
+            "script_id": script.id,
+            "version": 4,
+            "tracks": [],
+        },
+        created_by=episode.story.user_id,
+        updated_by=episode.story.user_id,
+    )
+    db_session.add(timeline)
+    db_session.commit()
+    db_session.refresh(timeline)
+    return timeline
 
 
 def _create_task(
@@ -156,8 +182,30 @@ def test_workbench_summary_aggregates_user_state(client, db_session):
         "processing",
         "failed",
     }
-    processing = next(task for task in data["task_queue"] if task["status"] == "processing")
+    processing = next(
+        task for task in data["task_queue"] if task["status"] == "processing"
+    )
     assert processing["progress"] == 62
+
+
+@pytest.mark.integration
+def test_workbench_summary_timeline_ready_uses_timeline_spec(client, db_session):
+    user = _admin_user(db_session)
+    _, episode, script = _create_story_episode_script(
+        db_session, user, with_timeline=False
+    )
+    timeline = _create_timeline_spec(db_session, episode, script)
+
+    response = client.get("/api/v1/workbench/summary")
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    item = data["recent_episodes"][0]
+    assert item["timeline_ready"] is True
+    assert item["timeline_id"] == timeline.id
+    assert item["timeline_version"] == 4
+    assert item["timeline_status"] == "draft"
+    assert item["source_audio_timeline_version"] == 9
 
 
 @pytest.mark.integration

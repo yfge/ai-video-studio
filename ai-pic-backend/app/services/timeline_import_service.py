@@ -66,8 +66,11 @@ def import_audio_timeline_to_timeline_spec(
             created_by=user_id,
             updated_by=user_id,
         )
+        db.flush()
+        timeline.spec = {**(timeline.spec or {}), "timeline_id": timeline.id}
         action = "created"
     else:
+        spec["timeline_id"] = existing.id
         timeline = repo.update(
             existing,
             spec=spec,
