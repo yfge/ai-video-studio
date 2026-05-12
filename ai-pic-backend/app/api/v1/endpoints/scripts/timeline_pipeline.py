@@ -6,19 +6,22 @@ import json
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.models.story_structure import SceneBeat
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
+from app.repositories.audio_timeline_repository import count_scene_beats
+from app.repositories.task_repository import TaskRepository
+from app.repositories.user_repository import UserRepository
 from app.services import story_structure_service as story_structure_svc
-from app.services.dialogue_audio_service import (
-    generate_episode_audio_timeline,
-    generate_scene_dialogue_audio,
+from app.services.audio.episode_audio_builder import generate_episode_audio_timeline
+from app.services.audio.scene_audio_generator import generate_scene_dialogue_audio
+from app.services.audio.storyboard_from_timeline import (
     generate_storyboard_from_episode_audio_timeline,
 )
 from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
 )
 from app.services.task_worker import timeline_pipeline_generate_task
+from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -99,7 +102,8 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
 
     db = SessionLocal()
     try:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task_repo = TaskRepository(db)
+        task = task_repo.get_by_id(task_id)
         if task:
             task.status = TaskStatus.PROCESSING
             db.commit()
@@ -115,7 +119,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
         use_duration_control = bool(payload.get("use_duration_control", False))
 
         async def _run() -> None:
-            user = db.query(User).filter(User.id == user_id).first()
+            user = UserRepository(db).get_by_id(user_id)
             if not user:
                 raise RuntimeError("user_not_found")
 
@@ -192,11 +196,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                     if not overwrite_audio and scene_has_dialogue_audio(
                         scene, script_id
                     ):
-                        beat_count = (
-                            db.query(SceneBeat)
-                            .filter(SceneBeat.scene_id == scene.id)
-                            .count()
-                        )
+                        beat_count = count_scene_beats(db, int(scene.id))
                         if beat_count > 0:
                             skipped += 1
                             update_task_progress(
@@ -229,17 +229,33 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                     )
 
             update_task_progress(db, task, "步骤 2/3：生成时间轴…")
+            audio_timeline_payload = None
             if not overwrite_timeline and episode_has_audio_timeline(
                 episode, script_id
             ):
-                update_task_progress(db, task, "步骤 2/3：时间轴已存在，跳过")
+                update_task_progress(
+                    db, task, "步骤 2/3：过渡时间轴已存在，导入 Timeline Spec…"
+                )
             else:
-                await generate_episode_audio_timeline(
+                audio_timeline_payload = await generate_episode_audio_timeline(
                     db,
                     story=story,
                     episode=episode,
                     script=script,
                 )
+            import_result = import_audio_timeline_to_timeline_spec(
+                db,
+                episode=episode,
+                script=script,
+                audio_timeline=audio_timeline_payload,
+                overwrite=overwrite_timeline,
+                user_id=user.id,
+            )
+            update_task_progress(
+                db,
+                task,
+                f"步骤 2/3：Timeline Spec v1 {import_result.action}",
+            )
 
             update_task_progress(db, task, "步骤 3/3：生成分镜帧占位…")
             generate_storyboard_from_episode_audio_timeline(
@@ -257,7 +273,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
             task.result_file_path = f"script:{script_id}:timeline_pipeline"
             update_task_progress(db, task, "一键时间轴流水线完成")
     except Exception as exc:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task = TaskRepository(db).get_by_id(task_id)
         if task:
             task.status = TaskStatus.FAILED
             task.error_message = str(exc)

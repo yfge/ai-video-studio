@@ -33,3 +33,8 @@ def list_active_scene_beats(db: Session, scene_id: int) -> list[SceneBeat]:
         )
         .all()
     )
+
+
+def count_scene_beats(db: Session, scene_id: int) -> int:
+    """Return the number of beats persisted for a scene."""
+    return db.query(SceneBeat).filter(SceneBeat.scene_id == scene_id).count()

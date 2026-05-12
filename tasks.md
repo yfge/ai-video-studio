@@ -21,7 +21,7 @@
 
 ## 状态概览
 
-- P0：Timeline Spec v1 文档与 DB/API foundation 已落地，下一步把 `audio_timeline` 导入桥迁入该规范，结束 `audio_timeline` / `scene_beats` / `storyboard.frames` 三套事实并存。
+- P0：Timeline Spec v1 文档、DB/API foundation 和 `audio_timeline.beats` 导入桥已落地，下一步把真实 render/export 回写迁入 versioned timeline jobs。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
 - P1：把默认操作路径从 `Episode -> Storyboard` 改成 `Episode -> Timeline`。
@@ -32,7 +32,7 @@
 
 当前阻塞：
 
-- `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，导入桥还没有迁入 `Timeline Spec v1`。
+- `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline 已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - 渲染结果仍有一部分写回临时 metadata，而不是稳定的 timeline/versioned jobs。
 
 ### 任务（功能→后端→验证）
@@ -41,6 +41,7 @@
 - [x] 文档明确现有 `audio_timeline`、`scene_beats`、`storyboard.frames` 到 `Timeline Spec v1` 的导入规则、优先级和冲突处理。
 - [x] 完成 `timelines`、`render_jobs`、`media_assets` 数据模型与迁移，明确和现有图片/视频记录的关系。
 - [x] 实现 timeline list/create/read/update、版本锁、自增保存和 render-job 幂等入队/读取 API。
+- [x] 将现有 timeline-pipeline 的 `audio_timeline.beats` 导入 `timelines.spec`，生成 dialogue/video/subtitle clips。
 - [ ] 补齐 timeline delete/rollback、真实 export 触发和 completed render output 回写。
 - [x] 文档定义稳定 `clip_id` 生成规则，保证后续 re-dub / re-cut / re-render 不丢身份。
 - [ ] 渲染结果统一回写到 timeline/versioned render jobs，不再只写 ad hoc metadata。
@@ -60,6 +61,7 @@
 - [x] 文档冻结 `scene -> episode audio -> beats -> timeline` 映射规则，补齐 `scene_beats` 与 episode offset 合并说明。
 - [ ] 在短剧模式下，把 dialogue/audio timing 明确为默认 clip duration source，并在任务审计中记录来源。
 - [x] 文档定义 timeline clip 的 `timing_source`、`voice_source`、`clip_replacement_of`、`render_source_version` 等审计字段。
+- [x] 在导入桥中按 `track_type + scene_id + beat_id + ordinal` 生成稳定 `clip_id`。
 - [ ] 支持基于稳定 `clip_id` 的 re-dub、re-cut、re-render，不允许靠临时 frame index 追踪资产。
 - [ ] 确保 storyboard placeholder 只消费 timeline facts，不再依赖自由估算时长。
 - [ ] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。

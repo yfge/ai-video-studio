@@ -68,6 +68,22 @@ class TimelineRepository(BaseRepository[Timeline]):
 
         return query.first()
 
+    def get_latest_for_episode_script(
+        self,
+        *,
+        episode_id: int,
+        script_id: int,
+        include_deleted: bool = False,
+    ) -> Optional[Timeline]:
+        query = (
+            self.session.query(Timeline)
+            .filter(Timeline.episode_id == episode_id)
+            .filter(Timeline.script_id == script_id)
+        )
+        if not include_deleted:
+            query = query.filter(Timeline.is_deleted.is_(False))
+        return query.order_by(Timeline.version.desc(), Timeline.id.desc()).first()
+
 
 class MediaAssetRepository(BaseRepository[MediaAsset]):
     """Media asset persistence for timeline and render artifacts."""
