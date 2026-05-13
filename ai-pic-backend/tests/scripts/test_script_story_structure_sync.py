@@ -38,6 +38,19 @@ def test_generate_script_syncs_normalized_scenes(
         }
 
     monkeypatch.setattr(ai_module.ai_service, "generate_script", fake_generate_script)
+    import app.api.v1.endpoints.scripts_legacy as scripts_legacy
+
+    async def fake_quality_gate(**kwargs):
+        result = dict(kwargs["result"])
+        quality_gate = {"passed": True, "source": "test"}
+        result["quality_gate"] = quality_gate
+        return result, kwargs["content"], quality_gate
+
+    monkeypatch.setattr(
+        scripts_legacy,
+        "enforce_script_quality_gate_with_repair",
+        fake_quality_gate,
+    )
 
     payload = {
         "episode_id": episode.id,

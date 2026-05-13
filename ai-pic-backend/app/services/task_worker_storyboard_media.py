@@ -71,6 +71,7 @@ def storyboard_image_generate_task(
         keyframe_mode=(payload.get("keyframe_mode") or "single"),
         start_enabled=payload.get("start_enabled", True),
         end_enabled=payload.get("end_enabled", True),
+        require_reference_images=bool(payload.get("require_reference_images")),
     )
     from app.services.task_agent_run_persistence import persist_task_agent_run
 

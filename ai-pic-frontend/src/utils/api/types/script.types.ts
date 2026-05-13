@@ -75,6 +75,11 @@ export interface NormalizedScene {
   metadata?: Record<string, unknown>;
 }
 
+export type SceneBeatCharactersInvolved =
+  | Record<string, unknown>
+  | unknown[]
+  | null;
+
 // Scene beat (dialogue/action unit)
 export interface SceneBeat {
   id: number;
@@ -84,7 +89,7 @@ export interface SceneBeat {
   order_index: number;
   beat_type?: string | null;
   beat_summary?: string | null;
-  characters_involved?: Record<string, unknown> | null;
+  characters_involved?: SceneBeatCharactersInvolved;
   dialogue_excerpt?: string | null;
   camera_notes?: string | null;
   duration_seconds?: number | null;

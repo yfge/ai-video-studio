@@ -161,6 +161,7 @@ export async function generateStoryboardImages(
     keyframe_mode?: "single" | "start_end";
     start_enabled?: boolean;
     end_enabled?: boolean;
+    require_reference_images?: boolean;
   },
 ): Promise<ApiResponse<unknown>> {
   const isStartEnd = payload?.keyframe_mode === "start_end";
@@ -202,6 +203,7 @@ export async function generateStoryboardImages(
       keyframe_mode: payload?.keyframe_mode ?? "single",
       start_enabled: payload?.start_enabled,
       end_enabled: payload?.end_enabled,
+      require_reference_images: payload?.require_reference_images,
     }),
   });
 }

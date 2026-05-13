@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
-from app.models.script import Episode, Story
 from app.models.task import Task, TaskType
 from app.models.user import User
+from app.repositories.storyboard_media_repository import resolve_storyboard_aspect_ratio
 from app.schemas.style import StyleSpec
 from app.services.task_worker import (
     storyboard_image_generate_task,
@@ -42,7 +42,9 @@ class StoryboardImageRequest(BaseModel):
         None, description="Frame indexes to generate images for"
     )
     model: Optional[str] = Field(None, description="Image model (e.g., keling:v1.5)")
+    generation_profile: Optional[str] = None
     prompt: Optional[str] = Field(None, description="Custom prompt override")
+    size: Optional[str] = None
     width: Optional[int] = None
     height: Optional[int] = None
     aspect_ratio: Optional[str] = None
@@ -55,11 +57,17 @@ class StoryboardImageRequest(BaseModel):
     steps: Optional[int] = None
     cfg_scale: Optional[float] = None
     negative_prompt: Optional[str] = None
+    strength: Optional[float] = None
+    count: Optional[int] = 1
     keyframe_mode: Optional[str] = Field(
         None, description="Keyframe generation mode: start, end, both"
     )
     start_enabled: Optional[bool] = True
     end_enabled: Optional[bool] = True
+    require_reference_images: Optional[bool] = Field(
+        False,
+        description="Fail image generation when a target frame has no reference images",
+    )
 
 
 class StoryboardVideoRequest(BaseModel):
@@ -87,41 +95,19 @@ class StoryboardVideoRequest(BaseModel):
     use_end_frame: Optional[bool] = None
 
 
-@router.post("/{script_id}/storyboard/generate-images")
-async def generate_storyboard_images(
-    script_id: int,
-    request: StoryboardImageRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """Generate AI images for storyboard frames.
-
-    Queues background task and returns task ID for status polling.
-    Supports keyframe generation (start, end, or both frames).
-    """
-    script = get_script_with_auth(db, script_id, current_user)
-
-    # Resolve aspect ratio from request or story defaults
-    episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
-    story = None
-    if episode:
-        story = db.query(Story).filter(Story.id == episode.story_id).first()
-
-    aspect_ratio = request.aspect_ratio
-    if not aspect_ratio:
-        # Try episode, then story defaults
-        if episode and episode.extra_metadata:
-            aspect_ratio = episode.extra_metadata.get("aspect_ratio")
-        if not aspect_ratio and story and story.extra_metadata:
-            aspect_ratio = story.extra_metadata.get("aspect_ratio")
-
-    payload = {
+def _build_storyboard_image_payload(db, script, script_id: int, request):
+    aspect_ratio = resolve_storyboard_aspect_ratio(
+        db, script=script, requested=request.aspect_ratio
+    )
+    return {
         "script_id": script_id,
         "frame_indexes": request.frames,
         "frames": request.frames,
         "prompt_override": request.prompt,
         "prompt": request.prompt,
         "model": request.model,
+        "generation_profile": request.generation_profile,
+        "size": request.size,
         "width": request.width,
         "height": request.height,
         "aspect_ratio": aspect_ratio,
@@ -138,10 +124,55 @@ async def generate_storyboard_images(
         "steps": request.steps,
         "cfg_scale": request.cfg_scale,
         "negative_prompt": request.negative_prompt,
+        "strength": request.strength,
+        "count": request.count,
         "keyframe_mode": request.keyframe_mode,
         "start_enabled": request.start_enabled,
         "end_enabled": request.end_enabled,
+        "require_reference_images": request.require_reference_images,
     }
+
+
+def _build_storyboard_video_payload(db, script, script_id: int, request):
+    ratio = resolve_storyboard_aspect_ratio(
+        db, script=script, requested=request.ratio
+    )
+    return {
+        "script_id": script_id,
+        "frame_indexes": request.frames,
+        "frames": request.frames,
+        "selections": request.selections,
+        "prompt": request.prompt,
+        "model": request.model,
+        "duration": request.duration,
+        "fps": request.fps,
+        "resolution": request.resolution,
+        "ratio": ratio,
+        "watermark": request.watermark,
+        "seed": request.seed,
+        "camera_fixed": request.camera_fixed,
+        "camera_control": request.camera_control,
+        "service_tier": request.service_tier,
+        "execution_expires_after": request.execution_expires_after,
+        "return_last_frame": request.return_last_frame,
+        "use_end_frame": request.use_end_frame,
+    }
+
+
+@router.post("/{script_id}/storyboard/generate-images")
+async def generate_storyboard_images(
+    script_id: int,
+    request: StoryboardImageRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Generate AI images for storyboard frames.
+
+    Queues background task and returns task ID for status polling.
+    Supports keyframe generation (start, end, or both frames).
+    """
+    script = get_script_with_auth(db, script_id, current_user)
+    payload = _build_storyboard_image_payload(db, script, script_id, request)
 
     # Create task record
     t = Task(
@@ -175,40 +206,7 @@ async def generate_storyboard_video(
     Supports multiple video models (jimeng, keling, etc.).
     """
     script = get_script_with_auth(db, script_id, current_user)
-
-    # Resolve aspect ratio
-    episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
-    story = None
-    if episode:
-        story = db.query(Story).filter(Story.id == episode.story_id).first()
-
-    ratio = request.ratio
-    if not ratio:
-        if episode and episode.extra_metadata:
-            ratio = episode.extra_metadata.get("aspect_ratio")
-        if not ratio and story and story.extra_metadata:
-            ratio = story.extra_metadata.get("aspect_ratio")
-
-    payload = {
-        "script_id": script_id,
-        "frame_indexes": request.frames,
-        "frames": request.frames,
-        "selections": request.selections,
-        "prompt": request.prompt,
-        "model": request.model,
-        "duration": request.duration,
-        "fps": request.fps,
-        "resolution": request.resolution,
-        "ratio": ratio,
-        "watermark": request.watermark,
-        "seed": request.seed,
-        "camera_fixed": request.camera_fixed,
-        "camera_control": request.camera_control,
-        "service_tier": request.service_tier,
-        "execution_expires_after": request.execution_expires_after,
-        "return_last_frame": request.return_last_frame,
-        "use_end_frame": request.use_end_frame,
-    }
+    payload = _build_storyboard_video_payload(db, script, script_id, request)
 
     # Create task record
     t = Task(

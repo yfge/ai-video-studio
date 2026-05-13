@@ -4,7 +4,10 @@
 
 import { httpClient } from "../../client";
 import type { ApiResponse } from "../../types/common.types";
-import type { SceneBeat } from "../../types/script.types";
+import type {
+  SceneBeat,
+  SceneBeatCharactersInvolved,
+} from "../../types/script.types";
 
 /**
  * Get beats for a scene.
@@ -27,7 +30,7 @@ export async function createSceneBeat(
     order_index: number;
     beat_type?: string;
     beat_summary?: string;
-    characters_involved?: Record<string, unknown>;
+    characters_involved?: SceneBeatCharactersInvolved;
     dialogue_excerpt?: string;
     camera_notes?: string;
     duration_seconds?: number;
@@ -49,7 +52,7 @@ export async function updateSceneBeat(
     order_index: number;
     beat_type: string;
     beat_summary: string;
-    characters_involved: Record<string, unknown>;
+    characters_involved: SceneBeatCharactersInvolved;
     dialogue_excerpt: string;
     camera_notes: string;
     duration_seconds: number;

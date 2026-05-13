@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene, SceneBeat
+from app.models.task import Task, TaskType
 from app.models.timeline import Timeline
 from app.models.user import User
 from app.services.script.production_pipeline import run_auto_timeline_placeholders
@@ -132,9 +133,19 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
     def _fake_generate_storyboard_support_from_timeline_spec(
         *_: object, **__: object
     ) -> dict:
-        return {"frames": [{"frame_id": "frame-1", "description": "hello"}], "meta": {}}
+        return {
+            "frames": [
+                {
+                    "frame_id": "frame-1",
+                    "description": "hello",
+                    "reference_images": ["https://example.com/ref.png"],
+                }
+            ],
+            "meta": {},
+        }
 
     import app.services.script.production_storyboard as production_storyboard
+    import app.services.storyboard.storyboard_image_autogen as storyboard_image_autogen
 
     monkeypatch.setattr(
         production_storyboard,
@@ -150,6 +161,18 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
         production_storyboard,
         "generate_storyboard_support_from_timeline_spec",
         _fake_generate_storyboard_support_from_timeline_spec,
+    )
+    queued_image_task: dict[str, object] = {}
+
+    def _fake_delay(task_id: int, payload: dict, user_id: int) -> None:
+        queued_image_task["task_id"] = task_id
+        queued_image_task["payload"] = payload
+        queued_image_task["user_id"] = user_id
+
+    monkeypatch.setattr(
+        storyboard_image_autogen.storyboard_image_generate_task,
+        "delay",
+        _fake_delay,
     )
 
     result = await run_auto_timeline_placeholders(
@@ -172,3 +195,13 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
         "source_audio_timeline_version": 5,
         "action": "created",
     }
+    image_meta = result["storyboard_image_generation"]
+    assert image_meta["status"] == "queued"
+    assert image_meta["queued_frame_indexes"] == [0]
+    assert image_meta["skipped_frame_indexes"] == []
+    assert queued_image_task["user_id"] == user.id
+    assert queued_image_task["payload"]["frame_indexes"] == [0]
+    child_task = (
+        db_session.query(Task).filter(Task.id == image_meta["child_task_id"]).one()
+    )
+    assert child_task.task_type == TaskType.STORYBOARD_IMAGE_GENERATION

@@ -1,8 +1,13 @@
+import json
+
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.timeline import Timeline
 from app.models.user import User
+from app.services.storyboard.storyboard_image_autogen import (
+    STORYBOARD_IMAGE_METADATA_KEY,
+)
 
 
 def _patch_session_local(monkeypatch, session_factory) -> None:
@@ -70,7 +75,10 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
     user = _create_user(db_session, username="pipeline_import_admin")
     script, scene_ids = _create_script_with_scenes(db_session, user=user)
     task = _create_task(db_session, user_id=user.id)
-    called: dict[str, object] = {"timeline": False, "storyboard": False}
+    called: dict[str, object] = {
+        "timeline": False,
+        "storyboard": False,
+    }
 
     async def _fake_generate_dialogue_with_duration_control(
         db_session,  # noqa: ANN001
@@ -120,8 +128,19 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
 
     def _fake_generate_storyboard_support_from_timeline_spec(
         *_: object, **__: object
-    ) -> None:
+    ) -> dict:
         called["storyboard"] = True
+        return {
+            "frames": [
+                {
+                    "frame_id": "frame-1",
+                    "description": "has refs",
+                    "reference_images": ["https://example.com/ref.png"],
+                },
+                {"frame_id": "frame-2", "description": "missing refs"},
+            ],
+            "meta": {},
+        }
 
     monkeypatch.setattr(
         timeline_pipeline_endpoint,
@@ -133,10 +152,26 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
         "generate_episode_audio_timeline",
         _fake_generate_episode_audio_timeline,
     )
+    import app.services.script.timeline_storyboard_queue as timeline_storyboard_queue
+
     monkeypatch.setattr(
-        timeline_pipeline_endpoint,
+        timeline_storyboard_queue,
         "generate_storyboard_support_from_timeline_spec",
         _fake_generate_storyboard_support_from_timeline_spec,
+    )
+    import app.services.storyboard.storyboard_image_autogen as storyboard_image_autogen
+
+    queued_image_task: dict[str, object] = {}
+
+    def _fake_delay(task_id: int, payload: dict, user_id: int) -> None:
+        queued_image_task["task_id"] = task_id
+        queued_image_task["payload"] = payload
+        queued_image_task["user_id"] = user_id
+
+    monkeypatch.setattr(
+        storyboard_image_autogen.storyboard_image_generate_task,
+        "delay",
+        _fake_delay,
     )
     _patch_session_local(monkeypatch, test_db)
 
@@ -150,6 +185,16 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
         assert refreshed is not None
         assert refreshed.status == TaskStatus.COMPLETED
         assert refreshed.result_file_path == f"script:{script.id}:timeline_pipeline"
+        params = json.loads(refreshed.parameters)
+        image_meta = params[STORYBOARD_IMAGE_METADATA_KEY]
+        assert image_meta["status"] == "queued"
+        assert image_meta["child_task_id"] == queued_image_task["task_id"]
+        assert image_meta["queued_frame_indexes"] == [0]
+        assert image_meta["skipped_frame_indexes"] == [1]
+        assert queued_image_task["payload"]["script_id"] == script.id
+        assert queued_image_task["payload"]["frame_indexes"] == [0]
+        assert queued_image_task["payload"]["require_reference_images"] is True
+        assert queued_image_task["user_id"] == user.id
         timeline = (
             session.query(Timeline)
             .filter(Timeline.episode_id == script.episode_id)

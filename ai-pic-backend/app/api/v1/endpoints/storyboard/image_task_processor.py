@@ -1,16 +1,19 @@
 """Storyboard image generation task processor."""
 
 import copy as _copy
-from datetime import datetime
 from functools import partial as _partial
 from typing import Any, Dict, List, Optional
 
 import anyio
 
 from app.core.logging import get_logger
-from app.models.script import Script
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
+from app.repositories.storyboard_media_repository import (
+    get_script_by_id,
+    get_task_by_id,
+    save_storyboard_image_frames,
+)
 from app.services.ai_service import ai_service
 from app.services.storage.oss_service import oss_service
 from app.services.storyboard.storyboard_prompt_utils import render_keyframe_prompt
@@ -33,18 +36,19 @@ def _process_storyboard_image_task(
     labeled_references: Optional[List[dict[str, Any]]] = None,
     count: int = 1, keyframe_mode: str = "single",
     start_enabled: bool = True, end_enabled: bool = True,
+    require_reference_images: bool = False,
 ):
     from app.core.database import SessionLocal
-    from app.models.task import Task, TaskStatus
+    from app.models.task import TaskStatus
 
     db = SessionLocal()
     try:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task = get_task_by_id(db, task_id)
         if task:
             task.status = TaskStatus.PROCESSING
             db.commit()
 
-        script = db.query(Script).filter(Script.id == script_id).first()
+        script = get_script_by_id(db, script_id)
         if not script:
             raise RuntimeError("剧本不存在")
         sb = (script.extra_metadata or {}).get("storyboard") if script.extra_metadata else None
@@ -81,21 +85,29 @@ def _process_storyboard_image_task(
                 labeled_references=labeled_references,
                 count=count_int, keyframe_mode=keyframe_mode,
                 start_enabled=start_enabled, end_enabled=end_enabled,
+                require_reference_images=require_reference_images,
                 script_id=script_id,
             )
             if resolved_style_spec_used is None and result_meta.get("style_spec"):
                 resolved_style_spec_used = result_meta["style_spec"]
                 resolved_style_spec_resolution_used = result_meta.get("style_spec_resolution")
 
-        _save_frames_to_db(
-            db, script_id, sb, frames, style, style_preset_id,
-            style_spec, resolved_style_spec_used, resolved_style_spec_resolution_used,
+        save_storyboard_image_frames(
+            db,
+            script_id=script_id,
+            storyboard=sb,
+            frames=frames,
+            style=style,
+            style_preset_id=style_preset_id,
+            style_spec=style_spec,
+            resolved_style_spec=resolved_style_spec_used,
+            resolved_resolution=resolved_style_spec_resolution_used,
         )
         if task:
             task.status = TaskStatus.COMPLETED
             db.commit()
     except Exception as e:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task = get_task_by_id(db, task_id)
         if task:
             task.status = TaskStatus.FAILED
             task.error_message = str(e)
@@ -118,6 +130,7 @@ def _generate_frame_image(frames, idx, ctx, *, prompt_override, model,
                             seed, steps, cfg_scale, negative_prompt, strength,
                             reference_images, labeled_references,
                             count, keyframe_mode, start_enabled, end_enabled,
+                            require_reference_images,
                             script_id) -> dict:
     fr = frames[idx]
     base_prompt = fr.get("ai_prompt") or fr.get("description") or ""
@@ -134,6 +147,10 @@ def _generate_frame_image(frames, idx, ctx, *, prompt_override, model,
         fr, idx, ctx, prompt=base_prompt,
         reference_images=reference_images, labeled_references=labeled_references,
     )
+    if require_reference_images and not ref_images:
+        raise RuntimeError(
+            f"分镜帧 {idx + 1} 缺少参考图，请先绑定场景环境或镜头角色参考图后再生成画面"
+        )
 
     prompt = prompt_manager.render_prompt(
         PromptTemplate.STORYBOARD_IMAGE_PROMPT.value,
@@ -277,26 +294,3 @@ def _merge_keyframe_urls(fr, role, final_urls, original_urls):
             fr["image_url_original"] = original_urls[0]
     if original_urls and not fr.get(key_orig):
         fr[key_orig] = original_urls[0]
-
-def _save_frames_to_db(db, script_id, sb, frames, style, style_preset_id,
-                        style_spec, resolved_style_spec, resolved_resolution):
-    extra_raw = db.query(Script).filter(Script.id == script_id).first()
-    if not extra_raw:
-        return
-    extra = dict(extra_raw.extra_metadata or {})
-    storyboard_payload = dict(sb or {})
-    meta_payload = dict(storyboard_payload.get("meta") or {}) if isinstance(storyboard_payload.get("meta"), dict) else {}
-    meta_payload.update({
-        "image_generation_updated_at": datetime.utcnow().isoformat(),
-        "image_generation_style": style,
-        "image_generation_style_preset_id": (style_preset_id or "").strip() or None,
-        "image_generation_style_spec": resolved_style_spec or (style_spec if isinstance(style_spec, dict) else None),
-        "image_generation_style_spec_resolution": resolved_resolution,
-    })
-    storyboard_payload["meta"] = meta_payload
-    storyboard_payload["frames"] = frames
-    extra["storyboard"] = storyboard_payload
-    db.query(Script).filter(Script.id == script_id).update(
-        {Script.extra_metadata: extra}, synchronize_session=False,
-    )
-    db.commit()

@@ -14,11 +14,14 @@ from app.repositories.user_repository import UserRepository
 from app.services import story_structure_service as story_structure_svc
 from app.services.audio.episode_audio_builder import generate_episode_audio_timeline
 from app.services.audio.scene_audio_generator import generate_scene_dialogue_audio
-from app.services.audio.storyboard_from_timeline_spec import (
-    generate_storyboard_support_from_timeline_spec,
-)
 from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
+)
+from app.services.script.timeline_storyboard_queue import (
+    generate_storyboard_placeholders_and_queue_images,
+)
+from app.services.storyboard.storyboard_image_autogen import (
+    storyboard_image_queue_progress_message,
 )
 from app.services.task_worker import timeline_pipeline_generate_task
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
@@ -144,11 +147,11 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 update_task_progress(
                     db,
                     task,
-                    f"步骤 1/3：时长精控模式 - 编排 {len(scenes)} 个场景…",
+                    f"步骤 1/4：时长精控模式 - 编排 {len(scenes)} 个场景…",
                 )
 
                 def _progress_cb(message: str) -> None:
-                    update_task_progress(db, task, f"步骤 1/3：{message}")
+                    update_task_progress(db, task, f"步骤 1/4：{message}")
 
                 result = await generate_dialogue_with_duration_control(
                     db,
@@ -169,7 +172,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                         update_task_progress(
                             db,
                             task,
-                            f"步骤 1/3：时长验证未通过 {ratio:.1%}（允许±10%）",
+                            f"步骤 1/4：时长验证未通过 {ratio:.1%}（允许±10%）",
                         )
                     else:
                         raise RuntimeError(
@@ -178,10 +181,10 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 else:
                     ratio = result.get("statistics", {}).get("duration_ratio", 0)
                     update_task_progress(
-                        db, task, f"步骤 1/3：时长精控完成 {ratio:.1%}"
+                        db, task, f"步骤 1/4：时长精控完成 {ratio:.1%}"
                     )
             else:
-                update_task_progress(db, task, "步骤 1/3：生成对白音轨…")
+                update_task_progress(db, task, "步骤 1/4：生成对白音轨…")
 
                 episode_duration_minutes = getattr(episode, "duration_minutes", None)
                 fallback_target_seconds = None
@@ -202,14 +205,14 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                             update_task_progress(
                                 db,
                                 task,
-                                f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
+                                f"步骤 1/4：对白音轨 {idx}/{total}（跳过 {skipped}）",
                             )
                             continue
 
                     update_task_progress(
                         db,
                         task,
-                        f"步骤 1/3：对白音轨 {idx}/{total}（跳过 {skipped}）",
+                        f"步骤 1/4：对白音轨 {idx}/{total}（跳过 {skipped}）",
                     )
 
                     scene_target = getattr(scene, "estimated_duration_seconds", None)
@@ -228,13 +231,13 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                         target_duration_seconds=scene_target,
                     )
 
-            update_task_progress(db, task, "步骤 2/3：生成时间轴…")
+            update_task_progress(db, task, "步骤 2/4：生成时间轴…")
             audio_timeline_payload = None
             if not overwrite_timeline and episode_has_audio_timeline(
                 episode, script_id
             ):
                 update_task_progress(
-                    db, task, "步骤 2/3：过渡时间轴已存在，导入 Timeline Spec…"
+                    db, task, "步骤 2/4：过渡时间轴已存在，导入 Timeline Spec…"
                 )
             else:
                 audio_timeline_payload = await generate_episode_audio_timeline(
@@ -252,19 +255,27 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 user_id=user.id,
             )
             update_task_progress(
-                db,
-                task,
-                f"步骤 2/3：Timeline Spec v1 {import_result.action}",
+                db, task, f"步骤 2/4：Timeline Spec v1 {import_result.action}"
             )
 
-            update_task_progress(db, task, "步骤 3/3：生成分镜帧占位…")
-            generate_storyboard_support_from_timeline_spec(
+            update_task_progress(db, task, "步骤 3/4：生成分镜帧占位…")
+            image_result = generate_storyboard_placeholders_and_queue_images(
                 db,
+                parent_task=task,
                 script=script,
                 episode=episode,
                 timeline=import_result.timeline,
-                overwrite_existing=overwrite_storyboard,
-                min_pause_duration_ms=min_pause_ms,
+                user_id=user.id,
+                overwrite_storyboard=overwrite_storyboard,
+                min_pause_ms=min_pause_ms,
+            )
+            update_task_progress(
+                db,
+                task,
+                storyboard_image_queue_progress_message(
+                    image_result,
+                    prefix="步骤 4/4",
+                ),
             )
 
         run_async_task_sync(_run)
@@ -281,11 +292,3 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
             update_task_progress(db, task, f"流水线失败：{exc}")
     finally:
         db.close()
-
-
-__all__ = [
-    "router",
-    "TimelinePipelineGenerateRequest",
-    "generate_timeline_pipeline_async",
-    "_process_timeline_pipeline_task",
-]

@@ -832,6 +832,64 @@ export default function StoryboardEditor() {
         }
         return true;
     };
+    const storyboardFrameHasVisual = (frame) => Boolean(frame &&
+        (frame.start_image_url ||
+            frame.image_url ||
+            frame.end_image_url ||
+            (Array.isArray(frame.start_image_urls) &&
+                frame.start_image_urls.length > 0) ||
+            (Array.isArray(frame.end_image_urls) &&
+                frame.end_image_urls.length > 0)));
+    const collectFrameIndexesFromStoryboard = (payload, sceneNumbers) => {
+        var _a;
+        const sceneSet = sceneNumbers && sceneNumbers.length > 0
+            ? new Set(sceneNumbers.map((value) => Number(value)))
+            : null;
+        return ((_a = payload === null || payload === void 0 ? void 0 : payload.frames) !== null && _a !== void 0 ? _a : [])
+            .map((frame, idx) => ({ frame, idx }))
+            .filter(({ frame }) => {
+            if (!sceneSet)
+                return true;
+            const raw = frame === null || frame === void 0 ? void 0 : frame.scene_number;
+            const sceneNo = typeof raw === "string" ? Number.parseInt(raw, 10) : raw;
+            return sceneNo != null && sceneSet.has(Number(sceneNo));
+        })
+            .map(({ idx }) => idx);
+    };
+    async function queueStoryboardImagesForIndexes(scriptId, payload, indexes, label) {
+        var _a;
+        const frames = (_a = payload === null || payload === void 0 ? void 0 : payload.frames) !== null && _a !== void 0 ? _a : [];
+        const targets = indexes.filter((idx) => !storyboardFrameHasVisual(frames[idx]));
+        if (targets.length === 0)
+            return false;
+        const response = await scriptAPI.generateStoryboardImages(scriptId, {
+            frames: targets,
+            keyframe_mode: "start_end",
+            count: 4,
+            start_enabled: true,
+            end_enabled: true,
+            require_reference_images: true,
+        });
+        if (response.success) {
+            showAlert({
+                message: `${label || "分镜画面"}任务已创建，将使用场景/角色参考图生成首尾帧`,
+                variant: "success",
+            });
+            startImagePolling(label || "分镜画面", (sb) => targets.every((idx) => storyboardFrameHasVisual((sb.frames || [])[idx])), 30);
+            return true;
+        }
+        showAlert({
+            message: `${label || "分镜画面"}任务创建失败：${response.error || "缺少参考图或模型不可用"}`,
+            variant: "error",
+        });
+        return false;
+    }
+    async function queueStoryboardImagesForGeneratedFrames(scriptId, payload, sceneNumbers, label) {
+        const indexes = collectFrameIndexesFromStoryboard(payload, sceneNumbers);
+        if (indexes.length === 0)
+            return false;
+        return queueStoryboardImagesForIndexes(scriptId, payload, indexes, label);
+    }
     const handleGenerateForScene = async () => {
         if (!activeScript)
             return;
@@ -858,7 +916,10 @@ export default function StoryboardEditor() {
                 message: "已创建分镜生成任务，正在等待结果...",
                 variant: "info",
             });
-            await pollStoryboardTask(activeScript.id, response.data.task_id);
+            const completedStoryboard = await pollStoryboardTask(activeScript.id, response.data.task_id);
+            if (completedStoryboard) {
+                await queueStoryboardImagesForGeneratedFrames(activeScript.id, completedStoryboard, [selectedScene], "场景分镜画面");
+            }
         }
         finally {
             setStoryboardBusy(false);
@@ -908,15 +969,15 @@ export default function StoryboardEditor() {
                         message: "分镜生成完成",
                         variant: "success",
                     });
-                    return;
+                    return sb.success && sb.data ? sb.data : null;
                 }
                 if (status === "failed") {
                     const msg = taskRes.data.error_message || "分镜生成失败，请检查任务详情";
                     showAlert({ message: msg, variant: "error" });
-                    return;
+                    return null;
                 }
             }
-            catch (_c) {
+            catch {
                 // 单次轮询出错时忽略，继续尝试
             }
         }
@@ -924,8 +985,9 @@ export default function StoryboardEditor() {
             message: "分镜生成任务仍在执行中，请稍后在任务页查看进度",
             variant: "info",
         });
+        return null;
     }, [showAlert]);
-    const handleSyncStoryboardFromAudioTimeline = useCallback(async () => {
+    const handleSyncStoryboardFromAudioTimeline = async () => {
         if (!activeScript)
             return;
         if (!selectedAudioTimeline) {
@@ -955,19 +1017,15 @@ export default function StoryboardEditor() {
                 message: `已创建分镜占位生成任务（task_id=${response.data.task_id}），建议后续改用“一键时间轴流水线”。`,
                 variant: "info",
             });
-            await pollStoryboardTask(activeScript.id, response.data.task_id);
+            const completedStoryboard = await pollStoryboardTask(activeScript.id, response.data.task_id);
+            if (completedStoryboard) {
+                await queueStoryboardImagesForGeneratedFrames(activeScript.id, completedStoryboard, null, "分镜占位画面");
+            }
         }
         finally {
             setStoryboardBusy(false);
         }
-    }, [
-        activeScript,
-        overwriteTimelineStoryboard,
-        pollStoryboardTask,
-        selectedAudioTimeline,
-        showAlert,
-        timelineMinPauseSeconds,
-    ]);
+    };
     const handleGenerateAllScenes = async () => {
         if (!activeScript)
             return;
@@ -993,7 +1051,10 @@ export default function StoryboardEditor() {
                 message: "已创建分镜生成任务，正在等待结果...",
                 variant: "info",
             });
-            await pollStoryboardTask(activeScript.id, response.data.task_id);
+            const completedStoryboard = await pollStoryboardTask(activeScript.id, response.data.task_id);
+            if (completedStoryboard) {
+                await queueStoryboardImagesForGeneratedFrames(activeScript.id, completedStoryboard, null, "分镜画面");
+            }
         }
         finally {
             setStoryboardBusy(false);
@@ -1017,6 +1078,20 @@ export default function StoryboardEditor() {
         if (!assertNormalizedReady(true))
             return;
         const indexes = collectFrameIndexesForScene(selectedScene);
+        const missingVisualIndexes = indexes.filter((idx) => {
+            var _a;
+            return !storyboardFrameHasVisual((_a = storyboard.frames) === null || _a === void 0 ? void 0 : _a[idx]);
+        });
+        if (missingVisualIndexes.length > 0) {
+            const queued = await queueStoryboardImagesForIndexes(activeScript.id, storyboard, missingVisualIndexes, "视频前置分镜画面");
+            if (queued) {
+                showAlert({
+                    message: "已先创建分镜画面生成任务，画面完成后再生成视频",
+                    variant: "info",
+                });
+            }
+            return;
+        }
         const selections = indexes
             .map((idx) => {
             var _a;
@@ -1046,6 +1121,17 @@ export default function StoryboardEditor() {
             return;
         if (videoModalFrameIndex === null)
             return;
+        if (!payload.start_image_url) {
+            const queued = await queueStoryboardImagesForIndexes(activeScript.id, storyboard, [videoModalFrameIndex], "视频前置分镜画面");
+            if (queued) {
+                showAlert({
+                    message: "已先创建分镜画面生成任务，画面完成后再生成视频",
+                    variant: "info",
+                });
+            }
+            setVideoModalOpen(false);
+            return;
+        }
         const targetIdx = videoModalFrameIndex;
         try {
             setVideoModalSubmitting(true);
@@ -1092,6 +1178,7 @@ export default function StoryboardEditor() {
             count: 4,
             start_enabled: true,
             end_enabled: true,
+            require_reference_images: true,
         });
         if (response.success) {
             showAlert({ message: "已创建图像生成任务", variant: "success" });
@@ -1325,6 +1412,7 @@ export default function StoryboardEditor() {
                 count: payload.count,
                 keyframe_mode: "start_end",
                 aspect_ratio: payload.aspect_ratio,
+                require_reference_images: true,
             });
             if (response.success) {
                 showAlert({ message: "已创建首尾帧图像生成任务", variant: "success" });
@@ -1485,6 +1573,7 @@ export default function StoryboardEditor() {
                 end_enabled: imageModalTargets.last,
                 prompt: promptWithTarget,
                 aspect_ratio: payload.aspect_ratio,
+                require_reference_images: true,
             });
             if (response.success) {
                 showAlert({ message: "已创建图像生成任务", variant: "success" });
