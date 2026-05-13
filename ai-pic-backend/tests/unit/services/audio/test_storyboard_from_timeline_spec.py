@@ -56,6 +56,10 @@ def test_build_storyboard_frames_from_timeline_spec_marks_source():
     assert frames[0]["generation_method"] == "timeline_spec"
     assert frames[0]["timeline_clip_id"] == "dialogue_scene_1_beat_2_001"
     assert frames[0]["source"]["kind"] == "timeline_clip"
+    assert "画面主体:" in frames[0]["prompt_description"]
+    assert "竖屏短剧单镜头" in frames[0]["prompt_description"]
+    assert "禁止项:" in frames[0]["prompt_description"]
+    assert "hello" not in frames[0]["prompt_description"]
 
 
 def test_generate_storyboard_support_from_timeline_spec_persists_meta(db_session):
@@ -96,4 +100,9 @@ def test_generate_storyboard_support_from_timeline_spec_persists_meta(db_session
     assert result["meta"]["timeline_id"] == timeline.id
     assert result["meta"]["timeline_version"] == 3
     assert result["meta"]["source_audio_timeline_version"] == 8
-    assert script.extra_metadata["storyboard"]["frames"][0]["timeline_clip_id"]
+    frame = script.extra_metadata["storyboard"]["frames"][0]
+    assert frame["timeline_clip_id"]
+    assert frame["source"]["kind"] == "timeline_clip"
+    assert "画面主体:" in frame["prompt_description"]
+    assert "短剧竖屏镜头提示:" in frame["ai_prompt"]
+    assert "统一要求:" in frame["ai_prompt"]

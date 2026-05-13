@@ -71,7 +71,7 @@ def test_audio_timeline_storyboard_enricher_injects_cards_and_reference_images(
             "scene_id": int(scene.id),
             "scene_number": 1,
             "characters": ["林晚", "陈哲", "旁白"],
-            "prompt_description": "林晚开口说话，嘴型清晰，真实口型；人物面容与服饰保持与参考图一致；无字幕，无可读文字。",
+            "prompt_description": "画面主体: 竖屏短剧单镜头，林晚正在开口说话。表演动作: 眼神追问对方。禁止项: 单幅画面，无字幕，无可读文字。",
         }
     ]
 
@@ -90,12 +90,13 @@ def test_audio_timeline_storyboard_enricher_injects_cards_and_reference_images(
         "http://example.com/cz.png",
         "http://example.com/env.png",
     ]
-    assert "开口说话" in frames[0]["prompt_description"]
-    assert "角色卡:" in frames[0]["prompt_description"]
+    assert "画面主体:" in frames[0]["prompt_description"]
+    assert "角色一致性:" in frames[0]["prompt_description"]
     assert "林晚" in frames[0]["prompt_description"]
     assert "陈哲" in frames[0]["prompt_description"]
     assert "环境锚点:" in frames[0]["prompt_description"]
     assert "公寓客厅" in frames[0]["prompt_description"]
+    assert "镜头连续性补充:" in frames[0]["prompt_description"]
 
 
 def test_audio_timeline_storyboard_enricher_does_not_override_manual_reference_images(
@@ -121,7 +122,7 @@ def test_audio_timeline_storyboard_enricher_does_not_override_manual_reference_i
             "scene_id": 1,
             "scene_number": 1,
             "characters": ["林晚"],
-            "prompt_description": "林晚开口说话，嘴型清晰。",
+            "prompt_description": "画面主体: 竖屏短剧单镜头，林晚正在开口说话。",
             "reference_images": ["http://example.com/manual.png"],
         }
     ]
@@ -136,5 +137,4 @@ def test_audio_timeline_storyboard_enricher_does_not_override_manual_reference_i
     )
 
     assert frames[0]["reference_images"] == ["http://example.com/manual.png"]
-    assert "角色卡:" in frames[0]["prompt_description"]
-
+    assert "角色一致性:" in frames[0]["prompt_description"]

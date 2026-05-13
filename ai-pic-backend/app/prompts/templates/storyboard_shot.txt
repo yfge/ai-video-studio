@@ -1,4 +1,4 @@
-{{ description }}
+短剧竖屏镜头提示: {{ description }}
 {% if shot_type %}景别: {{ shot_type }}{% endif %}
 {% if camera_movement %}运镜: {{ camera_movement }}{% endif %}
 {% if composition %}构图: {{ composition }}{% endif %}
@@ -6,3 +6,4 @@
 {% if transition %}
 {% if transition.kind == "intro" %}镜头切换: 开场{% elif transition.kind == "scene_change" %}镜头切换: 切入新场景{{ transition.to_scene }}{% elif transition.kind == "shot_change" %}镜头切换: {{ transition.from_shot }}转{{ transition.to_shot }}{% elif transition.kind == "movement_change" %}镜头切换: {{ transition.from_move }}转{{ transition.to_move }}{% elif transition.kind == "composition_change" %}镜头切换: {{ transition.from_comp }}转{{ transition.to_comp }}{% else %}镜头切换: 连切{% endif %}
 {% endif %}
+统一要求: 单个镜头、单幅画面、竖屏短剧质感；保持人物外观、服装、环境光线和空间方向连续；禁止字幕、可读文字、UI、水印、分屏、拼贴和多格漫画。

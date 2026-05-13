@@ -1,4 +1,4 @@
 {{ base }}
-{% if character_cards %}角色卡: {{ character_cards | join('；') }}{% endif %}
-{% if environment %}环境锚点: {{ environment }}{% endif %}
-
+{% if character_cards %}角色一致性: {{ character_cards | join('；') }}；按参考图保持脸型、发型、服装、体态和年龄感。{% endif %}
+{% if environment %}环境锚点: {{ environment }}；用环境参考确定空间层次、时间氛围、色温和真实光源方向。{% endif %}
+镜头连续性补充: 这是同一条短剧时间轴中的单个镜头，保持人物站位、视线方向、景别节奏和上一帧空间关系连贯。

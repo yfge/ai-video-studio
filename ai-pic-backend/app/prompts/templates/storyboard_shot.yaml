@@ -1,10 +1,10 @@
 name: storyboard_shot
 description: "单帧分镜提示词模板"
 category: storyboard
-version: "1.0"
+version: "1.1"
 author: "AI Video Studio"
 created_at: "2025-12-19"
-updated_at: "2025-12-19"
+updated_at: "2026-05-13"
 
 variables:
   description:

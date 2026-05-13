@@ -1,10 +1,10 @@
 name: storyboard_audio_visual_dialogue_voiceover
 description: "Audio timeline dialogue beat (voiceover/inner monologue) -> visual-only description fragment"
 category: storyboard
-version: "1.0"
+version: "1.1"
 author: "AI Video Studio"
 created_at: "2026-01-30"
-updated_at: "2026-01-30"
+updated_at: "2026-05-13"
 
 variables:
   speaker:
@@ -15,4 +15,15 @@ variables:
     type: string
     required: false
     description: "语气意图（可选）"
-
+  expression:
+    type: string
+    required: true
+    description: "沉默反应的微表情"
+  gesture:
+    type: string
+    required: true
+    description: "内心活动对应的肢体细节"
+  shot_goal:
+    type: string
+    required: true
+    description: "镜头要表达的旁白/内心活动目标"

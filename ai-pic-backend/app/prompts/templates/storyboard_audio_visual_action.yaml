@@ -1,14 +1,17 @@
 name: storyboard_audio_visual_action
 description: "Audio timeline action beat -> visual-only description fragment"
 category: storyboard
-version: "1.0"
+version: "1.1"
 author: "AI Video Studio"
 created_at: "2026-01-30"
-updated_at: "2026-01-30"
+updated_at: "2026-05-13"
 
 variables:
   action:
     type: string
     required: true
     description: "动作/画面要点（不包含对白或可读文字）"
-
+  performance:
+    type: string
+    required: true
+    description: "动作表演和反应节奏"

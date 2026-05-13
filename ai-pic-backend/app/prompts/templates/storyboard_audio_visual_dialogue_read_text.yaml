@@ -1,14 +1,17 @@
 name: storyboard_audio_visual_dialogue_read_text
 description: "Audio timeline dialogue beat (reading document/screen) -> visual-only description fragment"
 category: storyboard
-version: "1.0"
+version: "1.1"
 author: "AI Video Studio"
 created_at: "2026-01-30"
-updated_at: "2026-01-30"
+updated_at: "2026-05-13"
 
 variables:
   speaker:
     type: string
     required: true
     description: "阅读主体（可包含简短身份提示）"
-
+  reaction:
+    type: string
+    required: true
+    description: "读到关键信息后的视觉反应"

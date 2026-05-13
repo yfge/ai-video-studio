@@ -1,10 +1,10 @@
 name: storyboard_audio_visual_dialogue_spoken
 description: "Audio timeline dialogue beat (spoken) -> visual-only description fragment"
 category: storyboard
-version: "1.0"
+version: "1.1"
 author: "AI Video Studio"
 created_at: "2026-01-30"
-updated_at: "2026-01-30"
+updated_at: "2026-05-13"
 
 variables:
   speaker:
@@ -15,4 +15,15 @@ variables:
     type: string
     required: false
     description: "语气意图（如 质问/辩解/追问）"
-
+  expression:
+    type: string
+    required: true
+    description: "微表情和眼神描述"
+  gesture:
+    type: string
+    required: true
+    description: "肢体动作和说话节奏"
+  shot_goal:
+    type: string
+    required: true
+    description: "镜头要表达的剧情目标"
