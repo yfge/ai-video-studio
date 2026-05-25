@@ -7,6 +7,8 @@ import type { ApiResponse } from "../types/common.types";
 import type {
   TimelineClipAssetListParams,
   TimelineClipAssetListResponse,
+  TimelineClipAssetResponse,
+  TimelineClipReworkRequest,
   TimelineListResponse,
   TimelineRenderJobCreate,
   TimelineRenderJobListResponse,
@@ -69,10 +71,27 @@ export async function listTimelineClipAssets(
   );
 }
 
+export async function reworkTimelineClip(
+  timelineId: number | string,
+  clipId: string,
+  payload: TimelineClipReworkRequest,
+): Promise<ApiResponse<TimelineClipAssetResponse>> {
+  return httpClient<TimelineClipAssetResponse>(
+    `/api/v1/timelines/${timelineId}/clips/${encodeURIComponent(
+      clipId,
+    )}/rework`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export const timelineAPI = {
   listEpisodeTimelines,
   getTimeline,
   queueTimelineRender,
   listTimelineRenderJobs,
   listTimelineClipAssets,
+  reworkTimelineClip,
 };

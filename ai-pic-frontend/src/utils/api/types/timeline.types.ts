@@ -123,6 +123,16 @@ export interface TimelineClipAssetListParams {
   includeDeleted?: boolean;
 }
 
+export type TimelineClipReworkAction = "re_dub" | "re_cut" | "re_render";
+
+export interface TimelineClipReworkRequest {
+  expected_version: number;
+  action: TimelineClipReworkAction;
+  media_asset_id: number;
+  asset_role?: string | null;
+  reason?: string | null;
+}
+
 export interface TimelineRenderJobCreate {
   timeline_version: number;
   render_type: TimelineRenderType;

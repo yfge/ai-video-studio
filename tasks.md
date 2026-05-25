@@ -24,7 +24,7 @@
 
 - 当前未提交改动已拆成可审查提交边界：Timeline render/export、Codex/ChatGPT provider、IP 内容填充 DeepSeek、主链 readiness 文档。
 - 真实 API harness 已通过一次 `Episode -> Timeline -> Render -> Export`：`artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`。
-- timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API 和 operator 资产审计读视图已落地；下一步补真实生成联动和样片验证。
+- timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图和基于已有 media asset 的 rework 控制已落地；下一步补真实生成联动和样片验证。
 - 在 10 条窄垂类样片通过前，不把主链标记为商业化可用。
 
 ## 状态概览
@@ -51,7 +51,7 @@
 
 - `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 和更严格的 schema/import 校验已补齐。
-- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；该证据使用 legacy storyboard 视频资产迁移桥，clip asset lineage 后端基础、stable `clip_id` rework API 和 operator 资产审计读视图已补齐，后续仍需补真实生成联动。
+- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；该证据使用 legacy storyboard 视频资产迁移桥，clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图和基于已有 media asset 的 rework 控制已补齐，后续仍需补真实生成联动。
 
 ### 任务（功能→后端→验证）
 
@@ -69,13 +69,14 @@
 当前阻塞：
 
 - 场景音轨、episode 音轨、beats、分镜占位已经收敛到 Timeline Spec 导入；legacy storyboard 视频迁移桥已可生成可渲染 video track，first-class clip asset 关联已有后端基础。
-- 重新配音、重新切分、重新导出已有后端 replacement lineage API 挂在稳定 clip identity 上，operator 可以查看选中片段的源/输出/替换资产历史，但还没有接入真实 provider 生成和 render queue 编排。
+- 重新配音、重新切分、重新导出已有后端 replacement lineage API 挂在稳定 clip identity 上，operator 可以查看选中片段的源/输出/替换资产历史，也可以把已有 `media_asset_id` 记录为重做资产；但还没有接入真实 provider 生成和 render queue 编排。
 - `scripts_legacy.py`、`dialogue_audio_service.py`、`ai_service_manager.py` 仍是主链旁边的稳定性风险。
 
 ### 任务（功能→后端→验证）
 
 - [x] 支持基于稳定 `clip_id` 的 re-dub、re-cut、re-render 后端 replacement lineage API，不允许靠临时 frame index 追踪资产。
 - [x] 在 Timeline operator 片段检查器展示选中 clip 的源资产、输出资产和 replacement history。
+- [x] 在 Timeline operator 片段检查器提交已有 `media_asset_id` 作为 re-dub / re-cut / re-render replacement lineage。
 - [ ] 将 rework API 接入真实 provider 生成和 render queue 编排。
 - [x] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。
 - [ ] 继续拆分并下线 `scripts_legacy.py`，让 timeline/audio/storyboard 主链不再依赖 legacy router。
@@ -97,7 +98,7 @@
 
 ### 任务（内容→生产→复盘）
 
-- [x] 补齐 timeline operator 的选中 clip 资产审计读视图。
+- [x] 补齐 timeline operator 的选中 clip 资产审计读视图和已有资产 rework 控制。
 - [ ] 把 storyboard 调整为支持视图：查看占位、关键帧、镜头上下文，不再承担主编排职责。
 - [ ] 固定一个窄垂类和 2-3 个角色，产出 10 条 30-60 秒竖屏样片。
 - [ ] 每条样片记录模型成本、生成耗时、失败点、人工修正次数和最终导出文件。

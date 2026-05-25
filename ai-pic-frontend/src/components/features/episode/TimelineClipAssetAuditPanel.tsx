@@ -5,6 +5,7 @@ import { StatusPill } from "@/components/shared";
 import { getString } from "@/hooks/useEpisodeDetail";
 import type { TimelineClipAssetResponse } from "@/utils/api/types";
 import { timelineItemMeta } from "./EpisodeTimelineWorkspaceModel";
+import { TimelineClipReworkControls } from "./TimelineClipReworkControls";
 
 export function selectedTimelineClipId(item: TimelineItem | null) {
   const meta = timelineItemMeta(item);
@@ -18,14 +19,25 @@ export function selectedTimelineClipId(item: TimelineItem | null) {
 
 export function TimelineClipAssetAuditPanel({
   item,
+  timelineId,
+  timelineVersion,
   clipAssets,
   loading,
   error,
+  onReworkRecorded,
+  onNotify,
 }: {
   item: TimelineItem | null;
+  timelineId?: number | string | null;
+  timelineVersion?: number | null;
   clipAssets: TimelineClipAssetResponse[];
   loading: boolean;
   error: string | null;
+  onReworkRecorded?: () => void | Promise<void>;
+  onNotify?: (
+    message: string,
+    variant: "success" | "error" | "warning" | "info",
+  ) => void;
 }) {
   const clipId = selectedTimelineClipId(item);
   const matches = clipId
@@ -67,6 +79,14 @@ export function TimelineClipAssetAuditPanel({
           ))}
         </div>
       ) : null}
+
+      <TimelineClipReworkControls
+        timelineId={timelineId}
+        timelineVersion={timelineVersion}
+        clipId={clipId}
+        onRecorded={onReworkRecorded}
+        onNotify={onNotify}
+      />
     </section>
   );
 }

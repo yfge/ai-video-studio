@@ -121,6 +121,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     clipAssets,
     loading: clipAssetsLoading,
     error: clipAssetsError,
+    reloadClipAssets,
   } = useTimelineClipAssets({
     selectedTimelineSpec,
     refreshKey: latestRenderJob
@@ -195,9 +196,13 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
           <div className="mt-4">
             <TimelineClipAssetAuditPanel
               item={selection.item}
+              timelineId={selectedTimelineSpec?.id}
+              timelineVersion={selectedTimelineSpec?.version}
               clipAssets={clipAssets}
               loading={clipAssetsLoading}
               error={clipAssetsError}
+              onReworkRecorded={reloadClipAssets}
+              onNotify={(message, variant) => showAlert({ message, variant })}
             />
           </div>
         </OperatorInspector>

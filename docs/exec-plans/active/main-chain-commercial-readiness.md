@@ -137,6 +137,8 @@ Tasks:
       stable clip identity.
 - [x] Add an operator read view for selected clip source/output/replacement asset
       history.
+- [x] Add operator controls to record an existing `media_asset_id` as
+      re-dub/re-cut/re-render replacement lineage for a selected clip.
 - [ ] Wire rework actions into provider generation and render queue
       orchestration.
 
@@ -148,6 +150,8 @@ Exit criteria:
       assets for a selected clip.
 - [x] Operator UI can show source audio, source frame, generated video, output
       asset, and replacement history for a selected clip.
+- [x] Operator UI can submit existing media assets as replacement lineage for a
+      selected clip without changing the stable `clip_id`.
 - Operator rework flows can request real regenerated assets and keep replacement
   history addressable by `replacement_of_id`.
 
@@ -167,6 +171,9 @@ Latest validation:
   `GET /api/v1/timelines/{timeline_id}/clip-assets?timeline_version=<version>`
   and shows selected-clip asset role, locator, source, render job, and
   replacement history.
+- The Timeline operator inspector now posts existing media asset replacements to
+  `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/rework` and refreshes
+  the selected-clip asset audit view.
 
 ## Phase 6: Produce Ten Narrow Samples
 
