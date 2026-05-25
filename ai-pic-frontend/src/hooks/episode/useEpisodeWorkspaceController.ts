@@ -11,7 +11,12 @@ import { episodeWorkspaceHref } from "@/utils/routes";
 import { sortScriptsNewestFirst } from "./scriptSort";
 import { useEpisodeWorkspaceScriptActions } from "./useEpisodeWorkspaceScriptActions";
 
-export type TabKey = "overview" | "script" | "timeline" | "storyboard" | "characters";
+export type TabKey =
+  | "overview"
+  | "script"
+  | "timeline"
+  | "storyboard"
+  | "characters";
 
 type RouterLike = {
   push: (url: string) => void;
@@ -181,12 +186,6 @@ export function useEpisodeWorkspaceController(args: {
     );
   }, [buildUrl, router, selectedScriptId]);
 
-  const handleGenerateStoryboard = useCallback(() => {
-    router.replace(buildUrl("storyboard", selectedScriptId), {
-      scroll: false,
-    });
-  }, [buildUrl, router, selectedScriptId]);
-
   return {
     activeTab,
     orderedScripts,
@@ -196,7 +195,6 @@ export function useEpisodeWorkspaceController(args: {
     handleNavigateBack,
     handleGenerateScript,
     handleGenerateTimeline,
-    handleGenerateStoryboard,
     handleRegenerateScript,
   };
 }

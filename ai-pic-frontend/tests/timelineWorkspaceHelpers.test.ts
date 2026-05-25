@@ -13,6 +13,10 @@ import {
   buildTimelineRenderReadiness,
   timelineClipVideoStatus,
 } from "../src/components/features/episode/EpisodeTimelineRenderModel";
+import {
+  buildStoryboardSupportFrames,
+  buildStoryboardSupportSummary,
+} from "../src/components/features/episode/WorkspaceStoryboardSupportModel";
 import { hasTimeline } from "../src/components/features/stories/StoryProductionModel";
 import type { TimelineTrack } from "../src/components/features/Timeline/Timeline";
 import type { TimelineResponse } from "../src/utils/api/types";
@@ -269,5 +273,54 @@ describe("timeline workspace helpers", () => {
     assert.equal(status.ready, true);
     assert.equal(status.source, "storyboard_frame");
     assert.equal(status.url, "https://example.com/storyboard.mp4");
+  });
+
+  it("builds storyboard support frames as a read-only timeline view", () => {
+    const storyboard = {
+      meta: {
+        generation_source: "timeline_spec",
+        timeline_id: 7,
+        timeline_version: 3,
+      },
+      frames: [
+        {
+          frame_id: "frame-1",
+          frame_number: 1,
+          timeline_clip_id: "dialogue_scene_1_beat_1_001",
+          scene_number: "1",
+          start_ms: 0,
+          end_ms: 1800,
+          description: "主角推门进入实验室",
+          prompt_description: "2D cartoon, vertical short drama shot",
+          image_url: "https://example.com/frame.png",
+          video_url: "https://example.com/clip.mp4",
+          source: { kind: "timeline_clip" },
+        },
+      ],
+    };
+
+    const summary = buildStoryboardSupportSummary(storyboard);
+    const frames = buildStoryboardSupportFrames(storyboard, [
+      {
+        id: 1,
+        scene_number: "1",
+        slug_line: "INT. 实验室 - 夜",
+        status: "draft",
+      },
+    ]);
+
+    assert.deepEqual(summary, {
+      frameCount: 1,
+      imageCount: 1,
+      videoCount: 1,
+      generationSource: "timeline_spec",
+      timelineId: "7",
+      timelineVersion: "3",
+    });
+    assert.equal(frames[0].clipId, "dialogue_scene_1_beat_1_001");
+    assert.equal(frames[0].sceneLabel, "1 · INT. 实验室 - 夜");
+    assert.equal(frames[0].imageUrl, "https://example.com/frame.png");
+    assert.equal(frames[0].videoUrl, "https://example.com/clip.mp4");
+    assert.equal(frames[0].sourceKind, "timeline_clip");
   });
 });

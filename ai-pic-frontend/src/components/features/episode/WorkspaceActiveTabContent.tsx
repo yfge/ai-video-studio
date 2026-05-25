@@ -134,6 +134,8 @@ export function WorkspaceActiveTabContent({
         episodeKey={episodeKey}
         selectedScriptId={selectedScriptId}
         hasStoryboard={hasStoryboard}
+        selectedStoryboard={selectedStoryboard}
+        normalizedScenes={normalizedScenes}
       />
     );
   }

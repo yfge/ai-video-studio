@@ -29,7 +29,6 @@ interface EpisodeWorkspaceHeaderProps {
   onNavigateBack: () => void;
   onGenerateScript?: () => void;
   onGenerateTimeline?: () => void;
-  onGenerateStoryboard?: () => void;
 }
 
 export function EpisodeWorkspaceHeader({
@@ -41,7 +40,6 @@ export function EpisodeWorkspaceHeader({
   onNavigateBack,
   onGenerateScript,
   onGenerateTimeline,
-  onGenerateStoryboard,
 }: EpisodeWorkspaceHeaderProps) {
   const workflowSteps = [
     {
@@ -78,14 +76,9 @@ export function EpisodeWorkspaceHeader({
       label: "分镜",
       description: "按时间轴辅助生成图像和视频",
       status: workflowStatus.storyboard,
-      actionLabel:
-        workflowStatus.storyboard === "ready" ? "打开分镜辅助" : "生成分镜",
+      actionLabel: "打开分镜辅助",
       onAction: () => {
-        if (workflowStatus.storyboard === "ready") {
-          onTabChange("storyboard");
-        } else {
-          onGenerateStoryboard?.();
-        }
+        onTabChange("storyboard");
       },
     },
   ];

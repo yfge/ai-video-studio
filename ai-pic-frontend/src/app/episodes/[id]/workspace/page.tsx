@@ -100,7 +100,6 @@ export default function EpisodeWorkspacePage() {
     handleNavigateBack,
     handleGenerateScript,
     handleGenerateTimeline,
-    handleGenerateStoryboard,
     handleRegenerateScript,
   } = useEpisodeWorkspaceController({
     episodeKey,
@@ -151,7 +150,6 @@ export default function EpisodeWorkspacePage() {
           onNavigateBack={handleNavigateBack}
           onGenerateScript={handleGenerateScript}
           onGenerateTimeline={handleGenerateTimeline}
-          onGenerateStoryboard={handleGenerateStoryboard}
         />
         <WorkspaceScriptSelector
           scripts={orderedScripts}
