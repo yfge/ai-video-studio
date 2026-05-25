@@ -217,12 +217,21 @@ Latest validation:
 
 ## Phase 6: Produce Ten Narrow Samples
 
+Tracker: `docs/cartoon-sample-production-proof.md`.
+
 Tasks:
 
-- Pick one narrow vertical and 2-3 reusable characters.
+- [x] Pick one narrow vertical and 2-3 reusable characters.
 - Produce 10 vertical samples, each 30-60 seconds.
 - Record cost, generation time, failure points, manual fixes, selected models,
   output file, and reusable prompt/workflow decisions.
+
+Current fixed scope:
+
+- Use stylized 2D/3D cartoon visual prompts, not live-action or realistic human
+  imagery, to avoid provider safety restrictions becoming the dominant signal.
+- Micro-genre: workplace fantasy reversal with light suspense.
+- Reusable cast: Lin Xia, Kai, and the non-human assistant Momo.
 
 Exit criteria:
 

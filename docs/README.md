@@ -30,6 +30,8 @@ Keep durable engineering rules in repository docs like the files above. Do not t
 - `docs/storyboard-normalized-toggle.md` — storyboard normalized integration notes.
 - `docs/dialogue-audio-timeline-spec.md` — dialogue audio transition spec feeding Timeline Spec v1.
 - `docs/timeline-rendering-pipeline.md` — Timeline Spec v1 and render/export main-chain contract.
+- `docs/cartoon-sample-production-proof.md` — fixed 2D/3D cartoon sample
+  tracker for the 10-sample production proof.
 - `docs/agent_graphs/` — generated agent state graphs (Mermaid + PNG).
 
 ## Design Documents
