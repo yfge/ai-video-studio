@@ -20,8 +20,10 @@ Current status:
   enqueue tests.
 - Phase 3 import bridge is implemented for explicit one-click generation,
   default production script generation, and deprecated audio-timeline
-  compatibility. Phase 4 real render/export execution and full Phase 5 operator
-  UI remain pending.
+  compatibility.
+- Phase 4 render/export execution and Phase 5 operator UI/harness paths exist in
+  the current worktree, but still need packaging and real browser/API evidence
+  before the main chain is treated as production-ready.
 - P0-P2 ownership alignment is implemented: importer output matches the
   underscore `clip_id` contract, readiness checks prefer Timeline rows,
   storyboard support generation prefers Timeline Spec clips, the workspace can
@@ -78,8 +80,8 @@ Exit criteria:
 - Link existing storyboard image/video outputs to `media_assets`.
 - Link storyboard support frame ids back into Timeline Spec video clips where
   available.
-- Render proxy/final outputs from a locked timeline version.
-- Persist render output as `media_assets` and `render_jobs.output_asset_id`.
+- [x] Render proxy/final outputs from a locked timeline version.
+- [x] Persist render output as `media_assets` and `render_jobs.output_asset_id`.
 
 Exit criteria:
 
@@ -90,13 +92,23 @@ Exit criteria:
 
 - [x] Build the workspace timeline tracks from native Timeline Spec with legacy
       `audio_timeline` fallback.
-- Make `Episode -> Timeline` the primary operator surface for clip status,
-  source audio, source frames, render status, retry, replace, and export.
-- Keep storyboard as the visual support view.
-- Add a standard browser E2E for `Episode -> Timeline -> Render -> Export`.
+- [x] Make `Episode -> Timeline` the primary operator surface for clip status,
+      video material state, render status, retry, replace entry, and export.
+- [x] Keep storyboard as the visual support view for replace clip v1.
+- [x] Add a standard E2E harness path for `Episode -> Timeline -> Render -> Export`.
 
 Exit criteria:
 
 - Browser evidence is stored under `artifacts/runs/<run_id>/`.
 - Actual browser engine is recorded; Playwright fallback is not claimed as
   Chrome verification.
+- The selected script has renderable video clips, and the final render job
+  reaches `succeeded` with `output_asset.file_url` or `output_asset.file_path`.
+
+## Current Evidence Gap
+
+- The render/export implementation has targeted test coverage, but the real
+  `Episode -> Timeline -> Render -> Export` run still needs to succeed against a
+  local backend and a script with video clip assets.
+- Commercial-readiness sequencing is tracked separately in
+  `docs/exec-plans/active/main-chain-commercial-readiness.md`.

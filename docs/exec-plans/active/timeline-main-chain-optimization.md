@@ -17,8 +17,9 @@ production script generation
 ```
 
 This document began as an optimization plan. The P0-P2 ownership alignment
-slice is now implemented; it does not mark render/export complete and it does
-not require a new table before the listed Phase 4 work.
+slice is now implemented. The current worktree also includes the Phase 3
+render/export execution slice, but commercial readiness still depends on real
+E2E evidence and production sample validation.
 
 ## Current Chain Check
 
@@ -41,9 +42,10 @@ The default production path is now wired into Timeline Spec v1:
 - `backfill_timeline_specs.py` can dry-run or apply Timeline Spec imports for
   older episodes.
 
-No immediate blocker was found in the default production chain. The main
-remaining problem is now downstream execution: render/export workers and output
-assets still need to consume locked Timeline versions.
+No immediate blocker was found in the default production chain. Downstream
+execution now has worker and output-asset plumbing; the remaining blocker is
+evidence that a real operator or harness flow can render/export a Timeline whose
+video clips already resolve to usable assets.
 
 ## Implementation Status
 
@@ -58,7 +60,8 @@ assets still need to consume locked Timeline versions.
 - P2 frontend/backfill alignment is implemented: the workspace accepts native
   Timeline Spec tracks, task metadata includes Timeline references, and the
   backfill command is dry-run by default.
-- P3 render/export execution remains pending.
+- P3 render/export execution is implemented in the current worktree; real E2E
+  evidence and commercial-readiness sample production remain pending.
 
 ## Findings
 
@@ -240,17 +243,18 @@ Exit criteria:
 
 ### P3: Render And Export Implementation
 
-Current render APIs enqueue idempotent `render_jobs`, but no worker consumes the
-job and no output is written to `media_assets`.
+Current render APIs enqueue idempotent `render_jobs`; the Timeline render worker
+now consumes queued jobs, blocks stale or incomplete timelines, and writes
+successful outputs to `media_assets`.
 
 Optimization:
 
-- Implement render worker for proxy output first.
-- Resolve clip assets through Timeline Spec, storyboard support frames, and
-  `media_assets`.
-- Write output to `media_assets` and set `render_jobs.output_asset_id`.
-- Refuse to render if the requested `timeline_version` no longer matches the
-  locked row.
+- [x] Implement render worker for proxy/final output.
+- [x] Resolve clip assets through Timeline Spec, storyboard support frames, and
+      `media_assets`.
+- [x] Write output to `media_assets` and set `render_jobs.output_asset_id`.
+- [x] Refuse to render if the requested `timeline_version` no longer matches
+      the locked row.
 
 Exit criteria:
 
@@ -272,8 +276,9 @@ Exit criteria:
 6. Backfill: import old audio timelines into Timeline Spec with dry-run first.
 7. Render/export: consume locked timeline versions and persist media assets.
 
-Steps 1-6 are implemented for this slice. Step 7 is the next implementation
-boundary.
+Steps 1-7 are implemented for this slice. The next boundary is packaging the
+current worktree, proving the real render/export path, then adding
+delete/rollback and stricter Timeline Spec validation.
 
 ## Validation Matrix
 
@@ -289,7 +294,8 @@ Frontend:
 
 - `cd ai-pic-frontend && npm run lint`
 - Focused tests cover native Timeline Spec track building and legacy fallback.
-- Browser E2E after render/export becomes visible in the operator workflow.
+- Browser E2E must cover `Episode -> Timeline -> Render -> Export` with a script
+  that has renderable video clips.
 
 Repo checks:
 
@@ -310,3 +316,5 @@ Repo checks:
 
 - Should storyboard support frames move into a first-class support-view table
   once render/export and media-asset output are complete?
+- Which narrow vertical should be used for the first 10 production samples after
+  the main chain has real E2E evidence?
