@@ -11,6 +11,7 @@ from app.models.user import User
 from app.repositories.task_repository import TaskRepository
 from app.repositories.user_repository import UserRepository
 from app.services.audio.episode_audio_builder import generate_episode_audio_timeline
+from app.services.script.task_titles import friendly_task_title
 from app.services.task_worker import script_audio_timeline_generate_task
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -19,7 +20,6 @@ from sqlalchemy.orm import Session
 
 from .audio_pipeline_utils import (
     episode_has_audio_timeline,
-    friendly_task_title,
     load_script_with_access,
     mark_pipeline_endpoint_deprecated,
     run_async_task_sync,

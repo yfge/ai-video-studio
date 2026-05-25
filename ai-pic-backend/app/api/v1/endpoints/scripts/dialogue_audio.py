@@ -16,13 +16,13 @@ from app.services.audio.scene_audio_generator import generate_scene_dialogue_aud
 from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
 )
+from app.services.script.task_titles import friendly_task_title
 from app.services.task_worker import script_dialogue_audio_generate_task
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from .audio_pipeline_utils import (
-    friendly_task_title,
     load_script_with_access,
     mark_pipeline_endpoint_deprecated,
     run_async_task_sync,

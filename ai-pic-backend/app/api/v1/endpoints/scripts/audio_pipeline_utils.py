@@ -7,10 +7,11 @@ import threading
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar, cast
 
-from app.models.script import Episode, Script, Story
+from app.models.script import Episode, Script
 from app.models.story_structure import Scene
 from app.models.task import Task
 from app.models.user import User
+from app.repositories.script_repository import ScriptRepository
 from fastapi import Response
 from sqlalchemy.orm import Session
 
@@ -71,56 +72,10 @@ def episode_has_audio_timeline(episode: Episode, script_id: int) -> bool:
     return isinstance(beats, list) and len(beats) > 0
 
 
-def friendly_task_title(
-    prefix: str,
-    script: Script,
-    episode: Episode | None,
-    story: Story | None,
-) -> str:
-    """Build a consistent task title with story/episode context."""
-    story_label = ""
-    if story and story.title:
-        story_label = str(story.title)
-    elif story:
-        story_label = f"故事{story.id}"
-
-    episode_label = ""
-    if episode:
-        ep_num = (
-            f"第{episode.episode_number}集"
-            if episode.episode_number is not None
-            else f"剧集{episode.id}"
-        )
-        ep_title = f" {episode.title}" if episode.title else ""
-        episode_label = f"{ep_num}{ep_title}"
-
-    parts = [prefix]
-    if story_label and episode_label:
-        parts.append(f"{story_label} / {episode_label}")
-    elif story_label:
-        parts.append(story_label)
-    elif episode_label:
-        parts.append(episode_label)
-    else:
-        parts.append(f"剧本{script.id}")
-    return " - ".join(parts)
-
-
 def load_script_with_access(db: Session, script_id: int, user: User) -> Script | None:
     """Load script by id and enforce owner/admin access control."""
-    return (
-        db.query(Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-        .filter(Script.is_deleted.is_(False))
-        .filter(Episode.is_deleted.is_(False))
-        .filter(Story.is_deleted.is_(False))
-        .filter(
-            True if user.is_admin or user.is_superuser else Story.user_id == user.id
-        )
-        .first()
-    )
+    user_id = None if user.is_admin or user.is_superuser else user.id
+    return ScriptRepository(db).get_with_relations(script_id=script_id, user_id=user_id)
 
 
 def mark_pipeline_endpoint_deprecated(

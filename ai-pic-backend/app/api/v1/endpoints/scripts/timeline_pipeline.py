@@ -17,6 +17,7 @@ from app.services.audio.scene_audio_generator import generate_scene_dialogue_aud
 from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
 )
+from app.services.script.task_titles import friendly_task_title
 from app.services.script.timeline_storyboard_queue import (
     generate_storyboard_placeholders_and_queue_images,
 )
@@ -31,7 +32,6 @@ from sqlalchemy.orm import Session
 
 from .audio_pipeline_utils import (
     episode_has_audio_timeline,
-    friendly_task_title,
     load_script_with_access,
     run_async_task_sync,
     scene_has_dialogue_audio,

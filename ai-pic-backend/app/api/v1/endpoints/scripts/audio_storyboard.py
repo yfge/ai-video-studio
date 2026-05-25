@@ -13,13 +13,13 @@ from app.repositories.user_repository import UserRepository
 from app.services.audio.storyboard_from_timeline import (
     generate_storyboard_from_episode_audio_timeline,
 )
+from app.services.script.task_titles import friendly_task_title
 from app.services.task_worker import script_audio_storyboard_generate_task
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from .audio_pipeline_utils import (
-    friendly_task_title,
     load_script_with_access,
     mark_pipeline_endpoint_deprecated,
     run_async_task_sync,

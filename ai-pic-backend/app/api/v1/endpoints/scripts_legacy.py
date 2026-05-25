@@ -1,10 +1,6 @@
 import json
-from datetime import datetime
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse, urlunparse
-from uuid import UUID, uuid4
 
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
@@ -58,6 +54,7 @@ from app.services.script.story_structure_sync import (
 from app.services.script.story_structure_sync import (
     sync_script_scenes_to_story_structure as _sync_script_scenes_to_story_structure_impl,
 )
+from app.services.script.task_titles import friendly_task_title as _friendly_task_title
 from app.services.task_worker import script_generate_task, script_regenerate_task
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
@@ -65,93 +62,6 @@ from app.utils.script_parser import extract_script_structure
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, load_only
-
-
-def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
-
-
-def _to_int(value: Any) -> Optional[int]:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _coerce_uuid(value: Any) -> str:
-    if not value:
-        return str(uuid4())
-    try:
-        return str(UUID(str(value)))
-    except Exception:
-        return str(uuid4())
-
-
-def _ensure_iso_datetime(value: Any, fallback: str) -> str:
-    if value is None:
-        return fallback
-    if isinstance(value, datetime):
-        return value.isoformat()
-    try:
-        return datetime.fromisoformat(str(value)).isoformat()
-    except Exception:
-        return fallback
-
-
-def _abs_url(url: str) -> str:
-    if not url:
-        return ""
-    if url.startswith("http"):
-        # 将 localhost/127.0.0.1 替换为 INTERNAL_BACKEND_URL，便于容器内访问
-        parsed = urlparse(url)
-        if parsed.hostname in {"localhost", "127.0.0.1"}:
-            base = (
-                getattr(settings, "INTERNAL_BACKEND_URL", None)
-                or "http://localhost:8000"
-            ).rstrip("/")
-            base_parsed = urlparse(base)
-            rebuilt = parsed._replace(
-                netloc=base_parsed.netloc, scheme=base_parsed.scheme
-            )
-            return urlunparse(rebuilt)
-        return url
-    if not url.startswith("/"):
-        url = "/" + url
-    base = (
-        getattr(settings, "INTERNAL_BACKEND_URL", None) or "http://localhost:8000"
-    ).rstrip("/")
-    return f"{base}{url}"
-
-
-def _friendly_task_title(
-    prefix: str, script: Script, episode: Episode | None, story: Story | None
-) -> str:
-    story_label = ""
-    if story and story.title:
-        story_label = str(story.title)
-    elif story:
-        story_label = f"故事{story.id}"
-
-    episode_label = ""
-    if episode:
-        ep_num = (
-            f"第{episode.episode_number}集"
-            if episode.episode_number is not None
-            else f"剧集{episode.id}"
-        )
-        ep_title = f" {episode.title}" if episode.title else ""
-        episode_label = f"{ep_num}{ep_title}"
-
-    parts = [prefix]
-    if story_label and episode_label:
-        parts.append(f"{story_label} / {episode_label}")
-    elif story_label:
-        parts.append(story_label)
-    elif episode_label:
-        parts.append(episode_label)
-    else:
-        parts.append(f"剧本{script.id}")
-    return " - ".join(parts)
 
 
 def _collect_previous_episode_summaries(

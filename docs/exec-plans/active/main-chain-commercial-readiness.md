@@ -236,6 +236,14 @@ Latest validation:
   `app.services.duration_controlled_scene_runner`, and the touched deprecated
   dialogue-audio endpoint now uses repository helpers instead of direct
   SQLAlchemy queries.
+- `scripts_legacy.py` no longer owns the shared script task-title formatter:
+  legacy regeneration and the split audio/timeline pipeline endpoints now use
+  `app.services.script.task_titles`. The cleanup also removed unused
+  URL/UUID/datetime helpers from the legacy router.
+- The backend mock AI service now returns schema-matched responses for script
+  cliffhanger judgement and script quality-gate repair, so the script generation
+  API test exercises the current quality-gate path instead of failing on a
+  generic scoring payload.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.
