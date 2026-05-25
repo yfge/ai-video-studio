@@ -25,12 +25,18 @@ def test_parse_model_and_provider_splits_and_infers():
     assert model == "gpt-image-2"
     assert provider == "openai"
 
+    model, provider = parse_model_and_provider("openai:chatgpt-img-2")
+    assert model == DEFAULT_OPENAI_IMAGE_MODEL
+    assert provider == "openai"
+
 
 def test_oai_image_model_detection():
     assert is_openai_image_model("gpt-image-2") is True
     assert is_openai_image_model("img-gen-2") is True
+    assert is_openai_image_model("chatgpt-img-2") is True
     assert is_openai_image_model("dall-e-3") is True
     assert is_gpt_image_model("gpt-image-2") is True
+    assert is_gpt_image_model("chatgpt-img-2") is True
     assert is_gpt_image_model("dall-e-3") is False
 
 

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from app.utils.model_utils import canonicalize_openai_image_model
+
 from ..base import AIModelType, ModelInfo
 
 
@@ -78,6 +80,43 @@ def get_available_models() -> List[ModelInfo]:
             },
         ),
         ModelInfo(
+            model_id="chatgpt-img-2",
+            name="ChatGPT IMG 2",
+            description=(
+                "ChatGPT image template alias that routes to OpenAI GPT Image 2"
+            ),
+            model_type=AIModelType.TEXT_TO_IMAGE,
+            supported_formats=["png", "jpeg", "webp"],
+            capabilities=[
+                "text_to_image",
+                "image_to_image",
+                "reference_image",
+                "high_resolution",
+                "high_fidelity_input",
+            ],
+            metadata={
+                "alias_for": "gpt-image-2",
+                "routes_to": "gpt-image-2",
+                "template_id": "chatgpt-img-2",
+                "ui": {
+                    "size_options": [
+                        "1024x1024",
+                        "1536x1024",
+                        "1024x1536",
+                        "2048x2048",
+                        "2048x1152",
+                        "3840x2160",
+                        "2160x3840",
+                        "auto",
+                    ],
+                    "aspect_ratio_options": ["1:1", "16:9", "9:16"],
+                    "supports_aspect_ratio": False,
+                    "supports_reference_image": True,
+                    "default_size": "1024x1024",
+                },
+            },
+        ),
+        ModelInfo(
             model_id="dall-e-3",
             name="DALL-E 3",
             description="上一代高质量图像生成模型",
@@ -126,7 +165,7 @@ def fallback_models(
 
 def infer_model_type(model_id: str) -> AIModelType:
     """Infer model type from model ID."""
-    lid = model_id.lower()
+    lid = (canonicalize_openai_image_model(model_id) or model_id).lower()
     if "dall-e" in lid or "image" in lid or "img-gen" in lid:
         return AIModelType.TEXT_TO_IMAGE
     return AIModelType.TEXT_GENERATION
@@ -134,7 +173,7 @@ def infer_model_type(model_id: str) -> AIModelType:
 
 def infer_capabilities(model_id: str) -> List[str]:
     """Infer model capabilities from model ID."""
-    lid = model_id.lower()
+    lid = (canonicalize_openai_image_model(model_id) or model_id).lower()
     if lid.startswith("gpt-image-2") or lid in {"img-gen-2", "image-gen-2"}:
         return ["text_to_image", "image_to_image", "reference_image"]
     if "dall-e" in lid or "image" in lid or "img-gen" in lid:

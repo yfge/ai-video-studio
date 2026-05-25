@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from app.utils.model_utils import is_gpt_image_model
+from app.utils.model_utils import canonicalize_openai_image_model, is_gpt_image_model
 
 DEFAULT_ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4"]
 GOOGLE_ASPECT_RATIOS = [
@@ -48,7 +48,12 @@ class ImageUiRules:
 
 def compute_image_ui(provider: str, model_id: str) -> ImageUiRules:
     provider_key = (provider or "").lower()
-    mid = (model_id or "").lower()
+    raw_mid = (model_id or "").lower()
+    mid = (
+        (canonicalize_openai_image_model(raw_mid) or raw_mid).lower()
+        if provider_key == "openai"
+        else raw_mid
+    )
     size_options: List[str] = []
     aspect_ratio_options: List[str] = []
     supports_aspect_ratio = False

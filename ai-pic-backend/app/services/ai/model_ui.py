@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from app.utils.model_utils import is_gpt_image_model
+from app.utils.model_utils import canonicalize_openai_image_model, is_gpt_image_model
 
 from .manager import AIModelType
 
@@ -12,7 +12,12 @@ class ModelUiMixin:
     def _apply_ui_metadata(model: Dict[str, Any]) -> Dict[str, Any]:
         """Attach UI-facing defaults/options based on provider/model id/capabilities."""
         provider = (model.get("provider") or "").lower()
-        mid = (model.get("id") or model.get("model_id") or "").lower()
+        raw_mid = (model.get("id") or model.get("model_id") or "").lower()
+        mid = (
+            (canonicalize_openai_image_model(raw_mid) or raw_mid).lower()
+            if provider == "openai"
+            else raw_mid
+        )
         caps = [str(c).lower() for c in model.get("capabilities") or []]
         model_type = (model.get("type") or "").lower()
 

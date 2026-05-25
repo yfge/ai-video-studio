@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.services.providers.codex_registration import install_codex_provider
+
 from .base import AIServiceBase
 from .episodes import EpisodeGenerationMixin
 from .episodes_mock import EpisodeMockMixin
@@ -41,3 +43,8 @@ class AIService(
     SpeechGenerationMixin,
 ):
     """AI服务接口 - 集成新的多提供商系统"""
+
+    def _initialize_ai_manager(self):
+        manager = super()._initialize_ai_manager()
+        install_codex_provider(manager)
+        return manager

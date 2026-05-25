@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # OpenAI配置
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_BASE_URL: Optional[str] = None
+    CODEX_AUTH_PATH: Optional[str] = None
+    CODEX_RESPONSES_URL: Optional[str] = None
+    CODEX_DEFAULT_MODEL: Optional[str] = "gpt-5.4"
     AI_FORCE_MOCK: bool = False
 
     # Stability AI配置
@@ -130,6 +133,9 @@ def _normalize_optional_str(value: Optional[str]) -> Optional[str]:
 settings.GOOGLE_API_KEY = _normalize_optional_str(settings.GOOGLE_API_KEY)
 settings.OPENAI_API_KEY = _normalize_optional_str(settings.OPENAI_API_KEY)
 settings.OPENAI_BASE_URL = _normalize_optional_str(settings.OPENAI_BASE_URL)
+settings.CODEX_AUTH_PATH = _normalize_optional_str(settings.CODEX_AUTH_PATH)
+settings.CODEX_RESPONSES_URL = _normalize_optional_str(settings.CODEX_RESPONSES_URL)
+settings.CODEX_DEFAULT_MODEL = _normalize_optional_str(settings.CODEX_DEFAULT_MODEL)
 settings.GOOGLE_BASE_URL = _normalize_optional_str(settings.GOOGLE_BASE_URL)
 settings.GOOGLE_VIDEO_BASE_URL = _normalize_optional_str(settings.GOOGLE_VIDEO_BASE_URL)
 settings.GOOGLE_VERTEX_PROJECT_ID = _normalize_optional_str(
@@ -179,8 +185,8 @@ def _resolve_internal_backend_url(raw: Optional[str]) -> str:
     Resolve a backend base URL that Celery workers/providers can reach.
 
     - Prefer explicit env/setting when it's not localhost inside a container.
-    - When running in Docker/K8s without an explicit URL (or explicitly set to localhost),
-      fall back to the service name used in docker-compose.
+    - When running in Docker/K8s without an explicit URL (or explicitly set
+      to localhost), fall back to the service name used in docker-compose.
     - Default to localhost for bare-metal dev.
     """
     normalized = _normalize_optional_str(raw)

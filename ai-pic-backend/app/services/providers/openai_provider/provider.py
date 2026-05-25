@@ -115,7 +115,15 @@ class OpenAIProvider(BaseProvider):
                         metadata=metadata,
                     )
                 )
-            return models or fallback
+            if models:
+                alias_models = [
+                    model
+                    for model in fallback
+                    if (model.metadata or {}).get("alias_for")
+                    and model.model_id not in {m.model_id for m in models}
+                ]
+                return [*models, *alias_models]
+            return fallback
         except Exception:
             return fallback
 

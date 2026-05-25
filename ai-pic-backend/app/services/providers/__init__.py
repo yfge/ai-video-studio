@@ -18,6 +18,7 @@ from .base import (
     ModelInfo,
     ProviderConfig,
 )
+from .codex_provider import CodexProvider
 from .deepseek_provider import DeepSeekProvider
 from .jimeng_provider import JimengProvider
 from .keling_provider import KelingProvider
@@ -32,6 +33,7 @@ __all__ = [
     "AITaskType",
     "ModelInfo",
     "ProviderConfig",
+    "CodexProvider",
     "OpenAIProvider",
     "KelingProvider",
     "JimengProvider",

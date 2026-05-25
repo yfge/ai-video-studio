@@ -14,6 +14,7 @@ from app.services.providers.base import (
     ModelInfo,
     ProviderConfig,
 )
+from app.services.providers.codex_provider import CodexProvider
 from fastapi import HTTPException
 
 
@@ -144,3 +145,38 @@ async def test_available_models_route_propagates_http_exception(monkeypatch):
         await ai_providers.get_available_models(current_user=object())
 
     assert excinfo.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_list_models_includes_codex_static_text_model():
+    config = AIServiceConfig(
+        providers={
+            "codex": ProviderConfig(
+                name="codex",
+                api_key="/tmp/nonexistent-codex-auth.json",
+                default_model="gpt-5.4",
+            )
+        },
+        provider_weights={"codex": ProviderWeight(provider_name="codex")},
+    )
+    manager = AIServiceManager.__new__(AIServiceManager)
+    manager.config = config
+    manager.providers = {}
+    manager.provider_classes = {"codex": CodexProvider}
+    manager._initialize_providers()
+    manager.logger = get_logger()
+
+    models = await manager.list_models(
+        model_type=AIModelType.TEXT_GENERATION, source="static"
+    )
+
+    assert models == [
+        {
+            "provider": "codex",
+            "id": "gpt-5.4",
+            "name": "ChatGPT gpt-5.4 (Codex)",
+            "type": "text_generation",
+            "capabilities": ["text_generation", "analysis", "code_generation"],
+            "metadata": {"auth": "codex_cli", "endpoint": "codex_responses"},
+        }
+    ]

@@ -40,6 +40,21 @@ def test_model_ui_image_gen_gpt_image_2_supports_reference_images():
     assert image_gen["text_to_image"]["max_count"] == 4
 
 
+def test_model_ui_image_gen_chatgpt_img_2_alias_supports_reference_images():
+    image_gen = _extract_image_gen(
+        {
+            "id": "chatgpt-img-2",
+            "type": "text_to_image",
+            "provider": "openai",
+            "capabilities": ["text_to_image", "image_to_image"],
+        }
+    )
+
+    assert image_gen["text_to_image"]["supports_reference_images"] is True
+    assert image_gen["text_to_image"]["max_reference_images"] == 4
+    assert image_gen["text_to_image"]["max_count"] == 4
+
+
 def test_model_ui_image_gen_jimeng_supports_steps_cfg_seed():
     image_gen = _extract_image_gen(
         {

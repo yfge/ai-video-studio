@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-2"
 
 _OPENAI_IMAGE_MODEL_ALIASES = {
+    "chatgpt-img-2": DEFAULT_OPENAI_IMAGE_MODEL,
     "img-gen-2": DEFAULT_OPENAI_IMAGE_MODEL,
     "image-gen-2": DEFAULT_OPENAI_IMAGE_MODEL,
     "gpt-img-2": DEFAULT_OPENAI_IMAGE_MODEL,
