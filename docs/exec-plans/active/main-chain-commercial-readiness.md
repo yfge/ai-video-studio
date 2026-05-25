@@ -250,6 +250,9 @@ Latest validation:
 - `ai_service_manager.py` image-to-image reference preloading, HTTPS-to-HTTP
   download normalization, inline compression, and data URL construction now live
   in `app.services.ai_manager_image_assets`.
+- `ai_service_manager.py` image-to-image fallback-to-text-to-image provider
+  inference, prompt construction, and fallback metadata now live in
+  `app.services.ai_manager_image_fallback`.
 
 ## Phase 6: Produce Ten Narrow Samples
 

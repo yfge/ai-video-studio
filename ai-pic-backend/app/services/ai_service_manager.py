@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from app.core.logging import get_logger
 from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_image_assets as image_assets
+from app.services import ai_manager_image_fallback as image_fallback
 from app.services import ai_manager_model_cache as model_cache
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
@@ -778,71 +779,26 @@ class AIServiceManager:
                 available_providers.remove(provider_name)
         # 所有专用图生图通路失败时，尝试降级为同一模型的文生图（不使用参考图，只保留提示词）
         if self.config.enable_fallback:
-            try:
-                inferred_provider: str | None = None
-                if model:
-                    lower = model.lower()
-                    if (
-                        lower.startswith("seedream")
-                        or lower.startswith("volcengine")
-                        or "doubao" in lower
-                        or "seedream" in lower
-                    ):
-                        inferred_provider = "volcengine"
-                    elif lower.startswith("deepseek"):
-                        inferred_provider = "deepseek"
-                    elif lower.startswith("keling") or lower.startswith("kling"):
-                        inferred_provider = "keling"
-                    elif lower.startswith("jimeng"):
-                        inferred_provider = "jimeng"
-                    elif lower.startswith(("dall-e", "dalle", "gpt-image", "img-gen")):
-                        inferred_provider = "openai"
-                    elif lower.startswith("gemini"):
-                        inferred_provider = "google"
-
-                fallback_prompt = (
-                    prompt or "为当前角色生成不同视角/姿态的图像，例如背面照或全身照"
-                )
-                self.logger.warning(
-                    "image_to_image fallback: using text-to-image without reference | model=%s provider_hint=%s image_url=%s",
-                    model,
-                    inferred_provider or prefer_provider,
-                    self._truncate(image_url, 256),
-                )
-
-                text_resp = await self.generate_image(
-                    prompt=fallback_prompt,
+            fallback_result = (
+                await image_fallback.fallback_image_to_image_as_text_to_image(
+                    self.generate_image,
+                    prompt=prompt,
                     model=model,
-                    prefer_provider=inferred_provider or prefer_provider,
-                    prompt_override=fallback_prompt,
-                    style=legacy_style,
+                    prefer_provider=prefer_provider,
+                    image_url=image_url,
+                    count=count,
+                    legacy_style=legacy_style,
                     style_preset_id=style_preset_id,
                     style_spec=style_spec,
-                    n=count or 1,
+                    logger=self.logger,
                 )
-                if text_resp and text_resp.success:
-                    meta = dict(text_resp.metadata or {})
-                    meta.update(
-                        {
-                            "fallback_mode": "text_to_image_without_reference",
-                            "fallback_from": "image_to_image",
-                            "original_image_url": image_url,
-                        }
-                    )
-                    text_resp.metadata = meta
-                    text_resp.model_type = AIModelType.IMAGE_TO_IMAGE
-                    text_resp.task_type = AITaskType.SCENE_GENERATION
-                    return text_resp
-                if text_resp and not text_resp.success:
-                    error_value = (text_resp.error or "").strip()
-                    if not error_value:
-                        error_value = "未知错误"
-                    last_error = error_value
-                    last_provider = text_resp.provider
-                    last_model = text_resp.model
-            except Exception as e:
-                last_error = str(e).strip() or repr(e)
-                self.logger.error("image_to_image fallback failed: %s", e)
+            )
+            if fallback_result.response:
+                return fallback_result.response
+            if fallback_result.last_error is not None:
+                last_error = fallback_result.last_error
+                last_provider = fallback_result.last_provider
+                last_model = fallback_result.last_model
 
         if last_error is not None:
             return failure_responses.failure_response(
