@@ -249,6 +249,10 @@ Latest validation:
 - Static script catalog routes for `/scripts/formats` and `/scripts/languages`
   now live in `app.api.v1.endpoints.scripts_catalog` and are mounted inside the
   legacy router before dynamic `/{script_id}` routes.
+- Script list, episode list, record CRUD, soft-delete, and export endpoints now
+  live in `app.api.v1.endpoints.scripts_lists` and
+  `app.api.v1.endpoints.scripts_records`, with shared lookup helpers in
+  `app.api.v1.endpoints.scripts_route_utils`.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.

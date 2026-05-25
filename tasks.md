@@ -90,6 +90,9 @@
   - [x] 已把 `/scripts/formats` 和 `/scripts/languages` 静态 catalog 路由拆到
         `api/v1/endpoints/scripts_catalog.py`，并在 legacy router 内提前挂载，避免被
         `/{script_id}` 动态路由截获。
+  - [x] 已把脚本列表、按剧集列表、详情、更新、软删和导出路由拆到
+        `api/v1/endpoints/scripts_lists.py` / `scripts_records.py`，共享查询 helper 拆到
+        `scripts_route_utils.py`；legacy router 只保留无尾斜杠兼容桥接。
 - [x] 拆分 `dialogue_audio_service.py`，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
   - [x] 已把 episode 拼接/写回迁到 `services/audio/episode_audio_builder.py`，并把 episode timeline beat 构造迁到 `services/audio/episode_timeline_beats.py`；旧服务只保留兼容导入。
   - [x] 已把 scene beat 落库、scene audio metadata 写回和单场时长校验迁到 `services/audio/scene_audio_persistence.py`。

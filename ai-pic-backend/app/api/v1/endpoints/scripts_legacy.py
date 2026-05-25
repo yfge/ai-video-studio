@@ -2,6 +2,13 @@ import json
 from typing import Any, Dict, List, Optional
 
 from app.api.v1.endpoints.scripts_catalog import router as catalog_router
+from app.api.v1.endpoints.scripts_lists import get_scripts as _get_scripts
+from app.api.v1.endpoints.scripts_lists import router as lists_router
+from app.api.v1.endpoints.scripts_records import router as records_router
+from app.api.v1.endpoints.scripts_route_utils import (
+    get_script_by_identifier as _get_script_by_identifier,
+)
+from app.api.v1.endpoints.scripts_route_utils import not_deleted as _not_deleted
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
@@ -11,12 +18,7 @@ from app.models.user import User
 from app.prompts.manager import PromptManager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation_requests import ScriptGenerationRequest
-from app.schemas.script import (
-    ScriptCreate,
-    ScriptListItemResponse,
-    ScriptResponse,
-    ScriptUpdate,
-)
+from app.schemas.script import ScriptCreate, ScriptListItemResponse, ScriptResponse
 from app.services.ai.script_text import build_script_text
 from app.services.ai_service import ai_service
 from app.services.narrative_quality_gate import (
@@ -62,7 +64,7 @@ from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_
 from app.utils.script_parser import extract_script_structure
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm import Session
 
 
 def _collect_previous_episode_summaries(
@@ -193,40 +195,6 @@ def _populate_dialogues_and_stage_if_missing(
 
 router = APIRouter()
 router.include_router(catalog_router)
-
-
-def _not_deleted(query, model):
-    return query.filter(model.is_deleted.is_(False))
-
-
-def _get_script_by_identifier(
-    db: Session,
-    script_id: Optional[int],
-    script_business_id: Optional[str],
-    current_user: User,
-) -> Script:
-    """按主键或 business_id 获取剧本，校验归属与软删状态。"""
-    query = (
-        _not_deleted(db.query(Script), Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Episode.is_deleted.is_(False))
-        .filter(Story.is_deleted.is_(False))
-    )
-    if script_business_id:
-        query = query.filter(Script.business_id == script_business_id)
-    elif script_id:
-        query = query.filter(Script.id == script_id)
-    else:
-        raise HTTPException(status_code=400, detail="script identifier missing")
-
-    if not current_user.is_admin and not current_user.is_superuser:
-        query = query.filter(Story.user_id == current_user.id)
-
-    script = query.first()
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-    return script
 
 
 @router.post("/", response_model=ScriptResponse)
@@ -1387,75 +1355,8 @@ async def generate_script_async(
     return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 
-@router.get("/", response_model=List[ScriptListItemResponse])
-async def get_scripts(
-    episode_id: Optional[int] = Query(None),
-    episode_business_id: Optional[str] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
-    status: Optional[str] = Query(None),
-    format_type: Optional[str] = Query(None),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """获取剧本列表"""
-    list_columns = (
-        Script.id,
-        Script.business_id,
-        Script.episode_id,
-        Script.episode_business_id,
-        Script.title,
-        Script.format_type,
-        Script.language,
-        Script.status,
-        Script.version,
-        Script.tags,
-        Script.page_count,
-        Script.word_count,
-        Script.character_count,
-        Script.ai_model,
-        Script.created_at,
-        Script.updated_at,
-    )
-    base_query = (
-        _not_deleted(db.query(Script), Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Episode.is_deleted.is_(False))
-        .filter(Story.is_deleted.is_(False))
-    )
-
-    if episode_id:
-        base_query = base_query.filter(Script.episode_id == episode_id)
-    if episode_business_id:
-        base_query = base_query.filter(Episode.business_id == episode_business_id)
-
-    if status:
-        base_query = base_query.filter(Script.status == status)
-
-    if format_type:
-        base_query = base_query.filter(Script.format_type == format_type)
-
-    # 只允许访问当前用户故事下的剧本
-    if not current_user.is_admin and not current_user.is_superuser:
-        base_query = base_query.filter(Story.user_id == current_user.id)
-
-    # Avoid MySQL sort buffer exhaustion by ordering on indexed primary key.
-    id_subquery = (
-        base_query.with_entities(Script.id)
-        .order_by(Script.id.desc())
-        .offset(skip)
-        .limit(limit)
-        .subquery()
-    )
-    scripts = (
-        _not_deleted(db.query(Script), Script)
-        .options(load_only(*list_columns))
-        .join(id_subquery, Script.id == id_subquery.c.id)
-        .order_by(Script.id.desc())
-        .all()
-    )
-    return [ScriptListItemResponse.from_orm(script) for script in scripts]
+router.include_router(lists_router)
+router.include_router(records_router)
 
 
 @router.get("", response_model=List[ScriptListItemResponse], include_in_schema=False)
@@ -1469,12 +1370,8 @@ async def get_scripts_no_slash(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """
-    兼容无尾斜杠的 /api/v1/scripts 请求，避免 307 重定向。
-
-    内部直接复用 get_scripts 的过滤与分页逻辑。
-    """
-    return await get_scripts(
+    """兼容无尾斜杠的 /api/v1/scripts 请求，避免 307 重定向。"""
+    return await _get_scripts(
         episode_id=episode_id,
         episode_business_id=episode_business_id,
         skip=skip,
@@ -1484,223 +1381,6 @@ async def get_scripts_no_slash(
         current_user=current_user,
         db=db,
     )
-
-
-@router.get("/{script_id}", response_model=ScriptResponse)
-async def get_script(
-    script_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """获取剧本详情"""
-    script = _get_script_by_identifier(db, script_id, None, current_user)
-    return ScriptResponse.from_orm(script)
-
-
-@router.get("/business/{script_business_id}", response_model=ScriptResponse)
-async def get_script_by_business_id(
-    script_business_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """按 business_id 获取剧本详情"""
-    script = _get_script_by_identifier(db, None, script_business_id, current_user)
-    return ScriptResponse.from_orm(script)
-
-
-@router.put("/{script_id}", response_model=ScriptResponse)
-async def update_script(
-    script_id: int,
-    script_update: ScriptUpdate,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """更新剧本"""
-    script = _get_script_by_identifier(db, script_id, None, current_user)
-
-    # 更新剧本信息
-    for field, value in script_update.dict(exclude_unset=True).items():
-        setattr(script, field, value)
-
-    # 重新计算统计信息
-    if script_update.content:
-        script.word_count = len(script_update.content.split())
-        script.character_count = len(script_update.content)
-        script.page_count = max(1, script.character_count // 2000)
-
-    db.commit()
-    db.refresh(script)
-
-    try:
-        _sync_script_scenes_to_story_structure(db, script)
-    except Exception:
-        logger = get_logger()
-        logger.warning("同步规范化场景失败（update）", exc_info=True)
-
-    return ScriptResponse.from_orm(script)
-
-
-@router.put("/business/{script_business_id}", response_model=ScriptResponse)
-async def update_script_by_business_id(
-    script_business_id: str,
-    script_update: ScriptUpdate,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """按 business_id 更新剧本"""
-    script = _get_script_by_identifier(db, None, script_business_id, current_user)
-
-    for field, value in script_update.dict(exclude_unset=True).items():
-        setattr(script, field, value)
-
-    if script_update.content:
-        script.word_count = len(script_update.content.split())
-        script.character_count = len(script_update.content)
-        script.page_count = max(1, script.character_count // 2000)
-
-    db.commit()
-    db.refresh(script)
-
-    try:
-        _sync_script_scenes_to_story_structure(db, script)
-    except Exception:
-        logger = get_logger()
-        logger.warning("同步规范化场景失败（update）", exc_info=True)
-
-    return ScriptResponse.from_orm(script)
-
-
-@router.delete("/{script_id}")
-async def delete_script(
-    script_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """删除剧本"""
-    script = _get_script_by_identifier(db, script_id, None, current_user)
-    script.soft_delete(user_id=current_user.id, reason="user delete")
-    db.commit()
-
-    return {"message": "剧本删除成功"}
-
-
-@router.delete("/business/{script_business_id}")
-async def delete_script_by_business_id(
-    script_business_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """按 business_id 删除剧本"""
-    script = _get_script_by_identifier(db, None, script_business_id, current_user)
-    script.soft_delete(user_id=current_user.id, reason="user delete")
-    db.commit()
-
-    return {"message": "剧本删除成功"}
-
-
-@router.get("/episode/{episode_id}", response_model=List[ScriptListItemResponse])
-async def get_episode_scripts(
-    episode_id: int,
-    episode_business_id: Optional[str] = Query(None),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """获取剧集的所有剧本"""
-    episode_query = _not_deleted(db.query(Episode), Episode).join(
-        Story, Episode.story_id == Story.id
-    )
-    if not current_user.is_admin and not current_user.is_superuser:
-        episode_query = episode_query.filter(Story.user_id == current_user.id)
-    if episode_business_id:
-        episode_query = episode_query.filter(Episode.business_id == episode_business_id)
-    episode = episode_query.filter(Episode.id == episode_id).first()
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
-
-    # 为避免在 MySQL 中对大文本结果做排序耗尽 sort buffer，
-    # 这里不在 SQL 层做 ORDER BY；改为拉取后在 Python 内按 id 倒序排序，
-    # 让前端默认使用最新一条。
-    scripts = (
-        _not_deleted(db.query(Script), Script)
-        .options(
-            load_only(
-                Script.id,
-                Script.business_id,
-                Script.episode_id,
-                Script.episode_business_id,
-                Script.title,
-                Script.format_type,
-                Script.language,
-                Script.status,
-                Script.version,
-                Script.tags,
-                Script.page_count,
-                Script.word_count,
-                Script.character_count,
-                Script.ai_model,
-                Script.created_at,
-                Script.updated_at,
-            )
-        )
-        .filter(Script.episode_id == episode_id)
-        .limit(50)
-        .all()
-    )
-    scripts_sorted = sorted(
-        scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
-    )
-    return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
-
-
-@router.get(
-    "/episode/business/{episode_business_id}",
-    response_model=List[ScriptListItemResponse],
-)
-async def get_episode_scripts_by_business_id(
-    episode_business_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """按 episode business_id 获取剧本列表"""
-    episode_query = _not_deleted(db.query(Episode), Episode).join(
-        Story, Episode.story_id == Story.id
-    )
-    if not current_user.is_admin and not current_user.is_superuser:
-        episode_query = episode_query.filter(Story.user_id == current_user.id)
-    episode = episode_query.filter(Episode.business_id == episode_business_id).first()
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
-
-    scripts = (
-        _not_deleted(db.query(Script), Script)
-        .options(
-            load_only(
-                Script.id,
-                Script.business_id,
-                Script.episode_id,
-                Script.episode_business_id,
-                Script.title,
-                Script.format_type,
-                Script.language,
-                Script.status,
-                Script.version,
-                Script.tags,
-                Script.page_count,
-                Script.word_count,
-                Script.character_count,
-                Script.ai_model,
-                Script.created_at,
-                Script.updated_at,
-            )
-        )
-        .filter(Script.episode_id == episode.id)
-        .limit(50)
-        .all()
-    )
-    scripts_sorted = sorted(
-        scripts, key=lambda s: int(getattr(s, "id", 0)), reverse=True
-    )
-    return [ScriptListItemResponse.from_orm(script) for script in scripts_sorted]
 
 
 class ScriptRegenerateRequest(BaseModel):
@@ -1831,38 +1511,4 @@ async def regenerate_script_by_business_id_async(
             "status": t.status,
             "message": "剧本重新生成任务已提交",
         },
-    }
-
-
-@router.post("/{script_id}/export")
-async def export_script(
-    script_id: int,
-    format: str = Query("txt", description="导出格式：txt, pdf, docx"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """导出剧本"""
-    script = (
-        db.query(Script)
-        .join(Episode, Script.episode_id == Episode.id)
-        .join(Story, Episode.story_id == Story.id)
-        .filter(Script.id == script_id)
-        .filter(
-            True
-            if current_user.is_admin or current_user.is_superuser
-            else Story.user_id == current_user.id
-        )
-        .first()
-    )
-    if not script:
-        raise HTTPException(status_code=404, detail="剧本不存在")
-
-    # 这里可以实现不同格式的导出逻辑
-    # 目前返回基本信息
-    return {
-        "script_id": script_id,
-        "title": script.title,
-        "format": format,
-        "content": script.content,
-        "export_time": "2024-01-01T00:00:00Z",
     }
