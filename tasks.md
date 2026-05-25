@@ -22,9 +22,9 @@
 
 ## 当前最高优先级
 
-- 先收口当前未提交改动，不继续扩功能面。
-- 将当前工作树拆成可审查的提交边界：Timeline render/export、Codex/ChatGPT provider、IP 内容填充 DeepSeek。
+- 当前未提交改动已拆成可审查提交边界：Timeline render/export、Codex/ChatGPT provider、IP 内容填充 DeepSeek、主链 readiness 文档。
 - 补一次真实 `Episode -> Timeline -> Render -> Export` 证据，必须使用带视频 clip 的脚本。
+- 2026-05-25 的真实 API harness 已跑到 render job，但因 Timeline clip 与 legacy storyboard/video task 资产未建立 lineage，被 `missing_video_url` 阻断。
 - 在真实 E2E 通过前，不把主链标记为商业化可用。
 
 ## 状态概览
@@ -50,11 +50,11 @@
 
 - `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 和更严格的 schema/import 校验仍未补齐。
-- 当前真实浏览器/真实 API 的 `Episode -> Timeline -> Render -> Export` 证据仍需补齐。
+- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已证明请求链可达，但 render output 仍因 clip 视频资产 lineage 缺口未通过。
 
 ### 任务（功能→后端→验证）
 
-- [ ] 将当前未提交改动拆成可审查的提交边界并完成对应 ledger。
+- [x] 将当前未提交改动拆成可审查的提交边界并完成对应 ledger。
 - [ ] 补跑真实 `Episode -> Timeline -> Render -> Export`，证据落到 `artifacts/runs/<run_id>/`。
 - [ ] 补齐 timeline delete/rollback。
 - [ ] 为 Timeline Spec 增加 schema 校验、导入校验、权限校验和更完整的导出幂等测试。
