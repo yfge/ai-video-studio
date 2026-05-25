@@ -237,6 +237,7 @@ def mock_ai_service(monkeypatch):
     import app.services.episode.episode_generation_persistence as episode_generation_persistence
     import app.services.episode.episode_generation_service as episode_generation_service
     import app.services.script.script_generator as script_generator_service
+    import app.services.script.sync_generation as script_sync_generation_service
     import app.services.story.story_generation_service as story_generation_service
     import app.services.story.story_novel_export_ai as story_novel_export_ai
 
@@ -250,6 +251,7 @@ def mock_ai_service(monkeypatch):
     monkeypatch.setattr(episode_generation_service, "ai_service", mock_service)
     monkeypatch.setattr(episode_generation_persistence, "ai_service", mock_service)
     monkeypatch.setattr(script_generator_service, "ai_service", mock_service)
+    monkeypatch.setattr(script_sync_generation_service, "ai_service", mock_service)
     monkeypatch.setattr(story_novel_export_ai, "ai_service", mock_service)
 
     try:

@@ -5,20 +5,21 @@ from app.api.v1.endpoints.scripts_create import router as create_router
 from app.api.v1.endpoints.scripts_generation_queue import (
     router as generation_queue_router,
 )
+from app.api.v1.endpoints.scripts_generation_sync import (
+    router as generation_sync_router,
+)
 from app.api.v1.endpoints.scripts_lists import get_scripts as _get_scripts
 from app.api.v1.endpoints.scripts_lists import router as lists_router
 from app.api.v1.endpoints.scripts_prompt import router as prompt_router
 from app.api.v1.endpoints.scripts_records import router as records_router
 from app.api.v1.endpoints.scripts_regeneration import router as regeneration_router
-from app.api.v1.endpoints.scripts_route_utils import not_deleted as _not_deleted
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Script, Story
 from app.models.task import Task, TaskStatus
 from app.models.user import User
-from app.schemas.generation_requests import ScriptGenerationRequest
-from app.schemas.script import ScriptListItemResponse, ScriptResponse
+from app.schemas.script import ScriptListItemResponse
 from app.services.ai.script_text import build_script_text
 from app.services.ai_service import ai_service
 from app.services.narrative_quality_gate import (
@@ -60,7 +61,7 @@ from app.services.script.story_structure_sync import (
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.script_parser import extract_script_structure
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 
@@ -194,260 +195,8 @@ router = APIRouter()
 router.include_router(catalog_router)
 router.include_router(prompt_router)
 router.include_router(generation_queue_router)
+router.include_router(generation_sync_router)
 router.include_router(create_router)
-
-
-@router.post("/generate", response_model=ScriptResponse)
-async def generate_script(
-    request: ScriptGenerationRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """使用AI生成剧本"""
-    # 获取剧集信息（按用户隔离）
-    episode_query = _not_deleted(db.query(Episode), Episode).join(
-        Story, Episode.story_id == Story.id
-    )
-    if not current_user.is_admin and not current_user.is_superuser:
-        episode_query = episode_query.filter(Story.user_id == current_user.id)
-    episode = episode_query.filter(Episode.id == request.episode_id).first()
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
-
-    # 获取故事信息（确保与当前用户匹配）
-    story = db.query(Story).filter(Story.id == episode.story_id).first()
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
-
-    previous_episode_summaries = _collect_previous_episode_summaries(
-        db, story.id, episode.episode_number
-    )
-    character_profiles = _build_character_profiles(story)
-
-    # 构建剧集数据
-    episode_data = _build_episode_data(episode)
-
-    # 构建故事数据
-    story_data = _build_story_data(
-        story,
-        previous_episode_summaries=previous_episode_summaries,
-        character_profiles=character_profiles,
-    )
-    hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
-    ad_snippets_payload = (
-        [snippet.model_dump() for snippet in request.ad_snippets]
-        if request.ad_snippets
-        else None
-    )
-    marketing_overrides = {
-        "market_region": request.market_region,
-        "micro_genre": request.micro_genre,
-        "hook_plan": hook_plan_payload,
-        "twist_density": request.twist_density,
-        "cliffhanger_plan": request.cliffhanger_plan,
-        "ad_snippets": ad_snippets_payload,
-    }
-    apply_marketing_overrides(story_data, marketing_overrides)
-    apply_marketing_overrides(episode_data, marketing_overrides)
-
-    # 调用AI服务生成剧本
-    # 解析模型与提供商
-    prefer_provider = None
-    model_id = request.model
-    if model_id and ":" in model_id:
-        prefer_provider, model_id = model_id.split(":", 1)
-
-    result = await ai_service.generate_script(
-        episode=episode_data,
-        story=story_data,
-        format_type=request.format_type,
-        language=request.language,
-        dialogue_style=request.dialogue_style,
-        scene_detail_level=request.scene_detail_level,
-        template_style=request.template_style,
-        target_chars_per_episode=request.target_chars_per_episode,
-        quality_threshold=request.quality_threshold,
-        additional_requirements=request.additional_requirements,
-        style_preferences=request.style_preferences,
-        model=model_id,
-        prefer_provider=prefer_provider,
-        temperature=request.temperature or 0.7,
-    )
-
-    if not result:
-        raise HTTPException(status_code=500, detail="AI剧本生成失败")
-
-    # 结构化 agent 运行信息，便于落库与排查
-    agent_run: Dict[str, Any] = {}
-    if isinstance(result, dict):
-        agent_run = {
-            "generation_method": result.get("generation_method"),
-            "template_used": result.get("template_used"),
-            "provider_used": result.get("provider_used"),
-            "model_used": result.get("model_used"),
-            "usage": result.get("usage"),
-            "reasoning": result.get("reasoning"),
-        }
-
-    # 解析AI生成的内容
-    raw_content = result.get("content")
-    if isinstance(raw_content, dict):
-        ai_content = raw_content
-    else:
-        parsed = extract_json_block(raw_content)
-        if parsed:
-            ai_content = parsed
-        else:
-            source_text = raw_content or ""
-            extracted = extract_script_structure(source_text)
-            ai_content = {
-                "content": extracted.get("content", source_text),
-                "scenes": extracted.get("scenes", []),
-                "dialogues": extracted.get("dialogues", []),
-                "stage_directions": extracted.get("stage_directions", []),
-                "metadata": extracted.get("metadata", {}),
-            }
-
-    ai_content = _normalize_script_content(
-        ai_content,
-        format_type=request.format_type,
-        language=request.language,
-        default_scenes=episode_data.get("scenes"),
-        episode_number=episode.episode_number,
-        template_style=request.template_style,
-        target_chars_per_episode=request.target_chars_per_episode,
-        title=episode.title,
-    )
-
-    # 提取剧本内容
-    script_content = ai_content.get("content", "")
-    scenes = ai_content.get("scenes", [])
-    dialogues_raw = ai_content.get("dialogues", [])
-    stage_directions_raw = ai_content.get("stage_directions", [])
-    dialogues, stage_directions = _populate_dialogues_and_stage_if_missing(
-        scenes, dialogues_raw, stage_directions_raw, story=story
-    )
-    if not dialogues_raw or not stage_directions_raw:
-        script_content = build_script_text(
-            scenes,
-            dialogues,
-            stage_directions,
-            format_type=request.format_type,
-            language=request.language,
-            episode_number=episode.episode_number,
-            template_style=request.template_style,
-            target_chars_per_episode=request.target_chars_per_episode,
-            title=episode.title,
-        )
-        ai_content["content"] = script_content
-    try:
-        result, ai_content, _quality_gate = (
-            await enforce_script_quality_gate_with_repair(
-                ai_manager=getattr(ai_service, "ai_manager", None),
-                result=result,
-                content={
-                    **ai_content,
-                    "content": script_content,
-                    "scenes": scenes,
-                    "dialogues": dialogues,
-                    "stage_directions": stage_directions,
-                },
-                story=story_data,
-                story_model=story,
-                episode_id=episode.id,
-                db=db,
-                model=model_id,
-                prefer_provider=prefer_provider,
-                temperature=request.temperature or 0.7,
-                lint_threshold=request.quality_threshold,
-                target_chars_per_episode=request.target_chars_per_episode,
-            )
-        )
-    except NarrativeQualityGateError as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"剧本质量校验失败: {exc}",
-        ) from exc
-    script_content = ai_content.get("content", "")
-    scenes = ai_content.get("scenes", [])
-    dialogues = ai_content.get("dialogues", [])
-    stage_directions = ai_content.get("stage_directions", [])
-    if agent_run:
-        agent_run = {**agent_run, "quality_gate": result.get("quality_gate")}
-
-    # 计算统计信息
-    word_count = len(script_content.split()) if script_content else 0
-    character_count = len(script_content) if script_content else 0
-    page_count = max(1, character_count // 2000)  # 估算页数
-
-    # 创建剧本记录
-    # 额外元数据
-    extra_meta = {
-        k: v
-        for k, v in ai_content.items()
-        if k not in {"content", "scenes", "dialogues", "stage_directions", "metadata"}
-    }
-    marketing_defaults = merge_marketing_meta(
-        story_data,
-        episode_data,
-        marketing_overrides,
-    )
-    if marketing_defaults:
-        extra_meta = {**extra_meta, **marketing_defaults}
-    if agent_run:
-        extra_meta = {
-            **(extra_meta or {}),
-            "agent_run": agent_run,
-        }
-
-    db_script = Script(
-        episode_id=request.episode_id,
-        title=f"{episode.title} - 剧本",
-        content=script_content,
-        scenes=scenes,
-        dialogues=dialogues,
-        stage_directions=stage_directions,
-        format_type=request.format_type,
-        language=request.language,
-        page_count=page_count,
-        word_count=word_count,
-        character_count=character_count,
-        generation_prompt=result.get("prompt"),
-        ai_model=result.get("generation_method"),
-        generation_params={
-            "generation_mode": request.generation_mode,
-            "auto_timeline_pipeline": request.auto_timeline_pipeline,
-            "dialogue_style": request.dialogue_style,
-            "scene_detail_level": request.scene_detail_level,
-            "template_style": request.template_style,
-            "target_chars_per_episode": request.target_chars_per_episode,
-            "quality_threshold": request.quality_threshold,
-            "market_region": request.market_region,
-            "micro_genre": request.micro_genre,
-            "hook_plan": hook_plan_payload,
-            "twist_density": request.twist_density,
-            "cliffhanger_plan": request.cliffhanger_plan,
-            "ad_snippets": ad_snippets_payload,
-            "additional_requirements": request.additional_requirements,
-            "style_preferences": request.style_preferences,
-            "model": request.model,
-            "temperature": request.temperature or 0.7,
-        },
-        extra_metadata=extra_meta or None,
-        status="draft",
-    )
-
-    db.add(db_script)
-    db.commit()
-    db.refresh(db_script)
-
-    try:
-        _sync_script_scenes_to_story_structure(db, db_script)
-    except Exception:
-        logger = get_logger()
-        logger.warning("同步规范化场景失败（generate）", exc_info=True)
-
-    return ScriptResponse.from_orm(db_script)
 
 
 def _process_script_generation_task(task_id: int, request_dict: dict, user_id: int):
