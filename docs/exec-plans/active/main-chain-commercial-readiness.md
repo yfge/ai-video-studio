@@ -238,6 +238,9 @@ Latest validation:
   priority selection, weighted selection, and request-count increments now live
   in `app.services.ai_manager_provider_selection`; the manager keeps compatibility
   wrappers.
+- `ai_service_manager.py` shared failure response construction for unavailable
+  providers, no-fallback exceptions, provider-prefixed errors, and terminal
+  fallback failures now lives in `app.services.ai_manager_failure_responses`.
 
 ## Phase 6: Produce Ten Narrow Samples
 

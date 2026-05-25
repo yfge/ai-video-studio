@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
+from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_model_cache as model_cache
 from app.services import ai_manager_provider_selection as provider_selection
 from app.services.ai_manager_logging import (
@@ -518,11 +519,9 @@ class AIServiceManager:
         last_model_used = original_model
 
         if not available_providers:
-            return AIResponse(
-                success=False,
+            return failure_responses.manager_failure_response(
                 error="没有可用的文本生成提供商",
-                provider=AI_MANAGER_PROVIDER,
-                model=model or "unknown",
+                model=model,
                 task_type=AITaskType.STORY_GENERATION,
                 model_type=AIModelType.TEXT_GENERATION,
             )
@@ -599,9 +598,9 @@ class AIServiceManager:
 
             except Exception as e:
                 if not self.config.enable_fallback:
-                    return AIResponse(
-                        success=False,
-                        error=f"文本生成失败: {str(e)}",
+                    return failure_responses.exception_failure_response(
+                        action="文本生成失败",
+                        exc=e,
                         provider=provider_name,
                         model=model,
                         task_type=AITaskType.STORY_GENERATION,
@@ -612,11 +611,9 @@ class AIServiceManager:
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
 
-        return AIResponse(
-            success=False,
+        return failure_responses.manager_failure_response(
             error="所有文本生成提供商都失败了",
-            provider=AI_MANAGER_PROVIDER,
-            model=last_model_used or "unknown",
+            model=last_model_used,
             task_type=AITaskType.STORY_GENERATION,
             model_type=AIModelType.TEXT_GENERATION,
         )
@@ -681,11 +678,9 @@ class AIServiceManager:
         last_model_used = original_model
 
         if not available_providers:
-            return AIResponse(
-                success=False,
+            return failure_responses.manager_failure_response(
                 error="没有可用的图像生成提供商",
-                provider=AI_MANAGER_PROVIDER,
-                model=model or "unknown",
+                model=model,
                 task_type=AITaskType.PORTRAIT_GENERATION,
                 model_type=AIModelType.TEXT_TO_IMAGE,
             )
@@ -784,9 +779,9 @@ class AIServiceManager:
                 last_provider = provider_name
                 last_model = provider_model
                 if not self.config.enable_fallback:
-                    return AIResponse(
-                        success=False,
-                        error=f"图像生成失败: {str(e)}",
+                    return failure_responses.exception_failure_response(
+                        action="图像生成失败",
+                        exc=e,
                         provider=provider_name,
                         model=model,
                         task_type=AITaskType.PORTRAIT_GENERATION,
@@ -797,25 +792,20 @@ class AIServiceManager:
                 available_providers.remove(provider_name)
 
         if last_error:
-            error_msg = last_error
-            if last_provider and not error_msg.lower().startswith(
-                last_provider.lower()
-            ):
-                error_msg = f"{last_provider}: {error_msg}"
-            return AIResponse(
-                success=False,
-                error=error_msg,
+            return failure_responses.failure_response(
+                error=failure_responses.provider_prefixed_error(
+                    last_error,
+                    last_provider,
+                ),
                 provider=last_provider or AI_MANAGER_PROVIDER,
                 model=last_model or last_model_used or model or "unknown",
                 task_type=AITaskType.PORTRAIT_GENERATION,
                 model_type=AIModelType.TEXT_TO_IMAGE,
             )
 
-        return AIResponse(
-            success=False,
+        return failure_responses.manager_failure_response(
             error="所有图像生成提供商都失败了",
-            provider=AI_MANAGER_PROVIDER,
-            model=last_model_used or "unknown",
+            model=last_model_used,
             task_type=AITaskType.PORTRAIT_GENERATION,
             model_type=AIModelType.TEXT_TO_IMAGE,
         )
@@ -876,11 +866,9 @@ class AIServiceManager:
             ]
 
         if not available_providers:
-            return AIResponse(
-                success=False,
+            return failure_responses.manager_failure_response(
                 error="没有可用的图生图提供商",
-                provider=AI_MANAGER_PROVIDER,
-                model=model or "unknown",
+                model=model,
                 task_type=AITaskType.SCENE_GENERATION,
                 model_type=AIModelType.IMAGE_TO_IMAGE,
             )
@@ -1044,9 +1032,9 @@ class AIServiceManager:
                 last_provider = provider_name
                 last_model = effective_model
                 if not self.config.enable_fallback:
-                    return AIResponse(
-                        success=False,
-                        error=f"图生图失败: {str(e)}",
+                    return failure_responses.exception_failure_response(
+                        action="图生图失败",
+                        exc=e,
                         provider=provider_name,
                         model=effective_model,
                         task_type=AITaskType.SCENE_GENERATION,
@@ -1124,25 +1112,20 @@ class AIServiceManager:
                 self.logger.error("image_to_image fallback failed: %s", e)
 
         if last_error is not None:
-            error_msg = (last_error or "").strip() or "未知错误"
-            if last_provider and not error_msg.lower().startswith(
-                last_provider.lower()
-            ):
-                error_msg = f"{last_provider}: {error_msg}"
-            return AIResponse(
-                success=False,
-                error=error_msg,
+            return failure_responses.failure_response(
+                error=failure_responses.provider_prefixed_error(
+                    last_error,
+                    last_provider,
+                ),
                 provider=last_provider or AI_MANAGER_PROVIDER,
                 model=last_model or model or "unknown",
                 task_type=AITaskType.SCENE_GENERATION,
                 model_type=AIModelType.IMAGE_TO_IMAGE,
             )
 
-        return AIResponse(
-            success=False,
+        return failure_responses.manager_failure_response(
             error="所有图生图提供商都失败了（未捕获到具体错误信息）",
-            provider=AI_MANAGER_PROVIDER,
-            model=model or "unknown",
+            model=model,
             task_type=AITaskType.SCENE_GENERATION,
             model_type=AIModelType.IMAGE_TO_IMAGE,
         )
@@ -1180,11 +1163,9 @@ class AIServiceManager:
         last_provider: str | None = None
 
         if not available_providers:
-            return AIResponse(
-                success=False,
+            return failure_responses.manager_failure_response(
                 error="没有可用的视频生成提供商",
-                provider=AI_MANAGER_PROVIDER,
-                model=model or "unknown",
+                model=model,
                 task_type=AITaskType.VIDEO_GENERATION,
                 model_type=model_type,
             )
@@ -1287,9 +1268,9 @@ class AIServiceManager:
                 last_error = str(e)
                 last_provider = provider_name
                 if not self.config.enable_fallback:
-                    return AIResponse(
-                        success=False,
-                        error=f"视频生成失败: {str(e)}",
+                    return failure_responses.exception_failure_response(
+                        action="视频生成失败",
+                        exc=e,
                         provider=provider_name,
                         model=last_model_used or "unknown",
                         task_type=AITaskType.VIDEO_GENERATION,
@@ -1299,13 +1280,10 @@ class AIServiceManager:
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
 
-        error_msg = last_error or "所有视频生成提供商都失败了"
-        if last_provider and not error_msg.lower().startswith(last_provider.lower()):
-            error_msg = f"{last_provider}: {error_msg}"
-        return AIResponse(
-            success=False,
-            error=error_msg,
-            provider=last_provider or AI_MANAGER_PROVIDER,
+        return failure_responses.terminal_failure_response(
+            default_error="所有视频生成提供商都失败了",
+            last_error=last_error,
+            last_provider=last_provider,
             model=last_model_used or "unknown",
             task_type=AITaskType.VIDEO_GENERATION,
             model_type=model_type,
@@ -1329,11 +1307,9 @@ class AIServiceManager:
         last_provider: str | None = None
 
         if not available_providers:
-            return AIResponse(
-                success=False,
+            return failure_responses.manager_failure_response(
                 error="没有可用的语音合成提供商",
-                provider=AI_MANAGER_PROVIDER,
-                model=model or "unknown",
+                model=model,
                 task_type=AITaskType.VOICE_GENERATION,
                 model_type=AIModelType.TEXT_TO_SPEECH,
             )
@@ -1389,9 +1365,9 @@ class AIServiceManager:
                 last_error = str(e)
                 last_provider = provider_name
                 if not self.config.enable_fallback:
-                    return AIResponse(
-                        success=False,
-                        error=f"语音合成失败: {str(e)}",
+                    return failure_responses.exception_failure_response(
+                        action="语音合成失败",
+                        exc=e,
                         provider=provider_name,
                         model=model or "unknown",
                         task_type=AITaskType.VOICE_GENERATION,
@@ -1401,13 +1377,10 @@ class AIServiceManager:
             if provider_name in available_providers:
                 available_providers.remove(provider_name)
 
-        error_msg = last_error or "所有语音合成提供商都失败了"
-        if last_provider and not error_msg.lower().startswith(last_provider.lower()):
-            error_msg = f"{last_provider}: {error_msg}"
-        return AIResponse(
-            success=False,
-            error=error_msg,
-            provider=last_provider or AI_MANAGER_PROVIDER,
+        return failure_responses.terminal_failure_response(
+            default_error="所有语音合成提供商都失败了",
+            last_error=last_error,
+            last_provider=last_provider,
             model=model or "unknown",
             task_type=AITaskType.VOICE_GENERATION,
             model_type=AIModelType.TEXT_TO_SPEECH,
