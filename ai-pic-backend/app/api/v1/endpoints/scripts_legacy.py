@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 from app.api.v1.endpoints.scripts_catalog import router as catalog_router
+from app.api.v1.endpoints.scripts_create import router as create_router
 from app.api.v1.endpoints.scripts_generation_queue import (
     router as generation_queue_router,
 )
@@ -17,7 +18,7 @@ from app.models.script import Episode, Script, Story
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.schemas.generation_requests import ScriptGenerationRequest
-from app.schemas.script import ScriptCreate, ScriptListItemResponse, ScriptResponse
+from app.schemas.script import ScriptListItemResponse, ScriptResponse
 from app.services.ai.script_text import build_script_text
 from app.services.ai_service import ai_service
 from app.services.narrative_quality_gate import (
@@ -193,43 +194,7 @@ router = APIRouter()
 router.include_router(catalog_router)
 router.include_router(prompt_router)
 router.include_router(generation_queue_router)
-
-
-@router.post("/", response_model=ScriptResponse)
-async def create_script(
-    script: ScriptCreate,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """创建剧本"""
-    # 检查剧集是否存在且归属当前用户（或管理员）
-    episode_query = _not_deleted(db.query(Episode), Episode).join(
-        Story, Episode.story_id == Story.id
-    )
-    if not current_user.is_admin and not current_user.is_superuser:
-        episode_query = episode_query.filter(Story.user_id == current_user.id)
-    episode = episode_query.filter(Episode.id == script.episode_id).first()
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
-
-    # 计算字数和字符数
-    word_count = len(script.content.split()) if script.content else 0
-    character_count = len(script.content) if script.content else 0
-
-    db_script = Script(
-        **script.dict(), word_count=word_count, character_count=character_count
-    )
-    db.add(db_script)
-    db.commit()
-    db.refresh(db_script)
-
-    try:
-        _sync_script_scenes_to_story_structure(db, db_script)
-    except Exception:
-        logger = get_logger()
-        logger.warning("同步规范化场景失败（create）", exc_info=True)
-
-    return ScriptResponse.from_orm(db_script)
+router.include_router(create_router)
 
 
 @router.post("/generate", response_model=ScriptResponse)

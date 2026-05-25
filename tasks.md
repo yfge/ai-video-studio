@@ -99,6 +99,8 @@
         读取 episode 的 query 收敛到 `repositories/scripts_route_repository.py`。
   - [x] 已把 `/scripts/generate-async` 排队入口拆到
         `api/v1/endpoints/scripts_generation_queue.py`，保留 production 默认参数语义。
+  - [x] 已把 `POST /scripts/` 创建入口拆到 `api/v1/endpoints/scripts_create.py`，
+        episode 权限查询收敛到 repository。
 - [x] 拆分 `dialogue_audio_service.py`，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
   - [x] 已把 episode 拼接/写回迁到 `services/audio/episode_audio_builder.py`，并把 episode timeline beat 构造迁到 `services/audio/episode_timeline_beats.py`；旧服务只保留兼容导入。
   - [x] 已把 scene beat 落库、scene audio metadata 写回和单场时长校验迁到 `services/audio/scene_audio_persistence.py`。

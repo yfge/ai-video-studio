@@ -261,6 +261,8 @@ Latest validation:
 - Script async generation queueing now lives in
   `app.api.v1.endpoints.scripts_generation_queue`, preserving production-mode
   defaults before dispatching the Celery task.
+- Script creation now lives in `app.api.v1.endpoints.scripts_create`, with
+  episode ownership lookup moved behind `app.repositories.scripts_route_repository`.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.

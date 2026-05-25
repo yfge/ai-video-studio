@@ -136,6 +136,19 @@ class ScriptsRouteRepository:
             query = query.filter(Story.user_id == current_user.id)
         return query.filter(Episode.id == episode_id).first()
 
+    def get_create_episode(
+        self,
+        *,
+        episode_id: int,
+        current_user: User,
+    ) -> Episode | None:
+        query = self.not_deleted(self.db.query(Episode), Episode).join(
+            Story, Episode.story_id == Story.id
+        )
+        if not current_user.is_admin and not current_user.is_superuser:
+            query = query.filter(Story.user_id == current_user.id)
+        return query.filter(Episode.id == episode_id).first()
+
     def list_scripts_for_episode(self, episode_id: int) -> list[Script]:
         return (
             self.not_deleted(self.db.query(Script), Script)
