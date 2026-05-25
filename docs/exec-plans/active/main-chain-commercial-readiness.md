@@ -276,6 +276,10 @@ Latest validation:
 - `ai_service_manager.py` text-to-image and image-to-image style spec
   resolution, prompt injection, OpenAI style derivation, and style metadata
   attachment now live in `app.services.ai_manager_image_style`.
+- `ai_service_manager.py` video generation fallback orchestration now lives in
+  `app.services.ai_manager_video_generation`, including provider selection,
+  default video model resolution, request/response logging, and terminal failure
+  response construction.
 
 ## Phase 6: Produce Ten Narrow Samples
 

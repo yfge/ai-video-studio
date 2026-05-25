@@ -16,6 +16,7 @@ from app.services import ai_manager_image_style as image_style
 from app.services import ai_manager_model_listing as model_listing
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
+from app.services import ai_manager_video_generation as video_generation
 from app.services.ai_manager_logging import (
     AI_MANAGER_PROVIDER,
     log_prompt,
@@ -739,124 +740,27 @@ class AIServiceManager:
         **kwargs,
     ) -> AIResponse:
         """统一视频生成接口"""
-        # 根据输入类型确定模型类型
-        model_type = (
-            AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
-        )
-
-        available_providers = self.get_available_providers(model_type=model_type)
-
-        prefer_provider, model = self._resolve_prefer_provider_and_model(
-            model, prefer_provider
-        )
-        if prefer_provider:
-            available_providers = [
-                p for p in available_providers if p == prefer_provider
-            ]
-
-        original_model = model
-        last_model_used = original_model
-        last_error: str | None = None
-        last_provider: str | None = None
-
-        if not available_providers:
-            return failure_responses.manager_failure_response(
-                error="没有可用的视频生成提供商",
-                model=model,
-                task_type=AITaskType.VIDEO_GENERATION,
-                model_type=model_type,
-            )
-
-        # 记录请求
-        self._log_request(
-            task="generate_video",
-            provider=prefer_provider,
+        return await video_generation.generate_video_with_fallback(
+            prompt=prompt,
+            image_url=image_url,
             model=model,
-            params={
-                "duration": duration,
-                "fps": fps,
-                "resolution": resolution,
-                "mode": ("image_to_video" if image_url else "text_to_video"),
-            },
-        )
-        self._log_prompt(
-            prompt
-            if not image_url
-            else f"<image_url>: {self._truncate(image_url, 256)}"
-        )
-
-        for attempt in range(self.config.max_retries):
-            provider_name = self._select_provider(available_providers, prefer_provider)
-            if not provider_name:
-                break
-
-            provider = self.providers[provider_name]
-            self._update_request_count(provider_name)
-
-            try:
-                provider_model = await model_resolution.resolve_video_model(
-                    provider,
-                    original_model,
-                    model_type,
-                    self._get_models_for_type,
-                )
-                last_model_used = provider_model
-
-                # 根据提供商类型调用不同方法
-                if hasattr(provider, "generate_video"):
-                    response = await provider.generate_video(
-                        prompt=prompt,
-                        image_url=image_url,
-                        model=provider_model,
-                        duration=duration,
-                        fps=fps,
-                        resolution=resolution,
-                        **kwargs,
-                    )
-                else:
-                    response = AIResponse(
-                        success=False,
-                        error=f"提供商 {provider_name} 不支持视频生成",
-                        provider=provider_name,
-                        model=model or "unknown",
-                        task_type=AITaskType.VIDEO_GENERATION,
-                        model_type=model_type,
-                    )
-                self._log_response(
-                    task="generate_video",
-                    provider=provider_name,
-                    model=provider_model,
-                    response=response,
-                )
-                if not response.success and response.error:
-                    last_error = response.error
-                    last_provider = provider_name
-                if response.success or not self.config.enable_fallback:
-                    return response
-
-            except Exception as e:
-                last_error = str(e)
-                last_provider = provider_name
-                if not self.config.enable_fallback:
-                    return failure_responses.exception_failure_response(
-                        action="视频生成失败",
-                        exc=e,
-                        provider=provider_name,
-                        model=last_model_used or "unknown",
-                        task_type=AITaskType.VIDEO_GENERATION,
-                        model_type=model_type,
-                    )
-
-            if provider_name in available_providers:
-                available_providers.remove(provider_name)
-
-        return failure_responses.terminal_failure_response(
-            default_error="所有视频生成提供商都失败了",
-            last_error=last_error,
-            last_provider=last_provider,
-            model=last_model_used or "unknown",
-            task_type=AITaskType.VIDEO_GENERATION,
-            model_type=model_type,
+            prefer_provider=prefer_provider,
+            duration=duration,
+            fps=fps,
+            resolution=resolution,
+            provider_kwargs=kwargs,
+            providers=self.providers,
+            max_retries=self.config.max_retries,
+            enable_fallback=self.config.enable_fallback,
+            resolve_prefer_provider_and_model=self._resolve_prefer_provider_and_model,
+            get_available_providers=self.get_available_providers,
+            select_provider=self._select_provider,
+            update_request_count=self._update_request_count,
+            get_models_for_type=self._get_models_for_type,
+            log_request=self._log_request,
+            log_prompt=self._log_prompt,
+            log_response=self._log_response,
+            truncate=self._truncate,
         )
 
     async def text_to_speech(
