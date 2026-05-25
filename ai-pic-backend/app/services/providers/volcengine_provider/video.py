@@ -170,7 +170,7 @@ async def generate_video(
             model_type=model_type,
             metadata={
                 "task_id": task_id,
-                "prompt": request_data["content"][0]["text"],
+                "prompt": _extract_prompt(request_data),
                 "watermark": watermark,
                 "seed": seed,
                 "service_tier": service_tier,
@@ -202,3 +202,13 @@ def _failure_response(
         model_type=model_type,
         metadata=metadata or {},
     )
+
+
+def _extract_prompt(request_data: Dict[str, Any]) -> str:
+    content = request_data.get("content") or []
+    if not isinstance(content, list):
+        return ""
+    for item in content:
+        if isinstance(item, dict) and item.get("type") == "text":
+            return str(item.get("text") or "")
+    return ""

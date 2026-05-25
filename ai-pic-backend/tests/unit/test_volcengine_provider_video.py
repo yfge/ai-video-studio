@@ -10,6 +10,7 @@ from app.services.providers.volcengine_provider.models import (
     infer_model_type,
 )
 from app.services.providers.volcengine_provider.provider import VolcengineProvider
+from app.services.providers.volcengine_provider.video import generate_video
 from app.services.providers.volcengine_provider.video_models import (
     SEEDANCE_20_FAST_MODEL,
     SEEDANCE_20_MODEL,
@@ -162,6 +163,38 @@ async def test_submit_seedance_20_first_last_frame_skips_refs():
 
     roles = [item.get("role") for item in client.posts[-1]["content"]]
     assert roles == ["first_frame", "last_frame", None]
+
+
+@pytest.mark.asyncio
+async def test_generate_seedance_i2v_extracts_prompt_from_text_part(monkeypatch):
+    client = _Client()
+
+    async def fake_poll(_client, _base_url, _task_id, max_attempts, delay):
+        return {
+            "status": "succeeded",
+            "content": {"video_url": "https://cdn.example.com/out.mp4"},
+        }
+
+    monkeypatch.setattr(
+        "app.services.providers.volcengine_provider.video.poll_task_status",
+        fake_poll,
+    )
+
+    response = await generate_video(
+        client=client,
+        base_url="https://ark.example.com/api/v3",
+        provider_name="volcengine",
+        prompt="机器人挥手",
+        image_url="https://cdn.example.com/start.png",
+        model="seedance-2.0-i2v",
+        duration=4,
+        fps=24,
+        resolution="720p",
+    )
+
+    assert response.success is True
+    assert response.data["video_url"] == "https://cdn.example.com/out.mp4"
+    assert response.metadata["prompt"] == "机器人挥手"
 
 
 @pytest.mark.asyncio
