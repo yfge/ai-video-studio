@@ -46,9 +46,10 @@ The default production path is now wired into Timeline Spec v1:
 No immediate blocker was found in the default production chain. Downstream
 execution now has worker and output-asset plumbing, and a real harness flow can
 render/export a Timeline whose clips resolve to legacy storyboard videos.
-First-class clip asset lineage now has backend source/output/rework records and
-operator controls for existing media assets, but real rework orchestration
-remains pending.
+First-class clip asset lineage now has backend source/output/rework records,
+operator controls for existing media assets, and a provider-backed video rework
+task path that records successful outputs as replacement lineage. Operator-side
+provider rework entry and render queue orchestration remain pending.
 
 ## Implementation Status
 
@@ -68,8 +69,10 @@ remains pending.
 - P4 backend lineage is implemented for Timeline Spec assets, render outputs,
   and operator replacement records keyed by stable `clip_id`.
 - Operator asset audit and existing-media rework controls are implemented for
-  selected Timeline clips. Real provider-backed rework orchestration and
-  commercial-readiness sample production remain pending.
+  selected Timeline clips. Backend provider-backed video rework queueing and
+  success lineage are implemented, while operator provider-rework entry, render
+  queue orchestration, and commercial-readiness sample production remain
+  pending.
 
 ## Findings
 
@@ -285,8 +288,9 @@ Exit criteria:
 7. Render/export: consume locked timeline versions and persist media assets.
 
 Steps 1-7 are implemented for this slice. Delete/rollback, stricter Timeline
-Spec validation, and backend first-class clip asset lineage are also
-implemented. The next boundary is real rework orchestration, legacy debt
+Spec validation, backend first-class clip asset lineage, and provider-backed
+video rework success lineage are also implemented. The next boundary is
+operator provider-rework entry, render queue orchestration, legacy debt
 reduction, and production sample validation.
 
 ## Validation Matrix

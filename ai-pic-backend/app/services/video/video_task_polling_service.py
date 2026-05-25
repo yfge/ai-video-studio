@@ -19,10 +19,11 @@ from app.services.video.video_task_generation_metadata import (
     build_video_generation_metadata,
 )
 from app.services.video.video_task_polling_logging import log_pending_tasks
-from app.services.video.video_task_polling_parent_task import (
-    refresh_parent_task_status,
-)
+from app.services.video.video_task_polling_parent_task import refresh_parent_task_status
 from app.services.video.video_task_storyboard_updater import apply_storyboard_result
+from app.services.video.video_task_timeline_rework_updater import (
+    apply_timeline_rework_result,
+)
 from app.services.video.video_task_utils import load_parameters, map_provider_status
 
 
@@ -174,7 +175,9 @@ class VideoTaskPollingService:
         item.status = VideoGenerationTaskStatus.SUCCEEDED
         item.completed_at = now
         self.db.commit()
-        if item.script_id is not None and item.frame_index is not None:
+        if params.get("timeline_rework"):
+            apply_timeline_rework_result(self.db, item, result_payload, params)
+        elif item.script_id is not None and item.frame_index is not None:
             apply_storyboard_result(self.db, item, result_payload, params)
         refresh_parent_task_status(self.db, self.repo, item.task_id)
 

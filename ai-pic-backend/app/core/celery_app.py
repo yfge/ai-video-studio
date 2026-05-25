@@ -73,3 +73,4 @@ import app.services.task_worker  # noqa: E402,F401
 import app.services.task_worker_script_quality  # noqa: E402,F401
 import app.services.task_worker_storyboard_media  # noqa: E402,F401
 import app.services.task_worker_timeline_render  # noqa: E402,F401
+import app.services.task_worker_timeline_rework  # noqa: E402,F401

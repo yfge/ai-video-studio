@@ -8,6 +8,8 @@ from app.schemas.timeline import (
     TimelineClipAssetListResponse,
     TimelineClipAssetResponse,
     TimelineClipReworkRequest,
+    TimelineClipVideoReworkTaskRequest,
+    TimelineClipVideoReworkTaskResponse,
     TimelineCreate,
     TimelineDeleteRequest,
     TimelineListResponse,
@@ -18,6 +20,9 @@ from app.schemas.timeline import (
 )
 from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
 from app.services.timeline_clip_rework_service import TimelineClipReworkService
+from app.services.timeline_clip_video_rework_queue_service import (
+    TimelineClipVideoReworkQueueService,
+)
 from app.services.timeline_lifecycle_service import TimelineLifecycleService
 from app.services.timeline_service import TimelineService
 from fastapi import APIRouter, Depends, Query
@@ -159,6 +164,22 @@ def rework_timeline_clip(
 ) -> TimelineClipAssetResponse:
     service = TimelineClipReworkService(db)
     return service.rework_clip(timeline_id, clip_id, payload, current_user)
+
+
+@router.post(
+    "/timelines/{timeline_id}/clips/{clip_id}/rework/video",
+    response_model=TimelineClipVideoReworkTaskResponse,
+    summary="Queue provider-backed video rework for a timeline clip",
+)
+def queue_timeline_clip_video_rework(
+    timeline_id: int,
+    clip_id: str,
+    payload: TimelineClipVideoReworkTaskRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineClipVideoReworkTaskResponse:
+    service = TimelineClipVideoReworkQueueService(db)
+    return service.queue_video_rework(timeline_id, clip_id, payload, current_user)
 
 
 @router.delete(

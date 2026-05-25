@@ -7,6 +7,7 @@ TimelineStatus = Literal["draft", "ready", "locked", "archived"]
 RenderJobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 RenderType = Literal["proxy", "final", "export"]
 TimelineClipReworkAction = Literal["re_dub", "re_cut", "re_render"]
+TimelineClipVideoReworkAction = Literal["re_cut", "re_render"]
 
 
 class TimelineCreate(BaseModel):
@@ -130,6 +131,25 @@ class TimelineClipReworkRequest(TimelineVersionRequest):
     media_asset_id: int = Field(..., ge=1)
     asset_role: Optional[str] = Field(None, max_length=64)
     reason: Optional[str] = Field(None, max_length=255)
+
+
+class TimelineClipVideoReworkTaskRequest(TimelineVersionRequest):
+    action: TimelineClipVideoReworkAction = "re_cut"
+    prompt: Optional[str] = Field(None, max_length=4000)
+    model: Optional[str] = Field(None, max_length=128)
+    duration: Optional[float] = Field(None, gt=0)
+    fps: int = Field(24, ge=1, le=120)
+    resolution: str = Field("720p", max_length=64)
+    ratio: Optional[str] = Field(None, max_length=32)
+    asset_role: Optional[str] = Field(None, max_length=64)
+    reason: Optional[str] = Field(None, max_length=255)
+    use_end_frame: bool = True
+    return_last_frame: bool = True
+
+
+class TimelineClipVideoReworkTaskResponse(BaseModel):
+    task_id: int
+    status: str
 
 
 class RenderJobCreate(BaseModel):
