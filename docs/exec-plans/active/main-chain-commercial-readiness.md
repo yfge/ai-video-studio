@@ -219,6 +219,11 @@ Latest validation:
   and the historical service module only re-exports those helpers for existing
   imports. Scene audio generation, episode concatenation, and beats persistence
   still remain in the historical service.
+- Episode audio timeline concatenation and persistence now live behind
+  `app.services.audio.episode_audio_builder`, with episode beat construction in
+  `app.services.audio.episode_timeline_beats`; `dialogue_audio_service.py`
+  remains a compatibility import surface for those helpers. Scene-level TTS
+  generation and beat persistence are still the remaining split target.
 
 ## Phase 6: Produce Ten Narrow Samples
 

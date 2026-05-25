@@ -13,17 +13,21 @@ import httpx
 from app.core.logging import get_logger
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene, SceneBeat
-from app.repositories.audio_timeline_repository import (
-    list_active_scene_beats,
-    list_scene_beats,
-    list_script_scenes,
-)
+from app.repositories.audio_timeline_repository import list_active_scene_beats
 from app.services.ai_service import ai_service
 from app.services.audio.dialogue_processing.prose_dialogue_splitter import (
     repair_scene_dialogues_for_audio,
     sanitize_stage_directions_for_audio,
 )
 from app.services.audio.dialogue_processor import plan_scene_segments_intelligent
+
+# Re-export episode timeline helpers from the historical service module.
+from app.services.audio.episode_audio_builder import (  # noqa: F401
+    generate_episode_audio_timeline,
+)
+from app.services.audio.episode_timeline_beats import (  # noqa: F401
+    build_episode_timeline_beats,
+)
 
 # Re-export storyboard timeline helpers from the historical service module.
 from app.services.audio.storyboard_from_timeline import (  # noqa: F401
@@ -704,90 +708,6 @@ def _concat_mp3s(paths: Sequence[Path], out_mp3: Path) -> None:
     _encode_mp3(merged_wav, out_mp3)
 
 
-def build_episode_timeline_beats(
-    *,
-    scenes: Sequence[Scene],
-    beats_by_scene_id: dict[int, Sequence[SceneBeat]],
-) -> tuple[list[dict[str, Any]], int]:
-    offset_ms = 0
-    merged: list[dict[str, Any]] = []
-
-    for scene in scenes:
-        scene_id = int(scene.id)
-        try:
-            scene_number = int(str(scene.scene_number).strip())
-        except Exception:
-            scene_number = None
-
-        cursor_ms = 0
-        for beat in beats_by_scene_id.get(scene_id, []):
-            meta = beat.extra_metadata if isinstance(beat.extra_metadata, dict) else {}
-
-            start_ms = meta.get("start_ms")
-            end_ms = meta.get("end_ms")
-
-            start_ms_int = (
-                int(start_ms)
-                if isinstance(start_ms, (int, float, str)) and str(start_ms).strip()
-                else None
-            )
-            end_ms_int = (
-                int(end_ms)
-                if isinstance(end_ms, (int, float, str)) and str(end_ms).strip()
-                else None
-            )
-
-            if start_ms_int is None:
-                start_ms_int = cursor_ms
-            if end_ms_int is None:
-                dur_s = float(beat.duration_seconds or 0)
-                end_ms_int = start_ms_int + max(0, int(round(dur_s * 1000)))
-            if end_ms_int < start_ms_int:
-                end_ms_int = start_ms_int
-
-            cursor_ms = end_ms_int
-
-            text = (
-                beat.dialogue_excerpt
-                if beat.beat_type == "dialogue"
-                else beat.beat_summary
-            )
-            characters_involved = beat.characters_involved
-            if not isinstance(characters_involved, list):
-                characters_involved = None
-            else:
-                characters_involved = [
-                    str(item).strip()
-                    for item in characters_involved
-                    if str(item).strip()
-                ] or None
-            merged.append(
-                {
-                    "scene_id": scene_id,
-                    "scene_number": scene_number,
-                    "beat_id": int(beat.id),
-                    "beat_type": beat.beat_type,
-                    "speaker_name": meta.get("speaker_name"),
-                    "characters_involved": characters_involved,
-                    # Preserve dialogue metadata so downstream storyboard prompts can
-                    # distinguish spoken lines vs inner monologue/read-text.
-                    "dialogue_action": (
-                        meta.get("action") if beat.beat_type == "dialogue" else None
-                    ),
-                    "dialogue_emotion": (
-                        meta.get("emotion") if beat.beat_type == "dialogue" else None
-                    ),
-                    "text": text,
-                    "start_ms": offset_ms + start_ms_int,
-                    "end_ms": offset_ms + end_ms_int,
-                }
-            )
-
-        offset_ms += cursor_ms
-
-    return merged, offset_ms
-
-
 async def generate_scene_dialogue_audio(
     db: Session,
     *,
@@ -1304,155 +1224,3 @@ async def generate_scene_dialogue_audio(
         db.refresh(scene)
 
         return payload
-
-
-async def generate_episode_audio_timeline(
-    db: Session,
-    *,
-    story: Story,
-    episode: Episode,
-    script: Script,
-) -> dict[str, Any]:
-    """
-    Concatenate scene dialogue tracks into 1 episode track and merge beats into an episode timeline.
-
-    Writes `episodes.extra_metadata.audio_timeline` and uploads the episode audio to OSS.
-    """
-    _ensure_oss_configured()
-
-    scenes = list_script_scenes(db, script.id)
-    scenes_sorted = sorted(
-        scenes,
-        key=lambda s: (
-            1 if str(getattr(s, "scene_number", "")).strip().isdigit() is False else 0,
-            (
-                int(str(getattr(s, "scene_number", 0)).strip())
-                if str(getattr(s, "scene_number", "")).strip().isdigit()
-                else 0
-            ),
-            str(getattr(s, "scene_number", "")),
-        ),
-    )
-    if not scenes_sorted:
-        raise RuntimeError("no_scenes_found")
-
-    missing_audio: list[str] = []
-    scene_audio_urls: list[str] = []
-    scene_ids: list[int] = []
-    for scene in scenes_sorted:
-        meta = scene.extra_metadata if isinstance(scene.extra_metadata, dict) else {}
-        payload = meta.get("dialogue_audio") if isinstance(meta, dict) else None
-        if not isinstance(payload, dict) or not payload.get("oss_url"):
-            missing_audio.append(str(scene.scene_number))
-            continue
-        scene_audio_urls.append(str(payload["oss_url"]))
-        scene_ids.append(int(scene.id))
-
-    if missing_audio:
-        raise RuntimeError(f"missing_scene_dialogue_audio: {', '.join(missing_audio)}")
-
-    beats = list_scene_beats(db, scene_ids)
-    beats_by_scene: dict[int, list[SceneBeat]] = {sid: [] for sid in scene_ids}
-    for beat in beats:
-        beats_by_scene.setdefault(int(beat.scene_id), []).append(beat)
-
-    missing_beats = [
-        str(scene.scene_number)
-        for scene in scenes_sorted
-        if not beats_by_scene.get(int(scene.id))
-    ]
-    if missing_beats:
-        raise RuntimeError(f"missing_scene_beats: {', '.join(missing_beats)}")
-
-    timeline_beats, duration_ms_total = build_episode_timeline_beats(
-        scenes=scenes_sorted,
-        beats_by_scene_id=beats_by_scene,
-    )
-    duration_seconds_total = round(duration_ms_total / 1000.0, 3)
-
-    # Duration validation against episode target
-    episode_duration_minutes = getattr(episode, "duration_minutes", None)
-    if episode_duration_minutes:
-        target_ms = episode_duration_minutes * 60 * 1000
-        target_seconds = episode_duration_minutes * 60
-        duration_ratio = duration_ms_total / target_ms if target_ms > 0 else 0
-
-        logger.info(
-            "Episode timeline duration validation",
-            extra={
-                "episode_id": episode.id,
-                "script_id": script.id,
-                "target_duration_minutes": episode_duration_minutes,
-                "target_duration_ms": target_ms,
-                "actual_duration_ms": duration_ms_total,
-                "actual_duration_seconds": duration_seconds_total,
-                "duration_ratio": round(duration_ratio, 2),
-                "within_tolerance": 0.85 <= duration_ratio <= 1.15,
-            },
-        )
-
-        if duration_ratio < 0.85:
-            logger.warning(
-                f"Timeline duration too short: {duration_seconds_total}s "
-                f"vs target {target_seconds}s ({duration_ratio:.0%})"
-            )
-        elif duration_ratio > 1.15:
-            logger.warning(
-                f"Timeline duration too long: {duration_seconds_total}s "
-                f"vs target {target_seconds}s ({duration_ratio:.0%})"
-            )
-
-    with tempfile.TemporaryDirectory(prefix="episode-audio-") as tmp_root:
-        tmp_root_path = Path(tmp_root)
-        mp3_paths: list[Path] = []
-        for idx, url in enumerate(scene_audio_urls, start=1):
-            p = tmp_root_path / f"scene-{idx}.mp3"
-            await _download_to_file(str(url), p)
-            mp3_paths.append(p)
-
-        episode_mp3 = tmp_root_path / "episode.mp3"
-        _concat_mp3s(mp3_paths, episode_mp3)
-
-        oss_result = await oss_service.upload_file_content(
-            file_content=episode_mp3.read_bytes(),
-            filename=f"episode{episode.id}-script{script.id}.mp3",
-            file_type="audio",
-            prefix="episode-dialogue/episodes",
-            metadata={
-                "episode_id": episode.id,
-                "script_id": script.id,
-                "duration_seconds": duration_seconds_total,
-                "generated_at": _utc_now_iso(),
-            },
-        )
-        if not oss_result.get("success") or not oss_result.get("file_url"):
-            raise RuntimeError(f"OSS 上传失败: {oss_result}")
-
-    extra = dict(episode.extra_metadata or {})
-    prev = extra.get("audio_timeline")
-    prev_version = 0
-    if isinstance(prev, dict):
-        ep_audio = prev.get("episode_audio")
-        if isinstance(ep_audio, dict):
-            try:
-                prev_version = int(ep_audio.get("version") or 0)
-            except Exception:
-                prev_version = 0
-
-    payload = {
-        "script_id": script.id,
-        "episode_audio": {
-            "oss_url": oss_result["file_url"],
-            "duration_seconds": duration_seconds_total,
-            "generated_at": _utc_now_iso(),
-            "version": prev_version + 1,
-        },
-        "beats": timeline_beats,
-    }
-    extra["audio_timeline"] = payload
-    episode.extra_metadata = extra
-    db.add(episode)
-    db.commit()
-    db.refresh(episode)
-
-    return payload
