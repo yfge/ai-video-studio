@@ -228,6 +228,14 @@ Latest validation:
   validation now call `app.services.audio.scene_audio_persistence` from the
   historical service. The remaining `dialogue_audio_service.py` work is the
   scene-level TTS generation orchestration itself.
+- Duration-controlled dialogue generation and the deprecated dialogue-audio API
+  endpoint now call `app.services.audio.scene_audio_generator` directly for
+  scene-level audio generation, keeping the historical service out of those
+  production entry points.
+- Duration-controlled per-scene generation now lives in
+  `app.services.duration_controlled_scene_runner`, and the touched deprecated
+  dialogue-audio endpoint now uses repository helpers instead of direct
+  SQLAlchemy queries.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.

@@ -6,11 +6,13 @@ import json
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.models.story_structure import SceneBeat
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
+from app.repositories.audio_timeline_repository import count_scene_beats
+from app.repositories.task_repository import TaskRepository
+from app.repositories.user_repository import UserRepository
 from app.services import story_structure_service as story_structure_svc
-from app.services.dialogue_audio_service import generate_scene_dialogue_audio
+from app.services.audio.scene_audio_generator import generate_scene_dialogue_audio
 from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
 )
@@ -99,7 +101,7 @@ def _process_script_dialogue_audio_task(
 
     db = SessionLocal()
     try:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task = TaskRepository(db).get_by_id(task_id)
         if task:
             task.status = TaskStatus.PROCESSING
             db.commit()
@@ -119,7 +121,7 @@ def _process_script_dialogue_audio_task(
         }
 
         async def _run() -> None:
-            user = db.query(User).filter(User.id == user_id).first()
+            user = UserRepository(db).get_by_id(user_id)
             if not user:
                 raise RuntimeError("user_not_found")
 
@@ -195,11 +197,7 @@ def _process_script_dialogue_audio_task(
             skipped = 0
             for idx, scene in enumerate(scenes, start=1):
                 if not overwrite_audio and scene_has_dialogue_audio(scene, script_id):
-                    beat_count = (
-                        db.query(SceneBeat)
-                        .filter(SceneBeat.scene_id == scene.id)
-                        .count()
-                    )
+                    beat_count = count_scene_beats(db, scene.id)
                     if beat_count > 0:
                         skipped += 1
                         update_task_progress(
@@ -238,7 +236,7 @@ def _process_script_dialogue_audio_task(
             task.result_file_path = f"script:{script_id}:dialogue_audio"
             update_task_progress(db, task, "对白音轨生成完成")
     except Exception as exc:
-        task = db.query(Task).filter(Task.id == task_id).first()
+        task = TaskRepository(db).get_by_id(task_id)
         if task:
             task.status = TaskStatus.FAILED
             task.error_message = str(exc)
