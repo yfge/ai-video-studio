@@ -253,6 +253,9 @@ Latest validation:
 - `ai_service_manager.py` image-to-image fallback-to-text-to-image provider
   inference, prompt construction, and fallback metadata now live in
   `app.services.ai_manager_image_fallback`.
+- `ai_service_manager.py` text-to-image and image-to-image style spec
+  resolution, prompt injection, OpenAI style derivation, and style metadata
+  attachment now live in `app.services.ai_manager_image_style`.
 
 ## Phase 6: Produce Ten Narrow Samples
 

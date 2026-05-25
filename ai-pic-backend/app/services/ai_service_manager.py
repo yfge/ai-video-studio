@@ -12,6 +12,7 @@ from app.core.logging import get_logger
 from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_image_assets as image_assets
 from app.services import ai_manager_image_fallback as image_fallback
+from app.services import ai_manager_image_style as image_style
 from app.services import ai_manager_model_cache as model_cache
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
@@ -456,34 +457,17 @@ class AIServiceManager:
         **kwargs,
     ) -> AIResponse:
         """统一图像生成接口"""
-        resolved_style_spec = None
-        style_resolution_meta: dict[str, Any] | None = None
-        openai_style_override: str | None = None
-        try:
-            if style_preset_id or style_spec is not None:
-                from app.utils.style_utils import (
-                    build_style_prompt,
-                    derive_legacy_image_style,
-                    derive_openai_image_style,
-                    resolve_style_spec,
-                )
-
-                resolved_style_spec, style_resolution_meta = resolve_style_spec(
-                    style_spec=style_spec,
-                    style_preset_id=style_preset_id,
-                    legacy_style=style,
-                    fill_defaults=True,
-                )
-                style_prompt = build_style_prompt(resolved_style_spec)
-                if style_prompt:
-                    prompt = f"{prompt.rstrip()}\n\n{style_prompt}"
-                style = derive_legacy_image_style(resolved_style_spec)
-                openai_style_override = derive_openai_image_style(
-                    resolved_style_spec, fallback=style
-                )
-        except Exception as exc:  # pragma: no cover - defensive
-            resolved_style_spec = None
-            style_resolution_meta = {"error": str(exc)}
+        style_state = image_style.resolve_text_to_image_style(
+            prompt=prompt,
+            legacy_style=style,
+            style_preset_id=style_preset_id,
+            style_spec=style_spec,
+        )
+        prompt = style_state.prompt
+        style = style_state.legacy_style
+        openai_style_override = style_state.openai_style_override
+        resolved_style_spec = style_state.resolved_style_spec
+        style_resolution_meta = style_state.resolution_meta
 
         available_providers = self.get_available_providers(
             model_type=AIModelType.TEXT_TO_IMAGE
@@ -556,14 +540,11 @@ class AIServiceManager:
                     style=provider_style,
                     **kwargs,
                 )
-                if resolved_style_spec is not None:
-                    meta = dict(response.metadata or {})
-                    meta["style_spec"] = resolved_style_spec.model_dump(
-                        mode="json", exclude_none=True
-                    )
-                    if style_resolution_meta:
-                        meta["style_spec_resolution"] = style_resolution_meta
-                    response.metadata = meta
+                image_style.attach_style_metadata(
+                    response,
+                    resolved_style_spec,
+                    style_resolution_meta,
+                )
                 self._log_response(
                     task="generate_image",
                     provider=provider_name,
@@ -632,34 +613,19 @@ class AIServiceManager:
         **kwargs,
     ) -> AIResponse:
         """统一图生图接口"""
-        resolved_style_spec = None
-        style_resolution_meta: dict[str, Any] | None = None
         legacy_style = str(kwargs.get("style") or "realistic")
-        try:
-            if style_preset_id or style_spec is not None:
-                from app.utils.style_utils import (
-                    build_style_prompt,
-                    derive_legacy_image_style,
-                    resolve_style_spec,
-                )
-
-                resolved_style_spec, style_resolution_meta = resolve_style_spec(
-                    style_spec=style_spec,
-                    style_preset_id=style_preset_id,
-                    legacy_style=legacy_style,
-                    fill_defaults=True,
-                )
-                style_prompt = build_style_prompt(resolved_style_spec)
-                if style_prompt:
-                    if prompt:
-                        prompt = f"{prompt.rstrip()}\n\n{style_prompt}"
-                    else:
-                        prompt = style_prompt
-                legacy_style = derive_legacy_image_style(resolved_style_spec)
-                kwargs["style"] = legacy_style
-        except Exception as exc:  # pragma: no cover - defensive
-            resolved_style_spec = None
-            style_resolution_meta = {"error": str(exc)}
+        style_state = image_style.resolve_image_to_image_style(
+            prompt=prompt,
+            legacy_style=legacy_style,
+            style_preset_id=style_preset_id,
+            style_spec=style_spec,
+        )
+        prompt = style_state.prompt
+        legacy_style = style_state.legacy_style
+        resolved_style_spec = style_state.resolved_style_spec
+        style_resolution_meta = style_state.resolution_meta
+        if resolved_style_spec is not None:
+            kwargs["style"] = legacy_style
 
         available_providers = self.get_available_providers(
             model_type=AIModelType.IMAGE_TO_IMAGE
@@ -736,14 +702,11 @@ class AIServiceManager:
                     model=effective_model,
                     response=response,
                 )
-                if resolved_style_spec is not None:
-                    meta = dict(response.metadata or {})
-                    meta["style_spec"] = resolved_style_spec.model_dump(
-                        mode="json", exclude_none=True
-                    )
-                    if style_resolution_meta:
-                        meta["style_spec_resolution"] = style_resolution_meta
-                    response.metadata = meta
+                image_style.attach_style_metadata(
+                    response,
+                    resolved_style_spec,
+                    style_resolution_meta,
+                )
                 if not response.success:
                     error_value = (response.error or "").strip()
                     if not error_value:
