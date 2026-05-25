@@ -257,6 +257,10 @@ Latest validation:
 - `ai_service_manager.py` shared failure response construction for unavailable
   providers, no-fallback exceptions, provider-prefixed errors, and terminal
   fallback failures now lives in `app.services.ai_manager_failure_responses`.
+- `ai_service_manager.py` model listing aggregation now lives in
+  `app.services.ai_manager_model_listing`, covering model-list cache reuse,
+  enabled-provider filtering, capability-based model type matching, and stable
+  sorting.
 - `ai_service_manager.py` text, image, image-to-image, and video default model
   resolution now lives in `app.services.ai_manager_model_resolution`, keeping
   provider calls and fallback loops in the manager.

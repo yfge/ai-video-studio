@@ -13,7 +13,7 @@ from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_image_assets as image_assets
 from app.services import ai_manager_image_fallback as image_fallback
 from app.services import ai_manager_image_style as image_style
-from app.services import ai_manager_model_cache as model_cache
+from app.services import ai_manager_model_listing as model_listing
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
 from app.services.ai_manager_logging import (
@@ -268,70 +268,15 @@ class AIServiceManager:
         """
         if not hasattr(self, "_models_cache"):
             self._models_cache = {}
-        cache_ttl = getattr(self.config, "model_list_cache_ttl", 0) or 0
-        cache_key = model_cache.model_cache_key(source, model_type)
-        cached_models = model_cache.get_cached_models(
-            self._models_cache,
-            cache_ttl=cache_ttl,
-            cache_key=cache_key,
+        return await model_listing.list_models(
+            providers=self.providers,
+            provider_weights=self.config.provider_weights,
+            models_cache=self._models_cache,
+            cache_ttl=getattr(self.config, "model_list_cache_ttl", 0) or 0,
+            model_type=model_type,
+            source=source,
+            get_models_for_type=self._get_models_for_type,
         )
-        if cached_models is not None:
-            return cached_models
-
-        models: List[Dict[str, Any]] = []
-        for provider_name, provider in self.providers.items():
-            # 仅枚举已启用的 provider
-            weight = self.config.provider_weights.get(provider_name)
-            if weight and not weight.enabled:
-                continue
-
-            try:
-                if source == "static":
-                    infos = provider.available_models
-                elif source == "remote":
-                    infos = await provider.fetch_remote_models(model_type=model_type)
-                else:  # auto
-                    infos = await self._get_models_for_type(provider, model_type)
-            except Exception:
-                # 某个 provider 拉取失败，不影响其他 provider
-                continue
-
-            if not infos:
-                continue
-
-            for mi in infos:
-                # model_type 进一步过滤（以防 Provider 忽略了参数）
-                if model_type:
-                    caps = [str(c).lower() for c in mi.capabilities or []]
-                    supports_capability = (
-                        model_type == AIModelType.IMAGE_TO_IMAGE
-                        and "image_to_image" in caps
-                    ) or (
-                        model_type == AIModelType.IMAGE_TO_VIDEO
-                        and "image_to_video" in caps
-                    )
-                    if not supports_capability and mi.model_type != model_type:
-                        continue
-                models.append(
-                    {
-                        "provider": provider_name,
-                        "id": mi.model_id,
-                        "name": mi.name,
-                        "type": mi.model_type.value,
-                        "capabilities": mi.capabilities,
-                        "metadata": getattr(mi, "metadata", {}) or {},
-                    }
-                )
-
-        # 简单排序：provider, name
-        models.sort(key=lambda x: (x["provider"], x.get("name") or x["id"]))
-        model_cache.store_cached_models(
-            self._models_cache,
-            cache_ttl=cache_ttl,
-            cache_key=cache_key,
-            models=models,
-        )
-        return models
 
     async def generate_text(
         self,
