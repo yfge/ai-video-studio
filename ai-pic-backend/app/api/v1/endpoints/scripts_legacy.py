@@ -1,7 +1,9 @@
-import json
 from typing import Any, Dict, List, Optional
 
 from app.api.v1.endpoints.scripts_catalog import router as catalog_router
+from app.api.v1.endpoints.scripts_generation_queue import (
+    router as generation_queue_router,
+)
 from app.api.v1.endpoints.scripts_lists import get_scripts as _get_scripts
 from app.api.v1.endpoints.scripts_lists import router as lists_router
 from app.api.v1.endpoints.scripts_prompt import router as prompt_router
@@ -12,7 +14,7 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Script, Story
-from app.models.task import Task, TaskStatus, TaskType
+from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.script import ScriptCreate, ScriptListItemResponse, ScriptResponse
@@ -54,7 +56,6 @@ from app.services.script.story_structure_sync import (
 from app.services.script.story_structure_sync import (
     sync_script_scenes_to_story_structure as _sync_script_scenes_to_story_structure_impl,
 )
-from app.services.task_worker import script_generate_task
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.script_parser import extract_script_structure
@@ -191,6 +192,7 @@ def _populate_dialogues_and_stage_if_missing(
 router = APIRouter()
 router.include_router(catalog_router)
 router.include_router(prompt_router)
+router.include_router(generation_queue_router)
 
 
 @router.post("/", response_model=ScriptResponse)
@@ -1251,42 +1253,6 @@ def _process_script_regeneration_task(task_id: int, request_dict: dict, user_id:
             db.commit()
     finally:
         db.close()
-
-
-@router.post("/generate-async")
-async def generate_script_async(
-    request: ScriptGenerationRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    params = request.dict()
-    fields_set = getattr(request, "model_fields_set", None)
-    if fields_set is None:
-        fields_set = getattr(request, "__fields_set__", set())
-    if "generation_mode" not in fields_set:
-        params["generation_mode"] = "production"
-    else:
-        params["generation_mode"] = params.get("generation_mode") or "production"
-    if params["generation_mode"] == "standard":
-        # Async is the operator-facing path; keep explicit standard requests light.
-        params["auto_timeline_pipeline"] = bool(params.get("auto_timeline_pipeline"))
-    elif params.get("auto_timeline_pipeline") is None:
-        params["auto_timeline_pipeline"] = True
-    t = Task(
-        title=f"生成剧本 - 剧集{request.episode_id}",
-        description="异步剧本生成",
-        task_type=TaskType.SCRIPT_GENERATION,
-        prompt=f"Script for episode {request.episode_id}",
-        parameters=json.dumps(params, ensure_ascii=False),
-        user_id=current_user.id,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-
-    # 交给 Celery worker 处理
-    script_generate_task.delay(t.id, params, current_user.id)
-    return {"success": True, "data": {"task_id": t.id, "status": t.status}}
 
 
 router.include_router(lists_router)
