@@ -9,24 +9,25 @@ from typing import Any
 import requests
 
 from scripts.harness.provider_chain_api import request_json
-from scripts.harness.provider_chain_payloads import build_timeline_spec
+from scripts.harness.provider_chain_payloads import (
+    attach_timeline_video_assets,
+    build_timeline_seed_spec,
+)
 
 
 TERMINAL_RENDER_STATUSES = {"succeeded", "failed", "cancelled"}
 
 
-def compose_timeline(
+def create_seed_timeline(
     session: requests.Session,
     args: argparse.Namespace,
-    clips: list[dict[str, Any]],
+    script: dict[str, Any],
     payload: dict[str, Any],
 ) -> dict[str, Any]:
-    if args.mode != "full-30s":
-        return {}
     if not args.episode_id or not args.script_id:
-        raise RuntimeError("full-30s requires --episode-id and --script-id")
+        raise RuntimeError("timeline-first regression requires --episode-id and --script-id")
 
-    spec = build_timeline_spec(args.run_id, args.episode_id, args.script_id, clips)
+    spec = build_timeline_seed_spec(args.run_id, args.episode_id, args.script_id, script)
     timeline = request_json(
         session,
         "POST",
@@ -44,7 +45,55 @@ def compose_timeline(
     )
     if not timeline.get("id") or timeline.get("version") != 1:
         raise RuntimeError("timeline_create_missing_identity")
+    payload["key_artifacts"]["timeline_seed"] = {
+        "id": timeline["id"],
+        "version": timeline["version"],
+        "duration_ms": spec["duration_ms"],
+        "clip_count": len((spec.get("tracks") or [])[0].get("clips") or []),
+        "created_before_media_generation": True,
+    }
+    return timeline
 
+
+def update_timeline_with_assets(
+    session: requests.Session,
+    args: argparse.Namespace,
+    timeline: dict[str, Any],
+    clips: list[dict[str, Any]],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    spec = attach_timeline_video_assets(timeline["spec"], clips, args.run_id)
+    updated = request_json(
+        session,
+        "PATCH",
+        f"{args.api_url.rstrip('/')}/api/v1/timelines/{timeline['id']}",
+        json={
+            "expected_version": timeline["version"],
+            "status": "ready",
+            "spec": spec,
+            "source_audio_timeline_version": 1,
+        },
+        chain=payload["request_chain"],
+        label="timeline-assets-update",
+        timeout=60,
+    )
+    payload["key_artifacts"]["timeline"] = {
+        "id": updated["id"],
+        "seed_version": timeline["version"],
+        "version": updated["version"],
+        "duration_ms": updated["spec"]["duration_ms"],
+        "clip_count": len(clips),
+        "created_before_media_generation": True,
+    }
+    return updated
+
+
+def render_timeline(
+    session: requests.Session,
+    args: argparse.Namespace,
+    timeline: dict[str, Any],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
     job = request_json(
         session,
         "POST",
@@ -60,12 +109,6 @@ def compose_timeline(
         timeout=60,
     )
     result = poll_render_job(session, args, timeline["id"], job["id"], payload)
-    payload["key_artifacts"]["timeline"] = {
-        "id": timeline["id"],
-        "version": timeline["version"],
-        "duration_ms": spec["duration_ms"],
-        "clip_count": len(clips),
-    }
     payload["key_artifacts"]["render_job"] = result
     return result
 

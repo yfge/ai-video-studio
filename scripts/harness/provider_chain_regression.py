@@ -20,11 +20,16 @@ from scripts.harness.provider_chain_api import (
     create_virtual_ip,
     generate_character_image,
     generate_script,
-    generate_videos,
     login,
 )
+from scripts.harness.provider_chain_media import generate_videos_for_timeline
 from scripts.harness.provider_chain_payloads import mark_quality, scene_durations
-from scripts.harness.provider_chain_timeline import cleanup_virtual_ip, compose_timeline
+from scripts.harness.provider_chain_timeline import (
+    cleanup_virtual_ip,
+    create_seed_timeline,
+    render_timeline,
+    update_timeline_with_assets,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -71,12 +76,14 @@ def run(args: argparse.Namespace, payload: dict[str, Any]) -> None:
         login(session, args, payload)
         confirm_models(session, args, payload)
         script = generate_script(session, args, payload)
+        timeline = create_seed_timeline(session, args, script, payload)
         vip = create_virtual_ip(session, args, script, payload)
         try:
             image = generate_character_image(session, args, script, vip, payload)
-            clips = generate_videos(session, args, script, image, payload)
+            clips = generate_videos_for_timeline(session, args, timeline, image, payload)
             mark_quality(payload, clips, image["image_url"])
-            compose_timeline(session, args, clips, payload)
+            updated = update_timeline_with_assets(session, args, timeline, clips, payload)
+            render_timeline(session, args, updated, payload)
         finally:
             cleanup_virtual_ip(session, args, payload)
 

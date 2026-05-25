@@ -1,11 +1,14 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.append(str(REPO_ROOT))
 
 from scripts.harness.provider_chain_payloads import (  # noqa: E402
-    build_timeline_spec,
+    attach_timeline_video_assets,
+    build_timeline_seed_spec,
     extract_structured_script,
     scene_durations,
 )
@@ -50,10 +53,37 @@ def test_scene_durations_split_modes() -> None:
     assert scene_durations("full-30s") == [15, 15]
 
 
-def test_build_timeline_spec_preserves_lineage() -> None:
+def test_timeline_seed_precedes_video_assets_and_preserves_lineage() -> None:
+    script = {
+        "title": "机甲便利店",
+        "characters": [
+            {
+                "name": "小蓝",
+                "appearance_prompt": "圆润蓝色机器人",
+                "consistency_anchor": "blue robot, visor eyes, orange scarf",
+            }
+        ],
+        "scenes": [
+            {
+                "scene_id": "s1",
+                "duration_seconds": 15,
+                "plot": "机器人进门。",
+                "dialogue": [{"speaker": "小蓝", "line": "我到了。"}],
+                "video_prompt": "robot enters",
+            },
+            {
+                "scene_id": "s2",
+                "duration_seconds": 15,
+                "plot": "机器人解决问题。",
+                "dialogue": [{"speaker": "小蓝", "line": "订单归位。"}],
+                "video_prompt": "robot solves",
+            },
+        ],
+    }
     clips = [
         {
             "ordinal": 1,
+            "clip_id": "video_s1_provider_chain_1_001",
             "duration_seconds": 15,
             "video_url": "https://example.com/a.mp4",
             "image_url": "https://example.com/robot.png",
@@ -69,6 +99,7 @@ def test_build_timeline_spec_preserves_lineage() -> None:
         },
         {
             "ordinal": 2,
+            "clip_id": "video_s2_provider_chain_2_002",
             "duration_seconds": 15,
             "video_url": "https://example.com/b.mp4",
             "image_url": "https://example.com/robot.png",
@@ -84,10 +115,54 @@ def test_build_timeline_spec_preserves_lineage() -> None:
         },
     ]
 
-    spec = build_timeline_spec("run-1", episode_id=133, script_id=117, clips=clips)
+    seed = build_timeline_seed_spec(
+        "run-1", episode_id=133, script_id=117, script=script
+    )
+    seed_clips = seed["tracks"][0]["clips"]
+    spec = attach_timeline_video_assets(seed, clips, "run-1")
     video_clips = spec["tracks"][0]["clips"]
 
-    assert spec["duration_ms"] == 30000
+    assert seed["duration_ms"] == 30000
+    assert seed_clips[0]["placeholder"] is True
+    assert "asset_ref" not in seed_clips[0]
     assert video_clips[0]["asset_ref"]["url"] == "https://example.com/a.mp4"
+    assert video_clips[0]["placeholder"] is False
     assert video_clips[1]["start_ms"] == 15000
     assert video_clips[0]["source_refs"]["dialogue"][0]["line"] == "我到了。"
+    assert video_clips[0]["source_refs"]["provider_chain_stage"] == "video_generated"
+
+
+def test_timeline_asset_attach_fails_on_clip_id_mismatch() -> None:
+    script = {
+        "characters": [
+            {
+                "name": "小蓝",
+                "appearance_prompt": "圆润蓝色机器人",
+                "consistency_anchor": "blue robot",
+            }
+        ],
+        "scenes": [
+            {
+                "scene_id": "s1",
+                "duration_seconds": 4,
+                "plot": "机器人进门。",
+                "dialogue": [{"speaker": "小蓝", "line": "我到了。"}],
+                "video_prompt": "robot enters",
+            }
+        ],
+    }
+    seed = build_timeline_seed_spec(
+        "run-1", episode_id=133, script_id=117, script=script
+    )
+    clips = [
+        {
+            "clip_id": "wrong_clip",
+            "video_url": "https://example.com/a.mp4",
+            "image_url": "https://example.com/robot.png",
+            "provider": "volcengine",
+            "model": "doubao-seedance-2-0-260128",
+        }
+    ]
+
+    with pytest.raises(RuntimeError, match="timeline_asset_lineage_mismatch"):
+        attach_timeline_video_assets(seed, clips, "run-1")

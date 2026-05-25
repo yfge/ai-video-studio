@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from copy import deepcopy
 from typing import Any
 
 TEXT_MODEL = "deepseek-v4-flash"
@@ -87,49 +88,50 @@ def video_prompt(scene: dict[str, Any], character: dict[str, Any]) -> str:
     )
 
 
-def build_timeline_spec(
+def build_timeline_seed_spec(
     run_id: str,
     episode_id: int,
     script_id: int,
-    clips: list[dict[str, Any]],
+    script: dict[str, Any],
+    image_url: str | None = None,
 ) -> dict[str, Any]:
+    character = script["characters"][0]
     cursor = 0
     video_clips: list[dict[str, Any]] = []
-    for clip in clips:
-        duration_ms = int(round(float(clip["duration_seconds"]) * 1000))
+    for ordinal, scene in enumerate(script["scenes"], start=1):
+        duration = int(scene.get("duration_seconds") or scene_durations("smoke")[0])
+        duration_ms = duration * 1000
         start_ms, end_ms = cursor, cursor + duration_ms
         cursor = end_ms
-        scene_id = clip["scene"].get("scene_id") or f"scene_{clip['ordinal']}"
-        beat_id = f"provider_chain_{clip['ordinal']}"
-        clip_id = f"video_{scene_id}_{beat_id}_{clip['ordinal']:03d}".replace("-", "_")
+        scene_id = str(scene.get("scene_id") or f"scene_{ordinal}")
+        beat_id = f"provider_chain_{ordinal}"
+        clip_id = f"video_{scene_id}_{beat_id}_{ordinal:03d}".replace("-", "_")
+        prompt = video_prompt(scene, character)
         video_clips.append(
             {
                 "clip_id": clip_id,
                 "track_type": "video",
                 "scene_id": scene_id,
                 "beat_id": beat_id,
-                "ordinal": clip["ordinal"],
+                "ordinal": ordinal,
                 "start_ms": start_ms,
                 "end_ms": end_ms,
                 "duration_ms": duration_ms,
-                "source": {"kind": "manual", "provider_chain_run_id": run_id},
+                "source": {
+                    "kind": "manual",
+                    "provider_chain_run_id": run_id,
+                    "timeline_first": True,
+                },
                 "source_refs": {
                     "provider_chain_run_id": run_id,
-                    "dialogue": clip["scene"].get("dialogue"),
-                    "image_url": clip.get("image_url"),
-                    "video_prompt": clip.get("prompt"),
+                    "provider_chain_stage": "timeline_seed",
+                    "dialogue": scene.get("dialogue"),
+                    "image_url": image_url,
+                    "script_scene": scene,
+                    "video_prompt": prompt,
                 },
-                "asset_ref": {
-                    "kind": "provider_chain_video",
-                    "url": clip["video_url"],
-                    "file_url": clip["video_url"],
-                    "provider": clip["provider"],
-                    "model": clip["model"],
-                    "task_id": clip.get("task_id"),
-                },
-                "video_url": clip["video_url"],
-                "placeholder": False,
-                "text": clip["scene"].get("plot"),
+                "placeholder": True,
+                "text": scene.get("plot"),
             }
         )
     return {
@@ -141,9 +143,64 @@ def build_timeline_spec(
         "fps": 24,
         "resolution": "1080x1920",
         "duration_ms": cursor,
-        "source": {"type": "provider_chain_regression", "run_id": run_id},
+        "source": {
+            "type": "provider_chain_regression",
+            "run_id": run_id,
+            "timeline_first": True,
+        },
         "tracks": [{"track_type": "video", "clips": video_clips}],
     }
+
+
+def attach_timeline_video_assets(
+    seed_spec: dict[str, Any],
+    clips: list[dict[str, Any]],
+    run_id: str,
+) -> dict[str, Any]:
+    spec = deepcopy(seed_spec)
+    generated_by_id = {clip.get("clip_id"): clip for clip in clips}
+    attached_ids: set[str] = set()
+    missing_ids: list[str] = []
+    for track in spec.get("tracks") or []:
+        if not isinstance(track, dict) or track.get("track_type") != "video":
+            continue
+        for clip in track.get("clips") or []:
+            if not isinstance(clip, dict):
+                continue
+            generated = generated_by_id.get(clip.get("clip_id"))
+            if not generated:
+                missing_ids.append(str(clip.get("clip_id")))
+                continue
+            attached_ids.add(str(clip.get("clip_id")))
+            clip["placeholder"] = False
+            clip["video_url"] = generated["video_url"]
+            clip["asset_ref"] = {
+                "kind": "provider_chain_video",
+                "url": generated["video_url"],
+                "file_url": generated["video_url"],
+                "provider": generated["provider"],
+                "model": generated["model"],
+                "task_id": generated.get("task_id"),
+            }
+            refs = clip.setdefault("source_refs", {})
+            refs.update(
+                {
+                    "provider_chain_run_id": run_id,
+                    "provider_chain_stage": "video_generated",
+                    "image_url": generated.get("image_url"),
+                    "video_url": generated["video_url"],
+                    "task_id": generated.get("task_id"),
+                    "provider": generated["provider"],
+                    "model": generated["model"],
+                }
+            )
+    unused_ids = {str(clip_id) for clip_id in generated_by_id if clip_id not in attached_ids}
+    if missing_ids or unused_ids:
+        raise RuntimeError(
+            "timeline_asset_lineage_mismatch: "
+            f"missing={sorted(missing_ids)} unused={sorted(unused_ids)}"
+        )
+    return spec
 
 
 def mark_quality(payload: dict[str, Any], clips: list[dict[str, Any]], image_url: str) -> None:

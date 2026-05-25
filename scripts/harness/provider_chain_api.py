@@ -16,7 +16,6 @@ from scripts.harness.provider_chain_payloads import (
     character_image_prompt,
     extract_structured_script,
     scene_durations,
-    video_prompt,
 )
 
 
@@ -211,66 +210,3 @@ def generate_character_image(
         "file_path": body.get("file_path"),
     }
     return {"image_url": image_url, "image_id": body.get("id")}
-
-
-def generate_videos(
-    session: requests.Session,
-    args: argparse.Namespace,
-    script: dict[str, Any],
-    image: dict[str, Any],
-    payload: dict[str, Any],
-) -> list[dict[str, Any]]:
-    clips: list[dict[str, Any]] = []
-    character = script["characters"][0]
-    for index, (scene, duration) in enumerate(
-        zip(script["scenes"], scene_durations(args.mode)), start=1
-    ):
-        prompt = video_prompt(scene, character)
-        body = request_json(
-            session,
-            "POST",
-            f"{args.api_url.rstrip('/')}/api/v1/ai/generate/video",
-            json={
-                "prompt": prompt,
-                "image_url": image["image_url"],
-                "model": VIDEO_MODEL,
-                "prefer_provider": "volcengine",
-                "duration": duration,
-                "fps": 24,
-                "resolution": "720p",
-            },
-            chain=payload["request_chain"],
-            label=f"seedance-video-{index}",
-            timeout=args.timeout_seconds,
-        )
-        data = body.get("data") or {}
-        clips.append(_validated_video_clip(data, scene, prompt, duration, index, image))
-    payload["key_artifacts"]["videos"] = clips
-    return clips
-
-
-def _validated_video_clip(
-    data: dict[str, Any],
-    scene: dict[str, Any],
-    prompt: str,
-    duration: int,
-    index: int,
-    image: dict[str, Any],
-) -> dict[str, Any]:
-    model = str(data.get("model") or "")
-    video_url = data.get("video_url")
-    if data.get("provider") != "volcengine" or SEEDANCE_CANONICAL not in model:
-        raise RuntimeError(f"unexpected video provider/model: {data.get('provider')} {model}")
-    if not isinstance(video_url, str) or not video_url.startswith(("http://", "https://")):
-        raise RuntimeError(f"video_{index}_missing_video_url")
-    return {
-        "ordinal": index,
-        "duration_seconds": duration,
-        "video_url": video_url,
-        "image_url": image["image_url"],
-        "provider": data.get("provider"),
-        "model": model,
-        "task_id": (data.get("metadata") or {}).get("task_id"),
-        "prompt": prompt,
-        "scene": scene,
-    }
