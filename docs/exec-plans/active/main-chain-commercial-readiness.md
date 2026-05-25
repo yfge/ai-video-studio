@@ -244,6 +244,9 @@ Latest validation:
 - `ai_service_manager.py` text, image, image-to-image, and video default model
   resolution now lives in `app.services.ai_manager_model_resolution`, keeping
   provider calls and fallback loops in the manager.
+- `ai_service_manager.py` generated image URL/base64 normalization and OSS upload
+  now lives in `app.services.ai_manager_image_assets`; the manager keeps the
+  compatibility wrapper used by existing generation paths.
 
 ## Phase 6: Produce Ten Narrow Samples
 

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
 from app.services import ai_manager_failure_responses as failure_responses
+from app.services import ai_manager_image_assets as image_assets
 from app.services import ai_manager_model_cache as model_cache
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
@@ -217,112 +218,11 @@ class AIServiceManager:
     async def _convert_base64_images_to_oss(
         self, images: Any, prefix: str = "ai-generated"
     ) -> List[str]:
-        """
-        将 base64 格式的图片上传到 OSS 并返回 URL 列表。
-
-        如果图片已经是 URL 格式，则直接返回。
-        如果是 data:image/...;base64,... 格式，则解码后上传到 OSS。
-
-        Args:
-            images: 图片列表，可以是 URL 或 base64 格式
-            prefix: OSS 存储前缀
-
-        Returns:
-            转换后的 URL 列表
-        """
-        if not images:
-            return []
-
-        normalized_images: List[str] = []
-        raw_images: list[Any]
-        if isinstance(images, list):
-            raw_images = images
-        else:
-            raw_images = [images]
-
-        for img in raw_images:
-            candidate: Any = img
-            if isinstance(img, dict):
-                candidate = img.get("url") or img.get("image_url")
-            if candidate is None:
-                continue
-            if not isinstance(candidate, str):
-                candidate = str(candidate)
-            candidate = candidate.strip()
-            if not candidate:
-                continue
-            normalized_images.append(candidate)
-
-        if not normalized_images:
-            return []
-
-        from app.services.storage.oss_service import oss_service
-
-        if not oss_service:
-            self.logger.warning("OSS service not available, returning original images")
-            return normalized_images
-
-        result_urls: List[str] = []
-
-        for img in normalized_images:
-
-            # 检查是否是 base64 格式
-            if not img.startswith("data:image"):
-                # 已经是 URL，直接添加
-                result_urls.append(img)
-                continue
-
-            try:
-                # 解析 base64 数据
-                # 格式: data:image/png;base64,iVBORw0KGgo...
-                header, b64_data = img.split(",", 1)
-                # 从 header 中提取 MIME 类型，如 "data:image/png;base64"
-                mime_part = header.split(";")[0]  # "data:image/png"
-                mime_type = mime_part.split(":")[1] if ":" in mime_part else "image/png"
-                ext = mime_type.split("/")[1] if "/" in mime_type else "png"
-
-                # 上传到 OSS
-                from app.services.media import build_generation_metadata
-                from app.services.media import upload_base64 as upload_media_base64
-
-                upload_result = await upload_media_base64(
-                    base64_payload=b64_data,
-                    filename=f"generated.{ext}",
-                    media_type="image",
-                    prefix=prefix,
-                    metadata=build_generation_metadata(
-                        provider="unknown",
-                        model=None,
-                        media_type="image",
-                        mime_type=mime_type,
-                        extra={"source": "base64"},
-                    ),
-                    oss_service_override=oss_service,
-                )
-
-                if upload_result.get("success"):
-                    oss_url = upload_result.get("file_url")
-                    result_urls.append(oss_url)
-                    approx_size = len(b64_data) * 3 // 4
-                    self.logger.info(
-                        "Converted base64 image to OSS URL | size=%d url=%s",
-                        approx_size,
-                        oss_url,
-                    )
-                else:
-                    # 上传失败，保留原始 base64（降级处理）
-                    self.logger.warning(
-                        "Failed to upload base64 image to OSS: %s",
-                        upload_result.get("error"),
-                    )
-                    result_urls.append(img)
-
-            except Exception as e:
-                self.logger.error("Error converting base64 to OSS URL: %s", e)
-                # 出错时保留原始数据
-                result_urls.append(img)
-
-        return result_urls
+        return await image_assets.convert_base64_images_to_oss(
+            images,
+            prefix=prefix,
+            logger=self.logger,
+        )
 
     def _initialize_providers(self):
         """初始化所有提供商"""
