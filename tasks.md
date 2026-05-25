@@ -81,7 +81,7 @@
 - [x] 将 operator rework 控制接入 provider-backed video generation API。
 - [x] 将 provider rework 成功结果接入 render queue / export 自动编排。
 - [x] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。
-- [ ] 继续拆分并下线 `scripts_legacy.py`，让 timeline/audio/storyboard 主链不再依赖 legacy router。
+- [x] 继续拆分并下线 `scripts_legacy.py`，让 timeline/audio/storyboard 主链不再依赖 legacy router。
   - [x] 已把 legacy router 和 audio/timeline pipeline endpoints 的任务标题 helper 收敛到
         `services/script/task_titles.py`，并清掉 `scripts_legacy.py` 中已无引用的
         URL/UUID/datetime helper。
@@ -108,6 +108,8 @@
   - [x] 已把异步剧本生成 Celery processor 迁到
         `services/script/generation_task_processor.py`，上下文、attempt/scoring 和持久化
         helper 拆成 focused service，worker 不再从 legacy router 导入。
+  - [x] 已把主 `/scripts` router 组装迁到 `api/v1/endpoints/scripts/__init__.py`，
+        `scripts_legacy.py` 只保留老导入兼容 wrapper，不再承载主要用户路径。
 - [x] 拆分 `dialogue_audio_service.py`，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
   - [x] 已把 episode 拼接/写回迁到 `services/audio/episode_audio_builder.py`，并把 episode timeline beat 构造迁到 `services/audio/episode_timeline_beats.py`；旧服务只保留兼容导入。
   - [x] 已把 scene beat 落库、scene audio metadata 写回和单场时长校验迁到 `services/audio/scene_audio_persistence.py`。
@@ -161,7 +163,7 @@
 
 - [ ] 至少 1 个 episode 可以从 audio-driven timeline 重建到最终导出。
 - [ ] re-dub / re-render 从 operator UI 到真实生成/导出都不会打断 stable `clip_id`。
-- [ ] 不再有主要用户路径依赖 `scripts_legacy.py`。
+- [x] 不再有主要用户路径依赖 `scripts_legacy.py`。
 - [ ] storyboard 页面不再是系统主编排入口。
 - [x] 真实 `Episode -> Timeline -> Render -> Export` 浏览器/API 证据通过。
 - [ ] 10 条窄垂类样片完成并记录生产指标。

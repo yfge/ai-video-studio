@@ -275,6 +275,10 @@ Latest validation:
   attempt/scoring, and persistence were split into focused service modules, and
   `task_worker` now dispatches directly to the service instead of importing the
   legacy router package.
+- The main `/scripts` API router is now assembled in
+  `app.api.v1.endpoints.scripts`; `scripts_legacy.py` remains only as a
+  compatibility wrapper for old imports and no longer carries the primary user
+  route mount.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.
