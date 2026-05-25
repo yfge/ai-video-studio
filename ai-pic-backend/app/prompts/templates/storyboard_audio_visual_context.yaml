@@ -1,10 +1,10 @@
 name: storyboard_audio_visual_context
 description: "Audio timeline -> storyboard: inject story character card briefs + environment hint into visual-only description"
 category: storyboard
-version: "1.1"
+version: "1.2"
 author: "AI Video Studio"
 created_at: "2026-01-30"
-updated_at: "2026-05-13"
+updated_at: "2026-05-25"
 
 variables:
   base:
