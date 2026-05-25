@@ -224,6 +224,10 @@ Latest validation:
   `app.services.audio.episode_timeline_beats`; `dialogue_audio_service.py`
   remains a compatibility import surface for those helpers. Scene-level TTS
   generation and beat persistence are still the remaining split target.
+- Scene beat persistence, scene audio metadata writeback, and per-scene duration
+  validation now call `app.services.audio.scene_audio_persistence` from the
+  historical service. The remaining `dialogue_audio_service.py` work is the
+  scene-level TTS generation orchestration itself.
 
 ## Phase 6: Produce Ten Narrow Samples
 

@@ -12,8 +12,7 @@ from typing import Any, Sequence
 import httpx
 from app.core.logging import get_logger
 from app.models.script import Episode, Script, Story
-from app.models.story_structure import Scene, SceneBeat
-from app.repositories.audio_timeline_repository import list_active_scene_beats
+from app.models.story_structure import Scene
 from app.services.ai_service import ai_service
 from app.services.audio.dialogue_processing.prose_dialogue_splitter import (
     repair_scene_dialogues_for_audio,
@@ -27,6 +26,11 @@ from app.services.audio.episode_audio_builder import (  # noqa: F401
 )
 from app.services.audio.episode_timeline_beats import (  # noqa: F401
     build_episode_timeline_beats,
+)
+from app.services.audio.scene_audio_persistence import (
+    persist_beats,
+    update_scene_metadata,
+    validate_duration,
 )
 
 # Re-export storyboard timeline helpers from the historical service module.
@@ -1119,38 +1123,13 @@ async def generate_scene_dialogue_audio(
         duration_ms_total = _wav_duration_ms(scene_wav)
         duration_seconds_total = round(duration_ms_total / 1000.0, 3)
 
-        # Per-scene duration validation
-        if target_duration_seconds:
-            target_ms = target_duration_seconds * 1000
-            duration_ratio = duration_ms_total / target_ms if target_ms > 0 else 0
-            tolerance_low, tolerance_high = 0.7, 1.3  # ±30% for single scene
-
-            logger.info(
-                "Scene dialogue audio duration validation",
-                extra={
-                    "scene_id": scene.id,
-                    "scene_number": scene_number,
-                    "target_duration_seconds": target_duration_seconds,
-                    "actual_duration_seconds": duration_seconds_total,
-                    "duration_ratio": round(duration_ratio, 2),
-                    "within_tolerance": tolerance_low
-                    <= duration_ratio
-                    <= tolerance_high,
-                },
-            )
-
-            if duration_ratio < tolerance_low:
-                logger.warning(
-                    f"Scene {scene_number} duration too short: "
-                    f"{duration_seconds_total}s vs target {target_duration_seconds}s "
-                    f"({duration_ratio:.0%})"
-                )
-            elif duration_ratio > tolerance_high:
-                logger.warning(
-                    f"Scene {scene_number} duration too long: "
-                    f"{duration_seconds_total}s vs target {target_duration_seconds}s "
-                    f"({duration_ratio:.0%})"
-                )
+        validate_duration(
+            scene,
+            scene_number,
+            duration_ms_total,
+            duration_seconds_total,
+            target_duration_seconds,
+        )
 
         oss_result = await oss_service.upload_file_content(
             file_content=scene_mp3.read_bytes(),
@@ -1168,59 +1147,7 @@ async def generate_scene_dialogue_audio(
         if not oss_result.get("success") or not oss_result.get("file_url"):
             raise RuntimeError(f"OSS 上传失败: {oss_result}")
 
-        # Persist beats into scene_beats (soft-delete old, create new)
-        if overwrite_beats:
-            for beat in list_active_scene_beats(db, int(scene.id)):
-                beat.soft_delete(reason="dialogue_audio_overwrite")
-
-        start_ms = 0
-        for idx, beat in enumerate(beats, start=1):
-            dur_ms = int(beat.get("duration_ms") or 0)
-            end_ms = start_ms + dur_ms
-            meta = {
-                "start_ms": start_ms,
-                "end_ms": end_ms,
-                "speaker_name": beat.get("speaker_name"),
-                "speaker_kind": beat.get("speaker_kind"),
-                "voice_config": beat.get("voice_config"),
-                "emotion": beat.get("emotion"),
-                "tts_emotion": beat.get("tts_emotion"),
-                "action": beat.get("action"),
-                "source": "dialogue_audio_pipeline",
-            }
-            row = SceneBeat(
-                scene_id=scene.id,
-                order_index=idx,
-                beat_type=beat.get("beat_type"),
-                beat_summary=beat.get("beat_summary"),
-                characters_involved=scene_character_names or None,
-                dialogue_excerpt=beat.get("dialogue_excerpt"),
-                duration_seconds=round(dur_ms / 1000.0, 3),
-                extra_metadata=meta,
-            )
-            db.add(row)
-            start_ms = end_ms
-
-        # Update scene metadata with audio info
-        extra = dict(scene.extra_metadata or {})
-        prev = extra.get("dialogue_audio")
-        prev_version = 0
-        if isinstance(prev, dict):
-            try:
-                prev_version = int(prev.get("version") or 0)
-            except Exception:
-                prev_version = 0
-        payload = {
-            "oss_url": oss_result["file_url"],
-            "duration_seconds": duration_seconds_total,
-            "generated_at": _utc_now_iso(),
-            "version": prev_version + 1,
-            "script_id": script.id,
-        }
-        extra["dialogue_audio"] = payload
-        scene.extra_metadata = extra
-        db.add(scene)
-        db.commit()
-        db.refresh(scene)
-
-        return payload
+        persist_beats(db, beats, scene, scene_character_names, overwrite_beats)
+        return update_scene_metadata(
+            db, scene, script, oss_result, duration_seconds_total
+        )
