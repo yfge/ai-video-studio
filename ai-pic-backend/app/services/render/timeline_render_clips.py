@@ -2,29 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from app.models.timeline import Timeline
 from app.repositories.timeline_repository import MediaAssetRepository
+from app.services.render.timeline_render_clip_assets import (
+    TimelineClipAssetVideoResolver,
+)
 from app.services.render.timeline_render_legacy_match import (
     find_legacy_storyboard_frame,
 )
+from app.services.render.timeline_render_types import TimelineClipVideo
 from sqlalchemy.orm import Session
-
-
-@dataclass(frozen=True)
-class TimelineClipVideo:
-    """Resolved video source for one Timeline video clip."""
-
-    clip_id: str
-    url: str
-    duration_seconds: float
-    scene_id: Any = None
-    scene_number: Any = None
-    start_ms: int | None = None
-    end_ms: int | None = None
-    source: str = "timeline"
 
 
 def resolve_timeline_video_clips(
@@ -38,6 +27,7 @@ def resolve_timeline_video_clips(
 class TimelineClipResolver:
     def __init__(self, db: Session):
         self.media_assets = MediaAssetRepository(db)
+        self.clip_asset_videos = TimelineClipAssetVideoResolver(db)
 
     def resolve(
         self,
@@ -50,7 +40,9 @@ class TimelineClipResolver:
 
         for clip in self._timeline_video_clips(spec):
             clip_id = self._clip_id(clip)
-            url, source = self._resolve_clip_video_url(clip, storyboard_frames)
+            url, source = self._resolve_clip_video_url(
+                timeline, clip, storyboard_frames
+            )
             if not url:
                 missing.append(self._missing_clip_payload(clip, clip_id))
                 continue
@@ -70,9 +62,17 @@ class TimelineClipResolver:
 
     def _resolve_clip_video_url(
         self,
+        timeline: Timeline,
         clip: dict[str, Any],
         storyboard_frames: list[dict[str, Any]],
     ) -> tuple[str | None, str]:
+        clip_asset_url, clip_asset_source = self.clip_asset_videos.resolve(
+            timeline=timeline,
+            clip_id=self._clip_id(clip),
+        )
+        if clip_asset_url:
+            return clip_asset_url, clip_asset_source
+
         direct = self._clip_direct_video_url(clip)
         if direct:
             return direct, "timeline_clip"

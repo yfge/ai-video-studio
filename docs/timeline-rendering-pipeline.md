@@ -285,6 +285,12 @@ same timeline version and preset.
 Render jobs consume exactly one locked timeline version. They must not render a
 mutable current draft.
 
+When a stable `clip_id` has replacement lineage, render resolution must prefer
+the latest active `generated_video` `timeline_clip_assets` link before falling
+back to the original Timeline Spec asset reference or legacy storyboard video.
+Provider rework success may enqueue a final render job for the same locked
+Timeline version by adding a rework fingerprint to the render preset hash.
+
 Render inputs:
 
 - `timeline_id`

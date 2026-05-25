@@ -20,7 +20,7 @@ This document began as an optimization plan. The P0-P2 ownership alignment
 slice is now implemented. The current worktree also includes the Phase 3
 render/export execution slice. One real API E2E run now passes through a legacy
 storyboard video migration bridge; commercial readiness still depends on
-provider rework render orchestration and production sample validation.
+legacy risk reduction and production sample validation.
 
 ## Current Chain Check
 
@@ -49,8 +49,8 @@ render/export a Timeline whose clips resolve to legacy storyboard videos.
 First-class clip asset lineage now has backend source/output/rework records,
 operator controls for existing media assets, and a provider-backed video rework
 task path that records successful outputs as replacement lineage. Operator-side
-provider rework entry is implemented; render queue orchestration remains
-pending.
+provider rework entry is implemented, and provider success can queue a final
+render job with a rework fingerprint.
 
 ## Implementation Status
 
@@ -72,8 +72,8 @@ pending.
 - Operator asset audit, existing-media rework controls, and provider-backed
   video rework controls are implemented for selected Timeline clips. Backend
   provider-backed video rework queueing and success lineage are implemented,
-  while render queue orchestration and commercial-readiness sample production
-  remain pending.
+  and provider success queues a final render job whose preset is keyed to the
+  replacement asset. Commercial-readiness sample production remains pending.
 
 ## Findings
 
@@ -290,9 +290,9 @@ Exit criteria:
 
 Steps 1-7 are implemented for this slice. Delete/rollback, stricter Timeline
 Spec validation, backend first-class clip asset lineage, provider-backed video
-rework success lineage, and operator provider-rework entry are also
-implemented. The next boundary is render queue orchestration, legacy debt
-reduction, and production sample validation.
+rework success lineage, operator provider-rework entry, and rework-triggered
+render queue orchestration are also implemented. The next boundary is legacy
+debt reduction and production sample validation.
 
 ## Validation Matrix
 

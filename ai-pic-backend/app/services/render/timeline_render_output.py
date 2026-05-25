@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.models.timeline import MediaAsset, RenderJob, Timeline
 from app.repositories.timeline_repository import MediaAssetRepository
 from app.services.media import upload_bytes
-from app.services.render.timeline_render_clips import TimelineClipVideo
+from app.services.render.timeline_render_types import TimelineClipVideo
 from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
 from sqlalchemy.orm import Session
 

@@ -10,6 +10,10 @@ from app.repositories.timeline_repository import (
     TimelineClipAssetRepository,
     TimelineRepository,
 )
+from app.services.timeline_rework_render_queue import (
+    dispatch_provider_rework_render_job,
+    queue_provider_rework_render_job,
+)
 
 
 def apply_timeline_rework_result(
@@ -64,34 +68,46 @@ def apply_timeline_rework_result(
         media_asset_id=media_asset.id,
     )
     if existing is not None:
-        return
-    previous = clip_assets.get_latest_for_clip_role(
-        timeline_id=timeline.id,
-        timeline_version=timeline.version,
-        clip_id=clip_id,
-        asset_role=asset_role,
-    )
-    clip_assets.create(
-        timeline_id=timeline.id,
-        timeline_version=timeline.version,
-        clip_id=clip_id,
-        track_type="video",
-        asset_role=asset_role,
-        media_asset_id=media_asset.id,
-        source="provider_rework",
-        source_ref={
-            "action": context.get("action"),
-            "reason": context.get("reason"),
-            "video_generation_task_id": item.id,
-            "provider_task_id": item.provider_task_id,
-            "provider": item.provider,
-            "model": item.model,
-            "preserves_clip_id": True,
-        },
-        replacement_of_id=previous.id if previous else None,
-        created_by=item.user_id,
+        clip_link = existing
+    else:
+        previous = clip_assets.get_latest_for_clip_role(
+            timeline_id=timeline.id,
+            timeline_version=timeline.version,
+            clip_id=clip_id,
+            asset_role=asset_role,
+        )
+        clip_link = clip_assets.create(
+            timeline_id=timeline.id,
+            timeline_version=timeline.version,
+            clip_id=clip_id,
+            track_type="video",
+            asset_role=asset_role,
+            media_asset_id=media_asset.id,
+            source="provider_rework",
+            source_ref={
+                "action": context.get("action"),
+                "reason": context.get("reason"),
+                "video_generation_task_id": item.id,
+                "provider_task_id": item.provider_task_id,
+                "provider": item.provider,
+                "model": item.model,
+                "preserves_clip_id": True,
+            },
+            replacement_of_id=previous.id if previous else None,
+            created_by=item.user_id,
+        )
+        db.flush()
+
+    render_job, should_dispatch_render = queue_provider_rework_render_job(
+        db,
+        timeline=timeline,
+        clip_asset=clip_link,
+        context=context,
+        user_id=item.user_id,
     )
     db.commit()
+    if render_job is not None and should_dispatch_render:
+        dispatch_provider_rework_render_job(render_job, user_id=item.user_id)
 
 
 def _duration_ms(result_payload: dict[str, Any]) -> int | None:

@@ -169,6 +169,9 @@ class TimelineClipVideoReworkSubmissionService:
             "action": payload.get("action"),
             "asset_role": payload.get("asset_role") or "generated_video",
             "reason": payload.get("reason"),
+            "auto_render": payload.get("auto_render"),
+            "render_type": payload.get("render_type"),
+            "render_preset": payload.get("render_preset"),
         }
 
     @staticmethod

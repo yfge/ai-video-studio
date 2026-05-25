@@ -102,6 +102,9 @@ class TimelineClipVideoReworkQueueService:
             "resolution": payload.resolution,
             "ratio": payload.ratio,
             "return_last_frame": payload.return_last_frame,
+            "auto_render": True,
+            "render_type": "final",
+            "render_preset": self._render_preset(timeline),
         }
 
     def _clip_or_404(self, timeline: Timeline, clip_id: str) -> dict[str, Any]:
@@ -186,6 +189,14 @@ class TimelineClipVideoReworkQueueService:
             clip.get("duration_seconds")
         )
         return max(duration_seconds, 0.1) if duration_seconds else 5.0
+
+    @staticmethod
+    def _render_preset(timeline: Timeline) -> dict[str, Any]:
+        spec = timeline.spec if isinstance(timeline.spec, dict) else {}
+        return {
+            "fps": spec.get("fps") or 24,
+            "resolution": spec.get("resolution") or "1080x1920",
+        }
 
     @staticmethod
     def _story_owner_filter(current_user: User) -> Optional[int]:
