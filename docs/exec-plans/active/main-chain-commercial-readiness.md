@@ -270,6 +270,9 @@ Latest validation:
 - `ai_service_manager.py` generated image URL/base64 normalization and OSS upload
   now lives in `app.services.ai_manager_image_assets`; the manager keeps the
   compatibility wrapper used by existing generation paths.
+- `ai_service_manager.py` text-to-image fallback orchestration now lives in
+  `app.services.ai_manager_image_generation`, including style spec resolution,
+  OpenAI style normalization, provider logging, and success image OSS conversion.
 - `ai_service_manager.py` image-to-image reference preloading, HTTPS-to-HTTP
   download normalization, inline compression, and data URL construction now live
   in `app.services.ai_manager_image_assets`.

@@ -12,6 +12,7 @@ from app.core.logging import get_logger
 from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_image_assets as image_assets
 from app.services import ai_manager_image_fallback as image_fallback
+from app.services import ai_manager_image_generation as image_generation
 from app.services import ai_manager_image_style as image_style
 from app.services import ai_manager_model_listing as model_listing
 from app.services import ai_manager_model_resolution as model_resolution
@@ -331,148 +332,28 @@ class AIServiceManager:
         **kwargs,
     ) -> AIResponse:
         """统一图像生成接口"""
-        style_state = image_style.resolve_text_to_image_style(
+        return await image_generation.generate_image_with_fallback(
             prompt=prompt,
-            legacy_style=style,
+            model=model,
+            prefer_provider=prefer_provider,
+            width=width,
+            height=height,
+            style=style,
             style_preset_id=style_preset_id,
             style_spec=style_spec,
-        )
-        prompt = style_state.prompt
-        style = style_state.legacy_style
-        openai_style_override = style_state.openai_style_override
-        resolved_style_spec = style_state.resolved_style_spec
-        style_resolution_meta = style_state.resolution_meta
-
-        available_providers = self.get_available_providers(
-            model_type=AIModelType.TEXT_TO_IMAGE
-        )
-
-        prefer_provider, model = self._resolve_prefer_provider_and_model(
-            model, prefer_provider
-        )
-
-        # 如果调用方显式指定了首选 provider（或 model 已带 provider 前缀），则仅使用该 provider，避免跨厂商误用模型 id
-        if prefer_provider:
-            available_providers = [
-                p for p in available_providers if p == prefer_provider
-            ]
-
-        original_model = model
-        last_model_used = original_model
-
-        if not available_providers:
-            return failure_responses.manager_failure_response(
-                error="没有可用的图像生成提供商",
-                model=model,
-                task_type=AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.TEXT_TO_IMAGE,
-            )
-
-        # 记录请求
-        self._log_request(
-            task="generate_image",
-            provider=prefer_provider,
-            model=model,
-            params={"width": width, "height": height, "style": style},
-        )
-        self._log_prompt(kwargs.get("prompt_override", prompt))
-
-        last_error: str | None = None
-        last_provider: str | None = None
-        last_model: str | None = None
-
-        for attempt in range(self.config.max_retries):
-            provider_name = self._select_provider(available_providers, prefer_provider)
-            if not provider_name:
-                break
-
-            provider = self.providers[provider_name]
-            self._update_request_count(provider_name)
-
-            # 为当前 provider 选择合适的默认模型，不影响下一轮选择
-            provider_model = await model_resolution.resolve_image_model(
-                provider,
-                original_model,
-                self._get_models_for_type,
-            )
-            last_model_used = provider_model
-
-            try:
-                provider_style = style
-                if provider_name == "openai":
-                    from app.utils.model_utils import normalize_openai_image_style
-
-                    provider_style = normalize_openai_image_style(
-                        openai_style_override or provider_style
-                    )
-
-                response = await provider.generate_image(
-                    prompt=prompt,
-                    model=provider_model,
-                    width=width,
-                    height=height,
-                    style=provider_style,
-                    **kwargs,
-                )
-                image_style.attach_style_metadata(
-                    response,
-                    resolved_style_spec,
-                    style_resolution_meta,
-                )
-                self._log_response(
-                    task="generate_image",
-                    provider=provider_name,
-                    model=provider_model,
-                    response=response,
-                )
-                if not response.success and response.error:
-                    last_error = response.error
-                    last_provider = provider_name
-                    last_model = provider_model
-                if response.success or not self.config.enable_fallback:
-                    # 将 base64 图片转换为 OSS URL
-                    if response.success and response.data and "images" in response.data:
-                        converted_images = await self._convert_base64_images_to_oss(
-                            response.data["images"],
-                            prefix="ai-generated/text-to-image",
-                        )
-                        response.data["images"] = converted_images
-                    return response
-
-            except Exception as e:
-                last_error = str(e)
-                last_provider = provider_name
-                last_model = provider_model
-                if not self.config.enable_fallback:
-                    return failure_responses.exception_failure_response(
-                        action="图像生成失败",
-                        exc=e,
-                        provider=provider_name,
-                        model=model,
-                        task_type=AITaskType.PORTRAIT_GENERATION,
-                        model_type=AIModelType.TEXT_TO_IMAGE,
-                    )
-
-            if provider_name in available_providers:
-                available_providers.remove(provider_name)
-
-        if last_error:
-            return failure_responses.failure_response(
-                error=failure_responses.provider_prefixed_error(
-                    last_error,
-                    last_provider,
-                ),
-                provider=last_provider or AI_MANAGER_PROVIDER,
-                model=last_model or last_model_used or model or "unknown",
-                task_type=AITaskType.PORTRAIT_GENERATION,
-                model_type=AIModelType.TEXT_TO_IMAGE,
-            )
-
-        return failure_responses.manager_failure_response(
-            error="所有图像生成提供商都失败了",
-            model=last_model_used,
-            task_type=AITaskType.PORTRAIT_GENERATION,
-            model_type=AIModelType.TEXT_TO_IMAGE,
+            provider_kwargs=kwargs,
+            providers=self.providers,
+            max_retries=self.config.max_retries,
+            enable_fallback=self.config.enable_fallback,
+            logger=self.logger,
+            resolve_prefer_provider_and_model=self._resolve_prefer_provider_and_model,
+            get_available_providers=self.get_available_providers,
+            select_provider=self._select_provider,
+            update_request_count=self._update_request_count,
+            get_models_for_type=self._get_models_for_type,
+            log_request=self._log_request,
+            log_prompt=self._log_prompt,
+            log_response=self._log_response,
         )
 
     async def image_to_image(
