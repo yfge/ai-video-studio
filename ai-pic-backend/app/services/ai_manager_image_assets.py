@@ -2,7 +2,143 @@
 
 from __future__ import annotations
 
+import base64
 from typing import Any
+
+from app.services.ai_manager_logging import truncate
+
+
+def prefer_http_for_download(url: str) -> str:
+    if isinstance(url, str) and url.lower().startswith("https://"):
+        return "http://" + url[len("https://") :]
+    return url
+
+
+def maybe_compress_inline_image(
+    raw: bytes,
+    *,
+    content_type: str,
+    target_max_bytes: int,
+    max_side: int,
+) -> tuple[bytes, str]:
+    """
+    Compress large reference images for inline/base64 transport.
+
+    Some providers/proxies enforce strict request size limits. This helper tries
+    to downscale and re-encode as JPEG when the payload is too large.
+    """
+    if not raw or len(raw) <= target_max_bytes:
+        return raw, content_type or "image/png"
+
+    try:
+        from io import BytesIO
+
+        from PIL import Image, ImageOps
+
+        img = Image.open(BytesIO(raw))
+        img = ImageOps.exif_transpose(img)
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+
+        w, h = img.size
+        max_current = max(w, h) if w and h else 0
+        if max_current and max_current > max_side:
+            scale = max_side / float(max_current)
+            new_w = max(1, int(round(w * scale)))
+            new_h = max(1, int(round(h * scale)))
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+
+        for quality in (85, 75, 65):
+            buf = BytesIO()
+            img.save(buf, format="JPEG", quality=quality, optimize=True)
+            out = buf.getvalue()
+            if out and len(out) <= target_max_bytes:
+                return out, "image/jpeg"
+
+        buf = BytesIO()
+        img.save(buf, format="JPEG", quality=60, optimize=True)
+        out = buf.getvalue()
+        if out:
+            return out, "image/jpeg"
+    except Exception:
+        pass
+
+    return raw, content_type or "image/png"
+
+
+async def preload_image_references_as_data_urls(
+    *,
+    image_url: str,
+    extra_images: list[Any],
+    prefer_provider: str | None,
+    available_providers: list[str],
+    timeout: float,
+    logger: Any,
+) -> list[str]:
+    """Preload image-to-image references as data URLs for provider payloads."""
+    base64_images: list[str] = []
+    try:
+        urls_raw = [image_url] + list(extra_images or [])
+        urls: list[str] = []
+        for url in urls_raw:
+            if not url:
+                continue
+            if url not in urls:
+                urls.append(url)
+
+        if not urls:
+            return []
+
+        import httpx
+
+        prefer_is_google = (prefer_provider or "").lower() == "google"
+        maybe_google = prefer_is_google or ("google" in available_providers)
+        max_refs = 4 if prefer_is_google else (8 if maybe_google else 14)
+        target_max_bytes = (
+            220_000 if prefer_is_google else (350_000 if maybe_google else 2_000_000)
+        )
+        max_side = 512 if prefer_is_google else (768 if maybe_google else 2048)
+
+        async with httpx.AsyncClient(
+            timeout=timeout,
+            trust_env=False,
+            follow_redirects=True,
+        ) as client:
+            for url in urls[:max_refs]:
+                download_url = prefer_http_for_download(url)
+                try:
+                    resp = await client.get(download_url)
+                    resp.raise_for_status()
+                except Exception as e:
+                    logger.warning(
+                        "image_to_image base64 preload skip url=%s error=%s",
+                        truncate(str(download_url), 256),
+                        e,
+                    )
+                    continue
+
+                ctype = resp.headers.get("Content-Type", "image/png")
+                content, ctype = maybe_compress_inline_image(
+                    resp.content,
+                    content_type=ctype,
+                    target_max_bytes=target_max_bytes,
+                    max_side=max_side,
+                )
+                subtype = "png"
+                if "/" in ctype:
+                    subtype = (ctype.split("/", 1)[1].split(";", 1)[0] or "png").strip()
+                b64 = base64.b64encode(content).decode("ascii")
+                base64_images.append(f"data:image/{subtype.lower()};base64,{b64}")
+
+        if not base64_images:
+            logger.warning(
+                "image_to_image base64 preload finished with no valid images | urls=%s",
+                [truncate(str(url), 128) for url in urls],
+            )
+    except Exception as e:
+        logger.warning("image_to_image base64 preload failed: %s", e)
+
+    return base64_images
 
 
 async def convert_base64_images_to_oss(

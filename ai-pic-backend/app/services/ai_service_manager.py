@@ -117,66 +117,6 @@ class AIServiceManager:
                 return prefix_lower, rest
         return prefer_provider, model
 
-    def _prefer_http_for_download(self, url: str) -> str:
-        """在下载参考图时优先使用 http，避免生产环境 HTTPS 证书问题。"""
-        if isinstance(url, str) and url.lower().startswith("https://"):
-            return "http://" + url[len("https://") :]
-        return url
-
-    def _maybe_compress_inline_image(
-        self,
-        raw: bytes,
-        *,
-        content_type: str,
-        target_max_bytes: int,
-        max_side: int,
-    ) -> tuple[bytes, str]:
-        """
-        Compress large reference images for inline/base64 transport.
-
-        Some providers/proxies (e.g. Gemini via proxy) enforce strict request size limits.
-        This helper tries to downscale + re-encode as JPEG when the payload is too large.
-        """
-        if not raw or len(raw) <= target_max_bytes:
-            return raw, content_type or "image/png"
-
-        try:
-            from io import BytesIO
-
-            from PIL import Image, ImageOps
-
-            img = Image.open(BytesIO(raw))
-            img = ImageOps.exif_transpose(img)
-            if img.mode not in ("RGB", "L"):
-                img = img.convert("RGB")
-
-            w, h = img.size
-            max_current = max(w, h) if w and h else 0
-            if max_current and max_current > max_side:
-                scale = max_side / float(max_current)
-                new_w = max(1, int(round(w * scale)))
-                new_h = max(1, int(round(h * scale)))
-                img = img.resize((new_w, new_h), Image.LANCZOS)
-
-            # Try a small number of quality levels to meet size budget
-            for quality in (85, 75, 65):
-                buf = BytesIO()
-                img.save(buf, format="JPEG", quality=quality, optimize=True)
-                out = buf.getvalue()
-                if out and len(out) <= target_max_bytes:
-                    return out, "image/jpeg"
-
-            # Even if we didn't hit the exact budget, return the smallest attempt.
-            buf = BytesIO()
-            img.save(buf, format="JPEG", quality=60, optimize=True)
-            out = buf.getvalue()
-            if out:
-                return out, "image/jpeg"
-        except Exception:
-            pass
-
-        return raw, content_type or "image/png"
-
     def _truncate(self, text: Any, limit: int = 2000) -> str:
         return truncate(text, limit)
 
@@ -754,81 +694,16 @@ class AIServiceManager:
         last_provider: str | None = None
         last_model: str | None = None
 
-        # 预读取参考图，转换为 data:image/...;base64,...，避免外部模型无法访问内网 URL
-        base64_images: list[str] = []
-        try:
-            # 去重并过滤空 URL，最多预读取 14 张参考图
-            urls_raw = [image_url] + list(kwargs.get("extra_images") or [])
-            urls: list[str] = []
-            for u in urls_raw:
-                if not u:
-                    continue
-                if u not in urls:
-                    urls.append(u)
-
-            if urls:
-                import base64
-
-                import httpx
-
-                # Google/Gemini 代理往往限制请求体大小，提前压缩参考图以避免 413
-                prefer_is_google = (prefer_provider or "").lower() == "google"
-                maybe_google = prefer_is_google or ("google" in available_providers)
-                max_refs = 4 if prefer_is_google else (8 if maybe_google else 14)
-                target_max_bytes = (
-                    220_000
-                    if prefer_is_google
-                    else (350_000 if maybe_google else 2_000_000)
-                )
-                max_side = 512 if prefer_is_google else (768 if maybe_google else 2048)
-
-                async with httpx.AsyncClient(
-                    timeout=self.config.default_timeout,
-                    trust_env=False,
-                    follow_redirects=True,
-                ) as client:
-                    for url in urls[:max_refs]:
-                        try:
-                            download_url = self._prefer_http_for_download(url)
-                            resp = await client.get(download_url)
-                            resp.raise_for_status()
-                        except Exception as e:
-                            # 局部失败时仅跳过该 URL，不让单个 404/网络错误拖垮整个图生图调用
-                            self.logger.warning(
-                                "image_to_image base64 preload skip url=%s error=%s",
-                                self._truncate(str(download_url), 256),
-                                e,
-                            )
-                            continue
-
-                        ctype = resp.headers.get("Content-Type", "image/png")
-                        content, ctype = self._maybe_compress_inline_image(
-                            resp.content,
-                            content_type=ctype,
-                            target_max_bytes=target_max_bytes,
-                            max_side=max_side,
-                        )
-                        subtype = "png"
-                        if "/" in ctype:
-                            subtype = (
-                                ctype.split("/", 1)[1].split(";", 1)[0] or "png"
-                            ).strip()
-                        b64 = base64.b64encode(content).decode("ascii")
-                        base64_images.append(
-                            f"data:image/{subtype.lower()};base64,{b64}"
-                        )
-
-                if base64_images:
-                    # 将处理好的 base64 传递给 provider，避免重复下载
-                    kwargs["base64_images"] = base64_images
-                else:
-                    self.logger.warning(
-                        "image_to_image base64 preload finished with no valid images | urls=%s",
-                        [self._truncate(str(u), 128) for u in urls],
-                    )
-        except Exception as e:
-            # 预加载整体失败时记录告警，但不阻断后续 Provider 内部的 URL 访问/兜底逻辑
-            self.logger.warning("image_to_image base64 preload failed: %s", e)
+        base64_images = await image_assets.preload_image_references_as_data_urls(
+            image_url=image_url,
+            extra_images=list(kwargs.get("extra_images") or []),
+            prefer_provider=prefer_provider,
+            available_providers=available_providers,
+            timeout=self.config.default_timeout,
+            logger=self.logger,
+        )
+        if base64_images:
+            kwargs["base64_images"] = base64_images
 
         for _ in range(self.config.max_retries):
             provider_name = self._select_provider(available_providers, prefer_provider)

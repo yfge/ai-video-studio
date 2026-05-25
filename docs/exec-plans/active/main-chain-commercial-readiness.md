@@ -247,6 +247,9 @@ Latest validation:
 - `ai_service_manager.py` generated image URL/base64 normalization and OSS upload
   now lives in `app.services.ai_manager_image_assets`; the manager keeps the
   compatibility wrapper used by existing generation paths.
+- `ai_service_manager.py` image-to-image reference preloading, HTTPS-to-HTTP
+  download normalization, inline compression, and data URL construction now live
+  in `app.services.ai_manager_image_assets`.
 
 ## Phase 6: Produce Ten Narrow Samples
 
