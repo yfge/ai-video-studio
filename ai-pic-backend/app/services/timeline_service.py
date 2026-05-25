@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from app.models.script import Episode, Script
-from app.models.timeline import RenderJob, Timeline
+from app.models.timeline import Timeline
 from app.models.user import User
 from app.repositories.script_repository import EpisodeRepository, ScriptRepository
 from app.repositories.timeline_repository import RenderJobRepository, TimelineRepository
@@ -12,6 +12,8 @@ from app.schemas.timeline import (
     TimelineResponse,
     TimelineUpdate,
 )
+from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
+from app.services.timeline_render_dispatch import dispatch_timeline_render_job
 from app.services.timeline_render_hash import render_preset_hash
 from app.services.timeline_responses import render_job_response, timeline_response
 from app.services.timeline_revision_service import TimelineRevisionService
@@ -34,6 +36,7 @@ class TimelineService:
         self.timelines = TimelineRepository(db)
         self.render_jobs = RenderJobRepository(db)
         self.revisions = TimelineRevisionService(db)
+        self.clip_lineage = TimelineClipAssetLineageService(db)
 
     def list_timelines(
         self, episode_id: int, current_user: User
@@ -74,6 +77,7 @@ class TimelineService:
         self.db.flush()
         timeline.spec = self.revisions.spec_with_identity(timeline)
         validate_persisted_timeline_spec_or_400(timeline)
+        self.clip_lineage.sync_timeline_assets(timeline, user_id=current_user.id)
         self.revisions.ensure_revision(
             timeline,
             reason="created",
@@ -115,6 +119,7 @@ class TimelineService:
         timeline.rolled_back_at = None
         timeline.rolled_back_by = None
         timeline.spec = self.revisions.spec_with_identity(timeline)
+        self.clip_lineage.sync_timeline_assets(timeline, user_id=current_user.id)
         self.revisions.ensure_revision(
             timeline,
             reason="updated",
@@ -180,7 +185,7 @@ class TimelineService:
         )
         self.db.commit()
         self.db.refresh(job)
-        self._dispatch_render_job(job, current_user)
+        dispatch_timeline_render_job(job, current_user)
         self.db.refresh(job)
         return render_job_response(job)
 
@@ -241,9 +246,3 @@ class TimelineService:
         ):
             return None
         return current_user.id
-
-    @staticmethod
-    def _dispatch_render_job(job: RenderJob, current_user: User) -> None:
-        from app.services.task_worker_timeline_render import timeline_render_task
-
-        timeline_render_task.delay(job.id, current_user.id)

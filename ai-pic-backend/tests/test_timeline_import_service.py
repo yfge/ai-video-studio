@@ -1,6 +1,6 @@
 import pytest
 from app.models.script import Episode, Script, Story
-from app.models.timeline import TimelineRevision
+from app.models.timeline import MediaAsset, TimelineClipAsset, TimelineRevision
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 from app.services.timeline_spec_builder import stable_clip_id
 from app.services.timeline_spec_validation_types import TimelineSpecValidationError
@@ -108,6 +108,22 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
     assert revision.timeline_id == timeline.id
     assert revision.timeline_version == 1
     assert revision.reason == "imported"
+    audio_asset = (
+        db_session.query(MediaAsset)
+        .filter(MediaAsset.asset_type == "audio", MediaAsset.origin == "imported")
+        .one()
+    )
+    clip_assets = (
+        db_session.query(TimelineClipAsset)
+        .filter(TimelineClipAsset.asset_role == "source_audio")
+        .order_by(TimelineClipAsset.clip_id)
+        .all()
+    )
+    assert [link.media_asset_id for link in clip_assets] == [
+        audio_asset.id,
+        audio_asset.id,
+    ]
+    assert dialogue_clip["clip_id"] in {link.clip_id for link in clip_assets}
 
 
 def test_import_audio_timeline_skips_then_updates_with_stable_clip_ids(db_session):
@@ -197,6 +213,17 @@ def test_import_falls_back_to_legacy_storyboard_video_timeline(db_session):
     assert clips[0]["video_url"] == "https://cdn.example.com/legacy-1.mp4"
     assert clips[0]["asset_ref"]["url"] == "https://cdn.example.com/legacy-1.mp4"
     assert clips[1]["video_url"] == "https://cdn.example.com/legacy-2.mp4"
+    links = (
+        db_session.query(TimelineClipAsset)
+        .filter(TimelineClipAsset.timeline_id == result.timeline.id)
+        .order_by(TimelineClipAsset.clip_id)
+        .all()
+    )
+    assert [link.asset_role for link in links] == [
+        "storyboard_video",
+        "storyboard_video",
+    ]
+    assert {link.media_asset.asset_type for link in links} == {"video"}
 
 
 def test_import_rejects_audio_timeline_without_source_version(db_session):

@@ -13,7 +13,13 @@ from .story_structure import (
     StoryTreatment,
 )
 from .task import Task
-from .timeline import MediaAsset, RenderJob, Timeline, TimelineRevision
+from .timeline import (
+    MediaAsset,
+    RenderJob,
+    Timeline,
+    TimelineClipAsset,
+    TimelineRevision,
+)
 from .user import User, UserAuditLog
 from .video_generation_task import VideoGenerationTask
 from .virtual_ip import VirtualIP, VirtualIPEnvironment, VirtualIPImage
@@ -27,6 +33,7 @@ __all__ = [
     "VideoGenerationTask",
     "MediaAsset",
     "Timeline",
+    "TimelineClipAsset",
     "TimelineRevision",
     "RenderJob",
     "VirtualIP",

@@ -1,9 +1,8 @@
 from app.core.middleware import get_current_active_user
 from app.main import app
 from app.models.script import Episode, Script, Story
-from app.models.timeline import RenderJob
+from app.models.timeline import MediaAsset, RenderJob
 from app.models.user import User
-from app.services.timeline_service import TimelineService
 from sqlalchemy.orm import Session
 
 
@@ -79,9 +78,8 @@ def test_timeline_crud_version_lock_and_render_idempotency(
     monkeypatch,
 ):
     monkeypatch.setattr(
-        TimelineService,
-        "_dispatch_render_job",
-        staticmethod(lambda _job, _user: None),
+        "app.services.timeline_service.dispatch_timeline_render_job",
+        lambda _job, _user: None,
     )
     episode, script = _bootstrap_episode(db_session)
 
@@ -216,6 +214,44 @@ def test_timeline_create_rejects_invalid_spec(client, db_session):
 
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "timeline_spec_field_missing"
+
+
+def test_timeline_clip_asset_lineage_endpoint(client, db_session):
+    episode, script = _bootstrap_episode(db_session)
+    asset = MediaAsset(
+        asset_type="audio",
+        origin="upload",
+        file_url="https://example.com/dialogue.mp3",
+        mime_type="audio/mpeg",
+    )
+    db_session.add(asset)
+    db_session.commit()
+    db_session.refresh(asset)
+
+    spec = _timeline_spec(episode, script)
+    spec["tracks"][0]["clips"][0]["asset_ref"] = {
+        "kind": "episode_audio",
+        "media_asset_id": asset.id,
+    }
+    create_response = client.post(
+        f"/api/v1/episodes/{episode.id}/timelines",
+        json={
+            "script_id": script.id,
+            "title": "Lineage Timeline",
+            "spec": spec,
+        },
+    )
+    assert create_response.status_code == 200
+    timeline = create_response.json()
+
+    response = client.get(f"/api/v1/timelines/{timeline['id']}/clip-assets")
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert len(items) == 1
+    assert items[0]["clip_id"] == "dialogue_scene_001_beat_001_001"
+    assert items[0]["asset_role"] == "source_audio"
+    assert items[0]["media_asset"]["file_url"] == "https://example.com/dialogue.mp3"
 
 
 def test_timeline_access_is_scoped_to_story_owner(client, db_session):

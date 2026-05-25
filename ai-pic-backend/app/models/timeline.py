@@ -92,6 +92,7 @@ class Timeline(SoftDeleteBusinessMixin, Base):
     rollback_user = relationship("User", foreign_keys=[rolled_back_by])
     render_jobs = relationship("RenderJob", back_populates="timeline")
     revisions = relationship("TimelineRevision", back_populates="timeline")
+    clip_assets = relationship("TimelineClipAsset", back_populates="timeline")
 
 
 class TimelineRevision(Base):
@@ -159,4 +160,51 @@ class RenderJob(SoftDeleteBusinessMixin, Base):
 
     timeline = relationship("Timeline", back_populates="render_jobs")
     output_asset = relationship("MediaAsset")
+    creator = relationship("User", foreign_keys=[created_by])
+    clip_assets = relationship("TimelineClipAsset", back_populates="render_job")
+
+
+class TimelineClipAsset(SoftDeleteBusinessMixin, Base):
+    """Media asset linked to a stable Timeline clip identity."""
+
+    __tablename__ = "timeline_clip_assets"
+    __table_args__ = (
+        Index("ix_timeline_clip_assets_timeline", "timeline_id", "timeline_version"),
+        Index("ix_timeline_clip_assets_clip_id", "clip_id"),
+        Index("ix_timeline_clip_assets_media_asset_id", "media_asset_id"),
+        Index("ix_timeline_clip_assets_asset_role", "asset_role"),
+        Index(
+            "ux_timeline_clip_assets_active",
+            "timeline_id",
+            "timeline_version",
+            "clip_id",
+            "asset_role",
+            "media_asset_id",
+            "is_deleted",
+            unique=True,
+        ),
+    )
+
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True, index=True)
+    timeline_id = Column(BIGINT_PK, ForeignKey("timelines.id"), nullable=False)
+    timeline_version = Column(Integer, nullable=False)
+    clip_id = Column(String(128), nullable=False)
+    track_type = Column(String(32), nullable=True)
+    asset_role = Column(String(64), nullable=False)
+    media_asset_id = Column(BIGINT_PK, ForeignKey("media_assets.id"), nullable=False)
+    render_job_id = Column(BIGINT_PK, ForeignKey("render_jobs.id"), nullable=True)
+    source = Column(String(64), nullable=True)
+    source_ref = Column(JSON, nullable=True)
+    replacement_of_id = Column(
+        BIGINT_PK,
+        ForeignKey("timeline_clip_assets.id"),
+        nullable=True,
+    )
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    timeline = relationship("Timeline", back_populates="clip_assets")
+    media_asset = relationship("MediaAsset")
+    render_job = relationship("RenderJob", back_populates="clip_assets")
+    replacement_of = relationship("TimelineClipAsset", remote_side=[id])
     creator = relationship("User", foreign_keys=[created_by])

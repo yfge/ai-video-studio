@@ -24,12 +24,12 @@
 
 - 当前未提交改动已拆成可审查提交边界：Timeline render/export、Codex/ChatGPT provider、IP 内容填充 DeepSeek、主链 readiness 文档。
 - 真实 API harness 已通过一次 `Episode -> Timeline -> Render -> Export`：`artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`。
-- timeline delete/restore、render attempt delete/restore、rollback 和 Timeline Spec schema/import validation 已落地；下一步补 first-class clip asset lineage。
+- timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation 和 first-class clip asset lineage 后端基础已落地；下一步补 re-dub / re-cut / re-render 操作闭环。
 - 在 10 条窄垂类样片通过前，不把主链标记为商业化可用。
 
 ## 状态概览
 
-- P0：Timeline Spec v1 文档、DB/API foundation、`audio_timeline.beats` 导入桥、Timeline readiness 优先级、默认 storyboard support 生成源、dry-run backfill、versioned render/export 回写、delete/rollback 和 schema/import 校验已落地，下一步补 first-class clip asset lineage。
+- P0：Timeline Spec v1 文档、DB/API foundation、`audio_timeline.beats` 导入桥、Timeline readiness 优先级、默认 storyboard support 生成源、dry-run backfill、versioned render/export 回写、delete/rollback、schema/import 校验和 clip asset lineage 后端基础已落地，下一步补 rework 操作闭环。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
 - P1：补齐可生产的资产审计、clip lineage、re-dub/re-render 操作闭环。
@@ -51,7 +51,7 @@
 
 - `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 和更严格的 schema/import 校验已补齐。
-- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；该证据使用 legacy storyboard 视频资产迁移桥，后续仍需补 first-class clip asset lineage。
+- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；该证据使用 legacy storyboard 视频资产迁移桥，clip asset lineage 后端基础已补齐，后续仍需补 re-dub / re-cut / re-render。
 
 ### 任务（功能→后端→验证）
 
@@ -59,7 +59,8 @@
 - [x] 补跑真实 `Episode -> Timeline -> Render -> Export`，证据落到 `artifacts/runs/<run_id>/`。
 - [x] 补齐 timeline delete/rollback。
 - [x] 为 Timeline Spec 增加 schema 校验、导入校验和权限校验。
-- [ ] 补更完整的导出幂等测试，并和 first-class clip asset lineage 联动。
+- [x] 补 first-class clip asset lineage 后端基础：源音频、storyboard 视频和 render 输出按 `clip_id` 关联。
+- [ ] 补更完整的导出幂等测试，并和 rework 操作联动。
 
 ## P1: Production Stability
 
@@ -67,14 +68,14 @@
 
 当前阻塞：
 
-- 场景音轨、episode 音轨、beats、分镜占位已经收敛到 Timeline Spec 导入；legacy storyboard 视频迁移桥已可生成可渲染 video track，first-class clip asset 关联仍未完成。
+- 场景音轨、episode 音轨、beats、分镜占位已经收敛到 Timeline Spec 导入；legacy storyboard 视频迁移桥已可生成可渲染 video track，first-class clip asset 关联已有后端基础。
 - 重新配音、重新切分、重新导出还没有统一挂在稳定 clip identity 上。
 - `scripts_legacy.py`、`dialogue_audio_service.py`、`ai_service_manager.py` 仍是主链旁边的稳定性风险。
 
 ### 任务（功能→后端→验证）
 
 - [ ] 支持基于稳定 `clip_id` 的 re-dub、re-cut、re-render，不允许靠临时 frame index 追踪资产。
-- [ ] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。
+- [x] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。
 - [ ] 继续拆分并下线 `scripts_legacy.py`，让 timeline/audio/storyboard 主链不再依赖 legacy router。
 - [ ] 拆分 `dialogue_audio_service.py`，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
 - [ ] 拆分 `ai_service_manager.py`，把 provider routing、fallback、model cache、request logging 收成独立模块。

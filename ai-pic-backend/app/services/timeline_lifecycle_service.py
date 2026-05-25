@@ -15,6 +15,7 @@ from app.schemas.timeline import (
     TimelineRollbackRequest,
     TimelineVersionRequest,
 )
+from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
 from app.services.timeline_responses import render_job_response, timeline_response
 from app.services.timeline_revision_service import TimelineRevisionService
 from app.services.timeline_spec_api_guard import validate_persisted_timeline_spec_or_400
@@ -28,6 +29,7 @@ class TimelineLifecycleService:
         self.timelines = TimelineRepository(db)
         self.render_jobs = RenderJobRepository(db)
         self.revisions = TimelineRevisionService(db)
+        self.clip_lineage = TimelineClipAssetLineageService(db)
 
     def delete_timeline(
         self,
@@ -105,6 +107,7 @@ class TimelineLifecycleService:
         timeline.updated_by = current_user.id
         timeline.spec = self.revisions.spec_with_identity(timeline)
         validate_persisted_timeline_spec_or_400(timeline)
+        self.clip_lineage.sync_timeline_assets(timeline, user_id=current_user.id)
         self.revisions.ensure_revision(
             timeline,
             reason=f"rollback_to_{payload.target_version}",

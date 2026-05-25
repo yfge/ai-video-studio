@@ -130,16 +130,28 @@ Latest validation:
 
 Tasks:
 
-- Treat start frames, end frames, storyboard images, storyboard videos, and final
-  clip videos as first-class clip assets.
-- Link assets to stable `clip_id` values rather than temporary frame indexes.
+- [x] Treat start frames, end frames, storyboard images, storyboard videos, and final
+      clip videos as first-class clip assets.
+- [x] Link assets to stable `clip_id` values rather than temporary frame indexes.
 - Implement re-dub, re-cut, and re-render around stable clip identity.
 
 Exit criteria:
 
 - Re-dub/re-cut/re-render do not change the original `clip_id`.
+- [x] Backend API can show source audio, source frame, generated video, and output
+      assets for a selected clip.
 - Operator UI can show source audio, source frame, generated video, output asset,
   and replacement history for a selected clip.
+
+Latest validation:
+
+- `cd ai-pic-backend && pytest tests/test_timeline_api.py tests/test_timeline_import_service.py tests/test_timeline_lifecycle_api.py tests/test_timeline_spec_validation.py tests/unit/services/render/test_timeline_render_service.py -q`
+- Result: passed, 20 tests.
+- `timeline_clip_assets` now records clip-to-asset lineage by stable `clip_id`.
+  Timeline create/update/import/rollback sync source assets from Timeline Spec,
+  and render success records output assets per rendered clip.
+- `GET /api/v1/timelines/{timeline_id}/clip-assets` exposes lineage entries for
+  future operator audit views.
 
 ## Phase 6: Produce Ten Narrow Samples
 

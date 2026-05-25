@@ -8,13 +8,13 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy.orm import Session
-
 from app.core.config import settings
 from app.models.timeline import MediaAsset, RenderJob, Timeline
 from app.repositories.timeline_repository import MediaAssetRepository
 from app.services.media import upload_bytes
 from app.services.render.timeline_render_clips import TimelineClipVideo
+from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
+from sqlalchemy.orm import Session
 
 
 async def persist_timeline_render_output(
@@ -82,6 +82,13 @@ async def persist_timeline_render_output(
         created_by=user_id or job.created_by,
     )
     db.flush()
+    TimelineClipAssetLineageService(db).record_render_output(
+        timeline=timeline,
+        render_job_id=job.id,
+        output_asset=asset,
+        clips=clips,
+        user_id=user_id or job.created_by,
+    )
     return asset
 
 

@@ -6,6 +6,7 @@ from typing import Any
 from app.models.script import Episode, Script
 from app.models.timeline import Timeline
 from app.repositories.timeline_repository import TimelineRepository
+from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
 from app.services.timeline_revision_service import TimelineRevisionService
 from app.services.timeline_spec_builder import (
     audio_timeline_version,
@@ -42,6 +43,7 @@ def import_audio_timeline_to_timeline_spec(
 
     repo = TimelineRepository(db)
     revisions = TimelineRevisionService(db)
+    clip_lineage = TimelineClipAssetLineageService(db)
     existing = repo.get_latest_for_episode_script(
         episode_id=episode.id,
         script_id=script.id,
@@ -89,6 +91,7 @@ def import_audio_timeline_to_timeline_spec(
             expected_version=next_version,
             require_timeline_id=True,
         )
+        clip_lineage.sync_timeline_assets(timeline, user_id=user_id)
         revisions.ensure_revision(timeline, reason="imported", user_id=user_id)
         action = "created"
     else:
@@ -122,6 +125,7 @@ def import_audio_timeline_to_timeline_spec(
             reason="import_updated",
             user_id=user_id,
         )
+        clip_lineage.sync_timeline_assets(timeline, user_id=user_id)
         action = "updated"
 
     db.commit()

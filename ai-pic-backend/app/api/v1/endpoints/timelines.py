@@ -5,6 +5,7 @@ from app.schemas.timeline import (
     RenderJobCreate,
     RenderJobListResponse,
     RenderJobResponse,
+    TimelineClipAssetListResponse,
     TimelineCreate,
     TimelineDeleteRequest,
     TimelineListResponse,
@@ -13,6 +14,7 @@ from app.schemas.timeline import (
     TimelineUpdate,
     TimelineVersionRequest,
 )
+from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
 from app.services.timeline_lifecycle_service import TimelineLifecycleService
 from app.services.timeline_service import TimelineService
 from fastapi import APIRouter, Depends, Query
@@ -110,6 +112,31 @@ def list_timeline_render_jobs(
         items=service.list_render_jobs(
             timeline_id,
             current_user,
+            include_deleted=include_deleted,
+        )
+    )
+
+
+@router.get(
+    "/timelines/{timeline_id}/clip-assets",
+    response_model=TimelineClipAssetListResponse,
+    summary="List timeline clip asset lineage",
+)
+def list_timeline_clip_assets(
+    timeline_id: int,
+    timeline_version: int | None = Query(None),
+    clip_id: str | None = Query(None),
+    include_deleted: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineClipAssetListResponse:
+    service = TimelineClipAssetLineageService(db)
+    return TimelineClipAssetListResponse(
+        items=service.list_clip_assets(
+            timeline_id,
+            current_user,
+            timeline_version=timeline_version,
+            clip_id=clip_id,
             include_deleted=include_deleted,
         )
     )

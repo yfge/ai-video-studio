@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 from app.models.script import Episode, Script, Story
-from app.models.timeline import MediaAsset, RenderJob, Timeline
+from app.models.timeline import MediaAsset, RenderJob, Timeline, TimelineClipAsset
 from app.models.user import User
 from app.services.render.timeline_render_service import TimelineRenderService
 
@@ -125,6 +125,14 @@ async def test_timeline_render_success_creates_media_asset(
     assert output_asset.asset_type == "video"
     assert output_asset.file_url.endswith(".mp4")
     assert output_asset.extra_metadata["clip_ids"] == ["video_scene_1_beat_1_001"]
+    output_link = (
+        db_session.query(TimelineClipAsset)
+        .filter(TimelineClipAsset.asset_role == "render_output")
+        .one()
+    )
+    assert output_link.clip_id == "video_scene_1_beat_1_001"
+    assert output_link.media_asset_id == output_asset.id
+    assert output_link.render_job_id == result.id
 
 
 @pytest.mark.asyncio

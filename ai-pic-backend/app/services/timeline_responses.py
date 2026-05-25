@@ -1,7 +1,12 @@
 """Response mappers for Timeline API services."""
 
-from app.models.timeline import MediaAsset, RenderJob, Timeline
-from app.schemas.timeline import MediaAssetResponse, RenderJobResponse, TimelineResponse
+from app.models.timeline import MediaAsset, RenderJob, Timeline, TimelineClipAsset
+from app.schemas.timeline import (
+    MediaAssetResponse,
+    RenderJobResponse,
+    TimelineClipAssetResponse,
+    TimelineResponse,
+)
 
 
 def timeline_response(timeline: Timeline) -> TimelineResponse:
@@ -87,4 +92,32 @@ def media_asset_response(asset: MediaAsset) -> MediaAssetResponse:
         created_by=asset.created_by,
         created_at=asset.created_at,
         updated_at=asset.updated_at,
+    )
+
+
+def timeline_clip_asset_response(link: TimelineClipAsset) -> TimelineClipAssetResponse:
+    return TimelineClipAssetResponse(
+        id=link.id,
+        business_id=link.business_id,
+        timeline_id=link.timeline_id,
+        timeline_version=link.timeline_version,
+        clip_id=link.clip_id,
+        track_type=link.track_type,
+        asset_role=link.asset_role,
+        media_asset_id=link.media_asset_id,
+        media_asset=(
+            media_asset_response(link.media_asset)
+            if link.media_asset is not None
+            else None
+        ),
+        render_job_id=link.render_job_id,
+        source=link.source,
+        source_ref=link.source_ref,
+        replacement_of_id=link.replacement_of_id,
+        is_deleted=bool(link.is_deleted),
+        deleted_at=link.deleted_at,
+        deleted_by=link.deleted_by,
+        deleted_reason=link.deleted_reason,
+        created_by=link.created_by,
+        created_at=link.created_at,
     )

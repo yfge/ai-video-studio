@@ -3,7 +3,6 @@ from app.main import app
 from app.models.script import Episode, Script, Story
 from app.models.timeline import TimelineRevision
 from app.models.user import User
-from app.services.timeline_service import TimelineService
 from sqlalchemy.orm import Session
 
 
@@ -108,9 +107,8 @@ def test_timeline_delete_restore_and_render_job_lifecycle(
     monkeypatch,
 ):
     monkeypatch.setattr(
-        TimelineService,
-        "_dispatch_render_job",
-        staticmethod(lambda _job, _user: None),
+        "app.services.timeline_service.dispatch_timeline_render_job",
+        lambda _job, _user: None,
     )
     episode, script = _bootstrap_episode(db_session)
     timeline = _create_timeline(client, episode, script)
@@ -170,9 +168,8 @@ def test_timeline_rollback_creates_new_version_and_preserves_render_jobs(
     monkeypatch,
 ):
     monkeypatch.setattr(
-        TimelineService,
-        "_dispatch_render_job",
-        staticmethod(lambda _job, _user: None),
+        "app.services.timeline_service.dispatch_timeline_render_job",
+        lambda _job, _user: None,
     )
     episode, script = _bootstrap_episode(db_session)
     timeline = _create_timeline(client, episode, script)

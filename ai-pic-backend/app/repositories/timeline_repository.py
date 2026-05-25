@@ -1,7 +1,13 @@
 from typing import List, Optional
 
 from app.models.script import Episode, Story
-from app.models.timeline import MediaAsset, RenderJob, Timeline, TimelineRevision
+from app.models.timeline import (
+    MediaAsset,
+    RenderJob,
+    Timeline,
+    TimelineClipAsset,
+    TimelineRevision,
+)
 from app.repositories.base import BaseRepository
 from sqlalchemy.orm import Session, joinedload
 
@@ -110,6 +116,77 @@ class MediaAssetRepository(BaseRepository[MediaAsset]):
 
     def __init__(self, session: Session):
         super().__init__(MediaAsset, session)
+
+    def find_by_location(
+        self,
+        *,
+        asset_type: str,
+        file_url: str | None = None,
+        file_path: str | None = None,
+        object_key: str | None = None,
+    ) -> Optional[MediaAsset]:
+        query = self.session.query(MediaAsset).filter(
+            MediaAsset.asset_type == asset_type,
+            MediaAsset.is_deleted.is_(False),
+        )
+        if object_key:
+            return query.filter(MediaAsset.object_key == object_key).first()
+        if file_url:
+            return query.filter(MediaAsset.file_url == file_url).first()
+        if file_path:
+            return query.filter(MediaAsset.file_path == file_path).first()
+        return None
+
+
+class TimelineClipAssetRepository(BaseRepository[TimelineClipAsset]):
+    """Clip-to-asset lineage persistence."""
+
+    def __init__(self, session: Session):
+        super().__init__(TimelineClipAsset, session)
+
+    def list_for_timeline(
+        self,
+        *,
+        timeline_id: int,
+        timeline_version: int | None = None,
+        clip_id: str | None = None,
+        include_deleted: bool = False,
+    ) -> List[TimelineClipAsset]:
+        query = self.session.query(TimelineClipAsset).filter(
+            TimelineClipAsset.timeline_id == timeline_id
+        )
+        if timeline_version is not None:
+            query = query.filter(TimelineClipAsset.timeline_version == timeline_version)
+        if clip_id:
+            query = query.filter(TimelineClipAsset.clip_id == clip_id)
+        if not include_deleted:
+            query = query.filter(TimelineClipAsset.is_deleted.is_(False))
+        return query.order_by(
+            TimelineClipAsset.timeline_version.desc(),
+            TimelineClipAsset.clip_id.asc(),
+            TimelineClipAsset.asset_role.asc(),
+            TimelineClipAsset.id.asc(),
+        ).all()
+
+    def get_active_link(
+        self,
+        *,
+        timeline_id: int,
+        timeline_version: int,
+        clip_id: str,
+        asset_role: str,
+        media_asset_id: int,
+    ) -> Optional[TimelineClipAsset]:
+        return (
+            self.session.query(TimelineClipAsset)
+            .filter(TimelineClipAsset.timeline_id == timeline_id)
+            .filter(TimelineClipAsset.timeline_version == timeline_version)
+            .filter(TimelineClipAsset.clip_id == clip_id)
+            .filter(TimelineClipAsset.asset_role == asset_role)
+            .filter(TimelineClipAsset.media_asset_id == media_asset_id)
+            .filter(TimelineClipAsset.is_deleted.is_(False))
+            .first()
+        )
 
 
 class RenderJobRepository(BaseRepository[RenderJob]):

@@ -95,6 +95,35 @@ class MediaAssetResponse(BaseModel):
         from_attributes = True
 
 
+class TimelineClipAssetResponse(BaseModel):
+    id: int
+    business_id: str
+    timeline_id: int
+    timeline_version: int
+    clip_id: str
+    track_type: Optional[str] = None
+    asset_role: str
+    media_asset_id: int
+    media_asset: Optional[MediaAssetResponse] = None
+    render_job_id: Optional[int] = None
+    source: Optional[str] = None
+    source_ref: Optional[Dict[str, Any]] = None
+    replacement_of_id: Optional[int] = None
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = None
+    deleted_reason: Optional[str] = None
+    created_by: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TimelineClipAssetListResponse(BaseModel):
+    items: List[TimelineClipAssetResponse]
+
+
 class RenderJobCreate(BaseModel):
     timeline_version: int = Field(..., ge=1)
     render_type: RenderType

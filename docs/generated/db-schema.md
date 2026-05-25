@@ -20,6 +20,7 @@ Snapshot summary derived from current SQLAlchemy models and Alembic history.
 - `media_assets`
 - `timelines`
 - `timeline_revisions`
+- `timeline_clip_assets`
 - `render_jobs`
 
 ## Migration Surface
@@ -31,5 +32,6 @@ Snapshot summary derived from current SQLAlchemy models and Alembic history.
 - Video task metadata: `b4d2c8f1a7e9_add_generation_metadata_to_video_tasks.py`
 - Timeline main chain tables: `8d1b6e2a4f90_add_timeline_main_chain_tables.py`
 - Timeline revisions and lifecycle state: `a4f5c6d7e8f9_add_timeline_revisions_and_lifecycle.py`
+- Timeline clip asset lineage: `c5e6f7a8b9c0_add_timeline_clip_assets.py`
 
 This file is intentionally compact; regenerate or expand it when schema-first tooling is added.
