@@ -214,20 +214,18 @@ Latest validation:
   rework context has `auto_render=true`. The render preset carries a rework
   fingerprint so a prior final render for the same Timeline version does not
   block the new render through idempotency.
-- Legacy cleanup has started on `dialogue_audio_service.py`: storyboard timeline
-  placeholder conversion now lives in `app.services.audio.storyboard_from_timeline`,
-  and the historical service module only re-exports those helpers for existing
-  imports. Scene audio generation, episode concatenation, and beats persistence
-  still remain in the historical service.
+- `dialogue_audio_service.py` is now a compatibility facade: storyboard timeline
+  placeholder conversion, scene audio generation, episode concatenation, beats
+  persistence, and episode/storyboard timeline helpers live under
+  `app.services.audio.*`.
 - Episode audio timeline concatenation and persistence now live behind
   `app.services.audio.episode_audio_builder`, with episode beat construction in
   `app.services.audio.episode_timeline_beats`; `dialogue_audio_service.py`
   remains a compatibility import surface for those helpers. Scene-level TTS
   generation and beat persistence are still the remaining split target.
 - Scene beat persistence, scene audio metadata writeback, and per-scene duration
-  validation now call `app.services.audio.scene_audio_persistence` from the
-  historical service. The remaining `dialogue_audio_service.py` work is the
-  scene-level TTS generation orchestration itself.
+  validation now live in `app.services.audio.scene_audio_persistence`; historical
+  imports no longer own the implementation.
 - Duration-controlled dialogue generation and the deprecated dialogue-audio API
   endpoint now call `app.services.audio.scene_audio_generator` directly for
   scene-level audio generation, keeping the historical service out of those
@@ -236,6 +234,10 @@ Latest validation:
   `app.services.duration_controlled_scene_runner`, and the touched deprecated
   dialogue-audio endpoint now uses repository helpers instead of direct
   SQLAlchemy queries.
+- Historical dialogue-audio fixed segment planning and text cleanup compatibility
+  now live in `app.services.audio.dialogue_service_compat` and
+  `app.services.audio.dialogue_service_text_compat`, keeping the old service file
+  below the service-size limit.
 - `scripts_legacy.py` no longer owns the shared script task-title formatter:
   legacy regeneration and the split audio/timeline pipeline endpoints now use
   `app.services.script.task_titles`. The cleanup also removed unused

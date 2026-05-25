@@ -87,12 +87,13 @@
         URL/UUID/datetime helper。
   - [x] 已补齐脚本生成测试 mock 对质量闸悬念判断和 repair JSON 的响应，恢复
         `/api/v1/scripts/generate` 真实质量闸路径测试。
-- [ ] 拆分 `dialogue_audio_service.py`，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
+- [x] 拆分 `dialogue_audio_service.py`，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
   - [x] 已把 episode 拼接/写回迁到 `services/audio/episode_audio_builder.py`，并把 episode timeline beat 构造迁到 `services/audio/episode_timeline_beats.py`；旧服务只保留兼容导入。
   - [x] 已把 scene beat 落库、scene audio metadata 写回和单场时长校验迁到 `services/audio/scene_audio_persistence.py`。
   - [x] 已把 timeline 占位转换从 `dialogue_audio_service.py` 迁到 `services/audio/storyboard_from_timeline.py`，旧服务只保留兼容导入。
   - [x] 已把 duration-control 和 deprecated dialogue-audio endpoint 的 scene 音轨生成入口切到 `services/audio/scene_audio_generator.py`。
   - [x] 已把 duration-control 的逐场景生成循环迁到 `services/duration_controlled_scene_runner.py`，并清掉 touched endpoint 的直接 query。
+  - [x] 已把历史 `dialogue_audio_service.py` 收成兼容 facade，旧导入转发到 `services/audio/*`，固定段落规划和文本清理兼容逻辑拆到小 helper。
 - [x] 拆分 `ai_service_manager.py`，把 provider routing、fallback、model cache、request logging 收成独立模块。
   - [x] 已把 request/response/prompt 日志和截断逻辑迁到 `services/ai_manager_logging.py`，manager 继续保留兼容 wrapper。
   - [x] 已把模型列表 cache key、读取和写入迁到 `services/ai_manager_model_cache.py`。
