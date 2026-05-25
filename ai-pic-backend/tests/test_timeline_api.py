@@ -1,7 +1,9 @@
 from app.core.middleware import get_current_active_user
 from app.main import app
 from app.models.script import Episode, Script, Story
+from app.models.timeline import RenderJob
 from app.models.user import User
+from app.services.timeline_service import TimelineService
 from sqlalchemy.orm import Session
 
 
@@ -55,7 +57,16 @@ def _timeline_spec(episode: Episode, script: Script, version: int = 1) -> dict:
     }
 
 
-def test_timeline_crud_version_lock_and_render_idempotency(client, db_session):
+def test_timeline_crud_version_lock_and_render_idempotency(
+    client,
+    db_session,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        TimelineService,
+        "_dispatch_render_job",
+        staticmethod(lambda _job, _user: None),
+    )
     episode, script = _bootstrap_episode(db_session)
 
     create_response = client.post(
@@ -129,10 +140,45 @@ def test_timeline_crud_version_lock_and_render_idempotency(client, db_session):
     assert second_render.json()["id"] == first_render.json()["id"]
     assert first_render.json()["status"] == "queued"
 
+    active_job = db_session.get(RenderJob, first_render.json()["id"])
+    active_job.status = "running"
+    active_job.progress = 50
+    db_session.commit()
+
+    running_render = client.post(
+        f"/api/v1/timelines/{timeline['id']}/render", json=render_payload
+    )
+    assert running_render.status_code == 200
+    assert running_render.json()["id"] == first_render.json()["id"]
+    assert running_render.json()["status"] == "running"
+
+    active_job.status = "succeeded"
+    active_job.progress = 100
+    db_session.commit()
+
+    succeeded_render = client.post(
+        f"/api/v1/timelines/{timeline['id']}/render", json=render_payload
+    )
+    assert succeeded_render.status_code == 200
+    assert succeeded_render.json()["id"] == first_render.json()["id"]
+    assert succeeded_render.json()["status"] == "succeeded"
+
+    active_job.status = "failed"
+    active_job.log = {"code": "no_video_clips"}
+    db_session.commit()
+
+    retry_render = client.post(
+        f"/api/v1/timelines/{timeline['id']}/render",
+        json={**render_payload, "force_new_attempt": True},
+    )
+    assert retry_render.status_code == 200
+    assert retry_render.json()["id"] != first_render.json()["id"]
+    assert retry_render.json()["status"] == "queued"
+
     jobs_response = client.get(f"/api/v1/timelines/{timeline['id']}/render-jobs")
     assert jobs_response.status_code == 200
     assert [job["id"] for job in jobs_response.json()["items"]] == [
-        first_render.json()["id"]
+        retry_render.json()["id"]
     ]
 
 

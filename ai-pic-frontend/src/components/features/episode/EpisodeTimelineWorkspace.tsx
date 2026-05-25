@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
-  Environment,
   NormalizedScene,
   Script,
   TimelineResponse,
@@ -20,7 +19,6 @@ import {
 } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
-import { storyStructureAPI } from "@/utils/api/endpoints";
 import {
   firstTimelineItemId,
   resolveTimelineSelection,
@@ -30,10 +28,14 @@ import {
   sceneForTimelineMeta,
   timelineItemMeta,
 } from "./EpisodeTimelineWorkspaceModel";
+import { buildTimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
 import {
   EpisodeTimelineContextRail,
   EpisodeTimelineInspectorContent,
 } from "./EpisodeTimelineWorkspaceParts";
+import { TimelineRenderPanel } from "./EpisodeTimelineRenderPanel";
+import { useTimelineSceneEnvironments } from "./useTimelineSceneEnvironments";
+import { useTimelineRenderJobs } from "./useTimelineRenderJobs";
 
 interface EpisodeTimelineWorkspaceProps {
   selectedScriptId: number | null;
@@ -53,6 +55,7 @@ interface EpisodeTimelineWorkspaceProps {
   pipelineTaskId?: number | null;
   onNavigateToTasks: () => void;
   onNavigateToScript: () => void;
+  onNavigateToStoryboard: () => void;
 }
 
 export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
@@ -74,21 +77,22 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     pipelineTaskId,
     onNavigateToTasks,
     onNavigateToScript,
+    onNavigateToStoryboard,
   } = props;
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [environments, setEnvironments] = useState<Environment[]>([]);
-  const [sceneEnvOverrides, setSceneEnvOverrides] = useState<
-    Record<number, number | null>
-  >({});
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<
-    number | null
-  >(null);
-  const [environmentSaving, setEnvironmentSaving] = useState(false);
   const { showAlert } = useAlertModal();
   const { models, loading: modelsLoading } = useAvailableModels({
     modelType: "text",
     enabled: true,
   });
+  const {
+    environments,
+    sceneEnvOverrides,
+    selectedEnvironmentId,
+    setSelectedEnvironmentId,
+    environmentSaving,
+    saveEnvironment,
+  } = useTimelineSceneEnvironments({ showAlert });
 
   const tracks = useMemo(
     () =>
@@ -105,49 +109,34 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     () => sceneForTimelineMeta(normalizedScenes, meta, sceneEnvOverrides),
     [normalizedScenes, meta, sceneEnvOverrides],
   );
+  const renderReadiness = useMemo(
+    () =>
+      buildTimelineRenderReadiness(selectedTimelineSpec, selectedStoryboard),
+    [selectedStoryboard, selectedTimelineSpec],
+  );
+  const {
+    latestJob: latestRenderJob,
+    loading: renderJobsLoading,
+    busy: renderBusy,
+    error: renderError,
+    queueRender,
+  } = useTimelineRenderJobs({
+    selectedTimelineSpec,
+    renderReadiness,
+    showAlert,
+  });
 
   useEffect(() => {
     if (!selection.item) setSelectedItemId(firstTimelineItemId(tracks));
   }, [selection.item, tracks]);
 
   useEffect(() => {
-    let active = true;
-    void storyStructureAPI.listEnvironments().then((res) => {
-      if (!active) return;
-      setEnvironments(res.success && res.data ? res.data : []);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
     setSelectedEnvironmentId(selectedScene?.environment_id ?? null);
-  }, [selectedScene?.id, selectedScene?.environment_id]);
-
-  const handleSaveEnvironment = useCallback(async () => {
-    if (!selectedScene) return;
-    setEnvironmentSaving(true);
-    try {
-      const res = await storyStructureAPI.updateScene(selectedScene.id, {
-        environment_id: selectedEnvironmentId,
-      });
-      if (res.success) {
-        setSceneEnvOverrides((prev) => ({
-          ...prev,
-          [selectedScene.id]: selectedEnvironmentId,
-        }));
-        showAlert({ message: "场景环境已保存", variant: "success" });
-      } else {
-        showAlert({
-          message: res.error || "保存场景环境失败",
-          variant: "error",
-        });
-      }
-    } finally {
-      setEnvironmentSaving(false);
-    }
-  }, [selectedEnvironmentId, selectedScene, showAlert]);
+  }, [
+    selectedScene?.id,
+    selectedScene?.environment_id,
+    setSelectedEnvironmentId,
+  ]);
 
   return (
     <OperatorWorkspace
@@ -219,6 +208,17 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
                 <OperatorState title="选择剧本并生成时间轴后，这里会显示对白和分镜轨道。" />
               )}
             </div>
+            <TimelineRenderPanel
+              readiness={renderReadiness}
+              latestJob={latestRenderJob}
+              loading={renderJobsLoading}
+              busy={renderBusy}
+              error={renderError}
+              onQueueRender={(renderType) =>
+                void queueRender(renderType, false)
+              }
+              onRetryRender={(renderType) => void queueRender(renderType, true)}
+            />
             {pipelineTaskId ? (
               <div className="border-t border-gray-100 px-4 py-3 text-xs text-blue-700">
                 一键流水线任务已创建：task_id={pipelineTaskId}
@@ -233,12 +233,14 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
             item={selection.item}
             track={selection.track}
             scene={selectedScene}
+            selectedStoryboard={selectedStoryboard}
             environments={environments}
             selectedEnvironmentId={selectedEnvironmentId}
             environmentSaving={environmentSaving}
             onEnvironmentChange={setSelectedEnvironmentId}
-            onSaveEnvironment={() => void handleSaveEnvironment()}
+            onSaveEnvironment={() => void saveEnvironment(selectedScene)}
             onNavigateToScript={onNavigateToScript}
+            onNavigateToStoryboard={onNavigateToStoryboard}
             onNavigateToTasks={onNavigateToTasks}
           />
         </OperatorInspector>

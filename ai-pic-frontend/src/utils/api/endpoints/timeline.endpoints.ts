@@ -4,7 +4,13 @@
 
 import { httpClient } from "../client";
 import type { ApiResponse } from "../types/common.types";
-import type { TimelineListResponse } from "../types/timeline.types";
+import type {
+  TimelineListResponse,
+  TimelineRenderJobCreate,
+  TimelineRenderJobListResponse,
+  TimelineRenderJobResponse,
+  TimelineResponse,
+} from "../types/timeline.types";
 
 export async function listEpisodeTimelines(
   episodeId: number | string,
@@ -14,6 +20,36 @@ export async function listEpisodeTimelines(
   );
 }
 
+export async function getTimeline(
+  timelineId: number | string,
+): Promise<ApiResponse<TimelineResponse>> {
+  return httpClient<TimelineResponse>(`/api/v1/timelines/${timelineId}`);
+}
+
+export async function queueTimelineRender(
+  timelineId: number | string,
+  payload: TimelineRenderJobCreate,
+): Promise<ApiResponse<TimelineRenderJobResponse>> {
+  return httpClient<TimelineRenderJobResponse>(
+    `/api/v1/timelines/${timelineId}/render`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function listTimelineRenderJobs(
+  timelineId: number | string,
+): Promise<ApiResponse<TimelineRenderJobListResponse>> {
+  return httpClient<TimelineRenderJobListResponse>(
+    `/api/v1/timelines/${timelineId}/render-jobs`,
+  );
+}
+
 export const timelineAPI = {
   listEpisodeTimelines,
+  getTimeline,
+  queueTimelineRender,
+  listTimelineRenderJobs,
 };

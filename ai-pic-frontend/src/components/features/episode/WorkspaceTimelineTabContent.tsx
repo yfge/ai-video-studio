@@ -135,6 +135,15 @@ export function WorkspaceTimelineTabContent({
     }
   }, [router, selectedScript]);
 
+  const handleNavigateToStoryboard = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "storyboard");
+    if (selectedScriptId) {
+      params.set("scriptId", String(selectedScriptId));
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  }, [pathname, router, searchParams, selectedScriptId]);
+
   if (scripts.length === 0) {
     return (
       <OperatorState
@@ -163,6 +172,7 @@ export function WorkspaceTimelineTabContent({
       pipelineTaskId={pipelineTaskId}
       onNavigateToTasks={handleNavigateToTasks}
       onNavigateToScript={handleNavigateToScript}
+      onNavigateToStoryboard={handleNavigateToStoryboard}
     />
   );
 }

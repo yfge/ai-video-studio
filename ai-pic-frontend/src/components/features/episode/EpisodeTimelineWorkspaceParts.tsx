@@ -9,7 +9,11 @@ import {
 import { getString } from "@/hooks/useEpisodeDetail";
 import type { Environment, NormalizedScene } from "@/utils/api/types";
 import type { TimelineItem, TimelineTrack } from "@/components/features";
-import { formatTimelineMs, timelineItemMeta } from "./EpisodeTimelineWorkspaceModel";
+import {
+  formatTimelineMs,
+  timelineItemMeta,
+} from "./EpisodeTimelineWorkspaceModel";
+import { timelineClipVideoStatus } from "./EpisodeTimelineRenderModel";
 
 export function ContextRow({
   label,
@@ -23,7 +27,9 @@ export function ContextRow({
   return (
     <div className="flex items-center justify-between">
       <span>{label}</span>
-      <span className={ready ? "text-green-700" : "text-gray-500"}>{value}</span>
+      <span className={ready ? "text-green-700" : "text-gray-500"}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -61,10 +67,21 @@ export function EpisodeTimelineContextRail({
   return (
     <OperatorContextRail title="剧集上下文" subtitle="剧本、场景和生成状态">
       <div className="space-y-3 text-xs text-gray-600">
-        <ContextRow label="剧本版本" value={selectedScriptVersion || "未选择"} />
+        <ContextRow
+          label="剧本版本"
+          value={selectedScriptVersion || "未选择"}
+        />
         <ContextRow label="场景数量" value={String(normalizedScenes.length)} />
-        <ContextRow label="时间轴" value={timelineReady ? "已生成" : "未生成"} ready={timelineReady} />
-        <ContextRow label="分镜占位" value={storyboardReady ? "已生成" : "未生成"} ready={storyboardReady} />
+        <ContextRow
+          label="时间轴"
+          value={timelineReady ? "已生成" : "未生成"}
+          ready={timelineReady}
+        />
+        <ContextRow
+          label="分镜占位"
+          value={storyboardReady ? "已生成" : "未生成"}
+          ready={storyboardReady}
+        />
       </div>
       <div className="mt-5 border-t border-gray-100 pt-4">
         <div className="mb-2 text-xs font-medium text-gray-500">场景列表</div>
@@ -94,23 +111,27 @@ export function EpisodeTimelineInspectorContent({
   item,
   track,
   scene,
+  selectedStoryboard,
   environments,
   selectedEnvironmentId,
   environmentSaving,
   onEnvironmentChange,
   onSaveEnvironment,
   onNavigateToScript,
+  onNavigateToStoryboard,
   onNavigateToTasks,
 }: {
   item: TimelineItem | null;
   track: TimelineTrack | null;
   scene: NormalizedScene | null;
+  selectedStoryboard: Record<string, unknown> | null;
   environments: Environment[];
   selectedEnvironmentId: number | null;
   environmentSaving: boolean;
   onEnvironmentChange: (value: number | null) => void;
   onSaveEnvironment: () => void;
   onNavigateToScript: () => void;
+  onNavigateToStoryboard: () => void;
   onNavigateToTasks: () => void;
 }) {
   if (!item) {
@@ -118,6 +139,7 @@ export function EpisodeTimelineInspectorContent({
   }
 
   const meta = timelineItemMeta(item);
+  const videoStatus = timelineClipVideoStatus(meta, selectedStoryboard);
   return (
     <div className="mt-4 space-y-4">
       <StatusPill tone={track?.id === "storyboard" ? "blue" : "green"}>
@@ -126,7 +148,9 @@ export function EpisodeTimelineInspectorContent({
       <InspectorRow label="内容" value={item.label || "未命名"} />
       <InspectorRow
         label="时间"
-        value={`${formatTimelineMs(item.startMs)} - ${formatTimelineMs(item.endMs)}`}
+        value={`${formatTimelineMs(item.startMs)} - ${formatTimelineMs(
+          item.endMs,
+        )}`}
       />
       <InspectorRow label="角色" value={getString(meta.character) || "—"} />
       <InspectorRow
@@ -134,6 +158,14 @@ export function EpisodeTimelineInspectorContent({
         value={getString(meta.shot_type) || getString(meta.camera_notes) || "—"}
       />
       <InspectorRow label="状态" value={getString(meta.status) || "待复核"} />
+      <InspectorRow
+        label="视频素材"
+        value={
+          videoStatus.ready
+            ? `已关联 · ${videoStatus.source || "素材"}`
+            : "缺少视频素材"
+        }
+      />
 
       <section className="rounded-md border border-gray-200 p-3">
         <div className="text-sm font-semibold text-gray-950">场景环境</div>
@@ -177,23 +209,11 @@ export function EpisodeTimelineInspectorContent({
         )}
       </section>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button type="button" className={operatorButtonClass("secondary")}>
-          重新配音
-        </button>
-        <button type="button" className={operatorButtonClass("secondary")}>
-          生成分镜
-        </button>
-        <button type="button" className={operatorButtonClass("secondary")}>
-          标记问题
-        </button>
-        <button type="button" className={operatorButtonClass("primary")}>
-          继续生成
-        </button>
-      </div>
-      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-        分镜生成中 48%
-      </div>
+      {!videoStatus.ready ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          此片段缺少视频素材，需先在分镜辅助中生成或替换。
+        </div>
+      ) : null}
       <div className="flex gap-2 border-t border-gray-100 pt-4">
         <button
           type="button"
@@ -201,6 +221,15 @@ export function EpisodeTimelineInspectorContent({
           className={operatorButtonClass("secondary")}
         >
           剧本
+        </button>
+        <button
+          type="button"
+          onClick={onNavigateToStoryboard}
+          className={operatorButtonClass(
+            videoStatus.ready ? "secondary" : "primary",
+          )}
+        >
+          替换片段
         </button>
         <button
           type="button"

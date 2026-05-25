@@ -19,20 +19,17 @@ if __package__ in {None, ""}:
 
 from scripts.harness._common import ensure_run_dir, update_summary, write_json
 from scripts.harness.scenarios import GOLDEN_PATH_SCENARIOS
+from scripts.harness.timeline_export_flow import run_timeline_export_flow
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--scenario", required=True, choices=sorted(GOLDEN_PATH_SCENARIOS)
-    )
+    parser.add_argument("--scenario", required=True, choices=sorted(GOLDEN_PATH_SCENARIOS))
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--base-url", default="http://localhost:8089")
     parser.add_argument("--api-url", default="http://localhost:8000")
     parser.add_argument("--username", default=os.getenv("HARNESS_USER", "geyunfei"))
-    parser.add_argument(
-        "--password", default=os.getenv("HARNESS_PASSWORD", "Gyf@845261")
-    )
+    parser.add_argument("--password", default=os.getenv("HARNESS_PASSWORD", "Gyf@845261"))
     parser.add_argument("--script-id", default=os.getenv("HARNESS_SCRIPT_ID", ""))
     parser.add_argument("--virtual-ip-id", default=os.getenv("HARNESS_VIRTUAL_IP_ID", ""))
     parser.add_argument("--timeout-seconds", type=int, default=180)
@@ -95,12 +92,9 @@ def poll_task(
 
 def scenario_inputs(args: argparse.Namespace) -> dict[str, Any]:
     return {
-        "run_id": args.run_id,
-        "api_url": args.api_url,
-        "base_url": args.base_url,
+        "run_id": args.run_id, "api_url": args.api_url, "base_url": args.base_url,
         "script_id": args.script_id or None,
-        "virtual_ip_id": args.virtual_ip_id or None,
-        "timeout_seconds": args.timeout_seconds,
+        "virtual_ip_id": args.virtual_ip_id or None, "timeout_seconds": args.timeout_seconds,
     }
 
 
@@ -210,19 +204,17 @@ def run_scenario(args: argparse.Namespace) -> dict[str, Any]:
                     payload["success_criteria"] = ["timeline task is queued", "timeline task completes"]
                     payload["ok"] = status == "completed"
                 else:
-                    payload["success_criteria"] = [
-                        "timeline task is queued",
-                        "timeline task completes",
-                        "completed task exposes a non-empty result_file_path",
-                    ]
-                    payload["ok"] = status == "completed" and bool(result_ref)
-                    if status == "completed" and not result_ref:
-                        failures.append(
-                            {
-                                "category": "missing_result_reference",
-                                "detail": "timeline pipeline completed without result_file_path",
-                            }
-                        )
+                    run_timeline_export_flow(
+                        session=session,
+                        api_url=args.api_url,
+                        script_id=args.script_id,
+                        timeout_seconds=args.timeout_seconds,
+                        chain=request_chain,
+                        payload=payload,
+                        failures=failures,
+                        task_status=status,
+                        result_ref=result_ref,
+                    )
 
         if not payload["ok"] and not failures:
             failures.append({"category": "assertion_failed", "detail": "scenario criteria not met"})

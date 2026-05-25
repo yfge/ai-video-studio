@@ -262,6 +262,8 @@ Implemented timeline APIs:
 - `GET /api/v1/timelines/{timeline_id}`: read timeline spec and render state.
 - `PATCH /api/v1/timelines/{timeline_id}`: update with version lock.
 - `POST /api/v1/timelines/{timeline_id}/render`: queue proxy/final render job.
+- `GET /api/v1/timelines/{timeline_id}/render-jobs`: list render attempts,
+  including `output_asset` when a render succeeds.
 
 A dedicated `POST /api/v1/episodes/{episode_id}/timelines/import-audio` may be
 added later, but current imports happen through generation bridges.
@@ -274,6 +276,10 @@ Render APIs must be idempotent for the same `timeline_id`, `timeline_version`,
 the existing queued/running/succeeded render job unless the caller explicitly
 requests a new attempt.
 
+`force_new_attempt=true` is only valid for failed or cancelled render jobs. It
+soft-deletes the old active attempt and creates a fresh queued attempt for the
+same timeline version and preset.
+
 ## Render Contract
 
 Render jobs consume exactly one locked timeline version. They must not render a
@@ -285,11 +291,13 @@ Render inputs:
 - `timeline_version`
 - `render_type`: `proxy` | `final`
 - `preset`: fps, resolution, bitrate, audio settings, subtitle mode.
+- `force_new_attempt`: optional retry flag for failed/cancelled attempts.
 
 Render outputs:
 
 - `render_jobs.status`
 - `render_jobs.output_asset_id`
+- `render_jobs.output_asset`
 - `render_jobs.log`
 - `media_assets` row for the proxy/final output.
 

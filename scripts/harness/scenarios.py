@@ -199,9 +199,9 @@ GOLDEN_PATH_SCENARIOS: dict[str, GoldenPathScenario] = {
     ),
     "timeline_export_end_to_end": GoldenPathScenario(
         name="timeline_export_end_to_end",
-        description="Queue the timeline pipeline and require a persisted result reference at completion.",
+        description="Queue the timeline pipeline, render the latest Timeline, and require output_asset.",
         requires_auth=True,
-        notes="Treats missing result references as a contract failure, even if the task completed.",
+        notes="Treats missing render output_asset as a contract failure, even if the timeline task completed.",
         requires_script_id=True,
         legacy_aliases=("timeline_export_regression",),
     ),

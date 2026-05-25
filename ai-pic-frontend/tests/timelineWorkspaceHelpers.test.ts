@@ -9,6 +9,10 @@ import {
   buildEpisodeTimelineTracks,
   sceneForTimelineMeta,
 } from "../src/components/features/episode/EpisodeTimelineWorkspaceModel";
+import {
+  buildTimelineRenderReadiness,
+  timelineClipVideoStatus,
+} from "../src/components/features/episode/EpisodeTimelineRenderModel";
 import { hasTimeline } from "../src/components/features/stories/StoryProductionModel";
 import type { TimelineTrack } from "../src/components/features/Timeline/Timeline";
 import type { TimelineResponse } from "../src/utils/api/types";
@@ -167,5 +171,103 @@ describe("timeline workspace helpers", () => {
       ),
       false,
     );
+  });
+
+  it("preflights timeline render videos from direct clip assets", () => {
+    const timeline = {
+      id: 4,
+      business_id: "timeline_4",
+      episode_id: 1,
+      script_id: 2,
+      title: "Timeline",
+      status: "ready",
+      version: 1,
+      created_at: "2026-05-12T00:00:00Z",
+      updated_at: "2026-05-12T00:00:00Z",
+      spec: {
+        spec_version: "timeline.v1",
+        episode_id: 1,
+        script_id: 2,
+        version: 1,
+        tracks: [
+          {
+            track_type: "video",
+            clips: [
+              {
+                clip_id: "video_scene_1_beat_1_001",
+                track_type: "video",
+                start_ms: 0,
+                end_ms: 1200,
+                asset_ref: { file_url: "https://example.com/clip.mp4" },
+              },
+            ],
+          },
+        ],
+      },
+    } satisfies TimelineResponse;
+
+    const readiness = buildTimelineRenderReadiness(timeline, null);
+
+    assert.equal(readiness.ready, true);
+    assert.equal(readiness.videoClipCount, 1);
+    assert.equal(readiness.missingClips.length, 0);
+  });
+
+  it("preflights missing timeline render videos", () => {
+    const readiness = buildTimelineRenderReadiness(
+      {
+        id: 5,
+        business_id: "timeline_5",
+        episode_id: 1,
+        script_id: 2,
+        title: "Timeline",
+        status: "ready",
+        version: 1,
+        created_at: "2026-05-12T00:00:00Z",
+        updated_at: "2026-05-12T00:00:00Z",
+        spec: {
+          spec_version: "timeline.v1",
+          episode_id: 1,
+          script_id: 2,
+          version: 1,
+          tracks: [
+            {
+              track_type: "video",
+              clips: [
+                {
+                  clip_id: "video_scene_2_beat_3_001",
+                  track_type: "video",
+                  scene_number: 2,
+                  start_ms: 0,
+                  end_ms: 1000,
+                },
+              ],
+            },
+          ],
+        },
+      } satisfies TimelineResponse,
+      null,
+    );
+
+    assert.equal(readiness.ready, false);
+    assert.equal(readiness.missingClips[0].clipId, "video_scene_2_beat_3_001");
+  });
+
+  it("resolves selected clip video status from storyboard support frames", () => {
+    const status = timelineClipVideoStatus(
+      { clip_id: "video_scene_1_beat_1_001" },
+      {
+        frames: [
+          {
+            timeline_clip_id: "video_scene_1_beat_1_001",
+            video_url: "https://example.com/storyboard.mp4",
+          },
+        ],
+      },
+    );
+
+    assert.equal(status.ready, true);
+    assert.equal(status.source, "storyboard_frame");
+    assert.equal(status.url, "https://example.com/storyboard.mp4");
   });
 });

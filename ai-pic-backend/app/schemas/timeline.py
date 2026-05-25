@@ -67,11 +67,15 @@ class MediaAssetResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    class Config:
+        from_attributes = True
+
 
 class RenderJobCreate(BaseModel):
     timeline_version: int = Field(..., ge=1)
     render_type: RenderType
     preset: Dict[str, Any] = Field(default_factory=dict)
+    force_new_attempt: bool = False
 
 
 class RenderJobResponse(BaseModel):
@@ -85,6 +89,7 @@ class RenderJobResponse(BaseModel):
     status: str
     progress: int
     output_asset_id: Optional[int] = None
+    output_asset: Optional[MediaAssetResponse] = None
     log: Optional[Dict[str, Any]] = None
     created_by: Optional[int] = None
     created_at: datetime

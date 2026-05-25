@@ -14,6 +14,7 @@ from app.schemas.timeline import (
     TimelineResponse,
     TimelineUpdate,
 )
+from app.services.timeline_responses import render_job_response, timeline_response
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -36,7 +37,7 @@ class TimelineService:
             episode_id=episode_id,
             user_id=self._story_owner_filter(current_user),
         )
-        return [self._timeline_response(item) for item in items]
+        return [timeline_response(item) for item in items]
 
     def create_timeline(
         self, episode_id: int, payload: TimelineCreate, current_user: User
@@ -67,11 +68,11 @@ class TimelineService:
         timeline.spec = self._spec_with_identity(timeline)
         self.db.commit()
         self.db.refresh(timeline)
-        return self._timeline_response(timeline)
+        return timeline_response(timeline)
 
     def get_timeline(self, timeline_id: int, current_user: User) -> TimelineResponse:
         timeline = self._get_timeline_or_404(timeline_id, current_user)
-        return self._timeline_response(timeline)
+        return timeline_response(timeline)
 
     def update_timeline(
         self, timeline_id: int, payload: TimelineUpdate, current_user: User
@@ -92,7 +93,7 @@ class TimelineService:
 
         self.db.commit()
         self.db.refresh(timeline)
-        return self._timeline_response(timeline)
+        return timeline_response(timeline)
 
     def queue_render_job(
         self, timeline_id: int, payload: RenderJobCreate, current_user: User
@@ -112,7 +113,30 @@ class TimelineService:
             preset_hash=preset_hash,
         )
         if existing is not None:
-            return self._render_job_response(existing)
+            if payload.force_new_attempt:
+                if existing.status not in {"failed", "cancelled"}:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=(
+                            "force_new_attempt is only allowed for failed "
+                            "or cancelled render jobs"
+                        ),
+                    )
+                existing.soft_delete(
+                    user_id=current_user.id,
+                    reason="force_new_attempt",
+                )
+                self.db.flush()
+            else:
+                return render_job_response(existing)
+
+        if existing is not None and payload.force_new_attempt:
+            # Existing failed/cancelled job was soft-deleted above so the
+            # idempotency constraint allows one fresh active attempt.
+            existing = None
+
+        if existing is not None:
+            return render_job_response(existing)
 
         job = self.render_jobs.create(
             timeline_id=timeline.id,
@@ -126,14 +150,16 @@ class TimelineService:
         )
         self.db.commit()
         self.db.refresh(job)
-        return self._render_job_response(job)
+        self._dispatch_render_job(job, current_user)
+        self.db.refresh(job)
+        return render_job_response(job)
 
     def list_render_jobs(
         self, timeline_id: int, current_user: User
     ) -> List[RenderJobResponse]:
         timeline = self._get_timeline_or_404(timeline_id, current_user)
         items = self.render_jobs.list_for_timeline(timeline.id)
-        return [self._render_job_response(item) for item in items]
+        return [render_job_response(item) for item in items]
 
     def _get_episode_or_404(self, episode_id: int, current_user: User) -> Episode:
         episode = self.episodes.get_with_story(
@@ -196,40 +222,7 @@ class TimelineService:
         }
 
     @staticmethod
-    def _timeline_response(timeline: Timeline) -> TimelineResponse:
-        return TimelineResponse(
-            id=timeline.id,
-            business_id=timeline.business_id,
-            episode_id=timeline.episode_id,
-            episode_business_id=timeline.episode_business_id,
-            script_id=timeline.script_id,
-            script_business_id=timeline.script_business_id,
-            title=timeline.title,
-            status=timeline.status,
-            spec=timeline.spec or {},
-            version=timeline.version,
-            source_audio_timeline_version=timeline.source_audio_timeline_version,
-            created_by=timeline.created_by,
-            updated_by=timeline.updated_by,
-            created_at=timeline.created_at,
-            updated_at=timeline.updated_at,
-        )
+    def _dispatch_render_job(job: RenderJob, current_user: User) -> None:
+        from app.services.task_worker_timeline_render import timeline_render_task
 
-    @staticmethod
-    def _render_job_response(job: RenderJob) -> RenderJobResponse:
-        return RenderJobResponse(
-            id=job.id,
-            business_id=job.business_id,
-            timeline_id=job.timeline_id,
-            timeline_version=job.timeline_version,
-            render_type=job.render_type,
-            preset_hash=job.preset_hash,
-            preset=job.preset or {},
-            status=job.status,
-            progress=job.progress,
-            output_asset_id=job.output_asset_id,
-            log=job.log,
-            created_by=job.created_by,
-            created_at=job.created_at,
-            updated_at=job.updated_at,
-        )
+        timeline_render_task.delay(job.id, current_user.id)
