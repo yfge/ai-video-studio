@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from app.core.logging import get_logger
 from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_model_cache as model_cache
+from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
 from app.services.ai_manager_logging import (
     AI_MANAGER_PROVIDER,
@@ -549,28 +550,11 @@ class AIServiceManager:
             self._update_request_count(provider_name)
 
             # 如果未指定模型，为当前 provider 选择默认模型（不污染其他 provider）
-            provider_model = original_model
-            if not provider_model:
-                static_models = [
-                    m
-                    for m in getattr(
-                        provider, "available_models", []
-                    )  # static list is more reliable
-                    if m.model_type == AIModelType.TEXT_GENERATION
-                ]
-                if static_models:
-                    provider_model = static_models[0].model_id
-                else:
-                    available_models = await self._get_models_for_type(
-                        provider,
-                        AIModelType.TEXT_GENERATION,
-                    )
-                    text_models = available_models
-                    provider_model = (
-                        text_models[0].model_id
-                        if text_models
-                        else getattr(provider, "default_model", "default")
-                    )
+            provider_model = await model_resolution.resolve_text_model(
+                provider,
+                original_model,
+                self._get_models_for_type,
+            )
             last_model_used = provider_model
 
             try:
@@ -707,26 +691,11 @@ class AIServiceManager:
             self._update_request_count(provider_name)
 
             # 为当前 provider 选择合适的默认模型，不影响下一轮选择
-            provider_model = original_model
-            if not provider_model:
-                static_models = [
-                    m
-                    for m in getattr(provider, "available_models", [])
-                    if m.model_type == AIModelType.TEXT_TO_IMAGE
-                ]
-                if static_models:
-                    provider_model = static_models[0].model_id
-                else:
-                    available_models = await self._get_models_for_type(
-                        provider,
-                        AIModelType.TEXT_TO_IMAGE,
-                    )
-                    image_models = available_models
-                    provider_model = (
-                        image_models[0].model_id
-                        if image_models
-                        else getattr(provider, "default_model", "default")
-                    )
+            provider_model = await model_resolution.resolve_image_model(
+                provider,
+                original_model,
+                self._get_models_for_type,
+            )
             last_model_used = provider_model
 
             try:
@@ -970,22 +939,11 @@ class AIServiceManager:
             self._update_request_count(provider_name)
 
             # 选择合适的默认模型（image_to_image 类型），必要时退回到 text_to_image 模型
-            effective_model = model
-            if not effective_model:
-                img2img_models = await self._get_models_for_type(
-                    provider,
-                    AIModelType.IMAGE_TO_IMAGE,
-                )
-                if img2img_models:
-                    effective_model = img2img_models[0].model_id
-                else:
-                    t2i_models = await self._get_models_for_type(
-                        provider,
-                        AIModelType.TEXT_TO_IMAGE,
-                    )
-                    effective_model = (
-                        t2i_models[0].model_id if t2i_models else "default"
-                    )
+            effective_model = await model_resolution.resolve_image_to_image_model(
+                provider,
+                model,
+                self._get_models_for_type,
+            )
 
             try:
                 # 部分提供商可能未重写 image_to_image，此时调用 BaseProvider 的默认实现返回未实现错误
@@ -1197,39 +1155,12 @@ class AIServiceManager:
             self._update_request_count(provider_name)
 
             try:
-                provider_model = original_model
-                if not provider_model:
-                    static_models = [
-                        m
-                        for m in getattr(provider, "available_models", [])
-                        if m.model_type == model_type
-                    ]
-                    if not static_models and model_type == AIModelType.IMAGE_TO_VIDEO:
-                        static_models = [
-                            m
-                            for m in getattr(provider, "available_models", [])
-                            if m.model_type == AIModelType.TEXT_TO_VIDEO
-                        ]
-                    if static_models:
-                        provider_model = static_models[0].model_id
-                    else:
-                        available_models = await self._get_models_for_type(
-                            provider,
-                            model_type,
-                        )
-                        if (
-                            not available_models
-                            and model_type == AIModelType.IMAGE_TO_VIDEO
-                        ):
-                            available_models = await self._get_models_for_type(
-                                provider,
-                                AIModelType.TEXT_TO_VIDEO,
-                            )
-                        provider_model = (
-                            available_models[0].model_id
-                            if available_models
-                            else getattr(provider, "default_model", "default")
-                        )
+                provider_model = await model_resolution.resolve_video_model(
+                    provider,
+                    original_model,
+                    model_type,
+                    self._get_models_for_type,
+                )
                 last_model_used = provider_model
 
                 # 根据提供商类型调用不同方法
