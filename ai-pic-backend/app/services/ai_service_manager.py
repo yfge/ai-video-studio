@@ -11,6 +11,13 @@ from time import monotonic
 from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
+from app.services.ai_manager_logging import (
+    AI_MANAGER_PROVIDER,
+    log_prompt,
+    log_request,
+    log_response,
+    truncate,
+)
 
 from .providers.base import (
     AIModelType,
@@ -168,13 +175,7 @@ class AIServiceManager:
         return raw, content_type or "image/png"
 
     def _truncate(self, text: Any, limit: int = 2000) -> str:
-        try:
-            s = str(text)
-        except Exception:
-            s = repr(text)
-        if not s:
-            return ""
-        return s if len(s) <= limit else s[:limit] + "...<truncated>"
+        return truncate(text, limit)
 
     def _log_request(
         self,
@@ -184,20 +185,16 @@ class AIServiceManager:
         model: Optional[str],
         params: Dict[str, Any] | None = None,
     ):
-        try:
-            self.logger.info(
-                f"LLM Request | task={task} provider={provider or 'auto'} model={model or 'auto'} params={params or {}}"
-            )
-        except Exception:
-            pass
+        log_request(
+            self.logger,
+            task=task,
+            provider=provider,
+            model=model,
+            params=params,
+        )
 
     def _log_prompt(self, prompt: Optional[str]):
-        if prompt is None:
-            return
-        try:
-            self.logger.info(f"LLM Prompt Preview: {self._truncate(prompt, 2000)}")
-        except Exception:
-            pass
+        log_prompt(self.logger, prompt)
 
     def _log_response(
         self,
@@ -207,20 +204,13 @@ class AIServiceManager:
         model: Optional[str],
         response: AIResponse,
     ):
-        try:
-            status = "success" if (response and response.success) else "failure"
-            if response and not response.success and response.error:
-                body_preview = f"ERROR: {self._truncate(response.error, 2000)}"
-            else:
-                body_preview = self._truncate(response.data if response else None, 2000)
-            usage = getattr(response, "usage", None)
-            p = response.provider if response and response.provider else provider
-            m = response.model if response and response.model else model
-            self.logger.info(
-                f"LLM Response | task={task} provider={p} model={m} status={status} usage={usage} body={body_preview}"
-            )
-        except Exception:
-            pass
+        log_response(
+            self.logger,
+            task=task,
+            provider=provider,
+            model=model,
+            response=response,
+        )
 
     async def _convert_base64_images_to_oss(
         self, images: Any, prefix: str = "ai-generated"
@@ -564,7 +554,7 @@ class AIServiceManager:
             return AIResponse(
                 success=False,
                 error="没有可用的文本生成提供商",
-                provider="ai_service_manager",
+                provider=AI_MANAGER_PROVIDER,
                 model=model or "unknown",
                 task_type=AITaskType.STORY_GENERATION,
                 model_type=AIModelType.TEXT_GENERATION,
@@ -658,7 +648,7 @@ class AIServiceManager:
         return AIResponse(
             success=False,
             error="所有文本生成提供商都失败了",
-            provider="ai_service_manager",
+            provider=AI_MANAGER_PROVIDER,
             model=last_model_used or "unknown",
             task_type=AITaskType.STORY_GENERATION,
             model_type=AIModelType.TEXT_GENERATION,
@@ -727,7 +717,7 @@ class AIServiceManager:
             return AIResponse(
                 success=False,
                 error="没有可用的图像生成提供商",
-                provider="ai_service_manager",
+                provider=AI_MANAGER_PROVIDER,
                 model=model or "unknown",
                 task_type=AITaskType.PORTRAIT_GENERATION,
                 model_type=AIModelType.TEXT_TO_IMAGE,
@@ -848,7 +838,7 @@ class AIServiceManager:
             return AIResponse(
                 success=False,
                 error=error_msg,
-                provider=last_provider or "ai_service_manager",
+                provider=last_provider or AI_MANAGER_PROVIDER,
                 model=last_model or last_model_used or model or "unknown",
                 task_type=AITaskType.PORTRAIT_GENERATION,
                 model_type=AIModelType.TEXT_TO_IMAGE,
@@ -857,7 +847,7 @@ class AIServiceManager:
         return AIResponse(
             success=False,
             error="所有图像生成提供商都失败了",
-            provider="ai_service_manager",
+            provider=AI_MANAGER_PROVIDER,
             model=last_model_used or "unknown",
             task_type=AITaskType.PORTRAIT_GENERATION,
             model_type=AIModelType.TEXT_TO_IMAGE,
@@ -922,7 +912,7 @@ class AIServiceManager:
             return AIResponse(
                 success=False,
                 error="没有可用的图生图提供商",
-                provider="ai_service_manager",
+                provider=AI_MANAGER_PROVIDER,
                 model=model or "unknown",
                 task_type=AITaskType.SCENE_GENERATION,
                 model_type=AIModelType.IMAGE_TO_IMAGE,
@@ -1175,7 +1165,7 @@ class AIServiceManager:
             return AIResponse(
                 success=False,
                 error=error_msg,
-                provider=last_provider or "ai_service_manager",
+                provider=last_provider or AI_MANAGER_PROVIDER,
                 model=last_model or model or "unknown",
                 task_type=AITaskType.SCENE_GENERATION,
                 model_type=AIModelType.IMAGE_TO_IMAGE,
@@ -1184,7 +1174,7 @@ class AIServiceManager:
         return AIResponse(
             success=False,
             error="所有图生图提供商都失败了（未捕获到具体错误信息）",
-            provider="ai_service_manager",
+            provider=AI_MANAGER_PROVIDER,
             model=model or "unknown",
             task_type=AITaskType.SCENE_GENERATION,
             model_type=AIModelType.IMAGE_TO_IMAGE,
@@ -1226,7 +1216,7 @@ class AIServiceManager:
             return AIResponse(
                 success=False,
                 error="没有可用的视频生成提供商",
-                provider="ai_service_manager",
+                provider=AI_MANAGER_PROVIDER,
                 model=model or "unknown",
                 task_type=AITaskType.VIDEO_GENERATION,
                 model_type=model_type,
@@ -1348,7 +1338,7 @@ class AIServiceManager:
         return AIResponse(
             success=False,
             error=error_msg,
-            provider=last_provider or "ai_service_manager",
+            provider=last_provider or AI_MANAGER_PROVIDER,
             model=last_model_used or "unknown",
             task_type=AITaskType.VIDEO_GENERATION,
             model_type=model_type,
@@ -1375,7 +1365,7 @@ class AIServiceManager:
             return AIResponse(
                 success=False,
                 error="没有可用的语音合成提供商",
-                provider="ai_service_manager",
+                provider=AI_MANAGER_PROVIDER,
                 model=model or "unknown",
                 task_type=AITaskType.VOICE_GENERATION,
                 model_type=AIModelType.TEXT_TO_SPEECH,
@@ -1450,7 +1440,7 @@ class AIServiceManager:
         return AIResponse(
             success=False,
             error=error_msg,
-            provider=last_provider or "ai_service_manager",
+            provider=last_provider or AI_MANAGER_PROVIDER,
             model=model or "unknown",
             task_type=AITaskType.VOICE_GENERATION,
             model_type=AIModelType.TEXT_TO_SPEECH,

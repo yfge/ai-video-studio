@@ -228,6 +228,9 @@ Latest validation:
   validation now call `app.services.audio.scene_audio_persistence` from the
   historical service. The remaining `dialogue_audio_service.py` work is the
   scene-level TTS generation orchestration itself.
+- `ai_service_manager.py` request/prompt/response logging and shared truncation
+  now live in `app.services.ai_manager_logging`; the manager keeps wrapper
+  methods for existing callers such as video task dispatching.
 
 ## Phase 6: Produce Ten Narrow Samples
 
