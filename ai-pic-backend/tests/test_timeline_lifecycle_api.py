@@ -29,22 +29,45 @@ def _bootstrap_episode(db: Session) -> tuple[Episode, Script]:
     return episode, script
 
 
-def _timeline_spec(episode: Episode, script: Script, duration_ms: int) -> dict:
+def _timeline_spec(
+    episode: Episode,
+    script: Script,
+    duration_ms: int,
+    *,
+    version: int = 1,
+) -> dict:
     return {
         "spec_version": "timeline.v1",
         "episode_id": episode.id,
         "script_id": script.id,
+        "version": version,
         "source_audio_timeline_version": 1,
+        "fps": 24,
+        "resolution": "1080x1920",
+        "duration_ms": duration_ms,
         "tracks": [
             {
                 "track_type": "dialogue",
                 "clips": [
                     {
                         "clip_id": "dialogue_scene_001_beat_001_001",
+                        "track_type": "dialogue",
                         "scene_id": "scene_001",
                         "beat_id": "beat_001",
+                        "ordinal": 1,
                         "start_ms": 0,
+                        "end_ms": duration_ms,
                         "duration_ms": duration_ms,
+                        "source": {
+                            "kind": "audio_timeline_beat",
+                            "scene_id": "scene_001",
+                            "beat_id": "beat_001",
+                            "audio_timeline_version": 1,
+                        },
+                        "source_refs": {
+                            "scene_beat_id": "beat_001",
+                            "audio_timeline_version": 1,
+                        },
                     }
                 ],
             }
@@ -158,7 +181,7 @@ def test_timeline_rollback_creates_new_version_and_preserves_render_jobs(
         f"/api/v1/timelines/{timeline['id']}",
         json={
             "expected_version": 1,
-            "spec": _timeline_spec(episode, script, 2400),
+            "spec": _timeline_spec(episode, script, 2400, version=2),
         },
     )
     assert update_response.status_code == 200

@@ -1,6 +1,4 @@
-import hashlib
-import json
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from app.models.script import Episode, Script
 from app.models.timeline import RenderJob, Timeline
@@ -14,8 +12,14 @@ from app.schemas.timeline import (
     TimelineResponse,
     TimelineUpdate,
 )
+from app.services.timeline_render_hash import render_preset_hash
 from app.services.timeline_responses import render_job_response, timeline_response
 from app.services.timeline_revision_service import TimelineRevisionService
+from app.services.timeline_spec_api_guard import (
+    validate_new_timeline_spec_or_400,
+    validate_persisted_timeline_spec_or_400,
+    validated_timeline_update_payload_or_400,
+)
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -51,6 +55,7 @@ class TimelineService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="timeline script must belong to the requested episode",
             )
+        validate_new_timeline_spec_or_400(payload.spec, episode=episode, script=script)
 
         title = payload.title or f"{episode.title} Timeline"
         timeline = self.timelines.create(
@@ -68,6 +73,7 @@ class TimelineService:
         )
         self.db.flush()
         timeline.spec = self.revisions.spec_with_identity(timeline)
+        validate_persisted_timeline_spec_or_400(timeline)
         self.revisions.ensure_revision(
             timeline,
             reason="created",
@@ -96,10 +102,13 @@ class TimelineService:
             user_id=current_user.id,
         )
 
-        updates = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
+        updates, next_version = validated_timeline_update_payload_or_400(
+            timeline,
+            payload,
+        )
         for field, value in updates.items():
             setattr(timeline, field, value)
-        timeline.version = (timeline.version or 0) + 1
+        timeline.version = next_version
         timeline.updated_by = current_user.id
         timeline.rollback_of_version = None
         timeline.rollback_target_version = None
@@ -126,7 +135,7 @@ class TimelineService:
                 detail="render job timeline_version must match current timeline version",
             )
 
-        preset_hash = self._preset_hash(payload.preset)
+        preset_hash = render_preset_hash(payload.preset)
         existing = self.render_jobs.get_idempotent(
             timeline_id=timeline.id,
             timeline_version=payload.timeline_version,
@@ -232,13 +241,6 @@ class TimelineService:
         ):
             return None
         return current_user.id
-
-    @staticmethod
-    def _preset_hash(preset: Dict[str, Any]) -> str:
-        normalized = json.dumps(
-            preset, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        )
-        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _dispatch_render_job(job: RenderJob, current_user: User) -> None:

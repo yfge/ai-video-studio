@@ -22,8 +22,8 @@ Open constraint:
   commits: `95857e9b`, `8251d67f`, `657b3a35`, and `7bade488`.
 - Phase 2 has one passing real API harness run. It uses a legacy storyboard video
   migration bridge, not a finished first-class clip asset lineage system.
-- Commercial readiness still depends on Timeline Spec validation, first-class
-  clip asset lineage, and production sample evidence.
+- Commercial readiness still depends on first-class clip asset lineage and
+  production sample evidence.
 
 ## Phase 1: Close Current Worktree
 
@@ -103,18 +103,28 @@ Latest validation:
 
 Tasks:
 
-- Add schema validation for Timeline Spec v1 envelope, tracks, clips, source
-  fields, timing, and asset references.
-- Validate imports from `audio_timeline.beats` before persistence.
-- Make invalid specs fail with actionable errors instead of later render-time
-  failures.
+- [x] Add schema validation for Timeline Spec v1 envelope, tracks, clips, source
+      fields, timing, and asset references.
+- [x] Validate imports from `audio_timeline.beats` before persistence.
+- [x] Make invalid specs fail with actionable errors instead of later render-time
+      failures.
 
 Exit criteria:
 
-- Tests reject malformed tracks, missing `clip_id`, non-monotonic timing, and
-  invalid source references.
-- Import tests prove dialogue/video/subtitle clips preserve stable identity and
-  provenance.
+- [x] Tests reject malformed tracks, missing `clip_id`, non-monotonic timing, and
+      invalid source references.
+- [x] Import tests prove dialogue/video/subtitle clips preserve stable identity and
+      provenance.
+
+Latest validation:
+
+- `cd ai-pic-backend && pytest tests/test_timeline_api.py tests/test_timeline_lifecycle_api.py tests/test_timeline_import_service.py tests/test_timeline_spec_validation.py -q`
+- Result: passed, 15 tests.
+- Timeline create/update/import/rollback now validate the same Timeline Spec v1
+  envelope, clip timing, source references, and asset reference shape before
+  persistence.
+- Invalid API specs return HTTP 400 with structured `code`, `path`, and
+  `message` details.
 
 ## Phase 5: Finish Clip Asset Lineage And Rework Actions
 

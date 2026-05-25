@@ -88,18 +88,20 @@ def _normalize_storyboard_frames(frames: list[dict[str, Any]]) -> list[dict[str,
 def _storyboard_video_clip(frame: dict[str, Any], ordinal: int) -> dict[str, Any]:
     frame_id = frame.get("frame_id") or frame.get("id") or ordinal
     scene_id = frame.get("scene_id") or frame.get("scene_number")
+    beat_id = f"storyboard_{frame_id}"
     return {
         "clip_id": stable_clip_id(
             track_type="video",
             scene_id=scene_id,
-            beat_id=f"storyboard_{frame_id}",
+            beat_id=beat_id,
             ordinal=ordinal,
         ),
         "track_type": "video",
-        "scene_id": frame.get("scene_id"),
+        "scene_id": scene_id,
         "scene_number": frame.get("scene_number"),
+        "beat_id": beat_id,
         "frame_number": frame.get("frame_number") or ordinal,
-        "storyboard_frame_id": frame.get("frame_id") or frame.get("id"),
+        "storyboard_frame_id": frame_id,
         "ordinal": ordinal,
         "start_ms": frame["start_ms"],
         "end_ms": frame["end_ms"],
@@ -107,18 +109,19 @@ def _storyboard_video_clip(frame: dict[str, Any], ordinal: int) -> dict[str, Any
         "timing_source": "legacy_storyboard.frames",
         "source": {
             "kind": "legacy_storyboard_frame",
-            "storyboard_frame_id": frame.get("frame_id") or frame.get("id"),
+            "storyboard_frame_id": frame_id,
             "frame_number": frame.get("frame_number") or ordinal,
-            "scene_id": frame.get("scene_id"),
+            "scene_id": scene_id,
+            "beat_id": beat_id,
         },
         "source_refs": {
-            "storyboard_frame_id": frame.get("frame_id") or frame.get("id"),
+            "storyboard_frame_id": frame_id,
             "frame_index": frame.get("frame_index"),
         },
         "asset_ref": {
             "kind": "legacy_storyboard_video",
             "url": frame["video_url"],
-            "storyboard_frame_id": frame.get("frame_id") or frame.get("id"),
+            "storyboard_frame_id": frame_id,
             "frame_number": frame.get("frame_number") or ordinal,
         },
         "video_url": frame["video_url"],

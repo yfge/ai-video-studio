@@ -11,6 +11,7 @@ from app.services.timeline_spec_builder import (
     audio_timeline_version,
     build_timeline_spec_from_audio_timeline,
 )
+from app.services.timeline_spec_validation import validate_timeline_spec
 from app.services.timeline_storyboard_spec_builder import (
     build_timeline_spec_from_storyboard_frames,
 )
@@ -57,6 +58,12 @@ def import_audio_timeline_to_timeline_spec(
         version=next_version,
         source_version=source_version,
     )
+    validate_timeline_spec(
+        spec,
+        episode_id=episode.id,
+        script_id=script.id,
+        expected_version=next_version,
+    )
 
     if existing is None:
         timeline = repo.create(
@@ -74,6 +81,14 @@ def import_audio_timeline_to_timeline_spec(
         )
         db.flush()
         timeline.spec = {**(timeline.spec or {}), "timeline_id": timeline.id}
+        validate_timeline_spec(
+            timeline.spec,
+            episode_id=episode.id,
+            script_id=script.id,
+            timeline_id=timeline.id,
+            expected_version=next_version,
+            require_timeline_id=True,
+        )
         revisions.ensure_revision(timeline, reason="imported", user_id=user_id)
         action = "created"
     else:
@@ -83,6 +98,14 @@ def import_audio_timeline_to_timeline_spec(
             user_id=user_id,
         )
         spec["timeline_id"] = existing.id
+        validate_timeline_spec(
+            spec,
+            episode_id=episode.id,
+            script_id=script.id,
+            timeline_id=existing.id,
+            expected_version=next_version,
+            require_timeline_id=True,
+        )
         timeline = repo.update(
             existing,
             spec=spec,

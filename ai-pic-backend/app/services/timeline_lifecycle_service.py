@@ -17,6 +17,7 @@ from app.schemas.timeline import (
 )
 from app.services.timeline_responses import render_job_response, timeline_response
 from app.services.timeline_revision_service import TimelineRevisionService
+from app.services.timeline_spec_api_guard import validate_persisted_timeline_spec_or_400
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -103,6 +104,7 @@ class TimelineLifecycleService:
         timeline.rolled_back_by = current_user.id
         timeline.updated_by = current_user.id
         timeline.spec = self.revisions.spec_with_identity(timeline)
+        validate_persisted_timeline_spec_or_400(timeline)
         self.revisions.ensure_revision(
             timeline,
             reason=f"rollback_to_{payload.target_version}",

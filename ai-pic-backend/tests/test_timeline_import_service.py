@@ -1,7 +1,9 @@
+import pytest
 from app.models.script import Episode, Script, Story
 from app.models.timeline import TimelineRevision
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 from app.services.timeline_spec_builder import stable_clip_id
+from app.services.timeline_spec_validation_types import TimelineSpecValidationError
 from sqlalchemy.orm import Session
 
 
@@ -90,6 +92,18 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
         "audio_timeline_version": 3,
     }
     assert dialogue_clip["source_refs"]["scene_beat_id"] == 101
+    video_clip = tracks["video"]["clips"][0]
+    subtitle_clip = tracks["subtitle"]["clips"][0]
+    assert video_clip["clip_id"] == stable_clip_id(
+        track_type="video", scene_id=11, beat_id=101, ordinal=1
+    )
+    assert subtitle_clip["clip_id"] == stable_clip_id(
+        track_type="subtitle", scene_id=11, beat_id=101, ordinal=1
+    )
+    for clip in (dialogue_clip, video_clip, subtitle_clip):
+        assert clip["source"]["kind"] == "audio_timeline_beat"
+        assert clip["source"]["beat_id"] == 101
+        assert clip["source_refs"]["scene_beat_id"] == 101
     revision = db_session.query(TimelineRevision).one()
     assert revision.timeline_id == timeline.id
     assert revision.timeline_version == 1
@@ -183,3 +197,19 @@ def test_import_falls_back_to_legacy_storyboard_video_timeline(db_session):
     assert clips[0]["video_url"] == "https://cdn.example.com/legacy-1.mp4"
     assert clips[0]["asset_ref"]["url"] == "https://cdn.example.com/legacy-1.mp4"
     assert clips[1]["video_url"] == "https://cdn.example.com/legacy-2.mp4"
+
+
+def test_import_rejects_audio_timeline_without_source_version(db_session):
+    episode, script = _bootstrap(db_session)
+    audio_timeline = _audio_timeline(script)
+    del audio_timeline["episode_audio"]["version"]
+
+    with pytest.raises(TimelineSpecValidationError) as exc:
+        import_audio_timeline_to_timeline_spec(
+            db_session,
+            episode=episode,
+            script=script,
+            audio_timeline=audio_timeline,
+        )
+
+    assert exc.value.code == "timeline_spec_field_invalid"

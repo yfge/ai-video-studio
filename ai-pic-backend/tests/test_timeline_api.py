@@ -40,16 +40,32 @@ def _timeline_spec(episode: Episode, script: Script, version: int = 1) -> dict:
         "script_id": script.id,
         "version": version,
         "source_audio_timeline_version": 1,
+        "fps": 24,
+        "resolution": "1080x1920",
+        "duration_ms": 1200,
         "tracks": [
             {
                 "track_type": "dialogue",
                 "clips": [
                     {
                         "clip_id": "dialogue_scene_001_beat_001_001",
+                        "track_type": "dialogue",
                         "scene_id": "scene_001",
                         "beat_id": "beat_001",
+                        "ordinal": 1,
                         "start_ms": 0,
+                        "end_ms": 1200,
                         "duration_ms": 1200,
+                        "source": {
+                            "kind": "audio_timeline_beat",
+                            "scene_id": "scene_001",
+                            "beat_id": "beat_001",
+                            "audio_timeline_version": 1,
+                        },
+                        "source_refs": {
+                            "scene_beat_id": "beat_001",
+                            "audio_timeline_version": 1,
+                        },
                     }
                 ],
             }
@@ -93,6 +109,8 @@ def test_timeline_crud_version_lock_and_render_idempotency(
     assert read_response.json()["business_id"] == timeline["business_id"]
 
     updated_spec = _timeline_spec(episode, script, version=2)
+    updated_spec["duration_ms"] = 1400
+    updated_spec["tracks"][0]["clips"][0]["end_ms"] = 1400
     updated_spec["tracks"][0]["clips"][0]["duration_ms"] = 1400
     update_response = client.patch(
         f"/api/v1/timelines/{timeline['id']}",
@@ -180,6 +198,24 @@ def test_timeline_crud_version_lock_and_render_idempotency(
     assert [job["id"] for job in jobs_response.json()["items"]] == [
         retry_render.json()["id"]
     ]
+
+
+def test_timeline_create_rejects_invalid_spec(client, db_session):
+    episode, script = _bootstrap_episode(db_session)
+    spec = _timeline_spec(episode, script)
+    del spec["tracks"][0]["clips"][0]["clip_id"]
+
+    response = client.post(
+        f"/api/v1/episodes/{episode.id}/timelines",
+        json={
+            "script_id": script.id,
+            "title": "Invalid Timeline",
+            "spec": spec,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "timeline_spec_field_missing"
 
 
 def test_timeline_access_is_scoped_to_story_owner(client, db_session):
