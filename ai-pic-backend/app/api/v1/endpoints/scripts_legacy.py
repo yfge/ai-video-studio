@@ -1,6 +1,7 @@
 import json
 from typing import Any, Dict, List, Optional
 
+from app.api.v1.endpoints.scripts_catalog import router as catalog_router
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
@@ -191,6 +192,7 @@ def _populate_dialogues_and_stage_if_missing(
 
 
 router = APIRouter()
+router.include_router(catalog_router)
 
 
 def _not_deleted(query, model):
@@ -225,31 +227,6 @@ def _get_script_by_identifier(
     if not script:
         raise HTTPException(status_code=404, detail="剧本不存在")
     return script
-
-
-@router.get("/formats")
-async def get_script_formats():
-    """获取剧本格式列表"""
-    return [
-        {"value": "screenplay", "label": "影视剧本"},
-        {"value": "stage_play", "label": "舞台剧本"},
-        {"value": "radio_drama", "label": "广播剧本"},
-        {"value": "short_video", "label": "短视频脚本"},
-        {"value": "live_stream", "label": "直播脚本"},
-        {"value": "animation", "label": "动画脚本"},
-    ]
-
-
-@router.get("/languages")
-async def get_script_languages():
-    """获取剧本语言列表"""
-    return [
-        {"value": "zh-CN", "label": "简体中文"},
-        {"value": "zh-TW", "label": "繁体中文"},
-        {"value": "en-US", "label": "英语"},
-        {"value": "ja-JP", "label": "日语"},
-        {"value": "ko-KR", "label": "韩语"},
-    ]
 
 
 @router.post("/", response_model=ScriptResponse)

@@ -246,6 +246,9 @@ Latest validation:
   cliffhanger judgement and script quality-gate repair, so the script generation
   API test exercises the current quality-gate path instead of failing on a
   generic scoring payload.
+- Static script catalog routes for `/scripts/formats` and `/scripts/languages`
+  now live in `app.api.v1.endpoints.scripts_catalog` and are mounted inside the
+  legacy router before dynamic `/{script_id}` routes.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.
