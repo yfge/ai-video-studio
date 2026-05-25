@@ -17,6 +17,7 @@ from app.services import ai_manager_model_listing as model_listing
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
 from app.services import ai_manager_provider_status as provider_status
+from app.services import ai_manager_text_generation as text_generation
 from app.services import ai_manager_tts_generation as tts_generation
 from app.services import ai_manager_video_generation as video_generation
 from app.services.ai_manager_logging import (
@@ -294,102 +295,27 @@ class AIServiceManager:
         **kwargs,
     ) -> AIResponse:
         """统一文本生成接口"""
-        available_providers = self.get_available_providers(
-            model_type=AIModelType.TEXT_GENERATION
-        )
-
-        prefer_provider, model = self._resolve_prefer_provider_and_model(
-            model, prefer_provider
-        )
-        if prefer_provider:
-            available_providers = [
-                p for p in available_providers if p == prefer_provider
-            ]
-
-        original_model = model
-        last_model_used = original_model
-
-        if not available_providers:
-            return failure_responses.manager_failure_response(
-                error="没有可用的文本生成提供商",
-                model=model,
-                task_type=AITaskType.STORY_GENERATION,
-                model_type=AIModelType.TEXT_GENERATION,
-            )
-
-        # 记录请求
-        params = {
-            "temperature": temperature,
-            "json_schema": True if json_schema else False,
-            "stream": stream,
-        }
-        if max_tokens is not None:
-            params["max_tokens"] = max_tokens
-        self._log_request(
-            task="generate_text", provider=prefer_provider, model=model, params=params
-        )
-        self._log_prompt(prompt)
-
-        # 选择提供商并尝试生成
-        for attempt in range(self.config.max_retries):
-            provider_name = self._select_provider(available_providers, prefer_provider)
-            if not provider_name:
-                break
-
-            provider = self.providers[provider_name]
-            self._update_request_count(provider_name)
-
-            # 如果未指定模型，为当前 provider 选择默认模型（不污染其他 provider）
-            provider_model = await model_resolution.resolve_text_model(
-                provider,
-                original_model,
-                self._get_models_for_type,
-            )
-            last_model_used = provider_model
-
-            try:
-                provider_kwargs = {
-                    "prompt": prompt,
-                    "model": provider_model,
-                    "system_prompt": system_prompt,
-                    "temperature": temperature,
-                    "json_schema": json_schema,
-                    "stream": stream,
-                    **kwargs,
-                }
-                if max_tokens is not None:
-                    provider_kwargs["max_tokens"] = max_tokens
-                response = await provider.generate_text(**provider_kwargs)
-                # 记录响应
-                self._log_response(
-                    task="generate_text",
-                    provider=provider_name,
-                    model=provider_model,
-                    response=response,
-                )
-                if response.success or not self.config.enable_fallback:
-                    return response
-
-            except Exception as e:
-                if not self.config.enable_fallback:
-                    return failure_responses.exception_failure_response(
-                        action="文本生成失败",
-                        exc=e,
-                        provider=provider_name,
-                        model=model,
-                        task_type=AITaskType.STORY_GENERATION,
-                        model_type=AIModelType.TEXT_GENERATION,
-                    )
-
-            # 失败时从可用列表中移除该提供商
-            if provider_name in available_providers:
-                available_providers.remove(provider_name)
-
-        return failure_responses.manager_failure_response(
-            error="所有文本生成提供商都失败了",
-            model=last_model_used,
-            task_type=AITaskType.STORY_GENERATION,
-            model_type=AIModelType.TEXT_GENERATION,
+        return await text_generation.generate_text_with_fallback(
+            prompt=prompt,
+            model=model,
+            prefer_provider=prefer_provider,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            json_schema=json_schema,
+            stream=stream,
+            provider_kwargs=kwargs,
+            providers=self.providers,
+            max_retries=self.config.max_retries,
+            enable_fallback=self.config.enable_fallback,
+            resolve_prefer_provider_and_model=self._resolve_prefer_provider_and_model,
+            get_available_providers=self.get_available_providers,
+            select_provider=self._select_provider,
+            update_request_count=self._update_request_count,
+            get_models_for_type=self._get_models_for_type,
+            log_request=self._log_request,
+            log_prompt=self._log_prompt,
+            log_response=self._log_response,
         )
 
     async def generate_image(

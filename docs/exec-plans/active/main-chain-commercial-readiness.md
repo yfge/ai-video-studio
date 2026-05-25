@@ -261,6 +261,9 @@ Latest validation:
   `app.services.ai_manager_model_listing`, covering model-list cache reuse,
   enabled-provider filtering, capability-based model type matching, and stable
   sorting.
+- `ai_service_manager.py` text generation fallback orchestration now lives in
+  `app.services.ai_manager_text_generation`, including provider pinning,
+  default text model resolution, JSON/schema parameter pass-through, and logging.
 - `ai_service_manager.py` text, image, image-to-image, and video default model
   resolution now lives in `app.services.ai_manager_model_resolution`, keeping
   provider calls and fallback loops in the manager.
