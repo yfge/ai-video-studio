@@ -9,20 +9,16 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
-from app.services import ai_manager_failure_responses as failure_responses
 from app.services import ai_manager_image_assets as image_assets
-from app.services import ai_manager_image_fallback as image_fallback
 from app.services import ai_manager_image_generation as image_generation
-from app.services import ai_manager_image_style as image_style
+from app.services import ai_manager_image_to_image as image_to_image_generation
 from app.services import ai_manager_model_listing as model_listing
-from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
 from app.services import ai_manager_provider_status as provider_status
 from app.services import ai_manager_text_generation as text_generation
 from app.services import ai_manager_tts_generation as tts_generation
 from app.services import ai_manager_video_generation as video_generation
 from app.services.ai_manager_logging import (
-    AI_MANAGER_PROVIDER,
     log_prompt,
     log_request,
     log_response,
@@ -368,173 +364,29 @@ class AIServiceManager:
         **kwargs,
     ) -> AIResponse:
         """统一图生图接口"""
-        legacy_style = str(kwargs.get("style") or "realistic")
-        style_state = image_style.resolve_image_to_image_style(
+        return await image_to_image_generation.image_to_image_with_fallback(
+            image_url=image_url,
+            model=model,
+            prefer_provider=prefer_provider,
             prompt=prompt,
-            legacy_style=legacy_style,
+            count=count,
             style_preset_id=style_preset_id,
             style_spec=style_spec,
-        )
-        prompt = style_state.prompt
-        legacy_style = style_state.legacy_style
-        resolved_style_spec = style_state.resolved_style_spec
-        style_resolution_meta = style_state.resolution_meta
-        if resolved_style_spec is not None:
-            kwargs["style"] = legacy_style
-
-        available_providers = self.get_available_providers(
-            model_type=AIModelType.IMAGE_TO_IMAGE
-        )
-
-        prefer_provider, model = self._resolve_prefer_provider_and_model(
-            model, prefer_provider
-        )
-
-        # 显式指定首选 provider（或 model 带前缀）时，只在该 provider 上尝试，避免带着特定模型 id 在不同厂商间兜底
-        if prefer_provider:
-            available_providers = [
-                p for p in available_providers if p == prefer_provider
-            ]
-
-        if not available_providers:
-            return failure_responses.manager_failure_response(
-                error="没有可用的图生图提供商",
-                model=model,
-                task_type=AITaskType.SCENE_GENERATION,
-                model_type=AIModelType.IMAGE_TO_IMAGE,
-            )
-
-        self._log_request(
-            task="image_to_image",
-            provider=prefer_provider,
-            model=model,
-            params={"image_url": image_url},
-        )
-        self._log_prompt(prompt)
-
-        last_error: str | None = None
-        last_provider: str | None = None
-        last_model: str | None = None
-
-        base64_images = await image_assets.preload_image_references_as_data_urls(
-            image_url=image_url,
-            extra_images=list(kwargs.get("extra_images") or []),
-            prefer_provider=prefer_provider,
-            available_providers=available_providers,
-            timeout=self.config.default_timeout,
+            provider_kwargs=kwargs,
+            providers=self.providers,
+            max_retries=self.config.max_retries,
+            enable_fallback=self.config.enable_fallback,
+            default_timeout=self.config.default_timeout,
             logger=self.logger,
-        )
-        if base64_images:
-            kwargs["base64_images"] = base64_images
-
-        for _ in range(self.config.max_retries):
-            provider_name = self._select_provider(available_providers, prefer_provider)
-            if not provider_name:
-                break
-
-            provider = self.providers[provider_name]
-            self._update_request_count(provider_name)
-
-            # 选择合适的默认模型（image_to_image 类型），必要时退回到 text_to_image 模型
-            effective_model = await model_resolution.resolve_image_to_image_model(
-                provider,
-                model,
-                self._get_models_for_type,
-            )
-
-            try:
-                # 部分提供商可能未重写 image_to_image，此时调用 BaseProvider 的默认实现返回未实现错误
-                response = await provider.image_to_image(
-                    image_url=image_url,
-                    prompt=prompt,
-                    model=effective_model,
-                    n=count or 1,
-                    **kwargs,
-                )
-                self._log_response(
-                    task="image_to_image",
-                    provider=provider_name,
-                    model=effective_model,
-                    response=response,
-                )
-                image_style.attach_style_metadata(
-                    response,
-                    resolved_style_spec,
-                    style_resolution_meta,
-                )
-                if not response.success:
-                    error_value = (response.error or "").strip()
-                    if not error_value:
-                        error_value = "未知错误"
-                    last_error = error_value
-                    last_provider = provider_name
-                    last_model = effective_model
-                if response.success or not self.config.enable_fallback:
-                    # 将 base64 图片转换为 OSS URL
-                    if response.success and response.data and "images" in response.data:
-                        converted_images = await self._convert_base64_images_to_oss(
-                            response.data["images"],
-                            prefix="ai-generated/image-to-image",
-                        )
-                        response.data["images"] = converted_images
-                    return response
-            except Exception as e:
-                error_value = str(e).strip() or repr(e)
-                last_error = error_value
-                last_provider = provider_name
-                last_model = effective_model
-                if not self.config.enable_fallback:
-                    return failure_responses.exception_failure_response(
-                        action="图生图失败",
-                        exc=e,
-                        provider=provider_name,
-                        model=effective_model,
-                        task_type=AITaskType.SCENE_GENERATION,
-                        model_type=AIModelType.IMAGE_TO_IMAGE,
-                    )
-
-            if provider_name in available_providers:
-                available_providers.remove(provider_name)
-        # 所有专用图生图通路失败时，尝试降级为同一模型的文生图（不使用参考图，只保留提示词）
-        if self.config.enable_fallback:
-            fallback_result = (
-                await image_fallback.fallback_image_to_image_as_text_to_image(
-                    self.generate_image,
-                    prompt=prompt,
-                    model=model,
-                    prefer_provider=prefer_provider,
-                    image_url=image_url,
-                    count=count,
-                    legacy_style=legacy_style,
-                    style_preset_id=style_preset_id,
-                    style_spec=style_spec,
-                    logger=self.logger,
-                )
-            )
-            if fallback_result.response:
-                return fallback_result.response
-            if fallback_result.last_error is not None:
-                last_error = fallback_result.last_error
-                last_provider = fallback_result.last_provider
-                last_model = fallback_result.last_model
-
-        if last_error is not None:
-            return failure_responses.failure_response(
-                error=failure_responses.provider_prefixed_error(
-                    last_error,
-                    last_provider,
-                ),
-                provider=last_provider or AI_MANAGER_PROVIDER,
-                model=last_model or model or "unknown",
-                task_type=AITaskType.SCENE_GENERATION,
-                model_type=AIModelType.IMAGE_TO_IMAGE,
-            )
-
-        return failure_responses.manager_failure_response(
-            error="所有图生图提供商都失败了（未捕获到具体错误信息）",
-            model=model,
-            task_type=AITaskType.SCENE_GENERATION,
-            model_type=AIModelType.IMAGE_TO_IMAGE,
+            generate_image=self.generate_image,
+            resolve_prefer_provider_and_model=self._resolve_prefer_provider_and_model,
+            get_available_providers=self.get_available_providers,
+            select_provider=self._select_provider,
+            update_request_count=self._update_request_count,
+            get_models_for_type=self._get_models_for_type,
+            log_request=self._log_request,
+            log_prompt=self._log_prompt,
+            log_response=self._log_response,
         )
 
     async def generate_video(

@@ -265,14 +265,17 @@ Latest validation:
   `app.services.ai_manager_text_generation`, including provider pinning,
   default text model resolution, JSON/schema parameter pass-through, and logging.
 - `ai_service_manager.py` text, image, image-to-image, and video default model
-  resolution now lives in `app.services.ai_manager_model_resolution`, keeping
-  provider calls and fallback loops in the manager.
+  resolution now lives in `app.services.ai_manager_model_resolution`, shared by
+  the focused provider orchestration helpers.
 - `ai_service_manager.py` generated image URL/base64 normalization and OSS upload
   now lives in `app.services.ai_manager_image_assets`; the manager keeps the
   compatibility wrapper used by existing generation paths.
 - `ai_service_manager.py` text-to-image fallback orchestration now lives in
   `app.services.ai_manager_image_generation`, including style spec resolution,
   OpenAI style normalization, provider logging, and success image OSS conversion.
+- `ai_service_manager.py` image-to-image fallback orchestration now lives in
+  `app.services.ai_manager_image_to_image`, including reference preload,
+  provider attempts, success image OSS conversion, and text-to-image fallback.
 - `ai_service_manager.py` image-to-image reference preloading, HTTPS-to-HTTP
   download normalization, inline compression, and data URL construction now live
   in `app.services.ai_manager_image_assets`.
