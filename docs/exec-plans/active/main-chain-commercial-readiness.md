@@ -256,6 +256,8 @@ Latest validation:
 - Script regeneration queue endpoints for `script_id` and `script_business_id`
   now live in `app.api.v1.endpoints.scripts_regeneration`; the legacy router
   only mounts them after script record routes.
+- Script prompt preview now lives in `app.api.v1.endpoints.scripts_prompt`,
+  with episode lookup moved behind `app.repositories.scripts_route_repository`.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.

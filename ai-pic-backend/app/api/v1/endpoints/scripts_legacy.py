@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from app.api.v1.endpoints.scripts_catalog import router as catalog_router
 from app.api.v1.endpoints.scripts_lists import get_scripts as _get_scripts
 from app.api.v1.endpoints.scripts_lists import router as lists_router
+from app.api.v1.endpoints.scripts_prompt import router as prompt_router
 from app.api.v1.endpoints.scripts_records import router as records_router
 from app.api.v1.endpoints.scripts_regeneration import router as regeneration_router
 from app.api.v1.endpoints.scripts_route_utils import not_deleted as _not_deleted
@@ -13,8 +14,6 @@ from app.core.middleware import get_current_active_user
 from app.models.script import Episode, Script, Story
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.prompts.manager import PromptManager
-from app.prompts.templates import PromptTemplate
 from app.schemas.generation_requests import ScriptGenerationRequest
 from app.schemas.script import ScriptCreate, ScriptListItemResponse, ScriptResponse
 from app.services.ai.script_text import build_script_text
@@ -191,6 +190,7 @@ def _populate_dialogues_and_stage_if_missing(
 
 router = APIRouter()
 router.include_router(catalog_router)
+router.include_router(prompt_router)
 
 
 @router.post("/", response_model=ScriptResponse)
@@ -481,68 +481,6 @@ async def generate_script(
         logger.warning("同步规范化场景失败（generate）", exc_info=True)
 
     return ScriptResponse.from_orm(db_script)
-
-
-@router.post("/prompt/preview")
-async def preview_script_prompt(
-    request: ScriptGenerationRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    episode_query = db.query(Episode).join(Story, Episode.story_id == Story.id)
-    if not current_user.is_admin and not current_user.is_superuser:
-        episode_query = episode_query.filter(Story.user_id == current_user.id)
-    episode = episode_query.filter(Episode.id == request.episode_id).first()
-    if not episode:
-        raise HTTPException(status_code=404, detail="剧集不存在")
-    story = db.query(Story).filter(Story.id == episode.story_id).first()
-    if not story:
-        raise HTTPException(status_code=404, detail="故事不存在")
-
-    previous_episode_summaries = _collect_previous_episode_summaries(
-        db, story.id, episode.episode_number
-    )
-    character_profiles = _build_character_profiles(story)
-
-    episode_data = _build_episode_data(episode)
-    story_data = _build_story_data(
-        story,
-        previous_episode_summaries=previous_episode_summaries,
-        character_profiles=character_profiles,
-    )
-    hook_plan_payload = request.hook_plan.model_dump() if request.hook_plan else None
-    ad_snippets_payload = (
-        [snippet.model_dump() for snippet in request.ad_snippets]
-        if request.ad_snippets
-        else None
-    )
-    marketing_overrides = {
-        "market_region": request.market_region,
-        "micro_genre": request.micro_genre,
-        "hook_plan": hook_plan_payload,
-        "twist_density": request.twist_density,
-        "cliffhanger_plan": request.cliffhanger_plan,
-        "ad_snippets": ad_snippets_payload,
-    }
-    apply_marketing_overrides(story_data, marketing_overrides)
-    apply_marketing_overrides(episode_data, marketing_overrides)
-    variables = {
-        "story": story_data,
-        "episode": episode_data,
-        "format_type": request.format_type,
-        "language": request.language,
-        "dialogue_style": request.dialogue_style,
-        "scene_detail_level": request.scene_detail_level,
-        "template_style": request.template_style,
-        "target_chars_per_episode": request.target_chars_per_episode,
-        "quality_threshold": request.quality_threshold,
-        "additional_requirements": request.additional_requirements,
-        "style_preferences": request.style_preferences or [],
-    }
-    prompt = PromptManager().render_prompt(
-        PromptTemplate.SCRIPT_GENERATION.value, variables
-    )
-    return {"success": True, "data": {"prompt": prompt}}
 
 
 def _process_script_generation_task(task_id: int, request_dict: dict, user_id: int):
