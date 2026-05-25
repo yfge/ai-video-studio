@@ -214,6 +214,11 @@ Latest validation:
   rework context has `auto_render=true`. The render preset carries a rework
   fingerprint so a prior final render for the same Timeline version does not
   block the new render through idempotency.
+- Legacy cleanup has started on `dialogue_audio_service.py`: storyboard timeline
+  placeholder conversion now lives in `app.services.audio.storyboard_from_timeline`,
+  and the historical service module only re-exports those helpers for existing
+  imports. Scene audio generation, episode concatenation, and beats persistence
+  still remain in the historical service.
 
 ## Phase 6: Produce Ten Narrow Samples
 
