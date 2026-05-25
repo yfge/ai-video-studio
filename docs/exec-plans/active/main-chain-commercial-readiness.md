@@ -267,6 +267,9 @@ Latest validation:
   `app.api.v1.endpoints.scripts_generation_sync`, with the generation workflow
   moved into `app.services.script.sync_generation` and payload helpers split out
   to stay under service-size limits.
+- Script regeneration worker processing now lives under
+  `app.services.script.regeneration_task_processor`; `task_worker` dispatches
+  directly to the service instead of importing the legacy router package.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.

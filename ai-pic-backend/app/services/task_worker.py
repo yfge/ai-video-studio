@@ -105,9 +105,11 @@ def script_regenerate_task(
     task_id: int, request_dict: Dict[str, Any], user_id: int
 ) -> None:
     """异步剧本重新生成任务入口。"""
-    from app.api.v1.endpoints.scripts import _process_script_regeneration_task
+    from app.services.script.regeneration_task_processor import (
+        process_script_regeneration_task,
+    )
 
-    _process_script_regeneration_task(task_id, request_dict, user_id)
+    process_script_regeneration_task(task_id, request_dict, user_id)
     from app.services.task_agent_run_persistence import persist_task_agent_run
 
     persist_task_agent_run(

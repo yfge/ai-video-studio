@@ -61,6 +61,22 @@ class ScriptsRouteRepository:
             query = query.filter(Story.user_id == current_user.id)
         return query.first()
 
+    def get_regeneration_script(
+        self,
+        *,
+        script_id: int | None,
+        user_id: int,
+    ) -> Script | None:
+        if script_id is None:
+            return None
+        return (
+            self.db.query(Script)
+            .join(Episode, Script.episode_id == Episode.id)
+            .join(Story, Episode.story_id == Story.id)
+            .filter(Script.id == script_id, Story.user_id == user_id)
+            .first()
+        )
+
     def list_scripts(
         self,
         *,

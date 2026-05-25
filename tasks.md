@@ -103,6 +103,8 @@
         episode 权限查询收敛到 repository。
   - [x] 已把同步 `/scripts/generate` 入口拆到 `api/v1/endpoints/scripts_generation_sync.py`，
         生成业务逻辑迁到 `services/script/sync_generation.py`。
+  - [x] 已把重新生成 Celery processor 迁到
+        `services/script/regeneration_task_processor.py`，worker 不再从 legacy router 导入。
 - [x] 拆分 `dialogue_audio_service.py`，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
   - [x] 已把 episode 拼接/写回迁到 `services/audio/episode_audio_builder.py`，并把 episode timeline beat 构造迁到 `services/audio/episode_timeline_beats.py`；旧服务只保留兼容导入。
   - [x] 已把 scene beat 落库、scene audio metadata 写回和单场时长校验迁到 `services/audio/scene_audio_persistence.py`。
