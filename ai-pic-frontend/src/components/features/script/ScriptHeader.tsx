@@ -15,7 +15,7 @@ interface ScriptHeaderProps {
   setShowExportMenu: (show: boolean) => void;
   onExport: (format: string) => void;
   onNavigateToEpisode: () => void;
-  onNavigateToStoryboard: () => void;
+  onNavigateToTimeline: () => void;
 }
 
 export function ScriptHeader({
@@ -24,7 +24,7 @@ export function ScriptHeader({
   setShowExportMenu,
   onExport,
   onNavigateToEpisode,
-  onNavigateToStoryboard,
+  onNavigateToTimeline,
 }: ScriptHeaderProps) {
   return (
     <OperatorPanel>
@@ -42,10 +42,10 @@ export function ScriptHeader({
             </button>
             <button
               type="button"
-              onClick={onNavigateToStoryboard}
+              onClick={onNavigateToTimeline}
               className={operatorButtonClass("secondary")}
             >
-              打开分镜
+              进入时间轴
             </button>
             <div className="relative">
               <button
@@ -77,48 +77,56 @@ export function ScriptHeader({
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold text-gray-950">
-            {script.title}
+              {script.title}
             </h1>
             <p className="mt-1 text-xs text-gray-500">
-            {script.format_type?.toUpperCase() || "剧本"} ·{" "}
-            {script.language?.toUpperCase()} · 版本 {script.version || "1.0"}
+              {script.format_type?.toUpperCase() || "剧本"} ·{" "}
+              {script.language?.toUpperCase()} · 版本 {script.version || "1.0"}
             </p>
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <InfoCard label="字数" value={script.word_count || 0} hint="字数统计" />
-        <InfoCard
-          label="字符数"
-          value={script.character_count || 0}
-          hint="字符统计"
-        />
-        <InfoCard label="页数" value={script.page_count || 0} hint="预计页数" />
-        <InfoCard
-          label="状态"
-          value={
-            script.status === "published"
-              ? "已发布"
-              : script.status === "approved"
-              ? "已审核"
-              : "草稿"
-          }
-          tone={
-            script.status === "published"
-              ? "success"
-              : script.status === "approved"
-              ? "warning"
-              : "default"
-          }
-          hint={
-            script.status === "draft"
-              ? "可编辑"
-              : script.status === "approved"
-              ? "待发布"
-              : "无需修改"
-          }
-        />
-      </div>
+          <InfoCard
+            label="字数"
+            value={script.word_count || 0}
+            hint="字数统计"
+          />
+          <InfoCard
+            label="字符数"
+            value={script.character_count || 0}
+            hint="字符统计"
+          />
+          <InfoCard
+            label="页数"
+            value={script.page_count || 0}
+            hint="预计页数"
+          />
+          <InfoCard
+            label="状态"
+            value={
+              script.status === "published"
+                ? "已发布"
+                : script.status === "approved"
+                ? "已审核"
+                : "草稿"
+            }
+            tone={
+              script.status === "published"
+                ? "success"
+                : script.status === "approved"
+                ? "warning"
+                : "default"
+            }
+            hint={
+              script.status === "draft"
+                ? "可编辑"
+                : script.status === "approved"
+                ? "待发布"
+                : "无需修改"
+            }
+          />
+        </div>
         <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-gray-500 md:grid-cols-2">
           <div>创建时间：{formatDate(script.created_at)}</div>
           <div>更新时间：{formatDate(script.updated_at)}</div>
@@ -147,9 +155,7 @@ function InfoCard({
       : "border-gray-200 bg-gray-50 text-gray-900";
   return (
     <div className={`rounded-md border p-3 ${toneClass}`}>
-      <div className="text-xs text-gray-500">
-        {label}
-      </div>
+      <div className="text-xs text-gray-500">{label}</div>
       <div className="mt-1 text-sm font-semibold leading-6">{value}</div>
       {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
     </div>

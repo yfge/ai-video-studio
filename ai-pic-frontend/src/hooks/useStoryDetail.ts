@@ -140,7 +140,7 @@ export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
   const navigateToEpisode = (businessIdOrId: string | number) =>
     router.push(episodeWorkspaceHref(businessIdOrId));
   const navigateToStoryboard = (businessIdOrId: string | number) =>
-    router.push(episodeWorkspaceHref(businessIdOrId, { tab: "storyboard" }));
+    router.push(episodeWorkspaceHref(businessIdOrId, { tab: "timeline" }));
   const navigateToScript = (scriptIdOrBiz: string | number) =>
     router.push(`/scripts/${scriptIdOrBiz}`);
 

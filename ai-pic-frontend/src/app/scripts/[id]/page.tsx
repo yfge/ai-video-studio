@@ -9,7 +9,11 @@ import {
   ScriptScenesTab,
   ScriptTrafficTab,
 } from "@/components/features";
-import { OperatorShell, OperatorState, OperatorTabs } from "@/components/shared";
+import {
+  OperatorShell,
+  OperatorState,
+  OperatorTabs,
+} from "@/components/shared";
 import { useScriptDetail, TABS } from "@/hooks/useScriptDetail";
 import { episodeWorkspaceHref } from "@/utils/routes";
 
@@ -63,12 +67,12 @@ export default function ScriptDetailPage() {
           title="未找到剧本"
           tone="red"
           action={
-          <button
-            onClick={() => router.push("/stories")}
-            className="text-xs font-medium text-red-700 underline"
-          >
-            返回故事列表
-          </button>
+            <button
+              onClick={() => router.push("/stories")}
+              className="text-xs font-medium text-red-700 underline"
+            >
+              返回故事列表
+            </button>
           }
         />
       </div>
@@ -89,18 +93,24 @@ export default function ScriptDetailPage() {
           onExport={handleExport}
           onNavigateToEpisode={() =>
             router.push(
-              episodeWorkspaceHref(script.episode_business_id || script.episode_id, {
-                tab: "script",
-                scriptId: script.id,
-              }),
+              episodeWorkspaceHref(
+                script.episode_business_id || script.episode_id,
+                {
+                  tab: "script",
+                  scriptId: script.id,
+                },
+              ),
             )
           }
-          onNavigateToStoryboard={() =>
+          onNavigateToTimeline={() =>
             router.push(
-              episodeWorkspaceHref(script.episode_business_id || script.episode_id, {
-                tab: "storyboard",
-                scriptId: script.id,
-              }),
+              episodeWorkspaceHref(
+                script.episode_business_id || script.episode_id,
+                {
+                  tab: "timeline",
+                  scriptId: script.id,
+                },
+              ),
             )
           }
         />
@@ -108,12 +118,15 @@ export default function ScriptDetailPage() {
         <WorkflowSteps
           onGoToSceneDetails={goToSceneDetails}
           onGoToSceneStructure={goToSceneStructure}
-          onGoToStoryboard={() =>
+          onGoToTimelineSupport={() =>
             router.push(
-              episodeWorkspaceHref(script.episode_business_id || script.episode_id, {
-                tab: "storyboard",
-                scriptId: script.id,
-              }),
+              episodeWorkspaceHref(
+                script.episode_business_id || script.episode_id,
+                {
+                  tab: "timeline",
+                  scriptId: script.id,
+                },
+              ),
             )
           }
         />

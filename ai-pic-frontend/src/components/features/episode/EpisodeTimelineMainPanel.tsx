@@ -18,7 +18,7 @@ import type { TimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
 import { TimelineRenderPanel } from "./EpisodeTimelineRenderPanel";
 
 type ModelOption = {
-  id: string;
+  id?: string;
   provider?: string | null;
   model_id?: string | null;
   name?: string | null;
@@ -83,11 +83,16 @@ export function EpisodeTimelineMainPanel({
               >
                 <option value="">自动模型</option>
                 {models.map((model) => {
+                  const providerScopedId =
+                    model.provider && model.id
+                      ? `${model.provider}:${model.id}`
+                      : model.id;
                   const value =
-                    model.model_id || `${model.provider}:${model.id}`;
+                    model.model_id || providerScopedId || model.name || "";
+                  if (!value) return null;
                   return (
                     <option key={value} value={value}>
-                      {model.name || model.id}
+                      {model.name || model.model_id || model.id}
                     </option>
                   );
                 })}
