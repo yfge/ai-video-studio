@@ -18,8 +18,10 @@ production script generation
 
 This document began as an optimization plan. The P0-P2 ownership alignment
 slice is now implemented. The current worktree also includes the Phase 3
-render/export execution slice, but commercial readiness still depends on real
-E2E evidence and production sample validation.
+render/export execution slice. One real API E2E run now passes through a legacy
+storyboard video migration bridge; commercial readiness still depends on
+delete/rollback, first-class clip asset lineage, and production sample
+validation.
 
 ## Current Chain Check
 
@@ -43,9 +45,9 @@ The default production path is now wired into Timeline Spec v1:
   older episodes.
 
 No immediate blocker was found in the default production chain. Downstream
-execution now has worker and output-asset plumbing; the remaining blocker is
-evidence that a real operator or harness flow can render/export a Timeline whose
-video clips already resolve to usable assets.
+execution now has worker and output-asset plumbing, and a real harness flow can
+render/export a Timeline whose clips resolve to legacy storyboard videos.
+First-class clip asset lineage is still not complete.
 
 ## Implementation Status
 
@@ -60,8 +62,9 @@ video clips already resolve to usable assets.
 - P2 frontend/backfill alignment is implemented: the workspace accepts native
   Timeline Spec tracks, task metadata includes Timeline references, and the
   backfill command is dry-run by default.
-- P3 render/export execution is implemented in the current worktree; real E2E
-  evidence and commercial-readiness sample production remain pending.
+- P3 render/export execution is implemented, with passing real API E2E evidence
+  in `artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`.
+  Commercial-readiness sample production remains pending.
 
 ## Findings
 
@@ -276,9 +279,9 @@ Exit criteria:
 6. Backfill: import old audio timelines into Timeline Spec with dry-run first.
 7. Render/export: consume locked timeline versions and persist media assets.
 
-Steps 1-7 are implemented for this slice. The next boundary is packaging the
-current worktree, proving the real render/export path, then adding
-delete/rollback and stricter Timeline Spec validation.
+Steps 1-7 are implemented for this slice. The next boundary is delete/rollback,
+stricter Timeline Spec validation, first-class clip asset lineage, and production
+sample validation.
 
 ## Validation Matrix
 
@@ -294,8 +297,8 @@ Frontend:
 
 - `cd ai-pic-frontend && npm run lint`
 - Focused tests cover native Timeline Spec track building and legacy fallback.
-- Browser E2E must cover `Episode -> Timeline -> Render -> Export` with a script
-  that has renderable video clips.
+- Real API E2E covers `Episode -> Timeline -> Render -> Export` with a script
+  that has renderable legacy storyboard video clips.
 
 Repo checks:
 

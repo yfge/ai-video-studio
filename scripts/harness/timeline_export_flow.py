@@ -153,18 +153,21 @@ def _render_timeline(
     failures: list[dict[str, Any]],
     task_status: str,
 ) -> None:
-    render_response = session.post(
-        f"{api_url.rstrip('/')}/api/v1/timelines/{timeline['id']}/render",
-        json={
-            "timeline_version": timeline["version"],
-            "render_type": "final",
-            "preset": {"fps": 24, "resolution": "1080x1920"},
-        },
-        timeout=15,
+    render_payload = _queue_timeline_render(
+        session=session,
+        api_url=api_url,
+        timeline=timeline,
+        chain=chain,
+        force_new_attempt=False,
     )
-    record_response(chain, render_response, label="timeline-render")
-    render_response.raise_for_status()
-    render_payload = render_response.json()
+    if str(render_payload.get("status", "")).lower() in {"failed", "cancelled"}:
+        render_payload = _queue_timeline_render(
+            session=session,
+            api_url=api_url,
+            timeline=timeline,
+            chain=chain,
+            force_new_attempt=True,
+        )
     render_job = poll_render_job(
         session,
         api_url,
@@ -201,3 +204,32 @@ def _render_timeline(
                 "detail": json.dumps(render_job.get("log") or {}, ensure_ascii=False),
             }
         )
+
+
+def _queue_timeline_render(
+    *,
+    session: requests.Session,
+    api_url: str,
+    timeline: dict[str, Any],
+    chain: list[dict[str, Any]],
+    force_new_attempt: bool,
+) -> dict[str, Any]:
+    request_payload: dict[str, Any] = {
+        "timeline_version": timeline["version"],
+        "render_type": "final",
+        "preset": {"fps": 24, "resolution": "1080x1920"},
+    }
+    if force_new_attempt:
+        request_payload["force_new_attempt"] = True
+    render_response = session.post(
+        f"{api_url.rstrip('/')}/api/v1/timelines/{timeline['id']}/render",
+        json=request_payload,
+        timeout=15,
+    )
+    record_response(
+        chain,
+        render_response,
+        label="timeline-render-retry" if force_new_attempt else "timeline-render",
+    )
+    render_response.raise_for_status()
+    return render_response.json()

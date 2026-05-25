@@ -124,3 +124,50 @@ def test_import_audio_timeline_skips_then_updates_with_stable_clip_ids(db_sessio
     assert updated.timeline.source_audio_timeline_version == 2
     assert updated.timeline.spec["timeline_id"] == created.timeline.id
     assert updated_clip_id == first_clip_id
+
+
+def test_import_falls_back_to_legacy_storyboard_video_timeline(db_session):
+    episode, script = _bootstrap(db_session)
+    script.extra_metadata = {
+        "storyboard": {
+            "frames": [
+                {
+                    "frame_id": "legacy-frame-1",
+                    "frame_number": 1,
+                    "scene_number": 1,
+                    "start_ms": 0,
+                    "end_ms": 1000,
+                    "video_url": "https://cdn.example.com/legacy-1.mp4",
+                },
+                {
+                    "frame_id": "legacy-frame-2",
+                    "frame_number": 2,
+                    "scene_number": 1,
+                    "start_ms": 1000,
+                    "end_ms": 2000,
+                    "video_urls": ["https://cdn.example.com/legacy-2.mp4"],
+                },
+            ]
+        }
+    }
+    audio_timeline = _audio_timeline(script)
+    audio_timeline["beats"][1]["start_ms"] = 500
+
+    result = import_audio_timeline_to_timeline_spec(
+        db_session,
+        episode=episode,
+        script=script,
+        audio_timeline=audio_timeline,
+    )
+
+    assert result.action == "created"
+    spec = result.timeline.spec
+    assert spec["source"]["type"] == "legacy_storyboard"
+    tracks = {track["track_type"]: track for track in spec["tracks"]}
+    assert set(tracks) == {"video"}
+    clips = tracks["video"]["clips"]
+    assert len(clips) == 2
+    assert clips[0]["source"]["kind"] == "legacy_storyboard_frame"
+    assert clips[0]["video_url"] == "https://cdn.example.com/legacy-1.mp4"
+    assert clips[0]["asset_ref"]["url"] == "https://cdn.example.com/legacy-1.mp4"
+    assert clips[1]["video_url"] == "https://cdn.example.com/legacy-2.mp4"

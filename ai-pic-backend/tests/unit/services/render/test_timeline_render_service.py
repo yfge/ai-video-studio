@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.models.script import Episode, Script, Story
 from app.models.timeline import MediaAsset, RenderJob, Timeline
 from app.models.user import User
@@ -126,6 +125,57 @@ async def test_timeline_render_success_creates_media_asset(
     assert output_asset.asset_type == "video"
     assert output_asset.file_url.endswith(".mp4")
     assert output_asset.extra_metadata["clip_ids"] == ["video_scene_1_beat_1_001"]
+
+
+@pytest.mark.asyncio
+async def test_timeline_render_resolves_legacy_storyboard_video_by_timing(
+    db_session,
+    tmp_path,
+    monkeypatch,
+):
+    output_path = tmp_path / "legacy-render.mp4"
+
+    async def fake_render_to_temp_file(clips):
+        assert [clip.source for clip in clips] == ["legacy_storyboard_timing"]
+        assert clips[0].url == "https://example.com/legacy-frame.mp4"
+        output_path.write_bytes(b"rendered video")
+        return str(output_path)
+
+    monkeypatch.setattr(
+        "app.services.render.timeline_render_output.settings.UPLOAD_DIR",
+        str(tmp_path / "uploads"),
+    )
+    user, _timeline, job = _bootstrap_timeline(
+        db_session,
+        spec=_spec_with_video_clip(
+            {
+                "clip_id": "video_scene_1_beat_10_001",
+                "scene_number": 1,
+                "start_ms": 1000,
+                "end_ms": 2000,
+            }
+        ),
+        storyboard_frames=[
+            {
+                "frame_id": "legacy-frame-1",
+                "scene_number": 1,
+                "frame_number": 1,
+                "start_ms": 0,
+                "end_ms": 2500,
+                "video_url": "https://example.com/legacy-frame.mp4",
+            }
+        ],
+    )
+    service = TimelineRenderService(db_session)
+    monkeypatch.setattr(service, "_render_to_temp_file", fake_render_to_temp_file)
+
+    result = await service.process_render_job(job.id, user.id)
+
+    assert result is not None
+    assert result.status == "succeeded"
+    output_asset = db_session.get(MediaAsset, result.output_asset_id)
+    assert output_asset is not None
+    assert output_asset.extra_metadata["clip_ids"] == ["video_scene_1_beat_10_001"]
 
 
 @pytest.mark.asyncio

@@ -10,6 +10,9 @@ from app.services.timeline_spec_builder import (
     audio_timeline_version,
     build_timeline_spec_from_audio_timeline,
 )
+from app.services.timeline_storyboard_spec_builder import (
+    build_timeline_spec_from_storyboard_frames,
+)
 from sqlalchemy.orm import Session
 
 
@@ -45,11 +48,12 @@ def import_audio_timeline_to_timeline_spec(
 
     next_version = 1 if existing is None else (existing.version or 0) + 1
     source_version = audio_timeline_version(timeline_payload)
-    spec = build_timeline_spec_from_audio_timeline(
+    spec = _build_import_spec(
         episode=episode,
         script=script,
         audio_timeline=timeline_payload,
         version=next_version,
+        source_version=source_version,
     )
 
     if existing is None:
@@ -89,3 +93,40 @@ def _episode_audio_timeline(episode: Episode) -> dict[str, Any] | None:
     meta = episode.extra_metadata if isinstance(episode.extra_metadata, dict) else {}
     timeline = meta.get("audio_timeline") if isinstance(meta, dict) else None
     return timeline if isinstance(timeline, dict) else None
+
+
+def _build_import_spec(
+    *,
+    episode: Episode,
+    script: Script,
+    audio_timeline: dict[str, Any],
+    version: int,
+    source_version: int | None,
+) -> dict[str, Any]:
+    try:
+        return build_timeline_spec_from_audio_timeline(
+            episode=episode,
+            script=script,
+            audio_timeline=audio_timeline,
+            version=version,
+        )
+    except RuntimeError as exc:
+        if str(exc) != "audio_timeline_beats_not_monotonic":
+            raise
+        frames = _legacy_storyboard_frames(script)
+        if not frames:
+            raise
+        return build_timeline_spec_from_storyboard_frames(
+            episode=episode,
+            script=script,
+            storyboard_frames=frames,
+            version=version,
+            source_audio_timeline_version=source_version,
+        )
+
+
+def _legacy_storyboard_frames(script: Script) -> list[dict[str, Any]]:
+    extra = script.extra_metadata if isinstance(script.extra_metadata, dict) else {}
+    storyboard = extra.get("storyboard") if isinstance(extra, dict) else None
+    frames = storyboard.get("frames") if isinstance(storyboard, dict) else None
+    return [frame for frame in frames or [] if isinstance(frame, dict)]

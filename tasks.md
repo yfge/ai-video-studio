@@ -23,9 +23,9 @@
 ## 当前最高优先级
 
 - 当前未提交改动已拆成可审查提交边界：Timeline render/export、Codex/ChatGPT provider、IP 内容填充 DeepSeek、主链 readiness 文档。
-- 补一次真实 `Episode -> Timeline -> Render -> Export` 证据，必须使用带视频 clip 的脚本。
-- 2026-05-25 的真实 API harness 已跑到 render job，但因 Timeline clip 与 legacy storyboard/video task 资产未建立 lineage，被 `missing_video_url` 阻断。
-- 在真实 E2E 通过前，不把主链标记为商业化可用。
+- 真实 API harness 已通过一次 `Episode -> Timeline -> Render -> Export`：`artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`。
+- 下一步补 timeline delete/rollback 与更严格的 Timeline Spec schema/import validation。
+- 在 10 条窄垂类样片通过前，不把主链标记为商业化可用。
 
 ## 状态概览
 
@@ -41,6 +41,7 @@
 - `audio_timeline.beats` 已能导入 Timeline Spec v1，生成 dialogue/video/subtitle clips。
 - 默认 production/timeline-pipeline 的 storyboard support 已优先消费 Timeline Spec clips。
 - render/export worker、`render_jobs.output_asset` 回写、Timeline operator 基础面板和 render/export harness 路径已落地。
+- legacy storyboard 视频资产可作为迁移桥导入 Timeline video track，并已跑通一次真实 render/export。
 
 ## P0: Main Chain Closure
 
@@ -50,12 +51,12 @@
 
 - `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 和更严格的 schema/import 校验仍未补齐。
-- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已证明请求链可达，但 render output 仍因 clip 视频资产 lineage 缺口未通过。
+- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；该证据使用 legacy storyboard 视频资产迁移桥，后续仍需补 first-class clip asset lineage。
 
 ### 任务（功能→后端→验证）
 
 - [x] 将当前未提交改动拆成可审查的提交边界并完成对应 ledger。
-- [ ] 补跑真实 `Episode -> Timeline -> Render -> Export`，证据落到 `artifacts/runs/<run_id>/`。
+- [x] 补跑真实 `Episode -> Timeline -> Render -> Export`，证据落到 `artifacts/runs/<run_id>/`。
 - [ ] 补齐 timeline delete/rollback。
 - [ ] 为 Timeline Spec 增加 schema 校验、导入校验、权限校验和更完整的导出幂等测试。
 
@@ -65,7 +66,7 @@
 
 当前阻塞：
 
-- 场景音轨、episode 音轨、beats、分镜占位已经收敛到 Timeline Spec 导入；clip 级 lineage 和 timing source 已在导入桥中落字段，资产级关联仍未完成。
+- 场景音轨、episode 音轨、beats、分镜占位已经收敛到 Timeline Spec 导入；legacy storyboard 视频迁移桥已可生成可渲染 video track，first-class clip asset 关联仍未完成。
 - 重新配音、重新切分、重新导出还没有统一挂在稳定 clip identity 上。
 - `scripts_legacy.py`、`dialogue_audio_service.py`、`ai_service_manager.py` 仍是主链旁边的稳定性风险。
 
@@ -104,5 +105,5 @@
 - [ ] re-dub / re-render 不会打断 stable `clip_id`。
 - [ ] 不再有主要用户路径依赖 `scripts_legacy.py`。
 - [ ] storyboard 页面不再是系统主编排入口。
-- [ ] 真实 `Episode -> Timeline -> Render -> Export` 浏览器/API 证据通过。
+- [x] 真实 `Episode -> Timeline -> Render -> Export` 浏览器/API 证据通过。
 - [ ] 10 条窄垂类样片完成并记录生产指标。

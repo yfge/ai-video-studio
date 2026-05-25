@@ -5,10 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.models.timeline import Timeline
 from app.repositories.timeline_repository import MediaAssetRepository
+from app.services.render.timeline_render_legacy_match import (
+    find_legacy_storyboard_frame,
+)
+from sqlalchemy.orm import Session
 
 
 @dataclass(frozen=True)
@@ -80,6 +82,11 @@ class TimelineClipResolver:
                 url = self._frame_video_url(frame)
                 if url:
                     return url, "storyboard_frame"
+        legacy_frame = find_legacy_storyboard_frame(clip, storyboard_frames)
+        if legacy_frame:
+            url = self._frame_video_url(legacy_frame)
+            if url:
+                return url, "legacy_storyboard_timing"
         return None, "missing"
 
     def _clip_direct_video_url(self, clip: dict[str, Any]) -> str | None:

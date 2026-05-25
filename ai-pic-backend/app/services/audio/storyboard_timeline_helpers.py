@@ -119,10 +119,12 @@ def make_frame(
     }
 
 
-def check_existing_assets(existing: dict) -> None:
+def storyboard_has_assets(existing: dict | None) -> bool:
+    if not isinstance(existing, dict):
+        return False
     existing_frames = existing.get("frames")
     if not isinstance(existing_frames, list):
-        return
+        return False
     asset_keys = (
         "image_url",
         "start_image_url",
@@ -136,6 +138,12 @@ def check_existing_assets(existing: dict) -> None:
         if not isinstance(frame, dict):
             continue
         if any(frame.get(key) for key in asset_keys):
-            raise RuntimeError(
-                "storyboard_has_assets_refuse_overwrite: set overwrite_existing=true"
-            )
+            return True
+    return False
+
+
+def check_existing_assets(existing: dict) -> None:
+    if storyboard_has_assets(existing):
+        raise RuntimeError(
+            "storyboard_has_assets_refuse_overwrite: set overwrite_existing=true"
+        )

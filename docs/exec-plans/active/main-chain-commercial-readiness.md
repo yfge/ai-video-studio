@@ -20,9 +20,10 @@ Open constraint:
 
 - Phase 1 is complete. The previous dirty worktree was split into four atomic
   commits: `95857e9b`, `8251d67f`, `657b3a35`, and `7bade488`.
-- Real `Episode -> Timeline -> Render -> Export` evidence has reached the render
-  job boundary, but has not passed because Timeline video clips do not yet
-  resolve to legacy storyboard/video task assets.
+- Phase 2 has one passing real API harness run. It uses a legacy storyboard video
+  migration bridge, not a finished first-class clip asset lineage system.
+- Commercial readiness still depends on delete/rollback, Timeline Spec
+  validation, first-class clip asset lineage, and production sample evidence.
 
 ## Phase 1: Close Current Worktree
 
@@ -43,32 +44,30 @@ Exit criteria:
 
 Tasks:
 
-- Choose or create one script whose Timeline video clips resolve to actual video
-  assets or storyboard frame videos.
-- Run the real `Episode -> Timeline -> Render -> Export` path through the
-  operator flow or golden-path harness.
-- Store evidence under `artifacts/runs/<run_id>/`, including the actual browser
-  engine or fallback.
+- [x] Choose or create one script whose Timeline video clips resolve to actual video
+      assets or storyboard frame videos.
+- [x] Run the real `Episode -> Timeline -> Render -> Export` path through the
+      operator flow or golden-path harness.
+- [x] Store evidence under `artifacts/runs/<run_id>/`, including the actual browser
+      engine or fallback.
 
 Exit criteria:
 
-- A render job reaches `succeeded`.
-- `render_jobs.output_asset` exposes a usable `file_url` or `file_path`.
-- The evidence proves the route used a locked Timeline version.
+- [x] A render job reaches `succeeded`.
+- [x] `render_jobs.output_asset` exposes a usable `file_url` or `file_path`.
+- [x] The evidence proves the route used a locked Timeline version.
 
-Latest attempt:
+Latest passing attempt:
 
-- `python scripts/harness/run_golden_path.py --scenario timeline_export_end_to_end --run-id main-chain-e2e-20260525T031832Z --api-url http://localhost:8000 --base-url http://localhost:8089 --username geyunfei --password '<redacted>' --script-id 122 --timeout-seconds 300`
-- Evidence: `artifacts/runs/main-chain-e2e-20260525T031832Z/golden_path.json`.
-- Result: failed after reaching `POST /api/v1/timelines/1/render`.
-- Render job `1` consumed locked Timeline `1` version `1`, then failed with
-  `missing_video_url` for 30 video clips and no `output_asset`.
-- The same run shows task `5986` ended failed with
-  `storyboard_has_assets_refuse_overwrite: set overwrite_existing=true`.
-- Database check showed existing succeeded `video_generation_tasks` for script
-  `122`, but current storyboard frames do not carry `timeline_clip_id`, and no
-  `media_assets` rows exist. This makes Phase 5 clip asset lineage a prerequisite
-  for a clean Phase 2 pass unless a better fixture script is created.
+- `python scripts/harness/run_golden_path.py --scenario timeline_export_end_to_end --run-id main-chain-e2e-lineage-20260525T040437Z --api-url http://localhost:8000 --base-url http://localhost:8089 --username geyunfei --password '<redacted>' --script-id 117 --timeout-seconds 900`
+- Evidence: `artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`.
+- Result: passed.
+- Task `5989` completed, Timeline `2` version `1` was rendered, render job `3`
+  reached `succeeded`, and output asset `1` exposed
+  `https://resource.lets-gpt.com/timeline-renders/video/20260525/040535/7220b9a3.mp4`.
+- The run used script `117` because it has legacy storyboard video assets. The
+  import bridge created a Timeline video track from those frames after the old
+  audio timeline was found to be non-monotonic.
 
 ## Phase 3: Add Timeline Delete And Rollback
 

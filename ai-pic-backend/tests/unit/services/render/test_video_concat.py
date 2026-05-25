@@ -2,9 +2,7 @@
 
 import os
 import tempfile
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from app.services.render.video_concat import (
     VideoClip,
@@ -53,7 +51,7 @@ class TestCreateConcatFile:
             clip_paths = ["/tmp/clip1.mp4", "/tmp/clip2.mp4", "/tmp/clip3.mp4"]
             create_concat_file(clip_paths, concat_file)
 
-            with open(concat_file, "r") as f:
+            with open(concat_file) as f:
                 content = f.read()
 
             assert "file '/tmp/clip1.mp4'" in content
@@ -72,10 +70,9 @@ class TestCreateConcatFile:
             clip_paths = ["/tmp/clip's.mp4"]
             create_concat_file(clip_paths, concat_file)
 
-            with open(concat_file, "r") as f:
+            with open(concat_file) as f:
                 content = f.read()
 
-            # Single quote should be escaped
             assert "'\\''" in content or "clip" in content
         finally:
             if os.path.exists(concat_file):
@@ -85,10 +82,9 @@ class TestCreateConcatFile:
 class TestTrimClipToDuration:
     """Test clip trimming functionality."""
 
-    @patch("app.services.render.video_concat.subprocess.run")
+    @patch("app.services.render.video_ffmpeg.subprocess.run")
     def test_trim_clip_shorter(self, mock_run):
         """Test trimming when clip is longer than target."""
-        # Mock ffprobe to return 10 seconds
         mock_run.return_value = MagicMock(stdout="10.0\n", returncode=0)
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
@@ -98,20 +94,17 @@ class TestTrimClipToDuration:
         output_path = input_path + ".out.mp4"
 
         try:
-            # First call is ffprobe, second is ffmpeg
-            result = trim_clip_to_duration(input_path, output_path, 5.0)
+            trim_clip_to_duration(input_path, output_path, 5.0)
 
-            # Should call ffprobe and ffmpeg
             assert mock_run.call_count >= 1
         finally:
-            for p in [input_path, output_path]:
-                if os.path.exists(p):
-                    os.unlink(p)
+            for path in [input_path, output_path]:
+                if os.path.exists(path):
+                    os.unlink(path)
 
-    @patch("app.services.render.video_concat.subprocess.run")
+    @patch("app.services.render.video_ffmpeg.subprocess.run")
     def test_no_trim_when_close(self, mock_run):
         """Test no trimming when duration is close to target."""
-        # Mock ffprobe to return duration close to target
         mock_run.return_value = MagicMock(stdout="5.05\n", returncode=0)
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
@@ -121,19 +114,19 @@ class TestTrimClipToDuration:
         output_path = input_path + ".out.mp4"
 
         try:
-            result = trim_clip_to_duration(input_path, output_path, 5.0)
-            # Should only call ffprobe, then rename
+            trim_clip_to_duration(input_path, output_path, 5.0)
+
             assert mock_run.call_count == 1
         finally:
-            for p in [input_path, output_path]:
-                if os.path.exists(p):
-                    os.unlink(p)
+            for path in [input_path, output_path]:
+                if os.path.exists(path):
+                    os.unlink(path)
 
 
 class TestConcatVideosFFmpeg:
     """Test video concatenation."""
 
-    @patch("app.services.render.video_concat.subprocess.run")
+    @patch("app.services.render.video_ffmpeg.subprocess.run")
     def test_concat_with_audio(self, mock_run):
         """Test concatenation keeping audio."""
         mock_run.return_value = MagicMock(returncode=0)
@@ -141,28 +134,26 @@ class TestConcatVideosFFmpeg:
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
             output_path = f.name
 
-        # Create fake input files
         input_paths = []
-        for i in range(3):
+        for _ in range(3):
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
                 f.write(b"fake video")
                 input_paths.append(f.name)
 
         try:
-            result = concat_videos_ffmpeg(input_paths, output_path, keep_audio=True)
+            concat_videos_ffmpeg(input_paths, output_path, keep_audio=True)
 
-            # Verify ffmpeg was called
             mock_run.assert_called_once()
             call_args = mock_run.call_args[0][0]
             assert "ffmpeg" in call_args
             assert "-c" in call_args
             assert "copy" in call_args
         finally:
-            for p in input_paths + [output_path]:
-                if os.path.exists(p):
-                    os.unlink(p)
+            for path in input_paths + [output_path]:
+                if os.path.exists(path):
+                    os.unlink(path)
 
-    @patch("app.services.render.video_concat.subprocess.run")
+    @patch("app.services.render.video_ffmpeg.subprocess.run")
     def test_concat_without_audio(self, mock_run):
         """Test concatenation removing audio."""
         mock_run.return_value = MagicMock(returncode=0)
@@ -171,35 +162,31 @@ class TestConcatVideosFFmpeg:
             output_path = f.name
 
         input_paths = []
-        for i in range(2):
+        for _ in range(2):
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
                 f.write(b"fake video")
                 input_paths.append(f.name)
 
         try:
-            result = concat_videos_ffmpeg(input_paths, output_path, keep_audio=False)
+            concat_videos_ffmpeg(input_paths, output_path, keep_audio=False)
 
             call_args = mock_run.call_args[0][0]
-            assert "-an" in call_args  # No audio flag
+            assert "-an" in call_args
         finally:
-            for p in input_paths + [output_path]:
-                if os.path.exists(p):
-                    os.unlink(p)
+            for path in input_paths + [output_path]:
+                if os.path.exists(path):
+                    os.unlink(path)
 
 
 class TestReplaceAudio:
     """Test audio replacement."""
 
-    @patch("app.services.render.video_concat.subprocess.run")
+    @patch("app.services.render.video_ffmpeg.subprocess.run")
     def test_replace_audio(self, mock_run):
         """Test replacing video audio track."""
         mock_run.return_value = MagicMock(returncode=0)
 
-        video_path = "/tmp/video.mp4"
-        audio_path = "/tmp/audio.mp3"
-        output_path = "/tmp/output.mp4"
-
-        result = replace_audio(video_path, audio_path, output_path)
+        result = replace_audio("/tmp/video.mp4", "/tmp/audio.mp3", "/tmp/output.mp4")
 
         assert result is True
         call_args = mock_run.call_args[0][0]
@@ -208,7 +195,7 @@ class TestReplaceAudio:
         assert "0:v:0" in call_args
         assert "1:a:0" in call_args
 
-    @patch("app.services.render.video_concat.subprocess.run")
+    @patch("app.services.render.video_ffmpeg.subprocess.run")
     def test_replace_audio_failure(self, mock_run):
         """Test handling audio replacement failure."""
         from subprocess import CalledProcessError

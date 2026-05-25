@@ -99,16 +99,19 @@ Exit criteria:
 
 Exit criteria:
 
-- Browser evidence is stored under `artifacts/runs/<run_id>/`.
+- [x] Browser/API evidence is stored under `artifacts/runs/<run_id>/`.
 - Actual browser engine is recorded; Playwright fallback is not claimed as
   Chrome verification.
-- The selected script has renderable video clips, and the final render job
-  reaches `succeeded` with `output_asset.file_url` or `output_asset.file_path`.
+- [x] The selected script has renderable video clips, and the final render job
+      reaches `succeeded` with `output_asset.file_url` or `output_asset.file_path`.
 
-## Current Evidence Gap
+## Current Evidence
 
-- The render/export implementation has targeted test coverage, but the real
-  `Episode -> Timeline -> Render -> Export` run still needs to succeed against a
-  local backend and a script with video clip assets.
+- `artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`
+  records a passing `timeline_export_end_to_end` run against the local backend.
+- The run rendered Timeline `2` version `1`; render job `3` succeeded with
+  `output_asset.file_url` populated.
+- This is still migration-bridge evidence using legacy storyboard video assets,
+  not proof that first-class clip asset lineage and production samples are done.
 - Commercial-readiness sequencing is tracked separately in
   `docs/exec-plans/active/main-chain-commercial-readiness.md`.
