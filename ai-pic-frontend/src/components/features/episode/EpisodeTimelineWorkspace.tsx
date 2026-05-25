@@ -6,17 +6,7 @@ import type {
   Script,
   TimelineResponse,
 } from "@/utils/api/types";
-import { Timeline } from "@/components/features";
-import {
-  OperatorInspector,
-  OperatorMainCanvas,
-  OperatorPanel,
-  OperatorSectionHeader,
-  OperatorState,
-  OperatorWorkspace,
-  operatorButtonClass,
-  operatorSelectClass,
-} from "@/components/shared";
+import { OperatorInspector, OperatorWorkspace } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 import {
@@ -33,7 +23,9 @@ import {
   EpisodeTimelineContextRail,
   EpisodeTimelineInspectorContent,
 } from "./EpisodeTimelineWorkspaceParts";
-import { TimelineRenderPanel } from "./EpisodeTimelineRenderPanel";
+import { EpisodeTimelineMainPanel } from "./EpisodeTimelineMainPanel";
+import { TimelineClipAssetAuditPanel } from "./TimelineClipAssetAuditPanel";
+import { useTimelineClipAssets } from "./useTimelineClipAssets";
 import { useTimelineSceneEnvironments } from "./useTimelineSceneEnvironments";
 import { useTimelineRenderJobs } from "./useTimelineRenderJobs";
 
@@ -125,6 +117,16 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     renderReadiness,
     showAlert,
   });
+  const {
+    clipAssets,
+    loading: clipAssetsLoading,
+    error: clipAssetsError,
+  } = useTimelineClipAssets({
+    selectedTimelineSpec,
+    refreshKey: latestRenderJob
+      ? `${latestRenderJob.id}:${latestRenderJob.status}:${latestRenderJob.updated_at}`
+      : null,
+  });
 
   useEffect(() => {
     if (!selection.item) setSelectedItemId(firstTimelineItemId(tracks));
@@ -151,81 +153,28 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
         />
       }
       main={
-        <OperatorMainCanvas>
-          <OperatorPanel>
-            <OperatorSectionHeader
-              title="时间轴主画布"
-              subtitle="对白音轨、时间轴、分镜占位按同一时间码对齐"
-              action={
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={timingModel}
-                    onChange={(event) => setTimingModel(event.target.value)}
-                    disabled={modelsLoading}
-                    className={operatorSelectClass("w-40")}
-                  >
-                    <option value="">自动模型</option>
-                    {models.map((model) => {
-                      const value =
-                        model.model_id || `${model.provider}:${model.id}`;
-                      return (
-                        <option key={value} value={value}>
-                          {model.name || model.id}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <label className="flex items-center gap-1 text-xs text-gray-600">
-                    <input
-                      type="checkbox"
-                      checked={useDurationControl}
-                      onChange={(event) =>
-                        setUseDurationControl(event.target.checked)
-                      }
-                    />
-                    时长精控
-                  </label>
-                  <button
-                    type="button"
-                    onClick={onGenerateTimelinePipeline}
-                    disabled={pipelineBusy || !selectedScriptId}
-                    className={operatorButtonClass("primary")}
-                  >
-                    {pipelineBusy ? "生成中..." : "生成时间轴"}
-                  </button>
-                </div>
-              }
-            />
-            <div className="p-4">
-              {tracks.length ? (
-                <Timeline
-                  tracks={tracks}
-                  selectedItemId={selectedItemId}
-                  onSelect={(item) => setSelectedItemId(item.id)}
-                  initialZoom={1}
-                />
-              ) : (
-                <OperatorState title="选择剧本并生成时间轴后，这里会显示对白和分镜轨道。" />
-              )}
-            </div>
-            <TimelineRenderPanel
-              readiness={renderReadiness}
-              latestJob={latestRenderJob}
-              loading={renderJobsLoading}
-              busy={renderBusy}
-              error={renderError}
-              onQueueRender={(renderType) =>
-                void queueRender(renderType, false)
-              }
-              onRetryRender={(renderType) => void queueRender(renderType, true)}
-            />
-            {pipelineTaskId ? (
-              <div className="border-t border-gray-100 px-4 py-3 text-xs text-blue-700">
-                一键流水线任务已创建：task_id={pipelineTaskId}
-              </div>
-            ) : null}
-          </OperatorPanel>
-        </OperatorMainCanvas>
+        <EpisodeTimelineMainPanel
+          tracks={tracks}
+          selectedItemId={selectedItemId}
+          onSelectItem={(item) => setSelectedItemId(item.id)}
+          selectedScriptId={selectedScriptId}
+          timingModel={timingModel}
+          setTimingModel={setTimingModel}
+          models={models}
+          modelsLoading={modelsLoading}
+          useDurationControl={useDurationControl}
+          setUseDurationControl={setUseDurationControl}
+          pipelineBusy={pipelineBusy}
+          onGenerateTimelinePipeline={onGenerateTimelinePipeline}
+          pipelineTaskId={pipelineTaskId}
+          renderReadiness={renderReadiness}
+          latestRenderJob={latestRenderJob}
+          renderJobsLoading={renderJobsLoading}
+          renderBusy={renderBusy}
+          renderError={renderError}
+          onQueueRender={(renderType) => void queueRender(renderType, false)}
+          onRetryRender={(renderType) => void queueRender(renderType, true)}
+        />
       }
       inspector={
         <OperatorInspector title="片段检查器" subtitle="选中 beat 的生成控制">
@@ -243,6 +192,14 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
             onNavigateToStoryboard={onNavigateToStoryboard}
             onNavigateToTasks={onNavigateToTasks}
           />
+          <div className="mt-4">
+            <TimelineClipAssetAuditPanel
+              item={selection.item}
+              clipAssets={clipAssets}
+              loading={clipAssetsLoading}
+              error={clipAssetsError}
+            />
+          </div>
         </OperatorInspector>
       }
     />

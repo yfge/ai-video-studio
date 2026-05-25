@@ -22,8 +22,8 @@ Open constraint:
   commits: `95857e9b`, `8251d67f`, `657b3a35`, and `7bade488`.
 - Phase 2 has one passing real API harness run. It uses a legacy storyboard video
   migration bridge, not a finished first-class clip asset lineage system.
-- Commercial readiness still depends on operator-facing asset audit/rework UI,
-  real generation orchestration, and production sample evidence.
+- Commercial readiness still depends on real rework generation orchestration,
+  render queue integration, and production sample evidence.
 
 ## Phase 1: Close Current Worktree
 
@@ -135,7 +135,9 @@ Tasks:
 - [x] Link assets to stable `clip_id` values rather than temporary frame indexes.
 - [x] Implement backend re-dub, re-cut, and re-render replacement lineage around
       stable clip identity.
-- [ ] Wire rework actions into operator UI, provider generation, and render queue
+- [x] Add an operator read view for selected clip source/output/replacement asset
+      history.
+- [ ] Wire rework actions into provider generation and render queue
       orchestration.
 
 Exit criteria:
@@ -144,8 +146,8 @@ Exit criteria:
       original `clip_id`.
 - [x] Backend API can show source audio, source frame, generated video, and output
       assets for a selected clip.
-- Operator UI can show source audio, source frame, generated video, output asset,
-  and replacement history for a selected clip.
+- [x] Operator UI can show source audio, source frame, generated video, output
+      asset, and replacement history for a selected clip.
 - Operator rework flows can request real regenerated assets and keep replacement
   history addressable by `replacement_of_id`.
 
@@ -161,6 +163,10 @@ Latest validation:
 - `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/rework` records
   re-dub/re-cut/re-render replacement assets against the same stable `clip_id`
   with optimistic version locking and `replacement_of_id` history.
+- The Timeline operator inspector now calls
+  `GET /api/v1/timelines/{timeline_id}/clip-assets?timeline_version=<version>`
+  and shows selected-clip asset role, locator, source, render job, and
+  replacement history.
 
 ## Phase 6: Produce Ten Narrow Samples
 

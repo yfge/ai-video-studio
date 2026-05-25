@@ -91,6 +91,38 @@ export interface TimelineMediaAssetResponse {
   updated_at: string;
 }
 
+export interface TimelineClipAssetResponse {
+  id: number;
+  business_id: string;
+  timeline_id: number;
+  timeline_version: number;
+  clip_id: string;
+  track_type?: string | null;
+  asset_role: string;
+  media_asset_id: number;
+  media_asset?: TimelineMediaAssetResponse | null;
+  render_job_id?: number | null;
+  source?: string | null;
+  source_ref?: Record<string, unknown> | null;
+  replacement_of_id?: number | null;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by?: number | null;
+  deleted_reason?: string | null;
+  created_by?: number | null;
+  created_at: string;
+}
+
+export interface TimelineClipAssetListResponse {
+  items: TimelineClipAssetResponse[];
+}
+
+export interface TimelineClipAssetListParams {
+  timelineVersion?: number | null;
+  clipId?: string | null;
+  includeDeleted?: boolean;
+}
+
 export interface TimelineRenderJobCreate {
   timeline_version: number;
   render_type: TimelineRenderType;
