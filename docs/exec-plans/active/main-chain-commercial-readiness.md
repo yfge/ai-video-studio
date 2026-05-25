@@ -283,6 +283,8 @@ Latest validation:
 - `ai_service_manager.py` text-to-speech fallback orchestration now lives in
   `app.services.ai_manager_tts_generation`, including provider selection,
   request/response logging, and terminal failure response construction.
+- `ai_service_manager.py` provider status payload construction and provider
+  config updates now live in `app.services.ai_manager_provider_status`.
 
 ## Phase 6: Produce Ten Narrow Samples
 

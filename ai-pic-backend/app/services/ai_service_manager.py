@@ -16,6 +16,7 @@ from app.services import ai_manager_image_style as image_style
 from app.services import ai_manager_model_listing as model_listing
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
+from app.services import ai_manager_provider_status as provider_status
 from app.services import ai_manager_tts_generation as tts_generation
 from app.services import ai_manager_video_generation as video_generation
 from app.services.ai_manager_logging import (
@@ -794,31 +795,10 @@ class AIServiceManager:
 
     def get_provider_status(self) -> Dict[str, Any]:
         """获取所有提供商的状态"""
-        status = {}
-        for name, provider in self.providers.items():
-            weight = self.config.provider_weights.get(name)
-            status[name] = {
-                "enabled": weight.enabled if weight else True,
-                "priority": weight.priority.name if weight else "MEDIUM",
-                "weight": weight.weight if weight else 1.0,
-                "current_requests": weight.current_requests if weight else 0,
-                "max_requests_per_minute": (
-                    weight.max_requests_per_minute if weight else 60
-                ),
-                "supported_model_types": [
-                    mt.value for mt in provider.supported_model_types
-                ],
-                "available_models": [
-                    {
-                        "id": model.model_id,
-                        "name": model.name,
-                        "type": model.model_type.value,
-                        "capabilities": model.capabilities,
-                    }
-                    for model in provider.available_models
-                ],
-            }
-        return status
+        return provider_status.build_provider_status(
+            self.providers,
+            self.config.provider_weights,
+        )
 
     def update_provider_config(
         self,
@@ -829,18 +809,12 @@ class AIServiceManager:
         max_requests_per_minute: int = None,
     ):
         """更新提供商配置"""
-        if provider_name not in self.config.provider_weights:
-            self.config.provider_weights[provider_name] = ProviderWeight(
-                provider_name=provider_name
-            )
-
-        weight_config = self.config.provider_weights[provider_name]
-
-        if enabled is not None:
-            weight_config.enabled = enabled
-        if weight is not None:
-            weight_config.weight = weight
-        if priority is not None:
-            weight_config.priority = priority
-        if max_requests_per_minute is not None:
-            weight_config.max_requests_per_minute = max_requests_per_minute
+        provider_status.update_provider_config(
+            self.config.provider_weights,
+            provider_name=provider_name,
+            create_provider_weight=ProviderWeight,
+            enabled=enabled,
+            weight=weight,
+            priority=priority,
+            max_requests_per_minute=max_requests_per_minute,
+        )
