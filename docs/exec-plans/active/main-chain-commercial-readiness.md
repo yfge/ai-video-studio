@@ -231,6 +231,9 @@ Latest validation:
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.
+- `ai_service_manager.py` model-list cache keying, lookup, and writes now live
+  in `app.services.ai_manager_model_cache`, keeping provider enumeration in the
+  manager while isolating cache behavior.
 
 ## Phase 6: Produce Ten Narrow Samples
 

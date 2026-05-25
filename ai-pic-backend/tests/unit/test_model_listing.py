@@ -3,6 +3,11 @@ import asyncio
 import pytest
 from app.api.v1 import ai_providers
 from app.core.logging import get_logger
+from app.services.ai_manager_model_cache import (
+    get_cached_models,
+    model_cache_key,
+    store_cached_models,
+)
 from app.services.ai_service_manager import (
     AIServiceConfig,
     AIServiceManager,
@@ -206,3 +211,33 @@ async def test_list_models_includes_codex_static_text_model():
             "metadata": {"auth": "codex_cli", "endpoint": "codex_responses"},
         }
     ]
+
+
+def test_model_cache_key_uses_model_type_value():
+    assert model_cache_key("static", AIModelType.TEXT_GENERATION) == (
+        "static:text_generation"
+    )
+    assert model_cache_key("remote", None) == "remote:all"
+
+
+def test_model_cache_returns_copy():
+    cache = {}
+    models = [{"provider": "dummy", "id": "m1"}]
+    store_cached_models(
+        cache,
+        cache_ttl=60,
+        cache_key="static:all",
+        models=models,
+    )
+
+    cached = get_cached_models(cache, cache_ttl=60, cache_key="static:all")
+    assert cached == models
+    assert cached is not models
+
+    cached.append({"provider": "dummy", "id": "m2"})
+    assert get_cached_models(cache, cache_ttl=60, cache_key="static:all") == models
+
+
+def test_model_cache_disabled_returns_none():
+    cache = {"static:all": (0.0, [{"provider": "dummy", "id": "m1"}])}
+    assert get_cached_models(cache, cache_ttl=0, cache_key="static:all") is None

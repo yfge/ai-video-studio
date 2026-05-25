@@ -7,10 +7,10 @@ AI服务管理器
 import random
 from dataclasses import dataclass, field
 from enum import Enum
-from time import monotonic
 from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
+from app.services import ai_manager_model_cache as model_cache
 from app.services.ai_manager_logging import (
     AI_MANAGER_PROVIDER,
     log_prompt,
@@ -465,11 +465,14 @@ class AIServiceManager:
         if not hasattr(self, "_models_cache"):
             self._models_cache = {}
         cache_ttl = getattr(self.config, "model_list_cache_ttl", 0) or 0
-        cache_key = f"{source}:{model_type.value if isinstance(model_type, AIModelType) else model_type or 'all'}"
-        if cache_ttl > 0 and cache_key in self._models_cache:
-            ts, cached = self._models_cache[cache_key]
-            if monotonic() - ts < cache_ttl:
-                return list(cached)
+        cache_key = model_cache.model_cache_key(source, model_type)
+        cached_models = model_cache.get_cached_models(
+            self._models_cache,
+            cache_ttl=cache_ttl,
+            cache_key=cache_key,
+        )
+        if cached_models is not None:
+            return cached_models
 
         models: List[Dict[str, Any]] = []
         for provider_name, provider in self.providers.items():
@@ -518,8 +521,12 @@ class AIServiceManager:
 
         # 简单排序：provider, name
         models.sort(key=lambda x: (x["provider"], x.get("name") or x["id"]))
-        if cache_ttl > 0:
-            self._models_cache[cache_key] = (monotonic(), list(models))
+        model_cache.store_cached_models(
+            self._models_cache,
+            cache_ttl=cache_ttl,
+            cache_key=cache_key,
+            models=models,
+        )
         return models
 
     async def generate_text(
