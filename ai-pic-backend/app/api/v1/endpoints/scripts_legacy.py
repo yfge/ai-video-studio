@@ -5,9 +5,7 @@ from app.api.v1.endpoints.scripts_catalog import router as catalog_router
 from app.api.v1.endpoints.scripts_lists import get_scripts as _get_scripts
 from app.api.v1.endpoints.scripts_lists import router as lists_router
 from app.api.v1.endpoints.scripts_records import router as records_router
-from app.api.v1.endpoints.scripts_route_utils import (
-    get_script_by_identifier as _get_script_by_identifier,
-)
+from app.api.v1.endpoints.scripts_regeneration import router as regeneration_router
 from app.api.v1.endpoints.scripts_route_utils import not_deleted as _not_deleted
 from app.core.database import get_db
 from app.core.logging import get_logger
@@ -57,13 +55,11 @@ from app.services.script.story_structure_sync import (
 from app.services.script.story_structure_sync import (
     sync_script_scenes_to_story_structure as _sync_script_scenes_to_story_structure_impl,
 )
-from app.services.script.task_titles import friendly_task_title as _friendly_task_title
-from app.services.task_worker import script_generate_task, script_regenerate_task
+from app.services.task_worker import script_generate_task
 from app.utils.json_utils import extract_json_block
 from app.utils.marketing_meta import apply_marketing_overrides, merge_marketing_meta
 from app.utils.script_parser import extract_script_structure
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 
@@ -1357,6 +1353,7 @@ async def generate_script_async(
 
 router.include_router(lists_router)
 router.include_router(records_router)
+router.include_router(regeneration_router)
 
 
 @router.get("", response_model=List[ScriptListItemResponse], include_in_schema=False)
@@ -1381,134 +1378,3 @@ async def get_scripts_no_slash(
         current_user=current_user,
         db=db,
     )
-
-
-class ScriptRegenerateRequest(BaseModel):
-    """剧本重新生成请求参数"""
-
-    model: Optional[str] = Field(None, description="模型ID，格式为 provider:model_id")
-
-
-def _build_script_regenerate_request(
-    script: Script, episode: Episode, override_model: Optional[str] = None
-) -> Dict[str, Any]:
-    """构建剧本重新生成的请求参数字典。"""
-    original_params = script.generation_params or {}
-    # 获取剧集目标时长（分钟）
-    duration_minutes = getattr(episode, "duration_minutes", None)
-    return {
-        "script_id": script.id,
-        "format_type": script.format_type,
-        "language": script.language,
-        "dialogue_style": original_params.get("dialogue_style", "natural"),
-        "scene_detail_level": original_params.get("scene_detail_level", "medium"),
-        "market_region": original_params.get("market_region"),
-        "micro_genre": original_params.get("micro_genre"),
-        "hook_plan": original_params.get("hook_plan"),
-        "twist_density": original_params.get("twist_density"),
-        "cliffhanger_plan": original_params.get("cliffhanger_plan"),
-        "ad_snippets": original_params.get("ad_snippets"),
-        "additional_requirements": f"重新生成第{episode.episode_number}集的剧本内容",
-        "style_preferences": original_params.get("style_preferences"),
-        "model": override_model or original_params.get("model"),
-        "temperature": original_params.get("temperature", 0.7),
-        "duration_minutes": duration_minutes,
-    }
-
-
-@router.post("/{script_id}/regenerate")
-async def regenerate_script_async(
-    script_id: int,
-    request: Optional[ScriptRegenerateRequest] = None,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """异步重新生成剧本内容
-
-    返回 task_id 用于跟踪进度。
-
-    可选参数:
-    - model: 指定使用的模型，格式为 "provider:model_id"，不传则使用原有模型
-    """
-    script = _get_script_by_identifier(db, script_id, None, current_user)
-
-    episode = script.episode
-    if not episode or getattr(episode, "is_deleted", False):
-        raise HTTPException(status_code=404, detail="剧集不存在")
-
-    story = episode.story
-    if not story or getattr(story, "is_deleted", False):
-        raise HTTPException(status_code=404, detail="故事不存在")
-
-    override_model = request.model if request else None
-    request_dict = _build_script_regenerate_request(script, episode, override_model)
-
-    t = Task(
-        title=_friendly_task_title("剧本重新生成", script, episode, story),
-        description=f"重新生成剧本 {script.id}（第{episode.episode_number}集）",
-        task_type=TaskType.SCRIPT_GENERATION,
-        prompt=f"Script regeneration for script {script.id}",
-        parameters=json.dumps(request_dict, ensure_ascii=False),
-        user_id=current_user.id,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-
-    script_regenerate_task.delay(t.id, request_dict, current_user.id)
-    return {
-        "success": True,
-        "data": {
-            "task_id": t.id,
-            "status": t.status,
-            "message": "剧本重新生成任务已提交",
-        },
-    }
-
-
-@router.post("/business/{script_business_id}/regenerate")
-async def regenerate_script_by_business_id_async(
-    script_business_id: str,
-    request: Optional[ScriptRegenerateRequest] = None,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """按 business_id 异步重新生成剧本内容
-
-    返回 task_id 用于跟踪进度。
-
-    可选参数:
-    - model: 指定使用的模型，格式为 "provider:model_id"，不传则使用原有模型
-    """
-    script = _get_script_by_identifier(db, None, script_business_id, current_user)
-    episode = script.episode
-    if not episode or getattr(episode, "is_deleted", False):
-        raise HTTPException(status_code=404, detail="剧集不存在")
-    story = episode.story
-    if not story or getattr(story, "is_deleted", False):
-        raise HTTPException(status_code=404, detail="故事不存在")
-
-    override_model = request.model if request else None
-    request_dict = _build_script_regenerate_request(script, episode, override_model)
-
-    t = Task(
-        title=_friendly_task_title("剧本重新生成", script, episode, story),
-        description=f"重新生成剧本 {script.id}（第{episode.episode_number}集）",
-        task_type=TaskType.SCRIPT_GENERATION,
-        prompt=f"Script regeneration for script {script.id}",
-        parameters=json.dumps(request_dict, ensure_ascii=False),
-        user_id=current_user.id,
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
-
-    script_regenerate_task.delay(t.id, request_dict, current_user.id)
-    return {
-        "success": True,
-        "data": {
-            "task_id": t.id,
-            "status": t.status,
-            "message": "剧本重新生成任务已提交",
-        },
-    }
