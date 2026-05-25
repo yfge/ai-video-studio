@@ -125,6 +125,14 @@ class ModelRegistryMixin:
         if not self.ai_manager:
             return
         try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+        else:
+            self.logger.info("检测到运行中的事件循环，跳过模型缓存预热")
+            return
+
+        try:
             asyncio.run(self._reload_model_cache())
         except Exception as exc:  # pragma: no cover - init guard
             self.logger.warning("模型缓存初始化失败: %s", exc)

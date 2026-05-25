@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from app.api.v1 import ai_providers
 from app.core.logging import get_logger
@@ -102,6 +104,30 @@ def _build_manager_with_dummy_provider():
     manager._initialize_providers()
     manager.logger = get_logger()
     return manager
+
+
+class _WarmCacheService:
+    def __init__(self):
+        self.ai_manager = object()
+        self.model_cache = {}
+        self.logger = get_logger()
+        self.reloaded = False
+
+    async def _reload_model_cache(self):
+        self.reloaded = True
+
+
+@pytest.mark.asyncio
+async def test_warm_model_cache_skips_inside_running_event_loop():
+    from app.services.ai.models import ModelRegistryMixin
+
+    service = type("WarmCacheProbe", (_WarmCacheService, ModelRegistryMixin), {})()
+
+    service._warm_model_cache()
+    await asyncio.sleep(0)
+
+    assert service.reloaded is False
+    assert service.model_cache == {}
 
 
 @pytest.mark.asyncio
