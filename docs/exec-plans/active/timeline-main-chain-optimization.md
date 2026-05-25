@@ -20,8 +20,8 @@ This document began as an optimization plan. The P0-P2 ownership alignment
 slice is now implemented. The current worktree also includes the Phase 3
 render/export execution slice. One real API E2E run now passes through a legacy
 storyboard video migration bridge; commercial readiness still depends on
-delete/rollback, first-class clip asset lineage, and production sample
-validation.
+operator-facing asset audit/rework UI, real generation orchestration, and
+production sample validation.
 
 ## Current Chain Check
 
@@ -47,7 +47,8 @@ The default production path is now wired into Timeline Spec v1:
 No immediate blocker was found in the default production chain. Downstream
 execution now has worker and output-asset plumbing, and a real harness flow can
 render/export a Timeline whose clips resolve to legacy storyboard videos.
-First-class clip asset lineage is still not complete.
+First-class clip asset lineage now has backend source/output/rework records, but
+operator UI and real rework orchestration remain pending.
 
 ## Implementation Status
 
@@ -64,7 +65,10 @@ First-class clip asset lineage is still not complete.
   backfill command is dry-run by default.
 - P3 render/export execution is implemented, with passing real API E2E evidence
   in `artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`.
-  Commercial-readiness sample production remains pending.
+- P4 backend lineage is implemented for Timeline Spec assets, render outputs,
+  and operator replacement records keyed by stable `clip_id`.
+- Operator UI, real rework orchestration, and commercial-readiness sample
+  production remain pending.
 
 ## Findings
 
@@ -279,9 +283,10 @@ Exit criteria:
 6. Backfill: import old audio timelines into Timeline Spec with dry-run first.
 7. Render/export: consume locked timeline versions and persist media assets.
 
-Steps 1-7 are implemented for this slice. The next boundary is delete/rollback,
-stricter Timeline Spec validation, first-class clip asset lineage, and production
-sample validation.
+Steps 1-7 are implemented for this slice. Delete/rollback, stricter Timeline
+Spec validation, and backend first-class clip asset lineage are also
+implemented. The next boundary is operator UI, real rework orchestration, legacy
+debt reduction, and production sample validation.
 
 ## Validation Matrix
 

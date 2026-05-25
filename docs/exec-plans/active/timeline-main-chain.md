@@ -21,13 +21,15 @@ Current status:
 - Phase 3 import bridge is implemented for explicit one-click generation,
   default production script generation, and deprecated audio-timeline
   compatibility.
-- Phase 4 render/export execution and Phase 5 operator UI/harness paths exist in
-  the current worktree, but still need packaging and real browser/API evidence
-  before the main chain is treated as production-ready.
+- Phase 4 render/export execution and Phase 5 operator UI/harness paths are
+  packaged, with one passing real API E2E run through a legacy storyboard video
+  migration bridge.
 - P0-P2 ownership alignment is implemented: importer output matches the
   underscore `clip_id` contract, readiness checks prefer Timeline rows,
   storyboard support generation prefers Timeline Spec clips, the workspace can
   build native Timeline tracks, and a dry-run backfill command exists.
+- Timeline delete/restore, rollback, schema/import validation, first-class clip
+  asset lineage, and backend rework replacement records are implemented.
 
 ## Phase 1: Spec And Contracts
 
@@ -112,6 +114,7 @@ Exit criteria:
 - The run rendered Timeline `2` version `1`; render job `3` succeeded with
   `output_asset.file_url` populated.
 - This is still migration-bridge evidence using legacy storyboard video assets,
-  not proof that first-class clip asset lineage and production samples are done.
+  not proof that operator rework UI, real re-generation orchestration, and
+  production samples are done.
 - Commercial-readiness sequencing is tracked separately in
   `docs/exec-plans/active/main-chain-commercial-readiness.md`.

@@ -22,8 +22,8 @@ Open constraint:
   commits: `95857e9b`, `8251d67f`, `657b3a35`, and `7bade488`.
 - Phase 2 has one passing real API harness run. It uses a legacy storyboard video
   migration bridge, not a finished first-class clip asset lineage system.
-- Commercial readiness still depends on first-class clip asset lineage and
-  production sample evidence.
+- Commercial readiness still depends on operator-facing asset audit/rework UI,
+  real generation orchestration, and production sample evidence.
 
 ## Phase 1: Close Current Worktree
 
@@ -133,25 +133,34 @@ Tasks:
 - [x] Treat start frames, end frames, storyboard images, storyboard videos, and final
       clip videos as first-class clip assets.
 - [x] Link assets to stable `clip_id` values rather than temporary frame indexes.
-- Implement re-dub, re-cut, and re-render around stable clip identity.
+- [x] Implement backend re-dub, re-cut, and re-render replacement lineage around
+      stable clip identity.
+- [ ] Wire rework actions into operator UI, provider generation, and render queue
+      orchestration.
 
 Exit criteria:
 
-- Re-dub/re-cut/re-render do not change the original `clip_id`.
+- [x] Backend re-dub/re-cut/re-render replacement records do not change the
+      original `clip_id`.
 - [x] Backend API can show source audio, source frame, generated video, and output
       assets for a selected clip.
 - Operator UI can show source audio, source frame, generated video, output asset,
   and replacement history for a selected clip.
+- Operator rework flows can request real regenerated assets and keep replacement
+  history addressable by `replacement_of_id`.
 
 Latest validation:
 
-- `cd ai-pic-backend && pytest tests/test_timeline_api.py tests/test_timeline_import_service.py tests/test_timeline_lifecycle_api.py tests/test_timeline_spec_validation.py tests/unit/services/render/test_timeline_render_service.py -q`
-- Result: passed, 20 tests.
+- `cd ai-pic-backend && pytest tests/test_timeline_api.py tests/test_timeline_clip_rework_api.py tests/test_timeline_import_service.py tests/test_timeline_lifecycle_api.py tests/test_timeline_spec_validation.py tests/unit/services/render/test_timeline_render_service.py -q`
+- Result: passed, 23 tests.
 - `timeline_clip_assets` now records clip-to-asset lineage by stable `clip_id`.
   Timeline create/update/import/rollback sync source assets from Timeline Spec,
   and render success records output assets per rendered clip.
 - `GET /api/v1/timelines/{timeline_id}/clip-assets` exposes lineage entries for
   future operator audit views.
+- `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/rework` records
+  re-dub/re-cut/re-render replacement assets against the same stable `clip_id`
+  with optimistic version locking and `replacement_of_id` history.
 
 ## Phase 6: Produce Ten Narrow Samples
 

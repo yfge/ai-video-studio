@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 TimelineStatus = Literal["draft", "ready", "locked", "archived"]
 RenderJobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 RenderType = Literal["proxy", "final", "export"]
+TimelineClipReworkAction = Literal["re_dub", "re_cut", "re_render"]
 
 
 class TimelineCreate(BaseModel):
@@ -122,6 +123,13 @@ class TimelineClipAssetResponse(BaseModel):
 
 class TimelineClipAssetListResponse(BaseModel):
     items: List[TimelineClipAssetResponse]
+
+
+class TimelineClipReworkRequest(TimelineVersionRequest):
+    action: TimelineClipReworkAction
+    media_asset_id: int = Field(..., ge=1)
+    asset_role: Optional[str] = Field(None, max_length=64)
+    reason: Optional[str] = Field(None, max_length=255)
 
 
 class RenderJobCreate(BaseModel):

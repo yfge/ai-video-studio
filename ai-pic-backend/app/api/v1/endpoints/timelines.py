@@ -6,6 +6,8 @@ from app.schemas.timeline import (
     RenderJobListResponse,
     RenderJobResponse,
     TimelineClipAssetListResponse,
+    TimelineClipAssetResponse,
+    TimelineClipReworkRequest,
     TimelineCreate,
     TimelineDeleteRequest,
     TimelineListResponse,
@@ -15,6 +17,7 @@ from app.schemas.timeline import (
     TimelineVersionRequest,
 )
 from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
+from app.services.timeline_clip_rework_service import TimelineClipReworkService
 from app.services.timeline_lifecycle_service import TimelineLifecycleService
 from app.services.timeline_service import TimelineService
 from fastapi import APIRouter, Depends, Query
@@ -140,6 +143,22 @@ def list_timeline_clip_assets(
             include_deleted=include_deleted,
         )
     )
+
+
+@router.post(
+    "/timelines/{timeline_id}/clips/{clip_id}/rework",
+    response_model=TimelineClipAssetResponse,
+    summary="Record a clip rework asset without changing the stable clip id",
+)
+def rework_timeline_clip(
+    timeline_id: int,
+    clip_id: str,
+    payload: TimelineClipReworkRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineClipAssetResponse:
+    service = TimelineClipReworkService(db)
+    return service.rework_clip(timeline_id, clip_id, payload, current_user)
 
 
 @router.delete(
