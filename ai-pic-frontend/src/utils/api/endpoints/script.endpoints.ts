@@ -23,12 +23,7 @@ import {
   generateScriptAsync,
   previewScriptPrompt,
 } from "./script/generation.endpoints";
-import {
-  generateAudioTimelineAsync,
-  generateSceneDialogueAudioAsync,
-  generateStoryboardFromAudioTimelineAsync,
-  generateTimelinePipelineAsync,
-} from "./script/audio.endpoints";
+import { generateTimelinePipelineAsync } from "./script/audio.endpoints";
 import {
   generateStoryboard,
   generateStoryboardAsync,
@@ -55,9 +50,6 @@ export const scriptAPI = {
   getScriptFormats,
   getScriptLanguages,
   exportScript,
-  generateSceneDialogueAudioAsync,
-  generateAudioTimelineAsync,
-  generateStoryboardFromAudioTimelineAsync,
   generateTimelinePipelineAsync,
   getStoryboard,
   previewStoryboardPrompt,
