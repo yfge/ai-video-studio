@@ -24,16 +24,16 @@
 
 - 当前未提交改动已拆成可审查提交边界：Timeline render/export、Codex/ChatGPT provider、IP 内容填充 DeepSeek、主链 readiness 文档。
 - 真实 API harness 已通过一次 `Episode -> Timeline -> Render -> Export`：`artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`。
-- timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制，以及 provider-backed clip video rework task queue、operator 入口、success lineage 和 rework 后自动 render queue 已落地；下一步进入 legacy 收敛和样片验证。
-- 在 10 条窄垂类样片通过前，不把主链标记为商业化可用。
+- timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed clip video rework task queue、operator 入口、success lineage、rework 后自动 render queue、legacy 收敛和 10 条本地 2D 卡通样片验证已落地。
+- 当前结论：主链工程闭环可演示；外部 provider-backed 大规模内容生产成本和稳定性仍需要单独按真实预算复测。
 
 ## 状态概览
 
 - P0：Timeline Spec v1 文档、DB/API foundation、`audio_timeline.beats` 导入桥、Timeline readiness 优先级、默认 storyboard support 生成源、dry-run backfill、versioned render/export 回写、delete/rollback、schema/import 校验、clip asset lineage 后端基础和 stable `clip_id` rework API 已落地。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
-- P1：provider-backed video rework task queue 已有后端链路、operator 入口和成功后自动 final render 编排；继续收敛 legacy 稳定性风险。
-- P2：用一个窄垂类连续生产 10 条 30-60 秒样片，记录成本、耗时、失败点和人工修正次数。
+- P1：provider-backed video rework task queue 已有后端链路、operator 入口和成功后自动 final render 编排；legacy 稳定性风险已收敛。
+- P2：已用一个窄垂类连续生产 10 条 30 秒本地 2D 卡通样片，记录成本、耗时、失败点和人工修正次数。
 
 ## 已完成基线
 
@@ -145,25 +145,25 @@
 
 当前阻塞：
 
-- 工程链路还没有用真实内容证明可重复生产。
+- 工程链路已用 10 条本地 2D 卡通样片证明可重复走通。
 - 已固定 2D/3D 卡通样片验证范围、3 个复用角色和 10 条样片记录表：
   `docs/cartoon-sample-production-proof.md`。
-- 还没有产出 10 条最终导出样片，也没有完成成本、失败点和人工修正指标记录。
+- 已产出 10 条最终导出样片，并完成成本、失败点和人工修正指标记录。
 
 ### 任务（内容→生产→复盘）
 
 - [x] 补齐 timeline operator 的选中 clip 资产审计读视图和已有资产 rework 控制。
 - [x] 把 storyboard 调整为支持视图：查看占位、关键帧、镜头上下文，不再承担主编排职责。
 - [x] 固定一个窄垂类和 2-3 个角色，限定 2D/3D 卡通验证风格。
-- [ ] 产出 10 条 30-60 秒竖屏样片。
-- [ ] 每条样片记录模型成本、生成耗时、失败点、人工修正次数和最终导出文件。
-- [ ] 将可复用的剧作规则、镜头结构、prompt 和资产选择沉淀回主链。
+- [x] 产出 10 条 30-60 秒竖屏样片。
+- [x] 每条样片记录模型成本、生成耗时、失败点、人工修正次数和最终导出文件。
+- [x] 将可复用的剧作规则、镜头结构、prompt 和资产选择沉淀回主链。
 
 ## 6-Week Exit Criteria
 
-- [ ] 至少 1 个 episode 可以从 audio-driven timeline 重建到最终导出。
-- [ ] re-dub / re-render 从 operator UI 到真实生成/导出都不会打断 stable `clip_id`。
+- [x] 至少 1 个 episode 可以从 audio-driven timeline 重建到最终导出。
+- [x] re-dub / re-render 从 operator UI 到真实生成/导出都不会打断 stable `clip_id`。
 - [x] 不再有主要用户路径依赖 `scripts_legacy.py`。
-- [ ] storyboard 页面不再是系统主编排入口。
+- [x] storyboard 页面不再是系统主编排入口。
 - [x] 真实 `Episode -> Timeline -> Render -> Export` 浏览器/API 证据通过。
-- [ ] 10 条窄垂类样片完成并记录生产指标。
+- [x] 10 条窄垂类样片完成并记录生产指标。

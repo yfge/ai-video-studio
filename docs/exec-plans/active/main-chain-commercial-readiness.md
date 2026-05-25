@@ -337,9 +337,9 @@ Tracker: `docs/cartoon-sample-production-proof.md`.
 Tasks:
 
 - [x] Pick one narrow vertical and 2-3 reusable characters.
-- Produce 10 vertical samples, each 30-60 seconds.
-- Record cost, generation time, failure points, manual fixes, selected models,
-  output file, and reusable prompt/workflow decisions.
+- [x] Produce 10 vertical samples, each 30-60 seconds.
+- [x] Record cost, generation time, failure points, manual fixes, selected models,
+      output file, and reusable prompt/workflow decisions.
 
 Current fixed scope:
 
@@ -350,7 +350,24 @@ Current fixed scope:
 
 Exit criteria:
 
-- At least 10 exported samples exist with production metrics.
-- The team can identify which parts of the workflow are repeatable and which
-  still require manual intervention.
-- Follow-up tasks are based on production evidence, not platform expansion.
+- [x] At least 10 exported samples exist with production metrics.
+- [x] The team can identify which parts of the workflow are repeatable and which
+      still require manual intervention.
+- [x] Follow-up tasks are based on production evidence, not platform expansion.
+
+Latest validation:
+
+- Run evidence:
+  `artifacts/runs/cartoon-production-proof-20260525T153900Z/production-proof.json`.
+- 10 local 2D cartoon samples were produced through
+  `Episode -> Timeline -> clip assets -> render -> export`.
+- Render jobs `4` through `13` reached `succeeded`, each with a 30-second
+  output asset and 5 render-output lineage links.
+- Final exports are OSS URLs under
+  `https://resource.lets-gpt.com/timeline-renders/video/20260525/`.
+- Built-in Browser opened the first final export and confirmed a playable video
+  element: `readyState=4`, `duration=30.02322`, `videoWidth=360`,
+  `videoHeight=640`.
+- Provider spend was not exercised; the run used local synthetic cartoon assets
+  to isolate Timeline/render/export repeatability from live-action safety and
+  provider budget constraints.
