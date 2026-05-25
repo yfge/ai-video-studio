@@ -38,7 +38,10 @@ def test_script_regeneration_creates_new_script_and_soft_deletes_old(
 
     _patch_session_local(monkeypatch, test_db)
 
-    import app.api.v1.endpoints.scripts_legacy as scripts_legacy
+    import app.services.script.regeneration_generation as script_regeneration_generation
+    from app.services.script.regeneration_task_processor import (
+        process_script_regeneration_task,
+    )
 
     async def fake_quality_gate(**kwargs):
         result = dict(kwargs["result"])
@@ -47,12 +50,12 @@ def test_script_regeneration_creates_new_script_and_soft_deletes_old(
         return result, kwargs["content"], quality_gate
 
     monkeypatch.setattr(
-        scripts_legacy,
+        script_regeneration_generation,
         "enforce_script_quality_gate_with_repair",
         fake_quality_gate,
     )
 
-    scripts_legacy._process_script_regeneration_task(
+    process_script_regeneration_task(
         task.id,
         {"script_id": old_script.id},
         user.id,

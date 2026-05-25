@@ -230,19 +230,18 @@ def mock_ai_service(monkeypatch):
     # Patch cached imports for modules that bind `ai_service` at import-time.
     import app.api.v1.endpoints.episodes.async_tasks as episodes_async
     import app.api.v1.endpoints.episodes.regenerate as episodes_regenerate
-    import app.api.v1.endpoints.scripts_legacy as scripts_legacy_ep
     import app.api.v1.endpoints.virtual_ip_images.async_tasks as vip_async
     import app.api.v1.endpoints.virtual_ip_images.generation as vip_generation
     import app.api.v1.endpoints.virtual_ip_images.generation_helpers as vip_gen_helpers
     import app.services.episode.episode_generation_persistence as episode_generation_persistence
     import app.services.episode.episode_generation_service as episode_generation_service
+    import app.services.script.generation_task_attempts as script_generation_attempts
     import app.services.script.regeneration_generation as script_regeneration_generation
     import app.services.script.script_generator as script_generator_service
     import app.services.script.sync_generation as script_sync_generation_service
     import app.services.story.story_generation_service as story_generation_service
     import app.services.story.story_novel_export_ai as story_novel_export_ai
 
-    monkeypatch.setattr(scripts_legacy_ep, "ai_service", mock_service)
     monkeypatch.setattr(vip_gen_helpers, "ai_service", mock_service)
     monkeypatch.setattr(vip_generation, "ai_service", mock_service)
     monkeypatch.setattr(vip_async, "ai_service", mock_service)
@@ -251,6 +250,7 @@ def mock_ai_service(monkeypatch):
     monkeypatch.setattr(story_generation_service, "ai_service", mock_service)
     monkeypatch.setattr(episode_generation_service, "ai_service", mock_service)
     monkeypatch.setattr(episode_generation_persistence, "ai_service", mock_service)
+    monkeypatch.setattr(script_generation_attempts, "ai_service", mock_service)
     monkeypatch.setattr(script_regeneration_generation, "ai_service", mock_service)
     monkeypatch.setattr(script_generator_service, "ai_service", mock_service)
     monkeypatch.setattr(script_sync_generation_service, "ai_service", mock_service)

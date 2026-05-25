@@ -178,6 +178,21 @@ class ScriptsRouteRepository:
             query = query.filter(Story.user_id == current_user.id)
         return query.filter(Episode.id == episode_id).first()
 
+    def get_task_generation_episode(
+        self,
+        *,
+        episode_id: int | None,
+        user_id: int,
+    ) -> Episode | None:
+        if episode_id is None:
+            return None
+        return (
+            self.db.query(Episode)
+            .join(Story, Episode.story_id == Story.id)
+            .filter(Episode.id == episode_id, Story.user_id == user_id)
+            .first()
+        )
+
     def list_scripts_for_episode(self, episode_id: int) -> list[Script]:
         return (
             self.not_deleted(self.db.query(Script), Script)
