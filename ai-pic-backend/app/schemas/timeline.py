@@ -24,6 +24,25 @@ class TimelineUpdate(BaseModel):
     source_audio_timeline_version: Optional[int] = None
 
 
+class TimelineVersionRequest(BaseModel):
+    expected_version: int = Field(..., ge=1)
+
+
+class TimelineDeleteRequest(TimelineVersionRequest):
+    reason: Optional[str] = Field(None, max_length=255)
+
+
+class TimelineRollbackRequest(TimelineVersionRequest):
+    target_version: int = Field(..., ge=1)
+
+
+class TimelineRollbackState(BaseModel):
+    source_version: int
+    target_version: int
+    rolled_back_at: datetime
+    rolled_back_by: Optional[int] = None
+
+
 class TimelineResponse(BaseModel):
     id: int
     business_id: str
@@ -36,6 +55,11 @@ class TimelineResponse(BaseModel):
     spec: Dict[str, Any]
     version: int
     source_audio_timeline_version: Optional[int] = None
+    rollback: Optional[TimelineRollbackState] = None
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = None
+    deleted_reason: Optional[str] = None
     created_by: Optional[int] = None
     updated_by: Optional[int] = None
     created_at: datetime
@@ -91,6 +115,10 @@ class RenderJobResponse(BaseModel):
     output_asset_id: Optional[int] = None
     output_asset: Optional[MediaAssetResponse] = None
     log: Optional[Dict[str, Any]] = None
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[int] = None
+    deleted_reason: Optional[str] = None
     created_by: Optional[int] = None
     created_at: datetime
     updated_at: datetime

@@ -24,12 +24,12 @@
 
 - 当前未提交改动已拆成可审查提交边界：Timeline render/export、Codex/ChatGPT provider、IP 内容填充 DeepSeek、主链 readiness 文档。
 - 真实 API harness 已通过一次 `Episode -> Timeline -> Render -> Export`：`artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`。
-- 下一步补 timeline delete/rollback 与更严格的 Timeline Spec schema/import validation。
+- timeline delete/restore、render attempt delete/restore、rollback 已落地；下一步补更严格的 Timeline Spec schema/import validation。
 - 在 10 条窄垂类样片通过前，不把主链标记为商业化可用。
 
 ## 状态概览
 
-- P0：Timeline Spec v1 文档、DB/API foundation、`audio_timeline.beats` 导入桥、Timeline readiness 优先级、默认 storyboard support 生成源、dry-run backfill 和 versioned render/export 回写已落地，下一步补 delete/rollback 与更完整的 schema/import 校验。
+- P0：Timeline Spec v1 文档、DB/API foundation、`audio_timeline.beats` 导入桥、Timeline readiness 优先级、默认 storyboard support 生成源、dry-run backfill、versioned render/export 回写和 delete/rollback 已落地，下一步补更完整的 schema/import 校验。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
 - P1：补齐可生产的资产审计、clip lineage、re-dub/re-render 操作闭环。
@@ -50,14 +50,14 @@
 当前阻塞：
 
 - `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
-- render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 和更严格的 schema/import 校验仍未补齐。
+- render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 已补齐，更严格的 schema/import 校验仍未补齐。
 - 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；该证据使用 legacy storyboard 视频资产迁移桥，后续仍需补 first-class clip asset lineage。
 
 ### 任务（功能→后端→验证）
 
 - [x] 将当前未提交改动拆成可审查的提交边界并完成对应 ledger。
 - [x] 补跑真实 `Episode -> Timeline -> Render -> Export`，证据落到 `artifacts/runs/<run_id>/`。
-- [ ] 补齐 timeline delete/rollback。
+- [x] 补齐 timeline delete/rollback。
 - [ ] 为 Timeline Spec 增加 schema 校验、导入校验、权限校验和更完整的导出幂等测试。
 
 ## P1: Production Stability

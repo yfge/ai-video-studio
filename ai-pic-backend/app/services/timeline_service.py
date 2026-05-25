@@ -15,6 +15,7 @@ from app.schemas.timeline import (
     TimelineUpdate,
 )
 from app.services.timeline_responses import render_job_response, timeline_response
+from app.services.timeline_revision_service import TimelineRevisionService
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -28,6 +29,7 @@ class TimelineService:
         self.scripts = ScriptRepository(db)
         self.timelines = TimelineRepository(db)
         self.render_jobs = RenderJobRepository(db)
+        self.revisions = TimelineRevisionService(db)
 
     def list_timelines(
         self, episode_id: int, current_user: User
@@ -65,7 +67,12 @@ class TimelineService:
             updated_by=current_user.id,
         )
         self.db.flush()
-        timeline.spec = self._spec_with_identity(timeline)
+        timeline.spec = self.revisions.spec_with_identity(timeline)
+        self.revisions.ensure_revision(
+            timeline,
+            reason="created",
+            user_id=current_user.id,
+        )
         self.db.commit()
         self.db.refresh(timeline)
         return timeline_response(timeline)
@@ -83,13 +90,27 @@ class TimelineService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="timeline version conflict",
             )
+        self.revisions.ensure_revision(
+            timeline,
+            reason="pre_update_snapshot",
+            user_id=current_user.id,
+        )
 
         updates = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
         for field, value in updates.items():
             setattr(timeline, field, value)
         timeline.version = (timeline.version or 0) + 1
         timeline.updated_by = current_user.id
-        timeline.spec = self._spec_with_identity(timeline)
+        timeline.rollback_of_version = None
+        timeline.rollback_target_version = None
+        timeline.rolled_back_at = None
+        timeline.rolled_back_by = None
+        timeline.spec = self.revisions.spec_with_identity(timeline)
+        self.revisions.ensure_revision(
+            timeline,
+            reason="updated",
+            user_id=current_user.id,
+        )
 
         self.db.commit()
         self.db.refresh(timeline)
@@ -155,10 +176,17 @@ class TimelineService:
         return render_job_response(job)
 
     def list_render_jobs(
-        self, timeline_id: int, current_user: User
+        self,
+        timeline_id: int,
+        current_user: User,
+        *,
+        include_deleted: bool = False,
     ) -> List[RenderJobResponse]:
         timeline = self._get_timeline_or_404(timeline_id, current_user)
-        items = self.render_jobs.list_for_timeline(timeline.id)
+        items = self.render_jobs.list_for_timeline(
+            timeline.id,
+            include_deleted=include_deleted,
+        )
         return [render_job_response(item) for item in items]
 
     def _get_episode_or_404(self, episode_id: int, current_user: User) -> Episode:
@@ -211,15 +239,6 @@ class TimelineService:
             preset, ensure_ascii=False, sort_keys=True, separators=(",", ":")
         )
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-
-    @staticmethod
-    def _spec_with_identity(timeline: Timeline) -> Dict[str, Any]:
-        spec = timeline.spec if isinstance(timeline.spec, dict) else {}
-        return {
-            **spec,
-            "timeline_id": timeline.id,
-            "version": timeline.version,
-        }
 
     @staticmethod
     def _dispatch_render_job(job: RenderJob, current_user: User) -> None:

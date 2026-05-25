@@ -1,4 +1,5 @@
 from app.models.script import Episode, Script, Story
+from app.models.timeline import TimelineRevision
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 from app.services.timeline_spec_builder import stable_clip_id
 from sqlalchemy.orm import Session
@@ -89,6 +90,10 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
         "audio_timeline_version": 3,
     }
     assert dialogue_clip["source_refs"]["scene_beat_id"] == 101
+    revision = db_session.query(TimelineRevision).one()
+    assert revision.timeline_id == timeline.id
+    assert revision.timeline_version == 1
+    assert revision.reason == "imported"
 
 
 def test_import_audio_timeline_skips_then_updates_with_stable_clip_ids(db_session):
@@ -124,6 +129,13 @@ def test_import_audio_timeline_skips_then_updates_with_stable_clip_ids(db_sessio
     assert updated.timeline.source_audio_timeline_version == 2
     assert updated.timeline.spec["timeline_id"] == created.timeline.id
     assert updated_clip_id == first_clip_id
+    revisions = (
+        db_session.query(TimelineRevision)
+        .filter(TimelineRevision.timeline_id == created.timeline.id)
+        .order_by(TimelineRevision.timeline_version)
+        .all()
+    )
+    assert [item.timeline_version for item in revisions] == [1, 2]
 
 
 def test_import_falls_back_to_legacy_storyboard_video_timeline(db_session):

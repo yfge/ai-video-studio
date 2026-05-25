@@ -6,12 +6,16 @@ from app.schemas.timeline import (
     RenderJobListResponse,
     RenderJobResponse,
     TimelineCreate,
+    TimelineDeleteRequest,
     TimelineListResponse,
     TimelineResponse,
+    TimelineRollbackRequest,
     TimelineUpdate,
+    TimelineVersionRequest,
 )
+from app.services.timeline_lifecycle_service import TimelineLifecycleService
 from app.services.timeline_service import TimelineService
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -97,10 +101,92 @@ def queue_timeline_render(
 )
 def list_timeline_render_jobs(
     timeline_id: int,
+    include_deleted: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> RenderJobListResponse:
     service = TimelineService(db)
     return RenderJobListResponse(
-        items=service.list_render_jobs(timeline_id, current_user)
+        items=service.list_render_jobs(
+            timeline_id,
+            current_user,
+            include_deleted=include_deleted,
+        )
     )
+
+
+@router.delete(
+    "/timelines/{timeline_id}",
+    response_model=TimelineResponse,
+    summary="Soft delete a timeline with version lock",
+)
+def delete_timeline(
+    timeline_id: int,
+    payload: TimelineDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineResponse:
+    service = TimelineLifecycleService(db)
+    return service.delete_timeline(timeline_id, payload, current_user)
+
+
+@router.post(
+    "/timelines/{timeline_id}/restore",
+    response_model=TimelineResponse,
+    summary="Restore a soft-deleted timeline with version lock",
+)
+def restore_timeline(
+    timeline_id: int,
+    payload: TimelineVersionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineResponse:
+    service = TimelineLifecycleService(db)
+    return service.restore_timeline(timeline_id, payload, current_user)
+
+
+@router.post(
+    "/timelines/{timeline_id}/rollback",
+    response_model=TimelineResponse,
+    summary="Rollback a timeline to a prior version snapshot",
+)
+def rollback_timeline(
+    timeline_id: int,
+    payload: TimelineRollbackRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineResponse:
+    service = TimelineLifecycleService(db)
+    return service.rollback_timeline(timeline_id, payload, current_user)
+
+
+@router.delete(
+    "/timelines/{timeline_id}/render-jobs/{render_job_id}",
+    response_model=RenderJobResponse,
+    summary="Soft delete a render attempt with timeline version lock",
+)
+def delete_timeline_render_job(
+    timeline_id: int,
+    render_job_id: int,
+    payload: TimelineDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> RenderJobResponse:
+    service = TimelineLifecycleService(db)
+    return service.delete_render_job(timeline_id, render_job_id, payload, current_user)
+
+
+@router.post(
+    "/timelines/{timeline_id}/render-jobs/{render_job_id}/restore",
+    response_model=RenderJobResponse,
+    summary="Restore a soft-deleted render attempt with timeline version lock",
+)
+def restore_timeline_render_job(
+    timeline_id: int,
+    render_job_id: int,
+    payload: TimelineVersionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> RenderJobResponse:
+    service = TimelineLifecycleService(db)
+    return service.restore_render_job(timeline_id, render_job_id, payload, current_user)

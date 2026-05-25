@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from app.models.script import Episode, Story
-from app.models.timeline import MediaAsset, RenderJob, Timeline
+from app.models.timeline import MediaAsset, RenderJob, Timeline, TimelineRevision
 from app.repositories.base import BaseRepository
 from sqlalchemy.orm import Session, joinedload
 
@@ -85,6 +85,26 @@ class TimelineRepository(BaseRepository[Timeline]):
         return query.order_by(Timeline.version.desc(), Timeline.id.desc()).first()
 
 
+class TimelineRevisionRepository(BaseRepository[TimelineRevision]):
+    """Immutable Timeline version snapshots used for rollback."""
+
+    def __init__(self, session: Session):
+        super().__init__(TimelineRevision, session)
+
+    def get_for_version(
+        self,
+        *,
+        timeline_id: int,
+        timeline_version: int,
+    ) -> Optional[TimelineRevision]:
+        return (
+            self.session.query(TimelineRevision)
+            .filter(TimelineRevision.timeline_id == timeline_id)
+            .filter(TimelineRevision.timeline_version == timeline_version)
+            .first()
+        )
+
+
 class MediaAssetRepository(BaseRepository[MediaAsset]):
     """Media asset persistence for timeline and render artifacts."""
 
@@ -129,3 +149,19 @@ class RenderJobRepository(BaseRepository[RenderJob]):
             .filter(RenderJob.is_deleted.is_(False))
             .first()
         )
+
+    def get_for_timeline(
+        self,
+        *,
+        timeline_id: int,
+        render_job_id: int,
+        include_deleted: bool = False,
+    ) -> Optional[RenderJob]:
+        query = (
+            self.session.query(RenderJob)
+            .filter(RenderJob.timeline_id == timeline_id)
+            .filter(RenderJob.id == render_job_id)
+        )
+        if not include_deleted:
+            query = query.filter(RenderJob.is_deleted.is_(False))
+        return query.first()

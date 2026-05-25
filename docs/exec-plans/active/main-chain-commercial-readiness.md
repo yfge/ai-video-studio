@@ -22,8 +22,8 @@ Open constraint:
   commits: `95857e9b`, `8251d67f`, `657b3a35`, and `7bade488`.
 - Phase 2 has one passing real API harness run. It uses a legacy storyboard video
   migration bridge, not a finished first-class clip asset lineage system.
-- Commercial readiness still depends on delete/rollback, Timeline Spec
-  validation, first-class clip asset lineage, and production sample evidence.
+- Commercial readiness still depends on Timeline Spec validation, first-class
+  clip asset lineage, and production sample evidence.
 
 ## Phase 1: Close Current Worktree
 
@@ -73,17 +73,31 @@ Latest passing attempt:
 
 Tasks:
 
-- Add safe delete/restore semantics for timelines and render attempts using the
-  existing soft-delete pattern.
-- Add rollback to a prior timeline version without mutating the old render
-  outputs.
-- Surface rollback state clearly in Timeline API responses.
+- [x] Add safe delete/restore semantics for timelines and render attempts using the
+      existing soft-delete pattern.
+- [x] Add rollback to a prior timeline version without mutating the old render
+      outputs.
+- [x] Surface rollback state clearly in Timeline API responses.
 
 Exit criteria:
 
-- API tests cover delete, restore, rollback, permission checks, and stale version
-  conflicts.
-- Existing render jobs remain traceable after rollback.
+- [x] API tests cover delete, restore, rollback, permission checks, and stale version
+      conflicts.
+- [x] Existing render jobs remain traceable after rollback.
+
+Latest validation:
+
+- `cd ai-pic-backend && pytest tests/test_timeline_api.py tests/test_timeline_lifecycle_api.py tests/test_timeline_import_service.py -q`
+- Result: passed, 8 tests.
+- `timeline_revisions` now stores immutable Timeline version snapshots. Rollback
+  creates a new current Timeline version from an older snapshot and leaves
+  existing render jobs addressable by their original `timeline_version`.
+- `audio_timeline` import create/update paths also record Timeline revisions, so
+  imported Timelines can later roll back.
+- `alembic heads` reports `a4f5c6d7e8f9` as the current head.
+- Full temp-SQLite `alembic upgrade head` is still blocked before this migration
+  by existing migration `e5f3948ee82e`, which performs a SQLite-incompatible
+  column-type alteration on `images.filename`.
 
 ## Phase 4: Harden Timeline Spec Validation
 

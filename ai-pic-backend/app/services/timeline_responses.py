@@ -5,6 +5,18 @@ from app.schemas.timeline import MediaAssetResponse, RenderJobResponse, Timeline
 
 
 def timeline_response(timeline: Timeline) -> TimelineResponse:
+    rollback = None
+    if (
+        timeline.rollback_of_version is not None
+        and timeline.rollback_target_version is not None
+        and timeline.rolled_back_at is not None
+    ):
+        rollback = {
+            "source_version": timeline.rollback_of_version,
+            "target_version": timeline.rollback_target_version,
+            "rolled_back_at": timeline.rolled_back_at,
+            "rolled_back_by": timeline.rolled_back_by,
+        }
     return TimelineResponse(
         id=timeline.id,
         business_id=timeline.business_id,
@@ -17,6 +29,11 @@ def timeline_response(timeline: Timeline) -> TimelineResponse:
         spec=timeline.spec or {},
         version=timeline.version,
         source_audio_timeline_version=timeline.source_audio_timeline_version,
+        rollback=rollback,
+        is_deleted=bool(timeline.is_deleted),
+        deleted_at=timeline.deleted_at,
+        deleted_by=timeline.deleted_by,
+        deleted_reason=timeline.deleted_reason,
         created_by=timeline.created_by,
         updated_by=timeline.updated_by,
         created_at=timeline.created_at,
@@ -42,6 +59,10 @@ def render_job_response(job: RenderJob) -> RenderJobResponse:
             else None
         ),
         log=job.log,
+        is_deleted=bool(job.is_deleted),
+        deleted_at=job.deleted_at,
+        deleted_by=job.deleted_by,
+        deleted_reason=job.deleted_reason,
         created_by=job.created_by,
         created_at=job.created_at,
         updated_at=job.updated_at,

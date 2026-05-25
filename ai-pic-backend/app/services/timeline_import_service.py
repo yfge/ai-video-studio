@@ -6,6 +6,7 @@ from typing import Any
 from app.models.script import Episode, Script
 from app.models.timeline import Timeline
 from app.repositories.timeline_repository import TimelineRepository
+from app.services.timeline_revision_service import TimelineRevisionService
 from app.services.timeline_spec_builder import (
     audio_timeline_version,
     build_timeline_spec_from_audio_timeline,
@@ -39,6 +40,7 @@ def import_audio_timeline_to_timeline_spec(
         raise RuntimeError("audio_timeline_script_mismatch")
 
     repo = TimelineRepository(db)
+    revisions = TimelineRevisionService(db)
     existing = repo.get_latest_for_episode_script(
         episode_id=episode.id,
         script_id=script.id,
@@ -72,8 +74,14 @@ def import_audio_timeline_to_timeline_spec(
         )
         db.flush()
         timeline.spec = {**(timeline.spec or {}), "timeline_id": timeline.id}
+        revisions.ensure_revision(timeline, reason="imported", user_id=user_id)
         action = "created"
     else:
+        revisions.ensure_revision(
+            existing,
+            reason="pre_import_update_snapshot",
+            user_id=user_id,
+        )
         spec["timeline_id"] = existing.id
         timeline = repo.update(
             existing,
@@ -81,6 +89,15 @@ def import_audio_timeline_to_timeline_spec(
             version=next_version,
             source_audio_timeline_version=source_version,
             updated_by=user_id,
+            rollback_of_version=None,
+            rollback_target_version=None,
+            rolled_back_at=None,
+            rolled_back_by=None,
+        )
+        revisions.ensure_revision(
+            timeline,
+            reason="import_updated",
+            user_id=user_id,
         )
         action = "updated"
 

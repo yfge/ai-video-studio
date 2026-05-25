@@ -74,6 +74,10 @@ class Timeline(SoftDeleteBusinessMixin, Base):
     spec = Column(JSON, nullable=False)
     version = Column(Integer, nullable=False, default=1)
     source_audio_timeline_version = Column(Integer, nullable=True)
+    rollback_of_version = Column(Integer, nullable=True)
+    rollback_target_version = Column(Integer, nullable=True)
+    rolled_back_at = Column(DateTime(timezone=True), nullable=True)
+    rolled_back_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -85,7 +89,38 @@ class Timeline(SoftDeleteBusinessMixin, Base):
     script = relationship("Script")
     creator = relationship("User", foreign_keys=[created_by])
     updater = relationship("User", foreign_keys=[updated_by])
+    rollback_user = relationship("User", foreign_keys=[rolled_back_by])
     render_jobs = relationship("RenderJob", back_populates="timeline")
+    revisions = relationship("TimelineRevision", back_populates="timeline")
+
+
+class TimelineRevision(Base):
+    """Immutable snapshot of one persisted Timeline version."""
+
+    __tablename__ = "timeline_revisions"
+    __table_args__ = (
+        Index(
+            "ux_timeline_revisions_timeline_version",
+            "timeline_id",
+            "timeline_version",
+            unique=True,
+        ),
+        Index("ix_timeline_revisions_timeline_id", "timeline_id"),
+    )
+
+    id = Column(BIGINT_PK, primary_key=True, autoincrement=True, index=True)
+    timeline_id = Column(BIGINT_PK, ForeignKey("timelines.id"), nullable=False)
+    timeline_version = Column(Integer, nullable=False)
+    title = Column(String(255), nullable=False)
+    status = Column(String(32), nullable=False)
+    spec = Column(JSON, nullable=False)
+    source_audio_timeline_version = Column(Integer, nullable=True)
+    reason = Column(String(64), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    timeline = relationship("Timeline", back_populates="revisions")
+    creator = relationship("User", foreign_keys=[created_by])
 
 
 class RenderJob(SoftDeleteBusinessMixin, Base):
