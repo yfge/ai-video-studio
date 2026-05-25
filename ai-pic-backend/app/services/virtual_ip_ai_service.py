@@ -14,14 +14,16 @@ from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.services.ai_service import ai_service
+from app.services.providers.deepseek_models import DEEPSEEK_V4_FLASH_MODEL
 from app.services.virtual_ip.ai_prompt_helpers import (
-    build_biography_from_profile,
+    build_content_from_profile,
     generate_template_content,
     generate_template_style_prompt,
-    normalize_suggested_tags,
-    sanitize_character_text,
 )
 from app.utils.json_utils import extract_json_block
+
+VIRTUAL_IP_CONTENT_FILL_PROVIDER = "deepseek"
+VIRTUAL_IP_CONTENT_FILL_MODEL = DEEPSEEK_V4_FLASH_MODEL
 
 
 class VirtualIPAIService:
@@ -139,8 +141,8 @@ class VirtualIPAIService:
             response = await self.ai_manager.generate_text(
                 prompt=prompt,
                 temperature=0.7,
-                model=None,
-                prefer_provider=None,
+                model=VIRTUAL_IP_CONTENT_FILL_MODEL,
+                prefer_provider=VIRTUAL_IP_CONTENT_FILL_PROVIDER,
                 system_prompt=None,
                 json_schema=None,
                 stream=False,
@@ -192,8 +194,8 @@ class VirtualIPAIService:
         response = await self.ai_manager.generate_text(
             prompt=prompt,
             temperature=temperature,
-            model=None,
-            prefer_provider=None,
+            model=VIRTUAL_IP_CONTENT_FILL_MODEL,
+            prefer_provider=VIRTUAL_IP_CONTENT_FILL_PROVIDER,
             system_prompt=None,
             json_schema=None,
             stream=False,
@@ -226,33 +228,11 @@ class VirtualIPAIService:
                 response.usage or {},
             )
 
-        # 从结构化 profile 中提取三段文案
-        description = (
-            profile.get("detailed_description")
-            or profile.get("description")
-            or profile.get("summary")
+        content = build_content_from_profile(
+            profile,
+            name=name,
+            basic_info=basic_info,
         )
-        background_story = profile.get("background_story")
-        biography = build_biography_from_profile(profile)
-        tags = normalize_suggested_tags(
-            profile.get("suggested_tags") or profile.get("tags")
-        )
-
-        # 对缺失字段使用模板兜底
-        if not (description and background_story and biography):
-            template = generate_template_content(name, basic_info)
-            description = description or template["description"]
-            background_story = background_story or template["background_story"]
-            biography = biography or template["biography"]
-            if not tags:
-                tags = template.get("tags", [])
-
-        content = {
-            "description": sanitize_character_text(description, name=name),
-            "background_story": sanitize_character_text(background_story, name=name),
-            "biography": sanitize_character_text(biography, name=name),
-            "tags": tags,
-        }
         return content, prompt, response.model or "unknown", response.usage or {}
 
 

@@ -101,6 +101,37 @@ def build_biography_from_profile(profile: Dict[str, Any]) -> str:
     return text
 
 
+def build_content_from_profile(
+    profile: Dict[str, Any], *, name: str, basic_info: Optional[str]
+) -> Dict[str, Any]:
+    """Map a generated profile into the virtual IP content fields."""
+    description = (
+        profile.get("detailed_description")
+        or profile.get("description")
+        or profile.get("summary")
+    )
+    background_story = profile.get("background_story")
+    biography = build_biography_from_profile(profile)
+    tags = normalize_suggested_tags(
+        profile.get("suggested_tags") or profile.get("tags")
+    )
+
+    if not (description and background_story and biography):
+        template = generate_template_content(name, basic_info)
+        description = description or template["description"]
+        background_story = background_story or template["background_story"]
+        biography = biography or template["biography"]
+        if not tags:
+            tags = template.get("tags", [])
+
+    return {
+        "description": sanitize_character_text(description, name=name),
+        "background_story": sanitize_character_text(background_story, name=name),
+        "biography": sanitize_character_text(biography, name=name),
+        "tags": tags,
+    }
+
+
 def normalize_suggested_tags(raw: Any) -> List[str]:
     """Normalize suggested tags from AI profile output."""
     if not raw:
