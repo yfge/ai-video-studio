@@ -16,6 +16,7 @@ from app.services import ai_manager_image_style as image_style
 from app.services import ai_manager_model_listing as model_listing
 from app.services import ai_manager_model_resolution as model_resolution
 from app.services import ai_manager_provider_selection as provider_selection
+from app.services import ai_manager_tts_generation as tts_generation
 from app.services import ai_manager_video_generation as video_generation
 from app.services.ai_manager_logging import (
     AI_MANAGER_PROVIDER,
@@ -773,91 +774,22 @@ class AIServiceManager:
         **kwargs,
     ) -> AIResponse:
         """统一语音合成接口"""
-        available_providers = self.get_available_providers(
-            model_type=AIModelType.TEXT_TO_SPEECH
-        )
-
-        last_error: str | None = None
-        last_provider: str | None = None
-
-        if not available_providers:
-            return failure_responses.manager_failure_response(
-                error="没有可用的语音合成提供商",
-                model=model,
-                task_type=AITaskType.VOICE_GENERATION,
-                model_type=AIModelType.TEXT_TO_SPEECH,
-            )
-
-        # 记录请求
-        self._log_request(
-            task="text_to_speech",
-            provider=prefer_provider,
+        return await tts_generation.text_to_speech_with_fallback(
+            text=text,
             model=model,
-            params={"voice_type": voice_type, "speed": speed},
-        )
-        self._log_prompt(text)
-
-        for attempt in range(self.config.max_retries):
-            provider_name = self._select_provider(available_providers, prefer_provider)
-            if not provider_name:
-                break
-
-            provider = self.providers[provider_name]
-            self._update_request_count(provider_name)
-
-            try:
-                if hasattr(provider, "text_to_speech"):
-                    response = await provider.text_to_speech(
-                        text=text,
-                        model=model,
-                        voice_type=voice_type,
-                        speed=speed,
-                        **kwargs,
-                    )
-                else:
-                    response = AIResponse(
-                        success=False,
-                        error=f"提供商 {provider_name} 不支持语音合成",
-                        provider=provider_name,
-                        model=model or "unknown",
-                        task_type=AITaskType.VOICE_GENERATION,
-                        model_type=AIModelType.TEXT_TO_SPEECH,
-                    )
-                self._log_response(
-                    task="text_to_speech",
-                    provider=provider_name,
-                    model=model,
-                    response=response,
-                )
-                if not response.success and response.error:
-                    last_error = response.error
-                    last_provider = provider_name
-                if response.success or not self.config.enable_fallback:
-                    return response
-
-            except Exception as e:
-                last_error = str(e)
-                last_provider = provider_name
-                if not self.config.enable_fallback:
-                    return failure_responses.exception_failure_response(
-                        action="语音合成失败",
-                        exc=e,
-                        provider=provider_name,
-                        model=model or "unknown",
-                        task_type=AITaskType.VOICE_GENERATION,
-                        model_type=AIModelType.TEXT_TO_SPEECH,
-                    )
-
-            if provider_name in available_providers:
-                available_providers.remove(provider_name)
-
-        return failure_responses.terminal_failure_response(
-            default_error="所有语音合成提供商都失败了",
-            last_error=last_error,
-            last_provider=last_provider,
-            model=model or "unknown",
-            task_type=AITaskType.VOICE_GENERATION,
-            model_type=AIModelType.TEXT_TO_SPEECH,
+            prefer_provider=prefer_provider,
+            voice_type=voice_type,
+            speed=speed,
+            provider_kwargs=kwargs,
+            providers=self.providers,
+            max_retries=self.config.max_retries,
+            enable_fallback=self.config.enable_fallback,
+            get_available_providers=self.get_available_providers,
+            select_provider=self._select_provider,
+            update_request_count=self._update_request_count,
+            log_request=self._log_request,
+            log_prompt=self._log_prompt,
+            log_response=self._log_response,
         )
 
     def get_provider_status(self) -> Dict[str, Any]:

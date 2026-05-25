@@ -280,6 +280,9 @@ Latest validation:
   `app.services.ai_manager_video_generation`, including provider selection,
   default video model resolution, request/response logging, and terminal failure
   response construction.
+- `ai_service_manager.py` text-to-speech fallback orchestration now lives in
+  `app.services.ai_manager_tts_generation`, including provider selection,
+  request/response logging, and terminal failure response construction.
 
 ## Phase 6: Produce Ten Narrow Samples
 
