@@ -20,7 +20,7 @@ This document began as an optimization plan. The P0-P2 ownership alignment
 slice is now implemented. The current worktree also includes the Phase 3
 render/export execution slice. One real API E2E run now passes through a legacy
 storyboard video migration bridge; commercial readiness still depends on
-real provider-backed rework orchestration and production sample validation.
+provider rework render orchestration and production sample validation.
 
 ## Current Chain Check
 
@@ -49,7 +49,8 @@ render/export a Timeline whose clips resolve to legacy storyboard videos.
 First-class clip asset lineage now has backend source/output/rework records,
 operator controls for existing media assets, and a provider-backed video rework
 task path that records successful outputs as replacement lineage. Operator-side
-provider rework entry and render queue orchestration remain pending.
+provider rework entry is implemented; render queue orchestration remains
+pending.
 
 ## Implementation Status
 
@@ -68,11 +69,11 @@ provider rework entry and render queue orchestration remain pending.
   in `artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`.
 - P4 backend lineage is implemented for Timeline Spec assets, render outputs,
   and operator replacement records keyed by stable `clip_id`.
-- Operator asset audit and existing-media rework controls are implemented for
-  selected Timeline clips. Backend provider-backed video rework queueing and
-  success lineage are implemented, while operator provider-rework entry, render
-  queue orchestration, and commercial-readiness sample production remain
-  pending.
+- Operator asset audit, existing-media rework controls, and provider-backed
+  video rework controls are implemented for selected Timeline clips. Backend
+  provider-backed video rework queueing and success lineage are implemented,
+  while render queue orchestration and commercial-readiness sample production
+  remain pending.
 
 ## Findings
 
@@ -288,9 +289,9 @@ Exit criteria:
 7. Render/export: consume locked timeline versions and persist media assets.
 
 Steps 1-7 are implemented for this slice. Delete/rollback, stricter Timeline
-Spec validation, backend first-class clip asset lineage, and provider-backed
-video rework success lineage are also implemented. The next boundary is
-operator provider-rework entry, render queue orchestration, legacy debt
+Spec validation, backend first-class clip asset lineage, provider-backed video
+rework success lineage, and operator provider-rework entry are also
+implemented. The next boundary is render queue orchestration, legacy debt
 reduction, and production sample validation.
 
 ## Validation Matrix

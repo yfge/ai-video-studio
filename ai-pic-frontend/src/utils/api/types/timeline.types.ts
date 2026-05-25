@@ -124,6 +124,7 @@ export interface TimelineClipAssetListParams {
 }
 
 export type TimelineClipReworkAction = "re_dub" | "re_cut" | "re_render";
+export type TimelineClipVideoReworkAction = "re_cut" | "re_render";
 
 export interface TimelineClipReworkRequest {
   expected_version: number;
@@ -131,6 +132,26 @@ export interface TimelineClipReworkRequest {
   media_asset_id: number;
   asset_role?: string | null;
   reason?: string | null;
+}
+
+export interface TimelineClipVideoReworkTaskRequest {
+  expected_version: number;
+  action: TimelineClipVideoReworkAction;
+  prompt?: string | null;
+  model?: string | null;
+  duration?: number | null;
+  fps?: number;
+  resolution?: string;
+  ratio?: string | null;
+  asset_role?: string | null;
+  reason?: string | null;
+  use_end_frame?: boolean;
+  return_last_frame?: boolean;
+}
+
+export interface TimelineClipVideoReworkTaskResponse {
+  task_id: number;
+  status: string;
 }
 
 export interface TimelineRenderJobCreate {

@@ -22,8 +22,8 @@ Open constraint:
   commits: `95857e9b`, `8251d67f`, `657b3a35`, and `7bade488`.
 - Phase 2 has one passing real API harness run. It uses a legacy storyboard video
   migration bridge, not a finished first-class clip asset lineage system.
-- Commercial readiness still depends on operator-side provider rework entry,
-  render queue integration, and production sample evidence.
+- Commercial readiness still depends on provider rework render queue
+  integration and production sample evidence.
 
 ## Phase 1: Close Current Worktree
 
@@ -143,7 +143,7 @@ Tasks:
       generation task queue.
 - [x] Persist successful provider video task output as `provider_rework`
       replacement lineage for the same stable `clip_id`.
-- [ ] Wire operator controls into the provider-backed rework task API.
+- [x] Wire operator controls into the provider-backed rework task API.
 - [ ] Wire provider rework success into render queue orchestration.
 
 Exit criteria:
@@ -160,8 +160,8 @@ Exit criteria:
       `clip_id`.
 - [x] Successful provider video tasks write `provider_rework` assets with
       `replacement_of_id` history.
-- [ ] Operator rework flows can request real regenerated assets from the UI and
-      keep replacement history addressable by `replacement_of_id`.
+- [x] Operator rework flows can request provider-backed regenerated assets from
+      the UI while keeping the stable `clip_id` in request context.
 - [ ] Provider rework success can automatically enqueue the relevant
       render/export path.
 
@@ -169,6 +169,18 @@ Latest validation:
 
 - `cd ai-pic-backend && pytest tests/test_timeline_clip_rework_api.py tests/test_timeline_clip_video_rework_api.py tests/test_timeline_api.py tests/test_timeline_import_service.py tests/test_timeline_lifecycle_api.py tests/test_timeline_spec_validation.py tests/unit/services/render/test_timeline_render_service.py tests/unit/services/video/test_video_task_polling_service.py tests/unit/services/video/test_video_task_generation_metadata.py -q`
 - Result: passed, 29 tests, 1 skipped.
+- `cd ai-pic-frontend && npm run test`
+- Result: passed, 19 tests.
+- `cd ai-pic-frontend && npm run lint`
+- Result: passed with 0 errors and 18 existing warnings.
+- Codex built-in Browser evidence:
+  `artifacts/runs/frontend-provider-rework-controls-iab-20260525T100147Z/browser-validation.json`
+  and
+  `artifacts/runs/frontend-provider-rework-controls-iab-20260525T100147Z/timeline-provider-rework-controls.png`.
+  The run opened the Timeline workspace, selected a video clip, filled the
+  provider rework form, and confirmed the submit button was visible and enabled.
+  It did not submit the form to avoid queueing a real provider task in the local
+  development environment.
 - `timeline_clip_assets` now records clip-to-asset lineage by stable `clip_id`.
   Timeline create/update/import/rollback sync source assets from Timeline Spec,
   and render success records output assets per rendered clip.
@@ -187,6 +199,9 @@ Latest validation:
 - `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/rework/video` now
   creates a provider-backed video generation parent task for selected clip
   rework, preserving the locked Timeline version and stable `clip_id`.
+- The Timeline operator inspector now exposes provider-backed video rework
+  controls for selected video clips and posts to
+  `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/rework/video`.
 - Video task polling now applies successful `timeline_rework` outputs as
   `provider_rework` clip assets, with `replacement_of_id` history against the
   previous generated video role.

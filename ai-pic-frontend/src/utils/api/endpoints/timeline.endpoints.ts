@@ -9,6 +9,8 @@ import type {
   TimelineClipAssetListResponse,
   TimelineClipAssetResponse,
   TimelineClipReworkRequest,
+  TimelineClipVideoReworkTaskRequest,
+  TimelineClipVideoReworkTaskResponse,
   TimelineListResponse,
   TimelineRenderJobCreate,
   TimelineRenderJobListResponse,
@@ -87,6 +89,22 @@ export async function reworkTimelineClip(
   );
 }
 
+export async function queueTimelineClipVideoRework(
+  timelineId: number | string,
+  clipId: string,
+  payload: TimelineClipVideoReworkTaskRequest,
+): Promise<ApiResponse<TimelineClipVideoReworkTaskResponse>> {
+  return httpClient<TimelineClipVideoReworkTaskResponse>(
+    `/api/v1/timelines/${timelineId}/clips/${encodeURIComponent(
+      clipId,
+    )}/rework/video`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export const timelineAPI = {
   listEpisodeTimelines,
   getTimeline,
@@ -94,4 +112,5 @@ export const timelineAPI = {
   listTimelineRenderJobs,
   listTimelineClipAssets,
   reworkTimelineClip,
+  queueTimelineClipVideoRework,
 };

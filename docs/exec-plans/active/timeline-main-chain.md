@@ -29,8 +29,8 @@ Current status:
   storyboard support generation prefers Timeline Spec clips, the workspace can
   build native Timeline tracks, and a dry-run backfill command exists.
 - Timeline delete/restore, rollback, schema/import validation, first-class clip
-  asset lineage, backend rework replacement records, and provider-backed video
-  rework task lineage are implemented.
+  asset lineage, backend rework replacement records, provider-backed video
+  rework task lineage, and operator provider rework controls are implemented.
 
 ## Phase 1: Spec And Contracts
 
@@ -115,7 +115,7 @@ Exit criteria:
 - The run rendered Timeline `2` version `1`; render job `3` succeeded with
   `output_asset.file_url` populated.
 - This is still migration-bridge evidence using legacy storyboard video assets,
-  not proof that operator provider-rework UI, render/export rework
-  orchestration, and production samples are done.
+  not proof that render/export rework orchestration and production samples are
+  done.
 - Commercial-readiness sequencing is tracked separately in
   `docs/exec-plans/active/main-chain-commercial-readiness.md`.

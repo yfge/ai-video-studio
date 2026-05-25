@@ -24,7 +24,7 @@
 
 - 当前未提交改动已拆成可审查提交边界：Timeline render/export、Codex/ChatGPT provider、IP 内容填充 DeepSeek、主链 readiness 文档。
 - 真实 API harness 已通过一次 `Episode -> Timeline -> Render -> Export`：`artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`。
-- timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制，以及 provider-backed clip video rework task queue + success lineage 已落地；下一步补 operator 接入、render/export 自动编排和样片验证。
+- timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制，以及 provider-backed clip video rework task queue、operator 入口和 success lineage 已落地；下一步补 render/export 自动编排和样片验证。
 - 在 10 条窄垂类样片通过前，不把主链标记为商业化可用。
 
 ## 状态概览
@@ -32,7 +32,7 @@
 - P0：Timeline Spec v1 文档、DB/API foundation、`audio_timeline.beats` 导入桥、Timeline readiness 优先级、默认 storyboard support 生成源、dry-run backfill、versioned render/export 回写、delete/rollback、schema/import 校验、clip asset lineage 后端基础和 stable `clip_id` rework API 已落地。
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
-- P1：provider-backed video rework task queue 已有后端链路；继续补 operator 接入、render/export 自动编排，并收敛 legacy 稳定性风险。
+- P1：provider-backed video rework task queue 已有后端链路和 operator 入口；继续补 render/export 自动编排，并收敛 legacy 稳定性风险。
 - P2：用一个窄垂类连续生产 10 条 30-60 秒样片，记录成本、耗时、失败点和人工修正次数。
 
 ## 已完成基线
@@ -51,7 +51,7 @@
 
 - `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 和更严格的 schema/import 校验已补齐。
-- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；该证据使用 legacy storyboard 视频资产迁移桥，clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制和 provider-backed video rework success lineage 已补齐，后续仍需补 operator 到 provider rework 的入口和 render/export 自动编排。
+- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；该证据使用 legacy storyboard 视频资产迁移桥，clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed video rework operator 入口和 success lineage 已补齐，后续仍需补 render/export 自动编排。
 
 ### 任务（功能→后端→验证）
 
@@ -69,7 +69,7 @@
 当前阻塞：
 
 - 场景音轨、episode 音轨、beats、分镜占位已经收敛到 Timeline Spec 导入；legacy storyboard 视频迁移桥已可生成可渲染 video track，first-class clip asset 关联已有后端基础。
-- 重新配音、重新切分、重新导出已有后端 replacement lineage API 挂在稳定 clip identity 上，operator 可以查看选中片段的源/输出/替换资产历史，也可以把已有 `media_asset_id` 记录为重做资产；backend 也能为选中 video clip 排 provider-backed rework task，并在视频任务成功后写回 `provider_rework` replacement lineage；但 operator 尚未接新 provider rework API，生成成功后也尚未自动触发 render queue/export。
+- 重新配音、重新切分、重新导出已有后端 replacement lineage API 挂在稳定 clip identity 上，operator 可以查看选中片段的源/输出/替换资产历史，也可以把已有 `media_asset_id` 记录为重做资产；backend 也能为选中 video clip 排 provider-backed rework task，并在视频任务成功后写回 `provider_rework` replacement lineage；operator 已接入 provider rework API，生成成功后尚未自动触发 render queue/export。
 - `scripts_legacy.py`、`dialogue_audio_service.py`、`ai_service_manager.py` 仍是主链旁边的稳定性风险。
 
 ### 任务（功能→后端→验证）
@@ -78,7 +78,7 @@
 - [x] 在 Timeline operator 片段检查器展示选中 clip 的源资产、输出资产和 replacement history。
 - [x] 在 Timeline operator 片段检查器提交已有 `media_asset_id` 作为 re-dub / re-cut / re-render replacement lineage。
 - [x] 将选中 video clip 的 re-cut / re-render 接入 provider-backed video generation task queue，并在视频任务成功后回写 replacement lineage。
-- [ ] 将 operator rework 控制接入 provider-backed video generation API。
+- [x] 将 operator rework 控制接入 provider-backed video generation API。
 - [ ] 将 provider rework 成功结果接入 render queue / export 自动编排。
 - [x] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。
 - [ ] 继续拆分并下线 `scripts_legacy.py`，让 timeline/audio/storyboard 主链不再依赖 legacy router。

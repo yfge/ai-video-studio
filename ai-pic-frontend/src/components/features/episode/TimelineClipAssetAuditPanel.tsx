@@ -5,6 +5,7 @@ import { StatusPill } from "@/components/shared";
 import { getString } from "@/hooks/useEpisodeDetail";
 import type { TimelineClipAssetResponse } from "@/utils/api/types";
 import { timelineItemMeta } from "./EpisodeTimelineWorkspaceModel";
+import { TimelineClipProviderReworkControls } from "./TimelineClipProviderReworkControls";
 import { TimelineClipReworkControls } from "./TimelineClipReworkControls";
 
 export function selectedTimelineClipId(item: TimelineItem | null) {
@@ -85,6 +86,14 @@ export function TimelineClipAssetAuditPanel({
         timelineVersion={timelineVersion}
         clipId={clipId}
         onRecorded={onReworkRecorded}
+        onNotify={onNotify}
+      />
+      <TimelineClipProviderReworkControls
+        timelineId={timelineId}
+        timelineVersion={timelineVersion}
+        clipId={clipId}
+        item={item}
+        onQueued={onReworkRecorded}
         onNotify={onNotify}
       />
     </section>
