@@ -4,13 +4,13 @@ AI服务管理器
 统一管理所有AI服务提供商，提供负载均衡、故障转移等功能
 """
 
-import random
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
 from app.services import ai_manager_model_cache as model_cache
+from app.services import ai_manager_provider_selection as provider_selection
 from app.services.ai_manager_logging import (
     AI_MANAGER_PROVIDER,
     log_prompt,
@@ -358,81 +358,41 @@ class AIServiceManager:
 
     def _check_rate_limit(self, provider_name: str) -> bool:
         """检查提供商的请求频率限制"""
-        weight = self.config.provider_weights.get(provider_name)
-        if not weight:
-            return True
-
-        import time
-
-        current_time = time.time()
-
-        # 每分钟重置计数器
-        if current_time - weight.last_reset_time > 60:
-            weight.current_requests = 0
-            weight.last_reset_time = current_time
-
-        return weight.current_requests < weight.max_requests_per_minute
+        return provider_selection.check_rate_limit(
+            self.config.provider_weights, provider_name
+        )
 
     def _select_provider(
         self, available_providers: List[str], prefer_provider: str = None
     ) -> Optional[str]:
         """选择最佳提供商"""
-        if not available_providers:
-            return None
-
-        # 如果指定了首选提供商且可用，直接使用
-        if prefer_provider and prefer_provider in available_providers:
-            return prefer_provider
-
-        if not self.config.enable_load_balancing:
-            # 不启用负载均衡时，按优先级选择
-            return self._select_by_priority(available_providers)
-
-        # 启用负载均衡时，按权重随机选择
-        return self._select_by_weight(available_providers)
+        return provider_selection.select_provider(
+            available_providers,
+            self.config.provider_weights,
+            enable_load_balancing=self.config.enable_load_balancing,
+            default_priority_value=ProviderPriority.MEDIUM.value,
+            prefer_provider=prefer_provider,
+        )
 
     def _select_by_priority(self, providers: List[str]) -> str:
         """按优先级选择提供商"""
-        priority_map = {}
-        for name in providers:
-            weight = self.config.provider_weights.get(name)
-            priority = (
-                weight.priority.value if weight else ProviderPriority.MEDIUM.value
-            )
-            if priority not in priority_map:
-                priority_map[priority] = []
-            priority_map[priority].append(name)
-
-        # 选择最高优先级的提供商
-        highest_priority = min(priority_map.keys())
-        return random.choice(priority_map[highest_priority])
+        return provider_selection.select_by_priority(
+            providers,
+            self.config.provider_weights,
+            default_priority_value=ProviderPriority.MEDIUM.value,
+        )
 
     def _select_by_weight(self, providers: List[str]) -> str:
         """按权重选择提供商"""
-        weights = []
-        for name in providers:
-            weight = self.config.provider_weights.get(name)
-            weights.append(weight.weight if weight else 1.0)
-
-        # 加权随机选择
-        total_weight = sum(weights)
-        if total_weight == 0:
-            return random.choice(providers)
-
-        r = random.uniform(0, total_weight)
-        cumulative = 0
-        for i, weight in enumerate(weights):
-            cumulative += weight
-            if r <= cumulative:
-                return providers[i]
-
-        return providers[-1]
+        return provider_selection.select_by_weight(
+            providers, self.config.provider_weights
+        )
 
     def _update_request_count(self, provider_name: str):
         """更新请求计数"""
-        weight = self.config.provider_weights.get(provider_name)
-        if weight:
-            weight.current_requests += 1
+        provider_selection.update_request_count(
+            self.config.provider_weights, provider_name
+        )
 
     async def _get_models_for_type(
         self,

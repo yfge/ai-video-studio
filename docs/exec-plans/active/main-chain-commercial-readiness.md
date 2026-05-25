@@ -234,6 +234,10 @@ Latest validation:
 - `ai_service_manager.py` model-list cache keying, lookup, and writes now live
   in `app.services.ai_manager_model_cache`, keeping provider enumeration in the
   manager while isolating cache behavior.
+- `ai_service_manager.py` provider rate-limit checks, explicit preference,
+  priority selection, weighted selection, and request-count increments now live
+  in `app.services.ai_manager_provider_selection`; the manager keeps compatibility
+  wrappers.
 
 ## Phase 6: Produce Ten Narrow Samples
 
