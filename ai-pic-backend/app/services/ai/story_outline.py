@@ -10,6 +10,10 @@ from app.services.ai.structured_output import generate_with_repair, validate_pay
 from app.utils.story_parser import extract_story_outline_payload
 
 
+def story_outline_fallback_generation_method(normalized: Any) -> str:
+    return "ai_fallback" if normalized else "ai_fallback_invalid"
+
+
 class StoryOutlineMixin:
     async def generate_story_outline(
         self,
@@ -189,8 +193,8 @@ class StoryOutlineMixin:
                     "normalized": normalized,
                     "validation_errors": validation_errors,
                     "prompt": prompt,
-                    "generation_method": (
-                        "ai_fallback" if normalized else "ai_fallback_invalid"
+                    "generation_method": story_outline_fallback_generation_method(
+                        normalized
                     ),
                     "template_used": resolved_template,
                     "provider_used": "fallback",
