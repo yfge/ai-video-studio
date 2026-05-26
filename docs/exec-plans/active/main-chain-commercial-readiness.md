@@ -20,10 +20,14 @@ Open constraint:
 
 - Phase 1 is complete. The previous dirty worktree was split into four atomic
   commits: `95857e9b`, `8251d67f`, `657b3a35`, and `7bade488`.
-- Phase 2 has one passing real API harness run. It uses a legacy storyboard video
-  migration bridge, not a finished first-class clip asset lineage system.
-- Commercial readiness still depends on legacy risk reduction and production
-  sample evidence.
+- Phase 2 has one passing legacy bridge real API harness run and provider-backed
+  Timeline-first harness evidence. The provider-backed harness now creates a
+  Timeline seed with `dialogue`, `video`, and `subtitle` tracks before image or
+  video generation, then patches generated video assets back into the same
+  Timeline version lineage.
+- Commercial readiness still depends on rendered dialogue/subtitle/TTS proof,
+  provider cost/stability evidence at sample scale, and production quality
+  evaluation.
 
 ## Phase 1: Close Current Worktree
 
@@ -68,6 +72,26 @@ Latest passing attempt:
 - The run used script `117` because it has legacy storyboard video assets. The
   import bridge created a Timeline video track from those frames after the old
   audio timeline was found to be non-monotonic.
+
+Provider-backed Timeline-first evidence:
+
+- `python scripts/harness/provider_chain_regression.py --mode full-30s --run-id provider-chain-timeline-first-full-30s-20260525T181523Z --api-url http://localhost:8000 --episode-id 133 --script-id 117 --timeout-seconds 1800 --poll-interval-seconds 5`
+- Evidence: `artifacts/runs/provider-chain-timeline-first-full-30s-20260525T181523Z/provider_chain.json`.
+- Result: passed. Timeline `15` was created at version `1` before media
+  generation, then updated to version `2` after two Seedance clips were
+  generated and attached by stable `clip_id`; render job `20` succeeded with
+  output `https://resource.lets-gpt.com/timeline-renders/video/20260525/182712/8db3b5f0.mp4`.
+- `python scripts/harness/provider_chain_regression.py --mode smoke --run-id provider-chain-dialogue-tracks-smoke-20260526T033733Z --api-url http://localhost:8000 --episode-id 133 --script-id 117 --timeout-seconds 1200 --poll-interval-seconds 5`
+- Evidence: `artifacts/runs/provider-chain-dialogue-tracks-smoke-20260526T033733Z/provider_chain.json`.
+- Result: passed. Timeline `16` seed version `1` had track counts
+  `dialogue=1`, `video=1`, and `subtitle=1`; `timeline-create` happened before
+  `openai-character-image` and `seedance-video-1`, `timeline-assets-update`
+  happened before `timeline-render-queue`, and render job `21` succeeded with
+  output `https://resource.lets-gpt.com/timeline-renders/video/20260526/034336/739ae690.mp4`.
+- Limitation: this proves Timeline-first provider lineage and structured
+  dialogue/subtitle tracks. It does not prove that subtitles or TTS dialogue are
+  burned into the final video, because the current render worker resolves and
+  concatenates video clips only.
 
 ## Phase 3: Add Timeline Delete And Rollback
 

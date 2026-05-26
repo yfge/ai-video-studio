@@ -23,7 +23,8 @@ from scripts.harness.provider_chain_api import (
     login,
 )
 from scripts.harness.provider_chain_media import generate_videos_for_timeline
-from scripts.harness.provider_chain_payloads import mark_quality, scene_durations
+from scripts.harness.provider_chain_payloads import scene_durations
+from scripts.harness.provider_chain_timeline_payloads import mark_quality
 from scripts.harness.provider_chain_timeline import (
     cleanup_virtual_ip,
     create_seed_timeline,
@@ -81,7 +82,7 @@ def run(args: argparse.Namespace, payload: dict[str, Any]) -> None:
         try:
             image = generate_character_image(session, args, script, vip, payload)
             clips = generate_videos_for_timeline(session, args, timeline, image, payload)
-            mark_quality(payload, clips, image["image_url"])
+            mark_quality(payload, clips, image["image_url"], timeline)
             updated = update_timeline_with_assets(session, args, timeline, clips, payload)
             render_timeline(session, args, updated, payload)
         finally:

@@ -9,9 +9,10 @@ from typing import Any
 import requests
 
 from scripts.harness.provider_chain_api import request_json
-from scripts.harness.provider_chain_payloads import (
+from scripts.harness.provider_chain_timeline_payloads import (
     attach_timeline_video_assets,
     build_timeline_seed_spec,
+    timeline_track_counts,
 )
 
 
@@ -49,7 +50,8 @@ def create_seed_timeline(
         "id": timeline["id"],
         "version": timeline["version"],
         "duration_ms": spec["duration_ms"],
-        "clip_count": len((spec.get("tracks") or [])[0].get("clips") or []),
+        "clip_count": sum(timeline_track_counts(spec).values()),
+        "track_counts": timeline_track_counts(spec),
         "created_before_media_generation": True,
     }
     return timeline

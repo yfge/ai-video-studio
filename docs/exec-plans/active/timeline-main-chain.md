@@ -23,7 +23,7 @@ Current status:
   compatibility.
 - Phase 4 render/export execution and Phase 5 operator UI/harness paths are
   packaged, with one passing real API E2E run through a legacy storyboard video
-  migration bridge.
+  migration bridge and provider-backed Timeline-first harness evidence.
 - P0-P2 ownership alignment is implemented: importer output matches the
   underscore `clip_id` contract, readiness checks prefer Timeline rows,
   storyboard support generation prefers Timeline Spec clips, the workspace can
@@ -115,7 +115,17 @@ Exit criteria:
   records a passing `timeline_export_end_to_end` run against the local backend.
 - The run rendered Timeline `2` version `1`; render job `3` succeeded with
   `output_asset.file_url` populated.
-- This is still migration-bridge evidence using legacy storyboard video assets,
-  not proof that production samples are done.
+- `artifacts/runs/provider-chain-timeline-first-full-30s-20260525T181523Z/provider_chain.json`
+  records a provider-backed 30s run where `timeline-create` happened before
+  OpenAI image generation and Seedance video generation; Timeline `15` was
+  updated from seed version `1` to asset version `2` and render job `20`
+  succeeded.
+- `artifacts/runs/provider-chain-dialogue-tracks-smoke-20260526T033733Z/provider_chain.json`
+  records the stricter provider-backed smoke run where the Timeline seed has
+  `dialogue`, `video`, and `subtitle` tracks before media generation; render job
+  `21` succeeded.
+- The current render worker still consumes video clips only. The provider-backed
+  evidence proves Timeline-first structured lineage, not burned-in subtitles or
+  TTS dialogue in final output.
 - Commercial-readiness sequencing is tracked separately in
   `docs/exec-plans/active/main-chain-commercial-readiness.md`.

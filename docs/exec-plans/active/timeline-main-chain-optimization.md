@@ -19,8 +19,10 @@ production script generation
 This document began as an optimization plan. The P0-P2 ownership alignment
 slice is now implemented. The current worktree also includes the Phase 3
 render/export execution slice. One real API E2E run now passes through a legacy
-storyboard video migration bridge; commercial readiness still depends on
-legacy risk reduction and production sample validation.
+storyboard video migration bridge, and the provider-chain harness now proves
+Timeline-first ordering with explicit `dialogue`, `video`, and `subtitle`
+tracks before media generation. Commercial readiness still depends on rendered
+dialogue/subtitle/TTS proof and production sample validation.
 
 ## Current Chain Check
 
@@ -65,15 +67,20 @@ render job with a rework fingerprint.
 - P2 frontend/backfill alignment is implemented: the workspace accepts native
   Timeline Spec tracks, task metadata includes Timeline references, and the
   backfill command is dry-run by default.
-- P3 render/export execution is implemented, with passing real API E2E evidence
-  in `artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`.
+- P3 render/export execution is implemented, with passing legacy bridge real API
+  E2E evidence in
+  `artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json` and
+  provider-backed Timeline-first evidence in
+  `artifacts/runs/provider-chain-dialogue-tracks-smoke-20260526T033733Z/provider_chain.json`.
 - P4 backend lineage is implemented for Timeline Spec assets, render outputs,
   and operator replacement records keyed by stable `clip_id`.
 - Operator asset audit, existing-media rework controls, and provider-backed
   video rework controls are implemented for selected Timeline clips. Backend
   provider-backed video rework queueing and success lineage are implemented,
   and provider success queues a final render job whose preset is keyed to the
-  replacement asset. Commercial-readiness sample production remains pending.
+  replacement asset. The render worker still resolves/concatenates video clips
+  only, so visible subtitles or TTS replacement remain separate proof targets.
+  Commercial-readiness sample production remains pending.
 
 ## Findings
 
