@@ -158,6 +158,12 @@ Exit criteria:
   render job `28` succeeded, `render_media_probe.ok=true`, final video duration
   was `4.041667s`, audio duration was `4.032s`, and one scene frame was
   extracted at `frames/render_scene_01_2000ms.jpg`.
+- `artifacts/runs/provider-chain-render-probe-full-30s-20260526T071051Z/provider_chain.json`
+  records the first full 30 second live run after that probe was wired in.
+  Timeline `21` and render job `29` succeeded, `render_media_probe.ok=true`,
+  final video duration was `30.125s`, audio duration was `30.08s`, and two scene
+  frames were extracted at `frames/render_scene_01_2000ms.jpg` and
+  `frames/render_scene_02_17000ms.jpg`.
 - The current render worker consumes video clips, replaces source episode audio,
   mixes per-dialogue clip audio by Timeline timing when present, and burns
   Timeline subtitle cues. Production lip-sync, character consistency, and

@@ -22,6 +22,9 @@ from scripts.harness.provider_chain_payloads import (
 def record_response(
     chain: list[dict[str, Any]], response: requests.Response, *, label: str
 ) -> None:
+    elapsed_seconds = None
+    if response.elapsed is not None:
+        elapsed_seconds = round(response.elapsed.total_seconds(), 3)
     entry = {
         "label": label,
         "method": response.request.method,
@@ -30,6 +33,8 @@ def record_response(
         "request_id": response.headers.get("x-request-id"),
         "harness_run_id": response.headers.get("x-harness-run-id"),
     }
+    if elapsed_seconds is not None:
+        entry["duration_seconds"] = elapsed_seconds
     if response.status_code >= 400:
         entry["response_body"] = response.text[:2000]
     chain.append(entry)

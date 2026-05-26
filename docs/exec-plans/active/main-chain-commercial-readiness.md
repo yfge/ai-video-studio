@@ -142,6 +142,16 @@ Provider-backed Timeline-first evidence:
   Volcengine Seedance 2.0 video clip, rendered job `28`, then wrote
   `render_media_probe.ok=true` with final video `4.041667s`, audio `4.032s`,
   and frame `frames/render_scene_01_2000ms.jpg`.
+- Automated render-probe full-30s evidence:
+  `artifacts/runs/provider-chain-render-probe-full-30s-20260526T071051Z/provider_chain.json`.
+  The harness created Timeline `21` before media generation, generated two
+  MiniMax dialogue audio clips, one OpenAI `gpt-image-2` character image, two
+  Volcengine Seedance 2.0 video clips, rendered job `29`, then wrote
+  `render_media_probe.ok=true` with final video `30.125s`, audio `30.08s`,
+  and frames `frames/render_scene_01_2000ms.jpg` /
+  `frames/render_scene_02_17000ms.jpg`. Backend logs show the two 15 second
+  Seedance calls took about `402.957s` and `440.514s`, so full-30s live
+  regression should stay a low-frequency paid gate.
 - Remaining limitation: this proves a real Timeline-first 30 second provider
   chain and timed dialogue audio mixing. It still does not prove production-grade
   character consistency, lip-sync, acting quality, or commercial content quality.
