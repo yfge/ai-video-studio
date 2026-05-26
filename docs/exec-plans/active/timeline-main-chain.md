@@ -124,8 +124,13 @@ Exit criteria:
   records the stricter provider-backed smoke run where the Timeline seed has
   `dialogue`, `video`, and `subtitle` tracks before media generation; render job
   `21` succeeded.
-- The current render worker still consumes video clips only. The provider-backed
-  evidence proves Timeline-first structured lineage, not burned-in subtitles or
-  TTS dialogue in final output.
+- `artifacts/runs/subtitle-render-rerender-20260526T040220Z/subtitle_render.json`
+  records a focused system API re-render of Timeline `17` version `2` after the
+  Celery worker was restarted onto the current code. Render job `23` succeeded
+  with `subtitle_count=1` and output
+  `https://resource.lets-gpt.com/timeline-renders/video/20260526/040227/904c677c.mp4`.
+- The current render worker consumes video clips and burns Timeline subtitle
+  cues. TTS dialogue audio replacement from dialogue tracks remains a separate
+  proof target.
 - Commercial-readiness sequencing is tracked separately in
   `docs/exec-plans/active/main-chain-commercial-readiness.md`.

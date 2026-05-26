@@ -25,9 +25,9 @@ Open constraint:
   Timeline seed with `dialogue`, `video`, and `subtitle` tracks before image or
   video generation, then patches generated video assets back into the same
   Timeline version lineage.
-- Commercial readiness still depends on rendered dialogue/subtitle/TTS proof,
+- Commercial readiness still depends on TTS dialogue replacement proof,
   provider cost/stability evidence at sample scale, and production quality
-  evaluation.
+  evaluation. Subtitle burn-in now has a focused system API rerender proof.
 
 ## Phase 1: Close Current Worktree
 
@@ -88,10 +88,16 @@ Provider-backed Timeline-first evidence:
   `openai-character-image` and `seedance-video-1`, `timeline-assets-update`
   happened before `timeline-render-queue`, and render job `21` succeeded with
   output `https://resource.lets-gpt.com/timeline-renders/video/20260526/034336/739ae690.mp4`.
-- Limitation: this proves Timeline-first provider lineage and structured
-  dialogue/subtitle tracks. It does not prove that subtitles or TTS dialogue are
-  burned into the final video, because the current render worker resolves and
-  concatenates video clips only.
+- Subtitle render proof:
+  `artifacts/runs/subtitle-render-rerender-20260526T040220Z/subtitle_render.json`.
+  After restarting `ai-video-celery-worker` so it loaded the current code, the
+  system API re-rendered Timeline `17` version `2` with `subtitle_burn_in=true`.
+  Render job `23` succeeded, `render_jobs.log.subtitle_count` was `1`, worker
+  logs recorded `Burning 1 subtitle cues...`, and the output was
+  `https://resource.lets-gpt.com/timeline-renders/video/20260526/040227/904c677c.mp4`.
+- Remaining limitation: this proves subtitle burn-in from Timeline subtitle
+  track. It does not prove TTS dialogue audio replacement from Timeline dialogue
+  track.
 
 ## Phase 3: Add Timeline Delete And Rollback
 

@@ -5,8 +5,6 @@ from __future__ import annotations
 import tempfile
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.core.logging import get_logger
 from app.models.timeline import RenderJob
 from app.repositories.timeline_repository import RenderJobRepository, TimelineRepository
@@ -15,7 +13,14 @@ from app.services.render.timeline_render_clips import (
     resolve_timeline_video_clips,
 )
 from app.services.render.timeline_render_output import persist_timeline_render_output
-from app.services.render.video_concat import VideoClip, concat_video_clips
+from app.services.render.timeline_render_subtitles import resolve_timeline_subtitle_cues
+from app.services.render.timeline_render_types import TimelineSubtitleCue
+from app.services.render.video_concat import (
+    VideoClip,
+    VideoSubtitleCue,
+    concat_video_clips,
+)
+from sqlalchemy.orm import Session
 
 logger = get_logger()
 
@@ -71,6 +76,7 @@ class TimelineRenderService:
 
         self._mark_running(job, progress=10, log={"code": "resolving_clips"})
         resolved, missing = resolve_timeline_video_clips(self.db, timeline)
+        subtitles = resolve_timeline_subtitle_cues(timeline)
         if missing:
             return self._mark_failed(
                 job,
@@ -92,9 +98,13 @@ class TimelineRenderService:
         self._mark_running(
             job,
             progress=35,
-            log={"code": "rendering", "clip_count": len(resolved)},
+            log={
+                "code": "rendering",
+                "clip_count": len(resolved),
+                "subtitle_count": len(subtitles),
+            },
         )
-        output_path = await self._render_to_temp_file(resolved)
+        output_path = await self._render_to_temp_file(resolved, subtitles)
 
         self._mark_running(job, progress=80, log={"code": "persisting_output"})
         asset = await persist_timeline_render_output(
@@ -112,6 +122,7 @@ class TimelineRenderService:
         job.log = {
             "code": "render_succeeded",
             "clip_count": len(resolved),
+            "subtitle_count": len(subtitles),
             "output_asset_id": asset.id,
             "output_url": asset.file_url or asset.file_path,
         }
@@ -120,7 +131,11 @@ class TimelineRenderService:
         self.db.refresh(job)
         return job
 
-    async def _render_to_temp_file(self, clips: list[TimelineClipVideo]) -> str:
+    async def _render_to_temp_file(
+        self,
+        clips: list[TimelineClipVideo],
+        subtitles: list[TimelineSubtitleCue],
+    ) -> str:
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             output_path = tmp.name
         result = await concat_video_clips(
@@ -136,6 +151,14 @@ class TimelineRenderService:
             output_path=output_path,
             audio_url=None,
             keep_original_audio=True,
+            subtitles=[
+                VideoSubtitleCue(
+                    text=cue.text,
+                    start_seconds=cue.start_ms / 1000,
+                    end_seconds=cue.end_ms / 1000,
+                )
+                for cue in subtitles
+            ],
         )
         if not result.get("success"):
             raise RuntimeError(str(result.get("error") or "timeline render failed"))

@@ -15,7 +15,7 @@ async def test_timeline_render_prefers_latest_generated_video_lineage(
 ):
     output_path = tmp_path / "replacement-render.mp4"
 
-    async def fake_render_to_temp_file(clips):
+    async def fake_render_to_temp_file(clips, _subtitles):
         assert clips[0].url == "https://example.com/generated-v2.mp4"
         assert clips[0].source == "timeline_clip_asset:provider_rework"
         output_path.write_bytes(b"rendered replacement video")

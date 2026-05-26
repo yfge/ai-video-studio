@@ -299,6 +299,15 @@ Render inputs:
 - `preset`: fps, resolution, bitrate, audio settings, subtitle mode.
 - `force_new_attempt`: optional retry flag for failed/cancelled attempts.
 
+Current render behavior:
+
+- Resolve renderable video clips from Timeline video track, clip-asset
+  replacement lineage, direct asset refs, or legacy storyboard frame videos.
+- Resolve Timeline subtitle track into SRT cues and burn those cues into the
+  proxy/final video with ffmpeg.
+- TTS dialogue audio replacement from Timeline dialogue track remains a separate
+  implementation boundary.
+
 Render outputs:
 
 - `render_jobs.status`

@@ -25,8 +25,9 @@
 - 当前提交继续围绕 Timeline-first 主链收口，不扩 APP/SaaS/社交方向。
 - 真实 API harness 已通过一次 legacy bridge `Episode -> Timeline -> Render -> Export`：`artifacts/runs/main-chain-e2e-lineage-20260525T040437Z/golden_path.json`。
 - provider-backed harness 已补成 Timeline-first：先创建含 `dialogue/video/subtitle` tracks 的 Timeline seed，再生图、生视频、回填 video asset，并通过 smoke evidence `artifacts/runs/provider-chain-dialogue-tracks-smoke-20260526T033733Z/provider_chain.json`。
+- render worker 已开始消费 Timeline subtitle track 并用 ffmpeg 烧进最终视频；重启 worker 后的系统 API rerender evidence 为 `artifacts/runs/subtitle-render-rerender-20260526T040220Z/subtitle_render.json`。
 - timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed clip video rework task queue、operator 入口、success lineage、rework 后自动 render queue、legacy 收敛和 10 条本地 2D 卡通样片验证已落地。
-- 当前结论：主链工程闭环可演示；当前 render worker 仍只消费 video track，Timeline 中的 dialogue/subtitle tracks 是结构化证据，不等于字幕/TTS 已烧进最终成片；外部 provider-backed 大规模内容生产成本、稳定性和内容质量仍需要单独按真实预算复测。
+- 当前结论：主链工程闭环可演示；字幕已能从 Timeline subtitle track 烧进最终成片，TTS 对白音频仍未从 dialogue track 自动合成/替换；外部 provider-backed 大规模内容生产成本、稳定性和内容质量仍需要单独按真实预算复测。
 
 ## 状态概览
 
@@ -52,7 +53,7 @@
 
 - `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 和更严格的 schema/import 校验已补齐。
-- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；legacy bridge 证据使用 storyboard 视频资产迁移桥，provider-backed 证据已证明 Timeline seed 先于生图/生视频创建且包含 dialogue/video/subtitle tracks。clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed video rework operator 入口、success lineage 和 rework-triggered final render 编排已补齐。
+- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；legacy bridge 证据使用 storyboard 视频资产迁移桥，provider-backed 证据已证明 Timeline seed 先于生图/生视频创建且包含 dialogue/video/subtitle tracks。Timeline render 已能烧入 subtitle track；clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed video rework operator 入口、success lineage 和 rework-triggered final render 编排已补齐。
 
 ### 任务（功能→后端→验证）
 

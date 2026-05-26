@@ -18,3 +18,13 @@ class TimelineClipVideo:
     start_ms: int | None = None
     end_ms: int | None = None
     source: str = "timeline"
+
+
+@dataclass(frozen=True)
+class TimelineSubtitleCue:
+    """Resolved subtitle cue for Timeline rendering."""
+
+    text: str
+    start_ms: int
+    end_ms: int
+    clip_id: str

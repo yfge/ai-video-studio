@@ -149,3 +149,47 @@ def replace_audio(
     except subprocess.CalledProcessError as exc:
         logger.error("FFmpeg audio replace failed: %s", exc.stderr)
         return False
+
+
+def burn_subtitles_ffmpeg(
+    video_path: str,
+    subtitle_path: str,
+    output_path: str,
+) -> bool:
+    """Burn SRT subtitles into a video file."""
+    style = (
+        "FontSize=24,"
+        "PrimaryColour=&H00FFFFFF,"
+        "OutlineColour=&H00000000,"
+        "BorderStyle=1,"
+        "Outline=2,"
+        "Shadow=0,"
+        "Alignment=2,"
+        "MarginV=70"
+    )
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-vf",
+        f"subtitles={_escape_subtitle_filter_path(subtitle_path)}:force_style='{style}'",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-c:a",
+        "copy",
+        output_path,
+    ]
+
+    try:
+        subprocess.run(cmd, capture_output=True, timeout=600, check=True)
+        return True
+    except subprocess.CalledProcessError as exc:
+        logger.error("FFmpeg subtitle burn failed: %s", exc.stderr)
+        return False
+
+
+def _escape_subtitle_filter_path(path: str) -> str:
+    return path.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
