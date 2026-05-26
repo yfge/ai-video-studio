@@ -144,6 +144,26 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
             "meta": {},
         }
 
+    async def _fake_generate_timeline_shot_plan(
+        _db, timeline: Timeline, *, user_id: int | None
+    ) -> Timeline:
+        spec = dict(timeline.spec or {})
+        spec["version"] = timeline.version + 1
+        source = dict(spec.get("source") or {})
+        source["timeline_shot_plan"] = {
+            "provider": "deepseek",
+            "model": "deepseek-v4-flash",
+            "clip_count": 2,
+        }
+        spec["source"] = source
+        timeline.spec = spec
+        timeline.version += 1
+        timeline.updated_by = user_id
+        db_session.add(timeline)
+        db_session.commit()
+        db_session.refresh(timeline)
+        return timeline
+
     import app.services.script.production_storyboard as production_storyboard
     import app.services.storyboard.storyboard_image_autogen as storyboard_image_autogen
 
@@ -161,6 +181,11 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
         production_storyboard,
         "generate_storyboard_support_from_timeline_spec",
         _fake_generate_storyboard_support_from_timeline_spec,
+    )
+    monkeypatch.setattr(
+        production_storyboard,
+        "generate_timeline_shot_plan_from_current_version",
+        _fake_generate_timeline_shot_plan,
     )
     queued_image_task: dict[str, object] = {}
 
@@ -191,7 +216,7 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
     assert timeline.created_by == user.id
     assert result["timeline_spec"] == {
         "id": timeline.id,
-        "version": 1,
+        "version": 2,
         "source_audio_timeline_version": 5,
         "action": "created",
     }

@@ -31,7 +31,9 @@ class TimelineShotPlanService:
         self.timelines = TimelineRepository(db)
         self.revisions = TimelineRevisionService(db)
         self.clip_lineage = TimelineClipAssetLineageService(db)
-        self.ai_manager = ai_manager if ai_manager is not None else ai_service.ai_manager
+        self.ai_manager = (
+            ai_manager if ai_manager is not None else ai_service.ai_manager
+        )
 
     async def generate_shot_plan(
         self,

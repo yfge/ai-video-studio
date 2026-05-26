@@ -9,15 +9,16 @@ from app.services.audio.scene_audio_generator import generate_scene_dialogue_aud
 from app.services.audio.storyboard_from_timeline_spec import (
     generate_storyboard_support_from_timeline_spec,
 )
-from app.services.storyboard.storyboard_image_autogen import (
-    queue_storyboard_image_generation,
-)
 from app.services.script.production_storyboard_hooks import (
     annotate_storyboard_frames_with_hooks,
 )
+from app.services.script.timeline_shot_plan_step import (
+    generate_timeline_shot_plan_from_current_version,
+)
+from app.services.storyboard.storyboard_image_autogen import (
+    queue_storyboard_image_generation,
+)
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
-from app.services.timeline_shot_plan_service import TimelineShotPlanService
-from app.schemas.timeline import TimelineShotPlanRequest
 from sqlalchemy.orm import Session
 
 ProgressCallback = Callable[[str], None]
@@ -83,11 +84,9 @@ async def run_auto_timeline_placeholders(
 
     if progress_callback:
         progress_callback("生产级链路：生成 Timeline 镜头计划")
-    timeline_with_shot_plan = await TimelineShotPlanService(
-        db
-    ).generate_shot_plan_for_timeline(
+    timeline_with_shot_plan = await generate_timeline_shot_plan_from_current_version(
+        db,
         import_result.timeline,
-        TimelineShotPlanRequest(expected_version=import_result.timeline.version),
         user_id=user_id or getattr(story, "user_id", None),
     )
 

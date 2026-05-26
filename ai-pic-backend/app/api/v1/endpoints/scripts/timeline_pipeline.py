@@ -16,6 +16,9 @@ from app.services.duration_controlled_dialogue_service import (
     generate_dialogue_with_duration_control,
 )
 from app.services.script.task_titles import friendly_task_title
+from app.services.script.timeline_shot_plan_step import (
+    generate_timeline_shot_plan_from_current_version,
+)
 from app.services.script.timeline_storyboard_queue import (
     generate_storyboard_placeholders_and_queue_images,
 )
@@ -24,8 +27,6 @@ from app.services.storyboard.storyboard_image_autogen import (
 )
 from app.services.task_worker import timeline_pipeline_generate_task
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
-from app.services.timeline_shot_plan_service import TimelineShotPlanService
-from app.schemas.timeline import TimelineShotPlanRequest
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -257,9 +258,9 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
             )
 
             update_task_progress(db, task, "步骤 3/5：生成 Timeline 镜头计划…")
-            timeline = await TimelineShotPlanService(db).generate_shot_plan_for_timeline(
+            timeline = await generate_timeline_shot_plan_from_current_version(
+                db,
                 import_result.timeline,
-                TimelineShotPlanRequest(expected_version=import_result.timeline.version),
                 user_id=user.id,
             )
 

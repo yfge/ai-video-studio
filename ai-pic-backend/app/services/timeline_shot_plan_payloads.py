@@ -46,7 +46,9 @@ def validate_timeline_shot_plan_matches(
     plan: dict[str, Any],
     spec: dict[str, Any],
 ) -> dict[str, Any] | None:
-    video_by_id = {str(clip.get("clip_id")): clip for clip in clips_for_track(spec, "video")}
+    video_by_id = {
+        str(clip.get("clip_id")): clip for clip in clips_for_track(spec, "video")
+    }
     shot_by_id = {str(shot.get("clip_id")): shot for shot in plan.get("shots") or []}
     missing = sorted(set(video_by_id) - set(shot_by_id))
     extra = sorted(set(shot_by_id) - set(video_by_id))
@@ -138,7 +140,9 @@ def _timeline_prompt_clips(spec: dict[str, Any]) -> list[dict[str, Any]]:
                 "end_ms": clip.get("end_ms"),
                 "duration_ms": clip.get("duration_ms"),
                 "plot": clip.get("text") or dialogue_clip.get("text") or "",
-                "dialogue": dialogue_clip.get("text") or subtitle_clip.get("text") or "",
+                "dialogue": dialogue_clip.get("text")
+                or subtitle_clip.get("text")
+                or "",
                 "speaker_name": dialogue_clip.get("speaker_name"),
                 "dialogue_action": dialogue_clip.get("dialogue_action"),
                 "dialogue_emotion": dialogue_clip.get("dialogue_emotion"),
