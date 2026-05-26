@@ -149,6 +149,10 @@ Exit criteria:
   `https://resource.lets-gpt.com/timeline-renders/video/20260526/051434/7849fd70.mp4`
   with video `30.125s`, audio `30.080s`, and readable Chinese subtitle frames
   recorded under the same run directory.
+- The provider-chain harness now runs a render media probe after successful
+  render queue completion: it saves `render_ffprobe.json`, verifies final
+  audio/video streams against the Timeline duration, and extracts one frame per
+  Timeline scene for repeatable visual evidence.
 - The current render worker consumes video clips, replaces source episode audio,
   mixes per-dialogue clip audio by Timeline timing when present, and burns
   Timeline subtitle cues. Production lip-sync, character consistency, and

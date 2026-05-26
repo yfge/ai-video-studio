@@ -88,6 +88,8 @@ render job with a rework fingerprint.
   `artifacts/runs/provider-chain-dialogue-segments-full-30s-20260526T045229Z/subtitle_font_rerender.json`
   with output
   `https://resource.lets-gpt.com/timeline-renders/video/20260526/051434/7849fd70.mp4`.
+  Subsequent provider-chain harness runs automatically save render ffprobe
+  output and one extracted frame per Timeline scene after render success.
   Production lip-sync, character consistency, and sample production remain
   separate proof targets.
 

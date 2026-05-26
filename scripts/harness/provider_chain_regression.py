@@ -25,6 +25,7 @@ from scripts.harness.provider_chain_api import (
 from scripts.harness.provider_chain_audio import generate_dialogue_audio_for_timeline
 from scripts.harness.provider_chain_media import generate_videos_for_timeline
 from scripts.harness.provider_chain_payloads import scene_durations
+from scripts.harness.provider_chain_render_probe import probe_render_output
 from scripts.harness.provider_chain_timeline_payloads import mark_quality
 from scripts.harness.provider_chain_timeline import (
     cleanup_virtual_ip,
@@ -96,6 +97,7 @@ def run(args: argparse.Namespace, payload: dict[str, Any]) -> None:
             )
             mark_quality(payload, clips, image["image_url"], updated)
             render_timeline(session, args, updated, payload)
+            probe_render_output(args, payload)
         finally:
             cleanup_virtual_ip(session, args, payload)
 
@@ -136,6 +138,8 @@ def _failure_category(message: str) -> str:
         return "dialogue_audio_failed"
     if "video" in message or "Seedance" in message or "provider/model" in message:
         return "seedance_generation_failed"
+    if "ffprobe" in message or "frame_extract" in message or "render_media_probe" in message:
+        return "render_media_probe_failed"
     if "timeline" in message or "render" in message:
         return "timeline_render_failed"
     if "production_quality" in message:

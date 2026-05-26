@@ -131,6 +131,10 @@ Provider-backed Timeline-first evidence:
   `https://resource.lets-gpt.com/timeline-renders/video/20260526/051434/7849fd70.mp4`.
   ffprobe recorded video `30.125s` and audio `30.080s`, and extracted frames
   under the run directory verify readable Chinese subtitles.
+- Follow-up hardening: the provider-chain harness now probes the final render
+  output after `render_timeline` by writing `render_ffprobe.json`, checking
+  video/audio streams against Timeline scene duration, and extracting one frame
+  per Timeline scene under `artifacts/runs/<run_id>/frames/`.
 - Remaining limitation: this proves a real Timeline-first 30 second provider
   chain and timed dialogue audio mixing. It still does not prove production-grade
   character consistency, lip-sync, acting quality, or commercial content quality.
