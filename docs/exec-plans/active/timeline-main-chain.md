@@ -164,6 +164,10 @@ Exit criteria:
   final video duration was `30.125s`, audio duration was `30.08s`, and two scene
   frames were extracted at `frames/render_scene_01_2000ms.jpg` and
   `frames/render_scene_02_17000ms.jpg`.
+- Provider-chain video clip generation now supports `--video-concurrency`
+  defaulting to `2`. Request-chain entries record `duration_seconds`, and the
+  video stage records `video_generation.wall_time_seconds` so slow provider
+  calls are visible in the harness artifact.
 - The current render worker consumes video clips, replaces source episode audio,
   mixes per-dialogue clip audio by Timeline timing when present, and burns
   Timeline subtitle cues. Production lip-sync, character consistency, and

@@ -1,0 +1,107 @@
+import sys
+import threading
+from pathlib import Path
+from types import SimpleNamespace
+
+import requests
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.append(str(REPO_ROOT))
+
+from scripts.harness.provider_chain_media import (  # noqa: E402
+    generate_videos_for_timeline,
+)
+
+
+def test_generate_videos_for_timeline_runs_clips_concurrently(monkeypatch) -> None:
+    barrier = threading.Barrier(2, timeout=5)
+    timeline = {
+        "spec": {
+            "tracks": [
+                {
+                    "track_type": "video",
+                    "clips": [
+                        {
+                            "clip_id": "video_scene1_provider_chain_1_001",
+                            "duration_ms": 15000,
+                            "source_refs": {
+                                "video_prompt": "robot walks",
+                                "script_scene": {"scene_id": "scene1"},
+                            },
+                        },
+                        {
+                            "clip_id": "video_scene2_provider_chain_2_002",
+                            "duration_ms": 15000,
+                            "source_refs": {
+                                "video_prompt": "robot smiles",
+                                "script_scene": {"scene_id": "scene2"},
+                            },
+                        },
+                    ],
+                }
+            ]
+        }
+    }
+    args = SimpleNamespace(
+        api_url="http://localhost:8000",
+        timeout_seconds=30,
+        video_concurrency=2,
+    )
+    session = requests.Session()
+    session.headers["Authorization"] = "Bearer token"
+    image = {"image_url": "https://example.com/robot.png"}
+    payload = {"request_chain": [], "key_artifacts": {}}
+
+    def fake_request_json(
+        session,
+        method,
+        url,
+        *,
+        chain,
+        label,
+        timeout,
+        **kwargs,
+    ):
+        barrier.wait()
+        chain.append(
+            {
+                "label": label,
+                "method": method,
+                "url": url,
+                "status_code": 200,
+                "duration_seconds": 1.0,
+                "auth": session.headers.get("Authorization"),
+            }
+        )
+        return {
+            "data": {
+                "provider": "volcengine",
+                "model": "doubao-seedance-2-0-260128",
+                "video_url": f"https://example.com/{label}.mp4",
+                "metadata": {"task_id": f"task-{label}"},
+            }
+        }
+
+    monkeypatch.setattr(
+        "scripts.harness.provider_chain_media.request_json",
+        fake_request_json,
+    )
+
+    clips = generate_videos_for_timeline(session, args, timeline, image, payload)
+
+    assert [item["clip_id"] for item in clips] == [
+        "video_scene1_provider_chain_1_001",
+        "video_scene2_provider_chain_2_002",
+    ]
+    assert [item["task_id"] for item in clips] == [
+        "task-seedance-video-1",
+        "task-seedance-video-2",
+    ]
+    assert [item["label"] for item in payload["request_chain"]] == [
+        "seedance-video-1",
+        "seedance-video-2",
+    ]
+    assert {item["auth"] for item in payload["request_chain"]} == {"Bearer token"}
+    assert payload["key_artifacts"]["video_generation"]["clip_count"] == 2
+    assert payload["key_artifacts"]["video_generation"]["concurrency"] == 2
+    assert "wall_time_seconds" in payload["key_artifacts"]["video_generation"]

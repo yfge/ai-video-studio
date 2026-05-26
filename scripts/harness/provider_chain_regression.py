@@ -46,6 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--script-id", type=int, default=_env_int("HARNESS_SCRIPT_ID"))
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--poll-interval-seconds", type=float, default=5.0)
+    parser.add_argument("--video-concurrency", type=int, default=2)
     parser.add_argument("--keep-temp-ip", action="store_true")
     return parser.parse_args()
 

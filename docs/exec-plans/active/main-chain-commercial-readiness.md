@@ -152,6 +152,11 @@ Provider-backed Timeline-first evidence:
   `frames/render_scene_02_17000ms.jpg`. Backend logs show the two 15 second
   Seedance calls took about `402.957s` and `440.514s`, so full-30s live
   regression should stay a low-frequency paid gate.
+- Follow-up latency hardening: the provider-chain harness now supports
+  `--video-concurrency` with default `2`, records per-request
+  `duration_seconds`, and writes `video_generation.wall_time_seconds`. This
+  keeps independent Seedance clip generation observable and allows full-30s
+  regression to wait for the slowest clip instead of the sum of all clips.
 - Remaining limitation: this proves a real Timeline-first 30 second provider
   chain and timed dialogue audio mixing. It still does not prove production-grade
   character consistency, lip-sync, acting quality, or commercial content quality.
