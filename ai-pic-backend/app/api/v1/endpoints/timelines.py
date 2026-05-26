@@ -15,6 +15,7 @@ from app.schemas.timeline import (
     TimelineListResponse,
     TimelineResponse,
     TimelineRollbackRequest,
+    TimelineShotPlanRequest,
     TimelineUpdate,
     TimelineVersionRequest,
 )
@@ -25,6 +26,7 @@ from app.services.timeline_clip_video_rework_queue_service import (
 )
 from app.services.timeline_lifecycle_service import TimelineLifecycleService
 from app.services.timeline_service import TimelineService
+from app.services.timeline_shot_plan_service import TimelineShotPlanService
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -87,6 +89,21 @@ def update_timeline(
 ) -> TimelineResponse:
     service = TimelineService(db)
     return service.update_timeline(timeline_id, payload, current_user)
+
+
+@router.post(
+    "/timelines/{timeline_id}/shot-plan",
+    response_model=TimelineResponse,
+    summary="Generate Timeline-native shot plans for video clips",
+)
+async def generate_timeline_shot_plan(
+    timeline_id: int,
+    payload: TimelineShotPlanRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineResponse:
+    service = TimelineShotPlanService(db)
+    return await service.generate_shot_plan(timeline_id, payload, current_user)
 
 
 @router.post(

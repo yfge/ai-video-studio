@@ -8,6 +8,7 @@ RenderJobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled
 RenderType = Literal["proxy", "final", "export"]
 TimelineClipReworkAction = Literal["re_dub", "re_cut", "re_render"]
 TimelineClipVideoReworkAction = Literal["re_cut", "re_render"]
+TimelineShotPlanStyle = Literal["2d_cartoon", "3d_cartoon"]
 
 
 class TimelineCreate(BaseModel):
@@ -28,6 +29,13 @@ class TimelineUpdate(BaseModel):
 
 class TimelineVersionRequest(BaseModel):
     expected_version: int = Field(..., ge=1)
+
+
+class TimelineShotPlanRequest(TimelineVersionRequest):
+    prefer_provider: Optional[str] = Field("deepseek", max_length=64)
+    model: Optional[str] = Field("deepseek-v4-flash", max_length=128)
+    style: TimelineShotPlanStyle = "3d_cartoon"
+    temperature: float = Field(0.35, ge=0, le=2)
 
 
 class TimelineDeleteRequest(TimelineVersionRequest):
