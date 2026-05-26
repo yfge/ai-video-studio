@@ -135,6 +135,13 @@ Provider-backed Timeline-first evidence:
   output after `render_timeline` by writing `render_ffprobe.json`, checking
   video/audio streams against Timeline scene duration, and extracting one frame
   per Timeline scene under `artifacts/runs/<run_id>/frames/`.
+- Automated render-probe smoke evidence:
+  `artifacts/runs/provider-chain-render-probe-smoke-20260526T071200Z/provider_chain.json`.
+  The harness created Timeline `20` before media generation, generated one
+  MiniMax dialogue audio clip, one OpenAI `gpt-image-2` character image, one
+  Volcengine Seedance 2.0 video clip, rendered job `28`, then wrote
+  `render_media_probe.ok=true` with final video `4.041667s`, audio `4.032s`,
+  and frame `frames/render_scene_01_2000ms.jpg`.
 - Remaining limitation: this proves a real Timeline-first 30 second provider
   chain and timed dialogue audio mixing. It still does not prove production-grade
   character consistency, lip-sync, acting quality, or commercial content quality.

@@ -153,6 +153,11 @@ Exit criteria:
   render queue completion: it saves `render_ffprobe.json`, verifies final
   audio/video streams against the Timeline duration, and extracts one frame per
   Timeline scene for repeatable visual evidence.
+- `artifacts/runs/provider-chain-render-probe-smoke-20260526T071200Z/provider_chain.json`
+  records the first live smoke after that probe was wired in. Timeline `20` and
+  render job `28` succeeded, `render_media_probe.ok=true`, final video duration
+  was `4.041667s`, audio duration was `4.032s`, and one scene frame was
+  extracted at `frames/render_scene_01_2000ms.jpg`.
 - The current render worker consumes video clips, replaces source episode audio,
   mixes per-dialogue clip audio by Timeline timing when present, and burns
   Timeline subtitle cues. Production lip-sync, character consistency, and
