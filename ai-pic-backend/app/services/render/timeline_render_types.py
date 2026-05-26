@@ -34,6 +34,17 @@ class TimelineSubtitleCue:
 class TimelineAudioTrack:
     """Resolved source audio for Timeline rendering."""
 
-    url: str
+    url: str | None
     source: str
     clip_count: int
+    segments: tuple["TimelineAudioSegment", ...] = ()
+
+
+@dataclass(frozen=True)
+class TimelineAudioSegment:
+    """Resolved dialogue audio segment for Timeline rendering."""
+
+    url: str
+    start_ms: int
+    end_ms: int
+    clip_id: str

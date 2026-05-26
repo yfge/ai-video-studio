@@ -112,6 +112,28 @@ Provider-backed Timeline-first evidence:
 - Remaining limitation: this proves render consumes a Timeline dialogue audio URL
   and replaces the final audio track. It does not prove production-grade lip-sync
   or full 30 second dialogue pacing.
+- Full 30 second Timeline-first provider proof:
+  `artifacts/runs/provider-chain-dialogue-segments-full-30s-20260526T045229Z/provider_chain.json`.
+  The harness used DeepSeek `deepseek-v4-flash` for a 2-scene Chinese script,
+  created Timeline `19` version `1` before media generation, generated two
+  MiniMax `speech-2.6-hd` dialogue clips, generated one OpenAI `gpt-image-2`
+  character image, generated two 15 second Seedance clips with Volcengine
+  `doubao-seedance-2-0-260128`, patched assets into Timeline version `2`, and
+  rendered job `26` with `audio_source=timeline.dialogue.asset_ref` and
+  `audio_segment_count=2`.
+- During that run the first render exposed two real implementation issues:
+  per-segment audio mixing used ffmpeg `apad` without an output duration bound,
+  and the worker image lacked a CJK subtitle font. Both were fixed in code and
+  in Dockerfile dependencies. Same Timeline `19` version `2` was rerendered as
+  job `27` with evidence
+  `artifacts/runs/provider-chain-dialogue-segments-full-30s-20260526T045229Z/subtitle_font_rerender.json`;
+  output:
+  `https://resource.lets-gpt.com/timeline-renders/video/20260526/051434/7849fd70.mp4`.
+  ffprobe recorded video `30.125s` and audio `30.080s`, and extracted frames
+  under the run directory verify readable Chinese subtitles.
+- Remaining limitation: this proves a real Timeline-first 30 second provider
+  chain and timed dialogue audio mixing. It still does not prove production-grade
+  character consistency, lip-sync, acting quality, or commercial content quality.
 
 ## Phase 3: Add Timeline Delete And Rollback
 

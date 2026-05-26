@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from app.models.timeline import Timeline
-from app.services.render.timeline_render_types import TimelineAudioTrack
+from app.services.render.timeline_render_types import (
+    TimelineAudioSegment,
+    TimelineAudioTrack,
+)
 
 
 def resolve_timeline_audio_track(timeline: Timeline) -> TimelineAudioTrack | None:
@@ -19,13 +22,13 @@ def resolve_timeline_audio_track(timeline: Timeline) -> TimelineAudioTrack | Non
         )
 
     dialogue_clips = _dialogue_clips(spec)
-    dialogue_urls = [_clip_audio_url(clip) for clip in dialogue_clips]
-    unique_urls = {url for url in dialogue_urls if url}
-    if dialogue_clips and all(dialogue_urls) and len(unique_urls) == 1:
+    segments = [_clip_audio_segment(clip) for clip in dialogue_clips]
+    if dialogue_clips and all(segments):
         return TimelineAudioTrack(
-            url=next(iter(unique_urls)),
+            url=None,
             source="timeline.dialogue.asset_ref",
             clip_count=len(dialogue_clips),
+            segments=tuple(segment for segment in segments if segment is not None),
         )
     return None
 
@@ -71,7 +74,28 @@ def _clip_audio_url(clip: dict[str, Any]) -> str | None:
     )
 
 
+def _clip_audio_segment(clip: dict[str, Any]) -> TimelineAudioSegment | None:
+    audio_url = _clip_audio_url(clip)
+    start_ms = _maybe_int(clip.get("start_ms"))
+    end_ms = _maybe_int(clip.get("end_ms"))
+    if not audio_url or start_ms is None or end_ms is None or end_ms <= start_ms:
+        return None
+    return TimelineAudioSegment(
+        url=audio_url,
+        start_ms=start_ms,
+        end_ms=end_ms,
+        clip_id=str(clip.get("clip_id") or clip.get("id") or "unknown"),
+    )
+
+
 def _string_value(value: Any) -> str | None:
     if isinstance(value, str) and value.strip().startswith(("http://", "https://")):
         return value.strip()
     return None
+
+
+def _maybe_int(value: Any) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None

@@ -13,6 +13,7 @@ from app.core.logging import get_logger
 from app.services.render.video_download import download_all_clips, download_url
 from app.services.render.video_ffmpeg import (
     burn_subtitles_ffmpeg,
+    compose_audio_segments_ffmpeg,
     concat_videos_ffmpeg,
     create_concat_file,
     replace_audio,
@@ -22,9 +23,11 @@ from app.services.render.video_ffmpeg import (
 logger = get_logger()
 
 __all__ = [
+    "VideoAudioSegment",
     "VideoClip",
     "VideoSubtitleCue",
     "burn_subtitles_ffmpeg",
+    "compose_audio_segments_ffmpeg",
     "concat_video_clips",
     "concat_videos_ffmpeg",
     "create_concat_file",
@@ -44,6 +47,15 @@ class VideoClip:
 
 
 @dataclass
+class VideoAudioSegment:
+    """Represents one timeline-positioned audio segment."""
+
+    url: str
+    start_seconds: float
+    end_seconds: float
+
+
+@dataclass
 class VideoSubtitleCue:
     """Represents one render subtitle cue."""
 
@@ -56,6 +68,7 @@ async def concat_video_clips(
     clips: List[VideoClip],
     output_path: str,
     audio_url: Optional[str] = None,
+    audio_segments: Optional[List[VideoAudioSegment]] = None,
     keep_original_audio: bool = True,
     subtitles: Optional[List[VideoSubtitleCue]] = None,
 ) -> dict:
@@ -65,6 +78,7 @@ async def concat_video_clips(
         clips: List of VideoClip objects with URLs and target durations
         output_path: Path for output video
         audio_url: Optional URL to external audio track (replaces video audio)
+        audio_segments: Optional timeline-positioned audio segments to mix
         keep_original_audio: If True and no audio_url, keep video audio
         subtitles: Optional subtitle cues to burn into final video
 
@@ -93,7 +107,19 @@ async def concat_video_clips(
             return {"success": False, "error": "Concatenation failed"}
 
         composed_output = concat_output
-        if audio_url:
+        audio_segment_items = audio_segments or []
+        if audio_segment_items:
+            logger.info("Composing %s audio segments...", len(audio_segment_items))
+            audio_output = os.path.join(work_dir, "timeline_audio.m4a")
+            if not await _compose_audio_segments(
+                audio_segment_items, work_dir, audio_output
+            ):
+                return {"success": False, "error": "Audio segment composition failed"}
+            replaced_output = os.path.join(work_dir, "with_audio.mp4")
+            if not replace_audio(concat_output, audio_output, replaced_output):
+                return {"success": False, "error": "Audio replacement failed"}
+            composed_output = replaced_output
+        elif audio_url:
             logger.info("Replacing audio track...")
             audio_data = await download_url(audio_url)
             audio_path = os.path.join(work_dir, "audio.mp3")
@@ -138,7 +164,8 @@ async def concat_video_clips(
             "output_path": output_path,
             "duration_seconds": duration,
             "frame_count": len(clips),
-            "has_replaced_audio": bool(audio_url),
+            "has_replaced_audio": bool(audio_url or audio_segment_items),
+            "audio_segment_count": len(audio_segment_items),
             "has_burned_subtitles": bool(subtitle_cues),
             "subtitle_count": len(subtitle_cues),
         }
@@ -147,6 +174,25 @@ async def concat_video_clips(
         import shutil
 
         shutil.rmtree(work_dir, ignore_errors=True)
+
+
+async def _compose_audio_segments(
+    segments: List[VideoAudioSegment],
+    work_dir: str,
+    output_path: str,
+) -> bool:
+    audio_paths: list[str] = []
+    starts: list[float] = []
+    durations: list[float] = []
+    for index, segment in enumerate(segments, start=1):
+        data = await download_url(segment.url)
+        audio_path = os.path.join(work_dir, f"audio-segment-{index}.mp3")
+        with open(audio_path, "wb") as file:
+            file.write(data)
+        audio_paths.append(audio_path)
+        starts.append(max(segment.start_seconds, 0))
+        durations.append(max(segment.end_seconds - segment.start_seconds, 0.001))
+    return compose_audio_segments_ffmpeg(audio_paths, starts, durations, output_path)
 
 
 def _write_srt(cues: List[VideoSubtitleCue], output_path: str) -> None:

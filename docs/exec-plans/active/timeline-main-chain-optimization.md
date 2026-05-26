@@ -80,8 +80,15 @@ render job with a rework fingerprint.
   provider-backed video rework queueing and success lineage are implemented,
   and provider success queues a final render job whose preset is keyed to the
   replacement asset. The render worker now resolves/concatenates video clips,
-  replaces audio from Timeline dialogue audio URL when present, and burns
-  Timeline subtitle cues. Production lip-sync and sample production remain
+  replaces source episode audio, mixes per-dialogue clip audio by Timeline
+  timing, and burns Timeline subtitle cues with CJK font support.
+- Full-30s provider-backed Timeline-first evidence is recorded in
+  `artifacts/runs/provider-chain-dialogue-segments-full-30s-20260526T045229Z/provider_chain.json`.
+  The CJK subtitle-font rerender is recorded in
+  `artifacts/runs/provider-chain-dialogue-segments-full-30s-20260526T045229Z/subtitle_font_rerender.json`
+  with output
+  `https://resource.lets-gpt.com/timeline-renders/video/20260526/051434/7849fd70.mp4`.
+  Production lip-sync, character consistency, and sample production remain
   separate proof targets.
 
 ## Findings

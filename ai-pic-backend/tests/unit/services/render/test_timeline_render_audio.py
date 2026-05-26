@@ -80,9 +80,56 @@ def test_resolve_timeline_audio_track_from_dialogue_asset_ref(db_session):
     audio_track = resolve_timeline_audio_track(timeline)
 
     assert audio_track is not None
-    assert audio_track.url == "https://example.com/dialogue.mp3"
+    assert audio_track.url is None
     assert audio_track.source == "timeline.dialogue.asset_ref"
     assert audio_track.clip_count == 1
+    assert len(audio_track.segments) == 1
+    assert audio_track.segments[0].url == "https://example.com/dialogue.mp3"
+    assert audio_track.segments[0].start_ms == 0
+    assert audio_track.segments[0].end_ms == 2000
+    assert audio_track.segments[0].clip_id == "dialogue_scene_1_beat_1_001"
+
+
+def test_resolve_timeline_audio_track_preserves_dialogue_segment_timing(db_session):
+    spec = _spec_with_video_clip(
+        {
+            "clip_id": "video_scene_1_beat_1_001",
+            "video_url": "https://example.com/clip.mp4",
+            "start_ms": 0,
+            "end_ms": 3000,
+        }
+    )
+    spec["tracks"].append(
+        {
+            "track_type": "dialogue",
+            "clips": [
+                {
+                    "clip_id": "dialogue_scene_1_beat_1_001",
+                    "start_ms": 0,
+                    "end_ms": 1200,
+                    "asset_ref": {"url": "https://example.com/dialogue-1.mp3"},
+                },
+                {
+                    "clip_id": "dialogue_scene_1_beat_2_002",
+                    "start_ms": 1500,
+                    "end_ms": 3000,
+                    "asset_ref": {"url": "https://example.com/dialogue-2.mp3"},
+                },
+            ],
+        }
+    )
+    _user, timeline, _job = _bootstrap_timeline(db_session, spec=spec)
+
+    audio_track = resolve_timeline_audio_track(timeline)
+
+    assert audio_track is not None
+    assert audio_track.source == "timeline.dialogue.asset_ref"
+    assert audio_track.url is None
+    assert audio_track.clip_count == 2
+    assert [(s.url, s.start_ms, s.end_ms) for s in audio_track.segments] == [
+        ("https://example.com/dialogue-1.mp3", 0, 1200),
+        ("https://example.com/dialogue-2.mp3", 1500, 3000),
+    ]
 
 
 def test_resolve_timeline_audio_track_ignores_partial_dialogue_assets(db_session):

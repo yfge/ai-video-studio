@@ -136,8 +136,22 @@ Exit criteria:
   `has_replaced_audio=true`, `audio_source=timeline.source.episode_audio`,
   `subtitle_count=1`, and output
   `https://resource.lets-gpt.com/timeline-renders/video/20260526/042743/e73796af.mp4`.
-- The current render worker consumes video clips, replaces audio from Timeline
-  dialogue audio URL when present, and burns Timeline subtitle cues. Production
-  lip-sync and long-form dialogue pacing remain separate proof targets.
+- `artifacts/runs/provider-chain-dialogue-segments-full-30s-20260526T045229Z/provider_chain.json`
+  records a full 30 second provider-backed Timeline-first run. Timeline `19`
+  was created before media generation with `dialogue=2`, `video=2`, and
+  `subtitle=2`; DeepSeek generated script/dialogue, MiniMax generated one TTS
+  URL per dialogue clip, OpenAI generated a cartoon character image, Seedance
+  generated two 15 second videos, and render job `26` consumed
+  `timeline.dialogue.asset_ref` with `audio_segment_count=2`.
+- The first render surfaced an ffmpeg infinite audio output bug and missing CJK
+  subtitle font. After bounding the mixed audio duration and adding Noto CJK
+  font support, rerender job `27` produced
+  `https://resource.lets-gpt.com/timeline-renders/video/20260526/051434/7849fd70.mp4`
+  with video `30.125s`, audio `30.080s`, and readable Chinese subtitle frames
+  recorded under the same run directory.
+- The current render worker consumes video clips, replaces source episode audio,
+  mixes per-dialogue clip audio by Timeline timing when present, and burns
+  Timeline subtitle cues. Production lip-sync, character consistency, and
+  commercial acting quality remain separate proof targets.
 - Commercial-readiness sequencing is tracked separately in
   `docs/exec-plans/active/main-chain-commercial-readiness.md`.

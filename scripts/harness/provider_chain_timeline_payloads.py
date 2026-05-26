@@ -33,7 +33,9 @@ def build_timeline_seed_spec(
         dialogue = dialogue_text(scene)
         tracks["dialogue"].append(
             {
-                **_clip_timing("dialogue", scene_id, beat_id, ordinal, start_ms, end_ms),
+                **_clip_timing(
+                    "dialogue", scene_id, beat_id, ordinal, start_ms, end_ms
+                ),
                 "source": dict(source),
                 "source_refs": dict(refs),
                 "text": dialogue,
@@ -54,7 +56,9 @@ def build_timeline_seed_spec(
         )
         tracks["subtitle"].append(
             {
-                **_clip_timing("subtitle", scene_id, beat_id, ordinal, start_ms, end_ms),
+                **_clip_timing(
+                    "subtitle", scene_id, beat_id, ordinal, start_ms, end_ms
+                ),
                 "source": dict(source),
                 "source_refs": dict(refs),
                 "text": dialogue,
@@ -102,7 +106,9 @@ def attach_timeline_video_assets(
             continue
         attached_ids.add(str(clip.get("clip_id")))
         _attach_video_asset(clip, generated, run_id)
-    unused_ids = {str(clip_id) for clip_id in generated_by_id if clip_id not in attached_ids}
+    unused_ids = {
+        str(clip_id) for clip_id in generated_by_id if clip_id not in attached_ids
+    }
     if missing_ids or unused_ids:
         raise RuntimeError(
             "timeline_asset_lineage_mismatch: "
@@ -116,24 +122,43 @@ def attach_timeline_dialogue_audio(
     dialogue_audio: dict[str, Any],
     run_id: str,
 ) -> None:
-    audio_url = str(dialogue_audio.get("audio_url") or "")
-    if not audio_url.startswith(("http://", "https://")):
-        raise RuntimeError("dialogue_audio_missing_public_url")
+    audio_by_clip_id = {
+        str(item.get("clip_id")): item
+        for item in dialogue_audio.get("clips") or []
+        if isinstance(item, dict) and item.get("clip_id")
+    }
+    if not audio_by_clip_id:
+        raise RuntimeError("dialogue_audio_missing_clips")
     source = spec.setdefault("source", {})
     if isinstance(source, dict):
-        source["episode_audio"] = {
-            "oss_url": audio_url,
+        source["dialogue_audio"] = {
+            "mode": "per_clip",
+            "clip_count": len(audio_by_clip_id),
             "provider": dialogue_audio.get("provider"),
             "model": dialogue_audio.get("model"),
             "run_id": run_id,
         }
+        source.pop("episode_audio", None)
+    attached_ids: set[str] = set()
+    missing_ids: list[str] = []
     for clip in _track_clips(spec, "dialogue"):
+        clip_id = str(clip.get("clip_id") or "")
+        generated = audio_by_clip_id.get(clip_id)
+        if not generated:
+            missing_ids.append(clip_id)
+            continue
+        attached_ids.add(clip_id)
+        audio_url = str(generated.get("audio_url") or "")
+        if not audio_url.startswith(("http://", "https://")):
+            raise RuntimeError(f"dialogue_audio_missing_public_url: {clip_id}")
         clip["asset_ref"] = {
-            "kind": "provider_chain_dialogue_audio",
+            "kind": "provider_chain_dialogue_clip_audio",
             "url": audio_url,
             "file_url": audio_url,
             "provider": dialogue_audio.get("provider"),
             "model": dialogue_audio.get("model"),
+            "start_ms": generated.get("start_ms"),
+            "end_ms": generated.get("end_ms"),
         }
         refs = clip.setdefault("source_refs", {})
         refs.update(
@@ -144,6 +169,14 @@ def attach_timeline_dialogue_audio(
                 "audio_provider": dialogue_audio.get("provider"),
                 "audio_model": dialogue_audio.get("model"),
             }
+        )
+    unused_ids = {
+        clip_id for clip_id in audio_by_clip_id if clip_id not in attached_ids
+    }
+    if missing_ids or unused_ids:
+        raise RuntimeError(
+            "timeline_dialogue_audio_lineage_mismatch: "
+            f"missing={sorted(missing_ids)} unused={sorted(unused_ids)}"
         )
 
 
@@ -167,9 +200,13 @@ def mark_quality(
     track_counts = timeline_track_counts(spec)
     checks = {
         "has_character_image_url": bool(image_url),
-        "all_clips_have_dialogue_source": all(c["scene"].get("dialogue") for c in clips),
+        "all_clips_have_dialogue_source": all(
+            c["scene"].get("dialogue") for c in clips
+        ),
         "all_clips_have_video_prompt": all(c.get("prompt") for c in clips),
-        "all_clips_have_lineage": all(c.get("task_id") and c.get("video_url") for c in clips),
+        "all_clips_have_lineage": all(
+            c.get("task_id") and c.get("video_url") for c in clips
+        ),
         "timeline_has_dialogue_track": track_counts.get("dialogue") == len(clips),
         "timeline_has_subtitle_track": track_counts.get("subtitle") == len(clips),
         "timeline_has_video_track": track_counts.get("video") == len(clips),
@@ -180,7 +217,8 @@ def mark_quality(
             c.get("text") for c in _track_clips(spec, "dialogue")
         ),
         "timeline_has_dialogue_audio": all(
-            (c.get("asset_ref") or {}).get("url") for c in _track_clips(spec, "dialogue")
+            (c.get("asset_ref") or {}).get("url")
+            for c in _track_clips(spec, "dialogue")
         ),
     }
     payload["production_quality"] = {

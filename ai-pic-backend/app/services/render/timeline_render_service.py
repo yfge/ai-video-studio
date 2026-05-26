@@ -20,6 +20,7 @@ from app.services.render.timeline_render_types import (
     TimelineSubtitleCue,
 )
 from app.services.render.video_concat import (
+    VideoAudioSegment,
     VideoClip,
     VideoSubtitleCue,
     concat_video_clips,
@@ -82,6 +83,7 @@ class TimelineRenderService:
         resolved, missing = resolve_timeline_video_clips(self.db, timeline)
         subtitles = resolve_timeline_subtitle_cues(timeline)
         audio_track = resolve_timeline_audio_track(timeline)
+        audio_segment_count = len(audio_track.segments) if audio_track else 0
         if missing:
             return self._mark_failed(
                 job,
@@ -108,6 +110,7 @@ class TimelineRenderService:
                 "clip_count": len(resolved),
                 "subtitle_count": len(subtitles),
                 "audio_source": audio_track.source if audio_track else None,
+                "audio_segment_count": audio_segment_count,
             },
         )
         output_path = await self._render_to_temp_file(resolved, subtitles, audio_track)
@@ -131,6 +134,7 @@ class TimelineRenderService:
             "subtitle_count": len(subtitles),
             "audio_source": audio_track.source if audio_track else None,
             "has_replaced_audio": audio_track is not None,
+            "audio_segment_count": audio_segment_count,
             "output_asset_id": asset.id,
             "output_url": asset.file_url or asset.file_path,
         }
@@ -159,6 +163,14 @@ class TimelineRenderService:
             ],
             output_path=output_path,
             audio_url=audio_track.url if audio_track else None,
+            audio_segments=[
+                VideoAudioSegment(
+                    url=segment.url,
+                    start_seconds=segment.start_ms / 1000,
+                    end_seconds=segment.end_ms / 1000,
+                )
+                for segment in (audio_track.segments if audio_track else ())
+            ],
             keep_original_audio=audio_track is None,
             subtitles=[
                 VideoSubtitleCue(

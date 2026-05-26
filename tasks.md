@@ -27,8 +27,9 @@
 - provider-backed harness 已补成 Timeline-first：先创建含 `dialogue/video/subtitle` tracks 的 Timeline seed，再生图、生视频、回填 video asset，并通过 smoke evidence `artifacts/runs/provider-chain-dialogue-tracks-smoke-20260526T033733Z/provider_chain.json`。
 - render worker 已开始消费 Timeline subtitle track 并用 ffmpeg 烧进最终视频；重启 worker 后的系统 API rerender evidence 为 `artifacts/runs/subtitle-render-rerender-20260526T040220Z/subtitle_render.json`。
 - render worker 已开始消费 Timeline dialogue audio URL 并替换视频音轨；系统 API rerender evidence 为 `artifacts/runs/dialogue-audio-rerender-20260526T042900Z/dialogue_audio_render.json`，render job `25` 输出 `https://resource.lets-gpt.com/timeline-renders/video/20260526/042743/e73796af.mp4`。
+- provider-backed full-30s harness 已按 Timeline-first 跑通：DeepSeek 生成 2 场剧本/对白，先创建 Timeline `19` seed，再逐 dialogue clip 生成 MiniMax TTS，OpenAI `gpt-image-2` 生成角色图，Seedance 2.0 生成 2 段 15 秒视频，回填 Timeline 后按 `start_ms/end_ms` 混音并渲染。证据：`artifacts/runs/provider-chain-dialogue-segments-full-30s-20260526T045229Z/provider_chain.json`；CJK 字体修复后的 rerender evidence：`artifacts/runs/provider-chain-dialogue-segments-full-30s-20260526T045229Z/subtitle_font_rerender.json`，render job `27` 输出 `https://resource.lets-gpt.com/timeline-renders/video/20260526/051434/7849fd70.mp4`，ffprobe 为 video `30.125s` / audio `30.080s`。
 - timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed clip video rework task queue、operator 入口、success lineage、rework 后自动 render queue、legacy 收敛和 10 条本地 2D 卡通样片验证已落地。
-- 当前结论：主链工程闭环可演示；字幕已能从 Timeline subtitle track 烧进最终成片，带 audio URL 的 dialogue track 已能替换最终音轨；大规模 provider-backed 内容生产成本、稳定性、对白时长对齐和内容质量仍需要单独按真实预算复测。
+- 当前结论：主链工程闭环可演示；字幕已能从 Timeline subtitle track 烧进最终成片，source episode audio 或 per-dialogue clip audio 已能替换/按 Timeline timing 混成最终音轨；大规模 provider-backed 内容生产成本、稳定性、角色一致性和内容质量仍需要单独按真实预算复测。
 
 ## 状态概览
 
@@ -54,7 +55,7 @@
 
 - `audio_timeline`、`scene_beats`、`storyboard.frames` 仍然并存，但 timeline-pipeline、默认生产剧本链路和 deprecated audio-timeline 入口已能把 `audio_timeline.beats` 导入 `Timeline Spec v1`。
 - render/export 已能写回稳定的 timeline/versioned jobs；delete/rollback 和更严格的 schema/import 校验已补齐。
-- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；legacy bridge 证据使用 storyboard 视频资产迁移桥，provider-backed 证据已证明 Timeline seed 先于生图/生视频创建且包含 dialogue/video/subtitle tracks。Timeline render 已能烧入 subtitle track，也能用 Timeline dialogue audio URL 替换最终音轨；clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed video rework operator 入口、success lineage 和 rework-triggered final render 编排已补齐。
+- 当前真实 API 的 `Episode -> Timeline -> Render -> Export` 证据已通过；legacy bridge 证据使用 storyboard 视频资产迁移桥，provider-backed 证据已证明 Timeline seed 先于生图/生视频创建且包含 dialogue/video/subtitle tracks。Timeline render 已能烧入 subtitle track，也能用 Timeline source audio 替换最终音轨，或把 per-dialogue clip audio 按 Timeline timing 混成最终音轨；clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed video rework operator 入口、success lineage 和 rework-triggered final render 编排已补齐。
 
 ### 任务（功能→后端→验证）
 

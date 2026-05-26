@@ -153,6 +153,68 @@ def replace_audio(
         return False
 
 
+def compose_audio_segments_ffmpeg(
+    segment_paths: list[str],
+    start_seconds: list[float],
+    duration_seconds: list[float],
+    output_path: str,
+) -> bool:
+    """Compose audio segments on a shared timeline."""
+    if not segment_paths or not (
+        len(segment_paths) == len(start_seconds) == len(duration_seconds)
+    ):
+        return False
+    cmd = ["ffmpeg", "-y"]
+    for path in segment_paths:
+        cmd.extend(["-i", path])
+
+    filters: list[str] = []
+    labels: list[str] = []
+    for index, (start, duration) in enumerate(
+        zip(start_seconds, duration_seconds, strict=True)
+    ):
+        delay_ms = max(round(start * 1000), 0)
+        clip_duration = max(duration, 0.001)
+        label = f"a{index}"
+        filters.append(
+            f"[{index}:a]atrim=0:{clip_duration:.3f},"
+            f"asetpts=PTS-STARTPTS,adelay={delay_ms}|{delay_ms}[{label}]"
+        )
+        labels.append(f"[{label}]")
+    filters.append(
+        "".join(labels)
+        + f"amix=inputs={len(labels)}:normalize=0:duration=longest,apad[aout]"
+    )
+
+    total_duration = max(
+        start + duration
+        for start, duration in zip(start_seconds, duration_seconds, strict=True)
+    )
+    cmd.extend(
+        [
+            "-filter_complex",
+            ";".join(filters),
+            "-map",
+            "[aout]",
+            "-t",
+            f"{total_duration:.3f}",
+            "-c:a",
+            "aac",
+            output_path,
+        ]
+    )
+
+    try:
+        subprocess.run(cmd, capture_output=True, timeout=600, check=True)
+        return True
+    except subprocess.CalledProcessError as exc:
+        logger.error("FFmpeg audio segment compose failed: %s", exc.stderr)
+        return False
+    except subprocess.TimeoutExpired as exc:
+        logger.error("FFmpeg audio segment compose timed out: %s", exc)
+        return False
+
+
 def burn_subtitles_ffmpeg(
     video_path: str,
     subtitle_path: str,
@@ -160,6 +222,7 @@ def burn_subtitles_ffmpeg(
 ) -> bool:
     """Burn SRT subtitles into a video file."""
     style = (
+        "FontName=Noto Sans CJK SC,"
         "FontSize=24,"
         "PrimaryColour=&H00FFFFFF,"
         "OutlineColour=&H00000000,"

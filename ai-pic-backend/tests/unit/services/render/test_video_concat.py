@@ -4,8 +4,13 @@ import os
 import tempfile
 from unittest.mock import MagicMock, patch
 
+import pytest
 from app.services.render.video_concat import (
+    VideoAudioSegment,
     VideoClip,
+    burn_subtitles_ffmpeg,
+    compose_audio_segments_ffmpeg,
+    concat_video_clips,
     concat_videos_ffmpeg,
     create_concat_file,
     replace_audio,
@@ -207,3 +212,142 @@ class TestReplaceAudio:
         result = replace_audio("/tmp/v.mp4", "/tmp/a.mp3", "/tmp/o.mp4")
 
         assert result is False
+
+
+class TestComposeAudioSegments:
+    """Test timeline audio segment composition."""
+
+    @patch("app.services.render.video_ffmpeg.subprocess.run")
+    def test_compose_audio_segments_bounds_output_duration(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+
+        result = compose_audio_segments_ffmpeg(
+            ["/tmp/a.mp3", "/tmp/b.mp3"],
+            [0, 1.5],
+            [1.2, 2.0],
+            "/tmp/out.m4a",
+        )
+
+        assert result is True
+        call_args = mock_run.call_args[0][0]
+        assert "-t" in call_args
+        assert call_args[call_args.index("-t") + 1] == "3.500"
+
+
+class TestBurnSubtitles:
+    """Test subtitle burn command construction."""
+
+    @patch("app.services.render.video_ffmpeg.subprocess.run")
+    def test_burn_subtitles_uses_cjk_font(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+
+        result = burn_subtitles_ffmpeg("/tmp/video.mp4", "/tmp/sub.srt", "/tmp/out.mp4")
+
+        assert result is True
+        call_args = mock_run.call_args[0][0]
+        video_filter = call_args[call_args.index("-vf") + 1]
+        assert "FontName=Noto Sans CJK SC" in video_filter
+
+
+@pytest.mark.asyncio
+async def test_concat_video_clips_composes_timeline_audio_segments(
+    tmp_path, monkeypatch
+):
+    """Timeline dialogue audio is mixed by clip timing before replacement."""
+    captured: dict[str, object] = {}
+
+    async def fake_download_all_clips(clips, work_dir):
+        paths = []
+        for index, _clip in enumerate(clips):
+            path = os.path.join(work_dir, f"raw-{index}.mp4")
+            with open(path, "wb") as file:
+                file.write(b"raw video")
+            paths.append(path)
+        return paths
+
+    def fake_trim_clip_to_duration(raw_path, output_path, _duration):
+        with open(output_path, "wb") as file:
+            file.write(b"trimmed video")
+        return True
+
+    def fake_concat_videos_ffmpeg(paths, output_path, keep_audio):
+        captured["keep_audio"] = keep_audio
+        captured["concat_paths"] = paths
+        with open(output_path, "wb") as file:
+            file.write(b"concat video")
+        return True
+
+    async def fake_download_url(url):
+        return f"audio:{url}".encode()
+
+    def fake_compose_audio_segments_ffmpeg(paths, starts, durations, output_path):
+        captured["audio_paths"] = paths
+        captured["starts"] = starts
+        captured["durations"] = durations
+        with open(output_path, "wb") as file:
+            file.write(b"mixed audio")
+        return True
+
+    def fake_replace_audio(video_path, audio_path, output_path):
+        captured["replace_video"] = video_path
+        captured["replace_audio"] = audio_path
+        with open(output_path, "wb") as file:
+            file.write(b"rendered video")
+        return True
+
+    monkeypatch.setattr(
+        "app.services.render.video_concat.download_all_clips",
+        fake_download_all_clips,
+    )
+    monkeypatch.setattr(
+        "app.services.render.video_concat.trim_clip_to_duration",
+        fake_trim_clip_to_duration,
+    )
+    monkeypatch.setattr(
+        "app.services.render.video_concat.concat_videos_ffmpeg",
+        fake_concat_videos_ffmpeg,
+    )
+    monkeypatch.setattr(
+        "app.services.render.video_concat.download_url",
+        fake_download_url,
+    )
+    monkeypatch.setattr(
+        "app.services.render.video_concat.compose_audio_segments_ffmpeg",
+        fake_compose_audio_segments_ffmpeg,
+    )
+    monkeypatch.setattr(
+        "app.services.render.video_concat.replace_audio",
+        fake_replace_audio,
+    )
+
+    result = await concat_video_clips(
+        clips=[
+            VideoClip(
+                url="https://example.com/video-1.mp4",
+                target_duration_seconds=2.0,
+                frame_number=1,
+            )
+        ],
+        output_path=str(tmp_path / "output.mp4"),
+        audio_segments=[
+            VideoAudioSegment(
+                url="https://example.com/dialogue-1.mp3",
+                start_seconds=0,
+                end_seconds=1.2,
+            ),
+            VideoAudioSegment(
+                url="https://example.com/dialogue-2.mp3",
+                start_seconds=1.5,
+                end_seconds=2.0,
+            ),
+        ],
+        keep_original_audio=False,
+    )
+
+    assert result["success"] is True
+    assert result["has_replaced_audio"] is True
+    assert result["audio_segment_count"] == 2
+    assert captured["keep_audio"] is False
+    assert captured["starts"] == [0, 1.5]
+    assert captured["durations"] == [1.2, 0.5]
+    assert str(captured["replace_audio"]).endswith("timeline_audio.m4a")

@@ -127,7 +127,20 @@ def test_timeline_seed_precedes_video_assets_and_preserves_lineage() -> None:
     dialogue_audio = {
         "provider": "minimax",
         "model": "speech-2.6-hd",
-        "audio_url": "https://example.com/dialogue.mp3",
+        "clips": [
+            {
+                "clip_id": "dialogue_s1_provider_chain_1_001",
+                "audio_url": "https://example.com/dialogue-1.mp3",
+                "start_ms": 0,
+                "end_ms": 15000,
+            },
+            {
+                "clip_id": "dialogue_s2_provider_chain_2_002",
+                "audio_url": "https://example.com/dialogue-2.mp3",
+                "start_ms": 15000,
+                "end_ms": 30000,
+            },
+        ],
     }
     spec = attach_timeline_video_assets(
         seed,
@@ -150,10 +163,16 @@ def test_timeline_seed_precedes_video_assets_and_preserves_lineage() -> None:
     assert video_clips[1]["start_ms"] == 15000
     assert video_clips[0]["source_refs"]["dialogue"][0]["line"] == "我到了。"
     assert video_clips[0]["source_refs"]["provider_chain_stage"] == "video_generated"
-    assert (
-        spec["source"]["episode_audio"]["oss_url"] == "https://example.com/dialogue.mp3"
-    )
+    assert "episode_audio" not in spec["source"]
+    assert spec["source"]["dialogue_audio"]["mode"] == "per_clip"
+    assert spec["source"]["dialogue_audio"]["clip_count"] == 2
     assert dialogue_clips[0]["asset_ref"]["provider"] == "minimax"
+    assert dialogue_clips[0]["asset_ref"]["url"] == "https://example.com/dialogue-1.mp3"
+    assert dialogue_clips[1]["asset_ref"]["url"] == "https://example.com/dialogue-2.mp3"
+    assert (
+        dialogue_clips[1]["source_refs"]["audio_url"]
+        == "https://example.com/dialogue-2.mp3"
+    )
 
 
 def test_timeline_asset_attach_fails_on_clip_id_mismatch() -> None:
@@ -190,3 +209,54 @@ def test_timeline_asset_attach_fails_on_clip_id_mismatch() -> None:
 
     with pytest.raises(RuntimeError, match="timeline_asset_lineage_mismatch"):
         attach_timeline_video_assets(seed, clips, "run-1")
+
+
+def test_timeline_dialogue_audio_attach_fails_on_clip_id_mismatch() -> None:
+    script = {
+        "characters": [
+            {
+                "name": "小蓝",
+                "appearance_prompt": "圆润蓝色机器人",
+                "consistency_anchor": "blue robot",
+            }
+        ],
+        "scenes": [
+            {
+                "scene_id": "s1",
+                "duration_seconds": 4,
+                "plot": "机器人进门。",
+                "dialogue": [{"speaker": "小蓝", "line": "我到了。"}],
+                "video_prompt": "robot enters",
+            }
+        ],
+    }
+    seed = build_timeline_seed_spec(
+        "run-1", episode_id=133, script_id=117, script=script
+    )
+    clips = [
+        {
+            "clip_id": "video_s1_provider_chain_1_001",
+            "video_url": "https://example.com/a.mp4",
+            "image_url": "https://example.com/robot.png",
+            "provider": "volcengine",
+            "model": "doubao-seedance-2-0-260128",
+        }
+    ]
+    dialogue_audio = {
+        "provider": "minimax",
+        "model": "speech-2.6-hd",
+        "clips": [
+            {
+                "clip_id": "wrong_dialogue_clip",
+                "audio_url": "https://example.com/dialogue.mp3",
+            }
+        ],
+    }
+
+    with pytest.raises(RuntimeError, match="timeline_dialogue_audio_lineage_mismatch"):
+        attach_timeline_video_assets(
+            seed,
+            clips,
+            "run-1",
+            dialogue_audio=dialogue_audio,
+        )
