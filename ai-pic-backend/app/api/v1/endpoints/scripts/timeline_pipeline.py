@@ -1,5 +1,3 @@
-"""One-click timeline pipeline endpoints and async task processor."""
-
 from __future__ import annotations
 
 import json
@@ -26,6 +24,8 @@ from app.services.storyboard.storyboard_image_autogen import (
 )
 from app.services.task_worker import timeline_pipeline_generate_task
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
+from app.services.timeline_shot_plan_service import TimelineShotPlanService
+from app.schemas.timeline import TimelineShotPlanRequest
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -43,8 +43,6 @@ router = APIRouter()
 
 
 class TimelinePipelineGenerateRequest(BaseModel):
-    """Request body for one-click timeline pipeline generation."""
-
     tts_model: str | None = Field(None, description="TTS model (default speech-2.6-hd)")
     timing_model: str | None = Field(
         None,
@@ -255,16 +253,23 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 user_id=user.id,
             )
             update_task_progress(
-                db, task, f"步骤 2/4：Timeline Spec v1 {import_result.action}"
+                db, task, f"步骤 2/5：Timeline Spec v1 {import_result.action}"
             )
 
-            update_task_progress(db, task, "步骤 3/4：生成分镜帧占位…")
+            update_task_progress(db, task, "步骤 3/5：生成 Timeline 镜头计划…")
+            timeline = await TimelineShotPlanService(db).generate_shot_plan_for_timeline(
+                import_result.timeline,
+                TimelineShotPlanRequest(expected_version=import_result.timeline.version),
+                user_id=user.id,
+            )
+
+            update_task_progress(db, task, "步骤 4/5：生成分镜帧占位…")
             image_result = generate_storyboard_placeholders_and_queue_images(
                 db,
                 parent_task=task,
                 script=script,
                 episode=episode,
-                timeline=import_result.timeline,
+                timeline=timeline,
                 user_id=user.id,
                 overwrite_storyboard=overwrite_storyboard,
                 min_pause_ms=min_pause_ms,
@@ -274,7 +279,7 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
                 task,
                 storyboard_image_queue_progress_message(
                     image_result,
-                    prefix="步骤 4/4",
+                    prefix="步骤 5/5",
                 ),
             )
 

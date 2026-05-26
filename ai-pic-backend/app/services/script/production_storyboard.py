@@ -16,6 +16,8 @@ from app.services.script.production_storyboard_hooks import (
     annotate_storyboard_frames_with_hooks,
 )
 from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
+from app.services.timeline_shot_plan_service import TimelineShotPlanService
+from app.schemas.timeline import TimelineShotPlanRequest
 from sqlalchemy.orm import Session
 
 ProgressCallback = Callable[[str], None]
@@ -80,12 +82,22 @@ async def run_auto_timeline_placeholders(
     )
 
     if progress_callback:
+        progress_callback("生产级链路：生成 Timeline 镜头计划")
+    timeline_with_shot_plan = await TimelineShotPlanService(
+        db
+    ).generate_shot_plan_for_timeline(
+        import_result.timeline,
+        TimelineShotPlanRequest(expected_version=import_result.timeline.version),
+        user_id=user_id or getattr(story, "user_id", None),
+    )
+
+    if progress_callback:
         progress_callback("生产级链路：生成分镜占位")
     storyboard = generate_storyboard_support_from_timeline_spec(
         db,
         script=script,
         episode=episode,
-        timeline=import_result.timeline,
+        timeline=timeline_with_shot_plan,
         overwrite_existing=True,
         min_pause_duration_ms=min_pause_duration_ms,
     )
@@ -121,10 +133,10 @@ async def run_auto_timeline_placeholders(
             "version"
         ),
         "timeline_spec": {
-            "id": import_result.timeline.id,
-            "version": import_result.timeline.version,
+            "id": timeline_with_shot_plan.id,
+            "version": timeline_with_shot_plan.version,
             "source_audio_timeline_version": (
-                import_result.timeline.source_audio_timeline_version
+                timeline_with_shot_plan.source_audio_timeline_version
             ),
             "action": import_result.action,
         },

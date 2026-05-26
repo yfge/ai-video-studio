@@ -11,6 +11,9 @@ from app.repositories.timeline_repository import TimelineRepository
 from app.services.audio.storyboard_from_timeline import (
     build_storyboard_frames_from_audio_timeline,
 )
+from app.services.audio.storyboard_from_timeline_shot_plan import (
+    build_storyboard_frames_from_timeline_shot_plan,
+)
 from app.services.audio.storyboard_timeline_helpers import check_existing_assets
 from app.services.storyboard.storyboard_prompt_utils import (
     apply_storyboard_prompt_optimizations,
@@ -24,6 +27,12 @@ def build_storyboard_frames_from_timeline_spec(
     min_pause_duration_ms: int = 1500,
 ) -> list[dict[str, Any]]:
     """Build storyboard support frames from Timeline Spec v1 clips."""
+    shot_plan_frames = build_storyboard_frames_from_timeline_shot_plan(
+        timeline_spec=timeline_spec
+    )
+    if shot_plan_frames:
+        return shot_plan_frames
+
     beats = _timeline_spec_clips_to_beats(timeline_spec)
     if not beats:
         raise RuntimeError("timeline_spec_missing_clips")
@@ -89,10 +98,11 @@ def generate_storyboard_support_from_timeline_spec(
     source_audio_version = getattr(
         timeline, "source_audio_timeline_version", None
     ) or timeline_spec.get("source_audio_timeline_version")
+    generation_method = _frame_generation_method(frames)
     sb_meta = {
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "generation_source": "timeline_spec",
-        "generation_method": "timeline_spec",
+        "generation_method": generation_method,
         "source_role": "storyboard_support_view",
         "script_id": script.id,
         "episode_id": episode.id,
@@ -195,3 +205,14 @@ def _safe_ms(value: Any) -> int:
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def _frame_generation_method(frames: list[dict[str, Any]]) -> str:
+    methods = {
+        str(frame.get("generation_method") or "")
+        for frame in frames
+        if isinstance(frame, dict)
+    }
+    if "timeline_shot_plan" in methods:
+        return "timeline_shot_plan"
+    return "timeline_spec"
