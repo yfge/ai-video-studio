@@ -303,10 +303,13 @@ Current render behavior:
 
 - Resolve renderable video clips from Timeline video track, clip-asset
   replacement lineage, direct asset refs, or legacy storyboard frame videos.
+- Resolve Timeline dialogue audio from `source.episode_audio` or dialogue clip
+  `asset_ref` URL and replace the final video audio track with ffmpeg while
+  preserving video duration.
 - Resolve Timeline subtitle track into SRT cues and burn those cues into the
   proxy/final video with ffmpeg.
-- TTS dialogue audio replacement from Timeline dialogue track remains a separate
-  implementation boundary.
+- Production lip-sync and full-episode dialogue pacing remain separate quality
+  boundaries.
 
 Render outputs:
 

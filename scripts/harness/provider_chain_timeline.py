@@ -63,8 +63,14 @@ def update_timeline_with_assets(
     timeline: dict[str, Any],
     clips: list[dict[str, Any]],
     payload: dict[str, Any],
+    dialogue_audio: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    spec = attach_timeline_video_assets(timeline["spec"], clips, args.run_id)
+    spec = attach_timeline_video_assets(
+        timeline["spec"],
+        clips,
+        args.run_id,
+        dialogue_audio=dialogue_audio,
+    )
     updated = request_json(
         session,
         "PATCH",
@@ -124,16 +130,29 @@ def poll_render_job(
 ) -> dict[str, Any]:
     deadline = time.monotonic() + args.timeout_seconds
     last_job: dict[str, Any] | None = None
+    poll_url = f"{args.api_url.rstrip('/')}/api/v1/timelines/{timeline_id}/render-jobs"
     while time.monotonic() < deadline:
-        body = request_json(
-            session,
-            "GET",
-            f"{args.api_url.rstrip('/')}/api/v1/timelines/{timeline_id}/render-jobs",
-            params={"include_deleted": False},
-            chain=payload["request_chain"],
-            label="timeline-render-poll",
-            timeout=30,
-        )
+        try:
+            body = request_json(
+                session,
+                "GET",
+                poll_url,
+                params={"include_deleted": False},
+                chain=payload["request_chain"],
+                label="timeline-render-poll",
+                timeout=30,
+            )
+        except requests.ConnectionError as exc:
+            payload["request_chain"].append(
+                {
+                    "label": "timeline-render-poll",
+                    "method": "GET",
+                    "url": poll_url,
+                    "error": repr(exc),
+                }
+            )
+            time.sleep(args.poll_interval_seconds)
+            continue
         items = body.get("items") or []
         last_job = next((item for item in items if item.get("id") == render_job_id), None)
         if last_job and last_job.get("status") in TERMINAL_RENDER_STATUSES:

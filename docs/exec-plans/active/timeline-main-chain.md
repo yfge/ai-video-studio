@@ -129,8 +129,15 @@ Exit criteria:
   Celery worker was restarted onto the current code. Render job `23` succeeded
   with `subtitle_count=1` and output
   `https://resource.lets-gpt.com/timeline-renders/video/20260526/040227/904c677c.mp4`.
-- The current render worker consumes video clips and burns Timeline subtitle
-  cues. TTS dialogue audio replacement from dialogue tracks remains a separate
-  proof target.
+- `artifacts/runs/dialogue-audio-rerender-20260526T042900Z/dialogue_audio_render.json`
+  records a focused system API re-render of Timeline `18` version `2` after the
+  provider-chain smoke generated MiniMax TTS audio and patched it into
+  `Timeline.source.episode_audio`. Render job `25` succeeded with
+  `has_replaced_audio=true`, `audio_source=timeline.source.episode_audio`,
+  `subtitle_count=1`, and output
+  `https://resource.lets-gpt.com/timeline-renders/video/20260526/042743/e73796af.mp4`.
+- The current render worker consumes video clips, replaces audio from Timeline
+  dialogue audio URL when present, and burns Timeline subtitle cues. Production
+  lip-sync and long-form dialogue pacing remain separate proof targets.
 - Commercial-readiness sequencing is tracked separately in
   `docs/exec-plans/active/main-chain-commercial-readiness.md`.

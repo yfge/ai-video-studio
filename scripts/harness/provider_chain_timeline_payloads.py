@@ -87,8 +87,11 @@ def attach_timeline_video_assets(
     seed_spec: dict[str, Any],
     clips: list[dict[str, Any]],
     run_id: str,
+    dialogue_audio: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     spec = deepcopy(seed_spec)
+    if dialogue_audio:
+        attach_timeline_dialogue_audio(spec, dialogue_audio, run_id)
     generated_by_id = {clip.get("clip_id"): clip for clip in clips}
     attached_ids: set[str] = set()
     missing_ids: list[str] = []
@@ -106,6 +109,42 @@ def attach_timeline_video_assets(
             f"missing={sorted(missing_ids)} unused={sorted(unused_ids)}"
         )
     return spec
+
+
+def attach_timeline_dialogue_audio(
+    spec: dict[str, Any],
+    dialogue_audio: dict[str, Any],
+    run_id: str,
+) -> None:
+    audio_url = str(dialogue_audio.get("audio_url") or "")
+    if not audio_url.startswith(("http://", "https://")):
+        raise RuntimeError("dialogue_audio_missing_public_url")
+    source = spec.setdefault("source", {})
+    if isinstance(source, dict):
+        source["episode_audio"] = {
+            "oss_url": audio_url,
+            "provider": dialogue_audio.get("provider"),
+            "model": dialogue_audio.get("model"),
+            "run_id": run_id,
+        }
+    for clip in _track_clips(spec, "dialogue"):
+        clip["asset_ref"] = {
+            "kind": "provider_chain_dialogue_audio",
+            "url": audio_url,
+            "file_url": audio_url,
+            "provider": dialogue_audio.get("provider"),
+            "model": dialogue_audio.get("model"),
+        }
+        refs = clip.setdefault("source_refs", {})
+        refs.update(
+            {
+                "provider_chain_run_id": run_id,
+                "provider_chain_stage": "dialogue_audio_generated",
+                "audio_url": audio_url,
+                "audio_provider": dialogue_audio.get("provider"),
+                "audio_model": dialogue_audio.get("model"),
+            }
+        )
 
 
 def timeline_track_counts(spec: dict[str, Any]) -> dict[str, int]:
@@ -139,6 +178,9 @@ def mark_quality(
         ),
         "all_dialogue_clips_have_text": all(
             c.get("text") for c in _track_clips(spec, "dialogue")
+        ),
+        "timeline_has_dialogue_audio": all(
+            (c.get("asset_ref") or {}).get("url") for c in _track_clips(spec, "dialogue")
         ),
     }
     payload["production_quality"] = {

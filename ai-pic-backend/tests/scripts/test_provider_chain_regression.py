@@ -124,9 +124,20 @@ def test_timeline_seed_precedes_video_assets_and_preserves_lineage() -> None:
     seed_video_clips = seed_tracks["video"]["clips"]
     seed_dialogue_clips = seed_tracks["dialogue"]["clips"]
     seed_subtitle_clips = seed_tracks["subtitle"]["clips"]
-    spec = attach_timeline_video_assets(seed, clips, "run-1")
+    dialogue_audio = {
+        "provider": "minimax",
+        "model": "speech-2.6-hd",
+        "audio_url": "https://example.com/dialogue.mp3",
+    }
+    spec = attach_timeline_video_assets(
+        seed,
+        clips,
+        "run-1",
+        dialogue_audio=dialogue_audio,
+    )
     tracks = {track["track_type"]: track for track in spec["tracks"]}
     video_clips = tracks["video"]["clips"]
+    dialogue_clips = tracks["dialogue"]["clips"]
 
     assert seed["duration_ms"] == 30000
     assert set(seed_tracks) == {"dialogue", "video", "subtitle"}
@@ -139,6 +150,10 @@ def test_timeline_seed_precedes_video_assets_and_preserves_lineage() -> None:
     assert video_clips[1]["start_ms"] == 15000
     assert video_clips[0]["source_refs"]["dialogue"][0]["line"] == "我到了。"
     assert video_clips[0]["source_refs"]["provider_chain_stage"] == "video_generated"
+    assert (
+        spec["source"]["episode_audio"]["oss_url"] == "https://example.com/dialogue.mp3"
+    )
+    assert dialogue_clips[0]["asset_ref"]["provider"] == "minimax"
 
 
 def test_timeline_asset_attach_fails_on_clip_id_mismatch() -> None:

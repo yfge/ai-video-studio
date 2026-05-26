@@ -21,9 +21,9 @@ slice is now implemented. The current worktree also includes the Phase 3
 render/export execution slice. One real API E2E run now passes through a legacy
 storyboard video migration bridge, and the provider-chain harness now proves
 Timeline-first ordering with explicit `dialogue`, `video`, and `subtitle`
-tracks before media generation. Subtitle burn-in from Timeline subtitle tracks
-now has focused render proof. Commercial readiness still depends on TTS dialogue
-replacement proof and production sample validation.
+tracks before media generation. Subtitle burn-in and Timeline dialogue audio
+replacement now have focused render proof. Commercial readiness still depends on
+dialogue duration alignment and production sample validation.
 
 ## Current Chain Check
 
@@ -79,9 +79,10 @@ render job with a rework fingerprint.
   video rework controls are implemented for selected Timeline clips. Backend
   provider-backed video rework queueing and success lineage are implemented,
   and provider success queues a final render job whose preset is keyed to the
-  replacement asset. The render worker now resolves/concatenates video clips and
-  burns Timeline subtitle cues. TTS replacement from dialogue tracks remains a
-  separate proof target. Commercial-readiness sample production remains pending.
+  replacement asset. The render worker now resolves/concatenates video clips,
+  replaces audio from Timeline dialogue audio URL when present, and burns
+  Timeline subtitle cues. Production lip-sync and sample production remain
+  separate proof targets.
 
 ## Findings
 

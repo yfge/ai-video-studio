@@ -21,7 +21,7 @@ async def test_timeline_render_passes_subtitle_track_to_composer(
 ):
     output_path = tmp_path / "subtitle-render.mp4"
 
-    async def fake_render_to_temp_file(clips, subtitles):
+    async def fake_render_to_temp_file(clips, subtitles, _audio_track):
         assert [clip.clip_id for clip in clips] == ["video_scene_1_beat_1_001"]
         assert len(subtitles) == 1
         assert subtitles[0].text == "小蓝: 我到了。"

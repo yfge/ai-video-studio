@@ -8,13 +8,17 @@ from typing import Any
 from app.core.logging import get_logger
 from app.models.timeline import RenderJob
 from app.repositories.timeline_repository import RenderJobRepository, TimelineRepository
+from app.services.render.timeline_render_audio import resolve_timeline_audio_track
 from app.services.render.timeline_render_clips import (
     TimelineClipVideo,
     resolve_timeline_video_clips,
 )
 from app.services.render.timeline_render_output import persist_timeline_render_output
 from app.services.render.timeline_render_subtitles import resolve_timeline_subtitle_cues
-from app.services.render.timeline_render_types import TimelineSubtitleCue
+from app.services.render.timeline_render_types import (
+    TimelineAudioTrack,
+    TimelineSubtitleCue,
+)
 from app.services.render.video_concat import (
     VideoClip,
     VideoSubtitleCue,
@@ -77,6 +81,7 @@ class TimelineRenderService:
         self._mark_running(job, progress=10, log={"code": "resolving_clips"})
         resolved, missing = resolve_timeline_video_clips(self.db, timeline)
         subtitles = resolve_timeline_subtitle_cues(timeline)
+        audio_track = resolve_timeline_audio_track(timeline)
         if missing:
             return self._mark_failed(
                 job,
@@ -102,9 +107,10 @@ class TimelineRenderService:
                 "code": "rendering",
                 "clip_count": len(resolved),
                 "subtitle_count": len(subtitles),
+                "audio_source": audio_track.source if audio_track else None,
             },
         )
-        output_path = await self._render_to_temp_file(resolved, subtitles)
+        output_path = await self._render_to_temp_file(resolved, subtitles, audio_track)
 
         self._mark_running(job, progress=80, log={"code": "persisting_output"})
         asset = await persist_timeline_render_output(
@@ -123,6 +129,8 @@ class TimelineRenderService:
             "code": "render_succeeded",
             "clip_count": len(resolved),
             "subtitle_count": len(subtitles),
+            "audio_source": audio_track.source if audio_track else None,
+            "has_replaced_audio": audio_track is not None,
             "output_asset_id": asset.id,
             "output_url": asset.file_url or asset.file_path,
         }
@@ -135,6 +143,7 @@ class TimelineRenderService:
         self,
         clips: list[TimelineClipVideo],
         subtitles: list[TimelineSubtitleCue],
+        audio_track: TimelineAudioTrack | None,
     ) -> str:
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             output_path = tmp.name
@@ -149,8 +158,8 @@ class TimelineRenderService:
                 for index, clip in enumerate(clips)
             ],
             output_path=output_path,
-            audio_url=None,
-            keep_original_audio=True,
+            audio_url=audio_track.url if audio_track else None,
+            keep_original_audio=audio_track is None,
             subtitles=[
                 VideoSubtitleCue(
                     text=cue.text,

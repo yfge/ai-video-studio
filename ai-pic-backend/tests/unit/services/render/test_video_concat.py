@@ -191,9 +191,11 @@ class TestReplaceAudio:
         assert result is True
         call_args = mock_run.call_args[0][0]
         assert "ffmpeg" in call_args
+        assert "-filter_complex" in call_args
+        assert "[1:a]apad[a]" in call_args
         assert "-map" in call_args
         assert "0:v:0" in call_args
-        assert "1:a:0" in call_args
+        assert "[a]" in call_args
 
     @patch("app.services.render.video_ffmpeg.subprocess.run")
     def test_replace_audio_failure(self, mock_run):

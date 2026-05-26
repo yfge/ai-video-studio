@@ -28,3 +28,12 @@ class TimelineSubtitleCue:
     start_ms: int
     end_ms: int
     clip_id: str
+
+
+@dataclass(frozen=True)
+class TimelineAudioTrack:
+    """Resolved source audio for Timeline rendering."""
+
+    url: str
+    source: str
+    clip_count: int

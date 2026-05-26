@@ -22,6 +22,7 @@ from scripts.harness.provider_chain_api import (
     generate_script,
     login,
 )
+from scripts.harness.provider_chain_audio import generate_dialogue_audio_for_timeline
 from scripts.harness.provider_chain_media import generate_videos_for_timeline
 from scripts.harness.provider_chain_payloads import scene_durations
 from scripts.harness.provider_chain_timeline_payloads import mark_quality
@@ -78,12 +79,22 @@ def run(args: argparse.Namespace, payload: dict[str, Any]) -> None:
         confirm_models(session, args, payload)
         script = generate_script(session, args, payload)
         timeline = create_seed_timeline(session, args, script, payload)
+        dialogue_audio = generate_dialogue_audio_for_timeline(
+            session, args, timeline, payload
+        )
         vip = create_virtual_ip(session, args, script, payload)
         try:
             image = generate_character_image(session, args, script, vip, payload)
             clips = generate_videos_for_timeline(session, args, timeline, image, payload)
-            mark_quality(payload, clips, image["image_url"], timeline)
-            updated = update_timeline_with_assets(session, args, timeline, clips, payload)
+            updated = update_timeline_with_assets(
+                session,
+                args,
+                timeline,
+                clips,
+                payload,
+                dialogue_audio=dialogue_audio,
+            )
+            mark_quality(payload, clips, image["image_url"], updated)
             render_timeline(session, args, updated, payload)
         finally:
             cleanup_virtual_ip(session, args, payload)
@@ -121,6 +132,8 @@ def _failure_category(message: str) -> str:
         return "script_generation_failed"
     if "oss_url" in message or "image_generation" in message:
         return "image_persistence_failed"
+    if "tts" in message or "audio" in message:
+        return "dialogue_audio_failed"
     if "video" in message or "Seedance" in message or "provider/model" in message:
         return "seedance_generation_failed"
     if "timeline" in message or "render" in message:

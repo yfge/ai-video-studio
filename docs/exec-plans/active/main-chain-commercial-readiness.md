@@ -25,9 +25,10 @@ Open constraint:
   Timeline seed with `dialogue`, `video`, and `subtitle` tracks before image or
   video generation, then patches generated video assets back into the same
   Timeline version lineage.
-- Commercial readiness still depends on TTS dialogue replacement proof,
-  provider cost/stability evidence at sample scale, and production quality
-  evaluation. Subtitle burn-in now has a focused system API rerender proof.
+- Commercial readiness still depends on provider cost/stability evidence at
+  sample scale, dialogue duration alignment, and production quality evaluation.
+  Subtitle burn-in and Timeline dialogue audio replacement now have focused
+  system API rerender proof.
 
 ## Phase 1: Close Current Worktree
 
@@ -95,9 +96,22 @@ Provider-backed Timeline-first evidence:
   Render job `23` succeeded, `render_jobs.log.subtitle_count` was `1`, worker
   logs recorded `Burning 1 subtitle cues...`, and the output was
   `https://resource.lets-gpt.com/timeline-renders/video/20260526/040227/904c677c.mp4`.
-- Remaining limitation: this proves subtitle burn-in from Timeline subtitle
-  track. It does not prove TTS dialogue audio replacement from Timeline dialogue
-  track.
+- Scope: this proof covers subtitle burn-in from Timeline subtitle track only.
+- Dialogue audio render proof:
+  `artifacts/runs/dialogue-audio-rerender-20260526T042900Z/dialogue_audio_render.json`.
+  The provider-chain smoke created Timeline `18` before media generation, called
+  `/api/v1/voice/tts` with MiniMax `speech-2.6-hd`, patched the returned audio
+  URL into Timeline `source.episode_audio`, generated OpenAI image and Seedance
+  video assets, and queued render. The first harness artifact failed only because
+  the poll request saw a transient `RemoteDisconnected` after the render was
+  queued; API follow-up and worker logs confirmed render job `24` succeeded.
+  A clean system API rerender then queued job `25`, which succeeded with
+  `has_replaced_audio=true`, `audio_source=timeline.source.episode_audio`,
+  `subtitle_count=1`, and output
+  `https://resource.lets-gpt.com/timeline-renders/video/20260526/042743/e73796af.mp4`.
+- Remaining limitation: this proves render consumes a Timeline dialogue audio URL
+  and replaces the final audio track. It does not prove production-grade lip-sync
+  or full 30 second dialogue pacing.
 
 ## Phase 3: Add Timeline Delete And Rollback
 

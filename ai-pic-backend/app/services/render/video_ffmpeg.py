@@ -123,7 +123,7 @@ def replace_audio(
     audio_path: str,
     output_path: str,
 ) -> bool:
-    """Replace video audio track with external audio file."""
+    """Replace video audio track with external audio and keep video duration."""
     cmd = [
         "ffmpeg",
         "-y",
@@ -133,12 +133,14 @@ def replace_audio(
         audio_path,
         "-c:v",
         "copy",
-        "-c:a",
-        "aac",
+        "-filter_complex",
+        "[1:a]apad[a]",
         "-map",
         "0:v:0",
         "-map",
-        "1:a:0",
+        "[a]",
+        "-c:a",
+        "aac",
         "-shortest",
         output_path,
     ]
