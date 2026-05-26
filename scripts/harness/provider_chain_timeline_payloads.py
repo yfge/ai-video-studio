@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Any
 
-from scripts.harness.provider_chain_payloads import scene_durations, video_prompt
+from scripts.harness.provider_chain_payloads import scene_durations
 
 
 def dialogue_text(scene: dict[str, Any]) -> str:
@@ -19,7 +18,6 @@ def build_timeline_seed_spec(
     script: dict[str, Any],
     image_url: str | None = None,
 ) -> dict[str, Any]:
-    character = script["characters"][0]
     cursor = 0
     tracks = {"dialogue": [], "video": [], "subtitle": []}
     for ordinal, scene in enumerate(script["scenes"], start=1):
@@ -46,10 +44,7 @@ def build_timeline_seed_spec(
             {
                 **_clip_timing("video", scene_id, beat_id, ordinal, start_ms, end_ms),
                 "source": dict(source),
-                "source_refs": {
-                    **refs,
-                    "video_prompt": video_prompt(scene, character),
-                },
+                "source_refs": dict(refs),
                 "placeholder": True,
                 "text": scene.get("plot"),
             }
@@ -87,99 +82,6 @@ def build_timeline_seed_spec(
     }
 
 
-def attach_timeline_video_assets(
-    seed_spec: dict[str, Any],
-    clips: list[dict[str, Any]],
-    run_id: str,
-    dialogue_audio: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    spec = deepcopy(seed_spec)
-    if dialogue_audio:
-        attach_timeline_dialogue_audio(spec, dialogue_audio, run_id)
-    generated_by_id = {clip.get("clip_id"): clip for clip in clips}
-    attached_ids: set[str] = set()
-    missing_ids: list[str] = []
-    for clip in _track_clips(spec, "video"):
-        generated = generated_by_id.get(clip.get("clip_id"))
-        if not generated:
-            missing_ids.append(str(clip.get("clip_id")))
-            continue
-        attached_ids.add(str(clip.get("clip_id")))
-        _attach_video_asset(clip, generated, run_id)
-    unused_ids = {
-        str(clip_id) for clip_id in generated_by_id if clip_id not in attached_ids
-    }
-    if missing_ids or unused_ids:
-        raise RuntimeError(
-            "timeline_asset_lineage_mismatch: "
-            f"missing={sorted(missing_ids)} unused={sorted(unused_ids)}"
-        )
-    return spec
-
-
-def attach_timeline_dialogue_audio(
-    spec: dict[str, Any],
-    dialogue_audio: dict[str, Any],
-    run_id: str,
-) -> None:
-    audio_by_clip_id = {
-        str(item.get("clip_id")): item
-        for item in dialogue_audio.get("clips") or []
-        if isinstance(item, dict) and item.get("clip_id")
-    }
-    if not audio_by_clip_id:
-        raise RuntimeError("dialogue_audio_missing_clips")
-    source = spec.setdefault("source", {})
-    if isinstance(source, dict):
-        source["dialogue_audio"] = {
-            "mode": "per_clip",
-            "clip_count": len(audio_by_clip_id),
-            "provider": dialogue_audio.get("provider"),
-            "model": dialogue_audio.get("model"),
-            "run_id": run_id,
-        }
-        source.pop("episode_audio", None)
-    attached_ids: set[str] = set()
-    missing_ids: list[str] = []
-    for clip in _track_clips(spec, "dialogue"):
-        clip_id = str(clip.get("clip_id") or "")
-        generated = audio_by_clip_id.get(clip_id)
-        if not generated:
-            missing_ids.append(clip_id)
-            continue
-        attached_ids.add(clip_id)
-        audio_url = str(generated.get("audio_url") or "")
-        if not audio_url.startswith(("http://", "https://")):
-            raise RuntimeError(f"dialogue_audio_missing_public_url: {clip_id}")
-        clip["asset_ref"] = {
-            "kind": "provider_chain_dialogue_clip_audio",
-            "url": audio_url,
-            "file_url": audio_url,
-            "provider": dialogue_audio.get("provider"),
-            "model": dialogue_audio.get("model"),
-            "start_ms": generated.get("start_ms"),
-            "end_ms": generated.get("end_ms"),
-        }
-        refs = clip.setdefault("source_refs", {})
-        refs.update(
-            {
-                "provider_chain_run_id": run_id,
-                "provider_chain_stage": "dialogue_audio_generated",
-                "audio_url": audio_url,
-                "audio_provider": dialogue_audio.get("provider"),
-                "audio_model": dialogue_audio.get("model"),
-            }
-        )
-    unused_ids = {
-        clip_id for clip_id in audio_by_clip_id if clip_id not in attached_ids
-    }
-    if missing_ids or unused_ids:
-        raise RuntimeError(
-            "timeline_dialogue_audio_lineage_mismatch: "
-            f"missing={sorted(missing_ids)} unused={sorted(unused_ids)}"
-        )
-
-
 def timeline_track_counts(spec: dict[str, Any]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for track in spec.get("tracks") or []:
@@ -201,7 +103,7 @@ def mark_quality(
     checks = {
         "has_character_image_url": bool(image_url),
         "all_clips_have_dialogue_source": all(
-            c["scene"].get("dialogue") for c in clips
+            c.get("timeline_shot_plan", {}).get("dialogue_source") for c in clips
         ),
         "all_clips_have_video_prompt": all(c.get("prompt") for c in clips),
         "all_clips_have_lineage": all(
@@ -219,6 +121,12 @@ def mark_quality(
         "timeline_has_dialogue_audio": all(
             (c.get("asset_ref") or {}).get("url")
             for c in _track_clips(spec, "dialogue")
+        ),
+        "timeline_has_shot_plan": all(
+            ((c.get("source_refs") or {}).get("timeline_shot_plan") or {}).get(
+                "video_prompt"
+            )
+            for c in _track_clips(spec, "video")
         ),
     }
     payload["production_quality"] = {
@@ -247,8 +155,8 @@ def _source_refs(
         "provider_chain_run_id": run_id,
         "provider_chain_stage": "timeline_seed",
         "dialogue": scene.get("dialogue"),
+        "plot": scene.get("plot"),
         "image_url": image_url,
-        "script_scene": scene,
     }
 
 
@@ -277,32 +185,3 @@ def _track_clips(spec: dict[str, Any], track_type: str) -> list[dict[str, Any]]:
         if isinstance(track, dict) and track.get("track_type") == track_type:
             return [clip for clip in track.get("clips") or [] if isinstance(clip, dict)]
     return []
-
-
-def _attach_video_asset(
-    clip: dict[str, Any],
-    generated: dict[str, Any],
-    run_id: str,
-) -> None:
-    clip["placeholder"] = False
-    clip["video_url"] = generated["video_url"]
-    clip["asset_ref"] = {
-        "kind": "provider_chain_video",
-        "url": generated["video_url"],
-        "file_url": generated["video_url"],
-        "provider": generated["provider"],
-        "model": generated["model"],
-        "task_id": generated.get("task_id"),
-    }
-    refs = clip.setdefault("source_refs", {})
-    refs.update(
-        {
-            "provider_chain_run_id": run_id,
-            "provider_chain_stage": "video_generated",
-            "image_url": generated.get("image_url"),
-            "video_url": generated["video_url"],
-            "task_id": generated.get("task_id"),
-            "provider": generated["provider"],
-            "model": generated["model"],
-        }
-    )

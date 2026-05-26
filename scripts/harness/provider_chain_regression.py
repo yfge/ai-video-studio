@@ -30,6 +30,7 @@ from scripts.harness.provider_chain_timeline_payloads import mark_quality
 from scripts.harness.provider_chain_timeline import (
     cleanup_virtual_ip,
     create_seed_timeline,
+    generate_timeline_shot_plan,
     render_timeline,
     update_timeline_with_assets,
 )
@@ -81,12 +82,13 @@ def run(args: argparse.Namespace, payload: dict[str, Any]) -> None:
         confirm_models(session, args, payload)
         script = generate_script(session, args, payload)
         timeline = create_seed_timeline(session, args, script, payload)
+        timeline = generate_timeline_shot_plan(session, args, timeline, payload)
         dialogue_audio = generate_dialogue_audio_for_timeline(
             session, args, timeline, payload
         )
-        vip = create_virtual_ip(session, args, script, payload)
+        vip = create_virtual_ip(session, args, timeline, payload)
         try:
-            image = generate_character_image(session, args, script, vip, payload)
+            image = generate_character_image(session, args, timeline, vip, payload)
             clips = generate_videos_for_timeline(session, args, timeline, image, payload)
             updated = update_timeline_with_assets(
                 session,

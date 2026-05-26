@@ -8,9 +8,10 @@ from typing import Any
 
 import requests
 
+from scripts.harness._common import ensure_run_dir, write_json
 from scripts.harness.provider_chain_api import request_json
+from scripts.harness.provider_chain_timeline_assets import attach_timeline_video_assets
 from scripts.harness.provider_chain_timeline_payloads import (
-    attach_timeline_video_assets,
     build_timeline_seed_spec,
     timeline_track_counts,
 )
@@ -46,15 +47,51 @@ def create_seed_timeline(
     )
     if not timeline.get("id") or timeline.get("version") != 1:
         raise RuntimeError("timeline_create_missing_identity")
+    seed_snapshot = _write_run_json(args, "timeline_seed_spec.json", timeline["spec"])
     payload["key_artifacts"]["timeline_seed"] = {
         "id": timeline["id"],
         "version": timeline["version"],
         "duration_ms": spec["duration_ms"],
         "clip_count": sum(timeline_track_counts(spec).values()),
         "track_counts": timeline_track_counts(spec),
+        "snapshot": seed_snapshot,
         "created_before_media_generation": True,
     }
     return timeline
+
+
+def generate_timeline_shot_plan(
+    session: requests.Session,
+    args: argparse.Namespace,
+    timeline: dict[str, Any],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    updated = request_json(
+        session,
+        "POST",
+        f"{args.api_url.rstrip('/')}/api/v1/timelines/{timeline['id']}/shot-plan",
+        json={
+            "expected_version": timeline["version"],
+            "prefer_provider": "deepseek",
+            "model": "deepseek-v4-flash",
+            "style": "3d_cartoon",
+        },
+        chain=payload["request_chain"],
+        label="timeline-shot-plan",
+        timeout=args.timeout_seconds,
+    )
+    if updated.get("version") != timeline["version"] + 1:
+        raise RuntimeError("timeline_shot_plan_version_not_incremented")
+    _validate_shot_plan(updated)
+    snapshot = _write_run_json(args, "timeline_shot_plan_spec.json", updated["spec"])
+    payload["key_artifacts"]["timeline_shot_plan"] = {
+        "id": updated["id"],
+        "seed_version": timeline["version"],
+        "version": updated["version"],
+        "snapshot": snapshot,
+        "created_before_media_generation": True,
+    }
+    return updated
 
 
 def update_timeline_with_assets(
@@ -91,9 +128,47 @@ def update_timeline_with_assets(
         "version": updated["version"],
         "duration_ms": updated["spec"]["duration_ms"],
         "clip_count": len(clips),
+        "assets_snapshot": _write_run_json(
+            args, "timeline_assets_spec.json", updated["spec"]
+        ),
         "created_before_media_generation": True,
     }
-    return updated
+    return readback_timeline_and_clip_assets(session, args, updated, payload)
+
+
+def readback_timeline_and_clip_assets(
+    session: requests.Session,
+    args: argparse.Namespace,
+    timeline: dict[str, Any],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    readback = request_json(
+        session,
+        "GET",
+        f"{args.api_url.rstrip('/')}/api/v1/timelines/{timeline['id']}",
+        chain=payload["request_chain"],
+        label="timeline-readback",
+        timeout=60,
+    )
+    clip_assets = request_json(
+        session,
+        "GET",
+        f"{args.api_url.rstrip('/')}/api/v1/timelines/{timeline['id']}/clip-assets",
+        params={"timeline_version": readback["version"]},
+        chain=payload["request_chain"],
+        label="timeline-clip-assets",
+        timeout=60,
+    )
+    payload["key_artifacts"]["timeline"]["readback_snapshot"] = _write_run_json(
+        args, "timeline_readback.json", readback
+    )
+    payload["key_artifacts"]["timeline"]["clip_assets_snapshot"] = _write_run_json(
+        args, "clip_assets.json", clip_assets
+    )
+    payload["key_artifacts"]["timeline"]["clip_asset_count"] = len(
+        clip_assets.get("items") or []
+    )
+    return readback
 
 
 def render_timeline(
@@ -198,3 +273,23 @@ def cleanup_virtual_ip(
         payload.setdefault("cleanup", {})["virtual_ip"] = body
     except Exception as exc:  # noqa: BLE001 - cleanup must not hide main result
         payload.setdefault("cleanup", {})["virtual_ip_error"] = str(exc)
+
+
+def _validate_shot_plan(timeline: dict[str, Any]) -> None:
+    missing: list[str] = []
+    for track in (timeline.get("spec") or {}).get("tracks") or []:
+        if not isinstance(track, dict) or track.get("track_type") != "video":
+            continue
+        for clip in track.get("clips") or []:
+            refs = clip.get("source_refs") if isinstance(clip, dict) else {}
+            shot_plan = refs.get("timeline_shot_plan") if isinstance(refs, dict) else None
+            if not isinstance(shot_plan, dict) or not shot_plan.get("video_prompt"):
+                missing.append(str((clip or {}).get("clip_id")))
+    if missing:
+        raise RuntimeError(f"timeline_shot_plan_missing_video_prompt: {missing}")
+
+
+def _write_run_json(args: argparse.Namespace, filename: str, data: Any) -> str:
+    path = ensure_run_dir(args.run_id) / filename
+    write_json(path, data)
+    return str(path)

@@ -3,6 +3,7 @@ import threading
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import requests
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -25,16 +26,22 @@ def test_generate_videos_for_timeline_runs_clips_concurrently(monkeypatch) -> No
                             "clip_id": "video_scene1_provider_chain_1_001",
                             "duration_ms": 15000,
                             "source_refs": {
-                                "video_prompt": "robot walks",
-                                "script_scene": {"scene_id": "scene1"},
+                                "timeline_shot_plan": {
+                                    "video_prompt": "robot walks",
+                                    "dialogue_source": "Bot: walk",
+                                    "plot": "robot starts walking",
+                                },
                             },
                         },
                         {
                             "clip_id": "video_scene2_provider_chain_2_002",
                             "duration_ms": 15000,
                             "source_refs": {
-                                "video_prompt": "robot smiles",
-                                "script_scene": {"scene_id": "scene2"},
+                                "timeline_shot_plan": {
+                                    "video_prompt": "robot smiles",
+                                    "dialogue_source": "Bot: smile",
+                                    "plot": "robot smiles",
+                                },
                             },
                         },
                     ],
@@ -105,3 +112,31 @@ def test_generate_videos_for_timeline_runs_clips_concurrently(monkeypatch) -> No
     assert payload["key_artifacts"]["video_generation"]["clip_count"] == 2
     assert payload["key_artifacts"]["video_generation"]["concurrency"] == 2
     assert "wall_time_seconds" in payload["key_artifacts"]["video_generation"]
+
+
+def test_generate_videos_for_timeline_requires_timeline_shot_plan() -> None:
+    timeline = {
+        "spec": {
+            "tracks": [
+                {
+                    "track_type": "video",
+                    "clips": [{"clip_id": "video_1", "duration_ms": 4000}],
+                }
+            ]
+        }
+    }
+    args = SimpleNamespace(
+        api_url="http://localhost:8000",
+        timeout_seconds=30,
+        video_concurrency=1,
+    )
+    payload = {"request_chain": [], "key_artifacts": {}}
+
+    with pytest.raises(RuntimeError, match="missing_timeline_shot_plan"):
+        generate_videos_for_timeline(
+            requests.Session(),
+            args,
+            timeline,
+            {"image_url": "https://example.com/robot.png"},
+            payload,
+        )

@@ -13,7 +13,6 @@ from scripts.harness.provider_chain_payloads import (
     TEXT_MODEL,
     VIDEO_MODEL,
     build_script_prompt,
-    character_image_prompt,
     extract_structured_script,
     scene_durations,
 )
@@ -151,10 +150,10 @@ def generate_script(
 def create_virtual_ip(
     session: requests.Session,
     args: argparse.Namespace,
-    script: dict[str, Any],
+    timeline: dict[str, Any],
     payload: dict[str, Any],
 ) -> dict[str, Any]:
-    character = script["characters"][0]
+    anchor = _timeline_character_anchor(timeline)
     name = f"provider-chain-{args.run_id[-12:]}"
     body = request_json(
         session,
@@ -162,10 +161,10 @@ def create_virtual_ip(
         f"{args.api_url.rstrip('/')}/api/v1/virtual-ips/",
         json={
             "name": name,
-            "description": character.get("appearance_prompt") or "3D cartoon robot character",
+            "description": anchor,
             "tags": ["provider-chain-regression", "cartoon"],
-            "background_story": script.get("logline"),
-            "style_prompt": character.get("consistency_anchor"),
+            "background_story": _timeline_plot_summary(timeline),
+            "style_prompt": anchor,
             "is_public": False,
         },
         chain=payload["request_chain"],
@@ -182,7 +181,7 @@ def create_virtual_ip(
 def generate_character_image(
     session: requests.Session,
     args: argparse.Namespace,
-    script: dict[str, Any],
+    timeline: dict[str, Any],
     vip: dict[str, Any],
     payload: dict[str, Any],
 ) -> dict[str, Any]:
@@ -197,7 +196,7 @@ def generate_character_image(
             "count": 1,
             "size": "1024x1536",
             "aspect_ratio": "9:16",
-            "additional_prompts": [character_image_prompt(script)],
+            "additional_prompts": [_timeline_character_image_prompt(timeline)],
             "is_default": True,
         },
         chain=payload["request_chain"],
@@ -213,5 +212,54 @@ def generate_character_image(
         "model": body.get("ai_model"),
         "oss_url": image_url,
         "file_path": body.get("file_path"),
+        "source": "timeline_shot_plan",
     }
     return {"image_url": image_url, "image_id": body.get("id")}
+
+
+def _timeline_shot_plans(timeline: dict[str, Any]) -> list[dict[str, Any]]:
+    plans: list[dict[str, Any]] = []
+    for track in (timeline.get("spec") or {}).get("tracks") or []:
+        if not isinstance(track, dict) or track.get("track_type") != "video":
+            continue
+        for clip in track.get("clips") or []:
+            refs = clip.get("source_refs") if isinstance(clip, dict) else {}
+            plan = refs.get("timeline_shot_plan") if isinstance(refs, dict) else None
+            if isinstance(plan, dict):
+                plans.append(plan)
+    if not plans:
+        raise RuntimeError("timeline_shot_plan_missing_for_character_image")
+    return plans
+
+
+def _timeline_character_anchor(timeline: dict[str, Any]) -> str:
+    for plan in _timeline_shot_plans(timeline):
+        anchor = plan.get("character_anchor")
+        if isinstance(anchor, str) and anchor.strip():
+            return anchor.strip()
+    return "non-real 3D cartoon robot character"
+
+
+def _timeline_plot_summary(timeline: dict[str, Any]) -> str:
+    plots = [
+        str(plan.get("plot")).strip()
+        for plan in _timeline_shot_plans(timeline)
+        if str(plan.get("plot") or "").strip()
+    ]
+    return " / ".join(plots[:3])
+
+
+def _timeline_character_image_prompt(timeline: dict[str, Any]) -> str:
+    plans = _timeline_shot_plans(timeline)
+    anchor = _timeline_character_anchor(timeline)
+    visual_prompts = [
+        str(plan.get("visual_prompt")).strip()
+        for plan in plans
+        if str(plan.get("visual_prompt") or "").strip()
+    ]
+    return (
+        f"{anchor}. "
+        f"Timeline visual source: {' / '.join(visual_prompts[:2])}. "
+        "High quality 3D cartoon character reference sheet, expressive LED eyes, "
+        "cinematic lighting, clean silhouette, non-real robot, no photorealistic human."
+    )

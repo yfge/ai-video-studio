@@ -10,8 +10,10 @@ from scripts.harness.provider_chain_payloads import (  # noqa: E402
     extract_structured_script,
     scene_durations,
 )
-from scripts.harness.provider_chain_timeline_payloads import (  # noqa: E402
+from scripts.harness.provider_chain_timeline_assets import (  # noqa: E402
     attach_timeline_video_assets,
+)
+from scripts.harness.provider_chain_timeline_payloads import (  # noqa: E402
     build_timeline_seed_spec,
 )
 
@@ -158,6 +160,9 @@ def test_timeline_seed_precedes_video_assets_and_preserves_lineage() -> None:
     assert seed_subtitle_clips[0]["text"] == "小蓝: 我到了。"
     assert seed_video_clips[0]["placeholder"] is True
     assert "asset_ref" not in seed_video_clips[0]
+    assert "video_prompt" not in seed_video_clips[0]["source_refs"]
+    assert "script_scene" not in seed_video_clips[0]["source_refs"]
+    assert seed_video_clips[0]["source_refs"]["plot"] == "机器人进门。"
     assert video_clips[0]["asset_ref"]["url"] == "https://example.com/a.mp4"
     assert video_clips[0]["placeholder"] is False
     assert video_clips[1]["start_ms"] == 15000
