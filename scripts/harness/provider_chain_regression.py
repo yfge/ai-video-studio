@@ -141,8 +141,15 @@ def main() -> int:
 def _failure_category(message: str) -> str:
     if "script" in message or "JSON" in message:
         return "script_generation_failed"
-    if "oss_url" in message or "image_generation" in message:
+    if (
+        "oss_url" in message
+        or "image_generation" in message
+        or "images/generate" in message
+        or "AI图像生成失败" in message
+    ):
         return "image_persistence_failed"
+    if "virtual-ips" in message or "虚拟IP" in message:
+        return "virtual_ip_failed"
     if "tts" in message or "audio" in message:
         return "dialogue_audio_failed"
     if "video" in message or "Seedance" in message or "provider/model" in message:

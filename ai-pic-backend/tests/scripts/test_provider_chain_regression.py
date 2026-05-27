@@ -10,6 +10,7 @@ from scripts.harness.provider_chain_payloads import (  # noqa: E402
     extract_structured_script,
     scene_durations,
 )
+from scripts.harness.provider_chain_regression import _failure_category  # noqa: E402
 from scripts.harness.provider_chain_timeline_assets import (  # noqa: E402
     attach_timeline_video_assets,
 )
@@ -55,6 +56,16 @@ def test_extract_structured_script_requires_dialogue() -> None:
 def test_scene_durations_split_modes() -> None:
     assert scene_durations("smoke") == [4]
     assert scene_durations("full-30s") == [15, 15]
+
+
+def test_failure_category_classifies_image_generation_endpoint() -> None:
+    assert (
+        _failure_category(
+            "500 Server Error for url: "
+            "http://localhost:8000/api/v1/virtual-ips/62/images/generate"
+        )
+        == "image_persistence_failed"
+    )
 
 
 def test_timeline_seed_precedes_video_assets_and_preserves_lineage() -> None:
