@@ -118,7 +118,10 @@ def generate_script(
         "POST",
         f"{args.api_url.rstrip('/')}/api/v1/ai/generate/text",
         json={
-            "prompt": build_script_prompt(args.mode),
+            "prompt": build_script_prompt(
+                args.mode,
+                getattr(args, "script_premise", None),
+            ),
             "model": TEXT_MODEL,
             "prefer_provider": "deepseek",
             "system_prompt": "You are a strict JSON writer. Output JSON only.",

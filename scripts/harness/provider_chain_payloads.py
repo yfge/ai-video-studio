@@ -16,12 +16,19 @@ def scene_durations(mode: str) -> list[int]:
     return [4] if mode == "smoke" else [15, 15]
 
 
-def build_script_prompt(mode: str) -> str:
+def build_script_prompt(mode: str, premise: str | None = None) -> str:
     durations = scene_durations(mode)
+    premise_text = (
+        f" Story premise to follow: {premise.strip()}. "
+        if isinstance(premise, str) and premise.strip()
+        else " "
+    )
     return (
         "Return only valid JSON. Write a compact Chinese short-drama script for a "
         "non-real 3D cartoon robot character. No live-action human, no celebrity, "
-        "no photorealistic face. The JSON schema is: "
+        "no photorealistic face."
+        f"{premise_text}"
+        "The JSON schema is: "
         '{"title":str,"logline":str,"characters":[{"name":str,"role":str,'
         '"appearance_prompt":str,"consistency_anchor":str}],'
         '"scenes":[{"scene_id":str,"duration_seconds":int,"plot":str,'

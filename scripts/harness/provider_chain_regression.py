@@ -48,6 +48,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--poll-interval-seconds", type=float, default=5.0)
     parser.add_argument("--video-concurrency", type=int, default=2)
+    parser.add_argument(
+        "--script-premise",
+        default=None,
+        help="Optional premise used only to vary the DeepSeek script seed.",
+    )
     parser.add_argument("--keep-temp-ip", action="store_true")
     return parser.parse_args()
 
@@ -68,6 +73,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
             "episode_id": args.episode_id,
             "script_id": args.script_id,
             "scene_durations": scene_durations(args.mode),
+            "script_premise": args.script_premise,
         },
         "request_chain": [],
         "key_artifacts": {},
