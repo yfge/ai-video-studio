@@ -19,13 +19,14 @@ def evaluate_provider_chain_sample(
     payload: dict[str, Any],
     *,
     provider_chain_artifact: str,
+    script_lint: dict[str, Any] | None = None,
     script_score: dict[str, Any] | None = None,
     frame_artifacts: list[str] | None = None,
     contact_sheet: str | None = None,
     sample_id: str | None = None,
     attempt: int | None = None,
 ) -> dict[str, Any]:
-    lint = lint_script(payload)
+    lint = script_lint or lint_script(payload)
     structured = structured_script_score(payload)
     timeline = evaluate_timeline_order(payload)
     render = evaluate_render_structure(payload)

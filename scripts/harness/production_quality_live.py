@@ -9,20 +9,20 @@ import time
 from pathlib import Path
 from typing import Any
 
-import requests
-
 from scripts.harness._common import ensure_run_dir
+from scripts.harness.production_quality_api_checks import (
+    lint_script_via_api,
+    score_script_via_api,
+)
 from scripts.harness.production_quality_report import (
     aggregate_quality_report,
     evaluate_provider_chain_sample,
     extract_clip_frames,
     load_provider_chain,
     make_contact_sheet,
-    provider_chain_script_text,
     write_quality_outputs,
 )
 
-TEXT_MODEL = "deepseek-v4-flash"
 DEFAULT_PREMISES = [
     "夜班卡通机器人发现奖金清零，必须在倒计时内找出是谁改了时间轴。",
     "卡通机甲剪辑师上线错误资产，客户马上验收，队友却说这是唯一证据。",
@@ -97,6 +97,7 @@ def run_live_sample(
     sample = evaluate_provider_chain_sample(
         payload,
         provider_chain_artifact=str(provider_artifact),
+        script_lint=lint_script_via_api(args, payload, f"{sample_id}-{attempt}"),
         script_score=score_script_via_api(args, payload, f"{sample_id}-{attempt}"),
         frame_artifacts=frames,
         contact_sheet=sheet,
@@ -110,38 +111,6 @@ def run_live_sample(
         sample["passed"] = False
         sample["frame_extraction_error"] = frame_error
     return sample
-
-
-def score_script_via_api(
-    args: argparse.Namespace, payload: dict[str, Any], request_suffix: str
-) -> dict[str, Any]:
-    try:
-        with requests.Session() as session:
-            token = _login_for_score(session, args)
-            session.headers["Authorization"] = f"Bearer {token}"
-            session.headers["x-harness-run-id"] = args.run_id
-            response = session.post(
-                f"{args.api_url.rstrip('/')}/api/v1/scoring/score",
-                json=_score_payload(payload),
-                headers={
-                    "x-client-request-id": (
-                        f"{args.run_id}-script-score-{request_suffix}"
-                    )
-                },
-                timeout=args.timeout_seconds,
-            )
-            response.raise_for_status()
-            data = response.json()
-            data["provider"] = "deepseek"
-            data["model"] = TEXT_MODEL
-            return data
-    except Exception as exc:  # noqa: BLE001 - scoring failure is evidence
-        return {
-            "status": "failed",
-            "provider": "deepseek",
-            "model": TEXT_MODEL,
-            "error": f"{type(exc).__name__}: {exc}",
-        }
 
 
 def failed_sample(
@@ -243,32 +212,6 @@ def _base_live_report(args: argparse.Namespace, samples: list[dict[str, Any]]) -
             expected_sample_count=args.sample_count,
         ),
     }
-
-
-def _score_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "script_content": provider_chain_script_text(payload),
-        "story_title": "Timeline-first production quality regression",
-        "story_genre": "cartoon_short_drama",
-        "market_region": "CN",
-        "micro_genre": "workplace-ai-production",
-        "prefer_provider": "deepseek",
-        "prefer_model": TEXT_MODEL,
-    }
-
-
-def _login_for_score(session: requests.Session, args: argparse.Namespace) -> str:
-    response = session.post(
-        f"{args.api_url.rstrip('/')}/api/v1/auth/login",
-        data={"username": args.username, "password": args.password},
-        headers={
-            "x-harness-run-id": args.run_id,
-            "x-client-request-id": f"{args.run_id}-score-login",
-        },
-        timeout=30,
-    )
-    response.raise_for_status()
-    return response.json()["access_token"]
 
 
 def _write_provider_log(

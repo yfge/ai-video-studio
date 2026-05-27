@@ -52,7 +52,16 @@ def request_json(
 ) -> dict[str, Any]:
     response = session.request(method, url, timeout=timeout, **kwargs)
     record_response(chain, response, label=label)
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        body = response.text[:2000] if response.text else ""
+        suffix = f" | response_body={body}" if body else ""
+        raise requests.HTTPError(
+            f"{exc}{suffix}",
+            response=response,
+            request=response.request,
+        ) from exc
     return response.json() if response.content else {}
 
 

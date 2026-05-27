@@ -142,6 +142,70 @@ def test_generate_videos_for_timeline_requires_timeline_shot_plan() -> None:
         )
 
 
+def test_generate_videos_for_timeline_normalizes_seedance_prompt(monkeypatch) -> None:
+    timeline = {
+        "spec": {
+            "tracks": [
+                {
+                    "track_type": "video",
+                    "clips": [
+                        _video_clip(
+                            "video_1",
+                            "Plot: robot acts\nDialogue: Bot: hi\nAction: wave",
+                        )
+                    ],
+                }
+            ]
+        }
+    }
+    args = SimpleNamespace(
+        api_url="http://localhost:8000",
+        timeout_seconds=30,
+        video_concurrency=1,
+    )
+    payload = {"request_chain": [], "key_artifacts": {}}
+    sent_prompts: list[str] = []
+
+    def fake_request_json(
+        session,
+        method,
+        url,
+        *,
+        chain,
+        label,
+        timeout,
+        **kwargs,
+    ):
+        sent_prompts.append(kwargs["json"]["prompt"])
+        return {
+            "data": {
+                "provider": "volcengine",
+                "model": "doubao-seedance-2-0-260128",
+                "video_url": "https://example.com/video.mp4",
+                "metadata": {"task_id": "task-1"},
+            }
+        }
+
+    monkeypatch.setattr(
+        "scripts.harness.provider_chain_media.request_json",
+        fake_request_json,
+    )
+
+    clips = generate_videos_for_timeline(
+        requests.Session(),
+        args,
+        timeline,
+        {"image_url": "https://example.com/robot.png"},
+        payload,
+    )
+
+    assert sent_prompts == ["Plot: robot acts Dialogue: Bot: hi Action: wave"]
+    assert clips[0]["prompt_source"] == "timeline_shot_plan.video_prompt"
+    assert clips[0]["raw_timeline_video_prompt"] == (
+        "Plot: robot acts\nDialogue: Bot: hi\nAction: wave"
+    )
+
+
 def test_generate_videos_for_timeline_preserves_parallel_failure_chain(
     monkeypatch,
 ) -> None:

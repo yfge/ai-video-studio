@@ -1,10 +1,14 @@
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.append(str(REPO_ROOT))
 
+import pytest
+
+from scripts.harness.production_quality_script import lint_script_async  # noqa: E402
 from scripts.harness.production_quality_report import (  # noqa: E402
     aggregate_quality_report,
     evaluate_character_consistency,
@@ -19,6 +23,24 @@ def test_build_script_prompt_accepts_optional_premise() -> None:
 
     assert "奖金清零" in prompt
     assert "Create exactly 2 scene" in prompt
+    assert "<= 15 visible" in prompt
+    assert "one stable protagonist" in prompt
+
+
+@pytest.mark.asyncio
+async def test_script_lint_async_accepts_provider_chain_screenplay() -> None:
+    payload = _provider_payload()
+
+    result = await lint_script_async(
+        payload,
+        ai_manager=_CliffhangerManager(),
+        model="deepseek-v4-flash",
+        prefer_provider="deepseek",
+    )
+
+    assert result["passed"] is True
+    assert "[第1场]" in result["screenplay"]
+    assert not any(issue["rule_id"] == "scene_headers" for issue in result["issues"])
 
 
 def test_character_gate_fails_when_shot_plan_or_task_lineage_missing() -> None:
@@ -193,6 +215,22 @@ def _passing_script_score() -> dict:
             "logic_coherence": 4.3,
         },
     }
+
+
+class _CliffhangerManager:
+    async def generate_text(self, **kwargs):
+        return SimpleNamespace(
+            success=True,
+            provider="deepseek",
+            model=kwargs.get("model") or "deepseek-v4-flash",
+            data={
+                "passed": True,
+                "score": 1.0,
+                "reason": "结尾继续抛问题",
+                "evidence": "最后一句留下证据疑问",
+                "suggestion": "",
+            },
+        )
 
 
 def _sample(

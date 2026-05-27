@@ -15,10 +15,14 @@ if str(BACKEND_ROOT) not in sys.path:
 
 try:  # pragma: no cover - depends on backend runtime packages
     from app.schemas.script_quality import ScriptLintOptions
-    from app.services.script_quality.lint_engine import lint_script_content
+    from app.services.script_quality.lint_engine import (
+        lint_script_content,
+        lint_script_content_async,
+    )
 except Exception:  # noqa: BLE001 - live report still records provider evidence
     ScriptLintOptions = None  # type: ignore[assignment]
     lint_script_content = None  # type: ignore[assignment]
+    lint_script_content_async = None  # type: ignore[assignment]
 
 QUALITY_PASS_THRESHOLD = 9.0
 SCRIPT_SCORE_PASS = 4.0
@@ -80,6 +84,37 @@ def lint_script(payload: dict[str, Any]) -> dict[str, Any]:
             "screenplay": text,
         }
     result = lint_script_content(text, ScriptLintOptions(pass_threshold=9.0))
+    return _lint_result_dict(result, text)
+
+
+async def lint_script_async(
+    payload: dict[str, Any],
+    *,
+    ai_manager: Any,
+    model: str | None = None,
+    prefer_provider: str | None = None,
+) -> dict[str, Any]:
+    text = provider_chain_script_text(payload)
+    if lint_script_content_async is None or ScriptLintOptions is None:
+        return {
+            "status": "skipped",
+            "reason": "backend_script_quality_linter_unavailable",
+            "passed": False,
+            "overall_score": None,
+            "pass_threshold": QUALITY_PASS_THRESHOLD,
+            "screenplay": text,
+        }
+    result = await lint_script_content_async(
+        text,
+        options=ScriptLintOptions(pass_threshold=9.0),
+        ai_manager=ai_manager,
+        model=model,
+        prefer_provider=prefer_provider,
+    )
+    return _lint_result_dict(result, text)
+
+
+def _lint_result_dict(result: Any, text: str) -> dict[str, Any]:
     return {
         "status": "completed",
         "passed": bool(result.passed),
@@ -181,7 +216,7 @@ def normalize_script_score(score: dict[str, Any] | None) -> dict[str, Any]:
 def _scene_to_lint_lines(index: int, scene: dict[str, Any]) -> list[str]:
     plot = str(scene.get("plot") or "角色发现异常并立即行动。")
     video_prompt = str(scene.get("video_prompt") or scene.get("image_prompt") or "")
-    lines = [f"# 第{index}场", f"▲动作：{plot}", f"【镜头】特写/推镜/{video_prompt}"]
+    lines = [f"[第{index}场]", f"▲动作：{plot}", f"【镜头】特写/推镜/{video_prompt}"]
     for line in scene.get("dialogue") or []:
         if isinstance(line, dict) and line.get("speaker") and line.get("line"):
             lines.append(f"{line['speaker']}: {line['line']}")

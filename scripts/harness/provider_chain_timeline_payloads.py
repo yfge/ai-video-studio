@@ -20,6 +20,7 @@ def build_timeline_seed_spec(
 ) -> dict[str, Any]:
     cursor = 0
     tracks = {"dialogue": [], "video": [], "subtitle": []}
+    character = _primary_character(script)
     for ordinal, scene in enumerate(script["scenes"], start=1):
         duration = int(scene.get("duration_seconds") or scene_durations("smoke")[0])
         start_ms, end_ms = cursor, cursor + duration * 1000
@@ -27,7 +28,7 @@ def build_timeline_seed_spec(
         scene_id = str(scene.get("scene_id") or f"scene_{ordinal}")
         beat_id = f"provider_chain_{ordinal}"
         source = _source(run_id)
-        refs = _source_refs(run_id, scene, image_url)
+        refs = _source_refs(run_id, scene, image_url, character)
         dialogue = dialogue_text(scene)
         tracks["dialogue"].append(
             {
@@ -150,6 +151,7 @@ def _source_refs(
     run_id: str,
     scene: dict[str, Any],
     image_url: str | None,
+    character: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "provider_chain_run_id": run_id,
@@ -157,6 +159,10 @@ def _source_refs(
         "dialogue": scene.get("dialogue"),
         "plot": scene.get("plot"),
         "image_url": image_url,
+        "character_name": character.get("name"),
+        "character_role": character.get("role"),
+        "character_appearance_prompt": character.get("appearance_prompt"),
+        "character_anchor_hint": character.get("consistency_anchor"),
     }
 
 
@@ -185,3 +191,10 @@ def _track_clips(spec: dict[str, Any], track_type: str) -> list[dict[str, Any]]:
         if isinstance(track, dict) and track.get("track_type") == track_type:
             return [clip for clip in track.get("clips") or [] if isinstance(clip, dict)]
     return []
+
+
+def _primary_character(script: dict[str, Any]) -> dict[str, Any]:
+    characters = script.get("characters")
+    if isinstance(characters, list) and characters and isinstance(characters[0], dict):
+        return characters[0]
+    return {}

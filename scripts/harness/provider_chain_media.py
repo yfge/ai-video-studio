@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
@@ -142,9 +143,10 @@ def _generate_one_video_clip(
     shot_plan = refs.get("timeline_shot_plan")
     if not isinstance(shot_plan, dict):
         raise RuntimeError(f"timeline_clip_{index}_missing_timeline_shot_plan")
-    prompt = str(shot_plan.get("video_prompt") or "").strip()
-    if not prompt:
+    raw_prompt = str(shot_plan.get("video_prompt") or "").strip()
+    if not raw_prompt:
         raise RuntimeError(f"timeline_clip_{index}_missing_video_prompt")
+    prompt = _seedance_prompt(raw_prompt)
     duration = _duration_seconds(timeline_clip)
     body = request_json(
         session,
@@ -164,7 +166,16 @@ def _generate_one_video_clip(
         timeout=args.timeout_seconds,
     )
     data = body.get("data") or {}
-    return _validated_clip(data, timeline_clip, shot_plan, prompt, duration, index, image)
+    return _validated_clip(
+        data,
+        timeline_clip,
+        shot_plan,
+        prompt,
+        raw_prompt,
+        duration,
+        index,
+        image,
+    )
 
 
 def _video_clips(spec: dict[str, Any]) -> list[dict[str, Any]]:
@@ -188,6 +199,7 @@ def _validated_clip(
     timeline_clip: dict[str, Any],
     shot_plan: dict[str, Any],
     prompt: str,
+    raw_prompt: str,
     duration: int,
     index: int,
     image: dict[str, Any],
@@ -208,9 +220,18 @@ def _validated_clip(
         "model": model,
         "task_id": (data.get("metadata") or {}).get("task_id"),
         "prompt": prompt,
+        "prompt_source": "timeline_shot_plan.video_prompt",
+        "raw_timeline_video_prompt": raw_prompt,
         "timeline_shot_plan": shot_plan,
         "scene": {
             "plot": shot_plan.get("plot"),
             "dialogue": shot_plan.get("dialogue_source"),
         },
     }
+
+
+def _seedance_prompt(raw_prompt: str) -> str:
+    compact = re.sub(r"\s+", " ", raw_prompt).strip()
+    if len(compact) <= 1200:
+        return compact
+    return compact[:1197].rstrip() + "..."

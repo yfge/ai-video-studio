@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from app.models.script import Episode, Script, Story
 from app.models.timeline import Timeline, TimelineRevision
 from app.models.user import User
+from app.services.timeline_shot_plan_payloads import build_timeline_shot_plan_prompt
 from sqlalchemy.orm import Session
 
 
@@ -247,3 +248,21 @@ def test_timeline_shot_plan_api_rejects_invalid_plan_without_updating(
     assert refreshed.version == 1
     video_clip = refreshed.spec["tracks"][1]["clips"][0]
     assert "timeline_shot_plan" not in video_clip["source_refs"]
+
+
+def test_timeline_shot_plan_prompt_includes_character_anchor_hint():
+    episode = SimpleNamespace(id=133)
+    script = SimpleNamespace(id=117)
+    spec = _timeline_spec(episode, script)
+    video_clip = spec["tracks"][1]["clips"][0]
+    video_clip["source_refs"]["character_name"] = "小蓝"
+    video_clip["source_refs"]["character_appearance_prompt"] = "圆润蓝色机器人"
+    video_clip["source_refs"]["character_anchor_hint"] = (
+        "blue cartoon robot, orange scarf, LED eyes"
+    )
+
+    prompt = build_timeline_shot_plan_prompt(spec, style="3d_cartoon")
+
+    assert "character_anchor_hint" in prompt
+    assert "blue cartoon robot, orange scarf, LED eyes" in prompt
+    assert "same protagonist anchor" in prompt

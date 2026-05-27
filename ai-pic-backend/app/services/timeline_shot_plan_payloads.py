@@ -36,6 +36,10 @@ def build_timeline_shot_plan_prompt(spec: dict[str, Any], *, style: str) -> str:
         '"dialogue_source":str,"visual_prompt":str,"video_prompt":str,'
         '"character_anchor":str,"camera":str,"action":str}]}. '
         f"Style must be {style}; use non-real cartoon characters only. "
+        "Use the same protagonist anchor across all shots when character_anchor_hint "
+        "is present. character_anchor must be a reusable visual descriptor, not only "
+        "a bare character name. Supporting characters may appear only as secondary "
+        "props/figures and must not replace the protagonist. "
         "Each video_prompt must include plot, dialogue_source, character_anchor, "
         "camera, action, style, and duration. Timeline clips: "
         f"{clips}"
@@ -130,6 +134,9 @@ def _timeline_prompt_clips(spec: dict[str, Any]) -> list[dict[str, Any]]:
         key = _scene_beat_key(clip)
         dialogue_clip = dialogue_by_key.get(key) or {}
         subtitle_clip = subtitle_by_key.get(key) or {}
+        source_refs = clip.get("source_refs") if isinstance(clip, dict) else {}
+        if not isinstance(source_refs, dict):
+            source_refs = {}
         prompt_clips.append(
             {
                 "clip_id": clip.get("clip_id"),
@@ -146,6 +153,11 @@ def _timeline_prompt_clips(spec: dict[str, Any]) -> list[dict[str, Any]]:
                 "speaker_name": dialogue_clip.get("speaker_name"),
                 "dialogue_action": dialogue_clip.get("dialogue_action"),
                 "dialogue_emotion": dialogue_clip.get("dialogue_emotion"),
+                "character_name": source_refs.get("character_name"),
+                "character_appearance_prompt": source_refs.get(
+                    "character_appearance_prompt"
+                ),
+                "character_anchor_hint": source_refs.get("character_anchor_hint"),
             }
         )
     return prompt_clips

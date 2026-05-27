@@ -35,8 +35,14 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         '"dialogue":[{"speaker":str,"line":str}],"image_prompt":str,'
         '"video_prompt":str}]}. '
         f"Create exactly {len(durations)} scene(s) with durations {durations}. "
-        "Every scene must have plot, at least one dialogue line, and a Seedance-ready "
-        "video prompt that includes the character anchor and the dialogue source."
+        "Use one stable protagonist across every scene; keep the protagonist's "
+        "consistency_anchor as a visual descriptor, not just a name. Supporting "
+        "characters, if any, must stay secondary and must not replace the protagonist. "
+        "Every dialogue line must be <= 15 visible Chinese/English characters. "
+        "Scene 1 must open with an immediate conflict or countdown hook. The final "
+        "scene must end on an unresolved reversal or question, not a full resolution. "
+        "Every scene must have plot, one or two short dialogue lines, and a Seedance-ready "
+        "video prompt that includes the same character anchor and the dialogue source."
     )
 
 

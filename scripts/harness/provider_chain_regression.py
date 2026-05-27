@@ -123,7 +123,7 @@ def main() -> int:
         return 0
     except Exception as exc:  # noqa: BLE001 - harness must persist failure evidence
         payload["failures"].append({"type": type(exc).__name__, "message": str(exc)})
-        payload["failure_categories"].append(_failure_category(str(exc)))
+        payload["failure_categories"].append(_failure_category(str(exc), payload))
         return 1
     finally:
         payload["ok"] = ok
@@ -138,7 +138,20 @@ def main() -> int:
         print({"ok": ok, "mode": args.mode, "artifact": str(artifact)})
 
 
-def _failure_category(message: str) -> str:
+def _failure_category(message: str, payload: dict[str, Any] | None = None) -> str:
+    evidence = _failure_evidence(message, payload)
+    if any(
+        marker in evidence
+        for marker in (
+            "AccountOverdueError",
+            "overdue balance",
+            "insufficient balance",
+            "quota",
+            "余额不足",
+            "欠费",
+        )
+    ):
+        return "provider_billing_or_quota_failed"
     if "script" in message or "JSON" in message:
         return "script_generation_failed"
     if (
@@ -161,6 +174,17 @@ def _failure_category(message: str) -> str:
     if "production_quality" in message:
         return "production_quality_failed"
     return "unknown"
+
+
+def _failure_evidence(message: str, payload: dict[str, Any] | None) -> str:
+    parts = [message]
+    for item in (payload or {}).get("request_chain") or []:
+        if not isinstance(item, dict):
+            continue
+        body = item.get("response_body")
+        if isinstance(body, str) and body:
+            parts.append(body)
+    return "\n".join(parts)
 
 
 if __name__ == "__main__":
