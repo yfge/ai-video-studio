@@ -11,7 +11,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = REPO_ROOT / "ai-pic-backend"
 if str(BACKEND_ROOT) not in sys.path:
-    sys.path.append(str(BACKEND_ROOT))
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 try:  # pragma: no cover - depends on backend runtime packages
     from app.schemas.script_quality import ScriptLintOptions
