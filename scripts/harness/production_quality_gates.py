@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from scripts.harness.production_quality_script import (
-    QUALITY_PASS_THRESHOLD,
-    STRUCTURED_SCORE_PASS,
     lint_script,
     normalize_script_score,
     structured_script_score,
@@ -145,49 +143,6 @@ def evaluate_character_consistency(
     }
 
 
-def aggregate_quality_report(
-    samples: list[dict[str, Any]], *, expected_sample_count: int
-) -> dict[str, Any]:
-    first_attempts = [s for s in samples if int(s.get("attempt") or 1) == 1]
-    finals = _latest_attempts(samples)
-    first_success = sum(1 for sample in first_attempts if sample.get("passed"))
-    retry_success = sum(1 for sample in finals if sample.get("passed"))
-    timeline_errors = _count_hard_failure(finals, "timeline_order")
-    render_errors = _count_hard_failure(finals, "render_structure")
-    character_errors = _count_hard_failure(finals, "character_consistency")
-    lint_scores = _numeric_values(finals, "script_lint", "overall_score")
-    structured_scores = _numeric_values(finals, "structured_script_score", "average")
-    checks = {
-        "sample_count_matches": len(finals) == expected_sample_count,
-        "first_pass_success_at_least_8_of_10": first_success >= 8,
-        "retry_success_at_least_9_of_10": retry_success >= 9,
-        "timeline_order_errors_zero": timeline_errors == 0,
-        "render_structure_errors_zero": render_errors == 0,
-        "character_hard_failures_zero": character_errors == 0,
-        "script_lint_average_at_least_9": _avg(lint_scores) >= QUALITY_PASS_THRESHOLD,
-        "structured_script_average_at_least_3_5": _avg(structured_scores)
-        >= STRUCTURED_SCORE_PASS,
-    }
-    verdict = "trial_ready" if all(checks.values()) else "not_trial_ready"
-    if checks["timeline_order_errors_zero"] and checks["render_structure_errors_zero"]:
-        if character_errors == 0 and not all(checks.values()):
-            verdict = "chain_ready_quality_not_proven"
-    return {
-        "verdict": verdict,
-        "checks": checks,
-        "expected_sample_count": expected_sample_count,
-        "sample_count": len(finals),
-        "first_attempt_count": len(first_attempts),
-        "first_success_count": first_success,
-        "retry_adjusted_success_count": retry_success,
-        "timeline_order_error_count": timeline_errors,
-        "render_structure_error_count": render_errors,
-        "character_hard_failure_count": character_errors,
-        "script_lint_average": round(_avg(lint_scores), 2),
-        "structured_script_average": round(_avg(structured_scores), 2),
-    }
-
-
 def extract_step_timings(payload: dict[str, Any]) -> dict[str, float]:
     groups = {
         "deepseek_seconds": ["deepseek-script", "timeline-shot-plan"],
@@ -241,29 +196,8 @@ def _script_failures(lint: dict, score: dict, structured: dict) -> list[str]:
     return failures
 
 
-def _latest_attempts(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    latest: dict[str, dict[str, Any]] = {}
-    for sample in samples:
-        sample_id = str(sample.get("sample_id") or len(latest) + 1)
-        latest[sample_id] = sample
-    return list(latest.values())
-
-
 def _failed_gate_names(gates: dict[str, dict[str, Any]]) -> list[str]:
     return [name for name, gate in gates.items() if not gate.get("passed")]
-
-
-def _count_hard_failure(samples: list[dict[str, Any]], failure: str) -> int:
-    return sum(1 for sample in samples if failure in sample.get("hard_failures", []))
-
-
-def _numeric_values(samples: list[dict[str, Any]], group: str, key: str) -> list[float]:
-    values = []
-    for sample in samples:
-        value = _maybe_float(sample.get(group, {}).get(key))
-        if value is not None:
-            values.append(value)
-    return values
 
 
 def _first_index(labels: list[str], target: str) -> int | None:
@@ -276,17 +210,6 @@ def _first_index(labels: list[str], target: str) -> int | None:
 def _ordered_positions(positions: list[int | None]) -> bool:
     integers = [int(position) for position in positions if position is not None]
     return integers == sorted(integers) and len(integers) == len(positions)
-
-
-def _maybe_float(value: Any) -> float | None:
-    try:
-        return float(value) if value is not None else None
-    except (TypeError, ValueError):
-        return None
-
-
-def _avg(values: list[float]) -> float:
-    return sum(values) / len(values) if values else 0.0
 
 
 def _final_url(payload: dict[str, Any]) -> str | None:

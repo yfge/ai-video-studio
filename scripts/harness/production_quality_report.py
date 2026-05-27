@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from scripts.harness.production_quality_aggregate import aggregate_quality_report
 from scripts.harness.production_quality_gates import (
-    aggregate_quality_report,
     evaluate_character_consistency,
     evaluate_provider_chain_sample,
     evaluate_render_structure,

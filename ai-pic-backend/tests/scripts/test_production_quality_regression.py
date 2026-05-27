@@ -97,6 +97,25 @@ def test_aggregate_report_counts_retry_adjusted_success() -> None:
     assert aggregate["checks"]["retry_success_at_least_9_of_10"] is True
 
 
+def test_aggregate_report_marks_provider_billing_blocker() -> None:
+    samples = [
+        _sample(
+            f"sample-{index:02d}",
+            1,
+            passed=False,
+            hard_failures=["provider_chain"],
+            failure_categories=["provider_billing_or_quota_failed"],
+        )
+        for index in range(1, 11)
+    ]
+
+    aggregate = aggregate_quality_report(samples, expected_sample_count=10)
+
+    assert aggregate["verdict"] == "provider_blocked_not_evaluable"
+    assert aggregate["provider_billing_or_quota_error_count"] == 10
+    assert aggregate["checks"]["provider_billing_or_quota_errors_zero"] is False
+
+
 def test_normalize_script_score_requires_all_dimensions_above_threshold() -> None:
     score = _passing_script_score()
     score["dimension_scores"]["clip_ability"] = 3.0
@@ -239,12 +258,14 @@ def _sample(
     *,
     passed: bool,
     hard_failures: list[str] | None = None,
+    failure_categories: list[str] | None = None,
 ) -> dict:
     return {
         "sample_id": sample_id,
         "attempt": attempt,
         "passed": passed,
         "hard_failures": hard_failures or [],
+        "failure_categories": failure_categories or [],
         "script_lint": {"overall_score": 9.2},
         "structured_script_score": {"average": 3.8},
     }
