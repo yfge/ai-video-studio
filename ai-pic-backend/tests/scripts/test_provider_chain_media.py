@@ -140,3 +140,80 @@ def test_generate_videos_for_timeline_requires_timeline_shot_plan() -> None:
             {"image_url": "https://example.com/robot.png"},
             payload,
         )
+
+
+def test_generate_videos_for_timeline_preserves_parallel_failure_chain(
+    monkeypatch,
+) -> None:
+    timeline = {
+        "spec": {
+            "tracks": [
+                {
+                    "track_type": "video",
+                    "clips": [
+                        _video_clip("video_1", "robot walks"),
+                        _video_clip("video_2", "robot smiles"),
+                    ],
+                }
+            ]
+        }
+    }
+    args = SimpleNamespace(
+        api_url="http://localhost:8000",
+        timeout_seconds=30,
+        video_concurrency=2,
+    )
+    payload = {"request_chain": [], "key_artifacts": {}}
+
+    def fake_request_json(
+        session,
+        method,
+        url,
+        *,
+        chain,
+        label,
+        timeout,
+        **kwargs,
+    ):
+        chain.append(
+            {
+                "label": label,
+                "method": method,
+                "url": url,
+                "status_code": 400,
+                "response_body": '{"detail":"bad prompt"}',
+            }
+        )
+        raise RuntimeError("400 Client Error")
+
+    monkeypatch.setattr(
+        "scripts.harness.provider_chain_media.request_json",
+        fake_request_json,
+    )
+
+    with pytest.raises(RuntimeError, match="400 Client Error"):
+        generate_videos_for_timeline(
+            requests.Session(),
+            args,
+            timeline,
+            {"image_url": "https://example.com/robot.png"},
+            payload,
+        )
+
+    assert payload["request_chain"]
+    assert payload["request_chain"][0]["label"].startswith("seedance-video-")
+    assert payload["request_chain"][0]["response_body"] == '{"detail":"bad prompt"}'
+
+
+def _video_clip(clip_id: str, prompt: str) -> dict:
+    return {
+        "clip_id": clip_id,
+        "duration_ms": 15000,
+        "source_refs": {
+            "timeline_shot_plan": {
+                "video_prompt": prompt,
+                "dialogue_source": "Bot: line",
+                "plot": "robot acts",
+            },
+        },
+    }

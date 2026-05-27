@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from typing import Any
 
 import requests
@@ -157,7 +158,7 @@ def create_virtual_ip(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
     anchor = _timeline_character_anchor(timeline)
-    name = f"provider-chain-{args.run_id[-12:]}"
+    name = f"provider-chain-{_run_name_suffix(args.run_id)}"
     body = request_json(
         session,
         "POST",
@@ -233,6 +234,11 @@ def _timeline_shot_plans(timeline: dict[str, Any]) -> list[dict[str, Any]]:
     if not plans:
         raise RuntimeError("timeline_shot_plan_missing_for_character_image")
     return plans
+
+
+def _run_name_suffix(run_id: str) -> str:
+    digest = hashlib.sha1(run_id.encode("utf-8")).hexdigest()[:12]
+    return digest
 
 
 def _timeline_character_anchor(timeline: dict[str, Any]) -> str:

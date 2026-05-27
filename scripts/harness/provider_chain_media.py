@@ -13,6 +13,12 @@ from scripts.harness.provider_chain_api import request_json
 from scripts.harness.provider_chain_payloads import SEEDANCE_CANONICAL, VIDEO_MODEL
 
 
+class VideoClipGenerationError(RuntimeError):
+    def __init__(self, message: str, chain: list[dict[str, Any]]) -> None:
+        super().__init__(message)
+        self.chain = chain
+
+
 def generate_videos_for_timeline(
     session: requests.Session,
     args: argparse.Namespace,
@@ -79,7 +85,11 @@ def _generate_video_clips_parallel(
         }
         for future in as_completed(futures):
             index = futures[future]
-            request_chain, clip_result = future.result()
+            try:
+                request_chain, clip_result = future.result()
+            except VideoClipGenerationError as exc:
+                payload["request_chain"].extend(exc.chain)
+                raise RuntimeError(str(exc)) from exc
             results[index] = (request_chain, clip_result)
 
     clips: list[dict[str, Any]] = []
@@ -101,14 +111,17 @@ def _generate_one_video_clip_with_cloned_session(
     with requests.Session() as session:
         session.headers.update(base_session.headers)
         session.cookies.update(base_session.cookies)
-        clip = _generate_one_video_clip(
-            session=session,
-            args=args,
-            image=image,
-            timeline_clip=timeline_clip,
-            index=index,
-            chain=chain,
-        )
+        try:
+            clip = _generate_one_video_clip(
+                session=session,
+                args=args,
+                image=image,
+                timeline_clip=timeline_clip,
+                index=index,
+                chain=chain,
+            )
+        except Exception as exc:  # noqa: BLE001 - preserve worker request evidence
+            raise VideoClipGenerationError(str(exc), chain) from exc
     return chain, clip
 
 
