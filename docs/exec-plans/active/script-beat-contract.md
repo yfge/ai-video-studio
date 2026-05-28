@@ -1154,7 +1154,7 @@ git commit -m "feat(scripts): sync script beats to scene beats"
 - Modify: `ai-pic-backend/app/services/script/generation_task_attempts.py`
 - Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`
 
-- [ ] **Step 1: Add quality-gate integration test**
+- [x] **Step 1: Add quality-gate integration test**
 
 Append to `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`:
 
@@ -1181,7 +1181,7 @@ def test_quality_gate_check_reports_failed_beat_contract():
     assert check["passed"] is False
 ```
 
-- [ ] **Step 2: Run integration test and confirm failure**
+- [x] **Step 2: Run integration test and confirm failure**
 
 Run:
 
@@ -1191,7 +1191,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_qualit
 
 Expected: fail because `beat_contract_check` is missing.
 
-- [ ] **Step 3: Add quality-gate check**
+- [x] **Step 3: Add quality-gate check**
 
 Modify `ai-pic-backend/app/services/script_quality_gate_checks.py`:
 
@@ -1231,7 +1231,7 @@ In `evaluate_script_quality_gate`, append this check before deterministic lint:
         checks.append(beat_check)
 ```
 
-- [ ] **Step 4: Normalize and flatten before quality gate**
+- [x] **Step 4: Normalize and flatten before quality gate**
 
 Modify `ai-pic-backend/app/services/script/generation_task_attempts.py`:
 
@@ -1273,7 +1273,7 @@ After `populate_dialogues_and_stage_if_missing`, add:
         pass
 ```
 
-- [ ] **Step 5: Verify quality-gate tests**
+- [x] **Step 5: Verify quality-gate tests**
 
 Run:
 
@@ -1283,7 +1283,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_qualit
 
 Expected: tests pass.
 
-- [ ] **Step 6: Commit quality-gate integration**
+- [x] **Step 6: Commit quality-gate integration**
 
 Run:
 

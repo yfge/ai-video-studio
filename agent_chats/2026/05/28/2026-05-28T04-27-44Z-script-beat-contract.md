@@ -18,6 +18,9 @@ related_paths:
   - ai-pic-backend/app/services/script/beat_contract_quality.py
   - ai-pic-backend/app/services/script/content_normalization.py
   - ai-pic-backend/app/services/script/story_structure_sync.py
+  - ai-pic-backend/app/services/script/generation_task_attempts.py
+  - ai-pic-backend/app/services/script_quality_gate.py
+  - ai-pic-backend/app/services/script_quality_gate_checks.py
   - ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py
   - ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py
   - ai-pic-backend/tests/unit/services/script/test_story_structure_sync_beats.py
@@ -42,6 +45,8 @@ related_paths:
 - Added deterministic beat-contract quality gates for structure, fallback evidence, dialogue length, opening hook, conflict escalation, payoff, and final cliffhanger.
 - Locked `normalize_script_content` to preserve beat data and prefer `conflict.question` as the scene summary for contract-shaped scene payloads.
 - Extended script-to-story-structure sync to create `scene_beats` rows from generated `scenes[*].beats` using existing `SceneBeatCreate` service calls.
+- Added a script quality-gate check for explicit beat contracts and flattened explicit contract payloads before existing script quality enforcement.
+- Kept beat-gate activation scoped to explicit contract data or `scenes[*].beats` so legacy non-contract outputs are not broken before the new prompt path lands.
 
 ## Validation
 
@@ -57,11 +62,11 @@ related_paths:
 - `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q` passed with `8 passed, 35 warnings`.
 - `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normalizer.py::test_content_normalization_preserves_scene_beats -q` first failed because summary used `slug_line`; after the fix, `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normalizer.py -q` passed with `5 passed, 32 warnings`.
 - `cd ai-pic-backend && pytest tests/unit/services/script/test_story_structure_sync_beats.py -q` first failed because `beats_created` was missing; after the sync change, `cd ai-pic-backend && pytest tests/unit/services/script/test_story_structure_sync_beats.py tests/test_story_structure_endpoints.py -q` passed with `5 passed, 78 warnings`.
+- `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py tests/unit/services/test_narrative_quality_gate.py -q` first exposed a circular import from top-level `app.services.script.*` imports in `script_quality_gate_checks`; after moving beat-contract imports inside `beat_contract_check`, it passed with `17 passed, 48 warnings`.
 
 ## Next Steps
 
-- Wire beat-contract reports into the script quality gate.
-- Normalize and flatten generated content before persistence quality gates.
+- Add beat prompt template and wire generation paths to produce explicit beat contracts.
 
 ## Linked Commits
 
@@ -70,4 +75,5 @@ related_paths:
 - `bd742466 feat(scripts): normalize beat contract payloads`
 - `c7de3950 feat(scripts): validate beat contract quality`
 - `bdab1b3a fix(scripts): preserve beat data during normalization`
-- Current commit: story structure sync slice.
+- `c25168f9 feat(scripts): sync script beats to scene beats`
+- Current commit: quality gate integration slice.

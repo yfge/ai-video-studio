@@ -13,6 +13,7 @@ from app.services.quality_gate_core import (
 )
 from app.services.quality_gate_repair import repair_quality_gate_payload
 from app.services.script_quality_gate_checks import (
+    beat_contract_check,
     dict_character_check,
     duration_check,
     lint_check,
@@ -74,6 +75,10 @@ async def evaluate_script_quality_gate(
     quality_check = script_quality_check(content, story, result)
     if quality_check:
         checks.append(quality_check)
+
+    beat_check = beat_contract_check(content)
+    if beat_check:
+        checks.append(beat_check)
 
     checks.append(duration_check(result))
     checks.append(
