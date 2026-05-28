@@ -12,6 +12,8 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/exec-plans/active/script-beat-contract.md` — step-by-step
   implementation plan for script beat contracts and provider-chain quality
   proof.
+- `docs/exec-plans/active/commercial-script-quality.md` — deterministic
+  commercial-specificity gate for beat-level short-drama scripts.
 - `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
 
 ## Agent System Of Record

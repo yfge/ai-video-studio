@@ -72,6 +72,46 @@ def test_quality_gate_rejects_fallback_detected_contract():
 
 
 @pytest.mark.unit
+def test_quality_gate_rejects_generic_conflict_and_abstract_beats():
+    payload = _valid_contract()
+    scene = payload["scenes"][0]
+    scene["conflict"]["stakes"] = "主角面临重大危机。"
+    scene["conflict"]["opposition"] = "神秘力量阻止他。"
+    for beat in scene["beats"]:
+        beat["visible_event"] = "剧情继续推进。"
+        beat["action_lines"] = [{"content": "角色开始行动。"}]
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "scene_conflict_specificity" in failed
+    assert "beat_visible_event_specificity" in failed
+    assert "beat_action_specificity" in failed
+
+
+@pytest.mark.unit
+def test_quality_gate_rejects_symbolic_payoff_and_empty_cliffhanger():
+    payload = _valid_contract()
+    beats = payload["scenes"][0]["beats"]
+    beats[1]["beat_type"] = "payoff"
+    beats[1]["payoff_tag"] = "win"
+    beats[1]["visible_event"] = "主角获得胜利。"
+    beats[-1]["beat_type"] = "cliffhanger"
+    beats[-1]["cliffhanger_tag"] = "suspense"
+    beats[-1]["visible_event"] = "留下巨大悬念。"
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "payoff_specificity" in failed
+    assert "cliffhanger_specificity" in failed
+
+
+@pytest.mark.unit
 def test_quality_gate_check_reports_failed_beat_contract():
     contract = normalize_script_beat_contract(
         {

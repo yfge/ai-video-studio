@@ -3,6 +3,14 @@ from __future__ import annotations
 from typing import Any
 
 from app.schemas.script_beat_contract import StructuredScriptContract
+from app.services.script.beat_contract_specificity import (
+    has_specific_cliffhanger,
+    has_specific_payoff,
+    has_specific_scene_conflict,
+    is_cliffhanger_beat,
+    is_payoff_beat,
+    is_specific_text,
+)
 
 
 def evaluate_beat_contract_quality(
@@ -64,7 +72,7 @@ def evaluate_beat_contract_quality(
         "kind": "script_beat_contract",
         "passed": not failed,
         "failed_checks": failed,
-        "check_count": 8,
+        "check_count": 13,
     }
 
 
@@ -88,6 +96,18 @@ def _check_scene_structure(
                 "scene_conflict",
                 "scene conflict must name stakes and opposition",
                 scene_number=scene.scene_number,
+            )
+        )
+    elif not has_specific_scene_conflict(scene):
+        failed.append(
+            _failure(
+                "scene_conflict_specificity",
+                "scene conflict must include concrete stakes and opposition",
+                scene_number=scene.scene_number,
+                evidence={
+                    "stakes": scene.conflict.stakes,
+                    "opposition": scene.conflict.opposition,
+                },
             )
         )
     if not any(beat.action_lines for beat in scene.beats):
@@ -116,6 +136,43 @@ def _check_scene_structure(
                     beat_order_index=beat.order_index,
                 )
             )
+        elif not is_specific_text(beat.visible_event):
+            failed.append(
+                _failure(
+                    "beat_visible_event_specificity",
+                    "beat visible event must be concrete and filmable",
+                    scene_number=scene.scene_number,
+                    beat_order_index=beat.order_index,
+                    evidence={"visible_event": beat.visible_event},
+                )
+            )
+        if beat.action_lines and not any(
+            is_specific_text(action.content) for action in beat.action_lines
+        ):
+            failed.append(
+                _failure(
+                    "beat_action_specificity",
+                    "beat action lines must name concrete screen behavior",
+                    scene_number=scene.scene_number,
+                    beat_order_index=beat.order_index,
+                    evidence={
+                        "action_lines": [action.content for action in beat.action_lines]
+                    },
+                )
+            )
+        if is_payoff_beat(beat) and not has_specific_payoff(beat):
+            failed.append(
+                _failure(
+                    "payoff_specificity",
+                    "payoff beat must show a concrete result",
+                    scene_number=scene.scene_number,
+                    beat_order_index=beat.order_index,
+                    evidence={
+                        "visible_event": beat.visible_event,
+                        "payoff_tag": beat.payoff_tag,
+                    },
+                )
+            )
         for line in beat.dialogue_lines:
             if _visible_len(line.content) > max_dialogue_chars:
                 failed.append(
@@ -127,6 +184,20 @@ def _check_scene_structure(
                         evidence={"content": line.content},
                     )
                 )
+    final_beat = scene.beats[-1]
+    if is_cliffhanger_beat(final_beat) and not has_specific_cliffhanger(final_beat):
+        failed.append(
+            _failure(
+                "cliffhanger_specificity",
+                "cliffhanger beat must leave a concrete unresolved threat",
+                scene_number=scene.scene_number,
+                beat_order_index=final_beat.order_index,
+                evidence={
+                    "visible_event": final_beat.visible_event,
+                    "cliffhanger_tag": final_beat.cliffhanger_tag,
+                },
+            )
+        )
 
 
 def _has_escalation(contract: StructuredScriptContract) -> bool:
@@ -140,7 +211,7 @@ def _has_escalation(contract: StructuredScriptContract) -> bool:
 def _has_payoff(contract: StructuredScriptContract) -> bool:
     return any(
         scene.dramatic_role == "payoff"
-        or any(beat.beat_type == "payoff" or beat.payoff_tag for beat in scene.beats)
+        or any(is_payoff_beat(beat) for beat in scene.beats)
         for scene in contract.scenes
     )
 
