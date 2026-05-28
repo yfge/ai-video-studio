@@ -2454,3 +2454,100 @@ Run:
 git add ai-pic-backend/tests/scripts/test_provider_chain_api.py ai-pic-backend/tests/scripts/test_provider_chain_failures.py ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py scripts/harness/provider_chain_api.py scripts/harness/provider_chain_regression.py scripts/harness/production_cliffhanger_score.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-script-preflight.md
 git commit -m "fix(scripts): preflight provider script quality"
 ```
+
+## Task 51: Add Text-Only 10-Sample Script Quality Gate
+
+**Files:**
+
+- Create: `scripts/harness/production_script_quality_regression.py`
+- Create: `ai-pic-backend/tests/scripts/test_production_script_quality_regression.py`
+
+- [x] **Step 1: Add aggregate contract tests**
+
+Add focused regressions for the script-only quality aggregate:
+
+- 9/10 samples must not prove stability.
+- 10/10 passing samples must produce `script_trial_ready`.
+- Retry-adjusted success must count the latest attempt per sample.
+- Provider billing or quota failures must produce `provider_blocked_not_evaluable`.
+
+- [x] **Step 2: Implement live text-only harness**
+
+Create `production_script_quality_regression.py` to run DeepSeek script
+generation without image, audio, video, or render work. For each sample it:
+
+- Logs in and confirms the configured DeepSeek text model is available.
+- Generates a script through the existing provider-chain API helper.
+- Reuses API-backed script lint and LLM script scoring.
+- Records provider-chain structured script scoring from `key_artifacts.script`.
+- Writes per-attempt artifacts and a `script_quality_report.json`.
+
+- [x] **Step 3: Verify red/green contract behavior**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_script_quality_regression.py -q
+```
+
+Observed red before implementation:
+`ModuleNotFoundError: No module named 'scripts.harness.production_script_quality_regression'`.
+
+Observed green after implementation: `4 passed, 26 warnings`.
+
+## Task 52: Run Text-Only 10-Sample Evidence And Commit
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-quality-text-gate.md`
+
+- [x] **Step 1: Run live 10-sample text evidence**
+
+Run against the worktree backend on `http://localhost:8010`:
+
+```bash
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-10-20260528Tlocal --api-url http://localhost:8010 --sample-count 10 --timeout-seconds 900
+```
+
+Observed:
+
+- Evidence path:
+  `artifacts/runs/script-quality-live-text-10-20260528Tlocal/script_quality_report.json`.
+- Verdict: `script_quality_not_proven`.
+- Sample count: 10/10.
+- Provider billing or quota errors: 0.
+- API lint average: 9.85, passing the 9.0 threshold.
+- Provider-chain structured score average: 3.68, passing the 3.5 threshold.
+- External script score average: 3.55, below the 4.0 threshold.
+- First-pass and retry-adjusted script success counts: 0/10.
+
+The evidence narrows the current commercial-quality blocker to actual script
+scoring and preflight pass stability, not provider availability or mechanical
+lint formatting.
+
+- [x] **Step 2: Run final validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_script_quality_regression.py tests/scripts/test_provider_chain_api.py tests/scripts/test_production_quality_regression.py -q
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Observed: targeted pytest passed with `26 passed, 27 warnings`; repo docs,
+contracts, whitespace, and pre-commit passed. `pytest (backend quick gate)` was
+skipped in pre-commit via `SKIP=backend-pytest` because the focused pytest set
+covered this harness slice.
+
+- [x] **Step 3: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/scripts/test_production_script_quality_regression.py scripts/harness/production_script_quality_regression.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-quality-text-gate.md
+git commit -m "feat(scripts): add script quality sample gate"
+```
