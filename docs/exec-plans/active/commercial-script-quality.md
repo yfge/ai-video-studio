@@ -1750,3 +1750,101 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_dialogue_quality.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_dialogue_score.py scripts/harness/production_dialogue_score.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-line-length.md
 git commit -m "feat(scripts): cap dialogue line length"
 ```
+
+## Task 36: Require Immediate Opening Hook Substance
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_hook_quality.py`
+- Create: `ai-pic-backend/app/services/script/beat_contract_hook.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_hook_score.py`
+- Create: `scripts/harness/production_hook_score.py`
+- Modify: `scripts/harness/production_structured_score.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing product and provider tests**
+
+Add regressions proving scene 1 beat 1 cannot pass just by being typed `hook` and under 3 seconds if its visible screen content only shows ordinary arrival or setup.
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_hook_quality.py::test_quality_gate_rejects_opening_hook_without_immediate_threat -q
+pytest ai-pic-backend/tests/scripts/test_production_hook_score.py::test_structured_score_rejects_provider_opening_hook_without_immediate_threat -q
+```
+
+Expected: both tests fail because current hook checks only enforce type and duration.
+
+- [x] **Step 2: Add hook-substance checks**
+
+Emit `opening_hook_substance` from product and provider scoring when scene 1 beat 1 lacks visible anomaly, loss, countdown, threat, reversal, evidence, or urgent question language in its screen/action/dialogue text.
+
+- [x] **Step 3: Align prompts**
+
+Update product and provider prompts so the first beat must show the concrete hook on screen, not just introduce setting or arrival.
+
+- [x] **Step 4: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_hook_quality.py tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_hook_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: selected product and provider hook tests pass.
+
+## Task 37: Validate And Commit Opening Hook Substance Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-opening-hook-substance.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_hook_quality.py tests/unit/services/script/test_beat_contract_cliffhanger_quality.py tests/unit/services/script/test_beat_contract_conflict_quality.py tests/unit/services/script/test_beat_contract_dialogue_quality.py tests/unit/services/script/test_beat_contract_payoff_quality.py tests/unit/services/script/test_beat_contract_purpose_quality.py tests/unit/services/script/test_beat_contract_progression_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_hook_score.py ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_progression_score.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: focused backend and provider harness suites pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_hook_quality.py ai-pic-backend/app/services/script/beat_contract_hook.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_hook_score.py scripts/harness/production_hook_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-opening-hook-substance.md
+git commit -m "feat(scripts): require immediate opening hooks"
+```

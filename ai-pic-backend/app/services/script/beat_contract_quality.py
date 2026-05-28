@@ -7,6 +7,7 @@ from app.services.script.beat_contract_cliffhanger import cliffhanger_issues
 from app.services.script.beat_contract_conflict import conflict_issues
 from app.services.script.beat_contract_dialogue import dialogue_issues
 from app.services.script.beat_contract_duration import duration_issues
+from app.services.script.beat_contract_hook import opening_hook_issues
 from app.services.script.beat_contract_progression import progression_issues
 from app.services.script.beat_contract_purpose import purpose_issues
 from app.services.script.beat_contract_specificity import (
@@ -118,6 +119,7 @@ def _check_scene_structure(
     failed.extend(character_specificity_issues(scene))
     failed.extend(protagonist_screen_presence_issues(scene))
     failed.extend(dialogue_issues(scene))
+    failed.extend(opening_hook_issues(scene))
     for beat in scene.beats:
         if not beat.visible_event.strip():
             failed.append(

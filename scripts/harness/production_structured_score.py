@@ -11,6 +11,7 @@ from scripts.harness.production_conflict_score import conflict_failed_checks
 from scripts.harness.production_dialogue_score import dialogue_failed_checks
 from scripts.harness.production_duration_score import duration_failed_checks
 from scripts.harness.production_filmability_score import filmability_failed_checks
+from scripts.harness.production_hook_score import opening_hook_failed_checks
 from scripts.harness.production_progression_score import progression_failed_checks
 from scripts.harness.production_purpose_score import purpose_failed_checks
 from scripts.harness.production_script_payload import extract_script_payload
@@ -91,6 +92,7 @@ def _beat_failed_checks(scenes: list[dict[str, Any]]) -> list[str]:
         failed_checks.append("cliffhanger_required")
     failed_checks.extend(cliffhanger_failed_checks(scenes))
     failed_checks.extend(duration_failed_checks(scenes))
+    failed_checks.extend(opening_hook_failed_checks(scenes))
     failed_checks.extend(conflict_failed_checks(scenes))
     failed_checks.extend(progression_failed_checks(scenes))
     failed_checks.extend(purpose_failed_checks(scenes))

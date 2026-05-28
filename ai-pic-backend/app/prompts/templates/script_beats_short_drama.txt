@@ -4,7 +4,7 @@
 1. 只输出严格 JSON，不要代码块。
 2. contract_version 必须是 "script-beat-v1"。
 3. 每个 scene 必须有 3-5 个 beats。
-4. 第一个 scene 的第一个 beat 必须是 hook。
+4. 第一个 scene 的第一个 beat 必须是 hook，且 visible_event/action_lines/dialogue_lines 必须在 3 秒内展示异常、损失、倒计时、威胁、证据、反转或紧急问题；不能只是角色抵达、介绍场景或整理动作。
 5. 至少一个 beat 必须是 payoff，并写清主角具体赢到/得到/阻止/揭露什么。
 6. 最后一个 scene 的最后一个 beat 必须是 cliffhanger 或带 cliffhanger_tag。
 7. 每句对白短句为主，单句不超过 15 个可见字。

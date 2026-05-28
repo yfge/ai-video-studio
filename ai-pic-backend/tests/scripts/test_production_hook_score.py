@@ -27,3 +27,22 @@ def test_structured_score_rejects_slow_provider_opening_hook() -> None:
 
     assert result["passed"] is False
     assert "opening_hook_duration" in result["failed_checks"]
+
+
+def test_structured_score_rejects_provider_opening_hook_without_immediate_threat() -> (
+    None
+):
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    first_beat = script["scenes"][0]["beats"][0]
+    first_beat["visible_event"] = "小蓝推开玻璃门，灯带依次亮起"
+    first_beat["action"] = ["小蓝把背包放到桌面，整理围巾"]
+    first_beat["dialogue"] = [{"speaker": "小蓝", "line": "我到了"}]
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "opening_hook_substance" in result["failed_checks"]
