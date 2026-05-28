@@ -144,6 +144,22 @@ def test_quality_gate_requires_recurring_named_character_in_scene():
 
 
 @pytest.mark.unit
+def test_quality_gate_requires_protagonist_in_screen_action():
+    payload = _valid_contract()
+    scene = payload["scenes"][0]
+    for beat in scene["beats"]:
+        beat["visible_event"] = "控制台红灯连续闪烁。"
+        beat["action_lines"] = [{"content": "屏幕弹出权限警报。"}]
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "scene_protagonist_screen_presence" in failed
+
+
+@pytest.mark.unit
 def test_quality_gate_requires_beat_durations_for_timed_scene():
     payload = _valid_contract()
     for beat in payload["scenes"][0]["beats"]:

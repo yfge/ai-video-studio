@@ -35,6 +35,7 @@ def test_build_script_prompt_accepts_optional_premise() -> None:
     assert "Create exactly 2 scene" in prompt
     assert "<= 15 visible" in prompt
     assert "one stable protagonist" in prompt
+    assert "visible action" in prompt
     assert "Do not use generic speaker names" in prompt
 
 
@@ -189,6 +190,23 @@ def test_structured_score_requires_recurring_provider_scene_speaker() -> None:
     assert result["passed"] is False
     assert "scene_protagonist_presence" in result["failed_checks"]
     assert "dialogue_character_specificity" not in result["failed_checks"]
+
+
+def test_structured_score_requires_provider_protagonist_in_screen_action() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    for scene in script["scenes"]:
+        for beat in scene["beats"]:
+            beat["visible_event"] = "控制台红灯连续闪烁"
+            beat["action"] = ["屏幕弹出权限警报"]
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "scene_protagonist_screen_presence" in result["failed_checks"]
 
 
 def test_structured_score_requires_provider_beat_durations() -> None:

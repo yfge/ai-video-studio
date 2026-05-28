@@ -163,6 +163,26 @@ def character_specificity_issues(scene: Any) -> list[dict[str, Any]]:
     return issues
 
 
+def protagonist_screen_presence_issues(scene: Any) -> list[dict[str, Any]]:
+    recurring_characters = _recurring_dialogue_characters(scene)
+    if not recurring_characters:
+        return []
+
+    screen_text = _scene_screen_text(scene)
+    if any(character in screen_text for character in recurring_characters):
+        return []
+
+    return [
+        {
+            "check_id": "scene_protagonist_screen_presence",
+            "message": "scene must show the recurring named protagonist in screen action",
+            "scene_number": scene.scene_number,
+            "beat_order_index": None,
+            "evidence": {"characters": recurring_characters},
+        }
+    ]
+
+
 def dialogue_substance_issues(scene: Any) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
     for beat in scene.beats:
@@ -194,3 +214,25 @@ def _visible_len(text: str) -> int:
 
 def _compact_text(text: str) -> str:
     return "".join(ch for ch in text if not ch.isspace())
+
+
+def _recurring_dialogue_characters(scene: Any) -> list[str]:
+    character_beats: dict[str, set[int]] = {}
+    for beat in scene.beats:
+        for line in beat.dialogue_lines:
+            character = _compact_text(line.character)
+            if is_specific_character_name(character):
+                character_beats.setdefault(character, set()).add(beat.order_index)
+    return sorted(
+        character
+        for character, beat_indexes in character_beats.items()
+        if len(beat_indexes) >= 2
+    )
+
+
+def _scene_screen_text(scene: Any) -> str:
+    parts: list[str] = []
+    for beat in scene.beats:
+        parts.append(beat.visible_event)
+        parts.extend(action.content for action in beat.action_lines)
+    return _compact_text("".join(parts))

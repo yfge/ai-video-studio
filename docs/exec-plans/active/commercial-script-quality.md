@@ -865,3 +865,102 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_quality_regression.py scripts/harness/production_dialogue_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-substance.md
 git commit -m "feat(scripts): reject filler-only beat dialogue"
 ```
+
+## Task 18: Add Protagonist Screen-Presence Gates
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_specificity.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+- Modify: `ai-pic-backend/tests/scripts/test_production_quality_regression.py`
+- Modify: `scripts/harness/production_character_score.py`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing product and provider tests**
+
+Add regressions proving a script fails when the recurring named protagonist speaks across a scene but never appears in `visible_event` or `action_lines` / `action`.
+
+- [x] **Step 2: Run tests and confirm red**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py::test_quality_gate_requires_protagonist_in_screen_action -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py::test_structured_score_requires_provider_protagonist_in_screen_action -q
+```
+
+Expected: both tests fail because `scene_protagonist_screen_presence` is not emitted yet.
+
+- [x] **Step 3: Add screen-presence helpers**
+
+Extend the product beat-contract specificity helper and provider-chain character scorer so a recurring named speaker must appear in beat-level screen action text.
+
+- [x] **Step 4: Wire quality gates and prompts**
+
+Emit `scene_protagonist_screen_presence` from product and provider scoring. Update prompts so model output puts the named protagonist into visible beat actions instead of only dialogue.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: selected product and provider quality tests pass.
+
+## Task 19: Validate And Commit Protagonist Screen-Presence Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-protagonist-screen-presence.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: selected backend and harness tests pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_quality_regression.py scripts/harness/production_character_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-protagonist-screen-presence.md
+git commit -m "feat(scripts): require protagonist screen presence"
+```

@@ -37,8 +37,19 @@ def character_anchor_failed_checks(scenes: list[dict[str, Any]]) -> list[str]:
                 continue
             speaker_counts[speaker] = speaker_counts.get(speaker, 0) + 1
 
-        if has_dialogue and len(beats) > 1 and max(speaker_counts.values(), default=0) < 2:
+        if (
+            has_dialogue
+            and len(beats) > 1
+            and max(speaker_counts.values(), default=0) < 2
+        ):
             failed.append("scene_protagonist_presence")
+        recurring_speakers = [
+            speaker for speaker, count in speaker_counts.items() if count >= 2
+        ]
+        if recurring_speakers and not _screen_text_mentions_any(
+            scene, recurring_speakers
+        ):
+            failed.append("scene_protagonist_screen_presence")
 
     return failed
 
@@ -62,6 +73,32 @@ def _scene_dialogue(scene: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _speaker_name(line: dict[str, Any]) -> str:
     return _compact_text(str(line.get("speaker") or line.get("character") or ""))
+
+
+def _screen_text_mentions_any(scene: dict[str, Any], speakers: list[str]) -> bool:
+    parts: list[str] = []
+    beats = scene.get("beats")
+    if isinstance(beats, list):
+        for beat in beats:
+            if not isinstance(beat, dict):
+                continue
+            parts.append(str(beat.get("visible_event") or ""))
+            parts.extend(_beat_action_texts(beat))
+    screen_text = _compact_text("".join(parts))
+    return any(speaker in screen_text for speaker in speakers)
+
+
+def _beat_action_texts(beat: dict[str, Any]) -> list[str]:
+    actions = beat.get("action") or beat.get("action_lines") or []
+    if not isinstance(actions, list):
+        return []
+    texts: list[str] = []
+    for item in actions:
+        if isinstance(item, str):
+            texts.append(item)
+        elif isinstance(item, dict) and item.get("content"):
+            texts.append(str(item["content"]))
+    return texts
 
 
 def _is_specific_speaker(speaker: str) -> bool:

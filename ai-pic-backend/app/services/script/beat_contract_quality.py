@@ -13,6 +13,7 @@ from app.services.script.beat_contract_specificity import (
     is_cliffhanger_beat,
     is_payoff_beat,
     is_specific_text,
+    protagonist_screen_presence_issues,
 )
 
 
@@ -75,7 +76,7 @@ def evaluate_beat_contract_quality(
         "kind": "script_beat_contract",
         "passed": not failed,
         "failed_checks": failed,
-        "check_count": 17,
+        "check_count": 18,
     }
 
 
@@ -131,6 +132,7 @@ def _check_scene_structure(
         )
     failed.extend(duration_issues(scene))
     failed.extend(character_specificity_issues(scene))
+    failed.extend(protagonist_screen_presence_issues(scene))
     failed.extend(dialogue_substance_issues(scene))
     for beat in scene.beats:
         if not beat.visible_event.strip():

@@ -44,6 +44,8 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         "characters, if any, must stay secondary and must not replace the protagonist. "
         "Do not use generic speaker names like 主角, 角色, 男主, 女主, or 旁白; "
         "reuse the same named protagonist in scene dialogue and beat dialogue. "
+        "Each scene's beat visible_event or action must show that named protagonist "
+        "performing a visible action, movement, operation, or reaction. "
         "Every scene must include 3 to 5 beats. The first beat of scene 1 must "
         "be hook. At least one beat across the script must be payoff. The final "
         "beat must be cliffhanger. Each beat must include duration_seconds > 0, "
@@ -59,7 +61,9 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
     )
 
 
-def extract_structured_script(content: str, expected_scene_count: int) -> dict[str, Any]:
+def extract_structured_script(
+    content: str, expected_scene_count: int
+) -> dict[str, Any]:
     text = content.strip()
     fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.S)
     if fence:
