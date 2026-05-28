@@ -56,8 +56,8 @@ def provider_chain_script_text(payload: dict[str, Any]) -> str:
     for index, scene in enumerate(scenes, start=1):
         lines.extend(_scene_to_lint_lines(index, scene))
     if scenes:
-        last_plot = str(scenes[-1].get("plot") or "")
-        lines.append(f"【悬念】{last_plot or '最后一秒出现新的反转。'}")
+        final_cliffhanger = _final_cliffhanger_text(scenes[-1])
+        lines.append(f"【悬念】{final_cliffhanger or '最后一秒出现新的反转。'}")
     return "\n".join(lines) + "\n"
 
 
@@ -184,6 +184,21 @@ def _scene_to_lint_lines(index: int, scene: dict[str, Any]) -> list[str]:
                 lines.append(f"{line['speaker']}: {line['line']}")
     lines.append("【SFX】电子提示音")
     return lines
+
+
+def _final_cliffhanger_text(scene: dict[str, Any]) -> str:
+    beats = scene_beats(scene)
+    final = beats[-1] if beats else {}
+    parts = [
+        str(final.get("visible_event") or ""),
+        str(final.get("cliffhanger_tag") or ""),
+    ]
+    parts.extend(beat_action_lines(final))
+    for line in beat_dialogue_lines(final):
+        text = line.get("line") or line.get("content")
+        if text:
+            parts.append(str(text))
+    return "；".join(part for part in parts if part).strip()
 
 
 def _maybe_float(value: Any) -> float | None:

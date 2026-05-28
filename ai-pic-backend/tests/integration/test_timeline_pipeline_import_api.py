@@ -154,49 +154,44 @@ def test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec(
         _fake_generate_episode_audio_timeline,
     )
 
-    class _FakeTimelineShotPlanService:
-        def __init__(self, db_session):  # noqa: ANN001
-            self.db_session = db_session
-
-        async def generate_shot_plan_for_timeline(
-            self,
-            timeline,
-            payload,
-            *,
-            user_id: int,
-        ):
-            called["shot_plan"] = True
-            called["shot_plan_expected_version"] = payload.expected_version
-            timeline.version += 1
-            spec = {**timeline.spec, "version": timeline.version}
-            for track in spec["tracks"]:
-                if track["track_type"] != "video":
-                    continue
-                for clip in track["clips"]:
-                    refs = clip.setdefault("source_refs", {})
-                    refs["timeline_shot_plan"] = {
-                        "clip_id": clip["clip_id"],
-                        "duration_ms": clip["duration_ms"],
-                        "plot": clip.get("text") or "plot",
-                        "dialogue_source": clip.get("text") or "dialogue",
-                        "visual_prompt": "timeline shot plan visual prompt",
-                        "video_prompt": "timeline shot plan video prompt",
-                        "character_anchor": "cartoon robot",
-                        "camera": "push in",
-                        "action": "points at timeline",
-                        "provider": "deepseek",
-                        "model": "deepseek-v4-flash",
-                    }
-            timeline.spec = spec
-            self.db_session.add(timeline)
-            self.db_session.commit()
-            self.db_session.refresh(timeline)
-            return timeline
+    async def _fake_generate_timeline_shot_plan_from_current_version(
+        db_session,  # noqa: ANN001
+        timeline,
+        *,
+        user_id: int,
+    ):
+        called["shot_plan"] = True
+        called["shot_plan_expected_version"] = timeline.version
+        timeline.version += 1
+        spec = {**timeline.spec, "version": timeline.version}
+        for track in spec["tracks"]:
+            if track["track_type"] != "video":
+                continue
+            for clip in track["clips"]:
+                refs = clip.setdefault("source_refs", {})
+                refs["timeline_shot_plan"] = {
+                    "clip_id": clip["clip_id"],
+                    "duration_ms": clip["duration_ms"],
+                    "plot": clip.get("text") or "plot",
+                    "dialogue_source": clip.get("text") or "dialogue",
+                    "visual_prompt": "timeline shot plan visual prompt",
+                    "video_prompt": "timeline shot plan video prompt",
+                    "character_anchor": "cartoon robot",
+                    "camera": "push in",
+                    "action": "points at timeline",
+                    "provider": "deepseek",
+                    "model": "deepseek-v4-flash",
+                }
+        timeline.spec = spec
+        db_session.add(timeline)
+        db_session.commit()
+        db_session.refresh(timeline)
+        return timeline
 
     monkeypatch.setattr(
         timeline_pipeline_endpoint,
-        "TimelineShotPlanService",
-        _FakeTimelineShotPlanService,
+        "generate_timeline_shot_plan_from_current_version",
+        _fake_generate_timeline_shot_plan_from_current_version,
     )
     import app.services.script.timeline_storyboard_queue as timeline_storyboard_queue
 

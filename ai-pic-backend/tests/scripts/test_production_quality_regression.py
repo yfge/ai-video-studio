@@ -38,6 +38,8 @@ def test_build_script_prompt_accepts_optional_premise() -> None:
     assert "visible action" in prompt
     assert "specific story turn" in prompt
     assert "Do not use generic speaker names" in prompt
+    assert "Scene-level dialogue must not copy any beat dialogue" in prompt
+    assert "data already lost" in prompt
 
 
 @pytest.mark.asyncio

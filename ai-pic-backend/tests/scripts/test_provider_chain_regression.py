@@ -36,8 +36,26 @@ def test_extract_structured_script_requires_dialogue() -> None:
         {
           "scene_id": "s1",
           "duration_seconds": 4,
+          "question": "订单为什么会自己移动？",
+          "stakes": "如果小蓝抓不住订单，夜班结算屏会立即扣掉他的维修电池。",
+          "opposition": "会发光的订单票据躲进货架缝隙，故意避开扫码器。",
+          "turn": "小蓝用橙色围巾缠住票据时，票据亮出另一张未付款订单。",
           "plot": "小蓝发现订单会自己移动。",
           "dialogue": [{"speaker": "小蓝", "line": "别跑，我还没扫码。"}],
+          "beats": [
+            {
+              "beat_type": "hook",
+              "visible_event": "收银台上的蓝光订单票据突然弹起，撞翻小蓝手边的扫码枪。"
+            },
+            {
+              "beat_type": "turn",
+              "visible_event": "小蓝用橙色围巾套住票据，票据却拖出一张红色欠款单。"
+            },
+            {
+              "beat_type": "cliffhanger",
+              "visible_event": "欠款单上的倒计时跳到三秒，小蓝胸口的维修电池开始闪红。"
+            }
+          ],
           "image_prompt": "3D cartoon robot in store",
           "video_prompt": "blue robot catches a glowing order ticket"
         }

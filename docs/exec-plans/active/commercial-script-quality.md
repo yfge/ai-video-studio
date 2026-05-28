@@ -2224,3 +2224,149 @@ Run:
 git add ai-pic-backend/app/api/v1/ai_text_generation.py ai-pic-backend/app/api/v1/api.py ai-pic-backend/tests/unit/test_ai_text_generation_route.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-text-generation-route-options.md
 git commit -m "fix(scripts): forward text generation options"
 ```
+
+## Task 46: Repair Provider-Quality Regression Validation
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/integration/test_timeline_pipeline_import_api.py`
+- Modify: `ai-pic-backend/tests/scripts/test_provider_chain_regression.py`
+- Modify: `ai-pic-backend/tests/scripts/test_script_story_structure_sync.py`
+
+- [x] **Step 1: Reproduce stale test failures**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/integration/test_timeline_pipeline_import_api.py::test_process_timeline_pipeline_imports_audio_timeline_to_timeline_spec tests/scripts/test_provider_chain_regression.py::test_extract_structured_script_requires_dialogue tests/scripts/test_script_story_structure_sync.py::test_generate_script_syncs_normalized_scenes -q
+```
+
+Observed: all three failed against current boundaries. The timeline import test
+patched the old `TimelineShotPlanService` symbol, the provider-chain fixture
+lacked required scene fields and beats, and the regeneration test enqueued an
+eager Celery task that reached the local MySQL default.
+
+- [x] **Step 2: Patch tests to current boundaries**
+
+Patch the timeline import test at
+`generate_timeline_shot_plan_from_current_version`, make the provider-chain
+script fixture schema-complete, and patch
+`scripts_regeneration.script_regenerate_task.delay` so the sync story-structure
+test asserts the queue payload without opening MySQL.
+
+- [x] **Step 3: Verify backend regression tests**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_provider_chain_regression.py tests/integration/test_timeline_pipeline_import_api.py tests/scripts/test_script_story_structure_sync.py -q
+cd ai-pic-backend && pytest
+```
+
+Observed: the focused set passed with `7 passed`, and full backend pytest passed
+with `2142 passed, 94 skipped`.
+
+## Task 47: Harden Cliffhanger And Dialogue Quality Probes
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/scripts/test_production_dialogue_score.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_quality_regression.py`
+- Modify: `scripts/harness/production_cliffhanger_score.py`
+- Modify: `scripts/harness/production_dialogue_score.py`
+- Modify: `scripts/harness/production_quality_script.py`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Run provider-backed smoke evidence**
+
+Run the worktree backend on `http://localhost:8010`, then run:
+
+```bash
+python scripts/harness/provider_chain_regression.py --mode smoke --run-id quality-smoke-worktree-commercial-20260528Tlocal --api-url http://localhost:8010 --episode-id 133 --script-id 117 --timeout-seconds 900 --poll-interval-seconds 5 --video-concurrency 1
+```
+
+Observed: provider chain succeeded with DeepSeek script generation, Timeline
+shot planning, MiniMax TTS, OpenAI image generation, Seedance video generation,
+and a completed timeline render. Evidence is in
+`artifacts/runs/quality-smoke-worktree-commercial-20260528Tlocal/provider_chain.json`.
+
+- [x] **Step 2: Reproduce quality gaps from audit**
+
+Run:
+
+```bash
+python scripts/harness/production_quality_regression.py --mode audit-existing --run-id quality-audit-worktree-commercial-20260528Tlocal --input-run artifacts/runs/quality-smoke-worktree-commercial-20260528Tlocal/provider_chain.json
+```
+
+Observed: the smoke chain itself passed, but the audit verdict was
+`not_trial_ready`; the generated final beat used a terminal-failure ending
+(`进度条到100%`, `来不及了`, `数据丢失`) instead of a live cliffhanger.
+
+- [x] **Step 3: Add red/green cliffhanger regressions**
+
+Add tests proving screenplay lint text uses the final cliffhanger beat and that
+terminal-failure endings fail `cliffhanger_unresolved_threat`; then update
+`provider_chain_script_text`, `production_cliffhanger_score`, and the provider
+prompt rules.
+
+- [x] **Step 4: Add red/green dialogue-source regression**
+
+Run a DeepSeek text probe after the cliffhanger fix and observe that its beat
+dialogue progressed, but top-level `scene.dialogue` mirrored beat dialogue and
+triggered `dialogue_progression_repetition`. Add a focused regression allowing
+scene-level video dialogue source to mirror unique beat dialogue while still
+rejecting repeated beat dialogue.
+
+- [x] **Step 5: Verify quality probes**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_dialogue_score.py -q
+cd ai-pic-backend && pytest tests/scripts/test_production_cliffhanger_score.py tests/scripts/test_production_quality_regression.py::test_build_script_prompt_accepts_optional_premise -q
+```
+
+Observed: both focused groups passed. A fresh DeepSeek text probe at
+`artifacts/runs/quality-text-probe-dialogue-v2-20260528Tlocal/text_probe.json`
+returned `failed_checks=[]` with `structured_passed=true`.
+
+## Task 48: Validate And Commit Provider Quality Evidence Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-quality-evidence.md`
+
+- [x] **Step 1: Run final focused and full backend validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_cliffhanger_score.py tests/scripts/test_production_dialogue_score.py tests/scripts/test_production_quality_regression.py tests/scripts/test_provider_chain_payloads.py tests/scripts/test_provider_chain_regression.py tests/integration/test_timeline_pipeline_import_api.py tests/scripts/test_script_story_structure_sync.py -q
+cd ai-pic-backend && pytest
+```
+
+- [x] **Step 2: Run docs, contracts, whitespace, and pre-commit**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the required sections and exact backend, provider
+smoke, text-probe, docs, contracts, and pre-commit evidence.
+
+- [x] **Step 4: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/integration/test_timeline_pipeline_import_api.py ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_regression.py ai-pic-backend/tests/scripts/test_script_story_structure_sync.py scripts/harness/production_cliffhanger_score.py scripts/harness/production_dialogue_score.py scripts/harness/production_quality_script.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-quality-evidence.md
+git commit -m "fix(scripts): harden provider quality probes"
+```

@@ -19,6 +19,17 @@ _RESOLVED_ENDING_PHRASES = (
     "全部奖金",
 )
 
+_TERMINAL_FAILURE_PHRASES = (
+    "数据丢失",
+    "日志丢失",
+    "删除完成",
+    "已经删除",
+    "来不及了",
+    "进度条到100%",
+    "到100%",
+    "彻底失败",
+)
+
 _UNRESOLVED_THREAT_CUES = (
     "谁",
     "还",
@@ -61,8 +72,9 @@ def _looks_resolved_without_threat(beat: dict[str, Any]) -> bool:
         )
     )
     has_resolution = any(phrase in text for phrase in _RESOLVED_ENDING_PHRASES)
+    has_terminal_failure = any(phrase in text for phrase in _TERMINAL_FAILURE_PHRASES)
     has_unresolved_cue = any(phrase in text for phrase in _UNRESOLVED_THREAT_CUES)
-    return has_resolution and not has_unresolved_cue
+    return has_terminal_failure or (has_resolution and not has_unresolved_cue)
 
 
 def _compact_text(text: str) -> str:

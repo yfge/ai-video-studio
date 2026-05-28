@@ -86,9 +86,25 @@ def test_generate_script_syncs_normalized_scenes(
     assert len(shots) == len(scenes)
     assert all(sh.shot_number == "1" for sh in shots)
 
+    import app.api.v1.endpoints.scripts_regeneration as scripts_regeneration
+
+    regeneration_task: dict[str, object] = {}
+
+    def _fake_regenerate_delay(task_id: int, request_dict: dict, user_id: int) -> None:
+        regeneration_task["task_id"] = task_id
+        regeneration_task["request_dict"] = request_dict
+        regeneration_task["user_id"] = user_id
+
+    monkeypatch.setattr(
+        scripts_regeneration.script_regenerate_task,
+        "delay",
+        _fake_regenerate_delay,
+    )
+
     # 再次生成（regenerate）不会重复创建规范化场景
     resp_regen = client.post(f"/api/v1/scripts/{script_id}/regenerate")
     assert resp_regen.status_code == 200
+    assert regeneration_task["request_dict"]["script_id"] == script_id
     scenes_after = (
         db_session.query(Scene)
         .filter(Scene.script_id == script_id)
