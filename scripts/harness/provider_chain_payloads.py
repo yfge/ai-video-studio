@@ -53,7 +53,7 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         "Within the same scene, every beat visible_event plus action must create a "
         "distinct screen state or new information; do not repeat the same button, alarm, or action. "
         "Every scene must include 3 to 5 beats. The first beat of scene 1 must "
-        "be hook. At least one beat across the script must be payoff. The final "
+        "be hook and must have duration_seconds <= 3. At least one beat across the script must be payoff. The final "
         "beat must be cliffhanger. Each beat dramatic_purpose must name the specific "
         "story turn, clue, choice, threat, or result; do not write generic purposes "
         "like 推进剧情, 制造悬念, 制造冲突, or 出现转折. Each beat must include duration_seconds > 0, "

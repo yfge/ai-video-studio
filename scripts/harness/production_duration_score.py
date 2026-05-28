@@ -10,9 +10,10 @@ def duration_failed_checks(
     *,
     tolerance_seconds: float = 1.0,
     tolerance_ratio: float = 0.15,
+    max_opening_hook_seconds: float = 3.0,
 ) -> list[str]:
     failed: list[str] = []
-    for scene in scenes:
+    for scene_index, scene in enumerate(scenes, start=1):
         target = _number(scene.get("duration_seconds"))
         beats = scene.get("beats") if isinstance(scene.get("beats"), list) else []
         if target is None or target <= 0 or not beats:
@@ -30,6 +31,9 @@ def duration_failed_checks(
 
         if "beat_duration_required" in failed or not durations:
             continue
+
+        if scene_index == 1 and durations[0] > max_opening_hook_seconds:
+            failed.append("opening_hook_duration")
 
         total = sum(durations)
         tolerance = max(tolerance_seconds, target * tolerance_ratio)

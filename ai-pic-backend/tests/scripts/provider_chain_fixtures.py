@@ -131,6 +131,7 @@ def _scene_one() -> dict:
                 "奖金清零警报亮起",
                 "时间轴谁改",
                 "小蓝冲向控制台",
+                duration_seconds=3,
             ),
             _beat(
                 2,
@@ -139,6 +140,7 @@ def _scene_one() -> dict:
                 "权限被系统拒绝",
                 "权限没了",
                 "控制台弹出拒绝提示",
+                duration_seconds=6,
             ),
             _beat(
                 3,
@@ -147,6 +149,7 @@ def _scene_one() -> dict:
                 "日志出现倒退一秒",
                 "时间在倒退",
                 "倒计时反向闪烁",
+                duration_seconds=6,
             ),
         ],
         "image_prompt": "cartoon robot in studio",
@@ -206,6 +209,8 @@ def _beat(
     event: str,
     line: str,
     action: str,
+    *,
+    duration_seconds: int = 5,
 ) -> dict:
     return {
         "order_index": order,
@@ -214,7 +219,7 @@ def _beat(
         "visible_event": event,
         "dialogue": [{"speaker": "小蓝", "line": line}],
         "action": [action],
-        "duration_seconds": 5,
+        "duration_seconds": duration_seconds,
     }
 
 

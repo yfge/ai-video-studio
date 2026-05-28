@@ -43,7 +43,7 @@ def _valid_contract():
                                 "emotion": "惊慌",
                             }
                         ],
-                        "duration_seconds": 5,
+                        "duration_seconds": 3,
                         "hook_tag": "countdown_loss",
                     },
                     {
@@ -57,7 +57,7 @@ def _valid_contract():
                         "dialogue_lines": [
                             {"character": "小机", "content": "证据出来了。"}
                         ],
-                        "duration_seconds": 5,
+                        "duration_seconds": 6,
                         "payoff_tag": "partial_proof",
                     },
                     {
@@ -69,7 +69,7 @@ def _valid_contract():
                         "dialogue_lines": [
                             {"character": "小机", "content": "谁还在线？"}
                         ],
-                        "duration_seconds": 5,
+                        "duration_seconds": 6,
                         "cliffhanger_tag": "hidden_operator",
                     },
                 ],
