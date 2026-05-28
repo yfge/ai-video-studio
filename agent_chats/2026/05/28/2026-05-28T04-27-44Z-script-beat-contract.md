@@ -111,10 +111,17 @@ related_paths:
 - `python scripts/check_repo_contracts.py --mode diff ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_quality_script.py scripts/harness/production_structured_score.py scripts/harness/production_script_payload.py scripts/harness/provider_chain_payloads.py scripts/harness/provider_chain_timeline_payloads.py` passed after the test/scoring split.
 - `pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q` passed with `12 passed, 27 warnings`.
 - `SKIP=backend-pytest pre-commit run --files $(git diff --cached --name-only)` passed for the harness alignment slice after black/isort formatting.
+- `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normalizer.py tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_story_structure_sync_beats.py tests/test_script_quality_lint.py tests/test_story_structure_endpoints.py -q` passed with `23 passed, 103 warnings`.
+- `pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q` passed with `12 passed, 27 warnings`.
+- `python scripts/check_repo_docs.py` passed.
+- `python scripts/check_repo_contracts.py --mode diff $(git diff --name-only main...HEAD)` passed.
+- `git diff --check` and `git diff --cached --check` passed.
+- `SKIP=backend-pytest pre-commit run --files $(git diff --name-only main...HEAD)` passed for the full branch changed-file set; `backend-pytest` remains skipped for the documented local MySQL issue.
+- `./docker/build_prod_images.sh` was started and showed `Push enabled: true` for registry tag `13c99dd8`; it was intentionally interrupted before completion to avoid pushing feature-branch images without a release request.
 
 ## Next Steps
 
-- Align provider-chain harness prompt, parser, timeline derivation, and structured quality scoring with beat contracts.
+- Run provider-backed smoke only after provider account state is confirmed.
 
 ## Linked Commits
 
@@ -126,4 +133,5 @@ related_paths:
 - `c25168f9 feat(scripts): sync script beats to scene beats`
 - `9e26ad92 feat(scripts): gate generated scripts on beat contract`
 - `c21b4ed8 feat(scripts): generate scripts from beat contracts`
-- Current commit: harness alignment slice.
+- `e7016f29 feat(harness): require beat scripts in provider chain`
+- Current commit: final validation ledger.

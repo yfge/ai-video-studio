@@ -1761,7 +1761,7 @@ git commit -m "feat(harness): require beat scripts in provider chain"
 - Modify: `docs/exec-plans/active/script-beat-contract.md`
 - Create: `agent_chats/YYYY/MM/DD/YYYY-MM-DDTHH-MM-SSZ-script-beat-contract.md`
 
-- [ ] **Step 1: Run focused backend and harness tests**
+- [x] **Step 1: Run focused backend and harness tests**
 
 Run:
 
@@ -1772,18 +1772,18 @@ pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic
 
 Expected: all selected tests pass.
 
-- [ ] **Step 2: Run repo docs and contract checks**
+- [x] **Step 2: Run repo docs and contract checks**
 
 Run:
 
 ```bash
 python scripts/check_repo_docs.py
-python scripts/check_repo_contracts.py --mode diff ai-pic-backend/app/schemas/script_beat_contract.py ai-pic-backend/app/services/script/beat_contract_normalizer.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/services/script/content_normalization.py ai-pic-backend/app/services/script/story_structure_sync.py ai-pic-backend/app/services/script/generation_task_attempts.py ai-pic-backend/app/services/script_quality_gate_checks.py ai-pic-backend/app/services/script_agent.py ai-pic-backend/app/services/ai/scripts_ai_manager.py ai-pic-backend/app/services/ai/scripts_ai_manager_payloads.py ai-pic-backend/app/prompts/templates.py scripts/harness/provider_chain_payloads.py scripts/harness/provider_chain_timeline_payloads.py scripts/harness/production_quality_script.py
+python scripts/check_repo_contracts.py --mode diff $(git diff --name-only main...HEAD)
 ```
 
 Expected: both commands pass. If diff-mode reports a file-size or legacy hotspot issue, adjust the touched file split before committing.
 
-- [ ] **Step 3: Add ledger entry**
+- [x] **Step 3: Add ledger entry**
 
 Create a ledger file under `agent_chats/YYYY/MM/DD/` with these sections:
 
@@ -1817,7 +1817,7 @@ Create a ledger file under `agent_chats/YYYY/MM/DD/` with these sections:
 - List commit hashes from each completed slice.
 ```
 
-- [ ] **Step 4: Run diff and pre-commit on changed files**
+- [x] **Step 4: Run diff and pre-commit on changed files**
 
 Run:
 
@@ -1828,7 +1828,7 @@ pre-commit run --files <all changed files from this plan>
 
 Expected: `git diff --check` passes and pre-commit passes or only skips irrelevant no-file hooks.
 
-- [ ] **Step 5: Commit final validation ledger**
+- [x] **Step 5: Commit final validation ledger**
 
 Run:
 
