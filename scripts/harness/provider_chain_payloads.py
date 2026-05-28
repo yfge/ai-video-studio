@@ -35,7 +35,7 @@ def build_script_prompt(
         '{"title":str,"logline":str,"characters":[{"name":str,"role":str,'
         '"appearance_prompt":str,"consistency_anchor":str}],'
         '"scenes":[{"scene_id":str,"duration_seconds":int,"question":str,'
-        '"stakes":str,"opposition":str,"turn":str,"plot":str,'
+        '"stakes":str,"opposition":str,"turn":str,"causal_seed":str,"plot":str,'
         '"dialogue":[{"speaker":str,"line":str}],'
         '"beats":[{"order_index":int,"beat_type":str,"dramatic_purpose":str,'
         '"visible_event":str,"action":[str],"dialogue":[{"speaker":str,"line":str}],'
@@ -57,6 +57,8 @@ def build_script_prompt(
         "code, password, account, or backdoor before it is used as a solution. "
         "Do not use hidden code, password, account, or backdoor as the solution "
         "unless a previous beat shows who created it, why it exists, and what limitation it has. "
+        "Every scene must include causal_seed: a visible clue that names the owner, access rule, limitation, and motive "
+        "for any password, account, token, remote cursor, supplier callback, or hidden marker used later. "
         "The protagonist must solve each scene through a visible choice or action; "
         "the secondary character cannot simply reveal the answer. "
         "The opposition motive must be planted before confrontation; do not make an antagonist confess "
@@ -76,7 +78,7 @@ def build_script_prompt(
         "one marker from 警报, 警告, 倒计时, 清零, 删除, 丢失, 锁定, 错误, 失败, 危机, "
         "威胁, 证据, 真相, 反转, or 必须. "
         f"{repair_text}"
-        "Every scene must include a concrete question, stakes, opposition, and turn: "
+        "Every scene must include a concrete question, stakes, opposition, turn, and causal_seed: "
         "question names the scene's story problem; stakes names a concrete loss, "
         "deadline, object, customer, money, asset, file, or proof; opposition names "
         "the blocking source such as a system, permission, customer, supplier, black "

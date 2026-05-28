@@ -62,3 +62,19 @@ def test_structured_score_accepts_opening_warning_as_immediate_threat() -> None:
     result = structured_script_score(payload)
 
     assert "opening_hook_substance" not in result["failed_checks"]
+
+
+def test_structured_score_accepts_reference_reuse_as_visual_anomaly_hook() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    first_beat = script["scenes"][0]["beats"][0]
+    first_beat["visible_event"] = "时间线所有镜头缩略图都复用同一张参考图"
+    first_beat["action"] = ["小蓝快速滑过十个镜头，画面全部相同"]
+    first_beat["dialogue"] = [{"speaker": "小蓝", "line": "怎么全同一张？"}]
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert "opening_hook_substance" not in result["failed_checks"]

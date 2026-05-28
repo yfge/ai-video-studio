@@ -194,7 +194,8 @@ def _scene_conflict_line(scene: dict[str, Any]) -> str:
         f"问题：{scene.get('question') or '待确认'}；"
         f"代价：{scene.get('stakes') or '待确认'}；"
         f"阻力：{scene.get('opposition') or '待确认'}；"
-        f"转折：{scene.get('turn') or '待确认'}"
+        f"转折：{scene.get('turn') or '待确认'}；"
+        f"因果种子：{scene.get('causal_seed') or '待确认'}"
     )
 
 

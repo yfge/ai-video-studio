@@ -2737,3 +2737,59 @@ Observed:
 This slice proves JSON stability and retry repair are materially better, but
 the commercial-quality goal is still not complete because the first-pass gate
 requires at least 8/10 and current best evidence is 6/10.
+
+## Task 56: Add Causal Seed Contract For First-Pass Script Logic
+
+**Files:**
+
+- Modify: `scripts/harness/provider_chain_payloads.py`
+- Modify: `scripts/harness/provider_chain_script_request.py`
+- Modify: `scripts/harness/production_quality_script.py`
+- Modify: `scripts/harness/production_hook_score.py`
+- Modify: `ai-pic-backend/tests/scripts/test_provider_chain_script_prompt.py`
+- Modify: `ai-pic-backend/tests/scripts/test_provider_chain_api.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_hook_score.py`
+
+- [x] **Step 1: Add red/green coverage for observed first-pass failures**
+
+Added tests proving the provider-chain script schema and prompt require a
+scene-level `causal_seed`, and that rendered screenplay text preserves the
+seed for ScriptScore. Added structured-hook coverage for the observed visual
+anomaly case where all timeline thumbnails reuse the same reference image.
+
+- [x] **Step 2: Require scene-level causal seeds**
+
+Extended the script JSON prompt and schema so each scene includes
+`causal_seed`, a visible clue naming owner, access rule, limitation, and motive
+for later passwords, accounts, tokens, remote cursors, supplier callbacks, or
+hidden markers. Rendered the seed into the text scored by ScriptScore.
+
+- [x] **Step 3: Accept reference-image reuse as an opening anomaly**
+
+Expanded hook markers so opening beats involving reused or identical reference
+images and hidden markers are treated as immediate visual anomalies instead of
+failing `opening_hook_substance`.
+
+- [x] **Step 4: Run focused tests and live 10-sample evidence**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_hook_score.py::test_structured_score_accepts_reference_reuse_as_visual_anomaly_hook tests/scripts/test_provider_chain_script_prompt.py::test_build_script_prompt_aligns_with_script_score_pass_rubric tests/scripts/test_provider_chain_script_prompt.py::test_provider_chain_script_text_preserves_causal_seed_metadata tests/scripts/test_provider_chain_api.py::test_generate_script_disables_deepseek_streaming_and_thinking -q
+cd ai-pic-backend && pytest tests/scripts/test_provider_chain_script_prompt.py tests/scripts/test_provider_chain_api.py tests/scripts/test_provider_chain_payloads.py tests/scripts/test_production_hook_score.py tests/scripts/test_production_quality_regression.py tests/scripts/test_production_script_quality_regression.py -q
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-10-causal-seed-hook-20260528Tlocal --api-url http://localhost:8010 --sample-count 10 --timeout-seconds 900
+```
+
+Observed:
+
+- Red tests failed before implementation and passed after implementation.
+- Focused regression set passed with `42 passed, 27 warnings`.
+- Live text-only 10-sample run remained `script_quality_not_proven`, but
+  improved first-pass success from the previous best 6/10 to 7/10.
+- Retry-adjusted success remained 9/10; script score average was 4.03, lint
+  average 9.85, structured average 3.81, and provider billing/quota errors were 0.
+
+This slice improves first-pass evidence but does not complete the commercial
+quality goal. Remaining blockers are mostly first-attempt logic and character
+specificity failures around permissions, token use, unknown operators, and
+scene purpose specificity.

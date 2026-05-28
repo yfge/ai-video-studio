@@ -181,6 +181,10 @@ def test_generate_script_disables_deepseek_streaming_and_thinking() -> None:
         "characters",
         "scenes",
     ]
+    scene_schema = session.json_body["json_schema"]["schema"]["properties"]["scenes"][
+        "items"
+    ]
+    assert "causal_seed" in scene_schema["required"]
 
 
 def test_generate_script_fails_before_media_when_structured_quality_fails() -> None:

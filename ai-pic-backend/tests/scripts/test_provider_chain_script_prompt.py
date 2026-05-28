@@ -41,6 +41,8 @@ def test_build_script_prompt_aligns_with_script_score_pass_rubric() -> None:
     assert "seed every hidden code, password, account, or backdoor" in prompt
     assert "visual shock + subtitle-friendly dialogue" in prompt
     assert "opposition must literally include" in prompt
+    assert "causal_seed" in prompt
+    assert "owner, access rule, limitation, and motive" in prompt
 
 
 def test_build_script_prompt_includes_repair_notes_for_retry() -> None:
@@ -107,3 +109,16 @@ def test_provider_chain_script_text_preserves_all_character_roles() -> None:
     assert "▲角色标签：小蓝｜主角｜蓝色卡通机器人，橙色围巾" in text
     assert "▲角色标签：红盾｜冷静审核员要维护权限规则" in text
     assert "red square robot, green scanner eye" in text
+
+
+def test_provider_chain_script_text_preserves_causal_seed_metadata() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    script["scenes"][0]["causal_seed"] = "审计令牌来自红盾，只读权限限制写入。"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    text = provider_chain_script_text(payload)
+
+    assert "因果种子：审计令牌来自红盾，只读权限限制写入。" in text
