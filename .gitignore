@@ -166,6 +166,7 @@ docker/.env.harness.*
 *.temp
 temp/
 tmp/
+.worktrees/
 
 # ===== Next.js 前端相关 =====
 
