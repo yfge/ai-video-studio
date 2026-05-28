@@ -67,6 +67,42 @@ Run evidence: `artifacts/runs/cartoon-production-proof-20260525T153900Z/producti
   local 2D cartoon synthetic assets to avoid live-action human safety limits and
   to isolate Timeline/render/export repeatability.
 
+## Provider-Backed Proof Status
+
+Conclusion on 2026-05-27: `provider-blocked`, not `trial-ready`.
+
+- Seedance billing preflight passed before paid sampling:
+  `artifacts/runs/seedance-billing-preflight-20260527T143214Z/provider_chain.json`.
+  The smoke chain reached render job `34`, produced
+  `https://resource.lets-gpt.com/timeline-renders/video/20260527/143758/21f4648f.mp4`,
+  and `render_media_probe.ok=true`.
+- Three-sample live precheck:
+  `artifacts/runs/quality-live-3-20260527T143829Z/quality_report.json`.
+  Billing/quota failures were `0`, final attempts had provider chain output,
+  contact sheets, render probes, and final URLs, but the aggregate remained
+  `chain_ready_quality_not_proven` because content quality was not yet proven.
+- Formal live-10 run:
+  `artifacts/runs/quality-live-10-20260527T155906Z/quality_report.json`.
+  The run was stopped after `sample-03` to avoid further provider spend because
+  Seedance returned `AccountOverdueError` on
+  `POST /api/v1/ai/generate/video`. The aggregate verdict is
+  `provider_blocked_not_evaluable`, with `sample_count=3`,
+  `first_success_count=1`, `retry_adjusted_success_count=1`,
+  `provider_billing_or_quota_error_count=1`,
+  `script_lint_average=9.83`, and `structured_script_average=3.81`.
+- Browser smoke for the final proof run:
+  `artifacts/runs/quality-live-10-20260527T155906Z-browser/summary.json`.
+  Chrome DevTools timed out on `127.0.0.1:9222`, so the harness used Playwright
+  fallback and reported `browser_status=degraded`; the Timeline workspace still
+  loaded at `/episodes/133/workspace?tab=timeline&scriptId=117`, and the
+  episode, scripts, timeline, render-jobs, and clip-assets API reads returned
+  HTTP 200.
+
+This provider-backed run does not establish commercial sample readiness. The
+next proof attempt should restart from the Seedance smoke preflight after the
+external account overdue state is cleared, then rerun live-3 before any live-10
+spend.
+
 ## Completion Rule
 
 Do not mark the production proof complete until all 10 sample rows have:

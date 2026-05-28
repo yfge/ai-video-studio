@@ -31,6 +31,7 @@
 - render media probe 自动门禁已用真实 smoke 链路验证：`artifacts/runs/provider-chain-render-probe-smoke-20260526T071200Z/provider_chain.json`，Timeline `20`、render job `28`、输出 `https://resource.lets-gpt.com/timeline-renders/video/20260526/070808/ada257bc.mp4`，`render_media_probe.ok=true`，expected `4.0s`、video `4.041667s`、audio `4.032s`，并抽出 `frames/render_scene_01_2000ms.jpg`。
 - render media probe 自动门禁已用真实 full-30s 链路验证：`artifacts/runs/provider-chain-render-probe-full-30s-20260526T071051Z/provider_chain.json`，Timeline `21`、render job `29`、输出 `https://resource.lets-gpt.com/timeline-renders/video/20260526/072611/d4b917fa.mp4`，`render_media_probe.ok=true`，expected `30.0s`、video `30.125s`、audio `30.08s`，并按场景抽出 `frames/render_scene_01_2000ms.jpg` / `frames/render_scene_02_17000ms.jpg`。本次两段 15 秒 Seedance 同步调用分别耗时约 `402.957s` / `440.514s`，full-30s 只能作为低频付费回归。
 - provider-chain harness 已支持独立 video clip 并发生成：`--video-concurrency` 默认 `2`，每条 request_chain 记录 `duration_seconds`，并写入 `video_generation.wall_time_seconds`，用于降低 full-30s 回归墙钟时间和暴露 provider latency。
+- 2026-05-27 真实 provider-backed production proof 暂停在 `provider-blocked`：Seedance smoke preflight `artifacts/runs/seedance-billing-preflight-20260527T143214Z/provider_chain.json` 通过并产出 render job `34`，live-3 `artifacts/runs/quality-live-3-20260527T143829Z/quality_report.json` 未出现 billing/quota failure，但正式 live-10 `artifacts/runs/quality-live-10-20260527T155906Z/quality_report.json` 在 `sample-03` 命中 Volcengine `AccountOverdueError`，verdict 为 `provider_blocked_not_evaluable`；后续不得把它计为 trial-ready。
 - timeline delete/restore、render attempt delete/restore、rollback、Timeline Spec schema/import validation、first-class clip asset lineage 后端基础、stable `clip_id` rework API、operator 资产审计读视图、基于已有 media asset 的 rework 控制、provider-backed clip video rework task queue、operator 入口、success lineage、rework 后自动 render queue、legacy 收敛和 10 条本地 2D 卡通样片验证已落地。
 - 当前结论：主链工程闭环可演示；字幕已能从 Timeline subtitle track 烧进最终成片，source episode audio 或 per-dialogue clip audio 已能替换/按 Timeline timing 混成最终音轨；大规模 provider-backed 内容生产成本、稳定性、角色一致性和内容质量仍需要单独按真实预算复测。
 
@@ -156,6 +157,9 @@
 - 已固定 2D/3D 卡通样片验证范围、3 个复用角色和 10 条样片记录表：
   `docs/cartoon-sample-production-proof.md`。
 - 已产出 10 条最终导出样片，并完成成本、失败点和人工修正指标记录。
+- 真实 provider-backed production proof 当前是 `provider-blocked`，不是
+  `trial-ready`：`quality-live-10-20260527T155906Z` 在 `sample-03` 收到
+  Volcengine `AccountOverdueError` 后停止，避免继续付费样片。
 
 ### 任务（内容→生产→复盘）
 
