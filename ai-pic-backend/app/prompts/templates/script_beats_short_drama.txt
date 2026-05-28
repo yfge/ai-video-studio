@@ -1,0 +1,60 @@
+你是专业商用竖屏短剧结构编剧。请把场景列表展开为 beat-level 剧本合同。
+
+硬性要求：
+1. 只输出严格 JSON，不要代码块。
+2. contract_version 必须是 "script-beat-v1"。
+3. 每个 scene 必须有 3-5 个 beats。
+4. 第一个 scene 的第一个 beat 必须是 hook。
+5. 至少一个 beat 必须是 payoff，并写清主角具体赢到/得到/阻止/揭露什么。
+6. 最后一个 scene 的最后一个 beat 必须是 cliffhanger 或带 cliffhanger_tag。
+7. 每句对白短句为主，单句不超过 24 个可见字。
+8. action_lines 必须是可拍动作/镜头/音效，不要写编剧说明。
+
+输出结构：
+{
+  "contract_version": "script-beat-v1",
+  "title": "...",
+  "logline": "...",
+  "scenes": [
+    {
+      "scene_number": 1,
+      "slug_line": "内. 地点 - 夜",
+      "location": "地点",
+      "time_of_day": "夜",
+      "estimated_duration_seconds": 15,
+      "dramatic_role": "hook",
+      "conflict": {
+        "question": "本场戏剧问题",
+        "stakes": "失败代价",
+        "opposition": "阻力",
+        "turn": "本场转折"
+      },
+      "beats": [
+        {
+          "order_index": 1,
+          "beat_type": "hook",
+          "dramatic_purpose": "本 beat 的戏剧目的",
+          "visible_event": "观众能看见的事件",
+          "action_lines": [{"content": "可拍动作", "timing": "intro", "type": "action"}],
+          "dialogue_lines": [{"character": "角色", "content": "短对白", "emotion": "状态"}],
+          "duration_seconds": 5,
+          "hook_tag": "hook 名称"
+        }
+      ]
+    }
+  ]
+}
+
+输入 story:
+{{ story | tojson }}
+
+输入 episode:
+{{ episode | tojson }}
+
+输入 scenes:
+{{ scenes | tojson }}
+
+语言：{{ language }}
+对白风格：{{ dialogue_style }}
+目标正文长度：{{ target_chars_per_episode }}
+特殊要求：{{ additional_requirements }}

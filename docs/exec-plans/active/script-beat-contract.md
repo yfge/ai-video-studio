@@ -26,8 +26,12 @@
   - Tells the model to write scene beats with hook/escalation/payoff/cliffhanger fields.
 - Create `ai-pic-backend/app/prompts/templates/script_beats_short_drama.yaml`
   - Metadata for the new prompt template.
+- Create `ai-pic-backend/app/prompts/template_defaults.py`
+  - Keeps legacy prompt defaults/examples outside the prompt enum registry so the touched registry remains within file-size limits.
 - Modify `ai-pic-backend/app/prompts/templates.py`
   - Add `PromptTemplate.SCRIPT_BEATS`.
+- Create `ai-pic-backend/app/services/script/beat_contract_generation.py`
+  - Owns reusable beat-prompt rendering, JSON repair, normalization, and flattening for both generation paths.
 - Modify `ai-pic-backend/app/services/script_agent.py`
   - Add beat-writing node after scene planning.
   - Assemble output from beat contract instead of loose dialogues.
@@ -1299,11 +1303,13 @@ git commit -m "feat(scripts): gate generated scripts on beat contract"
 - Create: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
 - Create: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.yaml`
 - Modify: `ai-pic-backend/app/prompts/templates.py`
+- Create: `ai-pic-backend/app/prompts/template_defaults.py`
 - Modify: `ai-pic-backend/app/services/ai/scripts_ai_manager_payloads.py`
+- Create: `ai-pic-backend/app/services/script/beat_contract_generation.py`
 - Modify: `ai-pic-backend/app/services/script_agent.py`
 - Modify: `ai-pic-backend/app/services/ai/scripts_ai_manager.py`
 
-- [ ] **Step 1: Add prompt template enum**
+- [x] **Step 1: Add prompt template enum**
 
 Modify `ai-pic-backend/app/prompts/templates.py`:
 
@@ -1317,7 +1323,7 @@ Add it near the script prompt entries and map it:
     PromptTemplate.SCRIPT_BEATS: PromptCategory.SCRIPT,
 ```
 
-- [ ] **Step 2: Add prompt templates**
+- [x] **Step 2: Add prompt templates**
 
 Create `ai-pic-backend/app/prompts/templates/script_beats_short_drama.yaml`:
 
@@ -1397,7 +1403,7 @@ Create `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`:
 特殊要求：{{ additional_requirements }}
 ```
 
-- [ ] **Step 3: Add JSON schema payload constants**
+- [x] **Step 3: Add JSON schema payload constants**
 
 Modify `ai-pic-backend/app/services/ai/scripts_ai_manager_payloads.py`:
 
@@ -1420,7 +1426,7 @@ _BEAT_CONTRACT_REPAIR_HINT = '{"contract_version":"script-beat-v1","scenes":[{"s
 _BEAT_CONTRACT_MAX_TOKENS = 6000
 ```
 
-- [ ] **Step 4: Plan the script-agent code edit**
+- [x] **Step 4: Plan the script-agent code edit**
 
 In `ai-pic-backend/app/services/script_agent.py`, add a new `write_beats` node after `scene_plan` and before review/assemble. Use:
 
@@ -1446,7 +1452,7 @@ The node must parse the contract, normalize it with
 `normalize_script_beat_contract`, flatten it with
 `flatten_contract_to_script_payload`, and return `structured_script_contract`.
 
-- [ ] **Step 5: Implement script-agent beat node**
+- [x] **Step 5: Implement script-agent beat node**
 
 Patch `script_agent.py` carefully around the existing graph nodes:
 
@@ -1522,7 +1528,7 @@ Wire graph edges as:
 
 Remove or bypass the old direct `scene_plan -> dialogue` edge only after this new edge is active.
 
-- [ ] **Step 6: Update direct AI-manager fallback**
+- [x] **Step 6: Update direct AI-manager fallback**
 
 In `ai-pic-backend/app/services/ai/scripts_ai_manager.py`, change direct fallback so it calls `SCRIPT_BEATS` after scene planning and flattens the contract. The returned `payload` must include:
 
@@ -1539,7 +1545,7 @@ payload["metadata"] = {
 }
 ```
 
-- [ ] **Step 7: Run prompt and nearby unit tests**
+- [x] **Step 7: Run prompt and nearby unit tests**
 
 Run:
 
@@ -1549,7 +1555,7 @@ cd ai-pic-backend && pytest tests/unit/prompts/test_prompt_variants.py tests/uni
 
 Expected: tests pass.
 
-- [ ] **Step 8: Commit generation prompt slice**
+- [x] **Step 8: Commit generation prompt slice**
 
 Run:
 

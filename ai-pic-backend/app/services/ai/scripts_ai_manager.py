@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Optional
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.services.ai.scripts_ai_manager_payloads import (
-    _DIALOGUE_MAX_TOKENS,
-    _DIALOGUE_REPAIR_HINT,
-    _DIALOGUE_SCHEMA_PAYLOAD,
+    _BEAT_CONTRACT_MAX_TOKENS as _BEAT_CONTRACT_MAX_TOKENS,
+)
+from app.services.ai.scripts_ai_manager_payloads import (
     _MAX_DIALOGUE_SCENES,
     _REPAIR_MAX_TOKENS,
     _SCENE_PLAN_MAX_TOKENS,
@@ -81,6 +81,14 @@ class ScriptManagerMixin:
             scenes = []
 
         episode_prompt = _minify_episode_for_prompt(episode)
+        from app.services.script.beat_contract_generation import (
+            BeatContractGenerationError,
+            generate_beat_contract_payload,
+            story_with_default_script_format,
+        )
+
+        prompt_story = story_with_default_script_format(story, episode_prompt)
+        episode_prompt.setdefault("story_format", prompt_story["story_format"])
 
         duration_minutes = episode.get("duration_minutes") or 0
         should_plan_scenes = len(scenes) < 2 or len(scenes) > _MAX_DIALOGUE_SCENES
@@ -108,7 +116,7 @@ class ScriptManagerMixin:
                 PromptTemplate.SCRIPT_SCENES.value,
                 {
                     "episode": episode_prompt,
-                    "story": story,
+                    "story": prompt_story,
                     "scene_detail_level": scene_detail_level,
                     "format_type": format_type,
                     "language": language,
@@ -148,61 +156,34 @@ class ScriptManagerMixin:
                 if isinstance(planned, list) and planned:
                     scenes = planned
 
-        prompt = prompt_manager.render_prompt(
-            PromptTemplate.SCRIPT_DIALOGUES.value,
-            {
-                "episode": episode_prompt,
-                "story": story,
-                "scenes": scenes,
-                "dialogue_style": dialogue_style,
-                "language": language,
-                "format_type": format_type,
-                "template_style": template_style,
-                "target_chars_per_episode": target_chars_per_episode,
-                "quality_threshold": quality_threshold,
-            },
-        )
-
-        response = await self.ai_manager.generate_text(
-            prompt=prompt,
-            temperature=temperature,
-            model=model,
-            prefer_provider=prefer_provider,
-            max_tokens=_DIALOGUE_MAX_TOKENS,
-            json_schema=_DIALOGUE_SCHEMA_PAYLOAD,
-            system_prompt="你是专业的剧本对白与舞台指示写手，请严格按 JSON 返回。",
-            stream=False,
-        )
-        if not response.success:
-            return None
-
-        parsed = _parse_payload(response.data)
-        if not parsed:
-            parsed, response = await _repair_payload(
-                schema_payload=_DIALOGUE_SCHEMA_PAYLOAD,
-                format_hint=_DIALOGUE_REPAIR_HINT,
-                raw_output=response.data,
+        try:
+            beat_result = await generate_beat_contract_payload(
+                self.ai_manager,
+                episode=episode_prompt,
+                story=prompt_story,
+                scenes=scenes,
+                format_type=format_type,
+                language=language,
+                dialogue_style=dialogue_style,
+                template_style=template_style,
+                target_chars_per_episode=target_chars_per_episode,
+                quality_threshold=quality_threshold,
+                additional_requirements=additional_requirements,
+                temperature=temperature,
+                model=model,
+                prefer_provider=prefer_provider,
             )
-        if not parsed or not isinstance(parsed, dict):
+        except BeatContractGenerationError:
             return None
-
-        script_scenes = (
-            parsed.get("scenes") if isinstance(parsed.get("scenes"), list) else scenes
-        )
-        dialogues = (
-            parsed.get("dialogues") if isinstance(parsed.get("dialogues"), list) else []
-        )
-        stage_dir = (
-            parsed.get("stage_directions")
-            if isinstance(parsed.get("stage_directions"), list)
-            else []
-        )
+        flattened = beat_result["payload"]
+        response = beat_result["response"]
+        prompt = beat_result["prompt"]
 
         payload = {
-            "content": "",
-            "scenes": script_scenes,
-            "dialogues": dialogues,
-            "stage_directions": stage_dir,
+            "content": flattened["content"],
+            "scenes": flattened["scenes"],
+            "dialogues": flattened["dialogues"],
+            "stage_directions": flattened["stage_directions"],
             "metadata": {
                 "story_title": story.get("title"),
                 "episode_title": episode.get("title"),
@@ -223,7 +204,9 @@ class ScriptManagerMixin:
                 "cliffhanger_plan": story.get("cliffhanger_plan")
                 or episode.get("cliffhanger_plan"),
                 "ad_snippets": story.get("ad_snippets") or episode.get("ad_snippets"),
+                **flattened.get("metadata", {}),
             },
+            "structured_script_contract": flattened["structured_script_contract"],
         }
 
         payload["content"] = self._build_script_text(
@@ -237,13 +220,16 @@ class ScriptManagerMixin:
             target_chars_per_episode=target_chars_per_episode,
             title=episode.get("title"),
         )
+        payload["metadata"]["structured_script_contract"] = payload[
+            "structured_script_contract"
+        ]
 
         return {
             "content": payload,
             "normalized": payload,
             "prompt": prompt,
             "generation_method": f"ai_manager_{response.provider}",
-            "template_used": "script_dialogues",
+            "template_used": "script_beats",
             "provider_used": response.provider,
             "model_used": response.model,
             "usage": response.usage,

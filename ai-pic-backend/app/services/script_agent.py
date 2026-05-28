@@ -659,6 +659,14 @@ class ScriptLangGraphAgent:
         if duration_minutes is None:
             duration_minutes = episode.get("duration_minutes", 0) or 0
 
+        from app.services.script.beat_contract_generation import (
+            BeatContractGenerationError,
+            generate_beat_contract_payload,
+            story_with_default_script_format,
+        )
+
+        prompt_story = story_with_default_script_format(story, episode)
+
         graph = StateGraph(dict)
 
         async def plan_scenes(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -666,7 +674,7 @@ class ScriptLangGraphAgent:
                 PromptTemplate.SCRIPT_SCENES.value,
                 {
                     "episode": episode,
-                    "story": story,
+                    "story": prompt_story,
                     "scene_detail_level": scene_detail_level,
                     "format_type": format_type,
                     "language": language,
@@ -786,7 +794,7 @@ class ScriptLangGraphAgent:
                 PromptTemplate.SCRIPT_DIALOGUES.value,
                 {
                     "episode": episode,
-                    "story": story,
+                    "story": prompt_story,
                     "scenes": scenes,
                     "dialogue_style": dialogue_style,
                     "language": language,
@@ -912,6 +920,58 @@ class ScriptLangGraphAgent:
                 "computed_budgets": active_budgets,
                 "react_needs_retry": False,
                 "reasoning": reasoning,
+                "provider": state.get("provider") or resp.provider,
+                "model_used": state.get("model_used") or resp.model,
+            }
+
+        async def write_beats(state: Dict[str, Any]) -> Dict[str, Any]:
+            if state.get("error"):
+                return {
+                    **state,
+                    "reasoning": state.get("reasoning", []) + ["beats_skipped_error"],
+                }
+            scenes = state.get("scenes") or []
+            if not scenes:
+                return {
+                    **state,
+                    "error": "missing_scenes",
+                    "reasoning": state.get("reasoning", [])
+                    + ["beats_skipped_missing_scenes"],
+                }
+
+            try:
+                beat_result = await generate_beat_contract_payload(
+                    self.service.ai_manager,
+                    episode=episode,
+                    story=prompt_story,
+                    scenes=scenes,
+                    format_type=format_type,
+                    language=language,
+                    dialogue_style=dialogue_style,
+                    template_style=template_style,
+                    target_chars_per_episode=target_chars_per_episode,
+                    quality_threshold=quality_threshold,
+                    additional_requirements=additional_requirements,
+                    temperature=temperature,
+                    model=model,
+                    prefer_provider=prefer_provider,
+                )
+            except BeatContractGenerationError as exc:
+                return {
+                    **state,
+                    "error": exc.code,
+                    "raw": exc.raw,
+                    "exc": exc.detail,
+                    "reasoning": state.get("reasoning", []) + [exc.code],
+                }
+            flattened = beat_result["payload"]
+            resp = beat_result["response"]
+            return {
+                **state,
+                **flattened,
+                "structured_script_contract": flattened["structured_script_contract"],
+                "react_needs_retry": False,
+                "reasoning": state.get("reasoning", []) + ["beat_contract_ok"],
                 "provider": state.get("provider") or resp.provider,
                 "model_used": state.get("model_used") or resp.model,
             }
@@ -1126,183 +1186,32 @@ class ScriptLangGraphAgent:
             """Conditional edge: decide whether to retry dialogue generation."""
             if state.get("react_needs_retry"):
                 return "dialogue"
-            return "review"
-
-        async def review_classification(state: Dict[str, Any]) -> Dict[str, Any]:
-            """Review and fix misclassified dialogues/stage_directions."""
-            dialogues = state.get("dialogues") or []
-            stage_dir = state.get("stage_directions") or []
-            scenes = state.get("scenes") or []
-
-            # Early-exit: if dialogue generation failed, skip review to avoid additional token spend.
-            if state.get("error"):
-                return {
-                    **state,
-                    "reasoning": state.get("reasoning", []) + ["review_skipped_error"],
-                }
-            if not dialogues and not stage_dir:
-                return {
-                    **state,
-                    "reasoning": state.get("reasoning", []) + ["review_skipped_empty"],
-                }
-
-            # Extract character names from story for context
-            characters = [
-                char.get("name", "")
-                for char in extract_story_characters(story)
-                if char.get("name")
-            ]
-
-            prompt = prompt_manager.render_prompt(
-                PromptTemplate.SCRIPT_REVIEW.value,
-                {
-                    "dialogues": dialogues,
-                    "stage_directions": stage_dir,
-                    "characters": characters,
-                },
-            )
-            resp = await self.service.ai_manager.generate_text(
-                prompt=prompt,
-                temperature=0.3,  # Low temperature for accurate review
-                model=model,
-                prefer_provider=prefer_provider,
-                json_schema={
-                    "name": "script_review",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "dialogues": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "scene_number": {
-                                            "anyOf": [
-                                                {"type": "integer"},
-                                                {"type": "null"},
-                                            ]
-                                        },
-                                        "character": {
-                                            "anyOf": [
-                                                {"type": "string"},
-                                                {"type": "null"},
-                                            ]
-                                        },
-                                        "content": {"type": "string"},
-                                        "emotion": {
-                                            "anyOf": [
-                                                {"type": "string"},
-                                                {"type": "null"},
-                                            ]
-                                        },
-                                    },
-                                },
-                            },
-                            "stage_directions": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "scene_number": {
-                                            "anyOf": [
-                                                {"type": "integer"},
-                                                {"type": "null"},
-                                            ]
-                                        },
-                                        "timing": {
-                                            "anyOf": [
-                                                {"type": "string"},
-                                                {"type": "null"},
-                                            ]
-                                        },
-                                        "content": {"type": "string"},
-                                        "type": {
-                                            "anyOf": [
-                                                {"type": "string"},
-                                                {"type": "null"},
-                                            ]
-                                        },
-                                    },
-                                },
-                            },
-                            "corrections": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "original_type": {"type": "string"},
-                                        "corrected_type": {"type": "string"},
-                                        "content": {"type": "string"},
-                                        "reason": {"type": "string"},
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-                system_prompt="你是专业的剧本审核专家，请严格按 JSON 返回修正后的对白和舞台指示。",
-            )
-            if not resp.success:
-                # If review fails, keep original data
-                self.logger.warning("Review classification failed, keeping original")
-                reasoning = state.get("reasoning", []) + ["review_skipped"]
-                return {
-                    **state,
-                    "reasoning": reasoning,
-                }
-
-            parsed = (
-                resp.data
-                if isinstance(resp.data, dict)
-                else extract_json_block(
-                    resp.data if isinstance(resp.data, str) else str(resp.data)
-                )
-            )
-            if not parsed or not isinstance(parsed, dict):
-                self.logger.warning("Review returned invalid JSON, keeping original")
-                reasoning = state.get("reasoning", []) + ["review_invalid_json"]
-                return {
-                    **state,
-                    "reasoning": reasoning,
-                }
-
-            reviewed_dialogues = parsed.get("dialogues") or dialogues
-            reviewed_stage_dir = parsed.get("stage_directions") or stage_dir
-            corrections = parsed.get("corrections") or []
-
-            if corrections:
-                self.logger.info(
-                    f"Review made {len(corrections)} corrections: "
-                    f"{[c.get('content', '')[:30] for c in corrections]}"
-                )
-
-            reasoning = state.get("reasoning", []) + [
-                f"review_ok({len(corrections)} corrections)"
-            ]
-            return {
-                "scenes": scenes,
-                "dialogues": reviewed_dialogues,
-                "stage_directions": reviewed_stage_dir,
-                "reasoning": reasoning,
-                "provider": state.get("provider"),
-                "model_used": state.get("model_used"),
-            }
+            return "assemble"
 
         def assemble(state: Dict[str, Any]) -> Dict[str, Any]:
             scenes = state.get("scenes") or []
             dialogues = state.get("dialogues") or []
             stage_dir = state.get("stage_directions") or []
+            metadata = {
+                "total_scenes": len(scenes),
+                "total_dialogues": len(dialogues),
+                "estimated_duration": f"{episode.get('duration_minutes') or 0}min",
+            }
+            if state.get("structured_script_contract"):
+                metadata["structured_script_contract"] = state[
+                    "structured_script_contract"
+                ]
             payload = {
-                "content": "",  # 由上层写入整合后的文本内容
+                "content": state.get("content") or "",
                 "scenes": scenes,
                 "dialogues": dialogues,
                 "stage_directions": stage_dir,
-                "metadata": {
-                    "total_scenes": len(scenes),
-                    "total_dialogues": len(dialogues),
-                    "estimated_duration": f"{episode.get('duration_minutes') or 0}min",
-                },
+                "metadata": metadata,
             }
+            if state.get("structured_script_contract"):
+                payload["structured_script_contract"] = state[
+                    "structured_script_contract"
+                ]
             try:
                 ScriptModel.model_validate(payload)
             except Exception as exc:
@@ -1321,20 +1230,24 @@ class ScriptLangGraphAgent:
             }
 
         graph.add_node("scene_plan", plan_scenes)
+        graph.add_node("beat_contract", write_beats)
         graph.add_node("dialogue", write_dialogues)
         graph.add_node("react_validate", react_validate_duration)
-        graph.add_node("review", review_classification)
         graph.add_node("assemble", assemble)
-        graph.add_conditional_edges("scene_plan", end_on_error_router("dialogue", END))
+        graph.add_conditional_edges(
+            "scene_plan", end_on_error_router("beat_contract", END)
+        )
+        graph.add_conditional_edges(
+            "beat_contract", end_on_error_router("react_validate", END)
+        )
         graph.add_conditional_edges(
             "dialogue", end_on_error_router("react_validate", END)
         )
         graph.add_conditional_edges(
             "react_validate",
             should_retry_dialogues,
-            {"dialogue": "dialogue", "review": "review"},
+            {"dialogue": "dialogue", "assemble": "assemble"},
         )
-        graph.add_edge("review", "assemble")
         graph.add_edge("assemble", END)
         graph.set_entry_point("scene_plan")
 

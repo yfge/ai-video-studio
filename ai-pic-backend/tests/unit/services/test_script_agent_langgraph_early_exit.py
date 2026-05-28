@@ -73,6 +73,58 @@ async def test_script_agent_clears_react_retry_flag_after_successful_retry():
             "content": "你不用再绕弯子，直接告诉我真正卡住的是预算、人手，还是对结果没有信心。",
         },
     ]
+    beat_contract = {
+        "contract_version": "script-beat-v1",
+        "title": "ep",
+        "logline": "A must settle the plan before the risk leaks.",
+        "scenes": [
+            {
+                "scene_number": 1,
+                "slug_line": "INT. OFFICE - DAY",
+                "location": "office",
+                "time_of_day": "day",
+                "estimated_duration_seconds": 15,
+                "dramatic_role": "hook",
+                "conflict": {
+                    "question": "Can A force the truth out?",
+                    "stakes": "The plan fails if the risk stays hidden.",
+                    "opposition": "A vague budget blocker.",
+                    "turn": "The blocker admits there is no confidence.",
+                },
+                "beats": [
+                    {
+                        "order_index": 1,
+                        "beat_type": "hook",
+                        "dramatic_purpose": "Open on the unresolved plan.",
+                        "visible_event": "A pins the proposal on the wall.",
+                        "action_lines": [{"content": "A points at the red risk row."}],
+                        "dialogue_lines": [valid_dialogues[0]],
+                        "duration_seconds": 5,
+                        "hook_tag": "risk_row",
+                    },
+                    {
+                        "order_index": 2,
+                        "beat_type": "conflict",
+                        "dramatic_purpose": "Push through evasive answers.",
+                        "visible_event": "The other chair stays empty.",
+                        "action_lines": [{"content": "A closes the laptop."}],
+                        "dialogue_lines": [valid_dialogues[1]],
+                        "duration_seconds": 5,
+                    },
+                    {
+                        "order_index": 3,
+                        "beat_type": "cliffhanger",
+                        "dramatic_purpose": "Leave the plan exposed.",
+                        "visible_event": "A hidden message lights up.",
+                        "action_lines": [{"content": "A sees the warning on screen."}],
+                        "dialogue_lines": [{"character": "A", "content": "谁发的？"}],
+                        "duration_seconds": 5,
+                        "cliffhanger_tag": "hidden_message",
+                    },
+                ],
+            }
+        ],
+    }
 
     async def _generate_text(**kwargs: object):
         schema = kwargs.get("json_schema")
@@ -92,6 +144,14 @@ async def test_script_agent_clears_react_retry_flag_after_successful_retry():
                         }
                     ]
                 },
+                provider="test",
+                model="test",
+                usage=None,
+            )
+        if name == "script_beat_contract":
+            return SimpleNamespace(
+                success=True,
+                data=beat_contract,
                 provider="test",
                 model="test",
                 usage=None,
@@ -168,9 +228,10 @@ async def test_script_agent_clears_react_retry_flag_after_successful_retry():
     assert result is not None
     assert calls == [
         "script_scenes",
-        "script_dialogues",
-        "script_dialogues",
-        "script_review",
+        "script_beat_contract",
     ]
+    assert result["content"]["structured_script_contract"]["contract_version"] == (
+        "script-beat-v1"
+    )
     assert result["character_validation_passed"] is True
     assert "No story characters to validate against" not in result["character_warnings"]

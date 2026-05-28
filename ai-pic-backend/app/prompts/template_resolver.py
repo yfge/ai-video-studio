@@ -13,6 +13,7 @@ _FORMAT_AWARE_TEMPLATES = {
     "script_generation",
     "script_scenes",
     "script_dialogues",
+    "script_beats",
 }
 
 _SUPPORTED_STORY_FORMATS = {"tv_series", "film", "short_drama"}

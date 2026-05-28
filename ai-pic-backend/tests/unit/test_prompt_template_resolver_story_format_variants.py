@@ -23,6 +23,14 @@ def test_resolve_template_name_picks_short_drama_variant_when_available():
     )
     assert (
         resolve_template_name(
+            "script_beats",
+            {"story": {"story_format": "short_drama"}},
+            prompts_dir,
+        )
+        == "script_beats_short_drama"
+    )
+    assert (
+        resolve_template_name(
             "system_prompt_story",
             {"story_format": "short_drama"},
             prompts_dir,

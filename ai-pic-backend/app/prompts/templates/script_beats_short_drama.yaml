@@ -1,0 +1,8 @@
+name: script_beats_short_drama
+description: "短剧 beat-level 剧本结构生成模板"
+category: script
+version: "1.0"
+output_format: "JSON"
+expected_fields:
+  - contract_version
+  - scenes
