@@ -36,6 +36,7 @@ def test_build_script_prompt_accepts_optional_premise() -> None:
     assert "<= 15 visible" in prompt
     assert "one stable protagonist" in prompt
     assert "visible action" in prompt
+    assert "specific story turn" in prompt
     assert "Do not use generic speaker names" in prompt
 
 
@@ -207,6 +208,22 @@ def test_structured_score_requires_provider_protagonist_in_screen_action() -> No
 
     assert result["passed"] is False
     assert "scene_protagonist_screen_presence" in result["failed_checks"]
+
+
+def test_structured_score_rejects_generic_provider_beat_purpose() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    for scene in script["scenes"]:
+        for beat in scene["beats"]:
+            beat["dramatic_purpose"] = "推进剧情"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "beat_dramatic_purpose_specificity" in result["failed_checks"]
 
 
 def test_structured_score_requires_provider_beat_durations() -> None:

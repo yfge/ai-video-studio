@@ -9,6 +9,7 @@ from scripts.harness.production_character_score import character_anchor_failed_c
 from scripts.harness.production_dialogue_score import dialogue_failed_checks
 from scripts.harness.production_duration_score import duration_failed_checks
 from scripts.harness.production_filmability_score import filmability_failed_checks
+from scripts.harness.production_purpose_score import purpose_failed_checks
 from scripts.harness.production_script_payload import extract_script_payload
 
 STRUCTURED_SCORE_PASS = 3.5
@@ -86,6 +87,7 @@ def _beat_failed_checks(scenes: list[dict[str, Any]]) -> list[str]:
     ):
         failed_checks.append("cliffhanger_required")
     failed_checks.extend(duration_failed_checks(scenes))
+    failed_checks.extend(purpose_failed_checks(scenes))
     failed_checks.extend(character_anchor_failed_checks(scenes))
     failed_checks.extend(filmability_failed_checks(scenes))
     failed_checks.extend(dialogue_failed_checks(scenes))
