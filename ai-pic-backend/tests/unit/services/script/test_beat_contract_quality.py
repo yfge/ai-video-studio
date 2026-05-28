@@ -172,6 +172,22 @@ def test_quality_gate_rejects_scene_duration_mismatch():
 
 
 @pytest.mark.unit
+def test_quality_gate_rejects_internal_state_as_visible_action():
+    payload = _valid_contract()
+    scene = payload["scenes"][0]
+    scene["beats"][0]["visible_event"] = "小机意识到真相正在改变命运。"
+    scene["beats"][0]["action_lines"] = [{"content": "小机内心感到崩溃。"}]
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "beat_visible_event_specificity" in failed
+    assert "beat_action_specificity" in failed
+
+
+@pytest.mark.unit
 def test_quality_gate_check_reports_failed_beat_contract():
     contract = normalize_script_beat_contract(
         {

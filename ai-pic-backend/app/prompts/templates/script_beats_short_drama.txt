@@ -17,6 +17,7 @@
 14. dialogue_lines.character 必须使用稳定角色名，不要写“角色”“主角”“男主”“女主”“旁白”等占位名。
 15. 每个多 beat 场景必须让同一个具名主角在至少两个 beats 中说话，保证观众能跟住人物行动线。
 16. 每个 beat.duration_seconds 必须大于 0；同一 scene 的所有 beat 时长总和必须接近 estimated_duration_seconds。
+17. visible_event 和 action_lines 不能写“意识到/明白/感到/内心/命运/关系变化”等心理或抽象变化；必须写观众能看见或听见的物件、动作、表情、走位、屏幕变化、声音或结果。
 
 输出结构：
 {

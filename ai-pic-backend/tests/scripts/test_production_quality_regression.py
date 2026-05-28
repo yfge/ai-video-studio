@@ -221,3 +221,20 @@ def test_structured_score_rejects_provider_scene_duration_mismatch() -> None:
 
     assert result["passed"] is False
     assert "scene_duration_alignment" in result["failed_checks"]
+
+
+def test_structured_score_rejects_internal_state_provider_beats() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    scene = script["scenes"][0]
+    scene["beats"][0]["visible_event"] = "小蓝意识到真相正在改变命运。"
+    scene["beats"][0]["action"] = ["小蓝内心感到崩溃。"]
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "beat_visible_event_specificity" in result["failed_checks"]
+    assert "beat_action_specificity" in result["failed_checks"]

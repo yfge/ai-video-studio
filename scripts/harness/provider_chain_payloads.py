@@ -48,6 +48,8 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         "be hook. At least one beat across the script must be payoff. The final "
         "beat must be cliffhanger. Each beat must include duration_seconds > 0, "
         "and the beat duration sum for a scene must match that scene duration. "
+        "Beat visible_event and action must describe visible or audible screen behavior; "
+        "do not write internal states such as 意识到, 明白, 感到, 内心, 命运, or 关系变化. "
         "Every dialogue line must be <= 15 visible Chinese/English characters. "
         "Scene 1 must open with an immediate conflict or countdown hook. The final "
         "scene must end on an unresolved reversal or question, not a full resolution. "

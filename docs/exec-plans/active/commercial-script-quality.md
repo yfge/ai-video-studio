@@ -596,3 +596,137 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_duration.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_duration_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-duration-budget.md
 git commit -m "feat(scripts): enforce beat duration budgets"
 ```
+
+## Task 12: Add Filmable Action Gates
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_specificity.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+
+- [x] **Step 1: Write failing product filmability tests**
+
+Add a test proving beat contracts fail when `visible_event` and `action_lines` describe internal states or abstract emotion rather than visible screen behavior.
+
+- [x] **Step 2: Run tests and confirm red**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py::test_quality_gate_rejects_internal_state_as_visible_action -q
+```
+
+Expected: the test fails because the existing specificity check does not reject internal-state wording yet.
+
+- [x] **Step 3: Extend product specificity helper**
+
+Update `beat_contract_specificity.py` so `is_specific_text` rejects internal-state and abstract-causality wording such as `意识到`, `明白`, `感到`, `内心`, `情绪`, `命运`, and `关系变化` when used as visible/action text.
+
+- [x] **Step 4: Update short-drama prompt**
+
+Tell the model that `visible_event` and `action_lines` must name a visible object, gesture, movement, screen change, sound, or physical result, and must not use internal-state wording.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py -q
+```
+
+Expected: all quality tests pass.
+
+## Task 13: Align Provider-Chain Filmability Scoring
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/scripts/test_production_quality_regression.py`
+- Create: `scripts/harness/production_filmability_score.py`
+- Modify: `scripts/harness/production_structured_score.py`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing provider-chain filmability tests**
+
+Add a test proving provider-chain structured scoring rejects internal-state `visible_event` and `action` wording.
+
+- [x] **Step 2: Run tests and confirm red**
+
+Run:
+
+```bash
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py::test_structured_score_rejects_internal_state_provider_beats -q
+```
+
+Expected: the test fails because provider-chain structured scoring does not inspect event/action filmability yet.
+
+- [x] **Step 3: Add provider-chain filmability scorer**
+
+Create `production_filmability_score.py` that emits `beat_visible_event_specificity` and `beat_action_specificity` for internal-state or abstract beat text.
+
+- [x] **Step 4: Wire scorer and prompt**
+
+Update `production_structured_score.py` to merge filmability failed checks, and update `provider_chain_payloads.py` to forbid internal-state visible events/actions.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: provider-chain quality regression tests pass.
+
+## Task 14: Validate And Commit Filmability Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-filmable-script-actions.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: selected backend and harness tests pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_quality_regression.py scripts/harness/production_filmability_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-filmable-script-actions.md
+git commit -m "feat(scripts): reject unfilmable beat actions"
+```
