@@ -1,6 +1,10 @@
 # ai-video-studio（AI 短剧/影视剧制作工作流平台）
 
-以**虚拟 IP**为核心的 AI 内容生产平台，覆盖故事（Story）→ 分集（Episode）→ 剧本（Script）的生成与编辑流程，并集成多种图像/文本/视频模型与 OSS 存储。
+面向专业短剧制作团队的 AI 生产工作流平台。当前工程主线是
+`audio -> timeline -> clip -> render -> export`：`Timeline` 是剧集可播放输出
+的单一事实来源（SSOT），Storyboard 保留为视觉支撑视图和兼容面。平台仍覆盖
+虚拟 IP、故事（Story）、分集（Episode）、剧本（Script）以及图像/文本/音频/视频
+模型集成与 OSS 存储。
 
 ## 仓库结构
 

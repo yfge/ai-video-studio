@@ -17,13 +17,14 @@ production script generation
 ```
 
 This document began as an optimization plan. The P0-P2 ownership alignment
-slice is now implemented. The current worktree also includes the Phase 3
-render/export execution slice. One real API E2E run now passes through a legacy
-storyboard video migration bridge, and the provider-chain harness now proves
-Timeline-first ordering with explicit `dialogue`, `video`, and `subtitle`
-tracks before media generation. Subtitle burn-in and Timeline dialogue audio
-replacement now have focused render proof. Commercial readiness still depends on
-dialogue duration alignment and production sample validation.
+slice is implemented. Render/export execution, first-class clip asset lineage,
+provider-backed clip video rework, and rework-triggered final render queueing are
+also implemented. Real API and provider-chain harness evidence now proves
+Timeline-first ordering with explicit `dialogue`, `video`, and `subtitle` tracks
+before media generation. Subtitle burn-in and Timeline dialogue audio replacement
+have focused render proof. Commercial readiness still depends on provider cost,
+stability, lip-sync, character consistency, and production quality evaluation at
+sample scale.
 
 ## Current Chain Check
 
@@ -74,7 +75,7 @@ render job with a rework fingerprint.
   provider-backed Timeline-first evidence in
   `artifacts/runs/provider-chain-dialogue-tracks-smoke-20260526T033733Z/provider_chain.json`.
 - P4 backend lineage is implemented for Timeline Spec assets, render outputs,
-  and operator replacement records keyed by stable `clip_id`.
+  and operator/provider replacement records keyed by stable `clip_id`.
 - Operator asset audit, existing-media rework controls, and provider-backed
   video rework controls are implemented for selected Timeline clips. Backend
   provider-backed video rework queueing and success lineage are implemented,

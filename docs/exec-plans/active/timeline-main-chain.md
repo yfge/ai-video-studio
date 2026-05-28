@@ -39,7 +39,8 @@ Current status:
 - Treat `episodes.extra_metadata.audio_timeline` as transition input only.
 - Treat `scripts.extra_metadata.storyboard.frames` as support view and legacy
   compatibility output only.
-- Document target `media_assets`, `timelines`, and `render_jobs` relationships.
+- Document the implemented `media_assets`, `timelines`, `timeline_revisions`,
+  `timeline_clip_assets`, and `render_jobs` relationships.
 
 Exit criteria:
 
@@ -81,9 +82,10 @@ Exit criteria:
 
 ## Phase 4: Render And Export
 
-- Link existing storyboard image/video outputs to `media_assets`.
-- Link storyboard support frame ids back into Timeline Spec video clips where
-  available.
+- [x] Link existing storyboard image/video outputs to `media_assets` and
+      `timeline_clip_assets` where locators can be resolved.
+- [x] Preserve storyboard support frame ids in Timeline Spec source metadata
+      where available.
 - [x] Render proxy/final outputs from a locked timeline version.
 - [x] Persist render output as `media_assets` and `render_jobs.output_asset_id`.
 

@@ -3,8 +3,9 @@
 ## Status
 
 This is the product and engineering contract for the timeline main chain. It is
-normative for new work, but it is not a claim that all storage, API, or render
-paths already exist.
+normative for new work and reflects the current Timeline-first storage, API,
+lineage, and render/export implementation. Transition surfaces still exist for
+legacy data and compatibility paths.
 
 Current implementation has transition data in:
 
@@ -14,7 +15,7 @@ Current implementation has transition data in:
 - `scripts.extra_metadata.storyboard.frames`: storyboard support output and
   legacy compatibility surface.
 
-The target main chain is:
+The current main chain is:
 
 ```text
 dialogue audio -> Timeline Spec v1 clips -> storyboard support -> render jobs -> export
@@ -138,9 +139,11 @@ Required audit fields when available:
 - `render_source_version`
 - `clip_replacement_of`
 
-Asset references target `media_assets` ids once media persistence is complete.
-During transition, clip `asset_ref` may contain raw legacy URLs, but new
-consumers should prefer asset ids whenever they are present.
+Asset references should prefer `media_assets` ids whenever they are present.
+During transition, clip `asset_ref` may still contain raw legacy URLs or object
+locators; Timeline create/update/import/rollback and render completion sync
+those locators into `media_assets` and `timeline_clip_assets` lineage where the
+current code can resolve them.
 
 ### Minimal JSON Shape
 
@@ -214,20 +217,25 @@ consumers should prefer asset ids whenever they are present.
 }
 ```
 
-## Target Storage Model
+## Current Storage Model
 
-The eventual storage model is:
+The current storage model is:
 
 - `timelines`: episode-scoped sequence rows with `spec`, `version`, status,
-  user audit fields, and updated timestamps.
+  rollback state, soft-delete state, user audit fields, and updated timestamps.
+- `timeline_revisions`: immutable snapshots for persisted timeline versions,
+  used by rollback without mutating older render outputs.
 - `media_assets`: unified image/video/audio/subtitle asset rows used by clips
   and render jobs.
+- `timeline_clip_assets`: clip-to-asset lineage keyed by stable `clip_id`,
+  `timeline_version`, `asset_role`, and `media_asset_id`.
 - `render_jobs`: proxy/final render attempts pinned to `timeline_id` and
-  `timeline_version`.
+  `timeline_version`, with idempotency by render type and preset hash.
 
-No implementation may treat this section as already completed. Until the tables
-exist, bridge code can keep writing transition metadata, but docs and new
-interfaces should point at this target contract.
+Compatibility metadata in `episodes.extra_metadata.audio_timeline` and
+`scripts.extra_metadata.storyboard.frames` remains readable, but new Timeline
+work should write the tables above and treat raw URL fields as migration or
+fallback locators.
 
 ## Import Bridge Contract
 
@@ -259,11 +267,31 @@ Import rules:
 Implemented timeline APIs:
 
 - `GET /api/v1/episodes/{episode_id}/timelines`: list timeline versions.
+- `POST /api/v1/episodes/{episode_id}/timelines`: create an episode timeline.
 - `GET /api/v1/timelines/{timeline_id}`: read timeline spec and render state.
 - `PATCH /api/v1/timelines/{timeline_id}`: update with version lock.
+- `POST /api/v1/timelines/{timeline_id}/shot-plan`: generate Timeline-native
+  shot plans for video clips.
 - `POST /api/v1/timelines/{timeline_id}/render`: queue proxy/final render job.
 - `GET /api/v1/timelines/{timeline_id}/render-jobs`: list render attempts,
   including `output_asset` when a render succeeds.
+- `GET /api/v1/timelines/{timeline_id}/clip-assets`: list source, generated,
+  replacement, and render-output lineage for Timeline clips.
+- `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/rework`: record an
+  existing media asset as re-dub, re-cut, or re-render lineage without changing
+  the stable `clip_id`.
+- `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/rework/video`: queue a
+  provider-backed video rework task for a selected Timeline video clip.
+- `DELETE /api/v1/timelines/{timeline_id}`: soft-delete a timeline with a
+  version lock.
+- `POST /api/v1/timelines/{timeline_id}/restore`: restore a soft-deleted
+  timeline with a version lock.
+- `POST /api/v1/timelines/{timeline_id}/rollback`: create a new current version
+  from a prior `timeline_revisions` snapshot.
+- `DELETE /api/v1/timelines/{timeline_id}/render-jobs/{render_job_id}`:
+  soft-delete a render attempt with a timeline version lock.
+- `POST /api/v1/timelines/{timeline_id}/render-jobs/{render_job_id}/restore`:
+  restore a soft-deleted render attempt with a timeline version lock.
 
 A dedicated `POST /api/v1/episodes/{episode_id}/timelines/import-audio` may be
 added later, but current imports happen through generation bridges.
@@ -339,13 +367,13 @@ context. It must not become the primary route for render/export decisions.
 
 ## Validation Contract
 
-Minimum future regression chain:
+Minimum regression chain:
 
 ```text
 scene audio -> episode audio_timeline -> Timeline Spec v1 -> storyboard support -> clip render -> export
 ```
 
-Required checks once implementation starts:
+Required checks for relevant changes:
 
 - Timeline Spec schema validation.
 - Import validation from `audio_timeline.beats`.

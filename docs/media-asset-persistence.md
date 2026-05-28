@@ -79,18 +79,19 @@ Current fields (best-effort):
 - `duration_seconds`, `fps`, `resolution`, `ratio`, `width`, `height`
 - `assets.video|thumbnail|last_frame` (URL/object_key/file_size/mime_type/sha256)
 
-## Target `media_assets` Contract
+## Current `media_assets` Transition Contract
 
-Timeline Spec v1 needs a unified DB asset row for image, video, audio, and
-subtitle outputs. The target `media_assets` table does not replace current OSS
+Timeline Spec v1 now has a unified DB asset row for image, video, audio, and
+subtitle outputs. The `media_assets` table does not replace current OSS
 metadata, `images`, or `video_generation_tasks` in one step; it gives timeline
-clips and render jobs one stable id space.
+clips, replacement actions, and render jobs one stable id space.
 
-Minimum target fields:
+Current fields:
 
 - `id`
 - `asset_type`: `image` | `video` | `audio` | `subtitle`
-- `origin`: `ai_generated` | `user_uploaded` | `imported` | `rendered`
+- `origin`: current values include `ai_generated`, `upload`, `imported`,
+  `rendered`, `timeline_spec`, `legacy`, and `provider_rework`
 - `file_url`
 - `object_key`
 - `file_path`
@@ -105,20 +106,37 @@ Minimum target fields:
 
 Timeline references:
 
-- Dialogue clips use `audio_asset_id`.
-- Video clips use `start_frame_asset_id`, `end_frame_asset_id`, and
-  `video_asset_id`.
+- Dialogue clips use `audio_asset_id` or `asset_ref.audio_asset_id` when an
+  asset id is already available, and may still carry URL/object locators during
+  transition.
+- Video clips use `start_frame_asset_id`, `end_frame_asset_id`,
+  `video_asset_id`, or explicit `*_asset_ref` objects for start frame, end
+  frame, storyboard image, storyboard video, and generated video assets.
 - Subtitle clips use `subtitle_asset_id` only when a standalone subtitle file is
   emitted; inline subtitle text may remain in the clip spec for editing.
 - Render jobs write `output_asset_id` for proxy/final exports.
+
+Timeline clip lineage:
+
+- `timeline_clip_assets` links `timeline_id`, `timeline_version`, stable
+  `clip_id`, `asset_role`, and `media_asset_id`.
+- Current asset roles include `source_audio`, `start_frame`, `end_frame`,
+  `storyboard_image`, `storyboard_video`, `generated_video`, and
+  `render_output`.
+- Operator rework actions add replacement lineage through the same stable
+  `clip_id`; `replacement_of_id` points at the previous active asset for that
+  role when one exists.
+- Provider-backed video rework writes successful outputs with
+  `origin=provider_rework`, records `provider_rework` lineage, and can trigger a
+  final render with a rework fingerprint in the preset.
 
 Transition rules:
 
 - Existing `scripts.extra_metadata.storyboard.frames[*].image_url` and
   `video_url` remain compatibility fields until migrated.
 - Existing `video_generation_tasks` remains the provider polling/audit record.
-  Its normalized `generation_metadata.assets.*` fields should map to
-  `media_assets` rows when the target table exists.
+  Its normalized `generation_metadata.assets.*` fields should map to or create
+  `media_assets` rows when the Timeline path needs stable clip lineage.
 - OSS object metadata remains ASCII-only and lightweight. Rich prompts,
   non-ASCII text, provider payloads, and timeline source references belong in
   DB JSON fields such as `Task.parameters`, `video_generation_tasks`, timeline
@@ -133,5 +151,6 @@ For storyboard video generation:
 3. Poller detects completion, uploads media to OSS/CDN, and writes the final URLs into:
    - `video_generation_tasks.result` (JSON string)
    - `scripts.extra_metadata.storyboard.frames[*].video_url` (for the relevant frame)
-4. Target timeline implementation additionally creates or links `media_assets`
-   rows and references those ids from Timeline Spec v1 clips.
+4. Timeline implementation additionally creates or links `media_assets` rows,
+   records `timeline_clip_assets` lineage, and references those ids from
+   Timeline Spec v1 clips or render jobs where available.
