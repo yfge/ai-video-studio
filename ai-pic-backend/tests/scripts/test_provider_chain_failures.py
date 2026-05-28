@@ -32,3 +32,27 @@ def test_failure_category_classifies_provider_billing_evidence() -> None:
         _failure_category("400 Client Error for url: /api/v1/ai/generate/video", payload)
         == "provider_billing_or_quota_failed"
     )
+
+
+def test_failure_category_classifies_script_json_parse_error() -> None:
+    assert (
+        _failure_category(
+            "JSONDecodeError: Unterminated string starting at: line 3 column 14"
+        )
+        == "script_generation_failed"
+    )
+
+
+def test_failure_category_classifies_api_transport_error() -> None:
+    payload = {
+        "request_chain": [
+            {
+                "label": "deepseek-script",
+                "error": "ConnectionError: ('Connection aborted.', RemoteDisconnected())",
+            }
+        ]
+    }
+
+    assert _failure_category("ConnectionError: request failed", payload) == (
+        "api_transport_failed"
+    )

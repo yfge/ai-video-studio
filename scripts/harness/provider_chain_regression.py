@@ -122,8 +122,9 @@ def main() -> int:
         ok = True
         return 0
     except Exception as exc:  # noqa: BLE001 - harness must persist failure evidence
+        failure_message = f"{type(exc).__name__}: {exc}"
         payload["failures"].append({"type": type(exc).__name__, "message": str(exc)})
-        payload["failure_categories"].append(_failure_category(str(exc), payload))
+        payload["failure_categories"].append(_failure_category(failure_message, payload))
         return 1
     finally:
         payload["ok"] = ok
@@ -152,6 +153,17 @@ def _failure_category(message: str, payload: dict[str, Any] | None = None) -> st
         )
     ):
         return "provider_billing_or_quota_failed"
+    if any(
+        marker in evidence
+        for marker in (
+            "ConnectionError",
+            "RemoteDisconnected",
+            "Connection aborted",
+            "ReadTimeout",
+            "ConnectTimeout",
+        )
+    ):
+        return "api_transport_failed"
     if "script" in message or "JSON" in message:
         return "script_generation_failed"
     if (
@@ -184,6 +196,9 @@ def _failure_evidence(message: str, payload: dict[str, Any] | None) -> str:
         body = item.get("response_body")
         if isinstance(body, str) and body:
             parts.append(body)
+        error = item.get("error")
+        if isinstance(error, str) and error:
+            parts.append(error)
     return "\n".join(parts)
 
 

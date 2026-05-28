@@ -50,7 +50,12 @@ def request_json(
     timeout: int,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    response = session.request(method, url, timeout=timeout, **kwargs)
+    try:
+        response = session.request(method, url, timeout=timeout, **kwargs)
+    except requests.RequestException as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        chain.append({"label": label, "method": method, "url": url, "error": error})
+        raise
     record_response(chain, response, label=label)
     try:
         response.raise_for_status()
@@ -147,15 +152,23 @@ def generate_script(
         raise RuntimeError(
             f"unexpected text provider/model: {data.get('provider')} {data.get('model')}"
         )
-    script = extract_structured_script(
-        str(data.get("content") or ""), len(scene_durations(args.mode))
-    )
+    raw_content = str(data.get("content") or "")
+    try:
+        script = extract_structured_script(raw_content, len(scene_durations(args.mode)))
+    except Exception as exc:
+        payload["key_artifacts"]["script_generation_error"] = {
+            "provider": data.get("provider"),
+            "model": data.get("model"),
+            "error": f"{type(exc).__name__}: {exc}",
+            "raw_content": raw_content[:4000],
+        }
+        raise ValueError(f"script_json_parse_failed: {exc}") from exc
     payload["key_artifacts"]["script"] = {
         "provider": data.get("provider"),
         "model": data.get("model"),
         "title": script.get("title"),
         "scene_count": len(script["scenes"]),
-        "raw_content": data.get("content"),
+        "raw_content": raw_content,
     }
     return script
 
@@ -246,8 +259,7 @@ def _timeline_shot_plans(timeline: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _run_name_suffix(run_id: str) -> str:
-    digest = hashlib.sha1(run_id.encode("utf-8")).hexdigest()[:12]
-    return digest
+    return hashlib.sha1(run_id.encode("utf-8")).hexdigest()[:12]
 
 
 def _timeline_character_anchor(timeline: dict[str, Any]) -> str:
