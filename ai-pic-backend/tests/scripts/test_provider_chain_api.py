@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 import requests
+from tests.scripts.provider_chain_fixtures import provider_payload
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.append(str(REPO_ROOT))
@@ -133,3 +134,42 @@ def test_generate_script_records_raw_content_on_parse_failure() -> None:
     assert error["model"] == TEXT_MODEL
     assert error["raw_content"] == raw_content
     assert error["error"].startswith("JSONDecodeError:")
+
+
+def test_generate_script_disables_deepseek_streaming_and_thinking() -> None:
+    raw_content = provider_payload()["key_artifacts"]["script"]["raw_content"]
+    response = requests.Response()
+    response.status_code = 200
+    response.url = "https://example.com/api/v1/ai/generate/text"
+    response._content = (
+        '{"success":true,"data":{"provider":"deepseek","model":"'
+        + TEXT_MODEL
+        + '","content":'
+        + json.dumps(raw_content)
+        + "}}"
+    ).encode("utf-8")
+    response.request = requests.Request("POST", response.url).prepare()
+    response.elapsed = timedelta(seconds=0.5)
+
+    class _Session:
+        def __init__(self) -> None:
+            self.json_body = None
+
+        def request(self, method, url, timeout, **kwargs):
+            self.json_body = kwargs.get("json")
+            return response
+
+    payload = {"request_chain": [], "key_artifacts": {}}
+    args = SimpleNamespace(
+        api_url="https://example.com",
+        mode="full-30s",
+        script_premise=None,
+        timeout_seconds=1,
+    )
+    session = _Session()
+
+    script = generate_script(session, args, payload)
+
+    assert script["title"] == "奖金清零"
+    assert session.json_body["stream"] is False
+    assert session.json_body["thinking"] is False

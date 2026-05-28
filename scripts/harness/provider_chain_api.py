@@ -142,6 +142,8 @@ def generate_script(
             "system_prompt": "You are a strict JSON writer. Output JSON only.",
             "temperature": 0.4,
             "max_tokens": 2200,
+            "stream": False,
+            "thinking": False,
         },
         chain=payload["request_chain"],
         label="deepseek-script",

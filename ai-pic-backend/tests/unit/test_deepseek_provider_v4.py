@@ -85,6 +85,27 @@ def test_build_chat_request_normalizes_v4_alias_and_skips_sampling_in_thinking()
     assert "top_p" not in payload
 
 
+def test_build_chat_request_defaults_v4_flash_to_non_thinking():
+    model, payload, stream = build_chat_request(
+        prompt="hi",
+        model=DEEPSEEK_V4_FLASH_MODEL,
+        max_tokens=32,
+        temperature=0.3,
+        top_p=0.5,
+        frequency_penalty=0.1,
+        presence_penalty=0.2,
+        system_prompt=None,
+        extra_kwargs={},
+    )
+
+    assert model == DEEPSEEK_V4_FLASH_MODEL
+    assert stream is True
+    assert payload["thinking"] == {"type": "disabled"}
+    assert payload["temperature"] == 0.3
+    assert payload["top_p"] == 0.5
+    assert payload["max_tokens"] == 32
+
+
 def test_build_chat_request_allows_sampling_when_v4_thinking_disabled():
     _model, payload, _stream = build_chat_request(
         prompt="hi",
@@ -122,6 +143,7 @@ async def test_generate_text_defaults_to_v4_flash_non_stream():
     assert response.data == "ok"
     assert response.metadata["has_reasoning_content"] is True
     assert client.posts[-1]["model"] == DEEPSEEK_V4_FLASH_MODEL
+    assert client.posts[-1]["thinking"] == {"type": "disabled"}
 
 
 @pytest.mark.asyncio

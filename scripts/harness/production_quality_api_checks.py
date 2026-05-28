@@ -94,6 +94,8 @@ class _ApiTextManager:
                         "system_prompt": kwargs.get("system_prompt"),
                         "temperature": kwargs.get("temperature", 0.0),
                         "max_tokens": kwargs.get("max_tokens", 1000),
+                        "stream": kwargs.get("stream", False),
+                        "thinking": kwargs.get("thinking", False),
                     },
                     headers={
                         "x-client-request-id": (

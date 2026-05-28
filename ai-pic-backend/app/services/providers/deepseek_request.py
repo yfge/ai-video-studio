@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from .deepseek_models import is_v4_model, normalize_model
+from .deepseek_models import DEEPSEEK_V4_FLASH_MODEL, is_v4_model, normalize_model
 
 
 def build_chat_request(
@@ -34,6 +34,7 @@ def build_chat_request(
         "messages": messages,
     }
     _apply_thinking_params(request_data, kwargs)
+    _apply_default_thinking_mode(request_data, model_id)
     _apply_sampling_params(
         request_data,
         model_id=model_id,
@@ -69,6 +70,14 @@ def _apply_thinking_params(
     mode = str(thinking).strip().lower()
     if mode in {"enabled", "disabled"}:
         request_data["thinking"] = {"type": mode}
+
+
+def _apply_default_thinking_mode(
+    request_data: Dict[str, Any],
+    model_id: str,
+) -> None:
+    if "thinking" not in request_data and model_id == DEEPSEEK_V4_FLASH_MODEL:
+        request_data["thinking"] = {"type": "disabled"}
 
 
 def _apply_sampling_params(
