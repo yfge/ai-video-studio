@@ -69,7 +69,7 @@
 - Create: `ai-pic-backend/app/schemas/script_beat_contract.py`
 - Create: `ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py`
 
-- [ ] **Step 1: Write schema validation tests**
+- [x] **Step 1: Write schema validation tests**
 
 Add this test file:
 
@@ -165,7 +165,7 @@ def test_structured_script_contract_rejects_unknown_role():
         StructuredScriptContract.model_validate(payload)
 ```
 
-- [ ] **Step 2: Run schema tests and confirm failure**
+- [x] **Step 2: Run schema tests and confirm failure**
 
 Run:
 
@@ -175,7 +175,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normal
 
 Expected: fail with `ModuleNotFoundError: No module named 'app.schemas.script_beat_contract'`.
 
-- [ ] **Step 3: Implement the schema**
+- [x] **Step 3: Implement the schema**
 
 Create `ai-pic-backend/app/schemas/script_beat_contract.py`:
 
@@ -251,7 +251,7 @@ class StructuredScriptContract(BaseModel):
     scenes: list[StructuredScriptScene] = Field(..., min_length=1)
 ```
 
-- [ ] **Step 4: Verify schema tests pass**
+- [x] **Step 4: Verify schema tests pass**
 
 Run:
 
@@ -261,7 +261,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normal
 
 Expected: `2 passed`.
 
-- [ ] **Step 5: Commit schema slice**
+- [x] **Step 5: Commit schema slice**
 
 Run:
 
