@@ -2132,3 +2132,95 @@ Run:
 git add ai-pic-backend/app/services/providers/deepseek_request.py ai-pic-backend/tests/unit/test_deepseek_provider_v4.py scripts/harness/provider_chain_api.py scripts/harness/production_quality_api_checks.py ai-pic-backend/tests/scripts/test_provider_chain_api.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-deepseek-script-thinking.md
 git commit -m "fix(scripts): disable thinking for quality probes"
 ```
+
+## Task 44: Preserve Text Generation Route Options
+
+**Files:**
+
+- Create: `ai-pic-backend/app/api/v1/ai_text_generation.py`
+- Create: `ai-pic-backend/tests/unit/test_ai_text_generation_route.py`
+- Modify: `ai-pic-backend/app/api/v1/api.py`
+
+- [x] **Step 1: Reproduce route option loss**
+
+Run the route-model regression:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/test_ai_text_generation_route.py -q
+```
+
+Expected: fails because the first registered `/api/v1/ai/generate/text` route does not accept `stream` or `thinking`.
+
+- [x] **Step 2: Add thin text generation route**
+
+Create a focused `ai_text_generation.py` route module that preserves the existing response shape while accepting and forwarding explicit `stream` and `thinking` options to `ai_service.ai_manager.generate_text`.
+
+- [x] **Step 3: Register before the legacy provider route**
+
+Include `ai_text_generation.router` under `/ai` before `ai_providers.router` so FastAPI resolves `/ai/generate/text` to the focused route without editing oversized `ai_providers.py`.
+
+- [x] **Step 4: Verify route and live request shape**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/test_ai_text_generation_route.py -q
+```
+
+Expected: route-order and passthrough tests pass.
+
+Restart the temporary worktree backend on `http://localhost:8010`, then run a direct authenticated text-generation probe with `stream=false`, `thinking=false`, and `max_tokens=80`.
+
+Expected: backend logs show `LLM Request ... params={..., 'stream': False, ...}` and the request returns 200.
+
+## Task 45: Validate And Commit Text Route Option Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-text-generation-route-options.md`
+
+- [x] **Step 1: Run focused backend validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/test_ai_text_generation_route.py tests/unit/test_ai_providers_http_exception_passthrough.py tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: selected route, legacy passthrough, and provider-chain request-shape tests pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the required sections and exact red/green, live API, docs, contracts, and pre-commit evidence.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/app/api/v1/ai_text_generation.py ai-pic-backend/app/api/v1/api.py ai-pic-backend/tests/unit/test_ai_text_generation_route.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-text-generation-route-options.md
+git commit -m "fix(scripts): forward text generation options"
+```

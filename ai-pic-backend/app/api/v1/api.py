@@ -1,4 +1,4 @@
-from app.api.v1 import ai_providers, voice
+from app.api.v1 import ai_providers, ai_text_generation, voice
 from app.api.v1.endpoints import (
     admin,
     auth,
@@ -59,6 +59,9 @@ api_router.include_router(
 )
 
 # AI服务提供商相关路由
+api_router.include_router(
+    ai_text_generation.router, prefix="/ai", tags=["ai-providers"]
+)
 api_router.include_router(ai_providers.router, prefix="/ai", tags=["ai-providers"])
 # 声音/音乐相关路由
 api_router.include_router(voice.router, prefix="/voice", tags=["voice"])
