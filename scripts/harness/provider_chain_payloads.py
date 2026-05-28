@@ -16,13 +16,16 @@ def scene_durations(mode: str) -> list[int]:
     return [4] if mode == "smoke" else [15, 15]
 
 
-def build_script_prompt(mode: str, premise: str | None = None) -> str:
+def build_script_prompt(
+    mode: str, premise: str | None = None, repair_notes: list[str] | None = None
+) -> str:
     durations = scene_durations(mode)
     premise_text = (
         f" Story premise to follow: {premise.strip()}. "
         if isinstance(premise, str) and premise.strip()
         else " "
     )
+    repair_text = _repair_text(repair_notes)
     return (
         "Return only valid JSON. Write a compact Chinese short-drama script for a "
         "non-real 3D cartoon robot character. No live-action human, no celebrity, "
@@ -40,6 +43,39 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         '"cliffhanger_tag":str}],"image_prompt":str,'
         '"video_prompt":str}]}. '
         f"Create exactly {len(durations)} scene(s) with durations {durations}. "
+        "Before writing, satisfy the ScriptScore pass rubric: "
+        "conflict_intensity >= 4, character_recognizability >= 4, "
+        "clip_ability >= 4, and logic_coherence >= 4. "
+        "角色标签 must be concrete: characters[0].role must combine a personality, "
+        "job, and motivation such as 急脾气剪辑师要保住客户验收证据; do not write only 主角. "
+        "For character_recognizability, give the protagonist one repeated signature "
+        "behavior or catchphrase and make supporting characters visually and verbally "
+        "different. Supporting characters must use a different color/material/silhouette "
+        "from the protagonist, and their motive must be visible in dialogue or plot. "
+        "For logic_coherence, write a because/therefore chain: every reveal "
+        "must be seeded by an earlier visible clue, and you must seed every hidden "
+        "code, password, account, or backdoor before it is used as a solution. "
+        "Do not use hidden code, password, account, or backdoor as the solution "
+        "unless a previous beat shows who created it, why it exists, and what limitation it has. "
+        "The protagonist must solve each scene through a visible choice or action; "
+        "the secondary character cannot simply reveal the answer. "
+        "The opposition motive must be planted before confrontation; do not make an antagonist confess "
+        "or appear without prior visible proof, benefit, or pressure. "
+        "Any unknown operator must be seeded in scene 1 as a partial ID, shadow trace, "
+        "voice print, log mismatch, or unexplained remote cursor before it becomes the final threat. "
+        "Every permission or account action must name the access rule: read-only access, "
+        "write lock, audit token, expired key, remote control, or approval queue. "
+        "For the final beat, do not put 删除完成, 已上传, 已修复, or 任务完成 as the final state; "
+        "use 正在删除, 第二倒计时, 未知操作者, or a new active threat instead. "
+        "Each scene must contain at least one non-screen physical action or high-impact "
+        "visual state change beyond typing, reading, or pointing at a panel. "
+        "For clip_ability, every scene needs at least two ad-hook moments, each with "
+        "visual shock + subtitle-friendly dialogue. opposition must literally include "
+        "one marker from 系统, 权限, 客户, 内鬼, 审核, 锁定, 删除, 篡改, 修改者, 操作者. "
+        "The opening hook visible_event, action, or dialogue must literally include "
+        "one marker from 警报, 警告, 倒计时, 清零, 删除, 丢失, 锁定, 错误, 失败, 危机, "
+        "威胁, 证据, 真相, 反转, or 必须. "
+        f"{repair_text}"
         "Every scene must include a concrete question, stakes, opposition, and turn: "
         "question names the scene's story problem; stakes names a concrete loss, "
         "deadline, object, customer, money, asset, file, or proof; opposition names "
@@ -79,6 +115,18 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         "reveal a new unresolved threat, unknown operator, hidden file, second countdown, or open question. "
         "Every scene must have question, turn, plot, one or two short dialogue lines, and a Seedance-ready "
         "video prompt that includes the same character anchor and the dialogue source."
+    )
+
+
+def _repair_text(repair_notes: list[str] | None) -> str:
+    notes = [str(note).strip() for note in repair_notes or [] if str(note).strip()]
+    if not notes:
+        return ""
+    joined = " | ".join(notes[:8])
+    return (
+        "Rewrite the previous failed script using these failure notes: "
+        f"{joined}. Do not repeat the same plot structure, repeated helper reveal, "
+        "or unexplained hidden-code solution. "
     )
 
 

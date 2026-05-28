@@ -25,21 +25,6 @@ from scripts.harness.production_quality_script import (  # noqa: E402
     lint_script_async,
     structured_script_score,
 )
-from scripts.harness.provider_chain_payloads import build_script_prompt  # noqa: E402
-
-
-def test_build_script_prompt_accepts_optional_premise() -> None:
-    prompt = build_script_prompt("full-30s", "奖金清零，机器人必须找出真相")
-
-    assert "奖金清零" in prompt
-    assert "Create exactly 2 scene" in prompt
-    assert "<= 15 visible" in prompt
-    assert "one stable protagonist" in prompt
-    assert "visible action" in prompt
-    assert "specific story turn" in prompt
-    assert "Do not use generic speaker names" in prompt
-    assert "Scene-level dialogue must not copy any beat dialogue" in prompt
-    assert "data already lost" in prompt
 
 
 @pytest.mark.asyncio

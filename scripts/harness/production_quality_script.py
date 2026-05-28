@@ -52,6 +52,8 @@ def provider_chain_script_text(payload: dict[str, Any]) -> str:
         anchor = str(characters[0].get("consistency_anchor") or "")
         appearance = str(characters[0].get("appearance_prompt") or "")
         lines.append(f"▲角色锚点：{appearance} {anchor}".strip())
+        for character in characters:
+            lines.append(_character_label_line(character))
     scenes = script.get("scenes") if isinstance(script.get("scenes"), list) else []
     for index, scene in enumerate(scenes, start=1):
         lines.extend(_scene_to_lint_lines(index, scene))
@@ -164,7 +166,7 @@ def normalize_script_score(score: dict[str, Any] | None) -> dict[str, Any]:
 def _scene_to_lint_lines(index: int, scene: dict[str, Any]) -> list[str]:
     plot = str(scene.get("plot") or "角色发现异常并立即行动。")
     video_prompt = str(scene.get("video_prompt") or scene.get("image_prompt") or "")
-    lines = [f"[第{index}场]", f"▲动作：{plot}", f"【镜头】特写/推镜/{video_prompt}"]
+    lines = [f"[第{index}场]", _scene_conflict_line(scene), f"▲动作：{plot}", f"【镜头】特写/推镜/{video_prompt}"]
     beats = scene_beats(scene)
     if beats:
         for beat in beats:
@@ -184,6 +186,26 @@ def _scene_to_lint_lines(index: int, scene: dict[str, Any]) -> list[str]:
                 lines.append(f"{line['speaker']}: {line['line']}")
     lines.append("【SFX】电子提示音")
     return lines
+
+
+def _scene_conflict_line(scene: dict[str, Any]) -> str:
+    return (
+        "【冲突】"
+        f"问题：{scene.get('question') or '待确认'}；"
+        f"代价：{scene.get('stakes') or '待确认'}；"
+        f"阻力：{scene.get('opposition') or '待确认'}；"
+        f"转折：{scene.get('turn') or '待确认'}"
+    )
+
+
+def _character_label_line(character: dict[str, Any]) -> str:
+    return (
+        "▲角色标签："
+        f"{character.get('name') or '未命名'}｜"
+        f"{character.get('role') or '角色'}｜"
+        f"{character.get('appearance_prompt') or '外观待定'}｜"
+        f"{character.get('consistency_anchor') or '锚点待定'}"
+    )
 
 
 def _final_cliffhanger_text(scene: dict[str, Any]) -> str:

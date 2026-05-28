@@ -2551,3 +2551,125 @@ Run:
 git add ai-pic-backend/tests/scripts/test_production_script_quality_regression.py scripts/harness/production_script_quality_regression.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-quality-text-gate.md
 git commit -m "feat(scripts): add script quality sample gate"
 ```
+
+## Task 53: Add Score-Aware Script Retry And Reviewer Context
+
+**Files:**
+
+- Modify: `scripts/harness/provider_chain_payloads.py`
+- Modify: `scripts/harness/provider_chain_api.py`
+- Modify: `scripts/harness/production_quality_script.py`
+- Modify: `scripts/harness/production_hook_score.py`
+- Modify: `scripts/harness/production_conflict_score.py`
+- Modify: `scripts/harness/production_script_quality_regression.py`
+- Create: `scripts/harness/production_script_quality_aggregate.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_quality_regression.py`
+- Create: `ai-pic-backend/tests/scripts/test_provider_chain_script_prompt.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_script_quality_regression.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_hook_score.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_conflict_score.py`
+
+- [x] **Step 1: Add red/green coverage for false structured blockers**
+
+Add regressions proving the structured gate accepts an opening `警告` as an
+immediate hook and treats `隐藏的修改者` as concrete opposition. These were
+observed in live samples but previously failed `opening_hook_substance` or
+`scene_conflict_opposition`.
+
+- [x] **Step 2: Expose generated intent to the script scorer**
+
+Add screenplay rendering for all character labels and per-scene conflict
+metadata so the script scoring API can see role, visual distinction,
+question, stakes, opposition, and turn instead of scoring only action lines.
+
+- [x] **Step 3: Add score-aware retry feedback**
+
+Split the script-only aggregate helpers out of
+`production_script_quality_regression.py` to keep file sizes under the hard
+limit, then feed `script_score.risks`, `rewrite_guidance`, structured failed
+checks, and lint issues into the next attempt's prompt.
+
+- [x] **Step 4: Tighten commercial prompt constraints**
+
+Add prompt contracts for ScriptScore pass dimensions, role tags, different
+supporting-character silhouettes, seeded hidden code/password/account usage,
+visible protagonist-led solutions, non-screen physical action, planted
+opposition motive, planted unknown-operator clues, explicit permission/account
+rules, and non-terminal final cliffhangers.
+
+## Task 54: Validate Score-Aware Retry Evidence And Commit
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-score-aware-retry.md`
+
+- [x] **Step 1: Run focused tests**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_script_quality_regression.py tests/scripts/test_provider_chain_script_prompt.py tests/scripts/test_production_hook_score.py tests/scripts/test_production_conflict_score.py tests/scripts/test_production_quality_regression.py tests/scripts/test_provider_chain_api.py -q
+```
+
+Observed: `38 passed, 27 warnings`.
+
+- [x] **Step 2: Run live 3-sample probes**
+
+Run these text-only probes against the worktree backend on
+`http://localhost:8010`:
+
+```bash
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-3-score-rubric-20260528Tlocal --api-url http://localhost:8010 --sample-count 3 --timeout-seconds 900
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-3-repair-20260528Tlocal --api-url http://localhost:8010 --sample-count 3 --timeout-seconds 900
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-3-character-logic-20260528Tlocal --api-url http://localhost:8010 --sample-count 3 --timeout-seconds 900
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-3-motive-final-20260528Tlocal --api-url http://localhost:8010 --sample-count 3 --timeout-seconds 900
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-3-permission-seed-20260528Tlocal --api-url http://localhost:8010 --sample-count 3 --timeout-seconds 900
+```
+
+Observed:
+
+- `script-quality-live-text-3-score-rubric-20260528Tlocal`: verdict
+  `script_quality_not_proven`, 0/3 retry-adjusted passes, script score average
+  3.53.
+- `script-quality-live-text-3-repair-20260528Tlocal`: verdict
+  `script_quality_not_proven`, 0/3 retry-adjusted passes, script score average
+  3.80.
+- `script-quality-live-text-3-character-logic-20260528Tlocal`: verdict
+  `script_quality_not_proven`, 0/3 retry-adjusted passes, script score average
+  3.80.
+- `script-quality-live-text-3-motive-final-20260528Tlocal`: verdict
+  `script_quality_not_proven`, 1/3 retry-adjusted passes, script score average
+  3.97.
+- `script-quality-live-text-3-permission-seed-20260528Tlocal`: verdict
+  `script_quality_not_proven`, 0/3 retry-adjusted passes, script score average
+  3.75.
+
+The best run produced the first script-score pass in this text-only harness, but
+the result is not stable enough for a 10-sample gate.
+
+- [x] **Step 3: Run final repository validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_script_quality_regression.py tests/scripts/test_provider_chain_script_prompt.py tests/scripts/test_production_hook_score.py tests/scripts/test_production_conflict_score.py tests/scripts/test_production_quality_regression.py tests/scripts/test_provider_chain_api.py -q
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Observed: focused pytest passed with `38 passed, 27 warnings`; repo docs,
+contracts, whitespace, and pre-commit passed. `pytest (backend quick gate)` was
+skipped in pre-commit via `SKIP=backend-pytest` because the focused pytest set
+covered this harness slice.
+
+- [x] **Step 4: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_hook_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_script_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_script_prompt.py scripts/harness/production_conflict_score.py scripts/harness/production_hook_score.py scripts/harness/production_quality_script.py scripts/harness/production_script_quality_aggregate.py scripts/harness/production_script_quality_regression.py scripts/harness/provider_chain_api.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-score-aware-retry.md
+git commit -m "fix(scripts): add score-aware script retry"
+```

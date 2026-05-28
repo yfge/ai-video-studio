@@ -46,3 +46,19 @@ def test_structured_score_rejects_provider_opening_hook_without_immediate_threat
 
     assert result["passed"] is False
     assert "opening_hook_substance" in result["failed_checks"]
+
+
+def test_structured_score_accepts_opening_warning_as_immediate_threat() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    first_beat = script["scenes"][0]["beats"][0]
+    first_beat["visible_event"] = "小蓝盯着屏幕，系统弹出无钩子警告"
+    first_beat["action"] = ["小蓝按住红色提示框，调出剪辑面板"]
+    first_beat["dialogue"] = [{"speaker": "小蓝", "line": "警告来了"}]
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert "opening_hook_substance" not in result["failed_checks"]

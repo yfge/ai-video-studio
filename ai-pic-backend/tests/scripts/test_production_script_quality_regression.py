@@ -6,6 +6,7 @@ sys.path.append(str(REPO_ROOT))
 
 from scripts.harness.production_script_quality_regression import (  # noqa: E402
     aggregate_script_quality_report,
+    repair_notes_from_sample,
 )
 
 
@@ -64,6 +65,27 @@ def test_script_quality_aggregate_marks_provider_blocker() -> None:
 
     assert report["verdict"] == "provider_blocked_not_evaluable"
     assert report["provider_billing_or_quota_error_count"] == 10
+
+
+def test_repair_notes_include_script_score_and_structured_feedback() -> None:
+    sample = {
+        "script_failures": ["script_score", "structured_script_score"],
+        "script_score": {
+            "risks": ["角色辨识度不足：台词可互换"],
+            "rewrite_guidance": ["给主角固定口头禅，并补前置线索"],
+        },
+        "structured_script_score": {
+            "failed_checks": ["opening_hook_substance", "scene_conflict_opposition"]
+        },
+    }
+
+    notes = repair_notes_from_sample(sample)
+    joined = "\n".join(notes)
+
+    assert "角色辨识度不足" in joined
+    assert "给主角固定口头禅" in joined
+    assert "opening_hook_substance" in joined
+    assert "scene_conflict_opposition" in joined
 
 
 def _script_sample(

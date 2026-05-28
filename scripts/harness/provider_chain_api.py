@@ -137,6 +137,7 @@ def generate_script(
             "prompt": build_script_prompt(
                 args.mode,
                 getattr(args, "script_premise", None),
+                getattr(args, "script_repair_notes", None),
             ),
             "model": TEXT_MODEL,
             "prefer_provider": "deepseek",

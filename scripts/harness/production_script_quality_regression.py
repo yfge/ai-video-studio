@@ -23,13 +23,14 @@ from scripts.harness.production_quality_api_checks import (
 )
 from scripts.harness.production_quality_live import DEFAULT_PREMISES
 from scripts.harness.production_quality_script import (
-    QUALITY_PASS_THRESHOLD,
-    SCRIPT_SCORE_PASS,
-    STRUCTURED_SCORE_PASS,
     normalize_script_score,
 )
 from scripts.harness.provider_chain_api import generate_script, login, request_json
 from scripts.harness.provider_chain_payloads import TEXT_MODEL
+from scripts.harness.production_script_quality_aggregate import (
+    aggregate_script_quality_report,
+    repair_notes_from_sample,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -74,6 +75,7 @@ def run_live_script_samples(args: argparse.Namespace, run_dir: Path) -> dict[str
         for sample_index in range(1, args.sample_count + 1):
             sample_id = f"sample-{sample_index:02d}"
             premise = DEFAULT_PREMISES[(sample_index - 1) % len(DEFAULT_PREMISES)]
+            repair_notes: list[str] = []
             for attempt in range(1, args.max_retries + 2):
                 sample = run_live_script_sample(
                     session,
@@ -82,11 +84,13 @@ def run_live_script_samples(args: argparse.Namespace, run_dir: Path) -> dict[str
                     sample_id=sample_id,
                     premise=premise,
                     attempt=attempt,
+                    repair_notes=repair_notes,
                 )
                 samples.append(sample)
                 write_json(run_dir / "script_quality_report.json", _base_report(args, samples))
                 if sample.get("passed"):
                     break
+                repair_notes = repair_notes_from_sample(sample)
     report = _base_report(args, samples)
     report["setup"] = setup_payload
     return report
@@ -100,6 +104,7 @@ def run_live_script_sample(
     sample_id: str,
     premise: str,
     attempt: int,
+    repair_notes: list[str],
 ) -> dict[str, Any]:
     started = time.monotonic()
     child_args = SimpleNamespace(
@@ -108,6 +113,7 @@ def run_live_script_sample(
             "mode": "full-30s",
             "run_id": f"{args.run_id}-{sample_id}-attempt-{attempt}",
             "script_premise": premise,
+            "script_repair_notes": repair_notes,
         }
     )
     session.headers["x-harness-run-id"] = child_args.run_id
@@ -140,45 +146,6 @@ def run_live_script_sample(
         payload["failure"] = {"type": type(exc).__name__, "message": str(exc)}
     write_json(artifact, payload)
     return sample
-
-
-def aggregate_script_quality_report(
-    samples: list[dict[str, Any]], *, expected_sample_count: int
-) -> dict[str, Any]:
-    first_attempts = [s for s in samples if int(s.get("attempt") or 1) == 1]
-    finals = _latest_attempts(samples)
-    first_success = sum(1 for sample in first_attempts if sample.get("passed"))
-    retry_success = sum(1 for sample in finals if sample.get("passed"))
-    provider_errors = _count_failure_category(finals, "provider_billing_or_quota_failed")
-    lint_scores = _numeric_values(finals, "script_lint", "overall_score")
-    script_scores = _numeric_values(finals, "script_score", "overall_score")
-    structured_scores = _numeric_values(finals, "structured_script_score", "average")
-    checks = {
-        "sample_count_matches": len(finals) == expected_sample_count,
-        "first_pass_success_at_least_8_of_10": first_success >= 8,
-        "retry_success_at_least_9_of_10": retry_success >= 9,
-        "provider_billing_or_quota_errors_zero": provider_errors == 0,
-        "script_lint_average_at_least_9": _avg(lint_scores) >= QUALITY_PASS_THRESHOLD,
-        "script_score_average_at_least_4": _avg(script_scores) >= SCRIPT_SCORE_PASS,
-        "structured_script_average_at_least_3_5": _avg(structured_scores)
-        >= STRUCTURED_SCORE_PASS,
-    }
-    verdict = "script_trial_ready" if all(checks.values()) else "script_quality_not_proven"
-    if provider_errors:
-        verdict = "provider_blocked_not_evaluable"
-    return {
-        "verdict": verdict,
-        "checks": checks,
-        "expected_sample_count": expected_sample_count,
-        "sample_count": len(finals),
-        "first_attempt_count": len(first_attempts),
-        "first_success_count": first_success,
-        "retry_adjusted_success_count": retry_success,
-        "provider_billing_or_quota_error_count": provider_errors,
-        "script_lint_average": round(_avg(lint_scores), 2),
-        "script_score_average": round(_avg(script_scores), 2),
-        "structured_script_average": round(_avg(structured_scores), 2),
-    }
 
 
 def _confirm_text_model(
@@ -256,38 +223,6 @@ def _script_failure_category(exc: Exception) -> str:
     if "script_json_parse_failed" in evidence:
         return "script_generation_failed"
     return "unknown"
-
-
-def _latest_attempts(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    latest: dict[str, dict[str, Any]] = {}
-    for sample in samples:
-        sample_id = str(sample.get("sample_id") or len(latest) + 1)
-        latest[sample_id] = sample
-    return list(latest.values())
-
-
-def _count_failure_category(samples: list[dict[str, Any]], category: str) -> int:
-    return sum(1 for sample in samples if category in sample.get("failure_categories", []))
-
-
-def _numeric_values(samples: list[dict[str, Any]], group: str, key: str) -> list[float]:
-    values = []
-    for sample in samples:
-        value = _maybe_float(sample.get(group, {}).get(key))
-        if value is not None:
-            values.append(value)
-    return values
-
-
-def _maybe_float(value: Any) -> float | None:
-    try:
-        return float(value) if value is not None else None
-    except (TypeError, ValueError):
-        return None
-
-
-def _avg(values: list[float]) -> float:
-    return sum(values) / len(values) if values else 0.0
 
 
 if __name__ == "__main__":

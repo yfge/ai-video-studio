@@ -49,3 +49,17 @@ def test_structured_score_rejects_abstract_provider_stakes_and_opposition() -> N
     assert result["passed"] is False
     assert "scene_conflict_stakes" in result["failed_checks"]
     assert "scene_conflict_opposition" in result["failed_checks"]
+
+
+def test_structured_score_accepts_hidden_modifier_as_concrete_opposition() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    for scene in script["scenes"]:
+        scene["opposition"] = "隐藏的修改者拦住小蓝继续追查"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert "scene_conflict_opposition" not in result["failed_checks"]
