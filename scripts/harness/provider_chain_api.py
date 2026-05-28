@@ -13,10 +13,10 @@ from scripts.harness.provider_chain_payloads import (
     SEEDANCE_CANONICAL,
     TEXT_MODEL,
     VIDEO_MODEL,
-    build_script_prompt,
     extract_structured_script,
     scene_durations,
 )
+from scripts.harness.provider_chain_script_request import build_script_generation_request
 from scripts.harness.production_quality_script import structured_script_score
 
 
@@ -133,20 +133,11 @@ def generate_script(
         session,
         "POST",
         f"{args.api_url.rstrip('/')}/api/v1/ai/generate/text",
-        json={
-            "prompt": build_script_prompt(
-                args.mode,
-                getattr(args, "script_premise", None),
-                getattr(args, "script_repair_notes", None),
-            ),
-            "model": TEXT_MODEL,
-            "prefer_provider": "deepseek",
-            "system_prompt": "You are a strict JSON writer. Output JSON only.",
-            "temperature": 0.4,
-            "max_tokens": 2200,
-            "stream": False,
-            "thinking": False,
-        },
+        json=build_script_generation_request(
+            args.mode,
+            getattr(args, "script_premise", None),
+            getattr(args, "script_repair_notes", None),
+        ),
         chain=payload["request_chain"],
         label="deepseek-script",
         timeout=args.timeout_seconds,

@@ -126,6 +126,28 @@ def test_build_chat_request_allows_sampling_when_v4_thinking_disabled():
     assert payload["messages"][0]["role"] == "system"
 
 
+def test_build_chat_request_maps_json_schema_to_json_object_response_format():
+    _model, payload, _stream = build_chat_request(
+        prompt="Return json.",
+        model=DEEPSEEK_V4_FLASH_MODEL,
+        max_tokens=32,
+        temperature=0.3,
+        top_p=0.5,
+        frequency_penalty=0.1,
+        presence_penalty=0.2,
+        system_prompt=None,
+        extra_kwargs={
+            "json_schema": {
+                "name": "scene",
+                "schema": {"type": "object", "required": ["title"]},
+            }
+        },
+    )
+
+    assert payload["response_format"] == {"type": "json_object"}
+    assert "json_schema" not in payload
+
+
 @pytest.mark.asyncio
 async def test_generate_text_defaults_to_v4_flash_non_stream():
     client = _Client()

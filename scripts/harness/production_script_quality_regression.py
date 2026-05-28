@@ -142,7 +142,9 @@ def run_live_script_sample(
             "elapsed_seconds": round(time.monotonic() - started, 3),
         }
     except Exception as exc:  # noqa: BLE001 - report keeps the evidence
-        sample = _failed_sample(sample_id, attempt, premise, artifact, exc, started)
+        sample = _failed_sample(
+            sample_id, attempt, premise, artifact, exc, started, payload=payload
+        )
         payload["failure"] = {"type": type(exc).__name__, "message": str(exc)}
     write_json(artifact, payload)
     return sample
@@ -196,13 +198,22 @@ def _script_failures(lint: dict, score: dict, structured: dict) -> list[str]:
 
 
 def _failed_sample(
-    sample_id: str, attempt: int, premise: str, artifact: Path, exc: Exception, started: float
+    sample_id: str,
+    attempt: int,
+    premise: str,
+    artifact: Path,
+    exc: Exception,
+    started: float,
+    *,
+    payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    structured = _failed_structured_score(exc, payload)
+    script_failures = ["structured_script_score"] if structured else ["script_generation"]
     return {
         "sample_id": sample_id,
         "attempt": attempt,
         "passed": False,
-        "script_failures": ["script_generation"],
+        "script_failures": script_failures,
         "failure_categories": [_script_failure_category(exc)],
         "script_artifact": str(artifact),
         "script_premise": premise,
@@ -210,8 +221,18 @@ def _failed_sample(
         "elapsed_seconds": round(time.monotonic() - started, 3),
         "script_lint": {"status": "skipped", "passed": False},
         "script_score": {"status": "skipped", "passed": False},
-        "structured_script_score": {"status": "skipped", "passed": False},
+        "structured_script_score": structured or {"status": "skipped", "passed": False},
     }
+
+
+def _failed_structured_score(
+    exc: Exception, payload: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    if "script_structured_quality_failed" not in f"{type(exc).__name__}: {exc}":
+        return None
+    script = ((payload or {}).get("key_artifacts") or {}).get("script")
+    structured = script.get("structured_script_score") if isinstance(script, dict) else None
+    return structured if isinstance(structured, dict) else None
 
 
 def _script_failure_category(exc: Exception) -> str:

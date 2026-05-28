@@ -5,6 +5,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.append(str(REPO_ROOT))
 
 from scripts.harness.production_script_quality_regression import (  # noqa: E402
+    _failed_sample,
     aggregate_script_quality_report,
     repair_notes_from_sample,
 )
@@ -94,6 +95,34 @@ def test_repair_notes_include_script_score_and_structured_feedback() -> None:
     assert "low dimension logic_coherence=3.2" in joined
     assert "low dimension character_recognizability=3.4" in joined
     assert "clip_ability=4.2" not in joined
+
+
+def test_failed_sample_preserves_structured_score_for_repair_notes() -> None:
+    sample = _failed_sample(
+        "sample-01",
+        1,
+        "premise",
+        Path("sample.json"),
+        ValueError("script_structured_quality_failed: opening_hook_substance"),
+        0.0,
+        payload={
+            "key_artifacts": {
+                "script": {
+                    "structured_script_score": {
+                        "passed": False,
+                        "average": 3.2,
+                        "failed_checks": ["opening_hook_substance"],
+                    }
+                }
+            }
+        },
+    )
+
+    assert sample["script_failures"] == ["structured_script_score"]
+    assert sample["structured_script_score"]["failed_checks"] == [
+        "opening_hook_substance"
+    ]
+    assert "opening_hook_substance" in "\n".join(repair_notes_from_sample(sample))
 
 
 def _script_sample(

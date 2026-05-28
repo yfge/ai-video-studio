@@ -40,6 +40,7 @@ def test_text_generation_route_accepts_stream_and_thinking_options() -> None:
     assert route.endpoint is ai_text_generation.generate_text
     assert "stream" in fields
     assert "thinking" in fields
+    assert "json_schema" in fields
 
 
 @pytest.mark.asyncio
@@ -54,6 +55,10 @@ async def test_generate_text_forwards_stream_and_thinking(monkeypatch) -> None:
             stream=False,
             thinking=False,
             max_tokens=80,
+            json_schema={
+                "name": "short_scene",
+                "schema": {"type": "object", "required": ["title"]},
+            },
         ),
         current_user=object(),
     )
@@ -69,4 +74,8 @@ async def test_generate_text_forwards_stream_and_thinking(monkeypatch) -> None:
         "stream": False,
         "thinking": False,
         "max_tokens": 80,
+        "json_schema": {
+            "name": "short_scene",
+            "schema": {"type": "object", "required": ["title"]},
+        },
     }

@@ -23,6 +23,7 @@ def build_chat_request(
     model_id = normalize_model(model)
     kwargs = dict(extra_kwargs or {})
     stream = bool(kwargs.pop("stream", True))
+    json_schema = kwargs.pop("json_schema", None)
 
     messages = []
     if system_prompt:
@@ -45,6 +46,8 @@ def build_chat_request(
     )
     if max_tokens is not None:
         request_data["max_tokens"] = max_tokens
+    if json_schema is not None and kwargs.get("response_format") is None:
+        request_data["response_format"] = {"type": "json_object"}
     for key, value in kwargs.items():
         if value is not None and key not in request_data:
             request_data[key] = value

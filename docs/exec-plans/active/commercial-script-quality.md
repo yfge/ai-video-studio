@@ -2673,3 +2673,67 @@ Run:
 git add ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_hook_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_script_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_script_prompt.py scripts/harness/production_conflict_score.py scripts/harness/production_hook_score.py scripts/harness/production_quality_script.py scripts/harness/production_script_quality_aggregate.py scripts/harness/production_script_quality_regression.py scripts/harness/provider_chain_api.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-score-aware-retry.md
 git commit -m "fix(scripts): add score-aware script retry"
 ```
+
+## Task 55: Stabilize JSON Script Generation And Structured Retry Feedback
+
+**Files:**
+
+- Modify: `ai-pic-backend/app/api/v1/ai_text_generation.py`
+- Modify: `ai-pic-backend/app/services/providers/deepseek_request.py`
+- Modify: `scripts/harness/provider_chain_api.py`
+- Create: `scripts/harness/provider_chain_script_request.py`
+- Modify: `scripts/harness/production_script_quality_regression.py`
+- Modify: related backend and harness tests.
+
+- [x] **Step 1: Add JSON schema pass-through coverage**
+
+Added red/green tests proving `/api/v1/ai/generate/text` accepts
+`json_schema`, forwards it to the AI manager, and DeepSeek converts schema
+requests to `response_format={"type":"json_object"}` instead of leaking a raw
+`json_schema` provider parameter.
+
+- [x] **Step 2: Move provider-chain script request body behind a schema helper**
+
+Created `provider_chain_script_request.py` so the provider-chain harness sends
+a stable script schema, non-streaming DeepSeek v4 flash options, thinking
+disabled, `max_tokens=2600`, and `temperature=0.2` without pushing
+`provider_chain_api.py` over the file-size limit.
+
+- [x] **Step 3: Preserve structured failures for retry repair**
+
+When `generate_script` fails because the structured script gate rejects a
+parseable script, the text-only regression now records
+`structured_script_score` and `structured_script_score` failure type instead of
+collapsing the sample into generic `script_generation`. This lets retry prompts
+receive concrete failed checks such as `opening_hook_substance` and
+`dialogue_line_length`.
+
+- [x] **Step 4: Run live 10-sample evidence**
+
+Live text-only runs against `http://localhost:8010`:
+
+```bash
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-3-json-mode-20260528Tlocal --api-url http://localhost:8010 --sample-count 3 --timeout-seconds 900
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-10-json-mode-20260528Tlocal --api-url http://localhost:8010 --sample-count 10 --timeout-seconds 900
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-10-json-mode-temp02-20260528Tlocal --api-url http://localhost:8010 --sample-count 10 --timeout-seconds 900
+python scripts/harness/production_script_quality_regression.py --run-id script-quality-live-text-10-json-mode-structured-feedback-20260528Tlocal --api-url http://localhost:8010 --sample-count 10 --timeout-seconds 900
+```
+
+Observed:
+
+- `script-quality-live-text-3-json-mode-20260528Tlocal`: 3/3 first-pass
+  successes, script score average 4.10, no script JSON parse failures.
+- `script-quality-live-text-10-json-mode-20260528Tlocal`: verdict
+  `script_quality_not_proven`, first-pass 5/10, retry-adjusted 8/10, script
+  score average 4.08.
+- `script-quality-live-text-10-json-mode-temp02-20260528Tlocal`: verdict
+  `script_quality_not_proven`, first-pass 5/10, retry-adjusted 8/10, script
+  score average 4.11.
+- `script-quality-live-text-10-json-mode-structured-feedback-20260528Tlocal`:
+  verdict `script_quality_not_proven`, first-pass 6/10, retry-adjusted 9/10,
+  script score average 4.09, lint average 9.85, structured average 3.83,
+  provider billing/quota errors 0.
+
+This slice proves JSON stability and retry repair are materially better, but
+the commercial-quality goal is still not complete because the first-pass gate
+requires at least 8/10 and current best evidence is 6/10.

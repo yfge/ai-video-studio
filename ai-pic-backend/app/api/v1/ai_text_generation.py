@@ -1,6 +1,6 @@
 """Text generation route with provider option passthrough."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from app.core.middleware import get_current_active_user
 from app.models.user import User
@@ -24,6 +24,9 @@ class TextGenerationRequest(BaseModel):
     temperature: float = Field(0.7, description="创造性参数")
     stream: bool = Field(False, description="是否使用流式文本生成")
     thinking: Optional[bool] = Field(None, description="是否启用模型思考模式")
+    json_schema: Optional[dict[str, Any]] = Field(
+        None, description="结构化输出 JSON schema"
+    )
 
 
 @router.post("/generate/text")
@@ -45,6 +48,8 @@ async def generate_text(
             kwargs["thinking"] = request.thinking
         if request.max_tokens is not None:
             kwargs["max_tokens"] = request.max_tokens
+        if request.json_schema is not None:
+            kwargs["json_schema"] = request.json_schema
 
         response = await ai_service.ai_manager.generate_text(**kwargs)
 

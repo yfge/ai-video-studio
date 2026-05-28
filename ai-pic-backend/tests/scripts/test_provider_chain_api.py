@@ -173,6 +173,14 @@ def test_generate_script_disables_deepseek_streaming_and_thinking() -> None:
     assert script["title"] == "奖金清零"
     assert session.json_body["stream"] is False
     assert session.json_body["thinking"] is False
+    assert session.json_body["temperature"] == 0.2
+    assert session.json_body["json_schema"]["name"] == "provider_chain_script"
+    assert session.json_body["json_schema"]["schema"]["required"] == [
+        "title",
+        "logline",
+        "characters",
+        "scenes",
+    ]
 
 
 def test_generate_script_fails_before_media_when_structured_quality_fails() -> None:
