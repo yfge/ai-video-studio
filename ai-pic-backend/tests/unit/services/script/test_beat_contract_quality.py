@@ -188,6 +188,21 @@ def test_quality_gate_rejects_internal_state_as_visible_action():
 
 
 @pytest.mark.unit
+def test_quality_gate_rejects_filler_dialogue_lines():
+    payload = _valid_contract()
+    for beat in payload["scenes"][0]["beats"]:
+        for line in beat["dialogue_lines"]:
+            line["content"] = "好的"
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "dialogue_substance" in failed
+
+
+@pytest.mark.unit
 def test_quality_gate_check_reports_failed_beat_contract():
     contract = normalize_script_beat_contract(
         {

@@ -730,3 +730,138 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_quality_regression.py scripts/harness/production_filmability_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-filmable-script-actions.md
 git commit -m "feat(scripts): reject unfilmable beat actions"
 ```
+
+## Task 15: Add Dialogue Substance Gates
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_specificity.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+
+- [x] **Step 1: Write failing product dialogue-substance test**
+
+Add a test proving beat contracts fail when all dialogue lines are filler such as `好的`.
+
+- [x] **Step 2: Run test and confirm red**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py::test_quality_gate_rejects_filler_dialogue_lines -q
+```
+
+Expected: the test fails because filler dialogue currently passes.
+
+- [x] **Step 3: Add dialogue-substance helper**
+
+Extend `beat_contract_specificity.py` to emit `dialogue_substance` when a dialogue line is a filler acknowledgement or when every dialogue line in a scene is too thin to carry story information.
+
+- [x] **Step 4: Wire product gate and prompt**
+
+Update `beat_contract_quality.py` to merge dialogue-substance issues and update the short-drama prompt to forbid filler-only dialogue.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py -q
+```
+
+Expected: all quality tests pass.
+
+## Task 16: Align Provider-Chain Dialogue Scoring
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/scripts/test_production_quality_regression.py`
+- Create: `scripts/harness/production_dialogue_score.py`
+- Modify: `scripts/harness/production_structured_score.py`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing provider-chain dialogue test**
+
+Add a test proving provider-chain structured scoring rejects filler-only scene and beat dialogue.
+
+- [x] **Step 2: Run test and confirm red**
+
+Run:
+
+```bash
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py::test_structured_score_rejects_filler_provider_dialogue -q
+```
+
+Expected: the test fails because provider-chain structured scoring does not inspect dialogue substance yet.
+
+- [x] **Step 3: Add provider-chain dialogue scorer**
+
+Create `production_dialogue_score.py` to emit `dialogue_substance` for filler-only provider-chain dialogue.
+
+- [x] **Step 4: Wire scorer and prompt**
+
+Update `production_structured_score.py` to merge dialogue failed checks, and update `provider_chain_payloads.py` to forbid filler-only dialogue.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: provider-chain quality regression tests pass.
+
+## Task 17: Validate And Commit Dialogue Substance Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-substance.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: selected backend and harness tests pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_quality_regression.py scripts/harness/production_dialogue_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-substance.md
+git commit -m "feat(scripts): reject filler-only beat dialogue"
+```

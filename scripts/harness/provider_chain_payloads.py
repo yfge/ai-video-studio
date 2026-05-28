@@ -51,6 +51,7 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         "Beat visible_event and action must describe visible or audible screen behavior; "
         "do not write internal states such as 意识到, 明白, 感到, 内心, 命运, or 关系变化. "
         "Every dialogue line must be <= 15 visible Chinese/English characters. "
+        "Dialogue must carry story information; do not use filler-only lines like 好的, 嗯, 知道了, 是的, or 怎么会这样. "
         "Scene 1 must open with an immediate conflict or countdown hook. The final "
         "scene must end on an unresolved reversal or question, not a full resolution. "
         "Every scene must have plot, one or two short dialogue lines, and a Seedance-ready "

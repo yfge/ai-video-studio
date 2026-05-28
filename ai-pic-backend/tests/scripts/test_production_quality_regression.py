@@ -238,3 +238,20 @@ def test_structured_score_rejects_internal_state_provider_beats() -> None:
     assert result["passed"] is False
     assert "beat_visible_event_specificity" in result["failed_checks"]
     assert "beat_action_specificity" in result["failed_checks"]
+
+
+def test_structured_score_rejects_filler_provider_dialogue() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    for scene in script["scenes"]:
+        scene["dialogue"][0]["line"] = "好的"
+        for beat in scene["beats"]:
+            beat["dialogue"][0]["line"] = "好的"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "dialogue_substance" in result["failed_checks"]

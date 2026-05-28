@@ -58,6 +58,26 @@ _GENERIC_CHARACTER_NAMES = {
     "speaker",
 }
 
+_FILLER_DIALOGUE = {
+    "嗯",
+    "嗯嗯",
+    "啊",
+    "哦",
+    "好",
+    "好的",
+    "好吧",
+    "行",
+    "可以",
+    "知道了",
+    "我知道了",
+    "明白了",
+    "是的",
+    "不是",
+    "没事",
+    "怎么办",
+    "怎么会这样",
+}
+
 
 def has_specific_scene_conflict(scene: Any) -> bool:
     return is_specific_text(scene.conflict.stakes) and is_specific_text(
@@ -140,6 +160,24 @@ def character_specificity_issues(scene: Any) -> list[dict[str, Any]]:
             }
         )
 
+    return issues
+
+
+def dialogue_substance_issues(scene: Any) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    for beat in scene.beats:
+        for line in beat.dialogue_lines:
+            content = _compact_text(line.content)
+            if content in _FILLER_DIALOGUE:
+                issues.append(
+                    {
+                        "check_id": "dialogue_substance",
+                        "message": "dialogue must carry story information",
+                        "scene_number": scene.scene_number,
+                        "beat_order_index": beat.order_index,
+                        "evidence": {"content": line.content},
+                    }
+                )
     return issues
 
 

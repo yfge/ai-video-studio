@@ -6,6 +6,7 @@ from app.schemas.script_beat_contract import StructuredScriptContract
 from app.services.script.beat_contract_duration import duration_issues
 from app.services.script.beat_contract_specificity import (
     character_specificity_issues,
+    dialogue_substance_issues,
     has_specific_cliffhanger,
     has_specific_payoff,
     has_specific_scene_conflict,
@@ -130,6 +131,7 @@ def _check_scene_structure(
         )
     failed.extend(duration_issues(scene))
     failed.extend(character_specificity_issues(scene))
+    failed.extend(dialogue_substance_issues(scene))
     for beat in scene.beats:
         if not beat.visible_event.strip():
             failed.append(
