@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.schemas.script_beat_contract import StructuredScriptContract
+from app.services.script.beat_contract_conflict import conflict_issues
 from app.services.script.beat_contract_dialogue import dialogue_issues
 from app.services.script.beat_contract_duration import duration_issues
 from app.services.script.beat_contract_progression import progression_issues
@@ -11,7 +12,6 @@ from app.services.script.beat_contract_specificity import (
     character_specificity_issues,
     has_specific_cliffhanger,
     has_specific_payoff,
-    has_specific_scene_conflict,
     is_cliffhanger_beat,
     is_payoff_beat,
     is_specific_text,
@@ -78,7 +78,7 @@ def evaluate_beat_contract_quality(
         "kind": "script_beat_contract",
         "passed": not failed,
         "failed_checks": failed,
-        "check_count": 21,
+        "check_count": 23,
     }
 
 
@@ -96,26 +96,7 @@ def _check_scene_structure(
                 evidence={"order_indexes": order_indexes, "expected": expected},
             )
         )
-    if not scene.conflict.stakes.strip() or not scene.conflict.opposition.strip():
-        failed.append(
-            _failure(
-                "scene_conflict",
-                "scene conflict must name stakes and opposition",
-                scene_number=scene.scene_number,
-            )
-        )
-    elif not has_specific_scene_conflict(scene):
-        failed.append(
-            _failure(
-                "scene_conflict_specificity",
-                "scene conflict must include concrete stakes and opposition",
-                scene_number=scene.scene_number,
-                evidence={
-                    "stakes": scene.conflict.stakes,
-                    "opposition": scene.conflict.opposition,
-                },
-            )
-        )
+    failed.extend(conflict_issues(scene))
     if not any(beat.action_lines for beat in scene.beats):
         failed.append(
             _failure(

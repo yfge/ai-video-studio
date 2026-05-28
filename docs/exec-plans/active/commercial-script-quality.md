@@ -1358,3 +1358,103 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_dialogue_quality.py ai-pic-backend/app/services/script/beat_contract_dialogue.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_dialogue_score.py scripts/harness/production_dialogue_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-progression.md
 git commit -m "feat(scripts): reject repeated dialogue beats"
 ```
+
+## Task 28: Add Scene Question-Turn Specificity Gates
+
+**Files:**
+
+- Create: `ai-pic-backend/tests/unit/services/script/test_beat_contract_conflict_quality.py`
+- Create: `ai-pic-backend/app/services/script/beat_contract_conflict.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_specificity.py`
+- Create: `ai-pic-backend/tests/scripts/test_production_conflict_score.py`
+- Create: `scripts/harness/production_conflict_score.py`
+- Modify: `scripts/harness/production_structured_score.py`
+- Modify: `ai-pic-backend/tests/scripts/provider_chain_fixtures.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing product and provider tests**
+
+Add regressions proving the product beat-contract quality gate and provider structured score reject scenes without a concrete dramatic question and scene turn.
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_conflict_quality.py::test_quality_gate_requires_scene_question_and_turn -q
+pytest ai-pic-backend/tests/scripts/test_production_conflict_score.py::test_structured_score_requires_provider_scene_question_and_turn -q
+```
+
+Expected: both tests fail because question/turn specificity is not scored yet.
+
+- [x] **Step 2: Add focused conflict helpers**
+
+Move product scene-conflict quality checks into `beat_contract_conflict.py`, then add concrete `question` and `turn` checks. Add a provider conflict scorer that emits the same check ids from provider-chain scene payloads.
+
+- [x] **Step 3: Wire quality gates and prompts**
+
+Emit `scene_conflict_question` and `scene_conflict_turn` from product and provider scoring. Update prompts and provider fixtures so generated scripts carry one concrete scene question and one concrete scene turn per scene.
+
+- [x] **Step 4: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_conflict_quality.py tests/unit/services/script/test_beat_contract_quality.py -q
+pytest ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: selected product and provider conflict tests pass.
+
+## Task 29: Validate And Commit Scene Question-Turn Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-scene-question-turn.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_conflict_quality.py tests/unit/services/script/test_beat_contract_dialogue_quality.py tests/unit/services/script/test_beat_contract_payoff_quality.py tests/unit/services/script/test_beat_contract_purpose_quality.py tests/unit/services/script/test_beat_contract_progression_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_progression_score.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: focused backend and provider harness suites pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_conflict_quality.py ai-pic-backend/app/services/script/beat_contract_conflict.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_conflict_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-scene-question-turn.md
+git commit -m "feat(scripts): require scene question turns"
+```

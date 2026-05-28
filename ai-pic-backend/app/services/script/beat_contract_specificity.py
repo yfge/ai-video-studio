@@ -59,12 +59,6 @@ _GENERIC_CHARACTER_NAMES = {
 }
 
 
-def has_specific_scene_conflict(scene: Any) -> bool:
-    return is_specific_text(scene.conflict.stakes) and is_specific_text(
-        scene.conflict.opposition
-    )
-
-
 def has_specific_payoff(beat: Any) -> bool:
     return is_specific_text(
         " ".join(

@@ -119,15 +119,17 @@ def _scene_one() -> dict:
     return {
         "scene_id": "s1",
         "duration_seconds": 15,
+        "question": "谁把小蓝的奖金倒计时清零？",
+        "turn": "权限拒绝后，日志反向跳出操作者编号。",
         "plot": "小蓝发现奖金被清零，警报响起。",
-        "dialogue": [{"speaker": "小蓝", "line": "谁动了时间轴"}],
+        "dialogue": [{"speaker": "小蓝", "line": "谁清空奖金"}],
         "beats": [
             _beat(
                 1,
                 "hook",
                 "抛出异常",
                 "奖金清零警报亮起",
-                "谁动了时间轴",
+                "时间轴谁改",
                 "小蓝冲向控制台",
             ),
             _beat(
@@ -156,8 +158,10 @@ def _scene_two() -> dict:
     return {
         "scene_id": "s2",
         "duration_seconds": 15,
+        "question": "小蓝能不能在日志删除前拿到证据？",
+        "turn": "奖金记录恢复一半后，黑影删除最后日志。",
         "plot": "小蓝发现真相，最后一秒反转。",
-        "dialogue": [{"speaker": "小蓝", "line": "原来证据在这里"}],
+        "dialogue": [{"speaker": "小蓝", "line": "证据指向黑影"}],
         "beats": [
             _beat(
                 1,
