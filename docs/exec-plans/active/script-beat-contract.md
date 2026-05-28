@@ -588,7 +588,7 @@ git commit -m "feat(scripts): normalize beat contract payloads"
 - Create: `ai-pic-backend/app/services/script/beat_contract_quality.py`
 - Create: `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`
 
-- [ ] **Step 1: Write quality gate tests**
+- [x] **Step 1: Write quality gate tests**
 
 Create `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`:
 
@@ -666,7 +666,7 @@ def test_quality_gate_rejects_fallback_detected_contract():
     assert "fallback_content" in {item["check_id"] for item in report["failed_checks"]}
 ```
 
-- [ ] **Step 2: Run quality tests and confirm failure**
+- [x] **Step 2: Run quality tests and confirm failure**
 
 Run:
 
@@ -676,7 +676,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_qualit
 
 Expected: fail with missing `beat_contract_quality` module.
 
-- [ ] **Step 3: Implement deterministic quality gate**
+- [x] **Step 3: Implement deterministic quality gate**
 
 Create `ai-pic-backend/app/services/script/beat_contract_quality.py`:
 
@@ -825,7 +825,7 @@ def _visible_len(text: str) -> int:
     return len("".join(ch for ch in text if not ch.isspace()))
 ```
 
-- [ ] **Step 4: Verify quality gate tests pass**
+- [x] **Step 4: Verify quality gate tests pass**
 
 Run:
 
@@ -835,7 +835,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_qualit
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit quality gate slice**
+- [x] **Step 5: Commit quality gate slice**
 
 Run:
 
