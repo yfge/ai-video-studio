@@ -189,3 +189,35 @@ def test_structured_score_requires_recurring_provider_scene_speaker() -> None:
     assert result["passed"] is False
     assert "scene_protagonist_presence" in result["failed_checks"]
     assert "dialogue_character_specificity" not in result["failed_checks"]
+
+
+def test_structured_score_requires_provider_beat_durations() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    for scene in script["scenes"]:
+        for beat in scene["beats"]:
+            beat.pop("duration_seconds", None)
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "beat_duration_required" in result["failed_checks"]
+
+
+def test_structured_score_rejects_provider_scene_duration_mismatch() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    for scene in script["scenes"]:
+        for beat in scene["beats"]:
+            beat["duration_seconds"] = 2
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "scene_duration_alignment" in result["failed_checks"]

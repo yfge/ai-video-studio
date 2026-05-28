@@ -144,6 +144,34 @@ def test_quality_gate_requires_recurring_named_character_in_scene():
 
 
 @pytest.mark.unit
+def test_quality_gate_requires_beat_durations_for_timed_scene():
+    payload = _valid_contract()
+    for beat in payload["scenes"][0]["beats"]:
+        beat.pop("duration_seconds", None)
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "beat_duration_required" in failed
+
+
+@pytest.mark.unit
+def test_quality_gate_rejects_scene_duration_mismatch():
+    payload = _valid_contract()
+    for beat in payload["scenes"][0]["beats"]:
+        beat["duration_seconds"] = 2
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "scene_duration_alignment" in failed
+
+
+@pytest.mark.unit
 def test_quality_gate_check_reports_failed_beat_contract():
     contract = normalize_script_beat_contract(
         {

@@ -460,3 +460,139 @@ Run:
 git add ai-pic-backend/tests/scripts/test_production_quality_regression.py scripts/harness/production_character_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-character-anchor.md
 git commit -m "feat(harness): score provider script character anchors"
 ```
+
+## Task 9: Add Beat Duration Budget Gates
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`
+- Create: `ai-pic-backend/app/services/script/beat_contract_duration.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+
+- [x] **Step 1: Write failing product duration tests**
+
+Add tests proving beat contracts fail when estimated scenes lack beat durations or when beat duration totals do not align with the scene target.
+
+- [x] **Step 2: Run tests and confirm red**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py::test_quality_gate_requires_beat_durations_for_timed_scene tests/unit/services/script/test_quality_gate_rejects_scene_duration_mismatch -q
+```
+
+Expected: tests fail because the duration check ids do not exist yet.
+
+- [x] **Step 3: Add duration helper and quality-gate wiring**
+
+Create `beat_contract_duration.py` to emit `beat_duration_required` for missing or non-positive beat durations and `scene_duration_alignment` when summed beat duration differs from `scene.estimated_duration_seconds` beyond tolerance. Wire it into `beat_contract_quality.py` without growing that service past file-size limits.
+
+- [x] **Step 4: Update prompt duration rules**
+
+Require every timed scene to set positive `beat.duration_seconds` values whose sum matches `estimated_duration_seconds`.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py -q
+```
+
+Expected: all quality tests pass.
+
+## Task 10: Align Provider-Chain Duration Scoring
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/scripts/test_production_quality_regression.py`
+- Modify: `ai-pic-backend/tests/scripts/provider_chain_fixtures.py`
+- Create: `scripts/harness/production_duration_score.py`
+- Modify: `scripts/harness/production_structured_score.py`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing provider-chain duration tests**
+
+Add tests proving provider-chain structured scoring rejects scripts with missing beat durations or beat totals that do not align with scene duration.
+
+- [x] **Step 2: Run tests and confirm red**
+
+Run:
+
+```bash
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py::test_structured_score_requires_provider_beat_durations ai-pic-backend/tests/scripts/test_production_quality_regression.py::test_structured_score_rejects_provider_scene_duration_mismatch -q
+```
+
+Expected: tests fail because provider-chain duration checks do not exist yet.
+
+- [x] **Step 3: Add provider-chain duration scorer**
+
+Create `production_duration_score.py` to read dictionary-shaped scenes and beats, emit `beat_duration_required` for missing or invalid beat durations, and emit `scene_duration_alignment` when beat totals do not map to scene `duration_seconds`.
+
+- [x] **Step 4: Wire scorer, fixtures, and prompt**
+
+Update `production_structured_score.py` to merge duration checks, update provider-chain fixtures with valid beat durations, and update the provider prompt to require beat duration sums.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: provider-chain quality regression tests pass.
+
+## Task 11: Validate And Commit Duration Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-duration-budget.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: selected backend and harness tests pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_duration.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_duration_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-duration-budget.md
+git commit -m "feat(scripts): enforce beat duration budgets"
+```

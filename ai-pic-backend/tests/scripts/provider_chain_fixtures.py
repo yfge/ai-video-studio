@@ -210,6 +210,7 @@ def _beat(
         "visible_event": event,
         "dialogue": [{"speaker": "小蓝", "line": line}],
         "action": [action],
+        "duration_seconds": 5,
     }
 
 
