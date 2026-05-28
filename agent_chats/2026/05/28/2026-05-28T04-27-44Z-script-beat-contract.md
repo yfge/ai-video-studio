@@ -16,6 +16,7 @@ related_paths:
   - ai-pic-backend/app/schemas/script_beat_contract.py
   - ai-pic-backend/app/services/script/beat_contract_normalizer.py
   - ai-pic-backend/app/services/script/beat_contract_quality.py
+  - ai-pic-backend/app/services/script/content_normalization.py
   - ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py
   - ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py
 ---
@@ -37,6 +38,7 @@ related_paths:
 - Added initial schema validation tests for valid contracts and unknown dramatic roles.
 - Added `beat_contract_normalizer` to normalize embedded contracts or legacy script payloads, flatten contract beats into legacy scenes/dialogues/stage directions/content, and record fallback evidence.
 - Added deterministic beat-contract quality gates for structure, fallback evidence, dialogue length, opening hook, conflict escalation, payoff, and final cliffhanger.
+- Locked `normalize_script_content` to preserve beat data and prefer `conflict.question` as the scene summary for contract-shaped scene payloads.
 
 ## Validation
 
@@ -50,15 +52,17 @@ related_paths:
 - For this slice, `backend-pytest` is skipped during commit because the current local MySQL default is not usable by that existing regenerate test; targeted schema tests passed.
 - `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normalizer.py -q` passed with `4 passed, 31 warnings` after the normalizer slice.
 - `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q` passed with `8 passed, 35 warnings`.
+- `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normalizer.py::test_content_normalization_preserves_scene_beats -q` first failed because summary used `slug_line`; after the fix, `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normalizer.py -q` passed with `5 passed, 32 warnings`.
 
 ## Next Steps
 
-- Preserve beat data through existing script content normalization.
 - Sync generated beats into normalized `scene_beats` rows.
+- Wire beat-contract reports into the script quality gate.
 
 ## Linked Commits
 
 - `0571ce5f docs: add script beat contract execution plan`
 - `c3506a5c feat(scripts): add beat contract schema`
 - `bd742466 feat(scripts): normalize beat contract payloads`
-- Current commit: quality gate slice.
+- `c7de3950 feat(scripts): validate beat contract quality`
+- Current commit: normalization preservation slice.

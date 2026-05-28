@@ -34,9 +34,13 @@ def normalize_script_content(
             else {"description": str(scene) if scene is not None else ""}
         )
         scene_no = to_int(base.get("scene_number")) or idx
+        conflict = (
+            base.get("conflict") if isinstance(base.get("conflict"), dict) else {}
+        )
         desc = (
             base.get("description")
             or base.get("summary")
+            or conflict.get("question")
             or base.get("slug_line")
             or base.get("story_beat")
             or base.get("title")

@@ -4,6 +4,7 @@ from app.services.script.beat_contract_normalizer import (
     flatten_contract_to_script_payload,
     normalize_script_beat_contract,
 )
+from app.services.script.content_normalization import normalize_script_content
 from pydantic import ValidationError
 
 
@@ -148,3 +149,20 @@ def test_legacy_script_conversion_marks_fallback_evidence():
     assert contract.scenes[0].beats[0].beat_type == "setup"
     assert contract.scenes[0].beats[0].visible_event == "小机发现奖金清零。"
     assert contract.model_extra["fallback_detected"] is True
+
+
+@pytest.mark.unit
+def test_content_normalization_preserves_scene_beats():
+    payload = _valid_contract()
+    normalized = normalize_script_content(
+        payload,
+        format_type="screenplay",
+        language="zh-CN",
+        episode_number=1,
+        template_style="commercial_vertical_drama",
+        target_chars_per_episode=500,
+        title="倒计时谜影",
+    )
+
+    assert normalized["scenes"][0]["beats"][0]["beat_type"] == "hook"
+    assert normalized["scenes"][0]["summary"] == "谁清空了奖金？"

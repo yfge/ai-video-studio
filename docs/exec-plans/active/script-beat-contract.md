@@ -851,7 +851,7 @@ git commit -m "feat(scripts): validate beat contract quality"
 - Modify: `ai-pic-backend/app/services/script/content_normalization.py`
 - Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py`
 
-- [ ] **Step 1: Add regression test for beat preservation**
+- [x] **Step 1: Add regression test for beat preservation**
 
 Append to `ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py`:
 
@@ -875,7 +875,7 @@ def test_content_normalization_preserves_scene_beats():
     assert normalized["scenes"][0]["beats"][0]["beat_type"] == "hook"
 ```
 
-- [ ] **Step 2: Run test and confirm current behavior**
+- [x] **Step 2: Run test and confirm current behavior**
 
 Run:
 
@@ -885,7 +885,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normal
 
 Expected: fail if `beats` are dropped or scene contract payload is not normalized into legacy scene fields.
 
-- [ ] **Step 3: Update content normalization**
+- [x] **Step 3: Update content normalization**
 
 Modify `ai-pic-backend/app/services/script/content_normalization.py` so scene construction copies beat data:
 
@@ -915,7 +915,7 @@ Also when building `desc`, include contract conflict question:
         )
 ```
 
-- [ ] **Step 4: Verify normalization regression**
+- [x] **Step 4: Verify normalization regression**
 
 Run:
 
@@ -925,7 +925,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normal
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit normalization preservation**
+- [x] **Step 5: Commit normalization preservation**
 
 Run:
 
