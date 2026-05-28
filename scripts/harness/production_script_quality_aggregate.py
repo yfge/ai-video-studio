@@ -6,6 +6,7 @@ from typing import Any
 
 from scripts.harness.production_quality_script import (
     QUALITY_PASS_THRESHOLD,
+    SCRIPT_SCORE_DIMENSION_PASS,
     SCRIPT_SCORE_PASS,
     STRUCTURED_SCORE_PASS,
 )
@@ -53,6 +54,7 @@ def aggregate_script_quality_report(
 def repair_notes_from_sample(sample: dict[str, Any]) -> list[str]:
     notes: list[str] = []
     score = sample.get("script_score") if isinstance(sample.get("script_score"), dict) else {}
+    notes.extend(_low_dimension_notes(score))
     notes.extend(str(item) for item in score.get("risks") or [] if item)
     notes.extend(str(item) for item in score.get("rewrite_guidance") or [] if item)
     structured = sample.get("structured_script_score")
@@ -66,6 +68,18 @@ def repair_notes_from_sample(sample: dict[str, Any]) -> list[str]:
             if isinstance(issue, dict) and issue.get("message"):
                 notes.append(str(issue["message"]))
     return notes[:8]
+
+
+def _low_dimension_notes(score: dict[str, Any]) -> list[str]:
+    dimensions = score.get("dimension_scores")
+    if not isinstance(dimensions, dict):
+        return []
+    notes: list[str] = []
+    for name, value in dimensions.items():
+        number = _maybe_float(value)
+        if number is not None and number < SCRIPT_SCORE_DIMENSION_PASS:
+            notes.append(f"low dimension {name}={number:g}")
+    return notes
 
 
 def _latest_attempts(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -71,6 +71,11 @@ def test_repair_notes_include_script_score_and_structured_feedback() -> None:
     sample = {
         "script_failures": ["script_score", "structured_script_score"],
         "script_score": {
+            "dimension_scores": {
+                "logic_coherence": 3.2,
+                "character_recognizability": 3.4,
+                "clip_ability": 4.2,
+            },
             "risks": ["角色辨识度不足：台词可互换"],
             "rewrite_guidance": ["给主角固定口头禅，并补前置线索"],
         },
@@ -86,6 +91,9 @@ def test_repair_notes_include_script_score_and_structured_feedback() -> None:
     assert "给主角固定口头禅" in joined
     assert "opening_hook_substance" in joined
     assert "scene_conflict_opposition" in joined
+    assert "low dimension logic_coherence=3.2" in joined
+    assert "low dimension character_recognizability=3.4" in joined
+    assert "clip_ability=4.2" not in joined
 
 
 def _script_sample(
