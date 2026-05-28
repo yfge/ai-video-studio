@@ -35,6 +35,7 @@ def test_build_script_prompt_accepts_optional_premise() -> None:
     assert "Create exactly 2 scene" in prompt
     assert "<= 15 visible" in prompt
     assert "one stable protagonist" in prompt
+    assert "Do not use generic speaker names" in prompt
 
 
 @pytest.mark.asyncio
@@ -151,3 +152,40 @@ def test_structured_score_rejects_thin_provider_script() -> None:
 
     assert result["passed"] is False
     assert "scene_min_beats" in result["failed_checks"]
+
+
+def test_structured_score_rejects_generic_provider_dialogue_speakers() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    for scene in script["scenes"]:
+        scene["dialogue"][0]["speaker"] = "主角"
+        for beat in scene["beats"]:
+            beat["dialogue"][0]["speaker"] = "主角"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "dialogue_character_specificity" in result["failed_checks"]
+    assert "scene_protagonist_presence" in result["failed_checks"]
+
+
+def test_structured_score_requires_recurring_provider_scene_speaker() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    names = ["小蓝", "灰屏", "黑影"]
+    for scene_index, scene in enumerate(script["scenes"], start=1):
+        scene["dialogue"][0]["speaker"] = f"计时员{scene_index}"
+        for beat, name in zip(scene["beats"], names, strict=True):
+            beat["dialogue"][0]["speaker"] = f"{name}{scene_index}"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "scene_protagonist_presence" in result["failed_checks"]
+    assert "dialogue_character_specificity" not in result["failed_checks"]

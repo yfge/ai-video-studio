@@ -42,6 +42,8 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         "Use one stable protagonist across every scene; keep the protagonist's "
         "consistency_anchor as a visual descriptor, not just a name. Supporting "
         "characters, if any, must stay secondary and must not replace the protagonist. "
+        "Do not use generic speaker names like 主角, 角色, 男主, 女主, or 旁白; "
+        "reuse the same named protagonist in scene dialogue and beat dialogue. "
         "Every scene must include 3 to 5 beats. The first beat of scene 1 must "
         "be hook. At least one beat across the script must be payoff. The final "
         "beat must be cliffhanger. "
