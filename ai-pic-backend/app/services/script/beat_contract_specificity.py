@@ -28,6 +28,23 @@ _VAGUE_PHRASES = (
     "阻碍尚未结构化",
 )
 
+_GENERIC_CHARACTER_NAMES = {
+    "角色",
+    "角色A",
+    "角色B",
+    "人物",
+    "某人",
+    "主角",
+    "男主",
+    "女主",
+    "男主角",
+    "女主角",
+    "旁白",
+    "叙述者",
+    "narrator",
+    "speaker",
+}
+
 
 def has_specific_scene_conflict(scene: Any) -> bool:
     return is_specific_text(scene.conflict.stakes) and is_specific_text(
@@ -72,6 +89,52 @@ def is_specific_text(text: str | None) -> bool:
     if _visible_len(normalized) < 4:
         return False
     return not any(phrase in normalized for phrase in _VAGUE_PHRASES)
+
+
+def character_specificity_issues(scene: Any) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    character_beats: dict[str, set[int]] = {}
+    has_dialogue = False
+
+    for beat in scene.beats:
+        for line in beat.dialogue_lines:
+            has_dialogue = True
+            character = _compact_text(line.character)
+            if not is_specific_character_name(character):
+                issues.append(
+                    {
+                        "check_id": "dialogue_character_specificity",
+                        "message": "dialogue character must be a stable named role",
+                        "scene_number": scene.scene_number,
+                        "beat_order_index": beat.order_index,
+                        "evidence": {"character": line.character},
+                    }
+                )
+                continue
+            character_beats.setdefault(character, set()).add(beat.order_index)
+
+    has_recurring_character = any(
+        len(beat_indexes) >= 2 for beat_indexes in character_beats.values()
+    )
+    if has_dialogue and len(scene.beats) > 1 and not has_recurring_character:
+        issues.append(
+            {
+                "check_id": "scene_protagonist_presence",
+                "message": "scene must keep one named character active across beats",
+                "scene_number": scene.scene_number,
+                "beat_order_index": None,
+                "evidence": {"characters": sorted(character_beats)},
+            }
+        )
+
+    return issues
+
+
+def is_specific_character_name(character: str | None) -> bool:
+    normalized = _compact_text(character or "")
+    if _visible_len(normalized) < 2:
+        return False
+    return normalized not in _GENERIC_CHARACTER_NAMES
 
 
 def _visible_len(text: str) -> int:

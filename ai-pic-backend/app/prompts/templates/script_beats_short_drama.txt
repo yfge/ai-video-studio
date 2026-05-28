@@ -14,6 +14,8 @@
 11. visible_event 和 action_lines 必须是屏幕可见的具体行为、物件、结果或声音，不要写“剧情继续推进”“角色开始行动”。
 12. payoff 必须写清主角具体赢到/得到/阻止/揭露的结果，不要只写“获得胜利”或标签。
 13. cliffhanger 必须留下具体未解决威胁、证据、倒计时、人物到场或物件变化，不要只写“巨大悬念”。
+14. dialogue_lines.character 必须使用稳定角色名，不要写“角色”“主角”“男主”“女主”“旁白”等占位名。
+15. 每个多 beat 场景必须让同一个具名主角在至少两个 beats 中说话，保证观众能跟住人物行动线。
 
 输出结构：
 {
@@ -41,7 +43,7 @@
           "dramatic_purpose": "本 beat 的戏剧目的",
           "visible_event": "观众能看见的事件",
           "action_lines": [{"content": "可拍动作", "timing": "intro", "type": "action"}],
-          "dialogue_lines": [{"character": "角色", "content": "短对白", "emotion": "状态"}],
+          "dialogue_lines": [{"character": "稳定角色名", "content": "短对白", "emotion": "状态"}],
           "duration_seconds": 5,
           "hook_tag": "hook 名称"
         }

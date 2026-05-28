@@ -112,6 +112,38 @@ def test_quality_gate_rejects_symbolic_payoff_and_empty_cliffhanger():
 
 
 @pytest.mark.unit
+def test_quality_gate_rejects_generic_dialogue_characters():
+    payload = _valid_contract()
+    for beat in payload["scenes"][0]["beats"]:
+        for line in beat["dialogue_lines"]:
+            line["character"] = "主角"
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "dialogue_character_specificity" in failed
+    assert "scene_protagonist_presence" in failed
+
+
+@pytest.mark.unit
+def test_quality_gate_requires_recurring_named_character_in_scene():
+    payload = _valid_contract()
+    names = ["小机", "灰屏", "黑影"]
+    for beat, name in zip(payload["scenes"][0]["beats"], names, strict=True):
+        beat["dialogue_lines"][0]["character"] = name
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "scene_protagonist_presence" in failed
+    assert "dialogue_character_specificity" not in failed
+
+
+@pytest.mark.unit
 def test_quality_gate_check_reports_failed_beat_contract():
     contract = normalize_script_beat_contract(
         {

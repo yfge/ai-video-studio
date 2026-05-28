@@ -4,6 +4,7 @@ from typing import Any
 
 from app.schemas.script_beat_contract import StructuredScriptContract
 from app.services.script.beat_contract_specificity import (
+    character_specificity_issues,
     has_specific_cliffhanger,
     has_specific_payoff,
     has_specific_scene_conflict,
@@ -72,7 +73,7 @@ def evaluate_beat_contract_quality(
         "kind": "script_beat_contract",
         "passed": not failed,
         "failed_checks": failed,
-        "check_count": 13,
+        "check_count": 15,
     }
 
 
@@ -126,6 +127,7 @@ def _check_scene_structure(
                 scene_number=scene.scene_number,
             )
         )
+    failed.extend(character_specificity_issues(scene))
     for beat in scene.beats:
         if not beat.visible_event.strip():
             failed.append(

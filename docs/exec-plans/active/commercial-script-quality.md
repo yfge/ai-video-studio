@@ -234,3 +234,136 @@ git commit -m "feat(scripts): tighten commercial beat quality"
   - This plan has no `TBD`, `TODO`, or implementation-later placeholders.
 - Type consistency:
   - All tests use existing `script-beat-v1` contract fields and existing `failed_checks[*].check_id` output.
+
+## Task 5: Add Character Anchoring Gates
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_specificity.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+
+- [x] **Step 1: Write failing character-anchor tests**
+
+Add tests that prove beat contracts fail when dialogue uses generic role names or no named character appears across more than one beat in a scene:
+
+```python
+@pytest.mark.unit
+def test_quality_gate_rejects_generic_dialogue_characters():
+    payload = _valid_contract()
+    for beat in payload["scenes"][0]["beats"]:
+        for line in beat["dialogue_lines"]:
+            line["character"] = "主角"
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "dialogue_character_specificity" in failed
+    assert "scene_protagonist_presence" in failed
+
+
+@pytest.mark.unit
+def test_quality_gate_requires_recurring_named_character_in_scene():
+    payload = _valid_contract()
+    names = ["小机", "灰屏", "黑影"]
+    for beat, name in zip(payload["scenes"][0]["beats"], names, strict=True):
+        beat["dialogue_lines"][0]["character"] = name
+    contract = normalize_script_beat_contract(payload)
+
+    report = evaluate_beat_contract_quality(contract)
+
+    failed = {item["check_id"] for item in report["failed_checks"]}
+    assert report["passed"] is False
+    assert "scene_protagonist_presence" in failed
+    assert "dialogue_character_specificity" not in failed
+```
+
+- [x] **Step 2: Run tests and confirm red**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py::test_quality_gate_rejects_generic_dialogue_characters tests/unit/services/script/test_beat_contract_quality.py::test_quality_gate_requires_recurring_named_character_in_scene -q
+```
+
+Expected: both tests fail because the new character-specificity check ids are not emitted yet.
+
+- [x] **Step 3: Implement minimal character-anchor helpers**
+
+Add deterministic helper logic that rejects placeholder character names such as `角色`, `主角`, `男主`, `女主`, `人物`, `某人`, and `旁白`, then requires each multi-beat scene with dialogue to have at least one specific named character speaking in two or more beats.
+
+- [x] **Step 4: Wire quality gate and prompt**
+
+Emit these check ids from the beat-contract quality report:
+
+```text
+dialogue_character_specificity
+scene_protagonist_presence
+```
+
+Update the short-drama beat prompt so `dialogue_lines[*].character` uses stable named characters and each scene keeps the same lead character active across multiple beats.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py -q
+```
+
+Expected: all quality tests pass.
+
+## Task 6: Validate And Commit Character Anchor Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-character-anchor.md`
+
+- [x] **Step 1: Run focused backend validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+```
+
+Expected: selected tests pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-character-anchor.md
+git commit -m "feat(scripts): require character anchors in beat scripts"
+```
