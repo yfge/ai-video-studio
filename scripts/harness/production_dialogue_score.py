@@ -26,14 +26,17 @@ _FILLER_DIALOGUE = {
 
 
 def dialogue_failed_checks(scenes: list[dict[str, Any]]) -> list[str]:
+    failed: list[str] = []
     for scene in scenes:
+        dialogue_texts: list[str] = []
         for line in _scene_dialogue(scene):
-            content = _compact_text(
-                str(line.get("line") or line.get("content") or "")
-            )
+            content = _compact_text(str(line.get("line") or line.get("content") or ""))
+            dialogue_texts.append(content)
             if content in _FILLER_DIALOGUE:
-                return ["dialogue_substance"]
-    return []
+                failed.append("dialogue_substance")
+        if len(dialogue_texts) > 1 and len(set(dialogue_texts)) < len(dialogue_texts):
+            failed.append("dialogue_progression_repetition")
+    return failed
 
 
 def _scene_dialogue(scene: dict[str, Any]) -> list[dict[str, Any]]:

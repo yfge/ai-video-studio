@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from app.schemas.script_beat_contract import StructuredScriptContract
+from app.services.script.beat_contract_dialogue import dialogue_issues
 from app.services.script.beat_contract_duration import duration_issues
 from app.services.script.beat_contract_progression import progression_issues
 from app.services.script.beat_contract_purpose import purpose_issues
 from app.services.script.beat_contract_specificity import (
     character_specificity_issues,
-    dialogue_substance_issues,
     has_specific_cliffhanger,
     has_specific_payoff,
     has_specific_scene_conflict,
@@ -78,7 +78,7 @@ def evaluate_beat_contract_quality(
         "kind": "script_beat_contract",
         "passed": not failed,
         "failed_checks": failed,
-        "check_count": 20,
+        "check_count": 21,
     }
 
 
@@ -137,7 +137,7 @@ def _check_scene_structure(
     failed.extend(purpose_issues(scene))
     failed.extend(character_specificity_issues(scene))
     failed.extend(protagonist_screen_presence_issues(scene))
-    failed.extend(dialogue_substance_issues(scene))
+    failed.extend(dialogue_issues(scene))
     for beat in scene.beats:
         if not beat.visible_event.strip():
             failed.append(

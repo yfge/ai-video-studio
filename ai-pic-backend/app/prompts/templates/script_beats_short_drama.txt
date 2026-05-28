@@ -21,7 +21,7 @@
 18. 每个多 beat 场景的 visible_event 或 action_lines 必须至少一次写出这个具名主角的可见动作、走位、操作或反应；不能只让屏幕、警报、物件自己变化。
 19. 每个 beat.duration_seconds 必须大于 0；同一 scene 的所有 beat 时长总和必须接近 estimated_duration_seconds。
 20. visible_event 和 action_lines 不能写“意识到/明白/感到/内心/命运/关系变化”等心理或抽象变化；必须写观众能看见或听见的物件、动作、表情、走位、屏幕变化、声音或结果。
-21. dialogue_lines.content 不能只写“嗯/好的/知道了/是的/怎么办/怎么会这样”等水词；每句对白必须推动线索、冲突、选择、威胁、反转或具体目标。
+21. dialogue_lines.content 不能只写“嗯/好的/知道了/是的/怎么办/怎么会这样”等水词；每句对白必须推动线索、冲突、选择、威胁、反转或具体目标，同一 scene 内不要重复同一句对白。
 
 输出结构：
 {

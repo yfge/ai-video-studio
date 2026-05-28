@@ -1258,3 +1258,103 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_payoff_quality.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-payoff.md
 git commit -m "feat(scripts): require payoff in beat scripts"
 ```
+
+## Task 26: Add Dialogue Progression Gates
+
+**Files:**
+
+- Create: `ai-pic-backend/tests/unit/services/script/test_beat_contract_dialogue_quality.py`
+- Create: `ai-pic-backend/app/services/script/beat_contract_dialogue.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_specificity.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+- Create: `ai-pic-backend/tests/scripts/test_production_dialogue_score.py`
+- Modify: `scripts/harness/production_dialogue_score.py`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing product and provider tests**
+
+Add focused regressions proving a script fails when all beat dialogue lines in one scene repeat the same non-filler sentence.
+
+- [x] **Step 2: Run tests and confirm red**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_dialogue_quality.py::test_quality_gate_rejects_repeated_dialogue_lines -q
+pytest ai-pic-backend/tests/scripts/test_production_dialogue_score.py::test_structured_score_rejects_repeated_provider_dialogue_lines -q
+```
+
+Expected: both tests fail because `dialogue_progression_repetition` is not emitted yet.
+
+- [x] **Step 3: Add dialogue progression helpers**
+
+Move product dialogue substance checks into a focused `beat_contract_dialogue.py` helper and add repeated-line detection. Extend provider-chain dialogue scoring with the same check id.
+
+- [x] **Step 4: Wire quality gates and prompts**
+
+Emit `dialogue_progression_repetition` from product and provider scoring. Update prompts so model output avoids repeating the same dialogue line within one scene.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_dialogue_quality.py -q
+pytest ai-pic-backend/tests/scripts/test_production_dialogue_score.py -q
+```
+
+Expected: selected product and provider dialogue progression tests pass.
+
+## Task 27: Validate And Commit Dialogue Progression Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-progression.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_dialogue_quality.py tests/unit/services/script/test_beat_contract_payoff_quality.py tests/unit/services/script/test_beat_contract_purpose_quality.py tests/unit/services/script/test_beat_contract_progression_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_progression_score.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: selected backend and harness tests pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_dialogue_quality.py ai-pic-backend/app/services/script/beat_contract_dialogue.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_dialogue_score.py scripts/harness/production_dialogue_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-progression.md
+git commit -m "feat(scripts): reject repeated dialogue beats"
+```
