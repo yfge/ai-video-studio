@@ -71,18 +71,6 @@ def has_specific_payoff(beat: Any) -> bool:
     )
 
 
-def has_specific_cliffhanger(beat: Any) -> bool:
-    return is_specific_text(
-        " ".join(
-            [
-                beat.visible_event,
-                beat.cliffhanger_tag or "",
-                *[action.content for action in beat.action_lines],
-            ]
-        )
-    )
-
-
 def is_payoff_beat(beat: Any) -> bool:
     return beat.beat_type == "payoff" or bool(beat.payoff_tag)
 

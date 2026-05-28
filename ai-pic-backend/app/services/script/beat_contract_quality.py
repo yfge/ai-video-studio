@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.schemas.script_beat_contract import StructuredScriptContract
+from app.services.script.beat_contract_cliffhanger import cliffhanger_issues
 from app.services.script.beat_contract_conflict import conflict_issues
 from app.services.script.beat_contract_dialogue import dialogue_issues
 from app.services.script.beat_contract_duration import duration_issues
@@ -10,9 +11,7 @@ from app.services.script.beat_contract_progression import progression_issues
 from app.services.script.beat_contract_purpose import purpose_issues
 from app.services.script.beat_contract_specificity import (
     character_specificity_issues,
-    has_specific_cliffhanger,
     has_specific_payoff,
-    is_cliffhanger_beat,
     is_payoff_beat,
     is_specific_text,
     protagonist_screen_presence_issues,
@@ -78,7 +77,7 @@ def evaluate_beat_contract_quality(
         "kind": "script_beat_contract",
         "passed": not failed,
         "failed_checks": failed,
-        "check_count": 23,
+        "check_count": 24,
     }
 
 
@@ -177,20 +176,7 @@ def _check_scene_structure(
                         evidence={"content": line.content},
                     )
                 )
-    final_beat = scene.beats[-1]
-    if is_cliffhanger_beat(final_beat) and not has_specific_cliffhanger(final_beat):
-        failed.append(
-            _failure(
-                "cliffhanger_specificity",
-                "cliffhanger beat must leave a concrete unresolved threat",
-                scene_number=scene.scene_number,
-                beat_order_index=final_beat.order_index,
-                evidence={
-                    "visible_event": final_beat.visible_event,
-                    "cliffhanger_tag": final_beat.cliffhanger_tag,
-                },
-            )
-        )
+    failed.extend(cliffhanger_issues(scene.beats[-1], scene.scene_number))
 
 
 def _has_escalation(contract: StructuredScriptContract) -> bool:

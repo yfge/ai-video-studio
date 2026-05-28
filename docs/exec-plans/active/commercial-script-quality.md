@@ -1458,3 +1458,102 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_conflict_quality.py ai-pic-backend/app/services/script/beat_contract_conflict.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_conflict_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-scene-question-turn.md
 git commit -m "feat(scripts): require scene question turns"
 ```
+
+## Task 30: Reject Resolved Final Cliffhangers
+
+**Files:**
+
+- Create: `ai-pic-backend/tests/unit/services/script/test_beat_contract_cliffhanger_quality.py`
+- Create: `ai-pic-backend/app/services/script/beat_contract_cliffhanger.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_specificity.py`
+- Create: `ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py`
+- Create: `scripts/harness/production_cliffhanger_score.py`
+- Modify: `scripts/harness/production_structured_score.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing product and provider tests**
+
+Add regressions proving a final beat cannot pass merely by being labelled `cliffhanger` if the screen text resolves the story with completion, restored safety, or full reward recovery.
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_cliffhanger_quality.py::test_quality_gate_rejects_resolved_final_cliffhanger -q
+pytest ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py::test_structured_score_rejects_resolved_provider_final_cliffhanger -q
+```
+
+Expected: both tests fail because resolved final cliffhangers are not scored yet.
+
+- [x] **Step 2: Add focused cliffhanger helpers**
+
+Move product final cliffhanger specificity into `beat_contract_cliffhanger.py` and add resolution-phrase detection. Add a provider scorer that emits the same `cliffhanger_unresolved_threat` check id.
+
+- [x] **Step 3: Wire quality gates and prompts**
+
+Emit `cliffhanger_unresolved_threat` from product and provider scoring. Update prompts so final beats must end on a visible unresolved threat, unanswered question, countdown, deletion, arrival, or object change rather than full resolution.
+
+- [x] **Step 4: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_cliffhanger_quality.py tests/unit/services/script/test_beat_contract_quality.py -q
+pytest ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: selected product and provider cliffhanger tests pass.
+
+## Task 31: Validate And Commit Final Cliffhanger Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-final-cliffhanger.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_cliffhanger_quality.py tests/unit/services/script/test_beat_contract_conflict_quality.py tests/unit/services/script/test_beat_contract_dialogue_quality.py tests/unit/services/script/test_beat_contract_payoff_quality.py tests/unit/services/script/test_beat_contract_purpose_quality.py tests/unit/services/script/test_beat_contract_progression_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_progression_score.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: focused backend and provider harness suites pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_cliffhanger_quality.py ai-pic-backend/app/services/script/beat_contract_cliffhanger.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/services/script/beat_contract_specificity.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py scripts/harness/production_cliffhanger_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-final-cliffhanger.md
+git commit -m "feat(scripts): reject resolved cliffhangers"
+```

@@ -64,7 +64,8 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         "Dialogue must carry story information; do not use filler-only lines like 好的, 嗯, 知道了, 是的, or 怎么会这样, "
         "and do not repeat the same dialogue line within one scene. "
         "Scene 1 must open with an immediate conflict or countdown hook. The final "
-        "scene must end on an unresolved reversal or question, not a full resolution. "
+        "scene must end on an unresolved reversal or question, not a full resolution; "
+        "do not end with task complete, crisis solved, all rewards recovered, all alarms off, or system restored. "
         "Every scene must have question, turn, plot, one or two short dialogue lines, and a Seedance-ready "
         "video prompt that includes the same character anchor and the dialogue source."
     )
