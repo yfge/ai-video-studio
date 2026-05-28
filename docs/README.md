@@ -9,6 +9,9 @@ This directory holds design notes, API references, and testing guides. Keep this
 - `docs/exec-plans/active/timeline-main-chain-optimization.md` — post-bridge
   review and optimization plan for script -> Timeline Spec -> storyboard
   support.
+- `docs/exec-plans/active/script-beat-contract.md` — step-by-step
+  implementation plan for script beat contracts and provider-chain quality
+  proof.
 - `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
 
 ## Agent System Of Record
