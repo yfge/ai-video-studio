@@ -1164,3 +1164,97 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_progression_quality.py ai-pic-backend/app/services/script/beat_contract_progression.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_progression_score.py scripts/harness/production_progression_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-beat-progression.md
 git commit -m "feat(scripts): reject repeated beat progression"
 ```
+
+## Task 24: Require Payoff In Every Script Contract
+
+**Files:**
+
+- Create: `ai-pic-backend/tests/unit/services/script/test_beat_contract_payoff_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py`
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py`
+
+- [x] **Step 1: Write failing single-scene payoff test**
+
+Add a focused regression proving a single-scene script without any payoff beat or payoff tag fails with `payoff_required`.
+
+- [x] **Step 2: Run test and confirm red**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_payoff_quality.py::test_quality_gate_requires_payoff_for_single_scene_script -q
+```
+
+Expected: the test fails because product quality currently requires payoff only for multi-scene scripts.
+
+- [x] **Step 3: Tighten product payoff gate**
+
+Update `evaluate_beat_contract_quality()` so every script contract requires a payoff, matching the existing prompt and provider-chain structured scorer.
+
+- [x] **Step 4: Update valid fixture**
+
+Update `_valid_contract()` to include a concrete payoff tag and visible payoff evidence, then adjust missing-payoff tests to remove payoff from all scenes.
+
+- [x] **Step 5: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_payoff_quality.py::test_quality_gate_requires_payoff_for_single_scene_script tests/unit/services/script/test_beat_contract_quality.py::test_quality_gate_accepts_structured_contract tests/unit/services/script/test_beat_contract_quality.py::test_quality_gate_rejects_missing_payoff_for_multi_scene_episode -q
+```
+
+Expected: selected product payoff tests pass.
+
+## Task 25: Validate And Commit Payoff Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-payoff.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_payoff_quality.py tests/unit/services/script/test_beat_contract_purpose_quality.py tests/unit/services/script/test_beat_contract_progression_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_progression_score.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: selected backend and harness tests pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_payoff_quality.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py ai-pic-backend/tests/unit/services/script/test_beat_contract_quality.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-script-payoff.md
+git commit -m "feat(scripts): require payoff in beat scripts"
+```

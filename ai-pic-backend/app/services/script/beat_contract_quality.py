@@ -60,8 +60,8 @@ def evaluate_beat_contract_quality(
         )
     if not _has_escalation(contract):
         failed.append(_failure("escalation_required", "script must escalate conflict"))
-    if len(contract.scenes) > 1 and not _has_payoff(contract):
-        failed.append(_failure("payoff_required", "multi-scene script needs payoff"))
+    if not _has_payoff(contract):
+        failed.append(_failure("payoff_required", "script needs payoff"))
     final_scene = contract.scenes[-1]
     final_beat = final_scene.beats[-1]
     if final_beat.beat_type != "cliffhanger" and not final_beat.cliffhanger_tag:

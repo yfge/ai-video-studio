@@ -48,14 +48,17 @@ def _valid_contract():
                     },
                     {
                         "order_index": 2,
-                        "beat_type": "conflict",
-                        "dramatic_purpose": "让主角遇到阻力。",
-                        "visible_event": "修改日志被锁定，权限被拒绝。",
-                        "action_lines": [{"content": "控制台弹出红色权限拒绝提示。"}],
+                        "beat_type": "reveal",
+                        "dramatic_purpose": "证明小机找到第一段证据。",
+                        "visible_event": "修改日志解锁，奖金记录恢复一半。",
+                        "action_lines": [
+                            {"content": "小机拖出隐藏日志，屏幕弹出操作者编号。"}
+                        ],
                         "dialogue_lines": [
-                            {"character": "小机", "content": "权限也没了？"}
+                            {"character": "小机", "content": "证据出来了。"}
                         ],
                         "duration_seconds": 5,
+                        "payoff_tag": "partial_proof",
                     },
                     {
                         "order_index": 3,

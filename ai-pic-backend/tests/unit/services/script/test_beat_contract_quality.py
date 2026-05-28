@@ -34,12 +34,15 @@ def test_quality_gate_rejects_missing_payoff_for_multi_scene_episode():
     second["scene_number"] = 2
     second["dramatic_role"] = "cliffhanger"
     second["beats"] = [dict(beat) for beat in payload["scenes"][0]["beats"]]
-    for beat in second["beats"]:
-        beat["beat_type"] = "conflict"
-        beat.pop("payoff_tag", None)
     second["beats"][-1]["beat_type"] = "cliffhanger"
     second["beats"][-1]["cliffhanger_tag"] = "new_threat"
     payload["scenes"].append(second)
+    for scene in payload["scenes"]:
+        for beat in scene["beats"]:
+            beat["beat_type"] = (
+                "conflict" if beat["order_index"] == 2 else beat["beat_type"]
+            )
+            beat.pop("payoff_tag", None)
     contract = normalize_script_beat_contract(payload)
 
     report = evaluate_beat_contract_quality(contract)
