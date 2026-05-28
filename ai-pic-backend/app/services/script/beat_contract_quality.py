@@ -22,7 +22,7 @@ def evaluate_beat_contract_quality(
     contract: StructuredScriptContract,
     *,
     min_beats_per_scene: int = 3,
-    max_dialogue_chars: int = 24,
+    max_dialogue_chars: int = 15,
     allow_ultra_short_smoke: bool = False,
 ) -> dict[str, Any]:
     failed: list[dict[str, Any]] = []

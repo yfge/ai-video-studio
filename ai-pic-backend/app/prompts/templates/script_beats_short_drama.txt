@@ -7,7 +7,7 @@
 4. 第一个 scene 的第一个 beat 必须是 hook。
 5. 至少一个 beat 必须是 payoff，并写清主角具体赢到/得到/阻止/揭露什么。
 6. 最后一个 scene 的最后一个 beat 必须是 cliffhanger 或带 cliffhanger_tag。
-7. 每句对白短句为主，单句不超过 24 个可见字。
+7. 每句对白短句为主，单句不超过 15 个可见字。
 8. action_lines 必须是可拍动作/镜头/音效，不要写编剧说明。
 9. conflict.question 必须写清本场具体戏剧问题；conflict.stakes 必须写清具体损失、倒计时、人物关系或物件，不要写“重大危机”“推进剧情”。
 10. conflict.opposition 必须写清具体阻力来源；conflict.turn 必须写清本场具体转折、线索变化、威胁升级或结果变化，不要写“神秘力量”“阻碍尚未结构化”“出现转折”。

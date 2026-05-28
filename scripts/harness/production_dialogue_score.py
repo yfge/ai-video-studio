@@ -25,13 +25,17 @@ _FILLER_DIALOGUE = {
 }
 
 
-def dialogue_failed_checks(scenes: list[dict[str, Any]]) -> list[str]:
+def dialogue_failed_checks(
+    scenes: list[dict[str, Any]], *, max_visible_chars: int = 15
+) -> list[str]:
     failed: list[str] = []
     for scene in scenes:
         dialogue_texts: list[str] = []
         for line in _scene_dialogue(scene):
             content = _compact_text(str(line.get("line") or line.get("content") or ""))
             dialogue_texts.append(content)
+            if len(content) > max_visible_chars:
+                failed.append("dialogue_line_length")
             if content in _FILLER_DIALOGUE:
                 failed.append("dialogue_substance")
         if len(dialogue_texts) > 1 and len(set(dialogue_texts)) < len(dialogue_texts):

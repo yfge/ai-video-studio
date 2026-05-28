@@ -1655,3 +1655,98 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_hook_quality.py ai-pic-backend/app/services/script/beat_contract_duration.py ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_hook_score.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_duration_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-opening-hook-duration.md
 git commit -m "feat(scripts): enforce three second hooks"
 ```
+
+## Task 34: Enforce 15-Visible-Character Dialogue Lines
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_dialogue_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_quality.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_dialogue_score.py`
+- Modify: `scripts/harness/production_dialogue_score.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+
+- [x] **Step 1: Write failing product and provider tests**
+
+Add regressions proving a dialogue line over 15 visible characters fails both the product beat-contract gate and provider structured score.
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_dialogue_quality.py::test_quality_gate_rejects_long_dialogue_line -q
+pytest ai-pic-backend/tests/scripts/test_production_dialogue_score.py::test_structured_score_rejects_long_provider_dialogue_line -q
+```
+
+Expected: both tests fail because the product gate still allows 24 visible characters and provider scoring only lowers the dialogue score.
+
+- [x] **Step 2: Add hard length checks**
+
+Set the product beat-contract dialogue limit to 15 visible characters and emit `dialogue_line_length` from provider dialogue scoring when any dialogue line exceeds that limit.
+
+- [x] **Step 3: Align prompt text**
+
+Update the beat-contract prompt so its dialogue length rule matches the deterministic 15-character gate.
+
+- [x] **Step 4: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_dialogue_quality.py tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: selected product and provider dialogue tests pass.
+
+## Task 35: Validate And Commit Dialogue Length Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-line-length.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_dialogue_quality.py tests/unit/services/script/test_beat_contract_hook_quality.py tests/unit/services/script/test_beat_contract_cliffhanger_quality.py tests/unit/services/script/test_beat_contract_conflict_quality.py tests/unit/services/script/test_beat_contract_payoff_quality.py tests/unit/services/script/test_beat_contract_purpose_quality.py tests/unit/services/script/test_beat_contract_progression_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_hook_score.py ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_progression_score.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: focused backend and provider harness suites pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_dialogue_quality.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_dialogue_score.py scripts/harness/production_dialogue_score.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-dialogue-line-length.md
+git commit -m "feat(scripts): cap dialogue line length"
+```

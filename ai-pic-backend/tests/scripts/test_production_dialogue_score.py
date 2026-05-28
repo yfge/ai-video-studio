@@ -29,3 +29,18 @@ def test_structured_score_rejects_repeated_provider_dialogue_lines() -> None:
 
     assert result["passed"] is False
     assert "dialogue_progression_repetition" in result["failed_checks"]
+
+
+def test_structured_score_rejects_long_provider_dialogue_line() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    line = script["scenes"][0]["beats"][0]["dialogue"][0]
+    line["line"] = "这条线索必须马上交给审计员核对签名"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "dialogue_line_length" in result["failed_checks"]
