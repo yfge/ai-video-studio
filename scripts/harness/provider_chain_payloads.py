@@ -32,12 +32,19 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         '{"title":str,"logline":str,"characters":[{"name":str,"role":str,'
         '"appearance_prompt":str,"consistency_anchor":str}],'
         '"scenes":[{"scene_id":str,"duration_seconds":int,"plot":str,'
-        '"dialogue":[{"speaker":str,"line":str}],"image_prompt":str,'
+        '"dialogue":[{"speaker":str,"line":str}],'
+        '"beats":[{"order_index":int,"beat_type":str,"dramatic_purpose":str,'
+        '"visible_event":str,"action":[str],"dialogue":[{"speaker":str,"line":str}],'
+        '"duration_seconds":number,"hook_tag":str,"payoff_tag":str,'
+        '"cliffhanger_tag":str}],"image_prompt":str,'
         '"video_prompt":str}]}. '
         f"Create exactly {len(durations)} scene(s) with durations {durations}. "
         "Use one stable protagonist across every scene; keep the protagonist's "
         "consistency_anchor as a visual descriptor, not just a name. Supporting "
         "characters, if any, must stay secondary and must not replace the protagonist. "
+        "Every scene must include 3 to 5 beats. The first beat of scene 1 must "
+        "be hook. At least one beat across the script must be payoff. The final "
+        "beat must be cliffhanger. "
         "Every dialogue line must be <= 15 visible Chinese/English characters. "
         "Scene 1 must open with an immediate conflict or countdown hook. The final "
         "scene must end on an unresolved reversal or question, not a full resolution. "
@@ -77,6 +84,12 @@ def extract_structured_script(content: str, expected_scene_count: int) -> dict[s
                 or not line.get("line")
             ):
                 raise ValueError(f"script_scene_{index}_invalid_dialogue")
+        beats = scene.get("beats")
+        if not isinstance(beats, list) or len(beats) < 3:
+            raise ValueError(f"script_scene_{index}_missing_beats")
+        for beat_index, beat in enumerate(beats, start=1):
+            if not isinstance(beat, dict) or not beat.get("visible_event"):
+                raise ValueError(f"script_scene_{index}_beat_{beat_index}_invalid")
     return data
 
 

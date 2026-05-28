@@ -36,6 +36,13 @@ related_paths:
   - ai-pic-backend/tests/unit/services/ai/test_scripts_ai_manager.py
   - ai-pic-backend/tests/unit/services/test_script_agent_langgraph_early_exit.py
   - ai-pic-backend/tests/unit/test_prompt_template_resolver_story_format_variants.py
+  - scripts/harness/provider_chain_payloads.py
+  - scripts/harness/provider_chain_timeline_payloads.py
+  - scripts/harness/production_quality_script.py
+  - scripts/harness/production_script_payload.py
+  - scripts/harness/production_structured_score.py
+  - ai-pic-backend/tests/scripts/test_production_quality_regression.py
+  - ai-pic-backend/tests/scripts/provider_chain_fixtures.py
 ---
 
 ## User Prompt
@@ -66,6 +73,11 @@ related_paths:
 - Defaulted beat prompt rendering to the `short_drama` variant when older tests or callers omit `story_format`, because this slice only adds a short-drama beat template.
 - Extracted reusable beat-contract prompt/repair/flatten orchestration into `beat_contract_generation.py` so `script_agent.py` and `scripts_ai_manager.py` stay under repository file-size limits.
 - Moved legacy prompt defaults/examples to `template_defaults.py` and re-exported them from `templates.py`, keeping the prompt enum registry under the contract limit.
+- Added provider-chain fixture beats and a regression test that rejects thin scripts without scene beats.
+- Updated provider-chain script prompts and parser validation to require 3-5 beats per scene with visible events.
+- Updated timeline derivation to prefer beat dialogue and carry beat source refs forward.
+- Updated production quality lint text and structured scoring to read beat action/dialogue, require scene beat minimums, payoff, opening hook, and final cliffhanger.
+- Split provider-chain fixtures and structured scoring into focused helper files to keep changed test and harness modules under repository size limits.
 
 ## Validation
 
@@ -93,6 +105,12 @@ related_paths:
 - `SKIP=backend-pytest pre-commit run --files $(git diff --cached --name-only)` passed after black/isort formatting and the helper/defaults split; `backend-pytest` remains skipped for the documented local MySQL issue.
 - `cd ai-pic-backend && pytest tests/unit/prompts/test_prompt_variants.py tests/unit/test_prompt_template_resolver_story_format_variants.py tests/unit/services/script/test_beat_contract_normalizer.py tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/ai/test_scripts_ai_manager.py tests/unit/services/test_script_agent_langgraph_early_exit.py -q` passed with `47 passed, 43 warnings`.
 - `git diff --cached --check` passed.
+- `pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py -q` first failed as expected with `test_structured_score_rejects_thin_provider_script` because thin scripts still passed.
+- `pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py -q` passed with `8 passed, 27 warnings` after harness scoring/parser updates.
+- `pytest ai-pic-backend/tests/scripts/test_provider_chain_api.py -q` passed with `4 passed, 26 warnings`.
+- `python scripts/check_repo_contracts.py --mode diff ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_quality_script.py scripts/harness/production_structured_score.py scripts/harness/production_script_payload.py scripts/harness/provider_chain_payloads.py scripts/harness/provider_chain_timeline_payloads.py` passed after the test/scoring split.
+- `pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q` passed with `12 passed, 27 warnings`.
+- `SKIP=backend-pytest pre-commit run --files $(git diff --cached --name-only)` passed for the harness alignment slice after black/isort formatting.
 
 ## Next Steps
 
@@ -107,4 +125,5 @@ related_paths:
 - `bdab1b3a fix(scripts): preserve beat data during normalization`
 - `c25168f9 feat(scripts): sync script beats to scene beats`
 - `9e26ad92 feat(scripts): gate generated scripts on beat contract`
-- Current commit: generation prompt slice.
+- `c21b4ed8 feat(scripts): generate scripts from beat contracts`
+- Current commit: harness alignment slice.

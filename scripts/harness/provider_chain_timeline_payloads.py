@@ -8,6 +8,20 @@ from scripts.harness.provider_chain_payloads import scene_durations
 
 
 def dialogue_text(scene: dict[str, Any]) -> str:
+    lines: list[str] = []
+    for beat in scene.get("beats") or []:
+        if not isinstance(beat, dict):
+            continue
+        dialogue = beat.get("dialogue") or beat.get("dialogue_lines") or []
+        for line in dialogue:
+            if not isinstance(line, dict):
+                continue
+            speaker = line.get("speaker") or line.get("character")
+            text = line.get("line") or line.get("content")
+            if speaker and text:
+                lines.append(f"{speaker}: {text}")
+    if lines:
+        return "\n".join(lines)
     return "\n".join(f"{d['speaker']}: {d['line']}" for d in scene["dialogue"])
 
 
@@ -156,6 +170,7 @@ def _source_refs(
     return {
         "provider_chain_run_id": run_id,
         "provider_chain_stage": "timeline_seed",
+        "beats": scene.get("beats") or [],
         "dialogue": scene.get("dialogue"),
         "plot": scene.get("plot"),
         "image_url": image_url,

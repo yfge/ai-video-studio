@@ -53,6 +53,10 @@
   - Derive dialogue/subtitle/video source text from beat contract.
 - Modify `scripts/harness/production_quality_script.py`
   - Render provider-chain beat scripts into lint text and score structure from beats.
+- Create `scripts/harness/production_script_payload.py`
+  - Shares provider-chain script payload extraction across lint and structured scoring helpers.
+- Create `scripts/harness/production_structured_score.py`
+  - Keeps structured beat scoring out of the lint helper so both files remain within size limits.
 - Modify `ai-pic-backend/tests/unit/services/test_script_missing_parts.py`
   - Keep existing fallback behavior locked while making fallback evidence fail the beat gate elsewhere.
 - Create `ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py`
@@ -63,6 +67,8 @@
   - Covers syncing `scenes[*].beats` into `scene_beats`.
 - Modify `ai-pic-backend/tests/scripts/test_production_quality_regression.py`
   - Updates provider-chain harness tests to reject thin scripts and accept beat scripts.
+- Create `ai-pic-backend/tests/scripts/provider_chain_fixtures.py`
+  - Holds provider-chain beat fixtures outside the regression test file size limit.
 - Modify `docs/exec-plans/active/script-beat-contract.md`
   - Check off steps as implementation progresses.
 
@@ -1571,9 +1577,12 @@ git commit -m "feat(scripts): generate scripts from beat contracts"
 - Modify: `scripts/harness/provider_chain_payloads.py`
 - Modify: `scripts/harness/provider_chain_timeline_payloads.py`
 - Modify: `scripts/harness/production_quality_script.py`
+- Create: `scripts/harness/production_script_payload.py`
+- Create: `scripts/harness/production_structured_score.py`
 - Modify: `ai-pic-backend/tests/scripts/test_production_quality_regression.py`
+- Create: `ai-pic-backend/tests/scripts/provider_chain_fixtures.py`
 
-- [ ] **Step 1: Update harness tests for beat scripts**
+- [x] **Step 1: Update harness tests for beat scripts**
 
 Modify `_provider_payload()` in `ai-pic-backend/tests/scripts/test_production_quality_regression.py` so each scene includes `beats`:
 
@@ -1621,7 +1630,7 @@ def test_structured_score_rejects_thin_provider_script():
     assert "scene_min_beats" in result["failed_checks"]
 ```
 
-- [ ] **Step 2: Run harness tests and confirm failure**
+- [x] **Step 2: Run harness tests and confirm failure**
 
 Run:
 
@@ -1631,7 +1640,7 @@ pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py -q
 
 Expected: fail until harness parser/scorer reads beat data.
 
-- [ ] **Step 3: Update provider-chain prompt and parser**
+- [x] **Step 3: Update provider-chain prompt and parser**
 
 Modify `scripts/harness/provider_chain_payloads.py`:
 
@@ -1660,7 +1669,7 @@ In `extract_structured_script`, validate:
                 raise ValueError(f"script_scene_{index}_beat_{beat_index}_invalid")
 ```
 
-- [ ] **Step 4: Update timeline derivation**
+- [x] **Step 4: Update timeline derivation**
 
 Modify `scripts/harness/provider_chain_timeline_payloads.py` so `dialogue_text(scene)` prefers beat dialogue:
 
@@ -1687,7 +1696,7 @@ In `_source_refs`, include:
         "beats": scene.get("beats") or [],
 ```
 
-- [ ] **Step 5: Update production quality scoring**
+- [x] **Step 5: Update production quality scoring**
 
 Modify `scripts/harness/production_quality_script.py`:
 
@@ -1726,7 +1735,7 @@ Return:
         "passed": not failed_checks and average >= STRUCTURED_SCORE_PASS and core_min >= STRUCTURED_CORE_MIN,
 ```
 
-- [ ] **Step 6: Verify harness tests**
+- [x] **Step 6: Verify harness tests**
 
 Run:
 
@@ -1736,12 +1745,12 @@ pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic
 
 Expected: tests pass.
 
-- [ ] **Step 7: Commit harness alignment**
+- [x] **Step 7: Commit harness alignment**
 
 Run:
 
 ```bash
-git add scripts/harness/provider_chain_payloads.py scripts/harness/provider_chain_timeline_payloads.py scripts/harness/production_quality_script.py ai-pic-backend/tests/scripts/test_production_quality_regression.py docs/exec-plans/active/script-beat-contract.md
+git add scripts/harness/provider_chain_payloads.py scripts/harness/provider_chain_timeline_payloads.py scripts/harness/production_quality_script.py scripts/harness/production_script_payload.py scripts/harness/production_structured_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py docs/exec-plans/active/script-beat-contract.md
 git commit -m "feat(harness): require beat scripts in provider chain"
 ```
 
