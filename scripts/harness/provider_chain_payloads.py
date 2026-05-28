@@ -100,6 +100,9 @@ def extract_structured_script(
 
     for index, scene in enumerate(scenes, start=1):
         dialogue = scene.get("dialogue")
+        for field in ("question", "stakes", "opposition", "turn"):
+            if not str(scene.get(field) or "").strip():
+                raise ValueError(f"script_scene_{index}_missing_{field}")
         if not scene.get("plot") or not scene.get("video_prompt"):
             raise ValueError(f"script_scene_{index}_missing_plot_or_video_prompt")
         if not isinstance(dialogue, list) or not dialogue:

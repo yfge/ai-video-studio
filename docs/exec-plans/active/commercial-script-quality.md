@@ -1945,3 +1945,89 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_conflict_quality.py ai-pic-backend/app/services/script/beat_contract_conflict.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_conflict_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-scene-stakes-opposition.md
 git commit -m "feat(scripts): require concrete scene stakes"
 ```
+
+## Task 40: Fail Provider Script Parse On Missing Conflict Fields
+
+**Files:**
+
+- Create: `ai-pic-backend/tests/scripts/test_provider_chain_payloads.py`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+
+- [x] **Step 1: Write failing provider parser tests**
+
+Add regression coverage proving `extract_structured_script()` rejects scenes with missing or blank `question`, `stakes`, `opposition`, or `turn`.
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_provider_chain_payloads.py::test_extract_structured_script_requires_scene_conflict_fields -q
+```
+
+Expected: the tests fail because current parser validation only requires plot, video prompt, dialogue, and beats.
+
+- [x] **Step 2: Add minimal parser validation**
+
+Require each provider scene to include nonblank `question`, `stakes`, `opposition`, and `turn`, and raise `script_scene_<n>_missing_<field>` for the first missing field.
+
+- [x] **Step 3: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_provider_chain_payloads.py tests/scripts/test_provider_chain_api.py tests/scripts/test_production_quality_regression.py -q
+```
+
+Expected: provider parser and nearby provider-chain tests pass.
+
+## Task 41: Validate And Commit Provider Conflict Parse Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-conflict-parse.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_hook_quality.py tests/unit/services/script/test_beat_contract_cliffhanger_quality.py tests/unit/services/script/test_beat_contract_conflict_quality.py tests/unit/services/script/test_beat_contract_dialogue_quality.py tests/unit/services/script/test_beat_contract_payoff_quality.py tests/unit/services/script/test_beat_contract_purpose_quality.py tests/unit/services/script/test_beat_contract_progression_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest tests/scripts/test_production_quality_regression.py tests/scripts/test_production_hook_score.py tests/scripts/test_production_cliffhanger_score.py tests/scripts/test_production_conflict_score.py tests/scripts/test_production_dialogue_score.py tests/scripts/test_production_progression_score.py tests/scripts/test_provider_chain_api.py tests/scripts/test_provider_chain_payloads.py -q
+```
+
+Expected: focused backend and provider harness suites pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add scripts/harness/provider_chain_payloads.py ai-pic-backend/tests/scripts/test_provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-conflict-parse.md
+git commit -m "feat(scripts): validate provider scene conflicts"
+```
