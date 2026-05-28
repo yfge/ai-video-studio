@@ -62,3 +62,22 @@ def test_structured_score_rejects_terminal_failure_as_cliffhanger() -> None:
 
     assert result["passed"] is False
     assert "cliffhanger_unresolved_threat" in result["failed_checks"]
+
+
+def test_structured_score_rejects_executed_delete_command_as_cliffhanger() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    final_beat = script["scenes"][-1]["beats"][-1]
+    final_beat["beat_type"] = "cliffhanger"
+    final_beat["visible_event"] = "屏幕弹出红色警告：远程删除命令已执行"
+    final_beat["action"] = ["小蓝后退一步，控制台文件列表全部变灰"]
+    final_beat["dialogue"] = [{"speaker": "小蓝", "line": "删除命令已执行"}]
+    final_beat["cliffhanger_tag"] = "远程删除"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "cliffhanger_unresolved_threat" in result["failed_checks"]

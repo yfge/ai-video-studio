@@ -164,6 +164,8 @@ def _failure_category(message: str, payload: dict[str, Any] | None = None) -> st
         )
     ):
         return "api_transport_failed"
+    if "script_structured_quality_failed" in message:
+        return "script_quality_failed"
     if "script" in message or "JSON" in message:
         return "script_generation_failed"
     if (

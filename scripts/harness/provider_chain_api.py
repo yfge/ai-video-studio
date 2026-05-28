@@ -17,6 +17,7 @@ from scripts.harness.provider_chain_payloads import (
     extract_structured_script,
     scene_durations,
 )
+from scripts.harness.production_quality_script import structured_script_score
 
 
 def record_response(
@@ -172,6 +173,11 @@ def generate_script(
         "scene_count": len(script["scenes"]),
         "raw_content": raw_content,
     }
+    score = structured_script_score(payload)
+    payload["key_artifacts"]["script"]["structured_script_score"] = score
+    if not score.get("passed"):
+        failed = ", ".join(score.get("failed_checks") or [])
+        raise ValueError(f"script_structured_quality_failed: {failed}")
     return script
 
 
@@ -182,7 +188,8 @@ def create_virtual_ip(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
     anchor = _timeline_character_anchor(timeline)
-    name = f"provider-chain-{_run_name_suffix(args.run_id)}"
+    digest = hashlib.sha1(args.run_id.encode()).hexdigest()[:12]
+    name = f"provider-chain-{digest}"
     body = request_json(
         session,
         "POST",
@@ -259,11 +266,6 @@ def _timeline_shot_plans(timeline: dict[str, Any]) -> list[dict[str, Any]]:
         raise RuntimeError("timeline_shot_plan_missing_for_character_image")
     return plans
 
-
-def _run_name_suffix(run_id: str) -> str:
-    return hashlib.sha1(run_id.encode("utf-8")).hexdigest()[:12]
-
-
 def _timeline_character_anchor(timeline: dict[str, Any]) -> str:
     for plan in _timeline_shot_plans(timeline):
         anchor = plan.get("character_anchor")
@@ -282,11 +284,10 @@ def _timeline_plot_summary(timeline: dict[str, Any]) -> str:
 
 
 def _timeline_character_image_prompt(timeline: dict[str, Any]) -> str:
-    plans = _timeline_shot_plans(timeline)
     anchor = _timeline_character_anchor(timeline)
     visual_prompts = [
         str(plan.get("visual_prompt")).strip()
-        for plan in plans
+        for plan in _timeline_shot_plans(timeline)
         if str(plan.get("visual_prompt") or "").strip()
     ]
     return (

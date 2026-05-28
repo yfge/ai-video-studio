@@ -2370,3 +2370,87 @@ Run:
 git add ai-pic-backend/tests/integration/test_timeline_pipeline_import_api.py ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_regression.py ai-pic-backend/tests/scripts/test_script_story_structure_sync.py scripts/harness/production_cliffhanger_score.py scripts/harness/production_dialogue_score.py scripts/harness/production_quality_script.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-quality-evidence.md
 git commit -m "fix(scripts): harden provider quality probes"
 ```
+
+## Task 49: Preflight Provider-Chain Script Quality
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/scripts/test_provider_chain_api.py`
+- Modify: `ai-pic-backend/tests/scripts/test_provider_chain_failures.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py`
+- Modify: `scripts/harness/provider_chain_api.py`
+- Modify: `scripts/harness/provider_chain_regression.py`
+- Modify: `scripts/harness/production_cliffhanger_score.py`
+
+- [x] **Step 1: Write failing preflight gate test**
+
+Add a regression proving `generate_script()` rejects JSON-valid but
+commercially invalid scripts before Timeline, image, video, or render work runs.
+The test mutates the final beat into a terminal-failure ending and expects
+`script_structured_quality_failed`.
+
+- [x] **Step 2: Add script quality artifact and failure category**
+
+Store `structured_script_score` under `key_artifacts.script` immediately after
+successful JSON parsing. If it fails, raise
+`script_structured_quality_failed: <failed checks>`. Classify that failure as
+`script_quality_failed`.
+
+- [x] **Step 3: Tighten terminal-failure cliffhanger detection**
+
+Add a regression for delete commands that are already executed, then reject
+`命令已执行` / `已执行` terminal endings as failed cliffhangers.
+
+- [x] **Step 4: Verify with tests and live smoke**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_cliffhanger_score.py tests/scripts/test_provider_chain_api.py tests/scripts/test_provider_chain_failures.py -q
+python scripts/harness/provider_chain_regression.py --mode smoke --run-id quality-smoke-preflight-gate-20260528Tlocal --api-url http://localhost:8010 --episode-id 133 --script-id 117 --timeout-seconds 900 --poll-interval-seconds 5 --video-concurrency 1 --script-premise '数据中心日志被陌生操作者篡改，机器人必须拿到证据，结尾必须留下未知操作者或第二倒计时而不是失败完成'
+```
+
+Observed: tests passed with `15 passed`. The live provider-chain smoke passed,
+created Timeline `63`, recorded `structured_script_score.passed=true`, generated
+OpenAI image and Seedance video, and completed render probe with output
+`https://resource.lets-gpt.com/timeline-renders/video/20260528/123216/0857898c.mp4`.
+
+## Task 50: Validate And Commit Preflight Script Quality Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-script-preflight.md`
+
+- [x] **Step 1: Run final focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/scripts/test_production_cliffhanger_score.py tests/scripts/test_provider_chain_api.py tests/scripts/test_provider_chain_failures.py tests/scripts/test_production_quality_regression.py tests/scripts/test_provider_chain_payloads.py -q
+```
+
+- [x] **Step 2: Run docs, contracts, whitespace, and pre-commit**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with exact red/green, live smoke, docs, contracts, and
+pre-commit evidence.
+
+- [x] **Step 4: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/scripts/test_provider_chain_api.py ai-pic-backend/tests/scripts/test_provider_chain_failures.py ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py scripts/harness/provider_chain_api.py scripts/harness/provider_chain_regression.py scripts/harness/production_cliffhanger_score.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-provider-script-preflight.md
+git commit -m "fix(scripts): preflight provider script quality"
+```

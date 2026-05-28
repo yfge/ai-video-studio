@@ -29,7 +29,9 @@ def test_failure_category_classifies_provider_billing_evidence() -> None:
     }
 
     assert (
-        _failure_category("400 Client Error for url: /api/v1/ai/generate/video", payload)
+        _failure_category(
+            "400 Client Error for url: /api/v1/ai/generate/video", payload
+        )
         == "provider_billing_or_quota_failed"
     )
 
@@ -40,6 +42,16 @@ def test_failure_category_classifies_script_json_parse_error() -> None:
             "JSONDecodeError: Unterminated string starting at: line 3 column 14"
         )
         == "script_generation_failed"
+    )
+
+
+def test_failure_category_classifies_script_quality_gate_error() -> None:
+    assert (
+        _failure_category(
+            "ValueError: script_structured_quality_failed: "
+            "cliffhanger_unresolved_threat"
+        )
+        == "script_quality_failed"
     )
 
 

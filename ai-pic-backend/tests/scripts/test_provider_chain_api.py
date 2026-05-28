@@ -173,3 +173,45 @@ def test_generate_script_disables_deepseek_streaming_and_thinking() -> None:
     assert script["title"] == "奖金清零"
     assert session.json_body["stream"] is False
     assert session.json_body["thinking"] is False
+
+
+def test_generate_script_fails_before_media_when_structured_quality_fails() -> None:
+    script = json.loads(provider_payload()["key_artifacts"]["script"]["raw_content"])
+    final_beat = script["scenes"][-1]["beats"][-1]
+    final_beat["beat_type"] = "cliffhanger"
+    final_beat["visible_event"] = "进度条到100%，屏幕变红"
+    final_beat["action"] = ["小蓝手停在键盘上，LED眼睛变暗"]
+    final_beat["dialogue"] = [{"speaker": "小蓝", "line": "来不及了"}]
+    final_beat["cliffhanger_tag"] = "数据丢失"
+    raw_content = json.dumps(script, ensure_ascii=False)
+    response = requests.Response()
+    response.status_code = 200
+    response.url = "https://example.com/api/v1/ai/generate/text"
+    response._content = (
+        '{"success":true,"data":{"provider":"deepseek","model":"'
+        + TEXT_MODEL
+        + '","content":'
+        + json.dumps(raw_content)
+        + "}}"
+    ).encode("utf-8")
+    response.request = requests.Request("POST", response.url).prepare()
+    response.elapsed = timedelta(seconds=0.5)
+
+    class _Session:
+        def request(self, method, url, timeout, **kwargs):
+            return response
+
+    payload = {"request_chain": [], "key_artifacts": {}}
+    args = SimpleNamespace(
+        api_url="https://example.com",
+        mode="full-30s",
+        script_premise=None,
+        timeout_seconds=1,
+    )
+
+    with pytest.raises(ValueError, match="script_structured_quality_failed"):
+        generate_script(_Session(), args, payload)
+
+    score = payload["key_artifacts"]["script"]["structured_script_score"]
+    assert score["passed"] is False
+    assert "cliffhanger_unresolved_threat" in score["failed_checks"]
