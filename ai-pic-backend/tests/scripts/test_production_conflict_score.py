@@ -32,3 +32,20 @@ def test_structured_score_requires_provider_scene_question_and_turn() -> None:
     assert result["passed"] is False
     assert "scene_conflict_question" in result["failed_checks"]
     assert "scene_conflict_turn" in result["failed_checks"]
+
+
+def test_structured_score_rejects_abstract_provider_stakes_and_opposition() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    for scene in script["scenes"]:
+        scene["stakes"] = "小蓝压力越来越大"
+        scene["opposition"] = "混乱局面阻止小蓝继续查"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert result["passed"] is False
+    assert "scene_conflict_stakes" in result["failed_checks"]
+    assert "scene_conflict_opposition" in result["failed_checks"]

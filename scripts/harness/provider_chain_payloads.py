@@ -32,7 +32,7 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         '{"title":str,"logline":str,"characters":[{"name":str,"role":str,'
         '"appearance_prompt":str,"consistency_anchor":str}],'
         '"scenes":[{"scene_id":str,"duration_seconds":int,"question":str,'
-        '"turn":str,"plot":str,'
+        '"stakes":str,"opposition":str,"turn":str,"plot":str,'
         '"dialogue":[{"speaker":str,"line":str}],'
         '"beats":[{"order_index":int,"beat_type":str,"dramatic_purpose":str,'
         '"visible_event":str,"action":[str],"dialogue":[{"speaker":str,"line":str}],'
@@ -40,9 +40,13 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         '"cliffhanger_tag":str}],"image_prompt":str,'
         '"video_prompt":str}]}. '
         f"Create exactly {len(durations)} scene(s) with durations {durations}. "
-        "Every scene must include a concrete question and turn: question names "
-        "the scene's story problem, and turn names the changed clue, threat, "
-        "choice, or result; do not use generic wording like 推进剧情 or 出现转折. "
+        "Every scene must include a concrete question, stakes, opposition, and turn: "
+        "question names the scene's story problem; stakes names a concrete loss, "
+        "deadline, object, customer, money, asset, file, or proof; opposition names "
+        "the blocking source such as a system, permission, customer, supplier, black "
+        "shadow, log, file, interface, or deletion; turn names the changed clue, "
+        "threat, choice, or result. Do not use generic wording like 推进剧情, "
+        "压力变大, 混乱局面, or 出现转折. "
         "Use one stable protagonist across every scene; keep the protagonist's "
         "consistency_anchor as a visual descriptor, not just a name. Supporting "
         "characters, if any, must stay secondary and must not replace the protagonist. "

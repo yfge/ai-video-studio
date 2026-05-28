@@ -1848,3 +1848,100 @@ Run:
 git add ai-pic-backend/tests/unit/services/script/test_beat_contract_hook_quality.py ai-pic-backend/app/services/script/beat_contract_hook.py ai-pic-backend/app/services/script/beat_contract_quality.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_hook_score.py scripts/harness/production_hook_score.py scripts/harness/production_structured_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-opening-hook-substance.md
 git commit -m "feat(scripts): require immediate opening hooks"
 ```
+
+## Task 38: Require Concrete Scene Stakes And Opposition
+
+**Files:**
+
+- Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_conflict_quality.py`
+- Modify: `ai-pic-backend/app/services/script/beat_contract_conflict.py`
+- Modify: `ai-pic-backend/tests/scripts/test_production_conflict_score.py`
+- Modify: `ai-pic-backend/tests/scripts/provider_chain_fixtures.py`
+- Modify: `scripts/harness/production_conflict_score.py`
+- Modify: `scripts/harness/provider_chain_payloads.py`
+- Modify: `ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt`
+
+- [x] **Step 1: Write failing product and provider tests**
+
+Add regressions proving a scene cannot pass when `stakes` and `opposition` are abstract pressure, feelings, or generic difficulty rather than concrete losses, deadlines, objects, people, systems, or blocking mechanisms.
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_conflict_quality.py::test_quality_gate_rejects_abstract_scene_stakes_and_opposition -q
+pytest ai-pic-backend/tests/scripts/test_production_conflict_score.py::test_structured_score_rejects_abstract_provider_stakes_and_opposition -q
+```
+
+Expected: both tests fail because current conflict checks only require non-vague question/turn and loose specificity.
+
+- [x] **Step 2: Add concrete stakes/opposition checks**
+
+Emit `scene_conflict_stakes` and `scene_conflict_opposition` when product or provider scene conflict fields lack tangible risk or blocking-source markers.
+
+- [x] **Step 3: Align provider schema, fixtures, and prompts**
+
+Add provider `stakes` and `opposition` fields to the script prompt schema and valid fixtures. Update product/provider prompt wording so stakes and opposition must be externally visible and concrete.
+
+- [x] **Step 4: Verify green**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_conflict_quality.py tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: selected product and provider conflict tests pass.
+
+## Task 39: Validate And Commit Scene Stakes Slice
+
+**Files:**
+
+- Modify: `docs/exec-plans/active/commercial-script-quality.md`
+- Create: `agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-scene-stakes-opposition.md`
+
+- [x] **Step 1: Run focused validation**
+
+Run:
+
+```bash
+cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_quality.py tests/unit/services/script/test_beat_contract_hook_quality.py tests/unit/services/script/test_beat_contract_cliffhanger_quality.py tests/unit/services/script/test_beat_contract_conflict_quality.py tests/unit/services/script/test_beat_contract_dialogue_quality.py tests/unit/services/script/test_beat_contract_payoff_quality.py tests/unit/services/script/test_beat_contract_purpose_quality.py tests/unit/services/script/test_beat_contract_progression_quality.py tests/unit/services/script/test_beat_contract_normalizer.py -q
+pytest ai-pic-backend/tests/scripts/test_production_quality_regression.py ai-pic-backend/tests/scripts/test_production_hook_score.py ai-pic-backend/tests/scripts/test_production_cliffhanger_score.py ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/test_production_dialogue_score.py ai-pic-backend/tests/scripts/test_production_progression_score.py ai-pic-backend/tests/scripts/test_provider_chain_api.py -q
+```
+
+Expected: focused backend and provider harness suites pass.
+
+- [x] **Step 2: Run repo docs and diff contracts**
+
+Run:
+
+```bash
+python scripts/check_repo_docs.py
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs python scripts/check_repo_contracts.py --mode diff
+```
+
+Expected: both commands pass.
+
+- [x] **Step 3: Add ledger entry**
+
+Create a ledger file with the repository-required sections and exact validation output.
+
+- [x] **Step 4: Run whitespace and targeted pre-commit checks**
+
+Run:
+
+```bash
+git diff --check
+{ git diff --name-only main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u | xargs env SKIP=backend-pytest pre-commit run --files
+```
+
+Expected: diff check passes and pre-commit passes with backend pytest skipped only for the documented local MySQL default issue.
+
+- [x] **Step 5: Commit the slice**
+
+Run:
+
+```bash
+git add ai-pic-backend/tests/unit/services/script/test_beat_contract_conflict_quality.py ai-pic-backend/app/services/script/beat_contract_conflict.py ai-pic-backend/app/prompts/templates/script_beats_short_drama.txt ai-pic-backend/tests/scripts/test_production_conflict_score.py ai-pic-backend/tests/scripts/provider_chain_fixtures.py scripts/harness/production_conflict_score.py scripts/harness/provider_chain_payloads.py docs/exec-plans/active/commercial-script-quality.md agent_chats/2026/05/28/YYYY-MM-DDTHH-MM-SSZ-scene-stakes-opposition.md
+git commit -m "feat(scripts): require concrete scene stakes"
+```
