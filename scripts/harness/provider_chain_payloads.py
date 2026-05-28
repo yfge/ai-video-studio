@@ -46,6 +46,8 @@ def build_script_prompt(mode: str, premise: str | None = None) -> str:
         "reuse the same named protagonist in scene dialogue and beat dialogue. "
         "Each scene's beat visible_event or action must show that named protagonist "
         "performing a visible action, movement, operation, or reaction. "
+        "Within the same scene, every beat visible_event plus action must create a "
+        "distinct screen state or new information; do not repeat the same button, alarm, or action. "
         "Every scene must include 3 to 5 beats. The first beat of scene 1 must "
         "be hook. At least one beat across the script must be payoff. The final "
         "beat must be cliffhanger. Each beat dramatic_purpose must name the specific "

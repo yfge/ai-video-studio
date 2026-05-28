@@ -14,13 +14,14 @@
 11. visible_event 和 action_lines 必须是屏幕可见的具体行为、物件、结果或声音，不要写“剧情继续推进”“角色开始行动”。
 12. payoff 必须写清主角具体赢到/得到/阻止/揭露的结果，不要只写“获得胜利”或标签。
 13. cliffhanger 必须留下具体未解决威胁、证据、倒计时、人物到场或物件变化，不要只写“巨大悬念”。
-14. dramatic_purpose 必须写清这个 beat 具体改变了什么线索、选择、威胁或局面；不要只写“推进剧情”“制造悬念”“制造冲突”“出现转折”。
-15. dialogue_lines.character 必须使用稳定角色名，不要写“角色”“主角”“男主”“女主”“旁白”等占位名。
-16. 每个多 beat 场景必须让同一个具名主角在至少两个 beats 中说话，保证观众能跟住人物行动线。
-17. 每个多 beat 场景的 visible_event 或 action_lines 必须至少一次写出这个具名主角的可见动作、走位、操作或反应；不能只让屏幕、警报、物件自己变化。
-18. 每个 beat.duration_seconds 必须大于 0；同一 scene 的所有 beat 时长总和必须接近 estimated_duration_seconds。
-19. visible_event 和 action_lines 不能写“意识到/明白/感到/内心/命运/关系变化”等心理或抽象变化；必须写观众能看见或听见的物件、动作、表情、走位、屏幕变化、声音或结果。
-20. dialogue_lines.content 不能只写“嗯/好的/知道了/是的/怎么办/怎么会这样”等水词；每句对白必须推动线索、冲突、选择、威胁、反转或具体目标。
+14. 同一 scene 内每个 beat 的 visible_event + action_lines 必须呈现不同画面状态或新信息，不要复制同一句动作或只重复同一个按钮/警报。
+15. dramatic_purpose 必须写清这个 beat 具体改变了什么线索、选择、威胁或局面；不要只写“推进剧情”“制造悬念”“制造冲突”“出现转折”。
+16. dialogue_lines.character 必须使用稳定角色名，不要写“角色”“主角”“男主”“女主”“旁白”等占位名。
+17. 每个多 beat 场景必须让同一个具名主角在至少两个 beats 中说话，保证观众能跟住人物行动线。
+18. 每个多 beat 场景的 visible_event 或 action_lines 必须至少一次写出这个具名主角的可见动作、走位、操作或反应；不能只让屏幕、警报、物件自己变化。
+19. 每个 beat.duration_seconds 必须大于 0；同一 scene 的所有 beat 时长总和必须接近 estimated_duration_seconds。
+20. visible_event 和 action_lines 不能写“意识到/明白/感到/内心/命运/关系变化”等心理或抽象变化；必须写观众能看见或听见的物件、动作、表情、走位、屏幕变化、声音或结果。
+21. dialogue_lines.content 不能只写“嗯/好的/知道了/是的/怎么办/怎么会这样”等水词；每句对白必须推动线索、冲突、选择、威胁、反转或具体目标。
 
 输出结构：
 {

@@ -4,6 +4,7 @@ from typing import Any
 
 from app.schemas.script_beat_contract import StructuredScriptContract
 from app.services.script.beat_contract_duration import duration_issues
+from app.services.script.beat_contract_progression import progression_issues
 from app.services.script.beat_contract_purpose import purpose_issues
 from app.services.script.beat_contract_specificity import (
     character_specificity_issues,
@@ -77,7 +78,7 @@ def evaluate_beat_contract_quality(
         "kind": "script_beat_contract",
         "passed": not failed,
         "failed_checks": failed,
-        "check_count": 19,
+        "check_count": 20,
     }
 
 
@@ -132,6 +133,7 @@ def _check_scene_structure(
             )
         )
     failed.extend(duration_issues(scene))
+    failed.extend(progression_issues(scene))
     failed.extend(purpose_issues(scene))
     failed.extend(character_specificity_issues(scene))
     failed.extend(protagonist_screen_presence_issues(scene))
