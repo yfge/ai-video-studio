@@ -941,7 +941,7 @@ git commit -m "fix(scripts): preserve beat data during normalization"
 - Modify: `ai-pic-backend/app/services/script/story_structure_sync.py`
 - Create: `ai-pic-backend/tests/unit/services/script/test_story_structure_sync_beats.py`
 
-- [ ] **Step 1: Write story-structure sync test**
+- [x] **Step 1: Write story-structure sync test**
 
 Create `ai-pic-backend/tests/unit/services/script/test_story_structure_sync_beats.py`:
 
@@ -1015,7 +1015,7 @@ def test_sync_script_scenes_creates_scene_beats(monkeypatch):
     assert created_beat_payloads[0].metadata["visible_event"] == "屏幕奖金归零"
 ```
 
-- [ ] **Step 2: Run sync test and confirm failure**
+- [x] **Step 2: Run sync test and confirm failure**
 
 Run:
 
@@ -1025,7 +1025,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_story_structure_sync
 
 Expected: fail because current sync creates scenes and placeholder shots but not `scene_beats`.
 
-- [ ] **Step 3: Extend story structure sync**
+- [x] **Step 3: Extend story structure sync**
 
 Modify `ai-pic-backend/app/services/script/story_structure_sync.py`:
 
@@ -1127,7 +1127,7 @@ Then add beat creation before placeholder shots:
 
 Return `beats_created` in the result dict.
 
-- [ ] **Step 4: Verify sync tests pass**
+- [x] **Step 4: Verify sync tests pass**
 
 Run:
 
@@ -1137,7 +1137,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_story_structure_sync
 
 Expected: tests pass.
 
-- [ ] **Step 5: Commit story structure sync**
+- [x] **Step 5: Commit story structure sync**
 
 Run:
 
