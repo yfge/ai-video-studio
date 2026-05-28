@@ -277,7 +277,7 @@ git commit -m "feat(scripts): add beat contract schema"
 - Modify: `ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py`
 - Create: `ai-pic-backend/app/services/script/beat_contract_normalizer.py`
 
-- [ ] **Step 1: Add flattening and legacy-conversion tests**
+- [x] **Step 1: Add flattening and legacy-conversion tests**
 
 Append to `ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py`:
 
@@ -346,7 +346,7 @@ def test_legacy_script_conversion_marks_fallback_evidence():
     assert contract.model_extra["fallback_detected"] is True
 ```
 
-- [ ] **Step 2: Run tests and confirm failure**
+- [x] **Step 2: Run tests and confirm failure**
 
 Run:
 
@@ -356,7 +356,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normal
 
 Expected: fail with `ModuleNotFoundError: No module named 'app.services.script.beat_contract_normalizer'`.
 
-- [ ] **Step 3: Implement normalizer and flattener**
+- [x] **Step 3: Implement normalizer and flattener**
 
 Create `ai-pic-backend/app/services/script/beat_contract_normalizer.py`:
 
@@ -562,7 +562,7 @@ def _has_fallback(items: list[Any]) -> bool:
     return any(isinstance(item, dict) and item.get("fallback") for item in items)
 ```
 
-- [ ] **Step 4: Verify normalizer tests pass**
+- [x] **Step 4: Verify normalizer tests pass**
 
 Run:
 
@@ -572,7 +572,7 @@ cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normal
 
 Expected: all tests in the file pass.
 
-- [ ] **Step 5: Commit normalizer slice**
+- [x] **Step 5: Commit normalizer slice**
 
 Run:
 

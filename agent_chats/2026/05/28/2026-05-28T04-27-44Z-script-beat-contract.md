@@ -1,3 +1,23 @@
+---
+id: 2026-05-28T04-27-44Z-script-beat-contract
+date: "2026-05-28T04:27:44Z"
+participants:
+  - user
+  - codex
+models:
+  - GPT-5 Codex
+tags:
+  - scripts
+  - beat-contract
+  - quality-gates
+summary: Implement script beat contract slices for structured generation quality.
+related_paths:
+  - docs/exec-plans/active/script-beat-contract.md
+  - ai-pic-backend/app/schemas/script_beat_contract.py
+  - ai-pic-backend/app/services/script/beat_contract_normalizer.py
+  - ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py
+---
+
 ## User Prompt
 
 按要求进行分步实现
@@ -13,6 +33,7 @@
 - Added the active execution plan under `docs/exec-plans/active/` and indexed it in `docs/README.md`.
 - Created the first `StructuredScriptContract` schema slice with scene, beat, dialogue, action, and conflict models.
 - Added initial schema validation tests for valid contracts and unknown dramatic roles.
+- Added `beat_contract_normalizer` to normalize embedded contracts or legacy script payloads, flatten contract beats into legacy scenes/dialogues/stage directions/content, and record fallback evidence.
 
 ## Validation
 
@@ -24,6 +45,7 @@
 - `pre-commit run --files ai-pic-backend/app/schemas/script_beat_contract.py ai-pic-backend/tests/unit/services/script/test_beat_contract_normalizer.py docs/exec-plans/active/script-beat-contract.md agent_chats/2026/05/28/2026-05-28T04-27-44Z-script-beat-contract.md` passed formatting, ruff, black, isort, docs, contracts, and ledger hooks, but `backend-pytest` failed in unrelated `tests/scripts/test_script_story_structure_sync.py::test_generate_script_syncs_normalized_scenes`.
 - `cd ai-pic-backend && pytest tests/scripts/test_script_story_structure_sync.py::test_generate_script_syncs_normalized_scenes -q` reproduced the same environment failure: `pymysql.err.OperationalError: (1045, "Access denied for user 'root'@'172.18.0.1' (using password: YES)")`.
 - For this slice, `backend-pytest` is skipped during commit because the current local MySQL default is not usable by that existing regenerate test; targeted schema tests passed.
+- `cd ai-pic-backend && pytest tests/unit/services/script/test_beat_contract_normalizer.py -q` passed with `4 passed, 31 warnings` after the normalizer slice.
 
 ## Next Steps
 
@@ -33,4 +55,5 @@
 ## Linked Commits
 
 - `0571ce5f docs: add script beat contract execution plan`
-- Current commit: schema slice.
+- `c3506a5c feat(scripts): add beat contract schema`
+- Current commit: normalizer slice.

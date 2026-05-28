@@ -1,5 +1,9 @@
 import pytest
 from app.schemas.script_beat_contract import StructuredScriptContract
+from app.services.script.beat_contract_normalizer import (
+    flatten_contract_to_script_payload,
+    normalize_script_beat_contract,
+)
 from pydantic import ValidationError
 
 
@@ -86,3 +90,61 @@ def test_structured_script_contract_rejects_unknown_role():
 
     with pytest.raises(ValidationError):
         StructuredScriptContract.model_validate(payload)
+
+
+@pytest.mark.unit
+def test_flatten_contract_to_legacy_script_payload():
+    contract = normalize_script_beat_contract(_valid_contract())
+
+    flattened = flatten_contract_to_script_payload(
+        contract,
+        format_type="screenplay",
+        language="zh-CN",
+        episode_number=1,
+        template_style="commercial_vertical_drama",
+        target_chars_per_episode=500,
+        title="倒计时谜影",
+    )
+
+    assert flattened["scenes"][0]["beats"][0]["beat_type"] == "hook"
+    assert flattened["dialogues"][0]["scene_number"] == 1
+    assert flattened["dialogues"][0]["character"] == "小机"
+    assert flattened["stage_directions"][0]["scene_number"] == 1
+    assert "小机" in flattened["content"]
+    assert flattened["metadata"]["structured_contract_version"] == "script-beat-v1"
+
+
+@pytest.mark.unit
+def test_legacy_script_conversion_marks_fallback_evidence():
+    legacy = {
+        "title": "旧结构",
+        "scenes": [
+            {
+                "scene_number": 1,
+                "slug_line": "内. 控制室 - 夜",
+                "summary": "小机发现奖金清零。",
+            }
+        ],
+        "dialogues": [
+            {
+                "scene_number": 1,
+                "character": "旁白",
+                "content": "小机发现奖金清零。",
+                "fallback": True,
+            }
+        ],
+        "stage_directions": [
+            {
+                "scene_number": 1,
+                "content": "小机发现奖金清零。",
+                "type": "action",
+                "fallback": True,
+            }
+        ],
+    }
+
+    contract = normalize_script_beat_contract(legacy)
+
+    assert contract.scenes[0].beats[0].beat_type == "setup"
+    assert contract.scenes[0].beats[0].visible_event == "小机发现奖金清零。"
+    assert contract.model_extra["fallback_detected"] is True
