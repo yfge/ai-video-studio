@@ -213,6 +213,19 @@ def test_structured_score_rejects_generic_provider_beat_purpose() -> None:
     assert "beat_dramatic_purpose_specificity" in result["failed_checks"]
 
 
+def test_structured_score_accepts_concrete_purpose_with_vague_tail() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    script["scenes"][0]["beats"][1]["dramatic_purpose"] = "红警要求删除合同，制造冲突"
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert "beat_dramatic_purpose_specificity" not in result["failed_checks"]
+
+
 def test_structured_score_requires_provider_beat_durations() -> None:
     payload = provider_payload()
     script = json.loads(payload["key_artifacts"]["script"]["raw_content"])

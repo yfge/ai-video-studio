@@ -78,3 +78,35 @@ def test_structured_score_accepts_reference_reuse_as_visual_anomaly_hook() -> No
     result = structured_script_score(payload)
 
     assert "opening_hook_substance" not in result["failed_checks"]
+
+
+def test_structured_score_accepts_missing_character_as_visual_anomaly_hook() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    first_beat = script["scenes"][0]["beats"][0]
+    first_beat["visible_event"] = "预览屏幕只有空白场景，没有角色出现"
+    first_beat["action"] = ["小蓝拖动播放条，第二段仍然缺少角色"]
+    first_beat["dialogue"] = [{"speaker": "小蓝", "line": "角色呢"}]
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert "opening_hook_substance" not in result["failed_checks"]
+
+
+def test_structured_score_accepts_no_payment_as_opening_stakes_hook() -> None:
+    payload = provider_payload()
+    script = json.loads(payload["key_artifacts"]["script"]["raw_content"])
+    first_beat = script["scenes"][0]["beats"][0]
+    first_beat["visible_event"] = "客户代表关闭播放器，屏幕变黑"
+    first_beat["action"] = ["客户代表转身要走，尾款状态变成待拒付"]
+    first_beat["dialogue"] = [{"speaker": "客户代表", "line": "没钩子不付款"}]
+    payload["key_artifacts"]["script"]["raw_content"] = json.dumps(
+        script, ensure_ascii=False
+    )
+
+    result = structured_script_score(payload)
+
+    assert "opening_hook_substance" not in result["failed_checks"]

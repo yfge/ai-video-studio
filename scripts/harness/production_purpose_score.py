@@ -33,9 +33,7 @@ def purpose_failed_checks(scenes: list[dict[str, Any]]) -> list[str]:
             if not isinstance(beat, dict):
                 continue
             purpose = _compact_text(str(beat.get("dramatic_purpose") or ""))
-            if len(purpose) < 4 or any(
-                phrase in purpose for phrase in _VAGUE_PURPOSE_PHRASES
-            ):
+            if len(purpose) < 4 or purpose in _VAGUE_PURPOSE_PHRASES:
                 failed.append("beat_dramatic_purpose_specificity")
     return failed
 
