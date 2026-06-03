@@ -19,12 +19,14 @@ interface UseVirtualIPImageGenerationOptions {
     onConfirm?: () => void;
   }) => void;
   router: { push: (path: string) => void };
+  onTaskCreated?: (taskId: number) => void;
 }
 
 export function useVirtualIPImageGeneration({
   virtualIPId,
   showAlert,
   router,
+  onTaskCreated,
 }: UseVirtualIPImageGenerationOptions) {
   const [generating, setGenerating] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
@@ -149,6 +151,7 @@ export function useVirtualIPImageGeneration({
       });
 
       if (response.success && response.data) {
+        onTaskCreated?.(response.data.task_id);
         setShowGenerateForm(false);
         setGenerateForm({
           style: "realistic",
@@ -168,7 +171,8 @@ export function useVirtualIPImageGeneration({
         });
         showAlert({
           title: "图片生成任务已创建",
-          message: "任务已在后台运行，是否前往任务管理页？",
+          message:
+            "任务已在后台运行，完成后会自动刷新图片列表。是否前往任务管理页？",
           variant: "success",
           confirmText: "前往任务",
           onConfirm: () => router.push("/tasks"),

@@ -103,7 +103,7 @@ export function ImageGenerationForm({
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-gray-950">生成图片</h3>
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4 [&>*]:col-span-full" style={{ gridTemplateColumns: "1fr" }}>
         <div>
           <MultiModelSelector
             label="AI 模型"

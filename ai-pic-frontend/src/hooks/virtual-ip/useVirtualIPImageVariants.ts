@@ -18,6 +18,7 @@ interface UseVirtualIPImageVariantsOptions {
     onConfirm?: () => void;
   }) => void;
   router: { push: (path: string) => void };
+  onTaskCreated?: (taskId: number) => void;
 }
 
 export function useVirtualIPImageVariants({
@@ -26,6 +27,7 @@ export function useVirtualIPImageVariants({
   recommendedModel,
   showAlert,
   router,
+  onTaskCreated,
 }: UseVirtualIPImageVariantsOptions) {
   const [variantTarget, setVariantTarget] = useState<VirtualIPImage | null>(
     null,
@@ -108,9 +110,11 @@ export function useVirtualIPImageVariants({
       if (!res.success || !res.data) {
         throw new Error(res.error || "图生图生成失败");
       }
+      onTaskCreated?.(res.data.task_id);
       showAlert({
         title: "图生图任务已创建",
-        message: "任务已在后台运行，是否前往任务管理页？",
+        message:
+          "任务已在后台运行，完成后会自动刷新图片列表。是否前往任务管理页？",
         variant: "success",
         confirmText: "前往任务",
         onConfirm: () => router.push("/tasks"),

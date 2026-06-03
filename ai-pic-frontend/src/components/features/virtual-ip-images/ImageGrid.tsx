@@ -29,7 +29,7 @@ export function ImageGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 2xl:grid-cols-3">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(11rem,100%),1fr))] gap-3">
       {images.map((image) => {
         const primarySrc = resolveImageUrl(image);
         const fallbackSrc = (() => {

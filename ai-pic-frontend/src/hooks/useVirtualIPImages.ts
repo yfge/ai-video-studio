@@ -7,6 +7,7 @@ import type { VirtualIP } from "@/utils/api/types";
 import { useVirtualIPImageActions } from "./virtual-ip/useVirtualIPImageActions";
 import { useVirtualIPImageData } from "./virtual-ip/useVirtualIPImageData";
 import { useVirtualIPImageGeneration } from "./virtual-ip/useVirtualIPImageGeneration";
+import { useVirtualIPImageTaskRefresh } from "./virtual-ip/useVirtualIPImageTaskRefresh";
 import { useVirtualIPImageUpload } from "./virtual-ip/useVirtualIPImageUpload";
 import { useVirtualIPImageVariants } from "./virtual-ip/useVirtualIPImageVariants";
 
@@ -46,10 +47,15 @@ export function useVirtualIPImages({
     skipVirtualIPFetch,
     showAlert,
   });
+  const taskRefresh = useVirtualIPImageTaskRefresh({
+    refreshImages: data.refreshImages,
+    showAlert,
+  });
   const generation = useVirtualIPImageGeneration({
     virtualIPId: data.virtualIPId,
     showAlert,
     router,
+    onTaskCreated: taskRefresh.trackImageTask,
   });
   const upload = useVirtualIPImageUpload({
     virtualIPId: data.virtualIPId,
@@ -67,6 +73,7 @@ export function useVirtualIPImages({
     recommendedModel: generation.recommendedModel,
     showAlert,
     router,
+    onTaskCreated: taskRefresh.trackImageTask,
   });
 
   const [preview, setPreview] = useState<{
@@ -103,6 +110,7 @@ export function useVirtualIPImages({
     aspectRatioOptions: generation.aspectRatioOptions,
     generating: generation.generating,
     fetchModels: generation.fetchModels,
+    pendingImageTaskId: taskRefresh.pendingImageTaskId,
 
     uploadForm: upload.uploadForm,
     setUploadForm: upload.setUploadForm,

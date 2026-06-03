@@ -105,8 +105,8 @@ export function VirtualIPImageManager({
             </button>
           }
         />
-        <div className="grid h-[calc(100vh-8rem)] min-h-[680px] gap-4 overflow-hidden p-4 xl:grid-cols-[160px_minmax(0,1fr)_340px]">
-          <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
+        <div className="grid gap-4 p-4 lg:grid-cols-[160px_minmax(0,1fr)]">
+          <aside className="min-w-0 space-y-4">
             <CategoryFilter
               categories={categories}
               selectedCategory={selectedCategory}
@@ -118,7 +118,7 @@ export function VirtualIPImageManager({
               tone="blue"
             />
           </aside>
-          <div className="min-h-0 overflow-y-auto pr-1">
+          <div className="min-w-0">
             {loading ? (
               <OperatorState title="加载图片中..." />
             ) : (
@@ -140,7 +140,7 @@ export function VirtualIPImageManager({
               />
             )}
           </div>
-          <aside className="min-h-0 overflow-y-auto rounded-lg border border-gray-200 bg-white p-4">
+          <aside className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2">
             <div className="mb-4 flex gap-2">
               <button
                 type="button"

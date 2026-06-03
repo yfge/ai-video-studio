@@ -154,9 +154,6 @@ export default function VirtualIPDetail() {
                   onLinkedCountChange={setLinkedEnvironmentCount}
                 />
               </div>
-              <div className="mt-5">
-                <VirtualIPImageManager virtualIPKey={ipKey} virtualIP={virtualIP} />
-              </div>
             </OperatorMainCanvas>
           }
           inspector={<VirtualIPInspectorPanel
@@ -169,6 +166,7 @@ export default function VirtualIPDetail() {
           />}
         />
 
+        <VirtualIPImageManager virtualIPKey={ipKey} virtualIP={virtualIP} />
       </div>
     </OperatorShell>
   );
