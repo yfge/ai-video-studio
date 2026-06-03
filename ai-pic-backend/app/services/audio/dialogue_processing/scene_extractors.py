@@ -28,13 +28,7 @@ def extract_dialogues_for_scene(
 ) -> list[dict[str, Any]]:
     """Extract dialogue entries for a specific scene from script."""
 
-    raw_content = script.content if script else None
-    if not isinstance(raw_content, dict):
-        return []
-
-    dialogue_list = raw_content.get("dialogues") or []
-    if not isinstance(dialogue_list, list):
-        return []
+    dialogue_list = _script_list_field(script, "dialogues")
 
     result: list[dict[str, Any]] = []
     for item in dialogue_list:
@@ -58,13 +52,7 @@ def extract_stage_for_scene(
 ) -> list[dict[str, Any]]:
     """Extract stage directions for a specific scene from script."""
 
-    raw_content = script.content if script else None
-    if not isinstance(raw_content, dict):
-        return []
-
-    stage_list = raw_content.get("stage_directions") or []
-    if not isinstance(stage_list, list):
-        return []
+    stage_list = _script_list_field(script, "stage_directions")
 
     result: list[dict[str, Any]] = []
     for item in stage_list:
@@ -80,3 +68,21 @@ def extract_stage_for_scene(
             continue
 
     return result
+
+
+def _script_list_field(script: Script | None, field_name: str) -> list[Any]:
+    if not script:
+        return []
+
+    direct_value = getattr(script, field_name, None)
+    if isinstance(direct_value, list):
+        return direct_value
+
+    raw_content = getattr(script, "content", None)
+    if not isinstance(raw_content, dict):
+        return []
+
+    embedded_value = raw_content.get(field_name) or []
+    if isinstance(embedded_value, list):
+        return embedded_value
+    return []
