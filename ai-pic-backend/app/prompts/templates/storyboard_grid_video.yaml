@@ -1,0 +1,26 @@
+name: storyboard_grid_video
+description: "宫格故事板单面板生视频提示词模板"
+category: storyboard
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-06-01"
+updated_at: "2026-06-01"
+
+variables:
+  panel_index:
+    type: integer
+    required: true
+    description: "宫格面板序号"
+  clip_id:
+    type: string
+    required: true
+    description: "对应 Timeline clip id"
+  video_prompt:
+    type: string
+    required: true
+    description: "单镜头视频运动提示"
+
+usage_examples:
+  - panel_index: 2
+    clip_id: "clip-2"
+    video_prompt: "镜头保持静止，只捕捉他的犹豫表情"

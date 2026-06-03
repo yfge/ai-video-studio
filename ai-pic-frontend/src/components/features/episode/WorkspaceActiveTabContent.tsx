@@ -134,8 +134,11 @@ export function WorkspaceActiveTabContent({
         episodeKey={episodeKey}
         selectedScriptId={selectedScriptId}
         hasStoryboard={hasStoryboard}
+        selectedAudioTimeline={selectedAudioTimeline}
+        selectedTimelineSpec={selectedTimelineSpec}
         selectedStoryboard={selectedStoryboard}
         normalizedScenes={normalizedScenes}
+        showAlert={showAlert}
       />
     );
   }

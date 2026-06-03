@@ -14,6 +14,7 @@ import {
   timelineClipVideoStatus,
 } from "../src/components/features/episode/EpisodeTimelineRenderModel";
 import {
+  buildStoryboardGridSupport,
   buildStoryboardSupportFrames,
   buildStoryboardSupportSummary,
 } from "../src/components/features/episode/WorkspaceStoryboardSupportModel";
@@ -316,11 +317,67 @@ describe("timeline workspace helpers", () => {
       generationSource: "timeline_spec",
       timelineId: "7",
       timelineVersion: "3",
+      gridSheetUrl: null,
+      gridPanelCount: 0,
+      gridGeneratedAt: null,
     });
     assert.equal(frames[0].clipId, "dialogue_scene_1_beat_1_001");
     assert.equal(frames[0].sceneLabel, "1 · INT. 实验室 - 夜");
     assert.equal(frames[0].imageUrl, "https://example.com/frame.png");
     assert.equal(frames[0].videoUrl, "https://example.com/clip.mp4");
     assert.equal(frames[0].sourceKind, "timeline_clip");
+  });
+
+  it("builds storyboard grid support metadata from Timeline support views", () => {
+    const timeline = {
+      id: 8,
+      business_id: "timeline_8",
+      episode_id: 1,
+      script_id: 2,
+      title: "Timeline",
+      status: "draft",
+      version: 3,
+      created_at: "2026-05-12T00:00:00Z",
+      updated_at: "2026-05-12T00:00:00Z",
+      spec: {
+        spec_version: "timeline.v1",
+        episode_id: 1,
+        script_id: 2,
+        version: 3,
+        tracks: [],
+        support_views: {
+          storyboard_grid: {
+            generated_at: "2026-06-01T00:00:00Z",
+            sheet: {
+              file_url: "https://example.com/grid.png",
+              panel_count: 9,
+              columns: 3,
+              rows: 3,
+            },
+            panels: [
+              {
+                panel_id: "grid_panel_001",
+                panel_index: 1,
+                clip_id: "video_scene_1_beat_1_001",
+                start_ms: 0,
+                end_ms: 1200,
+                visual_prompt: "主角推门",
+                video_prompt: "镜头推近",
+              },
+            ],
+          },
+        },
+      },
+    } satisfies TimelineResponse;
+
+    const summary = buildStoryboardSupportSummary(null, timeline);
+    const grid = buildStoryboardGridSupport(timeline);
+
+    assert.equal(summary.gridSheetUrl, "https://example.com/grid.png");
+    assert.equal(summary.gridPanelCount, 9);
+    assert.equal(summary.gridGeneratedAt, "2026-06-01T00:00:00Z");
+    assert.equal(grid.panels[0].panelIndex, 1);
+    assert.equal(grid.panels[0].clipId, "video_scene_1_beat_1_001");
+    assert.equal(grid.panels[0].timeLabel, "0:00.000 - 0:01.200");
   });
 });

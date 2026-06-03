@@ -125,6 +125,13 @@ export interface TimelineClipAssetListParams {
 
 export type TimelineClipReworkAction = "re_dub" | "re_cut" | "re_render";
 export type TimelineClipVideoReworkAction = "re_cut" | "re_render";
+export type TimelineClipVideoReferenceMode =
+  | "start_end"
+  | "storyboard_grid_panel";
+export type TimelineStoryboardGridStyle =
+  | "2d_cartoon"
+  | "3d_cartoon"
+  | "live_action";
 
 export interface TimelineClipReworkRequest {
   expected_version: number;
@@ -147,9 +154,30 @@ export interface TimelineClipVideoReworkTaskRequest {
   reason?: string | null;
   use_end_frame?: boolean;
   return_last_frame?: boolean;
+  reference_mode?: TimelineClipVideoReferenceMode | null;
+  use_storyboard_grid?: boolean;
+  reference_images?: string[] | null;
 }
 
 export interface TimelineClipVideoReworkTaskResponse {
+  task_id: number;
+  status: string;
+}
+
+export interface TimelineStoryboardGridGenerateRequest {
+  expected_version: number;
+  panel_count?: number;
+  style?: TimelineStoryboardGridStyle;
+  model?: string | null;
+  generation_profile?: string | null;
+  size?: string | null;
+  aspect_ratio?: string | null;
+  width?: number | null;
+  height?: number | null;
+  reference_images?: string[] | null;
+}
+
+export interface TimelineStoryboardGridGenerateResponse {
   task_id: number;
   status: string;
 }

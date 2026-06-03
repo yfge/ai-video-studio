@@ -1,0 +1,16 @@
+Generate a {{ panel_count }}-panel {{ layout_label }} storyboard sheet for a vertical short-drama sequence.
+
+Visual style: {{ style }}
+
+Requirements:
+- This template is the explicit grid-storyboard mode. A multi-panel storyboard sheet is expected.
+- Arrange panels left-to-right, top-to-bottom with clean gutters and consistent character continuity.
+- Keep every panel cinematic, inspectable, and usable as a later image-to-video reference.
+- Small panel numbers are allowed only in the panel borders.
+- No subtitles, speech bubbles, captions, readable UI text, watermarks, logos, or title cards inside panels.
+- Do not merge panels into one continuous scene. Each panel must remain a distinct shot reference.
+
+Panel briefs:
+{% for brief in panel_briefs -%}
+- {{ brief }}
+{% endfor %}

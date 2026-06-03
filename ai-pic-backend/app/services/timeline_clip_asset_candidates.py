@@ -59,6 +59,7 @@ def _clip_asset_candidates(clip: dict[str, Any]) -> list[ClipAssetCandidate]:
         ("end_frame_asset_ref", "end_frame"),
         ("storyboard_image_asset_ref", "storyboard_image"),
         ("storyboard_video_asset_ref", "storyboard_video"),
+        ("storyboard_grid_sheet_asset_ref", "storyboard_grid_sheet"),
     ):
         candidates.extend(_asset_ref_candidates(clip, key, source_ref, role=role))
     direct_video = _string_value(

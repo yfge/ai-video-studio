@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from app.models.timeline import MediaAsset, Timeline
 from app.models.user import User
@@ -12,7 +12,6 @@ from app.repositories.timeline_repository import (
     TimelineRepository,
 )
 from app.schemas.timeline import TimelineClipAssetResponse
-from app.services.render.timeline_render_clips import TimelineClipVideo
 from app.services.timeline_clip_asset_candidates import (
     ClipAssetCandidate,
     timeline_clip_asset_candidates,
@@ -20,6 +19,9 @@ from app.services.timeline_clip_asset_candidates import (
 from app.services.timeline_responses import timeline_clip_asset_response
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    from app.services.render.timeline_render_types import TimelineClipVideo
 
 
 class TimelineClipAssetLineageService:

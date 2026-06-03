@@ -4,13 +4,14 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type { TimelineItem } from "@/components/features";
 import { operatorButtonClass, operatorSelectClass } from "@/components/shared";
-import { getString } from "@/hooks/useEpisodeDetail";
 import { timelineAPI } from "@/utils/api/endpoints";
-import type {
-  TimelineClipVideoReworkAction,
-  TimelineClipVideoReworkTaskRequest,
-} from "@/utils/api/types";
-import { timelineItemMeta } from "./EpisodeTimelineWorkspaceModel";
+import type { TimelineClipVideoReworkAction } from "@/utils/api/types";
+import {
+  buildTimelineClipVideoReworkTaskPayload,
+  isTimelineVideoClip,
+  parseOptionalNumber,
+  timelineClipGridPanelIndex,
+} from "./TimelineClipProviderReworkModel";
 
 type NotifyVariant = "success" | "error" | "warning" | "info";
 
@@ -27,52 +28,6 @@ const FIELD_CLASS = [
   "rounded-md border border-gray-200 px-2 py-1.5 text-xs",
   "outline-none focus:border-gray-400",
 ].join(" ");
-
-export function isTimelineVideoClip(item: TimelineItem | null) {
-  const meta = timelineItemMeta(item);
-  return item?.type === "video" || getString(meta.track_type) === "video";
-}
-
-export function buildTimelineClipVideoReworkTaskPayload({
-  expectedVersion,
-  action,
-  prompt,
-  model,
-  duration,
-  resolution,
-  ratio,
-  reason,
-}: {
-  expectedVersion: number;
-  action: TimelineClipVideoReworkAction;
-  prompt?: string | null;
-  model?: string | null;
-  duration?: number | null;
-  resolution?: string | null;
-  ratio?: string | null;
-  reason?: string | null;
-}): TimelineClipVideoReworkTaskRequest {
-  const payload: TimelineClipVideoReworkTaskRequest = {
-    expected_version: expectedVersion,
-    action,
-    resolution: resolution?.trim() || "720p",
-    asset_role: "generated_video",
-    use_end_frame: true,
-    return_last_frame: true,
-  };
-  const cleanedPrompt = prompt?.trim();
-  if (cleanedPrompt) payload.prompt = cleanedPrompt;
-  const cleanedModel = model?.trim();
-  if (cleanedModel) payload.model = cleanedModel;
-  if (duration && Number.isFinite(duration) && duration > 0) {
-    payload.duration = duration;
-  }
-  const cleanedRatio = ratio?.trim();
-  if (cleanedRatio) payload.ratio = cleanedRatio;
-  const cleanedReason = reason?.trim();
-  if (cleanedReason) payload.reason = cleanedReason;
-  return payload;
-}
 
 export function TimelineClipProviderReworkControls({
   timelineId,
@@ -96,11 +51,13 @@ export function TimelineClipProviderReworkControls({
   const [resolution, setResolution] = useState("720p");
   const [ratio, setRatio] = useState("");
   const [reason, setReason] = useState("");
+  const [useStoryboardGrid, setUseStoryboardGrid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isTimelineVideoClip(item)) return null;
 
+  const gridPanelIndex = timelineClipGridPanelIndex(item);
   const parsedDuration = parseOptionalNumber(duration);
   const canSubmit = Boolean(
     timelineId && timelineVersion && clipId && !submitting,
@@ -132,6 +89,7 @@ export function TimelineClipProviderReworkControls({
       resolution,
       ratio,
       reason,
+      useStoryboardGrid: Boolean(useStoryboardGrid && gridPanelIndex),
     });
     try {
       const res = await timelineAPI.queueTimelineClipVideoRework(
@@ -225,6 +183,16 @@ export function TimelineClipProviderReworkControls({
           placeholder="原因"
           className={FIELD_CLASS}
         />
+        {gridPanelIndex ? (
+          <label className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              checked={useStoryboardGrid}
+              onChange={(event) => setUseStoryboardGrid(event.target.checked)}
+            />
+            使用宫格故事板 Panel {gridPanelIndex}
+          </label>
+        ) : null}
         {submitError ? (
           <div className="text-xs text-red-600">{submitError}</div>
         ) : null}
@@ -238,10 +206,4 @@ export function TimelineClipProviderReworkControls({
       </div>
     </form>
   );
-}
-
-function parseOptionalNumber(value: string) {
-  if (!value.trim()) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }

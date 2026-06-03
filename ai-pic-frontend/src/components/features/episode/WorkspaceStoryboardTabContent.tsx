@@ -1,44 +1,71 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import {
   OperatorPanel,
   OperatorSectionHeader,
   OperatorState,
-  operatorButtonClass,
 } from "@/components/shared";
-import type { NormalizedScene } from "@/utils/api/types";
+import type { NormalizedScene, TimelineResponse } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import {
   buildStoryboardSupportFrames,
   buildStoryboardSupportSummary,
-  type StoryboardSupportFrame,
 } from "./WorkspaceStoryboardSupportModel";
+import { WorkspaceStoryboardActions } from "./WorkspaceStoryboardActions";
+import { StoryboardSupportFrameRow } from "./WorkspaceStoryboardFrameRow";
+import {
+  countTimelineVideoClips,
+  WorkspaceStoryboardGridContent,
+} from "./WorkspaceStoryboardGridContent";
+
+type ShowAlert = (options: {
+  message: string;
+  variant: "info" | "success" | "warning" | "error";
+}) => void;
 
 interface WorkspaceStoryboardTabContentProps {
   episodeKey?: string;
   selectedScriptId?: number | null;
   hasStoryboard?: boolean;
+  selectedAudioTimeline?: Record<string, unknown> | null;
+  selectedTimelineSpec?: TimelineResponse | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
+  showAlert?: ShowAlert;
 }
 
 export function WorkspaceStoryboardTabContent({
   episodeKey = "",
   selectedScriptId,
   hasStoryboard,
+  selectedAudioTimeline,
+  selectedTimelineSpec,
   selectedStoryboard,
   normalizedScenes,
+  showAlert,
 }: WorkspaceStoryboardTabContentProps) {
+  const [mode, setMode] = useState<"frames" | "grid">("frames");
+  const [gridTaskId, setGridTaskId] = useState<number | null>(null);
   const timelineHref = episodeWorkspaceHref(episodeKey, {
     tab: "timeline",
     scriptId: selectedScriptId,
   });
-  const summary = buildStoryboardSupportSummary(selectedStoryboard);
+  const videoClipCount = countTimelineVideoClips(selectedTimelineSpec);
+  const summary = buildStoryboardSupportSummary(
+    selectedStoryboard,
+    selectedTimelineSpec,
+  );
   const frames = buildStoryboardSupportFrames(
     selectedStoryboard,
     normalizedScenes,
+    selectedTimelineSpec,
   );
+  const storyboardStatus = frames.length
+    ? "已有占位"
+    : hasStoryboard
+      ? "待补占位"
+      : "待生成占位";
 
   return (
     <div className="space-y-4">
@@ -47,12 +74,16 @@ export function WorkspaceStoryboardTabContent({
           title="分镜辅助工作区"
           subtitle="分镜按时间轴 beat 对齐，用于图像和视频生成"
           action={
-            <Link
-              href={timelineHref}
-              className={operatorButtonClass("secondary")}
-            >
-              返回时间轴
-            </Link>
+            <WorkspaceStoryboardActions
+              selectedScriptId={selectedScriptId}
+              selectedAudioTimeline={selectedAudioTimeline}
+              selectedTimelineSpec={selectedTimelineSpec}
+              videoClipCount={videoClipCount}
+              timelineHref={timelineHref}
+              showAlert={showAlert}
+              onShowGrid={() => setMode("grid")}
+              onGridTaskSubmitted={setGridTaskId}
+            />
           }
         />
         <div className="mt-4 grid gap-3 text-xs text-gray-600 sm:grid-cols-3">
@@ -68,36 +99,80 @@ export function WorkspaceStoryboardTabContent({
           />
           <ContextCell
             label="分镜状态"
-            value={hasStoryboard ? "已有占位" : "待生成占位"}
+            value={storyboardStatus}
           />
           <ContextCell
             label="关键帧 / 视频"
             value={`${summary.imageCount} 关键帧 · ${summary.videoCount} 视频`}
           />
         </div>
-      </OperatorPanel>
-
-      <OperatorPanel>
-        <OperatorSectionHeader
-          title="占位帧"
-          subtitle={`${summary.frameCount} 个时间轴对齐镜头`}
-        />
-        {frames.length ? (
-          <div className="divide-y divide-gray-100">
-            {frames.map((frame) => (
-              <StoryboardSupportFrameRow key={frame.id} frame={frame} />
-            ))}
-          </div>
-        ) : (
-          <div className="p-4">
-            <OperatorState
-              title="暂无分镜占位"
-              detail="当前剧本还没有可查看的时间轴占位帧。"
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-md border border-gray-200 bg-white p-1 text-xs">
+            <ModeButton
+              active={mode === "frames"}
+              label="逐镜头"
+              onClick={() => setMode("frames")}
+            />
+            <ModeButton
+              active={mode === "grid"}
+              label="宫格故事板"
+              onClick={() => setMode("grid")}
             />
           </div>
-        )}
+        </div>
       </OperatorPanel>
+
+      {mode === "frames" ? (
+        <OperatorPanel>
+          <OperatorSectionHeader
+            title="占位帧"
+            subtitle={`${summary.frameCount} 个时间轴对齐镜头`}
+          />
+          {frames.length ? (
+            <div className="divide-y divide-gray-100">
+              {frames.map((frame) => (
+                <StoryboardSupportFrameRow key={frame.id} frame={frame} />
+              ))}
+            </div>
+          ) : (
+            <div className="p-4">
+              <OperatorState
+                title="暂无分镜占位"
+                detail="当前剧本还没有可查看的时间轴占位帧。"
+              />
+            </div>
+          )}
+        </OperatorPanel>
+      ) : (
+        <WorkspaceStoryboardGridContent
+          selectedTimelineSpec={selectedTimelineSpec}
+          gridTaskId={gridTaskId}
+        />
+      )}
     </div>
+  );
+}
+
+function ModeButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded px-3 py-1.5 font-medium",
+        active ? "bg-gray-900 text-white" : "text-gray-600 hover:text-gray-950",
+      ].join(" ")}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -107,64 +182,5 @@ function ContextCell({ label, value }: { label: string; value: string }) {
       <div className="text-gray-500">{label}</div>
       <div className="mt-1 font-medium text-gray-800">{value}</div>
     </div>
-  );
-}
-
-function StoryboardSupportFrameRow({
-  frame,
-}: {
-  frame: StoryboardSupportFrame;
-}) {
-  return (
-    <div className="grid gap-3 px-4 py-3 text-xs text-gray-600 lg:grid-cols-[120px_minmax(0,1fr)_180px]">
-      <div>
-        <div className="font-semibold text-gray-950">
-          #{frame.frameNumber} · {frame.timeLabel}
-        </div>
-        <div className="mt-1 text-gray-500">
-          {frame.beatType ?? "beat"} · {frame.status}
-        </div>
-      </div>
-      <div className="min-w-0">
-        <div className="font-medium text-gray-900">{frame.description}</div>
-        <div className="mt-1 truncate text-gray-500">
-          {frame.sceneLabel ?? frame.sceneNumber ?? "未关联场景"}
-        </div>
-        <div className="mt-2 line-clamp-2 text-gray-600">
-          {frame.promptDescription ?? frame.aiPrompt ?? "暂无镜头提示"}
-        </div>
-        {frame.clipId ? (
-          <div className="mt-2 font-mono text-[11px] text-gray-500">
-            {frame.clipId}
-          </div>
-        ) : null}
-      </div>
-      <div className="flex flex-col gap-2">
-        <AssetLink label="关键帧" url={frame.imageUrl} />
-        <AssetLink label="视频" url={frame.videoUrl} />
-        <div className="text-gray-500">
-          来源：{frame.sourceKind ?? "storyboard"}
-        </div>
-        {frame.speakerName ? (
-          <div className="text-gray-500">角色：{frame.speakerName}</div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function AssetLink({ label, url }: { label: string; url: string | null }) {
-  if (!url) {
-    return <span className="text-gray-400">{label}: 未生成</span>;
-  }
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="truncate font-medium text-blue-700 hover:text-blue-900"
-    >
-      {label}: 已关联
-    </a>
   );
 }

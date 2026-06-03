@@ -8,7 +8,9 @@ RenderJobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled
 RenderType = Literal["proxy", "final", "export"]
 TimelineClipReworkAction = Literal["re_dub", "re_cut", "re_render"]
 TimelineClipVideoReworkAction = Literal["re_cut", "re_render"]
+TimelineClipVideoReferenceMode = Literal["start_end", "storyboard_grid_panel"]
 TimelineShotPlanStyle = Literal["2d_cartoon", "3d_cartoon"]
+TimelineStoryboardGridStyle = Literal["2d_cartoon", "3d_cartoon", "live_action"]
 
 
 class TimelineCreate(BaseModel):
@@ -36,6 +38,23 @@ class TimelineShotPlanRequest(TimelineVersionRequest):
     model: Optional[str] = Field("deepseek-v4-flash", max_length=128)
     style: TimelineShotPlanStyle = "3d_cartoon"
     temperature: float = Field(0.35, ge=0, le=2)
+
+
+class TimelineStoryboardGridGenerateRequest(TimelineVersionRequest):
+    panel_count: int = Field(9, ge=2, le=9)
+    style: TimelineStoryboardGridStyle = "3d_cartoon"
+    model: Optional[str] = Field(None, max_length=128)
+    generation_profile: Optional[str] = Field(None, max_length=128)
+    size: Optional[str] = Field("1536x1536", max_length=32)
+    aspect_ratio: Optional[str] = Field("1:1", max_length=32)
+    width: Optional[int] = Field(None, ge=1)
+    height: Optional[int] = Field(None, ge=1)
+    reference_images: Optional[List[str]] = None
+
+
+class TimelineStoryboardGridGenerateResponse(BaseModel):
+    task_id: int
+    status: str
 
 
 class TimelineDeleteRequest(TimelineVersionRequest):
@@ -153,6 +172,9 @@ class TimelineClipVideoReworkTaskRequest(TimelineVersionRequest):
     reason: Optional[str] = Field(None, max_length=255)
     use_end_frame: bool = True
     return_last_frame: bool = True
+    reference_mode: Optional[TimelineClipVideoReferenceMode] = "start_end"
+    use_storyboard_grid: bool = False
+    reference_images: Optional[List[str]] = None
 
 
 class TimelineClipVideoReworkTaskResponse(BaseModel):

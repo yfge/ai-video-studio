@@ -63,6 +63,8 @@ class PromptTemplate(Enum):
     STORYBOARD_KEYFRAME = "storyboard_keyframe"  # 分镜关键帧提示
     STORYBOARD_IMAGE_PROMPT = "storyboard_image_prompt"  # 分镜图像提示组装
     STORYBOARD_IMAGE_FALLBACK = "storyboard_image_fallback"  # 分镜图像缺省提示
+    STORYBOARD_GRID_SHEET = "storyboard_grid_sheet"  # 宫格故事板图像提示
+    STORYBOARD_GRID_VIDEO = "storyboard_grid_video"  # 宫格面板生视频提示
     STORYBOARD_AUDIO_VISUAL_DIALOGUE_SPOKEN = "storyboard_audio_visual_dialogue_spoken"
     STORYBOARD_AUDIO_VISUAL_DIALOGUE_VOICEOVER = (
         "storyboard_audio_visual_dialogue_voiceover"
@@ -188,6 +190,8 @@ TEMPLATE_CATEGORIES: Dict[PromptTemplate, PromptCategory] = {
     PromptTemplate.STORYBOARD_KEYFRAME: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_IMAGE_PROMPT: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_IMAGE_FALLBACK: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_GRID_SHEET: PromptCategory.SCRIPT,
+    PromptTemplate.STORYBOARD_GRID_VIDEO: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_AUDIO_VISUAL_DIALOGUE_SPOKEN: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_AUDIO_VISUAL_DIALOGUE_VOICEOVER: PromptCategory.SCRIPT,
     PromptTemplate.STORYBOARD_AUDIO_VISUAL_DIALOGUE_READ_TEXT: PromptCategory.SCRIPT,

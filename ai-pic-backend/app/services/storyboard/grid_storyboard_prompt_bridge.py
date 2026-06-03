@@ -1,0 +1,209 @@
+"""Bridge Timeline clip prompts into grid-storyboard prompt inputs."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict, List, Mapping, Optional, Sequence
+
+
+SUPPORTED_PANEL_COUNTS = (2, 4, 6, 9)
+
+
+@dataclass(frozen=True)
+class GridLayout:
+    panel_count: int
+    columns: int
+    rows: int
+
+    @property
+    def label(self) -> str:
+        return f"{self.columns}x{self.rows}"
+
+
+def grid_layout(panel_count: int) -> GridLayout:
+    """Return the smallest supported storyboard grid layout for a clip count."""
+
+    requested_count = max(1, panel_count)
+    normalized_count = next(
+        (count for count in SUPPORTED_PANEL_COUNTS if requested_count <= count),
+        SUPPORTED_PANEL_COUNTS[-1],
+    )
+
+    if normalized_count == 2:
+        return GridLayout(panel_count=2, columns=2, rows=1)
+    if normalized_count == 4:
+        return GridLayout(panel_count=4, columns=2, rows=2)
+    if normalized_count == 6:
+        return GridLayout(panel_count=6, columns=3, rows=2)
+    return GridLayout(panel_count=9, columns=3, rows=3)
+
+
+def build_grid_storyboard_panels(
+    timeline_spec: Mapping[str, Any],
+    panel_count: int,
+) -> List[Dict[str, Any]]:
+    """Build ordered grid panels from Timeline video clips.
+
+    Timeline remains the source of truth. A timeline_shot_plan prompt bundle wins
+    when available, with clip text fields used as a compatibility fallback.
+    """
+
+    layout = grid_layout(panel_count)
+    clips = _timeline_video_clips(timeline_spec)[: layout.panel_count]
+    panels: List[Dict[str, Any]] = []
+
+    for index, clip in enumerate(clips, start=1):
+        clip_id = clip.get("clip_id") or clip.get("id")
+        shot_plan = _timeline_shot_plan(clip)
+        visual_prompt = _first_text(
+            shot_plan.get("visual_prompt"),
+            shot_plan.get("image_prompt"),
+            clip.get("ai_prompt"),
+            clip.get("prompt"),
+            clip.get("text"),
+            clip.get("label"),
+            clip.get("description"),
+        )
+        video_prompt = _first_text(
+            shot_plan.get("video_prompt"),
+            clip.get("video_prompt"),
+            visual_prompt,
+        )
+        row = ((index - 1) // layout.columns) + 1
+        column = ((index - 1) % layout.columns) + 1
+
+        panels.append(
+            {
+                "panel_id": f"grid_panel_{index:03d}",
+                "panel_index": index,
+                "row": row,
+                "column": column,
+                "clip_id": clip_id,
+                "scene_id": clip.get("scene_id"),
+                "beat_id": clip.get("beat_id"),
+                "start_ms": clip.get("start_ms"),
+                "end_ms": clip.get("end_ms"),
+                "duration_ms": _duration_ms(clip),
+                "visual_prompt": visual_prompt,
+                "video_prompt": video_prompt,
+                "storyboard_panel_prompt": _build_panel_prompt(
+                    index=index,
+                    row=row,
+                    column=column,
+                    clip_id=clip_id,
+                    visual_prompt=visual_prompt,
+                ),
+                "source_refs": clip.get("source_refs") or {},
+            }
+        )
+
+    return panels
+
+
+def build_grid_storyboard_sheet_prompt(
+    panels: Sequence[Mapping[str, Any]],
+    *,
+    style: Optional[str] = None,
+) -> str:
+    """Compose a prompt for one generated storyboard sheet image."""
+
+    if not panels:
+        raise ValueError("grid_storyboard_panels_required")
+
+    layout = grid_layout(len(panels))
+    lines = [
+        (
+            f"Create a {layout.panel_count}-panel {layout.label} storyboard sheet "
+            "for a vertical short-drama sequence."
+        ),
+        "Arrange panels left-to-right, top-to-bottom with clean gutters and stable character continuity.",
+    ]
+    if style:
+        lines.append(f"Visual style: {style}.")
+    lines.extend(
+        [
+            "Small panel numbers are allowed only in the panel borders.",
+            "No subtitles, speech bubbles, captions, readable UI text, watermarks, or title cards inside panels.",
+            "Panel briefs:",
+        ]
+    )
+    for panel in panels:
+        panel_index = panel.get("panel_index")
+        clip_id = panel.get("clip_id") or "unknown"
+        visual_prompt = panel.get("visual_prompt") or ""
+        lines.append(f"- Panel {panel_index} / clip {clip_id}: {visual_prompt}")
+
+    return "\n".join(lines)
+
+
+def build_grid_storyboard_video_prompt(panel: Mapping[str, Any]) -> str:
+    """Compose the per-clip image-to-video prompt for one grid panel."""
+
+    panel_index = panel.get("panel_index")
+    clip_id = panel.get("clip_id") or "unknown"
+    video_prompt = panel.get("video_prompt") or panel.get("visual_prompt") or ""
+    return "\n".join(
+        [
+            f"Use panel {panel_index} only from the storyboard sheet as the visual reference for clip {clip_id}.",
+            "Generate only this shot; do not animate or reveal other panels from the sheet.",
+            "Preserve the character, costume, environment, composition, and lighting shown in the selected panel.",
+            str(video_prompt),
+        ]
+    )
+
+
+def _timeline_video_clips(timeline_spec: Mapping[str, Any]) -> List[Mapping[str, Any]]:
+    tracks = timeline_spec.get("tracks")
+    if not isinstance(tracks, list):
+        return []
+
+    clips: List[Mapping[str, Any]] = []
+    for track in tracks:
+        if not isinstance(track, Mapping):
+            continue
+        track_type = track.get("track_type") or track.get("type") or track.get("kind")
+        if track_type != "video":
+            continue
+        track_clips = track.get("clips")
+        if not isinstance(track_clips, list):
+            continue
+        clips.extend(clip for clip in track_clips if isinstance(clip, Mapping))
+
+    return sorted(clips, key=lambda clip: clip.get("start_ms") or 0)
+
+
+def _timeline_shot_plan(clip: Mapping[str, Any]) -> Mapping[str, Any]:
+    source_refs = clip.get("source_refs")
+    if not isinstance(source_refs, Mapping):
+        return {}
+    shot_plan = source_refs.get("timeline_shot_plan")
+    return shot_plan if isinstance(shot_plan, Mapping) else {}
+
+
+def _first_text(*values: Any) -> str:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _duration_ms(clip: Mapping[str, Any]) -> Optional[int]:
+    start_ms = clip.get("start_ms")
+    end_ms = clip.get("end_ms")
+    if isinstance(start_ms, (int, float)) and isinstance(end_ms, (int, float)):
+        return max(0, int(end_ms - start_ms))
+    return None
+
+
+def _build_panel_prompt(
+    *,
+    index: int,
+    row: int,
+    column: int,
+    clip_id: Any,
+    visual_prompt: str,
+) -> str:
+    return (
+        f"Panel {index} (row {row}, column {column}, clip {clip_id or 'unknown'}): "
+        f"{visual_prompt}"
+    )

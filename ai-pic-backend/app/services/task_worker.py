@@ -17,6 +17,9 @@ from app.services.task_worker_assets import (  # noqa: F401
     virtual_ip_image_generate_task,
     virtual_ip_image_variant_task,
 )
+from app.services.task_worker_grid_storyboard import (  # noqa: F401
+    grid_storyboard_sheet_generate_task,
+)
 
 # Re-export storyboard media tasks for compatibility imports.
 from app.services.task_worker_storyboard_media import (  # noqa: F401

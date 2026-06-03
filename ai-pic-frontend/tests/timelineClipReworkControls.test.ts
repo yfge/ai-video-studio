@@ -4,7 +4,8 @@ import { describe, it } from "node:test";
 import {
   buildTimelineClipVideoReworkTaskPayload,
   isTimelineVideoClip,
-} from "../src/components/features/episode/TimelineClipProviderReworkControls";
+  timelineClipGridPanelIndex,
+} from "../src/components/features/episode/TimelineClipProviderReworkModel";
 import { buildTimelineClipReworkPayload } from "../src/components/features/episode/TimelineClipReworkControls";
 
 describe("timeline clip rework controls", () => {
@@ -55,6 +56,29 @@ describe("timeline clip rework controls", () => {
     );
   });
 
+  it("builds provider video rework payloads with grid storyboard references", () => {
+    assert.deepEqual(
+      buildTimelineClipVideoReworkTaskPayload({
+        expectedVersion: 5,
+        action: "re_cut",
+        model: "volcengine:doubao-seedance-2-0-260128",
+        resolution: "720p",
+        useStoryboardGrid: true,
+      }),
+      {
+        expected_version: 5,
+        action: "re_cut",
+        model: "volcengine:doubao-seedance-2-0-260128",
+        resolution: "720p",
+        asset_role: "generated_video",
+        use_end_frame: false,
+        return_last_frame: true,
+        reference_mode: "storyboard_grid_panel",
+        use_storyboard_grid: true,
+      },
+    );
+  });
+
   it("recognizes native Timeline video clips only", () => {
     assert.equal(
       isTimelineVideoClip({
@@ -79,6 +103,28 @@ describe("timeline clip rework controls", () => {
         meta: { track_type: "dialogue" },
       }),
       false,
+    );
+  });
+
+  it("reads grid storyboard panel indexes from selected timeline clips", () => {
+    assert.equal(
+      timelineClipGridPanelIndex({
+        id: "video-1",
+        startMs: 0,
+        endMs: 1000,
+        label: "clip",
+        type: "video",
+        color: "#0f766e",
+        meta: {
+          track_type: "video",
+          source_refs: {
+            grid_storyboard_panel: {
+              panel_index: 4,
+            },
+          },
+        },
+      }),
+      4,
     );
   });
 });

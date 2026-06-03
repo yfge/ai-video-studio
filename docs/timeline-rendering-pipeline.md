@@ -365,6 +365,20 @@ surface:
 Storyboard remains a support view for placeholders, keyframes, and scene/shot
 context. It must not become the primary route for render/export decisions.
 
+### Grid Storyboard Support Mode
+
+Grid storyboard mode is an optional support-view artifact under
+`timeline.spec.support_views.storyboard_grid`. It generates a multi-panel sheet
+from Timeline video clips and their `source_refs.timeline_shot_plan` prompt
+bundle, then maps each panel back to the stable `clip_id`.
+
+The sheet is persisted as a `media_assets` image with the
+`storyboard_grid_sheet` role. Video clip rework may use the sheet as a provider
+reference through `reference_mode="storyboard_grid_panel"` and a panel-specific
+prompt, but Timeline still owns clip order, duration, asset selection, render,
+and export. Providers that cannot use sheet references must keep the existing
+per-clip start/end-frame path as the fallback.
+
 ## Validation Contract
 
 Minimum regression chain:

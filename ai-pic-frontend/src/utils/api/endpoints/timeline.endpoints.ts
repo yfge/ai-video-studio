@@ -16,6 +16,8 @@ import type {
   TimelineRenderJobListResponse,
   TimelineRenderJobResponse,
   TimelineResponse,
+  TimelineStoryboardGridGenerateRequest,
+  TimelineStoryboardGridGenerateResponse,
 } from "../types/timeline.types";
 
 export async function listEpisodeTimelines(
@@ -105,6 +107,19 @@ export async function queueTimelineClipVideoRework(
   );
 }
 
+export async function generateTimelineStoryboardGrid(
+  timelineId: number | string,
+  payload: TimelineStoryboardGridGenerateRequest,
+): Promise<ApiResponse<TimelineStoryboardGridGenerateResponse>> {
+  return httpClient<TimelineStoryboardGridGenerateResponse>(
+    `/api/v1/timelines/${timelineId}/storyboard-grid/generate`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export const timelineAPI = {
   listEpisodeTimelines,
   getTimeline,
@@ -113,4 +128,5 @@ export const timelineAPI = {
   listTimelineClipAssets,
   reworkTimelineClip,
   queueTimelineClipVideoRework,
+  generateTimelineStoryboardGrid,
 };

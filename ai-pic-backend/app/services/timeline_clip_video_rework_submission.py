@@ -45,6 +45,7 @@ class TimelineClipVideoReworkSubmissionService:
         prompt = self._string_value(payload.get("prompt"))
         start_url = self._abs_optional(payload.get("image_url"))
         end_url = self._abs_optional(payload.get("end_image_url"))
+        reference_images = self._reference_images(payload.get("reference_images"))
         target_duration_seconds = float(payload.get("duration") or 5.0)
         request_duration_seconds = coerce_duration(target_duration_seconds)
         response = submit_provider_task(
@@ -52,6 +53,7 @@ class TimelineClipVideoReworkSubmissionService:
             prompt=prompt,
             start_url=start_url,
             end_url=end_url,
+            reference_images=reference_images,
             duration=request_duration_seconds,
             opts=opts,
         )
@@ -81,6 +83,7 @@ class TimelineClipVideoReworkSubmissionService:
             prompt=prompt,
             start_url=start_url,
             end_url=end_url,
+            reference_images=reference_images,
             target_duration_seconds=target_duration_seconds,
             provider_duration_seconds=provider_duration_seconds,
             opts=opts,
@@ -98,6 +101,7 @@ class TimelineClipVideoReworkSubmissionService:
         prompt: str | None,
         start_url: str | None,
         end_url: str | None,
+        reference_images: list[str] | None,
         target_duration_seconds: float,
         provider_duration_seconds: int,
         opts: dict[str, Any],
@@ -107,7 +111,7 @@ class TimelineClipVideoReworkSubmissionService:
             prompt,
             start_url,
             end_url,
-            None,
+            reference_images,
             provider_duration_seconds,
             opts,
             target_duration_seconds=round(float(target_duration_seconds), 3),
@@ -172,12 +176,25 @@ class TimelineClipVideoReworkSubmissionService:
             "auto_render": payload.get("auto_render"),
             "render_type": payload.get("render_type"),
             "render_preset": payload.get("render_preset"),
+            "reference_mode": payload.get("reference_mode"),
+            "storyboard_grid": payload.get("storyboard_grid"),
         }
 
     @staticmethod
     def _abs_optional(value: Any) -> str | None:
         text = TimelineClipVideoReworkSubmissionService._string_value(value)
         return abs_url(text) if text else None
+
+    @staticmethod
+    def _reference_images(value: Any) -> list[str] | None:
+        if not isinstance(value, list):
+            return None
+        refs = [
+            abs_url(item.strip())
+            for item in value
+            if isinstance(item, str) and item.strip()
+        ]
+        return refs or None
 
     @staticmethod
     def _string_value(value: Any) -> str | None:

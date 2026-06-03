@@ -1,0 +1,8 @@
+Use panel {{ panel_index }} only from the storyboard sheet as the visual reference for clip {{ clip_id }}.
+
+Generate only this shot; do not animate, crop through, or reveal other panels from the sheet.
+Preserve the character, costume, environment, composition, and lighting shown in the selected panel.
+No subtitles, speech bubbles, captions, readable UI text, watermarks, logos, or title cards.
+
+Shot motion:
+{{ video_prompt }}

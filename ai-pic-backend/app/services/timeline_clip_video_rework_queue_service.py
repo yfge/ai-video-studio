@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from app.models.task import TaskType
 from app.models.timeline import Timeline
@@ -17,8 +17,19 @@ from app.schemas.timeline import (
     TimelineClipVideoReworkTaskRequest,
     TimelineClipVideoReworkTaskResponse,
 )
+from app.services.timeline_clip_video_grid_reference import (
+    build_grid_storyboard_rework_payload,
+)
 from app.services.timeline_clip_video_rework_dispatch import (
     dispatch_timeline_clip_video_rework_task,
+)
+from app.services.timeline_clip_video_rework_helpers import (
+    clip_duration_seconds,
+    dedupe_strings,
+    maybe_int,
+    render_preset,
+    story_owner_filter,
+    string_value,
 )
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -77,15 +88,32 @@ class TimelineClipVideoReworkQueueService:
         clip: dict[str, Any],
         payload: TimelineClipVideoReworkTaskRequest,
     ) -> dict[str, Any]:
-        prompt = self._prompt(clip, payload.prompt)
-        start_url = self._start_frame_url(clip)
-        end_url = self._end_frame_url(clip) if payload.use_end_frame else None
+        grid_payload = None
+        reference_mode = payload.reference_mode or "start_end"
+        if payload.use_storyboard_grid or reference_mode == "storyboard_grid_panel":
+            reference_mode = "storyboard_grid_panel"
+            grid_payload = build_grid_storyboard_rework_payload(
+                timeline,
+                clip_id,
+                clip,
+                payload,
+                asset_ref_url=self._asset_ref_url,
+                fallback_prompt=self._prompt,
+            )
+            prompt = grid_payload["prompt"]
+            start_url = None
+            end_url = None
+        else:
+            prompt = self._prompt(clip, payload.prompt)
+            start_url = self._start_frame_url(clip)
+            end_url = self._end_frame_url(clip) if payload.use_end_frame else None
+
         if not (prompt or start_url):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="timeline clip rework requires a prompt or start frame",
             )
-        return {
+        task_payload = {
             "timeline_id": timeline.id,
             "timeline_business_id": timeline.business_id,
             "timeline_version": timeline.version,
@@ -96,7 +124,7 @@ class TimelineClipVideoReworkQueueService:
             "prompt": prompt,
             "image_url": start_url,
             "end_image_url": end_url,
-            "duration": payload.duration or self._clip_duration_seconds(clip),
+            "duration": payload.duration or clip_duration_seconds(clip),
             "model": payload.model,
             "fps": payload.fps,
             "resolution": payload.resolution,
@@ -104,8 +132,19 @@ class TimelineClipVideoReworkQueueService:
             "return_last_frame": payload.return_last_frame,
             "auto_render": True,
             "render_type": "final",
-            "render_preset": self._render_preset(timeline),
+            "render_preset": render_preset(timeline),
         }
+        if grid_payload:
+            task_payload.update(
+                {
+                    "reference_mode": reference_mode,
+                    "reference_images": grid_payload["reference_images"],
+                    "storyboard_grid": grid_payload["storyboard_grid"],
+                }
+            )
+        elif payload.reference_images:
+            task_payload["reference_images"] = dedupe_strings(payload.reference_images)
+        return task_payload
 
     def _clip_or_404(self, timeline: Timeline, clip_id: str) -> dict[str, Any]:
         spec = timeline.spec if isinstance(timeline.spec, dict) else {}
@@ -124,7 +163,7 @@ class TimelineClipVideoReworkQueueService:
     def _get_timeline_or_404(self, timeline_id: int, current_user: User) -> Timeline:
         timeline = self.timelines.get_accessible(
             timeline_id=timeline_id,
-            user_id=self._story_owner_filter(current_user),
+            user_id=story_owner_filter(current_user),
         )
         if timeline is None:
             raise HTTPException(
@@ -137,23 +176,23 @@ class TimelineClipVideoReworkQueueService:
         return (
             self._asset_ref_url(clip.get("start_frame_asset_ref"))
             or self._asset_ref_url(clip.get("storyboard_image_asset_ref"))
-            or self._string_value(clip.get("start_image_url"))
-            or self._string_value(clip.get("image_url"))
+            or string_value(clip.get("start_image_url"))
+            or string_value(clip.get("image_url"))
         )
 
     def _end_frame_url(self, clip: dict[str, Any]) -> str | None:
-        return self._asset_ref_url(
-            clip.get("end_frame_asset_ref")
-        ) or self._string_value(clip.get("end_image_url"))
+        return self._asset_ref_url(clip.get("end_frame_asset_ref")) or string_value(
+            clip.get("end_image_url")
+        )
 
     def _asset_ref_url(self, asset_ref: Any) -> str | None:
         if not isinstance(asset_ref, dict):
             return None
         for key in ("file_url", "url", "image_url", "video_url", "file_path"):
-            value = self._string_value(asset_ref.get(key))
+            value = string_value(asset_ref.get(key))
             if value:
                 return value
-        asset_id = self._maybe_int(
+        asset_id = maybe_int(
             asset_ref.get("media_asset_id")
             or asset_ref.get("asset_id")
             or asset_ref.get("image_asset_id")
@@ -169,59 +208,7 @@ class TimelineClipVideoReworkQueueService:
         if override and override.strip():
             return override.strip()
         for key in ("ai_prompt", "prompt", "description", "text", "label"):
-            value = TimelineClipVideoReworkQueueService._string_value(clip.get(key))
+            value = string_value(clip.get(key))
             if value:
                 return value
         return None
-
-    @staticmethod
-    def _clip_duration_seconds(clip: dict[str, Any]) -> float:
-        start_ms = TimelineClipVideoReworkQueueService._maybe_int(clip.get("start_ms"))
-        end_ms = TimelineClipVideoReworkQueueService._maybe_int(clip.get("end_ms"))
-        if start_ms is not None and end_ms is not None and end_ms > start_ms:
-            return max((end_ms - start_ms) / 1000, 0.1)
-        duration_ms = TimelineClipVideoReworkQueueService._maybe_int(
-            clip.get("duration_ms")
-        )
-        if duration_ms and duration_ms > 0:
-            return max(duration_ms / 1000, 0.1)
-        duration_seconds = TimelineClipVideoReworkQueueService._maybe_float(
-            clip.get("duration_seconds")
-        )
-        return max(duration_seconds, 0.1) if duration_seconds else 5.0
-
-    @staticmethod
-    def _render_preset(timeline: Timeline) -> dict[str, Any]:
-        spec = timeline.spec if isinstance(timeline.spec, dict) else {}
-        return {
-            "fps": spec.get("fps") or 24,
-            "resolution": spec.get("resolution") or "1080x1920",
-        }
-
-    @staticmethod
-    def _story_owner_filter(current_user: User) -> Optional[int]:
-        if getattr(current_user, "is_superuser", False) or getattr(
-            current_user, "is_admin", False
-        ):
-            return None
-        return current_user.id
-
-    @staticmethod
-    def _string_value(value: Any) -> str | None:
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-        return None
-
-    @staticmethod
-    def _maybe_int(value: Any) -> int | None:
-        try:
-            return int(value) if value is not None else None
-        except (TypeError, ValueError):
-            return None
-
-    @staticmethod
-    def _maybe_float(value: Any) -> float | None:
-        try:
-            return float(value) if value is not None else None
-        except (TypeError, ValueError):
-            return None

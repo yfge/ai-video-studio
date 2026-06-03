@@ -14,6 +14,8 @@ This directory holds design notes, API references, and testing guides. Keep this
   proof.
 - `docs/exec-plans/active/commercial-script-quality.md` — deterministic
   commercial-specificity gate for beat-level short-drama scripts.
+- `docs/exec-plans/active/grid-storyboard-mode.md` — optional grid-storyboard
+  support mode from Timeline clips to storyboard sheet to clip video references.
 - `docs/exec-plans/completed/` — completed execution plans and archived implementation outlines.
 
 ## Agent System Of Record

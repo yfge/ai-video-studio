@@ -1,0 +1,33 @@
+name: storyboard_grid_sheet
+description: "宫格故事板图像提示词模板"
+category: storyboard
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-06-01"
+updated_at: "2026-06-01"
+
+variables:
+  layout_label:
+    type: string
+    required: true
+    description: "宫格布局，例如 2x1、2x2、3x2、3x3"
+  panel_count:
+    type: integer
+    required: true
+    description: "面板数量"
+  style:
+    type: string
+    required: true
+    description: "整体视觉风格"
+  panel_briefs:
+    type: list
+    required: true
+    description: "逐 panel 的图像提示词摘要"
+
+usage_examples:
+  - layout_label: "3x3"
+    panel_count: 9
+    style: "vertical short-drama, cinematic realism"
+    panel_briefs:
+      - "Panel 1 / clip clip-1: 林晚站在雨夜门口，霓虹反光，中景"
+      - "Panel 2 / clip clip-2: 陈哲坐在车内，侧脸被手机屏照亮"

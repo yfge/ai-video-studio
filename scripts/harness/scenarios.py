@@ -150,7 +150,7 @@ BROWSER_SCENARIOS: dict[str, BrowserScenario] = {
         name="episode_workspace_storyboard_smoke",
         path="/episodes/{episode_id}/workspace?tab=storyboard",
         requires_auth=True,
-        required_text="分镜",
+        required_text="宫格故事板",
         notes="Open the workspace storyboard support view; the legacy direct storyboard route is intentionally not used.",
     ),
     "task_details_trace_smoke": BrowserScenario(

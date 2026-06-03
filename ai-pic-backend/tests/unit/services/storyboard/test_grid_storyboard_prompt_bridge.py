@@ -1,0 +1,113 @@
+from app.services.storyboard.grid_storyboard_prompt_bridge import (
+    build_grid_storyboard_panels,
+    build_grid_storyboard_sheet_prompt,
+    build_grid_storyboard_video_prompt,
+    grid_layout,
+)
+
+
+def test_grid_layout_clamps_to_supported_panel_counts():
+    assert grid_layout(1).panel_count == 2
+    assert (grid_layout(1).columns, grid_layout(1).rows) == (2, 1)
+    assert grid_layout(4).panel_count == 4
+    assert (grid_layout(6).columns, grid_layout(6).rows) == (3, 2)
+    assert grid_layout(99).panel_count == 9
+    assert (grid_layout(99).columns, grid_layout(99).rows) == (3, 3)
+
+
+def test_build_grid_storyboard_panels_prefers_timeline_shot_plan_prompts():
+    timeline_spec = {
+        "tracks": [
+            {
+                "id": "video-main",
+                "kind": "video",
+                "clips": [
+                    {
+                        "id": "clip-1",
+                        "scene_id": "scene-1",
+                        "beat_id": "beat-1",
+                        "start_ms": 0,
+                        "end_ms": 2800,
+                        "source_refs": {
+                            "timeline_shot_plan": {
+                                "shot_id": "shot-1",
+                                "visual_prompt": "林晚站在雨夜门口，霓虹反光，中景",
+                                "video_prompt": "镜头缓慢推近，雨水落在她肩头",
+                            }
+                        },
+                        "ai_prompt": "fallback image prompt",
+                    }
+                ],
+            }
+        ]
+    }
+
+    panels = build_grid_storyboard_panels(timeline_spec, panel_count=2)
+
+    assert len(panels) == 1
+    panel = panels[0]
+    assert panel["panel_index"] == 1
+    assert panel["row"] == 1
+    assert panel["column"] == 1
+    assert panel["clip_id"] == "clip-1"
+    assert panel["visual_prompt"] == "林晚站在雨夜门口，霓虹反光，中景"
+    assert panel["video_prompt"] == "镜头缓慢推近，雨水落在她肩头"
+    assert "fallback image prompt" not in panel["storyboard_panel_prompt"]
+    assert "Panel 1" in panel["storyboard_panel_prompt"]
+
+
+def test_build_grid_storyboard_panels_falls_back_to_clip_text():
+    timeline_spec = {
+        "tracks": [
+            {
+                "kind": "video",
+                "clips": [
+                    {
+                        "id": "clip-2",
+                        "start_ms": 1000,
+                        "end_ms": 4000,
+                        "text": "她推开会议室大门，众人回头。",
+                    }
+                ],
+            }
+        ]
+    }
+
+    panels = build_grid_storyboard_panels(timeline_spec, panel_count=4)
+
+    assert panels[0]["visual_prompt"] == "她推开会议室大门，众人回头。"
+    assert panels[0]["video_prompt"] == "她推开会议室大门，众人回头。"
+    assert panels[0]["duration_ms"] == 3000
+
+
+def test_grid_sheet_and_video_prompts_constrain_text_and_panel_scope():
+    panels = [
+        {
+            "panel_index": 1,
+            "clip_id": "clip-1",
+            "visual_prompt": "林晚站在雨夜门口，霓虹反光，中景",
+            "video_prompt": "镜头缓慢推近，雨水落在她肩头",
+        },
+        {
+            "panel_index": 2,
+            "clip_id": "clip-2",
+            "visual_prompt": "陈哲坐在车内，侧脸被手机屏照亮",
+            "video_prompt": "镜头保持静止，只捕捉他的犹豫表情",
+        },
+    ]
+
+    sheet_prompt = build_grid_storyboard_sheet_prompt(
+        panels,
+        style="vertical short-drama, cinematic realism",
+    )
+    video_prompt = build_grid_storyboard_video_prompt(panels[1])
+
+    assert "2-panel" in sheet_prompt
+    assert "2x1" in sheet_prompt
+    assert "panel numbers" in sheet_prompt
+    assert "No subtitles" in sheet_prompt
+    assert "林晚站在雨夜门口" in sheet_prompt
+    assert "Use panel 2 only" in video_prompt
+    assert "clip-2" in video_prompt
+    assert "Generate only this shot" in video_prompt
+    assert "镜头保持静止" in video_prompt

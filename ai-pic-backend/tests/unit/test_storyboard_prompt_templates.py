@@ -26,6 +26,45 @@ def test_storyboard_image_fallback_template_forbids_collage():
     assert "不要拼接" in prompt
 
 
+def test_storyboard_grid_sheet_template_allows_sheet_but_limits_text():
+    prompt = prompt_manager.render_prompt(
+        PromptTemplate.STORYBOARD_GRID_SHEET.value,
+        {
+            "layout_label": "3x3",
+            "panel_count": 9,
+            "style": "vertical short-drama, cinematic realism",
+            "panel_briefs": [
+                "Panel 1 / clip clip-1: 林晚站在雨夜门口，霓虹反光，中景",
+                "Panel 2 / clip clip-2: 陈哲坐在车内，侧脸被手机屏照亮",
+            ],
+        },
+    )
+
+    assert "3x3" in prompt
+    assert "9-panel" in prompt
+    assert "storyboard sheet" in prompt.lower()
+    assert "panel numbers" in prompt
+    assert "No subtitles" in prompt
+    assert "林晚站在雨夜门口" in prompt
+
+
+def test_storyboard_grid_video_template_scopes_to_one_panel():
+    prompt = prompt_manager.render_prompt(
+        PromptTemplate.STORYBOARD_GRID_VIDEO.value,
+        {
+            "panel_index": 2,
+            "clip_id": "clip-2",
+            "video_prompt": "镜头保持静止，只捕捉他的犹豫表情",
+        },
+    )
+
+    assert "Use panel 2 only" in prompt
+    assert "clip-2" in prompt
+    assert "Generate only this shot" in prompt
+    assert "other panels" in prompt
+    assert "镜头保持静止" in prompt
+
+
 def test_storyboard_keyframe_template_forbids_collage():
     prompt = prompt_manager.render_prompt(
         PromptTemplate.STORYBOARD_KEYFRAME.value,

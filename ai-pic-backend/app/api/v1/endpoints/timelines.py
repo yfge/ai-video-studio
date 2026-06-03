@@ -16,8 +16,13 @@ from app.schemas.timeline import (
     TimelineResponse,
     TimelineRollbackRequest,
     TimelineShotPlanRequest,
+    TimelineStoryboardGridGenerateRequest,
+    TimelineStoryboardGridGenerateResponse,
     TimelineUpdate,
     TimelineVersionRequest,
+)
+from app.services.storyboard.grid_storyboard_sheet_service import (
+    GridStoryboardSheetService,
 )
 from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
 from app.services.timeline_clip_rework_service import TimelineClipReworkService
@@ -104,6 +109,21 @@ async def generate_timeline_shot_plan(
 ) -> TimelineResponse:
     service = TimelineShotPlanService(db)
     return await service.generate_shot_plan(timeline_id, payload, current_user)
+
+
+@router.post(
+    "/timelines/{timeline_id}/storyboard-grid/generate",
+    response_model=TimelineStoryboardGridGenerateResponse,
+    summary="Queue grid storyboard sheet generation from Timeline clips",
+)
+def queue_timeline_storyboard_grid(
+    timeline_id: int,
+    payload: TimelineStoryboardGridGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineStoryboardGridGenerateResponse:
+    service = GridStoryboardSheetService(db)
+    return service.queue_grid_sheet(timeline_id, payload, current_user)
 
 
 @router.post(

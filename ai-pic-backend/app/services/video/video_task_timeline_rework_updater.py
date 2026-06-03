@@ -43,6 +43,7 @@ def apply_timeline_rework_result(
     clip_assets = TimelineClipAssetRepository(db)
     media_asset = media_assets.find_by_location(asset_type="video", file_url=video_url)
     if media_asset is None:
+        reference_metadata = _reference_metadata(context)
         media_asset = media_assets.create(
             asset_type="video",
             origin="provider_rework",
@@ -54,6 +55,7 @@ def apply_timeline_rework_result(
                 "provider_task_id": item.provider_task_id,
                 "provider": item.provider,
                 "model": item.model,
+                **reference_metadata,
             },
             created_by=item.user_id,
         )
@@ -92,6 +94,7 @@ def apply_timeline_rework_result(
                 "provider": item.provider,
                 "model": item.model,
                 "preserves_clip_id": True,
+                **_reference_metadata(context),
             },
             replacement_of_id=previous.id if previous else None,
             created_by=item.user_id,
@@ -129,3 +132,14 @@ def _maybe_int(value: Any) -> int | None:
         return int(value) if value is not None else None
     except (TypeError, ValueError):
         return None
+
+
+def _reference_metadata(context: dict[str, Any]) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    reference_mode = _string_value(context.get("reference_mode"))
+    if reference_mode:
+        metadata["reference_mode"] = reference_mode
+    storyboard_grid = context.get("storyboard_grid")
+    if isinstance(storyboard_grid, dict):
+        metadata["storyboard_grid"] = storyboard_grid
+    return metadata

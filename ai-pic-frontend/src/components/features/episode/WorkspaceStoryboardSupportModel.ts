@@ -1,5 +1,5 @@
 import { asRecord, getString, parseMs } from "@/hooks/episodeDetailUtils";
-import type { NormalizedScene } from "@/utils/api/types";
+import type { NormalizedScene, TimelineResponse } from "@/utils/api/types";
 
 export type StoryboardSupportFrame = {
   id: string;
@@ -17,6 +17,7 @@ export type StoryboardSupportFrame = {
   imageUrl: string | null;
   videoUrl: string | null;
   sourceKind: string | null;
+  gridPanelIndex: number | null;
 };
 
 export type StoryboardSupportSummary = {
@@ -26,13 +27,36 @@ export type StoryboardSupportSummary = {
   generationSource: string | null;
   timelineId: string | null;
   timelineVersion: string | null;
+  gridSheetUrl: string | null;
+  gridPanelCount: number;
+  gridGeneratedAt: string | null;
+};
+
+export type StoryboardGridPanel = {
+  panelId: string | null;
+  panelIndex: number | null;
+  clipId: string | null;
+  timeLabel: string;
+  visualPrompt: string | null;
+  videoPrompt: string | null;
+};
+
+export type StoryboardGridSupport = {
+  sheetUrl: string | null;
+  panelCount: number;
+  columns: number | null;
+  rows: number | null;
+  generatedAt: string | null;
+  panels: StoryboardGridPanel[];
 };
 
 export function buildStoryboardSupportSummary(
   storyboard: Record<string, unknown> | null,
+  selectedTimelineSpec?: TimelineResponse | null,
 ): StoryboardSupportSummary {
   const frames = storyboardFrames(storyboard);
   const meta = asRecord(storyboard?.meta);
+  const grid = buildStoryboardGridSupport(selectedTimelineSpec);
   return {
     frameCount: frames.length,
     imageCount: frames.filter((frame) => Boolean(mediaUrl(frame, IMAGE_KEYS)))
@@ -42,17 +66,25 @@ export function buildStoryboardSupportSummary(
     generationSource: getString(meta?.generation_source) ?? null,
     timelineId: stringify(meta?.timeline_id),
     timelineVersion: stringify(meta?.timeline_version),
+    gridSheetUrl: grid.sheetUrl,
+    gridPanelCount: grid.panelCount,
+    gridGeneratedAt: grid.generatedAt,
   };
 }
 
 export function buildStoryboardSupportFrames(
   storyboard: Record<string, unknown> | null,
   normalizedScenes: NormalizedScene[],
+  selectedTimelineSpec?: TimelineResponse | null,
 ): StoryboardSupportFrame[] {
   const scenesByNumber = new Map<string, NormalizedScene>();
   normalizedScenes.forEach((scene) => {
     if (scene.scene_number)
       scenesByNumber.set(String(scene.scene_number), scene);
+  });
+  const gridPanelsByClipId = new Map<string, StoryboardGridPanel>();
+  buildStoryboardGridSupport(selectedTimelineSpec).panels.forEach((panel) => {
+    if (panel.clipId) gridPanelsByClipId.set(panel.clipId, panel);
   });
 
   return storyboardFrames(storyboard).map((frame, index) => {
@@ -85,8 +117,42 @@ export function buildStoryboardSupportFrames(
       imageUrl: mediaUrl(frame, IMAGE_KEYS),
       videoUrl: mediaUrl(frame, VIDEO_KEYS),
       sourceKind: getString(asRecord(frame.source)?.kind) ?? null,
+      gridPanelIndex:
+        gridPanelsByClipId.get(getString(frame.timeline_clip_id) ?? "")
+          ?.panelIndex ?? null,
     };
   });
+}
+
+export function buildStoryboardGridSupport(
+  selectedTimelineSpec?: TimelineResponse | null,
+): StoryboardGridSupport {
+  const supportViews = asRecord(selectedTimelineSpec?.spec?.support_views);
+  const grid = asRecord(supportViews?.storyboard_grid);
+  const sheet = asRecord(grid?.sheet);
+  const panels = Array.isArray(grid?.panels) ? grid.panels : [];
+  return {
+    sheetUrl: getString(sheet?.file_url) ?? getString(sheet?.file_path) ?? null,
+    panelCount: numberValue(sheet?.panel_count) ?? panels.length,
+    columns: numberValue(sheet?.columns),
+    rows: numberValue(sheet?.rows),
+    generatedAt: getString(grid?.generated_at) ?? null,
+    panels: panels
+      .map((panel) => asRecord(panel))
+      .filter((panel): panel is Record<string, unknown> => Boolean(panel))
+      .map((panel) => {
+        const startMs = parseMs(panel.start_ms);
+        const endMs = parseMs(panel.end_ms);
+        return {
+          panelId: getString(panel.panel_id) ?? null,
+          panelIndex: numberValue(panel.panel_index),
+          clipId: getString(panel.clip_id) ?? null,
+          timeLabel: timeLabel(startMs, endMs, panel.duration_ms),
+          visualPrompt: getString(panel.visual_prompt) ?? null,
+          videoPrompt: getString(panel.video_prompt) ?? null,
+        };
+      }),
+  };
 }
 
 const IMAGE_KEYS = [
