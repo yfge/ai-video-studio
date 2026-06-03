@@ -174,6 +174,8 @@ class ScriptManagerMixin:
                 prefer_provider=prefer_provider,
             )
         except BeatContractGenerationError:
+            if prefer_provider or model:
+                raise
             return None
         flattened = beat_result["payload"]
         response = beat_result["response"]

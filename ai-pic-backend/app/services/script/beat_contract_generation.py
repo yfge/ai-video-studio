@@ -26,6 +26,11 @@ class BeatContractGenerationError(Exception):
         self.raw = raw
         self.detail = detail
 
+    def __str__(self) -> str:
+        if self.detail:
+            return f"{self.code}: {self.detail}"
+        return self.code
+
 
 def story_with_default_script_format(
     story: dict[str, Any],
@@ -82,7 +87,11 @@ async def generate_beat_contract_payload(
         stream=False,
     )
     if not response.success:
-        raise BeatContractGenerationError("beat_contract_failed", raw=response.data)
+        raise BeatContractGenerationError(
+            "beat_contract_failed",
+            raw=response.data,
+            detail=getattr(response, "error", None),
+        )
 
     parsed = _parse_payload(response.data)
     if not parsed:

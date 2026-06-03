@@ -1,4 +1,5 @@
 import pytest
+from app.schemas.generation import ScriptModel
 from app.schemas.script_beat_contract import StructuredScriptContract
 from app.services.script.beat_contract_normalizer import (
     flatten_contract_to_script_payload,
@@ -169,3 +170,43 @@ def test_content_normalization_preserves_scene_beats():
 
     assert normalized["scenes"][0]["beats"][0]["beat_type"] == "hook"
     assert normalized["scenes"][0]["summary"] == "谁清空了奖金？"
+
+
+@pytest.mark.unit
+def test_content_normalization_coerces_numeric_estimated_duration_metadata():
+    payload = {
+        "content": "第1场\n小机：证据出来了。\n▲日志末行被黑色光标吞掉。",
+        "scenes": [
+            {
+                "scene_number": 1,
+                "description": "小机发现奖金清零。",
+            }
+        ],
+        "dialogues": [
+            {
+                "scene_number": 1,
+                "character": "小机",
+                "content": "证据出来了。",
+            }
+        ],
+        "stage_directions": [
+            {
+                "scene_number": 1,
+                "content": "日志末行被黑色光标吞掉。",
+            }
+        ],
+        "metadata": {"estimated_duration": 60},
+    }
+
+    normalized = normalize_script_content(
+        payload,
+        format_type="screenplay",
+        language="zh-CN",
+        episode_number=1,
+        template_style="commercial_vertical_drama",
+        target_chars_per_episode=500,
+        title="倒计时谜影",
+    )
+
+    assert normalized["metadata"]["estimated_duration"] == "60"
+    ScriptModel.model_validate(normalized)

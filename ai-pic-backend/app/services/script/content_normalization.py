@@ -59,6 +59,10 @@ def normalize_script_content(
         scenes.append(base)
 
     metadata = normalized.get("metadata") or {}
+    if metadata.get("estimated_duration") is not None and not isinstance(
+        metadata.get("estimated_duration"), str
+    ):
+        metadata["estimated_duration"] = str(metadata["estimated_duration"])
     if scenes and not metadata.get("total_scenes"):
         metadata["total_scenes"] = len(scenes)
     normalized["metadata"] = metadata
