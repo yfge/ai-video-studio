@@ -13,6 +13,7 @@ from .video_request import (
     _build_prompt_with_flags,
     _normalize_model,
     build_video_request,
+    has_visual_reference,
 )
 from .video_response import extract_error, extract_output_urls, extract_task_id
 
@@ -182,7 +183,11 @@ async def generate_video(
             format_error(exc),
             provider_name,
             model or _normalize_model(None),
-            (AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO),
+            (
+                AIModelType.IMAGE_TO_VIDEO
+                if image_url or has_visual_reference(kwargs)
+                else AIModelType.TEXT_TO_VIDEO
+            ),
         )
 
 

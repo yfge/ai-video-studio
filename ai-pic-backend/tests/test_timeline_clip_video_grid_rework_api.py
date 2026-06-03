@@ -104,7 +104,7 @@ def test_video_task_success_preserves_grid_storyboard_reference_metadata(
         provider="mock-provider",
         provider_task_id="provider-task-grid",
         model="mock-video",
-        model_type="text_to_video",
+        model_type="image_to_video",
         prompt="Use panel 4 only",
         parameters=json.dumps(params),
         status=VideoGenerationTaskStatus.SUCCEEDED,

@@ -134,6 +134,18 @@ def build_video_request(
     return ark_model, model_type, request_data, resolved
 
 
+def has_visual_reference(extra_kwargs: Dict[str, Any]) -> bool:
+    for key in (
+        "reference_images",
+        "reference_image_urls",
+        "reference_videos",
+        "video_urls",
+    ):
+        if _coerce_urls(extra_kwargs.get(key)):
+            return True
+    return False
+
+
 def _build_content(
     prompt: str,
     image_url: Optional[str],

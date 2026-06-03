@@ -3,13 +3,18 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from app.core.logging import get_logger
-from app.services.ai_service_manager import AIServiceManager
-from app.services.providers.base import AIModelType, AIResponse, AITaskType
+from app.services.providers.base import AIModelType, AIResponse
+from app.services.video.video_task_dispatch_helpers import (
+    DISPATCHER_PROVIDER,
+    build_failure_response,
+    log_submission,
+    resolve_model_type,
+)
 from app.services.video.video_task_provider_resolver import resolve_provider_model
 
 
 class VideoTaskDispatcher:
-    def __init__(self, ai_manager: AIServiceManager):
+    def __init__(self, ai_manager: Any):
         self.ai_manager = ai_manager
         self.logger = get_logger("video_task_dispatcher")
 
@@ -26,16 +31,27 @@ class VideoTaskDispatcher:
         resolution: str,
         **kwargs: Any,
     ) -> AIResponse:
-        model_type = self._resolve_model_type(image_url)
+        model_type = resolve_model_type(image_url, kwargs)
         available, prefer_provider, model = self._resolve_candidates(
             model, prefer_provider, model_type
         )
         if not available:
-            return self._build_failure_response(
-                "没有可用的视频生成提供商", "ai_service_manager", model, model_type
+            return build_failure_response(
+                "没有可用的视频生成提供商",
+                DISPATCHER_PROVIDER,
+                model,
+                model_type,
             )
-        self._log_submission(
-            prompt, image_url, prefer_provider, model, duration, fps, resolution
+        log_submission(
+            self.ai_manager,
+            prompt=prompt,
+            image_url=image_url,
+            prefer_provider=prefer_provider,
+            model=model,
+            duration=duration,
+            fps=fps,
+            resolution=resolution,
+            model_type=model_type,
         )
         return await self._submit_with_fallback(
             available,
@@ -99,22 +115,19 @@ class VideoTaskDispatcher:
         if last_response:
             if errors and self.ai_manager.config.enable_fallback:
                 error_details = self.ai_manager._truncate("; ".join(errors), 800)
-                return self._build_failure_response(
+                return build_failure_response(
                     f"所有视频生成提供商都失败了: {error_details}",
-                    last_response.provider or "ai_service_manager",
+                    last_response.provider or DISPATCHER_PROVIDER,
                     last_model_used,
                     model_type,
                 )
             return last_response
-        return self._build_failure_response(
+        return build_failure_response(
             "所有视频生成提供商都失败了",
-            "ai_service_manager",
+            DISPATCHER_PROVIDER,
             last_model_used,
             model_type,
         )
-
-    def _resolve_model_type(self, image_url: Optional[str]) -> AIModelType:
-        return AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
 
     def _resolve_candidates(
         self,
@@ -129,33 +142,6 @@ class VideoTaskDispatcher:
         if prefer_provider:
             available = [p for p in available if p == prefer_provider]
         return available, prefer_provider, model
-
-    def _log_submission(
-        self,
-        prompt: Optional[str],
-        image_url: Optional[str],
-        prefer_provider: Optional[str],
-        model: Optional[str],
-        duration: int,
-        fps: int,
-        resolution: str,
-    ) -> None:
-        self.ai_manager._log_request(
-            task="submit_video_task",
-            provider=prefer_provider,
-            model=model,
-            params={
-                "duration": duration,
-                "fps": fps,
-                "resolution": resolution,
-                "mode": ("image_to_video" if image_url else "text_to_video"),
-            },
-        )
-        self.ai_manager._log_prompt(
-            prompt
-            if not image_url
-            else f"<image_url>: {self.ai_manager._truncate(image_url, 256)}"
-        )
 
     async def _submit_once(
         self,
@@ -200,7 +186,7 @@ class VideoTaskDispatcher:
                 exc,
             )
             provider_model = model
-            response = self._build_failure_response(
+            response = build_failure_response(
                 f"视频任务提交失败: {exc}",
                 provider_name,
                 provider_model,
@@ -229,13 +215,11 @@ class VideoTaskDispatcher:
         **kwargs: Any,
     ) -> AIResponse:
         if not hasattr(provider, "submit_video_task"):
-            return AIResponse(
-                success=False,
-                error=f"提供商 {provider_name} 不支持视频任务提交",
-                provider=provider_name,
-                model=provider_model,
-                task_type=AITaskType.VIDEO_GENERATION,
-                model_type=model_type,
+            return build_failure_response(
+                f"提供商 {provider_name} 不支持视频任务提交",
+                provider_name,
+                provider_model,
+                model_type,
             )
         return await provider.submit_video_task(
             prompt=prompt,
@@ -246,20 +230,4 @@ class VideoTaskDispatcher:
             fps=fps,
             resolution=resolution,
             **kwargs,
-        )
-
-    def _build_failure_response(
-        self,
-        message: str,
-        provider: str,
-        model: Optional[str],
-        model_type: AIModelType,
-    ) -> AIResponse:
-        return AIResponse(
-            success=False,
-            error=message,
-            provider=provider,
-            model=model or "unknown",
-            task_type=AITaskType.VIDEO_GENERATION,
-            model_type=model_type,
         )

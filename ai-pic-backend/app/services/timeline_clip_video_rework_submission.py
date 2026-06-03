@@ -48,6 +48,7 @@ class TimelineClipVideoReworkSubmissionService:
         reference_images = self._reference_images(payload.get("reference_images"))
         target_duration_seconds = float(payload.get("duration") or 5.0)
         request_duration_seconds = coerce_duration(target_duration_seconds)
+        model_type = self._model_type(start_url, reference_images)
         response = submit_provider_task(
             self.dispatcher,
             prompt=prompt,
@@ -58,7 +59,7 @@ class TimelineClipVideoReworkSubmissionService:
             opts=opts,
         )
         if not response.success:
-            self._record_failure(task_id, user_id, prompt, response.error)
+            self._record_failure(task_id, user_id, prompt, response.error, model_type)
             task.status = TaskStatus.FAILED
             task.error_message = response.error or "视频重做任务提交失败"
             self.db.commit()
@@ -66,11 +67,12 @@ class TimelineClipVideoReworkSubmissionService:
 
         provider_task_id = self._string_value((response.data or {}).get("task_id"))
         if not provider_task_id:
-            self._record_failure(task_id, user_id, prompt, "未返回任务ID")
+            self._record_failure(task_id, user_id, prompt, "未返回任务ID", model_type)
             task.status = TaskStatus.FAILED
             task.error_message = "未返回任务ID"
             self.db.commit()
             raise RuntimeError(task.error_message)
+        model_type = self._response_model_type(response) or model_type
 
         provider_duration_seconds = int(
             (response.data or {}).get("duration") or request_duration_seconds
@@ -86,6 +88,7 @@ class TimelineClipVideoReworkSubmissionService:
             reference_images=reference_images,
             target_duration_seconds=target_duration_seconds,
             provider_duration_seconds=provider_duration_seconds,
+            model_type=model_type,
             opts=opts,
             payload=payload,
         )
@@ -104,6 +107,7 @@ class TimelineClipVideoReworkSubmissionService:
         reference_images: list[str] | None,
         target_duration_seconds: float,
         provider_duration_seconds: int,
+        model_type: str,
         opts: dict[str, Any],
         payload: dict[str, Any],
     ) -> None:
@@ -126,14 +130,14 @@ class TimelineClipVideoReworkSubmissionService:
             provider=response.provider,
             provider_task_id=provider_task_id,
             model=response.model,
-            model_type="image_to_video" if start_url else "text_to_video",
+            model_type=model_type,
             prompt=prompt,
             parameters=json.dumps(params_payload, ensure_ascii=False),
             generation_metadata=build_video_generation_metadata(
                 response.provider,
                 response.model,
                 provider_task_id,
-                "image_to_video" if start_url else "text_to_video",
+                model_type,
                 params_payload,
             ),
             status=VideoGenerationTaskStatus.SUBMITTED,
@@ -147,6 +151,7 @@ class TimelineClipVideoReworkSubmissionService:
         user_id: int,
         prompt: str | None,
         error_message: str | None,
+        model_type: str = "image_to_video",
     ) -> None:
         self.video_tasks.create(
             task_id=task_id,
@@ -156,7 +161,7 @@ class TimelineClipVideoReworkSubmissionService:
             provider="unknown",
             provider_task_id="",
             model=None,
-            model_type="image_to_video",
+            model_type=model_type,
             prompt=prompt,
             parameters=json.dumps({}, ensure_ascii=False),
             status=VideoGenerationTaskStatus.FAILED,
@@ -195,6 +200,22 @@ class TimelineClipVideoReworkSubmissionService:
             if isinstance(item, str) and item.strip()
         ]
         return refs or None
+
+    @staticmethod
+    def _model_type(
+        start_url: str | None,
+        reference_images: list[str] | None,
+    ) -> str:
+        return "image_to_video" if start_url or reference_images else "text_to_video"
+
+    @staticmethod
+    def _response_model_type(response: Any) -> str | None:
+        value = getattr(response, "model_type", None)
+        if hasattr(value, "value"):
+            return str(value.value)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        return None
 
     @staticmethod
     def _string_value(value: Any) -> str | None:

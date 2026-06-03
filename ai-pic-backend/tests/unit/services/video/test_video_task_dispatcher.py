@@ -23,8 +23,10 @@ class _DummyManager:
             enable_fallback=enable_fallback,
         )
         self.providers = providers
+        self.requested_model_types: list[AIModelType] = []
 
     def get_available_providers(self, *, model_type: AIModelType) -> list[str]:
+        self.requested_model_types.append(model_type)
         return list(self.providers.keys())
 
     def _resolve_prefer_provider_and_model(self, model, prefer_provider):
@@ -59,6 +61,17 @@ def _failure_response(*, provider: str, error: str) -> AIResponse:
         model="test-model",
         task_type=AITaskType.VIDEO_GENERATION,
         model_type=AIModelType.TEXT_TO_VIDEO,
+    )
+
+
+def _success_response(*, provider: str, model_type: AIModelType) -> AIResponse:
+    return AIResponse(
+        success=True,
+        data={"task_id": "provider-task-1", "duration": 5},
+        provider=provider,
+        model="test-model",
+        task_type=AITaskType.VIDEO_GENERATION,
+        model_type=model_type,
     )
 
 
@@ -167,3 +180,38 @@ async def test_submit_video_task_fallback_disabled_returns_first_error():
 
     assert response.success is False
     assert response.error == "quota exceeded"
+
+
+@pytest.mark.asyncio
+async def test_submit_video_task_reference_images_select_image_to_video():
+    provider = MagicMock()
+    provider.submit_video_task = AsyncMock(
+        return_value=_success_response(
+            provider="volcengine",
+            model_type=AIModelType.IMAGE_TO_VIDEO,
+        )
+    )
+    manager = _DummyManager(providers={"volcengine": provider}, max_retries=1)
+    dispatcher = VideoTaskDispatcher(manager)
+
+    with patch(
+        "app.services.video.video_task_dispatcher.resolve_provider_model",
+        new=AsyncMock(return_value="doubao-seedance-2-0-260128"),
+    ):
+        response = await dispatcher.submit_video_task(
+            prompt="Use panel 4 only",
+            image_url=None,
+            end_image_url=None,
+            model="volcengine:doubao-seedance-2-0-260128",
+            prefer_provider=None,
+            duration=5,
+            fps=24,
+            resolution="720p",
+            reference_images=["https://cdn.example.com/storyboard-grid.png"],
+        )
+
+    assert response.success is True
+    assert manager.requested_model_types == [AIModelType.IMAGE_TO_VIDEO]
+    kwargs = provider.submit_video_task.await_args.kwargs
+    assert kwargs["image_url"] is None
+    assert kwargs["reference_images"] == ["https://cdn.example.com/storyboard-grid.png"]

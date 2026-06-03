@@ -8,7 +8,7 @@ import httpx
 from app.core.logging import get_logger
 from app.services.providers.base import AIModelType, AIResponse, AITaskType
 
-from .video_request import _normalize_model, build_video_request
+from .video_request import _normalize_model, build_video_request, has_visual_reference
 from .video_response import (
     extract_error,
     extract_output_urls,
@@ -71,7 +71,9 @@ async def submit_video_task(
         )
     except Exception as exc:
         fallback_type = (
-            AIModelType.IMAGE_TO_VIDEO if image_url else AIModelType.TEXT_TO_VIDEO
+            AIModelType.IMAGE_TO_VIDEO
+            if image_url or has_visual_reference(kwargs)
+            else AIModelType.TEXT_TO_VIDEO
         )
         return _failure_response(
             format_error(exc),
