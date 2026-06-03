@@ -24,6 +24,9 @@ from app.services.task_worker_storyboard_media import (  # noqa: F401
     storyboard_video_generate_task,
 )
 
+EPISODE_GENERATE_SOFT_TIME_LIMIT = 7200
+EPISODE_GENERATE_TIME_LIMIT = 7500
+
 
 @celery_app.task(name="tasks.story_generate")
 def story_generate_task(
@@ -64,7 +67,11 @@ def story_novel_generate_task(
     )
 
 
-@celery_app.task(name="tasks.episode_generate")
+@celery_app.task(
+    name="tasks.episode_generate",
+    soft_time_limit=EPISODE_GENERATE_SOFT_TIME_LIMIT,
+    time_limit=EPISODE_GENERATE_TIME_LIMIT,
+)
 def episode_generate_task(
     task_id: int, request_dict: Dict[str, Any], user_id: int
 ) -> None:

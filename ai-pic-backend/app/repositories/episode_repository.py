@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Iterable, Optional
 
 from app.models.script import Episode, Story
 from app.models.user import User
@@ -12,15 +12,27 @@ def find_episode_by_story_number(
     *,
     story_id: int,
     episode_number: int,
+    include_deleted: bool = False,
 ) -> Episode | None:
-    return (
-        db.query(Episode)
-        .filter(
-            Episode.story_id == story_id,
-            Episode.episode_number == episode_number,
-        )
-        .first()
+    query = db.query(Episode).filter(
+        Episode.story_id == story_id,
+        Episode.episode_number == episode_number,
     )
+    if not include_deleted:
+        query = query.filter(Episode.is_deleted.is_(False))
+    return query.first()
+
+
+def list_episodes_by_ids(
+    db: Session, episode_ids: Iterable[int], include_deleted: bool = False
+) -> list[Episode]:
+    ids = [int(value) for value in episode_ids if value]
+    if not ids:
+        return []
+    query = db.query(Episode).filter(Episode.id.in_(ids))
+    if not include_deleted:
+        query = query.filter(Episode.is_deleted.is_(False))
+    return query.all()
 
 
 def find_accessible_episode(

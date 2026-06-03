@@ -10,10 +10,10 @@ Provides modular episode endpoints split by concern:
 The combined router aggregates all sub-routers for mounting in the API.
 """
 
+from app.services.episode.async_generation_task import process_episode_generation_task
 from fastapi import APIRouter
 
 # Re-export the background task processor for Celery
-from .async_tasks import process_episode_generation_task
 from .async_tasks import router as async_router
 from .characters import router as characters_router
 from .crud import router as crud_router
@@ -41,7 +41,13 @@ router = APIRouter()
 
 # Include sub-routers - routes are defined with their full paths in each module
 # Using include_router with prefix="" merges routes directly
-for sub_router in [crud_router, generation_router, regenerate_router, async_router, characters_router]:
+for sub_router in [
+    crud_router,
+    generation_router,
+    regenerate_router,
+    async_router,
+    characters_router,
+]:
     for route in sub_router.routes:
         router.routes.append(route)
 
