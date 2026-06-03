@@ -12,6 +12,7 @@ import { useNormalizedScenes } from "@/hooks/useNormalizedScenes";
 import { useTaskPolling, type TaskPollPair } from "@/hooks/useTaskPolling";
 import { useEpisodeMetadata } from "@/hooks/useEpisodeMetadata";
 import { sortScriptsNewestFirst } from "@/hooks/episode/scriptSort";
+import { useSelectedScriptDetailHydration } from "@/hooks/episode/useSelectedScriptDetailHydration";
 import { SCRIPT_GENERATION_DEFAULTS } from "@/utils/scriptGenerationDefaults";
 
 export {
@@ -67,6 +68,7 @@ export function useEpisodeDetail({
     normalizedScenesError,
     refreshNormalizedScenes,
   } = useNormalizedScenes(selectedScript?.id ?? null);
+  useSelectedScriptDetailHydration(selectedScript, setScripts);
   const [sceneAudioTaskId, setSceneAudioTaskId] = useState<number | null>(null);
   const [timelineTaskId, setTimelineTaskId] = useState<number | null>(null);
   const [storyboardTaskId, setStoryboardTaskId] = useState<number | null>(null);
@@ -197,7 +199,6 @@ export function useEpisodeDetail({
     selectedStoryboard: metadata.selectedStoryboard,
     formats,
     languages,
-
     generating,
     setGenerating,
     showGenerateForm,
@@ -208,7 +209,6 @@ export function useEpisodeDetail({
     setPromptPreview,
     generateForm,
     setGenerateForm,
-
     overwriteSceneAudio,
     setOverwriteSceneAudio,
     overwriteTimeline,
@@ -221,14 +221,12 @@ export function useEpisodeDetail({
     setTimingModel,
     useDurationControl,
     setUseDurationControl,
-
     sceneAudioBusy,
     setSceneAudioBusy,
     timelineBusy,
     setTimelineBusy,
     storyboardBusy,
     setStoryboardBusy,
-
     sceneAudioTaskId,
     setSceneAudioTaskId,
     timelineTaskId,
@@ -238,7 +236,6 @@ export function useEpisodeDetail({
     sceneAudioTask,
     timelineTask,
     storyboardTask,
-
     loadData,
     setScripts,
     showAlert,
