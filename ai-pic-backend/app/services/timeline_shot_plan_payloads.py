@@ -4,44 +4,8 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
-
-
-class MotionTimelinePoint(BaseModel):
-    at_ms: int = Field(..., ge=0)
-    action: str = Field(..., min_length=1)
-
-
-class TimelineShot(BaseModel):
-    clip_id: str
-    duration_ms: int = Field(..., ge=1)
-    plot: str
-    dialogue_source: str
-    visual_prompt: str = Field(..., min_length=1)
-    video_prompt: str = Field(..., min_length=1)
-    character_anchor: str = Field(..., min_length=1)
-    camera: str = Field(..., min_length=1)
-    action: str = Field(..., min_length=1)
-    direction_anchor: str = Field(..., min_length=1)
-    aesthetic_reference: str = Field(..., min_length=1)
-    shot_type: str = Field(..., min_length=1)
-    camera_movement: str = Field(..., min_length=1)
-    composition_geometry: str = Field(..., min_length=1)
-    motion_timeline: list[MotionTimelinePoint] = Field(..., min_length=1, max_length=4)
-    emotional_landing: str = Field(..., min_length=1)
-    prompt_method: str = Field(..., min_length=1)
-
-    @model_validator(mode="after")
-    def validate_motion_timeline_bounds(self) -> "TimelineShot":
-        for point in self.motion_timeline:
-            if point.at_ms > self.duration_ms:
-                raise ValueError("motion_timeline at_ms must not exceed duration_ms")
-        return self
-
-
-class TimelineShotPlan(BaseModel):
-    shots: list[TimelineShot] = Field(..., min_length=1)
-
+from app.services.timeline_shot_plan_models import TimelineShotPlan
+from app.services.timeline_shot_plan_styles import style_prompt_instruction
 
 SHOT_PLAN_SCHEMA = TimelineShotPlan.model_json_schema()
 
@@ -59,7 +23,7 @@ def build_timeline_shot_plan_prompt(spec: dict[str, Any], *, style: str) -> str:
         '"camera_movement":str,"composition_geometry":str,'
         '"motion_timeline":[{"at_ms":int,"action":str}],'
         '"emotional_landing":str,"prompt_method":str}]}. '
-        f"Style must be {style}. {_style_prompt_instruction(style)} "
+        f"Style must be {style}. {style_prompt_instruction(style)} "
         "Use the five-layer prompting method for every shot: "
         "1) direction_anchor gives the AI a direction, not a locked template; "
         "2) aesthetic_reference uses objective references such as camera/lens, "
@@ -85,7 +49,9 @@ def build_timeline_shot_plan_prompt(spec: dict[str, Any], *, style: str) -> str:
 def validate_timeline_shot_plan_matches(
     plan: dict[str, Any], spec: dict[str, Any]
 ) -> dict[str, Any] | None:
-    video_by_id = {str(clip.get("clip_id")): clip for clip in clips_for_track(spec, "video")}
+    video_by_id = {
+        str(clip.get("clip_id")): clip for clip in clips_for_track(spec, "video")
+    }
     shot_by_id = {str(shot.get("clip_id")): shot for shot in plan.get("shots") or []}
     missing = sorted(set(video_by_id) - set(shot_by_id))
     extra = sorted(set(shot_by_id) - set(video_by_id))
@@ -118,7 +84,10 @@ def validate_timeline_shot_plan_matches(
                 "clip_id": clip_id,
             }
         beat_type = str(clip.get("beat_type") or "").lower()
-        if beat_type not in {"pause", "placeholder"} and len(shot.get("motion_timeline") or []) < 2:
+        if (
+            beat_type not in {"pause", "placeholder"}
+            and len(shot.get("motion_timeline") or []) < 2
+        ):
             return {
                 "message": "timeline shot plan motion timeline too short",
                 "clip_id": clip_id,
@@ -198,12 +167,16 @@ def _timeline_prompt_clips(spec: dict[str, Any]) -> list[dict[str, Any]]:
                 "end_ms": clip.get("end_ms"),
                 "duration_ms": clip.get("duration_ms"),
                 "plot": clip.get("text") or dialogue_clip.get("text") or "",
-                "dialogue": dialogue_clip.get("text") or subtitle_clip.get("text") or "",
+                "dialogue": dialogue_clip.get("text")
+                or subtitle_clip.get("text")
+                or "",
                 "speaker_name": dialogue_clip.get("speaker_name"),
                 "dialogue_action": dialogue_clip.get("dialogue_action"),
                 "dialogue_emotion": dialogue_clip.get("dialogue_emotion"),
                 "character_name": source_refs.get("character_name"),
-                "character_appearance_prompt": source_refs.get("character_appearance_prompt"),
+                "character_appearance_prompt": source_refs.get(
+                    "character_appearance_prompt"
+                ),
                 "character_anchor_hint": source_refs.get("character_anchor_hint"),
             }
         )
@@ -239,15 +212,3 @@ def _dialogue_text_for_video_clip(clip: dict[str, Any], spec: dict[str, Any]) ->
 
 def _strip_text(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
-
-
-def _style_prompt_instruction(style: str) -> str:
-    if style == "live_action":
-        return (
-            "真人电影 style: use believable human actors, practical production "
-            "design, cinematic lighting, real camera/lens language, and "
-            "non-cartoon treatment; do not force cartoon styling."
-        )
-    if style == "2d_cartoon":
-        return "Use non-real 2D cartoon characters and graphic animation styling."
-    return "Use non-real 3D cartoon characters and stylized animated lighting."

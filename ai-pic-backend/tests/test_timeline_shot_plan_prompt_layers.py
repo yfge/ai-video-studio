@@ -1,8 +1,8 @@
 from app.models.timeline import Timeline
 from tests.test_timeline_shot_plan_api import (
-    _FakeAIManager,
     _bootstrap_episode,
     _create_timeline,
+    _FakeAIManager,
     _valid_shots,
 )
 

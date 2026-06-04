@@ -75,8 +75,8 @@ export function WorkspaceStoryboardTabContent({
   const storyboardStatus = frames.length
     ? "已有占位"
     : hasStoryboard
-      ? "待补占位"
-      : "待生成占位";
+    ? "待补占位"
+    : "待生成占位";
 
   return (
     <div className="space-y-4">
@@ -108,10 +108,7 @@ export function WorkspaceStoryboardTabContent({
                 : summary.generationSource ?? "当前剧本 beat"
             }
           />
-          <ContextCell
-            label="分镜状态"
-            value={storyboardStatus}
-          />
+          <ContextCell label="分镜状态" value={storyboardStatus} />
           <ContextCell
             label="关键帧 / 视频"
             value={`${summary.imageCount} 关键帧 · ${summary.videoCount} 视频`}

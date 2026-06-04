@@ -118,7 +118,9 @@ export function emptyShotPlanPromptLayers(): ShotPlanPromptLayers {
   };
 }
 
-export function motionTimelineLabel(layers: ShotPlanPromptLayers | null): string {
+export function motionTimelineLabel(
+  layers: ShotPlanPromptLayers | null,
+): string {
   if (!layers || layers.motionTimeline.length === 0) return "";
   return layers.motionTimeline
     .map((point) => `${point.atMs}ms ${point.action}`)

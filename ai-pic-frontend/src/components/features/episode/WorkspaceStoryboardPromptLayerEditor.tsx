@@ -8,7 +8,6 @@ import type { StoryboardSupportFrame } from "./WorkspaceStoryboardSupportModel";
 import {
   buildShotPlanPromptLayerPatch,
   emptyShotPlanPromptLayers,
-  motionTimelineLabel,
   type ShotPlanMotionPoint,
   type ShotPlanPromptLayers,
 } from "./WorkspaceStoryboardPromptLayers";
@@ -31,27 +30,6 @@ const LAYER_TEXT_FIELDS: Array<{ key: LayerTextKey; label: string }> = [
   { key: "compositionGeometry", label: "几何构图" },
   { key: "emotionalLanding", label: "情绪落点" },
 ];
-
-export function PromptLayerSummary({
-  layers,
-}: {
-  layers: ShotPlanPromptLayers | null;
-}) {
-  if (!layers) return null;
-  const motion = motionTimelineLabel(layers);
-  return (
-    <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-[11px] text-gray-600">
-      <div className="font-semibold text-gray-900">五层提示词</div>
-      <div className="mt-2 grid gap-1 sm:grid-cols-2">
-        <PromptLayerValue label="方向" value={layers.directionAnchor} />
-        <PromptLayerValue label="参照" value={layers.aestheticReference} />
-        <PromptLayerValue label="构图" value={layers.compositionGeometry} />
-        <PromptLayerValue label="情绪" value={layers.emotionalLanding} />
-      </div>
-      {motion ? <div className="mt-2 text-gray-700">{motion}</div> : null}
-    </div>
-  );
-}
 
 export function PromptLayerEditor({
   frame,
@@ -89,10 +67,13 @@ export function PromptLayerEditor({
 
     setSaving(true);
     try {
-      const response = await timelineAPI.updateTimeline(selectedTimelineSpec.id, {
-        expected_version: selectedTimelineSpec.version,
-        spec: patchedSpec,
-      });
+      const response = await timelineAPI.updateTimeline(
+        selectedTimelineSpec.id,
+        {
+          expected_version: selectedTimelineSpec.version,
+          spec: patchedSpec,
+        },
+      );
       if (!response.success || !response.data) {
         showAlert?.({
           message: response.error || "五层提示词保存失败",
@@ -169,16 +150,6 @@ export function PromptLayerEditor({
   );
 }
 
-function PromptLayerValue({ label, value }: { label: string; value: string }) {
-  if (!value) return null;
-  return (
-    <div>
-      <span className="text-gray-500">{label}：</span>
-      <span className="text-gray-800">{value}</span>
-    </div>
-  );
-}
-
 function LayerTextArea({
   label,
   value,
@@ -207,13 +178,18 @@ function MotionTimelineEditor({
   points: ShotPlanMotionPoint[];
   onChange: (points: ShotPlanMotionPoint[]) => void;
 }) {
-  const rows = points.length ? points : emptyShotPlanPromptLayers().motionTimeline;
+  const rows = points.length
+    ? points
+    : emptyShotPlanPromptLayers().motionTimeline;
   return (
     <div className="grid gap-1 text-[11px] font-medium text-gray-700">
       秒级动作轴
       <div className="grid gap-2">
         {rows.map((point, index) => (
-          <div key={index} className="grid grid-cols-[84px_minmax(0,1fr)] gap-2">
+          <div
+            key={index}
+            className="grid grid-cols-[84px_minmax(0,1fr)] gap-2"
+          >
             <input
               type="number"
               value={point.atMs}

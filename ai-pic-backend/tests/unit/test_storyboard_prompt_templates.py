@@ -44,6 +44,8 @@ def test_storyboard_grid_sheet_template_allows_sheet_but_limits_text():
     assert "9-panel" in prompt
     assert "storyboard sheet" in prompt.lower()
     assert "panel numbers" in prompt
+    assert "shot labels" in prompt
+    assert "outside the cinematic panels" in prompt
     assert "No subtitles" in prompt
     assert "林晚站在雨夜门口" in prompt
 

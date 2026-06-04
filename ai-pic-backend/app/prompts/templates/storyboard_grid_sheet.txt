@@ -7,6 +7,7 @@ Requirements:
 - Arrange panels left-to-right, top-to-bottom with clean gutters and consistent character continuity.
 - Keep every panel cinematic, inspectable, and usable as a later image-to-video reference.
 - Small panel numbers are allowed only in the panel borders.
+- Board-level shot labels, timing ranges, and production notes may appear in the gutters, borders, or header/footer outside the cinematic panels.
 - No subtitles, speech bubbles, captions, readable UI text, watermarks, logos, or title cards inside panels.
 - Do not merge panels into one continuous scene. Each panel must remain a distinct shot reference.
 

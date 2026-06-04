@@ -11,7 +11,6 @@ from app.services.storyboard.grid_storyboard_prompt_layers import (
     shot_plan_prompt_layers,
 )
 
-
 SUPPORTED_PANEL_COUNTS = (2, 4, 6, 9)
 
 

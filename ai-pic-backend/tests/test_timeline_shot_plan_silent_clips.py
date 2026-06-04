@@ -1,10 +1,9 @@
 import pytest
-
 from app.models.timeline import Timeline
 from tests.test_timeline_shot_plan_api import (
-    _FakeAIManager,
     _bootstrap_episode,
     _create_timeline,
+    _FakeAIManager,
     _timeline_spec,
     _valid_shots,
 )
@@ -57,6 +56,9 @@ def test_timeline_shot_plan_api_allows_silent_pause_clip(
         ),
         "camera": "static wide shot",
         "action": "dust settles during a brief silent pause",
+        "motion_timeline": [
+            {"at_ms": 0, "action": "dust floats in the light"},
+        ],
     }
     fake_ai = _FakeAIManager([*_valid_shots(), silent_shot])
     monkeypatch.setattr(
@@ -165,3 +167,31 @@ def test_timeline_shot_plan_api_allows_action_clip_without_dialogue_source(
         "timeline_shot_plan"
     ]
     assert shot_plan["dialogue_source"] == ""
+
+
+def test_timeline_shot_plan_api_rejects_short_motion_timeline_for_sourced_clip(
+    client,
+    db_session,
+    monkeypatch,
+):
+    shot = {
+        **_valid_shots()[0],
+        "motion_timeline": [{"at_ms": 0, "action": "the robot starts speaking"}],
+    }
+    fake_ai = _FakeAIManager([shot])
+    monkeypatch.setattr(
+        "app.services.timeline_shot_plan_service.ai_service.ai_manager",
+        fake_ai,
+    )
+    episode, script = _bootstrap_episode(db_session)
+    timeline = _create_timeline(client, episode, script)
+
+    response = client.post(
+        f"/api/v1/timelines/{timeline['id']}/shot-plan",
+        json={"expected_version": timeline["version"]},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["message"] == (
+        "timeline shot plan motion timeline too short"
+    )

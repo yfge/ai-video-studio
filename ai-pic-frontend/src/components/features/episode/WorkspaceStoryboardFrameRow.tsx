@@ -1,13 +1,9 @@
 "use client";
 
 import type { TimelineResponse } from "@/utils/api/types";
-import {
-  PromptLayerEditor,
-  PromptLayerSummary,
-} from "./WorkspaceStoryboardPromptLayerEditor";
-import type {
-  StoryboardSupportFrame,
-} from "./WorkspaceStoryboardSupportModel";
+import { PromptLayerEditor } from "./WorkspaceStoryboardPromptLayerEditor";
+import { PromptLayerSummary } from "./WorkspaceStoryboardPromptLayerSummary";
+import type { StoryboardSupportFrame } from "./WorkspaceStoryboardSupportModel";
 
 type ShowAlert = (options: {
   message: string;

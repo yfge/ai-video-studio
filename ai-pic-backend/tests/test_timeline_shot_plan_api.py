@@ -280,9 +280,9 @@ def test_timeline_shot_plan_prompt_includes_character_anchor_hint():
     video_clip = spec["tracks"][1]["clips"][0]
     video_clip["source_refs"]["character_name"] = "小蓝"
     video_clip["source_refs"]["character_appearance_prompt"] = "圆润蓝色机器人"
-    video_clip["source_refs"]["character_anchor_hint"] = (
-        "blue cartoon robot, orange scarf, LED eyes"
-    )
+    video_clip["source_refs"][
+        "character_anchor_hint"
+    ] = "blue cartoon robot, orange scarf, LED eyes"
 
     prompt = build_timeline_shot_plan_prompt(spec, style="3d_cartoon")
 
