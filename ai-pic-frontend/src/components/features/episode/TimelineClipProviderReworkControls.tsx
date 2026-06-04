@@ -5,12 +5,16 @@ import type { FormEvent } from "react";
 import type { TimelineItem } from "@/components/features";
 import { operatorButtonClass, operatorSelectClass } from "@/components/shared";
 import { timelineAPI } from "@/utils/api/endpoints";
-import type { TimelineClipVideoReworkAction } from "@/utils/api/types";
+import type {
+  TimelineClipStoryboardStyle,
+  TimelineClipVideoReworkAction,
+} from "@/utils/api/types";
 import {
   buildTimelineClipVideoReworkTaskPayload,
   isTimelineVideoClip,
   parseOptionalNumber,
-  timelineClipGridPanelIndex,
+  timelineClipStoryboardPanelIndex,
+  timelineClipStoryboardSheetUrl,
 } from "./TimelineClipProviderReworkModel";
 
 type NotifyVariant = "success" | "error" | "warning" | "info";
@@ -51,17 +55,60 @@ export function TimelineClipProviderReworkControls({
   const [resolution, setResolution] = useState("720p");
   const [ratio, setRatio] = useState("");
   const [reason, setReason] = useState("");
-  const [useStoryboardGrid, setUseStoryboardGrid] = useState(false);
+  const [useClipStoryboard, setUseClipStoryboard] = useState(false);
+  const [storyboardStyle, setStoryboardStyle] =
+    useState<TimelineClipStoryboardStyle>("live_action");
+  const [storyboardPanelCount, setStoryboardPanelCount] = useState("4");
+  const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isTimelineVideoClip(item)) return null;
 
-  const gridPanelIndex = timelineClipGridPanelIndex(item);
+  const storyboardPanelIndex = timelineClipStoryboardPanelIndex(item);
+  const storyboardSheetUrl = timelineClipStoryboardSheetUrl(item);
   const parsedDuration = parseOptionalNumber(duration);
   const canSubmit = Boolean(
     timelineId && timelineVersion && clipId && !submitting,
   );
+  const canGenerateStoryboard = Boolean(
+    timelineId && timelineVersion && clipId && !generatingStoryboard,
+  );
+
+  const handleGenerateStoryboard = async () => {
+    if (!timelineId || !timelineVersion || !clipId) {
+      const message = "当前片段缺少稳定 Timeline 上下文";
+      setSubmitError(message);
+      onNotify?.(message, "warning");
+      return;
+    }
+    const panelCount = parseOptionalNumber(storyboardPanelCount) ?? 4;
+    setGeneratingStoryboard(true);
+    setSubmitError(null);
+    try {
+      const res = await timelineAPI.generateTimelineClipStoryboard(
+        timelineId,
+        clipId,
+        {
+          expected_version: timelineVersion,
+          panel_count: Math.min(9, Math.max(2, Math.round(panelCount))),
+          style: storyboardStyle,
+          generation_profile: "clip_storyboard",
+          size: "1536x1536",
+          aspect_ratio: "1:1",
+        },
+      );
+      if (!res.success || !res.data) {
+        const message = res.error || "提交故事板任务失败";
+        setSubmitError(message);
+        onNotify?.(message, "error");
+        return;
+      }
+      onNotify?.(`故事板任务已提交 #${res.data.task_id}`, "success");
+    } finally {
+      setGeneratingStoryboard(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -89,7 +136,7 @@ export function TimelineClipProviderReworkControls({
       resolution,
       ratio,
       reason,
-      useStoryboardGrid: Boolean(useStoryboardGrid && gridPanelIndex),
+      useClipStoryboard: Boolean(useClipStoryboard && storyboardPanelIndex),
     });
     try {
       const res = await timelineAPI.queueTimelineClipVideoRework(
@@ -118,6 +165,49 @@ export function TimelineClipProviderReworkControls({
       onSubmit={handleSubmit}
     >
       <div className="grid gap-2">
+        <div className="rounded-md border border-gray-200 bg-gray-50 p-2">
+          <div className="mb-2 text-xs font-semibold text-gray-900">故事板</div>
+          <div className="grid grid-cols-[1fr_1fr] gap-2">
+            <select
+              value={storyboardStyle}
+              onChange={(event) =>
+                setStoryboardStyle(event.target.value as TimelineClipStoryboardStyle)
+              }
+              className={operatorSelectClass("w-full")}
+            >
+              <option value="live_action">真人电影</option>
+              <option value="3d_cartoon">3D 卡通</option>
+              <option value="2d_cartoon">2D 卡通</option>
+            </select>
+            <input
+              type="number"
+              min={2}
+              max={9}
+              step={1}
+              value={storyboardPanelCount}
+              onChange={(event) => setStoryboardPanelCount(event.target.value)}
+              className={FIELD_CLASS}
+              aria-label="故事板 panel 数"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={!canGenerateStoryboard}
+            className={operatorButtonClass("secondary", "mt-2 w-full")}
+            onClick={handleGenerateStoryboard}
+          >
+            {generatingStoryboard ? "提交中..." : "生成故事板"}
+          </button>
+          {storyboardSheetUrl ? (
+            <div className="mt-2 overflow-hidden rounded-md border border-gray-200 bg-white">
+              <img
+                src={storyboardSheetUrl}
+                alt="故事板预览"
+                className="max-h-48 w-full object-contain"
+              />
+            </div>
+          ) : null}
+        </div>
         <select
           value={action}
           onChange={(event) =>
@@ -183,14 +273,14 @@ export function TimelineClipProviderReworkControls({
           placeholder="原因"
           className={FIELD_CLASS}
         />
-        {gridPanelIndex ? (
+        {storyboardPanelIndex ? (
           <label className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-700">
             <input
               type="checkbox"
-              checked={useStoryboardGrid}
-              onChange={(event) => setUseStoryboardGrid(event.target.checked)}
+              checked={useClipStoryboard}
+              onChange={(event) => setUseClipStoryboard(event.target.checked)}
             />
-            使用宫格故事板 Panel {gridPanelIndex}
+            使用故事板 Panel {storyboardPanelIndex}
           </label>
         ) : null}
         {submitError ? (

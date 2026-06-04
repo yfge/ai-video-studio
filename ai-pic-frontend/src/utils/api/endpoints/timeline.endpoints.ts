@@ -9,6 +9,8 @@ import type {
   TimelineClipAssetListResponse,
   TimelineClipAssetResponse,
   TimelineClipReworkRequest,
+  TimelineClipStoryboardGenerateRequest,
+  TimelineClipStoryboardGenerateResponse,
   TimelineClipVideoReworkTaskRequest,
   TimelineClipVideoReworkTaskResponse,
   TimelineListResponse,
@@ -16,8 +18,6 @@ import type {
   TimelineRenderJobListResponse,
   TimelineRenderJobResponse,
   TimelineResponse,
-  TimelineStoryboardGridGenerateRequest,
-  TimelineStoryboardGridGenerateResponse,
   TimelineUpdateRequest,
 } from "../types/timeline.types";
 
@@ -118,12 +118,15 @@ export async function queueTimelineClipVideoRework(
   );
 }
 
-export async function generateTimelineStoryboardGrid(
+export async function generateTimelineClipStoryboard(
   timelineId: number | string,
-  payload: TimelineStoryboardGridGenerateRequest,
-): Promise<ApiResponse<TimelineStoryboardGridGenerateResponse>> {
-  return httpClient<TimelineStoryboardGridGenerateResponse>(
-    `/api/v1/timelines/${timelineId}/storyboard-grid/generate`,
+  clipId: string,
+  payload: TimelineClipStoryboardGenerateRequest,
+): Promise<ApiResponse<TimelineClipStoryboardGenerateResponse>> {
+  return httpClient<TimelineClipStoryboardGenerateResponse>(
+    `/api/v1/timelines/${timelineId}/clips/${encodeURIComponent(
+      clipId,
+    )}/storyboard/generate`,
     {
       method: "POST",
       body: JSON.stringify(payload),
@@ -140,5 +143,5 @@ export const timelineAPI = {
   listTimelineClipAssets,
   reworkTimelineClip,
   queueTimelineClipVideoRework,
-  generateTimelineStoryboardGrid,
+  generateTimelineClipStoryboard,
 };

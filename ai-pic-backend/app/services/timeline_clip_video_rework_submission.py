@@ -182,6 +182,7 @@ class TimelineClipVideoReworkSubmissionService:
             "render_type": payload.get("render_type"),
             "render_preset": payload.get("render_preset"),
             "reference_mode": payload.get("reference_mode"),
+            "clip_storyboard": payload.get("clip_storyboard"),
             "storyboard_grid": payload.get("storyboard_grid"),
         }
 

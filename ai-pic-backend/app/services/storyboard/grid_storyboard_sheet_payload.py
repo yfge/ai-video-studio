@@ -37,11 +37,30 @@ def grid_payload_matches_current_timeline(timeline, payload: dict[str, Any]) -> 
     payload_panels = payload.get("panels")
     if not isinstance(payload_panels, list) or not payload_panels:
         return False
+    if payload.get("kind") == "timeline_clip_storyboard":
+        return clip_payload_matches_current_timeline(timeline, payload)
     panel_count = maybe_int(payload.get("panel_count")) or len(payload_panels)
     current_panels = build_grid_storyboard_panels(
         timeline.spec if isinstance(timeline.spec, dict) else {},
         panel_count,
     )
+    return panel_snapshot_matches_current(payload_panels, current_panels)
+
+
+def clip_payload_matches_current_timeline(timeline, payload: dict[str, Any]) -> bool:
+    clip_id = string_value(payload.get("clip_id"))
+    payload_panels = payload.get("panels")
+    if not clip_id or not isinstance(payload_panels, list) or not payload_panels:
+        return False
+    current_clip = _clip_by_id(timeline.spec if isinstance(timeline.spec, dict) else {}, clip_id)
+    if current_clip is None:
+        return False
+    from app.services.storyboard.grid_storyboard_prompt_bridge import (
+        build_clip_storyboard_panels,
+    )
+
+    panel_count = maybe_int(payload.get("panel_count")) or len(payload_panels)
+    current_panels = build_clip_storyboard_panels(current_clip, panel_count)
     return panel_snapshot_matches_current(payload_panels, current_panels)
 
 
@@ -70,10 +89,11 @@ def sheet_metadata(
     task_id: int,
 ) -> dict[str, Any]:
     return {
-        "kind": "timeline_storyboard_grid",
+        "kind": payload.get("kind") or "timeline_storyboard_grid",
         "task_id": task_id,
         "timeline_id": payload.get("timeline_id"),
         "timeline_version": payload.get("timeline_version"),
+        "clip_id": payload.get("clip_id"),
         "provider": result.get("provider"),
         "model": result.get("model") or payload.get("model"),
         "image_gen": result.get("image_gen"),
@@ -81,6 +101,17 @@ def sheet_metadata(
         "columns": payload.get("columns"),
         "rows": payload.get("rows"),
     }
+
+
+def _clip_by_id(spec: dict[str, Any], clip_id: str) -> dict[str, Any] | None:
+    for track in spec.get("tracks") or []:
+        if not isinstance(track, dict):
+            continue
+        track_type = track.get("track_type") or track.get("type")
+        for clip in track.get("clips") or []:
+            if isinstance(clip, dict) and (clip.get("clip_id") or clip.get("id")) == clip_id:
+                return {**clip, "track_type": clip.get("track_type") or track_type}
+    return None
 
 
 def utc_now() -> str:

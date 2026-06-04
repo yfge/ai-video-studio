@@ -139,6 +139,9 @@ def _reference_metadata(context: dict[str, Any]) -> dict[str, Any]:
     reference_mode = _string_value(context.get("reference_mode"))
     if reference_mode:
         metadata["reference_mode"] = reference_mode
+    clip_storyboard = context.get("clip_storyboard")
+    if isinstance(clip_storyboard, dict):
+        metadata["clip_storyboard"] = clip_storyboard
     storyboard_grid = context.get("storyboard_grid")
     if isinstance(storyboard_grid, dict):
         metadata["storyboard_grid"] = storyboard_grid

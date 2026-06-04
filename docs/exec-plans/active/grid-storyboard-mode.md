@@ -1,10 +1,52 @@
-# Grid Storyboard Mode Implementation Plan
+# Clip Storyboard Mode Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an optional grid-storyboard mode that generates a multi-panel storyboard sheet from Timeline video clips and uses that sheet as a reference source for clip video generation, while preserving Timeline Spec v1 as the source of truth.
+## 2026-06-04 Scope Correction
 
-**Architecture:** Keep `Timeline` as the playable-output SSOT. The grid storyboard is a support-view artifact generated from Timeline video clips and their `timeline_shot_plan` prompt bundle. Store the sheet as a generated `media_assets` image, link each panel back to stable `clip_id`, and let provider-backed video generation use the sheet as a reference image with panel-specific prompts.
+The previous grid-storyboard plan was too broad. Storyboard is not an
+episode-wide or whole-Timeline generation operation. Storyboard now means a
+support operation inside one selected native Timeline `video` clip.
+
+**Current goal:** Add a clip-scoped storyboard mode that generates a multi-panel
+storyboard sheet for one selected Timeline `video` clip and lets provider-backed
+video rework use that sheet as a reference source for the same clip, while
+preserving Timeline Spec v1 as the source of truth.
+
+**Current architecture:** Keep `Timeline` as the playable-output SSOT. The clip
+storyboard is a support-view artifact generated from one selected video clip and
+its `timeline_shot_plan`, prompt layers, `motion_timeline`, and fallback prompt.
+Store the sheet as a generated `media_assets` image, link every panel back to
+the selected stable `clip_id`, and let provider-backed video generation use the
+sheet as a reference image with panel-specific prompts.
+
+**Deprecated behavior:** Do not add or call new whole-Timeline storyboard
+generation flows. `POST /api/v1/timelines/{timeline_id}/storyboard-grid/generate`
+is legacy and should return a deprecation/gone error for new requests. Existing
+`support_views.storyboard_grid`, `storyboard_grid_sheet`, and
+`reference_mode="storyboard_grid_panel"` data remain readable only for legacy
+rows.
+
+**New endpoint:** `POST
+/api/v1/timelines/{timeline_id}/clips/{clip_id}/storyboard/generate`
+
+**New data contract:**
+
+- Request includes `expected_version`, `panel_count`, `style`, `model`,
+  `size`/`aspect_ratio`, and optional `reference_images`.
+- Generated task payload kind is `timeline_clip_storyboard`.
+- Persist generated sheet as `media_assets.asset_role="clip_storyboard_sheet"`.
+- Write preview metadata to
+  `timeline.spec.support_views.clip_storyboards[clip_id]`.
+- Write only the selected clip:
+  `clip.source_refs.clip_storyboard` and
+  `clip.clip_storyboard_sheet_asset_ref`.
+- New video rework reference mode is `clip_storyboard_panel`; payloads may set
+  `use_clip_storyboard: true`.
+
+The remaining older sections in this document describe the historical grid plan
+and should be read only as implementation background where they do not conflict
+with this correction.
 
 **Tech Stack:** FastAPI, SQLAlchemy repositories, Celery tasks, shared image generation normalization, provider-backed video task dispatch, Next.js episode workspace, pytest, Vitest/React tests, browser harness.
 
@@ -31,9 +73,12 @@ External references checked on 2026-06-01:
 
 Design conclusion:
 
-- Implement this as a new optional support mode, not as the primary story source.
-- Generate one grid sheet from Timeline clips, but keep per-panel metadata and per-clip prompts in JSON.
-- Use the grid sheet as provider reference input only when the selected provider/model supports references or storyboard-style inputs.
+- Implement this as a new optional support mode inside the selected video clip,
+  not as the primary story source.
+- Generate one sheet for the selected video clip, with multiple panels
+  representing key poses/action beats inside that clip.
+- Use the clip storyboard sheet as provider reference input only when the
+  selected provider/model supports references or storyboard-style inputs.
 - Keep the existing per-clip start/end keyframe path as the fallback and quality baseline.
 
 ## Current Repo Facts
@@ -57,29 +102,34 @@ Design conclusion:
 
 - Do not replace Timeline ordering, duration, render, export, or clip identity with storyboard frame order.
 - Do not make a storyboard sheet the only video source. It is an optional reference mode.
+- Do not generate one storyboard sheet for a whole episode, whole story, or all
+  Timeline clips.
 - Do not revive the deleted standalone `/episodes/{id}/storyboard` route.
 - Do not remove current start/end keyframe generation or per-clip video rework.
-- Do not use one grid sheet blindly for all providers; gate it through model capability and fallback behavior.
+- Do not use one clip storyboard sheet blindly for all providers; gate it
+  through model capability and fallback behavior.
 
 ## Data Contract
 
-Add this support-view shape under `timeline.spec.support_views.storyboard_grid`:
+Add this support-view shape under
+`timeline.spec.support_views.clip_storyboards[clip_id]`:
 
 ```json
 {
-  "mode": "grid_storyboard.v1",
+  "mode": "clip_storyboard.v1",
   "sheet": {
     "media_asset_id": 501,
-    "file_url": "https://resource.example/storyboard-grid.png",
-    "asset_role": "storyboard_grid_sheet",
-    "panel_count": 9,
+    "file_url": "https://resource.example/clip-storyboard.png",
+    "asset_role": "clip_storyboard_sheet",
+    "clip_id": "video_scene_1_beat_1_001",
+    "panel_count": 4,
     "columns": 3,
-    "rows": 3,
+    "rows": 2,
     "prompt_sha256": "..."
   },
   "panels": [
     {
-      "panel_id": "grid_panel_001",
+      "panel_id": "clip_storyboard_panel_001",
       "panel_index": 1,
       "row": 1,
       "column": 1,
@@ -102,12 +152,17 @@ Also add a clip-local reference for quick lookup:
 ```json
 {
   "source_refs": {
-    "grid_storyboard_panel": {
-      "panel_id": "grid_panel_001",
+    "clip_storyboard": {
+      "panel_id": "clip_storyboard_panel_001",
       "panel_index": 1,
       "sheet_media_asset_id": 501,
       "source_timeline_version": 2
     }
+  },
+  "clip_storyboard_sheet_asset_ref": {
+    "media_asset_id": 501,
+    "file_url": "https://resource.example/clip-storyboard.png",
+    "asset_role": "clip_storyboard_sheet"
   }
 }
 ```
@@ -115,26 +170,27 @@ Also add a clip-local reference for quick lookup:
 ## File Structure
 
 - Create `ai-pic-backend/app/services/storyboard/grid_storyboard_prompt_bridge.py`
-  - Builds panel prompts from Timeline clips and `timeline_shot_plan`.
-  - Produces a sheet prompt for image generation.
+  - Builds panel prompts from the selected Timeline video clip and `timeline_shot_plan`.
+  - Produces a clip storyboard sheet prompt for image generation.
   - Produces a panel-specific video prompt for provider video generation.
 - Create `ai-pic-backend/app/services/storyboard/grid_storyboard_sheet_service.py`
-  - Loads an accessible Timeline, validates version, generates the grid sheet image, persists it as `media_assets`, writes `support_views.storyboard_grid`, and records revisions.
+  - Loads an accessible Timeline, validates version, validates the selected video `clip_id`, generates the clip storyboard sheet image, persists it as `media_assets`, writes `support_views.clip_storyboards[clip_id]`, and records revisions.
 - Create `ai-pic-backend/app/services/task_worker_grid_storyboard.py`
-  - Celery task entrypoint for grid sheet generation.
+  - Celery task entrypoint for storyboard sheet generation.
 - Modify `ai-pic-backend/app/services/task_worker.py`
   - Export/import the new task registration module.
 - Modify `ai-pic-backend/app/schemas/timeline.py`
-  - Add request/response schemas for grid sheet generation and grid-referenced clip video rework.
+  - Add request/response schemas for clip storyboard generation and clip-storyboard-referenced video rework.
 - Modify `ai-pic-backend/app/api/v1/endpoints/timelines.py`
-  - Add `POST /api/v1/timelines/{timeline_id}/storyboard-grid/generate`.
-  - Extend provider-backed clip video rework to accept grid storyboard reference fields.
+  - Add `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/storyboard/generate`.
+  - Return a deprecation/gone error from `POST /api/v1/timelines/{timeline_id}/storyboard-grid/generate`.
+  - Extend provider-backed clip video rework to accept clip storyboard reference fields.
 - Modify `ai-pic-backend/app/services/timeline_clip_asset_candidates.py`
-  - Recognize `storyboard_grid_sheet_asset_ref` as a non-render asset role.
+  - Recognize `clip_storyboard_sheet_asset_ref` as a non-render asset role.
 - Modify `ai-pic-backend/app/services/timeline_clip_video_rework_queue_service.py`
-  - Add grid reference payload construction.
+  - Add clip storyboard reference payload construction.
 - Modify `ai-pic-backend/app/services/video/video_task_timeline_rework_updater.py`
-  - Preserve grid storyboard reference metadata on success lineage.
+  - Preserve clip storyboard reference metadata on success lineage.
 - Modify `ai-pic-backend/app/prompts/templates.py`
   - Register `STORYBOARD_GRID_SHEET` and `STORYBOARD_GRID_VIDEO`.
 - Create `ai-pic-backend/app/prompts/templates/storyboard_grid_sheet.txt`
@@ -146,17 +202,17 @@ Also add a clip-local reference for quick lookup:
 - Create `ai-pic-backend/app/prompts/templates/storyboard_grid_video.yaml`
   - Prompt metadata.
 - Modify `ai-pic-frontend/src/utils/api/types/timeline.types.ts`
-  - Add grid storyboard API types.
+  - Add clip storyboard API types.
 - Modify `ai-pic-frontend/src/utils/api/endpoints/timeline.endpoints.ts`
-  - Add `generateTimelineStoryboardGrid`.
+  - Add `generateTimelineClipStoryboard`.
 - Modify `ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardSupportModel.ts`
-  - Parse grid sheet and panel metadata.
+  - Keep legacy grid sheet and panel metadata read-only.
 - Modify `ai-pic-frontend/src/components/features/episode/WorkspaceStoryboardTabContent.tsx`
-  - Add mode switch, grid sheet card, generate button, and per-panel video action.
+  - Remove the Timeline-level grid generation entry.
 - Modify `ai-pic-frontend/src/components/features/episode/TimelineClipProviderReworkControls.tsx`
-  - Add "use grid storyboard panel" option for selected clip rework when a sheet exists.
+  - Add clip storyboard generation and "use clip storyboard panel" option for selected clip rework.
 - Modify `ai-pic-frontend/src/components/features/episode/TimelineClipAssetAuditPanel.tsx`
-  - Label `storyboard_grid_sheet`.
+  - Label `clip_storyboard_sheet` and keep `storyboard_grid_sheet` legacy-readable.
 - Modify `scripts/harness/provider_chain_timeline.py`
   - Add optional grid storyboard generation step for provider-chain evidence.
 - Modify `scripts/harness/provider_chain_media.py`
@@ -556,19 +612,23 @@ Add:
 
 ```python
 @router.post(
-    "/timelines/{timeline_id}/storyboard-grid/generate",
-    response_model=TimelineStoryboardGridGenerateResponse,
-    summary="Queue grid storyboard sheet generation from Timeline clips",
+    "/timelines/{timeline_id}/clips/{clip_id}/storyboard/generate",
+    response_model=TimelineClipStoryboardGenerateResponse,
+    summary="Queue storyboard sheet generation for one Timeline video clip",
 )
-def queue_timeline_storyboard_grid(
+def queue_timeline_clip_storyboard(
     timeline_id: int,
-    payload: TimelineStoryboardGridGenerateRequest,
+    clip_id: str,
+    payload: TimelineClipStoryboardGenerateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> TimelineStoryboardGridGenerateResponse:
-    service = TimelineStoryboardGridService(db)
-    return service.queue_grid_sheet(timeline_id, payload, current_user)
+) -> TimelineClipStoryboardGenerateResponse:
+    service = GridStoryboardSheetService(db)
+    return service.queue_clip_sheet(timeline_id, clip_id, payload, current_user)
 ```
+
+Also keep `POST /timelines/{timeline_id}/storyboard-grid/generate` as a legacy
+route that returns a clear deprecation/gone error.
 
 - [ ] **Step 4: Implement service**
 
@@ -833,12 +893,15 @@ export type TimelineStoryboardGridGenerateResponse = {
 Add endpoint:
 
 ```ts
-export async function generateTimelineStoryboardGrid(
+export async function generateTimelineClipStoryboard(
   timelineId: number | string,
-  payload: TimelineStoryboardGridGenerateRequest,
-): Promise<ApiResponse<TimelineStoryboardGridGenerateResponse>> {
-  return httpClient<TimelineStoryboardGridGenerateResponse>(
-    `/api/v1/timelines/${timelineId}/storyboard-grid/generate`,
+  clipId: string,
+  payload: TimelineClipStoryboardGenerateRequest,
+): Promise<ApiResponse<TimelineClipStoryboardGenerateResponse>> {
+  return httpClient<TimelineClipStoryboardGenerateResponse>(
+    `/api/v1/timelines/${timelineId}/clips/${encodeURIComponent(
+      clipId,
+    )}/storyboard/generate`,
     {
       method: "POST",
       body: JSON.stringify(payload),
@@ -849,21 +912,22 @@ export async function generateTimelineStoryboardGrid(
 
 - [ ] **Step 3: Add UI controls**
 
-In the storyboard workspace:
+In the Timeline clip inspector:
 
-- Add a segmented control: `逐镜头` / `宫格故事板`.
-- Show current grid sheet preview if present.
-- Add `生成宫格图` button when a selected Timeline exists.
-- Show panel list with `clip_id`, timecode, and prompt preview.
-- Disable generate if no Timeline or no video clips.
+- Show clip storyboard controls only for the selected `video` clip.
+- Add `生成故事板` button for the selected clip.
+- Show/use existing clip storyboard panel metadata if present.
+- Disable generate if no Timeline, no selected `clip_id`, or selected clip is not video.
 - After task creation, show `task_id` and link to `/tasks`.
+- In the Storyboard tab, keep placeholder/legacy support data read-only and do
+  not show a whole-Timeline generation button.
 
 - [ ] **Step 4: Add clip video rework option**
 
 In `TimelineClipProviderReworkControls.tsx`:
 
-- If selected clip has `source_refs.grid_storyboard_panel`, show checkbox `使用宫格故事板 Panel N`.
-- When enabled, send `use_storyboard_grid: true` and `reference_mode: "storyboard_grid_panel"`.
+- If selected clip has `source_refs.clip_storyboard`, show checkbox `使用故事板 Panel N`.
+- When enabled, send `use_clip_storyboard: true` and `reference_mode: "clip_storyboard_panel"`.
 
 - [ ] **Step 5: Run frontend tests**
 

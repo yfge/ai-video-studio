@@ -5,6 +5,8 @@ from app.schemas.timeline import (
     RenderJobCreate,
     RenderJobListResponse,
     RenderJobResponse,
+    TimelineClipStoryboardGenerateRequest,
+    TimelineClipStoryboardGenerateResponse,
     TimelineClipAssetListResponse,
     TimelineClipAssetResponse,
     TimelineClipReworkRequest,
@@ -32,7 +34,7 @@ from app.services.timeline_clip_video_rework_queue_service import (
 from app.services.timeline_lifecycle_service import TimelineLifecycleService
 from app.services.timeline_service import TimelineService
 from app.services.timeline_shot_plan_service import TimelineShotPlanService
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -122,8 +124,29 @@ def queue_timeline_storyboard_grid(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> TimelineStoryboardGridGenerateResponse:
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail=(
+            "Timeline-level storyboard grid generation is deprecated; use "
+            "/api/v1/timelines/{timeline_id}/clips/{clip_id}/storyboard/generate"
+        ),
+    )
+
+
+@router.post(
+    "/timelines/{timeline_id}/clips/{clip_id}/storyboard/generate",
+    response_model=TimelineClipStoryboardGenerateResponse,
+    summary="Queue storyboard sheet generation for one Timeline video clip",
+)
+def queue_timeline_clip_storyboard(
+    timeline_id: int,
+    clip_id: str,
+    payload: TimelineClipStoryboardGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TimelineClipStoryboardGenerateResponse:
     service = GridStoryboardSheetService(db)
-    return service.queue_grid_sheet(timeline_id, payload, current_user)
+    return service.queue_clip_sheet(timeline_id, clip_id, payload, current_user)
 
 
 @router.post(

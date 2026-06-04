@@ -137,7 +137,7 @@ def _create_timeline(client, episode: Episode, script: Script, spec: dict) -> di
     return response.json()
 
 
-def test_timeline_storyboard_grid_rejects_stale_expected_version(client, db_session):
+def test_timeline_storyboard_grid_endpoint_is_deprecated(client, db_session):
     _, episode, script = _bootstrap_episode(db_session)
     timeline = _create_timeline(
         client,
@@ -148,6 +148,25 @@ def test_timeline_storyboard_grid_rejects_stale_expected_version(client, db_sess
 
     response = client.post(
         f"/api/v1/timelines/{timeline['id']}/storyboard-grid/generate",
+        json={"expected_version": timeline["version"], "panel_count": 4},
+    )
+
+    assert response.status_code == 410
+    assert "clips/{clip_id}/storyboard/generate" in response.json()["detail"]
+
+
+def test_timeline_clip_storyboard_rejects_stale_expected_version(client, db_session):
+    _, episode, script = _bootstrap_episode(db_session)
+    timeline = _create_timeline(
+        client,
+        episode,
+        script,
+        _append_video_clips(_timeline_spec(episode, script)),
+    )
+
+    response = client.post(
+        "/api/v1/timelines/"
+        f"{timeline['id']}/clips/video_scene_001_beat_001_001/storyboard/generate",
         json={"expected_version": timeline["version"] + 1, "panel_count": 4},
     )
 
@@ -155,23 +174,42 @@ def test_timeline_storyboard_grid_rejects_stale_expected_version(client, db_sess
     assert response.json()["detail"] == "timeline version conflict"
 
 
-def test_timeline_storyboard_grid_rejects_timeline_without_video_clips(
-    client, db_session
-):
+def test_timeline_clip_storyboard_rejects_missing_clip(client, db_session):
+    _, episode, script = _bootstrap_episode(db_session)
+    timeline = _create_timeline(
+        client,
+        episode,
+        script,
+        _append_video_clips(_timeline_spec(episode, script)),
+    )
+
+    response = client.post(
+        f"/api/v1/timelines/{timeline['id']}/clips/missing_clip/storyboard/generate",
+        json={"expected_version": timeline["version"], "panel_count": 4},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "timeline clip not found"
+
+
+def test_timeline_clip_storyboard_rejects_non_video_clip(client, db_session):
     _, episode, script = _bootstrap_episode(db_session)
     timeline = _create_timeline(client, episode, script, _timeline_spec(episode, script))
 
     response = client.post(
-        f"/api/v1/timelines/{timeline['id']}/storyboard-grid/generate",
+        "/api/v1/timelines/"
+        f"{timeline['id']}/clips/dialogue_scene_001_beat_001_001/storyboard/generate",
         json={"expected_version": timeline["version"], "panel_count": 4},
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "timeline video clips missing"
+    assert response.json()["detail"] == "clip storyboard requires a video clip"
 
 
-def test_timeline_storyboard_grid_creates_generation_task(
-    client, db_session, monkeypatch
+def test_timeline_clip_storyboard_creates_generation_task_for_selected_clip_only(
+    client,
+    db_session,
+    monkeypatch,
 ):
     dispatched = {}
 
@@ -194,13 +232,14 @@ def test_timeline_storyboard_grid_creates_generation_task(
     )
 
     response = client.post(
-        f"/api/v1/timelines/{timeline['id']}/storyboard-grid/generate",
+        "/api/v1/timelines/"
+        f"{timeline['id']}/clips/video_scene_001_beat_002_001/storyboard/generate",
         json={
             "expected_version": timeline["version"],
             "panel_count": 4,
             "style": "3d_cartoon",
             "model": "openai:gpt-image-2",
-            "generation_profile": "storyboard_grid",
+            "generation_profile": "clip_storyboard",
         },
     )
 
@@ -210,14 +249,17 @@ def test_timeline_storyboard_grid_creates_generation_task(
     assert task is not None
     assert task.task_type == TaskType.STORYBOARD_IMAGE_GENERATION
     params = json.loads(task.parameters)
-    assert params["kind"] == "timeline_storyboard_grid"
+    assert params["kind"] == "timeline_clip_storyboard"
     assert params["timeline_id"] == timeline["id"]
     assert params["timeline_version"] == timeline["version"]
+    assert params["clip_id"] == "video_scene_001_beat_002_001"
+    assert params["generation_profile"] == "clip_storyboard"
     assert params["panel_count"] == 4
     assert params["style"] == "3d_cartoon"
     assert "storyboard sheet" in params["sheet_prompt"].lower()
-    assert len(params["panels"]) == 2
+    assert len(params["panels"]) == 4
+    assert {panel["clip_id"] for panel in params["panels"]} == {
+        "video_scene_001_beat_002_001"
+    }
     assert dispatched["task_id"] == task_id
-    assert dispatched["payload"]["panels"][0]["clip_id"] == (
-        "video_scene_001_beat_001_001"
-    )
+    assert dispatched["payload"]["clip_id"] == "video_scene_001_beat_002_001"

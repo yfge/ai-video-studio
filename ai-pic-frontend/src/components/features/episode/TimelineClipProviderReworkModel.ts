@@ -20,7 +20,7 @@ export function buildTimelineClipVideoReworkTaskPayload({
   resolution,
   ratio,
   reason,
-  useStoryboardGrid,
+  useClipStoryboard,
 }: {
   expectedVersion: number;
   action: TimelineClipVideoReworkAction;
@@ -30,7 +30,7 @@ export function buildTimelineClipVideoReworkTaskPayload({
   resolution?: string | null;
   ratio?: string | null;
   reason?: string | null;
-  useStoryboardGrid?: boolean;
+  useClipStoryboard?: boolean;
 }): TimelineClipVideoReworkTaskRequest {
   const payload: TimelineClipVideoReworkTaskRequest = {
     expected_version: expectedVersion,
@@ -51,12 +51,39 @@ export function buildTimelineClipVideoReworkTaskPayload({
   if (cleanedRatio) payload.ratio = cleanedRatio;
   const cleanedReason = reason?.trim();
   if (cleanedReason) payload.reason = cleanedReason;
-  if (useStoryboardGrid) {
-    payload.reference_mode = "storyboard_grid_panel";
-    payload.use_storyboard_grid = true;
+  if (useClipStoryboard) {
+    payload.reference_mode = "clip_storyboard_panel";
+    payload.use_clip_storyboard = true;
     payload.use_end_frame = false;
   }
   return payload;
+}
+
+export function timelineClipStoryboardPanelIndex(item: TimelineItem | null) {
+  const meta = timelineItemMeta(item);
+  const sourceRefs = asRecord(meta.source_refs);
+  const storyboard = asRecord(sourceRefs?.clip_storyboard);
+  const raw =
+    storyboard?.panel_index ??
+    asRecord(meta.clip_storyboard_sheet_asset_ref)?.panel_index;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && raw.trim()) {
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+export function timelineClipStoryboardSheetUrl(item: TimelineItem | null) {
+  const meta = timelineItemMeta(item);
+  const sheetRef = asRecord(meta.clip_storyboard_sheet_asset_ref);
+  return (
+    getString(sheetRef?.file_url) ??
+    getString(sheetRef?.url) ??
+    getString(sheetRef?.image_url) ??
+    getString(sheetRef?.file_path) ??
+    null
+  );
 }
 
 export function timelineClipGridPanelIndex(item: TimelineItem | null) {

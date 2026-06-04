@@ -395,25 +395,29 @@ surface:
 Storyboard remains a support view for placeholders, keyframes, and scene/shot
 context. It must not become the primary route for render/export decisions.
 
-### Grid Storyboard Support Mode
+### Clip Storyboard Support Mode
 
-Grid storyboard mode is an optional support-view artifact under
-`timeline.spec.support_views.storyboard_grid`. After Timeline has video clips
+Storyboard is a selected-video-clip operation. After Timeline has video clips
 and shot-plan prompt bundles, visual generation has two supported forms:
 
 - start/end frame mode: generate per-clip first/last images, then generate each
   video clip from those keyframes;
-- grid storyboard mode: generate one storyboard sheet image from Timeline clips,
-  then use that sheet as the visual reference for video generation.
+- clip storyboard mode: generate a storyboard sheet for one selected Timeline
+  `video` clip, then use panels from that sheet as visual reference for reworking
+  that same clip.
 
-In grid storyboard mode, the sheet itself is the storyboard artifact. It may be
-laid out as panels, rows, shot blocks, or a production-board style sheet, but it
-must still map each usable visual unit back to stable Timeline `clip_id` values.
-The sheet is persisted as a `media_assets` image with the
-`storyboard_grid_sheet` role. Video clip rework may use the sheet as a provider
-reference through `reference_mode="storyboard_grid_panel"` and a panel-specific
-prompt, while Timeline still owns clip order, duration, asset selection, render,
-and export.
+Clip storyboard sheets are support assets. They do not create, reorder, resize,
+or replace Timeline clips, and they do not own render/export state. Store preview
+metadata under `timeline.spec.support_views.clip_storyboards[clip_id]`, keep the
+quick lookup on the selected clip as `clip.source_refs.clip_storyboard`, and
+persist the sheet as a `media_assets` image with the `clip_storyboard_sheet`
+role. Video clip rework may use the sheet as a provider reference through
+`reference_mode="clip_storyboard_panel"` and a panel-specific prompt.
+
+Legacy `support_views.storyboard_grid`, `storyboard_grid_sheet`, and
+`reference_mode="storyboard_grid_panel"` data may remain readable for existing
+rows. New UI and API flows must not generate an episode-wide or Timeline-wide
+storyboard sheet.
 
 ## Validation Contract
 

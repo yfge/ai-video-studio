@@ -18,6 +18,7 @@ from app.schemas.timeline import (
     TimelineClipVideoReworkTaskResponse,
 )
 from app.services.timeline_clip_video_grid_reference import (
+    build_clip_storyboard_rework_payload,
     build_grid_storyboard_rework_payload,
 )
 from app.services.timeline_clip_video_rework_dispatch import (
@@ -88,9 +89,23 @@ class TimelineClipVideoReworkQueueService:
         clip: dict[str, Any],
         payload: TimelineClipVideoReworkTaskRequest,
     ) -> dict[str, Any]:
+        clip_storyboard_payload = None
         grid_payload = None
         reference_mode = payload.reference_mode or "start_end"
-        if payload.use_storyboard_grid or reference_mode == "storyboard_grid_panel":
+        if payload.use_clip_storyboard or reference_mode == "clip_storyboard_panel":
+            reference_mode = "clip_storyboard_panel"
+            clip_storyboard_payload = build_clip_storyboard_rework_payload(
+                timeline,
+                clip_id,
+                clip,
+                payload,
+                asset_ref_url=self._asset_ref_url,
+                fallback_prompt=self._prompt,
+            )
+            prompt = clip_storyboard_payload["prompt"]
+            start_url = None
+            end_url = None
+        elif payload.use_storyboard_grid or reference_mode == "storyboard_grid_panel":
             reference_mode = "storyboard_grid_panel"
             grid_payload = build_grid_storyboard_rework_payload(
                 timeline,
@@ -134,7 +149,15 @@ class TimelineClipVideoReworkQueueService:
             "render_type": "final",
             "render_preset": render_preset(timeline),
         }
-        if grid_payload:
+        if clip_storyboard_payload:
+            task_payload.update(
+                {
+                    "reference_mode": reference_mode,
+                    "reference_images": clip_storyboard_payload["reference_images"],
+                    "clip_storyboard": clip_storyboard_payload["clip_storyboard"],
+                }
+            )
+        elif grid_payload:
             task_payload.update(
                 {
                     "reference_mode": reference_mode,

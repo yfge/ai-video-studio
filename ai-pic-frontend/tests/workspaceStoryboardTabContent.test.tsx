@@ -44,10 +44,42 @@ const timelineWithVideo = {
   },
 } satisfies TimelineResponse;
 
+const timelineWithAudio = {
+  ...timelineWithVideo,
+  spec: {
+    ...timelineWithVideo.spec,
+    duration_ms: 1200,
+    source: {
+      episode_audio: {
+        oss_url: "https://example.com/episode-audio.mp3",
+        duration_seconds: 1.2,
+        generated_at: "2026-06-04T08:00:00Z",
+        version: 2,
+      },
+    },
+    tracks: [
+      {
+        track_type: "dialogue",
+        clips: [
+          {
+            clip_id: "dialogue_scene_1_beat_1_001",
+            track_type: "dialogue",
+            start_ms: 0,
+            end_ms: 1200,
+            duration_ms: 1200,
+            text: "native dialogue",
+          },
+        ],
+      },
+      ...timelineWithVideo.spec.tracks,
+    ],
+  },
+} satisfies TimelineResponse;
+
 describe("WorkspaceStoryboardTabContent", () => {
   afterEach(() => cleanup());
 
-  it("shows the storyboard generation entry on the default storyboard tab", () => {
+  it("does not expose whole-Timeline storyboard generation on the default storyboard tab", () => {
     const utils = render(
       <WorkspaceStoryboardTabContent
         episodeKey="episode_7"
@@ -60,10 +92,29 @@ describe("WorkspaceStoryboardTabContent", () => {
       { container: dom.window.document.body },
     );
 
-    assert.ok(utils.getByRole("button", { name: "生成宫格分镜" }));
-    const styleSelect = utils.getByLabelText("分镜风格") as HTMLSelectElement;
-    assert.equal(styleSelect.value, "live_action");
-    assert.ok(utils.getByRole("option", { name: "真人电影" }));
+    assert.equal(utils.queryByRole("button", { name: "生成宫格分镜" }), null);
+    assert.equal(utils.queryByText("宫格故事板"), null);
+    assert.ok(utils.getByRole("button", { name: "同步分镜占位" }));
+  });
+
+  it("surfaces native Timeline context and audio playback on the storyboard tab", () => {
+    const utils = render(
+      <WorkspaceStoryboardTabContent
+        episodeKey="episode_7"
+        selectedScriptId={131}
+        hasStoryboard={false}
+        selectedTimelineSpec={timelineWithAudio}
+        selectedStoryboard={null}
+        normalizedScenes={[]}
+      />,
+      { container: dom.window.document.body },
+    );
+
+    assert.equal(utils.getAllByText("Timeline 8 · v3").length, 2);
+    assert.ok(utils.getByText("2 轨 · 2 clips"));
+    assert.ok(utils.getByText("时长 1.2s"));
+    const audio = utils.container.querySelector("audio");
+    assert.equal(audio?.getAttribute("src"), "https://example.com/episode-audio.mp3");
   });
 
   it("renders editable prompt-layer context for storyboard frames", () => {

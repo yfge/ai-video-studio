@@ -70,6 +70,61 @@ def test_grid_storyboard_processor_persists_sheet_and_support_view(db_session):
     ]
 
 
+def test_clip_storyboard_processor_persists_sheet_for_selected_clip_only(db_session):
+    user, episode, script = bootstrap_episode(db_session)
+    timeline = create_timeline(
+        db_session,
+        episode,
+        script,
+        append_video_clips(timeline_spec(episode, script)),
+        user,
+    )
+    task = create_grid_task(db_session, timeline, user)
+    selected_clip_id = "video_scene_001_beat_002_001"
+
+    processor = GridStoryboardSheetProcessor(
+        db_session,
+        image_generator=fake_image_generator,
+        image_persister=fake_image_persister,
+    )
+    anyio.run(
+        processor.process_grid_sheet_task,
+        task.id,
+        _clip_storyboard_payload(timeline, selected_clip_id),
+        user.id,
+    )
+
+    db_session.refresh(timeline)
+    db_session.refresh(task)
+    assert task.status == TaskStatus.COMPLETED
+    assert timeline.version == 2
+    clip_storyboards = timeline.spec["support_views"]["clip_storyboards"]
+    assert set(clip_storyboards) == {selected_clip_id}
+    storyboard = clip_storyboards[selected_clip_id]
+    assert storyboard["mode"] == "clip_storyboard.v1"
+    assert storyboard["sheet"]["asset_role"] == "clip_storyboard_sheet"
+    assert storyboard["sheet"]["clip_id"] == selected_clip_id
+    assert storyboard["sheet"]["file_url"] == "https://cdn.example/grid.png"
+    assert {panel["clip_id"] for panel in storyboard["panels"]} == {selected_clip_id}
+
+    video_clips = timeline.spec["tracks"][0]["clips"]
+    first_clip, second_clip = video_clips
+    assert "clip_storyboard" not in first_clip["source_refs"]
+    assert "clip_storyboard_sheet_asset_ref" not in first_clip
+    assert second_clip["source_refs"]["clip_storyboard"]["panel_count"] == 4
+    assert second_clip["clip_storyboard_sheet_asset_ref"]["file_url"] == (
+        "https://cdn.example/grid.png"
+    )
+
+    links = (
+        db_session.query(TimelineClipAsset)
+        .filter_by(asset_role="clip_storyboard_sheet")
+        .order_by(TimelineClipAsset.clip_id)
+        .all()
+    )
+    assert [link.clip_id for link in links] == [selected_clip_id]
+
+
 def test_grid_storyboard_processor_rebases_when_current_panels_still_match(
     db_session,
 ):
@@ -134,3 +189,38 @@ def test_grid_storyboard_processor_rejects_rebase_when_panel_snapshot_changed(
     db_session.refresh(task)
     assert task.status == TaskStatus.FAILED
     assert "support_views" not in timeline.spec
+
+
+def _clip_storyboard_payload(timeline, clip_id: str) -> dict:
+    return {
+        "kind": "timeline_clip_storyboard",
+        "timeline_id": timeline.id,
+        "timeline_version": timeline.version,
+        "expected_version": timeline.version,
+        "clip_id": clip_id,
+        "panel_count": 4,
+        "columns": 2,
+        "rows": 2,
+        "style": "3d_cartoon",
+        "model": "fake-image",
+        "generation_profile": "clip_storyboard",
+        "size": "1536x1536",
+        "aspect_ratio": "1:1",
+        "panels": [
+            {
+                "panel_id": f"clip_storyboard_panel_{index:03d}",
+                "panel_index": index,
+                "row": 1 if index <= 2 else 2,
+                "column": 1 if index in (1, 3) else 2,
+                "clip_id": clip_id,
+                "start_ms": 1200,
+                "end_ms": 2400,
+                "duration_ms": 1200,
+                "visual_prompt": f"Selected clip key moment {index}",
+                "video_prompt": f"Selected clip motion {index}",
+                "storyboard_panel_prompt": f"Panel {index} for selected clip",
+            }
+            for index in range(1, 5)
+        ],
+        "sheet_prompt": "sheet prompt",
+    }

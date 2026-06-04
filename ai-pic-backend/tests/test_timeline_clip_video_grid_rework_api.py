@@ -14,6 +14,62 @@ from app.services.video.video_task_timeline_rework_updater import (
 from sqlalchemy.orm import Session
 
 
+def test_timeline_clip_video_rework_uses_clip_storyboard_panel_reference(
+    client, db_session, monkeypatch
+):
+    dispatched = {}
+
+    def fake_dispatch(task, payload, current_user):
+        dispatched["task_id"] = task.id
+        dispatched["payload"] = payload
+        dispatched["user_id"] = current_user.id
+
+    monkeypatch.setattr(
+        "app.services.timeline_clip_video_rework_queue_service."
+        "dispatch_timeline_clip_video_rework_task",
+        fake_dispatch,
+    )
+    _, episode, script = _bootstrap_episode(db_session)
+    sheet_asset = _media_asset(
+        db_session,
+        asset_type="image",
+        origin="generated",
+        file_url="https://example.com/clip-storyboard.png",
+        mime_type="image/png",
+    )
+    clip_id = "video_scene_001_beat_001_001"
+    timeline = _create_timeline(
+        client,
+        episode,
+        script,
+        _timeline_spec_with_clip_storyboard(episode, script, clip_id, sheet_asset),
+    )
+
+    response = client.post(
+        f"/api/v1/timelines/{timeline['id']}/clips/{clip_id}/rework/video",
+        json={
+            "expected_version": timeline["version"],
+            "action": "re_cut",
+            "reference_mode": "clip_storyboard_panel",
+            "use_clip_storyboard": True,
+            "model": "volcengine:doubao-seedance-2-0-260128",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    params = json.loads(db_session.get(Task, response.json()["task_id"]).parameters)
+    assert params["reference_mode"] == "clip_storyboard_panel"
+    assert params["reference_images"] == ["https://example.com/clip-storyboard.png"]
+    assert params["clip_storyboard"]["panel_index"] == 2
+    assert params["clip_storyboard"]["sheet_media_asset_id"] == sheet_asset.id
+    assert params.get("image_url") is None
+    assert "Use panel 2 only" in params["prompt"]
+    assert "clip storyboard sheet" in params["prompt"]
+    assert dispatched["payload"]["reference_images"] == [
+        "https://example.com/clip-storyboard.png"
+    ]
+
+
 def test_timeline_clip_video_rework_uses_storyboard_grid_panel_reference(
     client, db_session, monkeypatch
 ):
@@ -135,6 +191,71 @@ def test_video_task_success_preserves_grid_storyboard_reference_metadata(
     )
 
 
+def test_video_task_success_preserves_clip_storyboard_reference_metadata(
+    client, db_session
+):
+    user, episode, script = _bootstrap_episode(db_session)
+    clip_id = "video_scene_001_beat_001_001"
+    timeline = _create_timeline(
+        client,
+        episode,
+        script,
+        _timeline_spec_with_video_clip(episode, script, clip_id),
+    )
+    params = {
+        "timeline_rework": {
+            "timeline_id": timeline["id"],
+            "timeline_version": timeline["version"],
+            "clip_id": clip_id,
+            "action": "re_cut",
+            "asset_role": "generated_video",
+            "reference_mode": "clip_storyboard_panel",
+            "clip_storyboard": {
+                "panel_id": "clip_storyboard_panel_002",
+                "panel_index": 2,
+                "sheet_media_asset_id": 502,
+            },
+        }
+    }
+    video_task = VideoGenerationTask(
+        task_id=None,
+        script_id=None,
+        frame_index=None,
+        user_id=user.id,
+        provider="mock-provider",
+        provider_task_id="provider-task-clip-storyboard",
+        model="mock-video",
+        model_type="image_to_video",
+        prompt="Use panel 2 only",
+        parameters=json.dumps(params),
+        status=VideoGenerationTaskStatus.SUCCEEDED,
+    )
+    db_session.add(video_task)
+    db_session.commit()
+    db_session.refresh(video_task)
+
+    apply_timeline_rework_result(
+        db_session,
+        video_task,
+        {"video_url": "https://example.com/generated-clip-storyboard.mp4"},
+        params,
+    )
+
+    lineage = client.get(
+        f"/api/v1/timelines/{timeline['id']}/clip-assets",
+        params={"clip_id": clip_id},
+    ).json()["items"]
+    replacement = [item for item in lineage if item["source"] == "provider_rework"][0]
+    assert replacement["source_ref"]["reference_mode"] == "clip_storyboard_panel"
+    assert replacement["source_ref"]["clip_storyboard"]["panel_index"] == 2
+    assert replacement["media_asset"]["metadata"]["reference_mode"] == (
+        "clip_storyboard_panel"
+    )
+    assert replacement["media_asset"]["metadata"]["clip_storyboard"]["panel_id"] == (
+        "clip_storyboard_panel_002"
+    )
+
+
 def _bootstrap_episode(db: Session) -> tuple[User, Episode, Script]:
     user = db.query(User).filter(User.username == "test_admin").one()
     story = Story(title="Video Grid Rework Story", genre="short_drama", user_id=user.id)
@@ -214,6 +335,49 @@ def _timeline_spec_with_grid_panel(
                     "video_prompt": "镜头保持静止，只捕捉他的犹豫表情",
                 }
             ],
+        }
+    }
+    return spec
+
+
+def _timeline_spec_with_clip_storyboard(
+    episode: Episode,
+    script: Script,
+    clip_id: str,
+    sheet_asset: MediaAsset,
+) -> dict:
+    spec = _timeline_spec_with_video_clip(episode, script, clip_id)
+    clip = spec["tracks"][-1]["clips"][0]
+    clip["source_refs"]["clip_storyboard"] = {
+        "mode": "clip_storyboard.v1",
+        "panel_count": 4,
+        "sheet_media_asset_id": sheet_asset.id,
+        "source_timeline_version": 2,
+    }
+    clip["clip_storyboard_sheet_asset_ref"] = {
+        "kind": "clip_storyboard_sheet",
+        "media_asset_id": sheet_asset.id,
+        "file_url": sheet_asset.file_url,
+        "panel_id": "clip_storyboard_panel_002",
+        "panel_index": 2,
+    }
+    spec["support_views"] = {
+        "clip_storyboards": {
+            clip_id: {
+                "mode": "clip_storyboard.v1",
+                "sheet": {
+                    "media_asset_id": sheet_asset.id,
+                    "file_url": sheet_asset.file_url,
+                },
+                "panels": [
+                    {
+                        "panel_id": "clip_storyboard_panel_002",
+                        "panel_index": 2,
+                        "clip_id": clip_id,
+                        "video_prompt": "镜头保持静止，只捕捉他的犹豫表情",
+                    }
+                ],
+            }
         }
     }
     return spec

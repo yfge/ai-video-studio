@@ -54,6 +54,56 @@ def apply_grid_storyboard_sheet_to_spec(
     return updated
 
 
+def apply_clip_storyboard_sheet_to_spec(
+    spec: dict[str, Any],
+    *,
+    clip_id: str,
+    panels: list[dict[str, Any]],
+    sheet_media_asset: MediaAsset,
+    panel_count: int,
+    columns: int,
+    rows: int,
+    prompt_sha256: str,
+    source_timeline_version: int,
+    generated_at: str,
+) -> dict[str, Any]:
+    updated = copy.deepcopy(spec)
+    sheet_file_url = sheet_media_asset.file_url or sheet_media_asset.file_path
+    normalized_panels = [
+        _panel_with_sheet_ref(panel, sheet_media_asset.id, source_timeline_version)
+        for panel in panels
+        if isinstance(panel, dict)
+    ]
+    support_views = updated.setdefault("support_views", {})
+    clip_storyboards = support_views.setdefault("clip_storyboards", {})
+    clip_storyboards[clip_id] = {
+        "mode": "clip_storyboard.v1",
+        "sheet": {
+            "media_asset_id": sheet_media_asset.id,
+            "file_url": sheet_file_url,
+            "file_path": sheet_media_asset.file_path,
+            "asset_role": "clip_storyboard_sheet",
+            "clip_id": clip_id,
+            "panel_count": panel_count,
+            "columns": columns,
+            "rows": rows,
+            "prompt_sha256": prompt_sha256,
+        },
+        "panels": normalized_panels,
+        "generated_at": generated_at,
+        "source": "timeline_spec_clip",
+        "source_timeline_version": source_timeline_version,
+    }
+    _attach_clip_storyboard_ref_to_clip(
+        updated,
+        clip_id=clip_id,
+        panels=normalized_panels,
+        sheet_media_asset=sheet_media_asset,
+        source_timeline_version=source_timeline_version,
+    )
+    return updated
+
+
 def _attach_grid_refs_to_clips(
     spec: dict[str, Any],
     panels: list[dict[str, Any]],
@@ -92,6 +142,47 @@ def _attach_grid_refs_to_clips(
                 "file_path": sheet_media_asset.file_path,
                 "panel_id": panel.get("panel_id"),
                 "panel_index": panel.get("panel_index"),
+            }
+
+
+def _attach_clip_storyboard_ref_to_clip(
+    spec: dict[str, Any],
+    *,
+    clip_id: str,
+    panels: list[dict[str, Any]],
+    sheet_media_asset: MediaAsset,
+    source_timeline_version: int,
+) -> None:
+    sheet_file_url = sheet_media_asset.file_url or sheet_media_asset.file_path
+    first_panel = panels[0] if panels else {}
+    for track in spec.get("tracks") or []:
+        if not isinstance(track, dict):
+            continue
+        track_type = track.get("track_type") or track.get("type")
+        if track_type != "video":
+            continue
+        for clip in track.get("clips") or []:
+            if not isinstance(clip, dict):
+                continue
+            if (clip.get("clip_id") or clip.get("id")) != clip_id:
+                continue
+            refs = clip.setdefault("source_refs", {})
+            refs["clip_storyboard"] = {
+                "mode": "clip_storyboard.v1",
+                "panel_count": len(panels),
+                "sheet_media_asset_id": sheet_media_asset.id,
+                "source_timeline_version": source_timeline_version,
+                "panel_id": first_panel.get("panel_id"),
+                "panel_index": first_panel.get("panel_index"),
+            }
+            clip["clip_storyboard_sheet_asset_ref"] = {
+                "kind": "clip_storyboard_sheet",
+                "role": "clip_storyboard_sheet",
+                "media_asset_id": sheet_media_asset.id,
+                "file_url": sheet_file_url,
+                "file_path": sheet_media_asset.file_path,
+                "panel_id": first_panel.get("panel_id"),
+                "panel_index": first_panel.get("panel_index"),
             }
 
 

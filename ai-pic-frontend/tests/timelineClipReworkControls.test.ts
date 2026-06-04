@@ -4,7 +4,8 @@ import { describe, it } from "node:test";
 import {
   buildTimelineClipVideoReworkTaskPayload,
   isTimelineVideoClip,
-  timelineClipGridPanelIndex,
+  timelineClipStoryboardPanelIndex,
+  timelineClipStoryboardSheetUrl,
 } from "../src/components/features/episode/TimelineClipProviderReworkModel";
 import { buildTimelineClipReworkPayload } from "../src/components/features/episode/TimelineClipReworkControls";
 
@@ -56,14 +57,14 @@ describe("timeline clip rework controls", () => {
     );
   });
 
-  it("builds provider video rework payloads with grid storyboard references", () => {
+  it("builds provider video rework payloads with clip storyboard references", () => {
     assert.deepEqual(
       buildTimelineClipVideoReworkTaskPayload({
         expectedVersion: 5,
         action: "re_cut",
         model: "volcengine:doubao-seedance-2-0-260128",
         resolution: "720p",
-        useStoryboardGrid: true,
+        useClipStoryboard: true,
       }),
       {
         expected_version: 5,
@@ -73,8 +74,8 @@ describe("timeline clip rework controls", () => {
         asset_role: "generated_video",
         use_end_frame: false,
         return_last_frame: true,
-        reference_mode: "storyboard_grid_panel",
-        use_storyboard_grid: true,
+        reference_mode: "clip_storyboard_panel",
+        use_clip_storyboard: true,
       },
     );
   });
@@ -106,25 +107,30 @@ describe("timeline clip rework controls", () => {
     );
   });
 
-  it("reads grid storyboard panel indexes from selected timeline clips", () => {
-    assert.equal(
-      timelineClipGridPanelIndex({
-        id: "video-1",
-        startMs: 0,
-        endMs: 1000,
-        label: "clip",
-        type: "video",
-        color: "#0f766e",
-        meta: {
-          track_type: "video",
-          source_refs: {
-            grid_storyboard_panel: {
-              panel_index: 4,
-            },
+  it("reads clip storyboard panel indexes from selected timeline clips", () => {
+    const item = {
+      id: "video-1",
+      startMs: 0,
+      endMs: 1000,
+      label: "clip",
+      type: "video" as const,
+      color: "#0f766e",
+      meta: {
+        track_type: "video",
+        source_refs: {
+          clip_storyboard: {
+            panel_index: 4,
           },
         },
-      }),
-      4,
+        clip_storyboard_sheet_asset_ref: {
+          file_url: "https://cdn.example/clip-storyboard.png",
+        },
+      },
+    };
+    assert.equal(timelineClipStoryboardPanelIndex(item), 4);
+    assert.equal(
+      timelineClipStoryboardSheetUrl(item),
+      "https://cdn.example/clip-storyboard.png",
     );
   });
 });

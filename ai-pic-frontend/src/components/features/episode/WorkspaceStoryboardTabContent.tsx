@@ -9,15 +9,13 @@ import {
 import type { NormalizedScene, TimelineResponse } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import {
+  buildStoryboardTimelineOverview,
   buildStoryboardSupportFrames,
   buildStoryboardSupportSummary,
+  type StoryboardTimelineOverview,
 } from "./WorkspaceStoryboardSupportModel";
 import { WorkspaceStoryboardActions } from "./WorkspaceStoryboardActions";
 import { StoryboardSupportFrameRow } from "./WorkspaceStoryboardFrameRow";
-import {
-  countTimelineVideoClips,
-  WorkspaceStoryboardGridContent,
-} from "./WorkspaceStoryboardGridContent";
 
 type ShowAlert = (options: {
   message: string;
@@ -47,8 +45,6 @@ export function WorkspaceStoryboardTabContent({
   normalizedScenes,
   showAlert,
 }: WorkspaceStoryboardTabContentProps) {
-  const [mode, setMode] = useState<"frames" | "grid">("frames");
-  const [gridTaskId, setGridTaskId] = useState<number | null>(null);
   const [localTimelineSpec, setLocalTimelineSpec] =
     useState<TimelineResponse | null>(selectedTimelineSpec ?? null);
   useEffect(() => {
@@ -62,10 +58,13 @@ export function WorkspaceStoryboardTabContent({
     tab: "timeline",
     scriptId: selectedScriptId,
   });
-  const videoClipCount = countTimelineVideoClips(localTimelineSpec);
   const summary = buildStoryboardSupportSummary(
     selectedStoryboard,
     localTimelineSpec,
+  );
+  const timelineOverview = buildStoryboardTimelineOverview(
+    localTimelineSpec,
+    selectedAudioTimeline,
   );
   const frames = buildStoryboardSupportFrames(
     selectedStoryboard,
@@ -88,12 +87,8 @@ export function WorkspaceStoryboardTabContent({
             <WorkspaceStoryboardActions
               selectedScriptId={selectedScriptId}
               selectedAudioTimeline={selectedAudioTimeline}
-              selectedTimelineSpec={localTimelineSpec}
-              videoClipCount={videoClipCount}
               timelineHref={timelineHref}
               showAlert={showAlert}
-              onShowGrid={() => setMode("grid")}
-              onGridTaskSubmitted={setGridTaskId}
             />
           }
         />
@@ -114,79 +109,38 @@ export function WorkspaceStoryboardTabContent({
             value={`${summary.imageCount} 关键帧 · ${summary.videoCount} 视频`}
           />
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex rounded-md border border-gray-200 bg-white p-1 text-xs">
-            <ModeButton
-              active={mode === "frames"}
-              label="逐镜头"
-              onClick={() => setMode("frames")}
-            />
-            <ModeButton
-              active={mode === "grid"}
-              label="宫格故事板"
-              onClick={() => setMode("grid")}
-            />
-          </div>
-        </div>
+        {timelineOverview ? (
+          <StoryboardTimelineOverviewPanel overview={timelineOverview} />
+        ) : null}
       </OperatorPanel>
 
-      {mode === "frames" ? (
-        <OperatorPanel>
-          <OperatorSectionHeader
-            title="占位帧"
-            subtitle={`${summary.frameCount} 个时间轴对齐镜头`}
-          />
-          {frames.length ? (
-            <div className="divide-y divide-gray-100">
-              {frames.map((frame) => (
-                <StoryboardSupportFrameRow
-                  key={frame.id}
-                  frame={frame}
-                  selectedTimelineSpec={localTimelineSpec}
-                  showAlert={showAlert}
-                  onTimelineUpdated={handleTimelineUpdated}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="p-4">
-              <OperatorState
-                title="暂无分镜占位"
-                detail="当前剧本还没有可查看的时间轴占位帧。"
-              />
-            </div>
-          )}
-        </OperatorPanel>
-      ) : (
-        <WorkspaceStoryboardGridContent
-          selectedTimelineSpec={localTimelineSpec}
-          gridTaskId={gridTaskId}
+      <OperatorPanel>
+        <OperatorSectionHeader
+          title="占位帧"
+          subtitle={`${summary.frameCount} 个时间轴对齐镜头`}
         />
-      )}
+        {frames.length ? (
+          <div className="divide-y divide-gray-100">
+            {frames.map((frame) => (
+              <StoryboardSupportFrameRow
+                key={frame.id}
+                frame={frame}
+                selectedTimelineSpec={localTimelineSpec}
+                showAlert={showAlert}
+                onTimelineUpdated={handleTimelineUpdated}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="p-4">
+            <OperatorState
+              title="暂无分镜占位"
+              detail="当前剧本还没有可查看的时间轴占位帧。"
+            />
+          </div>
+        )}
+      </OperatorPanel>
     </div>
-  );
-}
-
-function ModeButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "rounded px-3 py-1.5 font-medium",
-        active ? "bg-gray-900 text-white" : "text-gray-600 hover:text-gray-950",
-      ].join(" ")}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -195,6 +149,47 @@ function ContextCell({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
       <div className="text-gray-500">{label}</div>
       <div className="mt-1 font-medium text-gray-800">{value}</div>
+    </div>
+  );
+}
+
+function StoryboardTimelineOverviewPanel({
+  overview,
+}: {
+  overview: StoryboardTimelineOverview;
+}) {
+  return (
+    <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-xs text-gray-500">当前时间轴</div>
+          <div className="mt-1 text-sm font-semibold text-gray-900">
+            {overview.timelineLabel}
+          </div>
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+            <span>状态 {overview.status ?? "未知"}</span>
+            <span>时长 {overview.durationLabel}</span>
+            <span>{overview.trackSummary}</span>
+            <span>对白 {overview.dialogueClipCount}</span>
+            <span>视频 {overview.videoClipCount}</span>
+            {overview.audioVersion ? <span>音频 v{overview.audioVersion}</span> : null}
+          </div>
+        </div>
+        {overview.audioUrl ? (
+          <div className="min-w-0 flex-1 basis-72">
+            <div className="mb-1 text-xs text-gray-500">音轨</div>
+            <audio
+              aria-label="播放时间轴音轨"
+              className="w-full"
+              controls
+              preload="none"
+              src={overview.audioUrl}
+            />
+          </div>
+        ) : (
+          <div className="text-xs text-amber-700">暂无可播放音轨 URL</div>
+        )}
+      </div>
     </div>
   );
 }

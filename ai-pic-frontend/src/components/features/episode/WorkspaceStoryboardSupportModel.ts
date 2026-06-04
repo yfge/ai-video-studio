@@ -37,6 +37,20 @@ export type StoryboardSupportSummary = {
   gridGeneratedAt: string | null;
 };
 
+export type StoryboardTimelineOverview = {
+  timelineLabel: string;
+  status: string | null;
+  durationLabel: string;
+  trackSummary: string;
+  trackCount: number;
+  clipCount: number;
+  dialogueClipCount: number;
+  videoClipCount: number;
+  audioUrl: string | null;
+  audioVersion: string | null;
+  audioGeneratedAt: string | null;
+};
+
 export type StoryboardGridPanel = {
   panelId: string | null;
   panelIndex: number | null;
@@ -63,6 +77,7 @@ export function buildStoryboardSupportSummary(
   const frames = storyboardFrames(storyboard);
   const meta = asRecord(storyboard?.meta);
   const grid = buildStoryboardGridSupport(selectedTimelineSpec);
+  const timeline = selectedTimelineSpec ?? null;
   return {
     frameCount: frames.length,
     imageCount: frames.filter((frame) => Boolean(mediaUrl(frame, IMAGE_KEYS)))
@@ -70,11 +85,49 @@ export function buildStoryboardSupportSummary(
     videoCount: frames.filter((frame) => Boolean(mediaUrl(frame, VIDEO_KEYS)))
       .length,
     generationSource: getString(meta?.generation_source) ?? null,
-    timelineId: stringify(meta?.timeline_id),
-    timelineVersion: stringify(meta?.timeline_version),
+    timelineId: stringify(meta?.timeline_id) ?? stringify(timeline?.id),
+    timelineVersion:
+      stringify(meta?.timeline_version) ?? stringify(timeline?.version),
     gridSheetUrl: grid.sheetUrl,
     gridPanelCount: grid.panelCount,
     gridGeneratedAt: grid.generatedAt,
+  };
+}
+
+export function buildStoryboardTimelineOverview(
+  selectedTimelineSpec?: TimelineResponse | null,
+  selectedAudioTimeline?: Record<string, unknown> | null,
+): StoryboardTimelineOverview | null {
+  if (!selectedTimelineSpec) return null;
+  const spec = selectedTimelineSpec.spec;
+  const tracks = Array.isArray(spec?.tracks) ? spec.tracks : [];
+  const clipCount = tracks.reduce(
+    (total, track) => total + (Array.isArray(track.clips) ? track.clips.length : 0),
+    0,
+  );
+  const dialogueClipCount = countTrackClips(tracks, "dialogue");
+  const videoClipCount = countTrackClips(tracks, "video");
+  const durationMs =
+    numberValue(spec?.duration_ms) ??
+    audioDurationMs(spec?.source) ??
+    audioDurationMs(selectedAudioTimeline) ??
+    maxTrackEndMs(tracks);
+  const audio = resolveTimelineAudioSource(spec?.source, selectedAudioTimeline);
+
+  return {
+    timelineLabel: `Timeline ${selectedTimelineSpec.id} · v${selectedTimelineSpec.version}`,
+    status: getString(selectedTimelineSpec.status) ?? null,
+    durationLabel: durationMs != null ? formatDurationMs(durationMs) : "未定时",
+    trackSummary: `${tracks.length} 轨 · ${clipCount} clips`,
+    trackCount: tracks.length,
+    clipCount,
+    dialogueClipCount,
+    videoClipCount,
+    audioUrl: audio.url,
+    audioVersion:
+      stringify(selectedTimelineSpec.source_audio_timeline_version) ??
+      stringify(audio.record?.version),
+    audioGeneratedAt: getString(audio.record?.generated_at) ?? null,
   };
 }
 
@@ -205,6 +258,66 @@ function mediaUrl(
   return null;
 }
 
+function countTrackClips(
+  tracks: TimelineResponse["spec"]["tracks"],
+  trackType: string,
+): number {
+  return tracks
+    .filter((track) => track.track_type === trackType)
+    .reduce(
+      (total, track) => total + (Array.isArray(track.clips) ? track.clips.length : 0),
+      0,
+    );
+}
+
+function maxTrackEndMs(tracks: TimelineResponse["spec"]["tracks"]): number | null {
+  const values = tracks.flatMap((track) =>
+    Array.isArray(track.clips)
+      ? track.clips
+          .map((clip) => numberValue(clip.end_ms))
+          .filter((value): value is number => value != null)
+      : [],
+  );
+  return values.length ? Math.max(...values) : null;
+}
+
+function audioDurationMs(source: unknown): number | null {
+  const episodeAudio = timelineEpisodeAudio(source);
+  const durationSeconds = numberValue(episodeAudio?.duration_seconds);
+  if (durationSeconds != null) return Math.round(durationSeconds * 1000);
+  return numberValue(episodeAudio?.duration_ms);
+}
+
+function resolveTimelineAudioSource(
+  timelineSource: unknown,
+  selectedAudioTimeline?: Record<string, unknown> | null,
+): { url: string | null; record: Record<string, unknown> | null } {
+  const candidates = [
+    timelineEpisodeAudio(timelineSource),
+    timelineEpisodeAudio(selectedAudioTimeline),
+    asRecord(selectedAudioTimeline),
+  ];
+  for (const record of candidates) {
+    const url = audioUrl(record);
+    if (url) return { url, record };
+  }
+  return { url: null, record: candidates.find(Boolean) ?? null };
+}
+
+function timelineEpisodeAudio(source: unknown): Record<string, unknown> | null {
+  const record = asRecord(source);
+  return asRecord(record?.episode_audio);
+}
+
+function audioUrl(record: Record<string, unknown> | null): string | null {
+  if (!record) return null;
+  for (const key of ["oss_url", "audio_url", "file_url", "url", "file_path"]) {
+    const value = getString(record[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
 function timeLabel(
   startMs: number | null,
   endMs: number | null,
@@ -215,6 +328,14 @@ function timeLabel(
   }
   const duration = numberValue(durationSeconds);
   return duration ? `${duration.toFixed(1)}s` : "未定时";
+}
+
+function formatDurationMs(value: number): string {
+  if (value < 60_000) return `${(value / 1000).toFixed(1)}s`;
+  const totalSeconds = Math.round(value / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function formatMs(value: number): string {

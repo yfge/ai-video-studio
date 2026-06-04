@@ -18,6 +18,7 @@ from app.services.storyboard.grid_storyboard_sheet_payload import (
     utc_now,
 )
 from app.services.storyboard.grid_storyboard_sheet_spec import (
+    apply_clip_storyboard_sheet_to_spec,
     apply_grid_storyboard_sheet_to_spec,
 )
 from app.services.storyboard.storyboard_image_generation import (
@@ -122,18 +123,42 @@ class GridStoryboardSheetProcessor:
             for_update=True,
         )
         next_version = timeline.version + 1
-        updated_spec = apply_grid_storyboard_sheet_to_spec(
-            timeline.spec if isinstance(timeline.spec, dict) else {},
-            panels=payload.get("panels") or [],
-            sheet_media_asset=media_asset,
-            panel_count=maybe_int(payload.get("panel_count")) or 0,
-            columns=maybe_int(payload.get("columns")) or 0,
-            rows=maybe_int(payload.get("rows")) or 0,
-            prompt_sha256=sha256_text(payload.get("sheet_prompt") or ""),
-            source_timeline_version=source_version,
-            generated_at=utc_now(),
+        updated_spec = self._updated_spec_with_sheet(
+            timeline,
+            payload,
+            media_asset,
+            source_version,
         )
         self._apply_updated_spec(timeline, updated_spec, next_version, user_id)
+
+    def _updated_spec_with_sheet(
+        self,
+        timeline,
+        payload: dict[str, Any],
+        media_asset: MediaAsset,
+        source_version: int,
+    ) -> dict[str, Any]:
+        common = {
+            "panels": payload.get("panels") or [],
+            "sheet_media_asset": media_asset,
+            "panel_count": maybe_int(payload.get("panel_count")) or 0,
+            "columns": maybe_int(payload.get("columns")) or 0,
+            "rows": maybe_int(payload.get("rows")) or 0,
+            "prompt_sha256": sha256_text(payload.get("sheet_prompt") or ""),
+            "source_timeline_version": source_version,
+            "generated_at": utc_now(),
+        }
+        spec = timeline.spec if isinstance(timeline.spec, dict) else {}
+        if payload.get("kind") == "timeline_clip_storyboard":
+            clip_id = string_value(payload.get("clip_id"))
+            if not clip_id:
+                raise RuntimeError("clip_storyboard_payload_invalid")
+            return apply_clip_storyboard_sheet_to_spec(
+                spec,
+                clip_id=clip_id,
+                **common,
+            )
+        return apply_grid_storyboard_sheet_to_spec(spec, **common)
 
     async def _persist_sheet_asset(
         self,
@@ -149,13 +174,22 @@ class GridStoryboardSheetProcessor:
         stored = await self.image_persister(
             image_data=source_url,
             ip_name=f"timeline-{timeline_id}",
-            category="storyboard-grid",
-            prefix="ai-generated/storyboard-grid",
+            category=(
+                "clip-storyboard"
+                if payload.get("kind") == "timeline_clip_storyboard"
+                else "storyboard-grid"
+            ),
+            prefix=(
+                "ai-generated/clip-storyboard"
+                if payload.get("kind") == "timeline_clip_storyboard"
+                else "ai-generated/storyboard-grid"
+            ),
             metadata={
                 "task_id": task_id,
                 "timeline_id": timeline_id,
                 "timeline_version": timeline_version,
-                "kind": "timeline_storyboard_grid",
+                "clip_id": payload.get("clip_id"),
+                "kind": payload.get("kind") or "timeline_storyboard_grid",
             },
             require_upload=False,
         )
@@ -195,7 +229,11 @@ class GridStoryboardSheetProcessor:
         )
         self.revisions.ensure_revision(
             timeline,
-            reason="pre_grid_storyboard_snapshot",
+            reason=(
+                "pre_clip_storyboard_snapshot"
+                if _is_clip_storyboard_spec(spec)
+                else "pre_grid_storyboard_snapshot"
+            ),
             user_id=user_id,
         )
         timeline.spec = spec
@@ -209,7 +247,11 @@ class GridStoryboardSheetProcessor:
         self.clip_lineage.sync_timeline_assets(timeline, user_id=user_id)
         self.revisions.ensure_revision(
             timeline,
-            reason="grid_storyboard_generated",
+            reason=(
+                "clip_storyboard_generated"
+                if _is_clip_storyboard_spec(spec)
+                else "grid_storyboard_generated"
+            ),
             user_id=user_id,
         )
 
@@ -233,3 +275,11 @@ class GridStoryboardSheetProcessor:
         if not grid_payload_matches_current_timeline(timeline, payload):
             raise RuntimeError("timeline version conflict")
         return timeline
+
+
+def _is_clip_storyboard_spec(spec: dict[str, Any]) -> bool:
+    support_views = spec.get("support_views")
+    return isinstance(support_views, dict) and isinstance(
+        support_views.get("clip_storyboards"),
+        dict,
+    )

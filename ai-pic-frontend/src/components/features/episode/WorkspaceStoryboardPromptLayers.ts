@@ -32,13 +32,14 @@ export function buildShotPlanPromptLayerPatch(
       clips: track.clips.map((clip) => {
         const sourceRefs = asRecord(clip.source_refs) ?? {};
         const nextSourceRefs = { ...sourceRefs };
-        delete nextSourceRefs.grid_storyboard_panel;
 
         if (clip.clip_id !== clipId) {
           return { ...clip, source_refs: nextSourceRefs };
         }
 
         patched = true;
+        delete nextSourceRefs.clip_storyboard;
+        delete nextSourceRefs.grid_storyboard_panel;
         const existingShotPlan =
           asRecord(nextSourceRefs.timeline_shot_plan) ?? {};
         nextSourceRefs.timeline_shot_plan = {
@@ -56,10 +57,16 @@ export function buildShotPlanPromptLayerPatch(
 
   const supportViews = asRecord(spec.support_views);
   if (supportViews) {
-    const nextSupportViews = { ...supportViews };
-    delete nextSupportViews.storyboard_grid;
-    spec.support_views = nextSupportViews;
-  }
+      const nextSupportViews = { ...supportViews };
+      delete nextSupportViews.storyboard_grid;
+      const clipStoryboards = asRecord(nextSupportViews.clip_storyboards);
+      if (clipStoryboards) {
+        const nextClipStoryboards = { ...clipStoryboards };
+        delete nextClipStoryboards[clipId];
+        nextSupportViews.clip_storyboards = nextClipStoryboards;
+      }
+      spec.support_views = nextSupportViews;
+    }
   return spec;
 }
 

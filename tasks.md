@@ -8,6 +8,8 @@
 - 产品模式：ToB 生产工作流系统，不是通用 AI 视频玩具。
 - 第一性原理：`Timeline` 是系统的单一事实来源（SSOT）。
 - 默认生产模式：对白/音轨时间轴驱动时长，图像/视频生成只是向时间轴填充 clip 资产。
+- 故事板定义：只在选中 Timeline `video` clip（分镜）内生成和使用，作为该
+  clip 的视觉参考资产；不再生成整剧/整条 Timeline 的故事板。
 - 当前目标：把 `audio -> timeline -> clip -> render -> export` 做成产品核心闭环。
 
 ## 看板规则
@@ -15,6 +17,8 @@
 - 只记录未来 6 周内的活跃任务，不保留长线愿景和历史清单。
 - 任何不直接支撑时间轴第一性的工作，不进入本看板。
 - `Storyboard` 是时间轴的支撑视图，不再作为系统主编排入口。
+- 新故事板入口必须挂在选中分镜的 clip inspector 内；旧 Timeline-level
+  `storyboard_grid` 只读兼容，不再新增生成入口。
 - 当前不新增 C 端 APP、通用 SaaS、社交 feed、素材市场等横向平台任务。
 - 新任务必须回答两个问题：
   - 是否让时间轴更像 SSOT？
@@ -41,6 +45,9 @@
 - P0：把对白音轨、beats、占位分镜、渲染导出收成一条可重渲主链。
 - P0：优先清理会阻断这条主链的 legacy 和稳定性问题。
 - P1：provider-backed video rework task queue 已有后端链路、operator 入口和成功后自动 final render 编排；legacy 稳定性风险已收敛。
+- P1：clip-scoped storyboard 支持选中 video clip 内生成参考 sheet，并通过
+  `clip_storyboard_panel` 作为该 clip rework 的参考模式；旧
+  `storyboard_grid_panel` 仅保留 legacy read path。
 - P2：已用一个窄垂类连续生产 10 条 30 秒本地 2D 卡通样片，记录成本、耗时、失败点和人工修正次数。
 
 ## 已完成基线

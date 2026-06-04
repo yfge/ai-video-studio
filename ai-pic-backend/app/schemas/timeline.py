@@ -8,9 +8,14 @@ RenderJobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled
 RenderType = Literal["proxy", "final", "export"]
 TimelineClipReworkAction = Literal["re_dub", "re_cut", "re_render"]
 TimelineClipVideoReworkAction = Literal["re_cut", "re_render"]
-TimelineClipVideoReferenceMode = Literal["start_end", "storyboard_grid_panel"]
+TimelineClipVideoReferenceMode = Literal[
+    "start_end",
+    "clip_storyboard_panel",
+    "storyboard_grid_panel",
+]
 TimelineShotPlanStyle = Literal["2d_cartoon", "3d_cartoon", "live_action"]
 TimelineStoryboardGridStyle = Literal["2d_cartoon", "3d_cartoon", "live_action"]
+TimelineClipStoryboardStyle = Literal["2d_cartoon", "3d_cartoon", "live_action"]
 
 
 class TimelineCreate(BaseModel):
@@ -53,6 +58,23 @@ class TimelineStoryboardGridGenerateRequest(TimelineVersionRequest):
 
 
 class TimelineStoryboardGridGenerateResponse(BaseModel):
+    task_id: int
+    status: str
+
+
+class TimelineClipStoryboardGenerateRequest(TimelineVersionRequest):
+    panel_count: int = Field(4, ge=2, le=9)
+    style: TimelineClipStoryboardStyle = "3d_cartoon"
+    model: Optional[str] = Field(None, max_length=128)
+    generation_profile: Optional[str] = Field("clip_storyboard", max_length=128)
+    size: Optional[str] = Field("1536x1536", max_length=32)
+    aspect_ratio: Optional[str] = Field("1:1", max_length=32)
+    width: Optional[int] = Field(None, ge=1)
+    height: Optional[int] = Field(None, ge=1)
+    reference_images: Optional[List[str]] = None
+
+
+class TimelineClipStoryboardGenerateResponse(BaseModel):
     task_id: int
     status: str
 
@@ -173,6 +195,7 @@ class TimelineClipVideoReworkTaskRequest(TimelineVersionRequest):
     use_end_frame: bool = True
     return_last_frame: bool = True
     reference_mode: Optional[TimelineClipVideoReferenceMode] = "start_end"
+    use_clip_storyboard: bool = False
     use_storyboard_grid: bool = False
     reference_images: Optional[List[str]] = None
 

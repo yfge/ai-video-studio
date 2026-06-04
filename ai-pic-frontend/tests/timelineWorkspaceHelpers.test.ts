@@ -17,6 +17,7 @@ import {
   buildStoryboardGridSupport,
   buildStoryboardSupportFrames,
   buildStoryboardSupportSummary,
+  buildStoryboardTimelineOverview,
 } from "../src/components/features/episode/WorkspaceStoryboardSupportModel";
 import { buildShotPlanPromptLayerPatch } from "../src/components/features/episode/WorkspaceStoryboardPromptLayers";
 import { hasTimeline } from "../src/components/features/stories/StoryProductionModel";
@@ -408,6 +409,73 @@ describe("timeline workspace helpers", () => {
       "朝向门口的动作起势",
     );
     assert.equal(grid.panels[0].promptLayers?.motionTimeline[1].atMs, 1200);
+  });
+
+  it("builds storyboard Timeline overview from native Timeline Spec", () => {
+    const timeline = {
+      id: 10,
+      business_id: "timeline_10",
+      episode_id: 1,
+      script_id: 2,
+      title: "Timeline",
+      status: "draft",
+      version: 5,
+      source_audio_timeline_version: 3,
+      created_at: "2026-05-12T00:00:00Z",
+      updated_at: "2026-05-12T00:00:00Z",
+      spec: {
+        spec_version: "timeline.v1",
+        episode_id: 1,
+        script_id: 2,
+        version: 5,
+        duration_ms: 4600,
+        source: {
+          episode_audio: {
+            oss_url: "https://example.com/episode.mp3",
+            duration_seconds: 4.6,
+          },
+        },
+        tracks: [
+          {
+            track_type: "dialogue",
+            clips: [
+              {
+                clip_id: "dialogue_scene_1_beat_1_001",
+                track_type: "dialogue",
+                start_ms: 0,
+                end_ms: 1800,
+              },
+            ],
+          },
+          {
+            track_type: "video",
+            clips: [
+              {
+                clip_id: "video_scene_1_beat_1_001",
+                track_type: "video",
+                start_ms: 0,
+                end_ms: 1800,
+              },
+              {
+                clip_id: "video_scene_1_beat_2_002",
+                track_type: "video",
+                start_ms: 2800,
+                end_ms: 4600,
+              },
+            ],
+          },
+        ],
+      },
+    } satisfies TimelineResponse;
+
+    const overview = buildStoryboardTimelineOverview(timeline, null);
+
+    assert.equal(overview?.timelineLabel, "Timeline 10 · v5");
+    assert.equal(overview?.durationLabel, "4.6s");
+    assert.equal(overview?.trackSummary, "2 轨 · 3 clips");
+    assert.equal(overview?.dialogueClipCount, 1);
+    assert.equal(overview?.videoClipCount, 2);
+    assert.equal(overview?.audioUrl, "https://example.com/episode.mp3");
   });
 
   it("patches shot plan prompt layers without changing clip identity or timing", () => {
