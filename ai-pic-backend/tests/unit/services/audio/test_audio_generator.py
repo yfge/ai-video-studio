@@ -143,6 +143,37 @@ class TestTTSToWavFile:
                 mock_download.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_tts_passes_emotion_to_ai_manager(self, tmp_path):
+        """Test TTS passes normalized emotion to AI manager."""
+        out_path = tmp_path / "speech.wav"
+        voice_config = {
+            "provider": "minimax",
+            "tts_model": "speech-2.6-hd",
+            "voice_id": "test_voice",
+        }
+
+        mock_response = MagicMock()
+        mock_response.success = True
+        mock_response.data = {"audio_url": "http://example.com/audio.wav"}
+
+        with patch("app.services.audio.audio_generator.ai_service") as mock_ai:
+            mock_ai.ai_manager.text_to_speech = AsyncMock(return_value=mock_response)
+            with patch(
+                "app.services.audio.audio_generator.download_to_file"
+            ) as mock_download:
+                mock_download.return_value = None
+                await tts_to_wav_file(
+                    text="Hello world",
+                    voice_config=voice_config,
+                    out_path=out_path,
+                    emotion="sad",
+                )
+
+        mock_ai.ai_manager.text_to_speech.assert_awaited_once()
+        _, kwargs = mock_ai.ai_manager.text_to_speech.await_args
+        assert kwargs["emotion"] == "sad"
+
+    @pytest.mark.asyncio
     async def test_tts_no_ai_manager(self, tmp_path):
         """Test TTS fails without AI manager."""
         out_path = tmp_path / "speech.wav"
