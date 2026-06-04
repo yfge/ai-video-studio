@@ -1,57 +1,35 @@
-import json
-
 import anyio
+import pytest
 
-from app.models.script import Episode, Script, Story
-from app.models.task import Task, TaskStatus, TaskType
-from app.models.timeline import MediaAsset, Timeline, TimelineClipAsset
-from app.models.user import User
+from app.models.task import TaskStatus
+from app.models.timeline import MediaAsset, TimelineClipAsset
 from app.services.storyboard.grid_storyboard_sheet_processor import (
     GridStoryboardSheetProcessor,
 )
-from app.services.timeline_revision_service import TimelineRevisionService
-from sqlalchemy.orm import Session
+from tests.fixtures.grid_storyboard_processor import (
+    append_video_clips,
+    bootstrap_episode,
+    bump_timeline_version_without_panel_changes,
+    change_timeline_panel_prompt,
+    create_grid_task,
+    create_timeline,
+    fake_image_generator,
+    fake_image_persister,
+    processor_payload,
+    timeline_spec,
+)
 
 
 def test_grid_storyboard_processor_persists_sheet_and_support_view(db_session):
-    user, episode, script = _bootstrap_episode(db_session)
-    timeline = _create_timeline(
+    user, episode, script = bootstrap_episode(db_session)
+    timeline = create_timeline(
         db_session,
         episode,
         script,
-        _append_video_clips(_timeline_spec(episode, script)),
+        append_video_clips(timeline_spec(episode, script)),
         user,
     )
-    task = Task(
-        target_business_id=timeline.business_id,
-        title="Grid storyboard",
-        description="Grid storyboard generation",
-        task_type=TaskType.STORYBOARD_IMAGE_GENERATION,
-        status=TaskStatus.PENDING,
-        prompt="sheet prompt",
-        parameters=json.dumps({}, ensure_ascii=False),
-        user_id=user.id,
-    )
-    db_session.add(task)
-    db_session.commit()
-    db_session.refresh(task)
-
-    async def fake_image_generator(**kwargs):
-        assert kwargs["prompt"] == "sheet prompt"
-        return {
-            "urls": ["https://provider.example/grid.png"],
-            "provider": "fake",
-            "model": "fake-image",
-            "image_gen": {"prompt_sha256": "abc123"},
-        }
-
-    async def fake_image_persister(**kwargs):
-        assert kwargs["image_data"] == "https://provider.example/grid.png"
-        return {
-            "oss_url": "https://cdn.example/grid.png",
-            "local_file_path": "/tmp/grid.png",
-            "relative_path": "uploads/grid.png",
-        }
+    task = create_grid_task(db_session, timeline, user)
 
     processor = GridStoryboardSheetProcessor(
         db_session,
@@ -61,7 +39,7 @@ def test_grid_storyboard_processor_persists_sheet_and_support_view(db_session):
     anyio.run(
         processor.process_grid_sheet_task,
         task.id,
-        _processor_payload(timeline),
+        processor_payload(timeline),
         user.id,
     )
 
@@ -92,137 +70,67 @@ def test_grid_storyboard_processor_persists_sheet_and_support_view(db_session):
     ]
 
 
-def _bootstrap_episode(db: Session) -> tuple[User, Episode, Script]:
-    user = User(
-        username="grid_processor_admin",
-        email="grid_processor_admin@example.com",
-        hashed_password="test",
-        is_active=True,
-        is_superuser=True,
-        is_admin=True,
-        is_approved=True,
-        email_verified=True,
+def test_grid_storyboard_processor_rebases_when_current_panels_still_match(
+    db_session,
+):
+    user, episode, script = bootstrap_episode(db_session)
+    timeline = create_timeline(
+        db_session,
+        episode,
+        script,
+        append_video_clips(timeline_spec(episode, script)),
+        user,
     )
-    story = Story(title="Grid Storyboard Story", genre="short_drama", user_id=user.id)
-    episode = Episode(story=story, episode_number=1, title="Pilot")
-    script = Script(
-        episode=episode,
-        title="Pilot Script",
-        content="A: hello",
-        scenes=[{"scene_id": "scene_001", "title": "Opening"}],
+    payload = processor_payload(timeline)
+    bump_timeline_version_without_panel_changes(db_session, timeline, user)
+    task = create_grid_task(db_session, timeline, user)
+
+    processor = GridStoryboardSheetProcessor(
+        db_session,
+        image_generator=fake_image_generator,
+        image_persister=fake_image_persister,
     )
-    db.add_all([user, story, episode, script])
-    db.commit()
-    db.refresh(episode)
-    db.refresh(script)
-    return user, episode, script
+    anyio.run(processor.process_grid_sheet_task, task.id, payload, user.id)
+
+    db_session.refresh(timeline)
+    db_session.refresh(task)
+    assert task.status == TaskStatus.COMPLETED
+    assert timeline.version == 3
+    grid = timeline.spec["support_views"]["storyboard_grid"]
+    assert grid["source_timeline_version"] == 1
+    assert grid["sheet"]["file_url"] == "https://cdn.example/grid.png"
+    video_clips = timeline.spec["tracks"][0]["clips"]
+    assert video_clips[0]["source_refs"]["grid_storyboard_panel"]["panel_index"] == 1
 
 
-def _timeline_spec(episode: Episode, script: Script) -> dict:
-    return {
-        "spec_version": "timeline.v1",
-        "episode_id": episode.id,
-        "script_id": script.id,
-        "version": 1,
-        "source_audio_timeline_version": 1,
-        "fps": 24,
-        "resolution": "1080x1920",
-        "duration_ms": 2400,
-        "tracks": [],
-    }
-
-
-def _append_video_clips(spec: dict) -> dict:
-    spec["tracks"].append(
-        {
-            "track_type": "video",
-            "clips": [
-                _video_clip("video_scene_001_beat_001_001", "beat_001", 0, 1200),
-                _video_clip("video_scene_001_beat_002_001", "beat_002", 1200, 2400),
-            ],
-        }
+def test_grid_storyboard_processor_rejects_rebase_when_panel_snapshot_changed(
+    db_session,
+):
+    user, episode, script = bootstrap_episode(db_session)
+    timeline = create_timeline(
+        db_session,
+        episode,
+        script,
+        append_video_clips(timeline_spec(episode, script)),
+        user,
     )
-    return spec
+    payload = processor_payload(timeline)
+    change_timeline_panel_prompt(db_session, timeline, user)
+    task = create_grid_task(db_session, timeline, user)
 
+    async def unexpected_image_generator(**kwargs):
+        raise AssertionError("image generation should not run for stale panels")
 
-def _video_clip(clip_id: str, beat_id: str, start_ms: int, end_ms: int) -> dict:
-    return {
-        "clip_id": clip_id,
-        "track_type": "video",
-        "scene_id": "scene_001",
-        "beat_id": beat_id,
-        "ordinal": 1 if beat_id == "beat_001" else 2,
-        "start_ms": start_ms,
-        "end_ms": end_ms,
-        "duration_ms": end_ms - start_ms,
-        "source": {
-            "kind": "audio_timeline_beat",
-            "scene_id": "scene_001",
-            "beat_id": beat_id,
-            "audio_timeline_version": 1,
-        },
-        "source_refs": {"scene_beat_id": beat_id},
-        "text": "A rainy close-up of the lead character.",
-    }
-
-
-def _create_timeline(
-    db: Session,
-    episode: Episode,
-    script: Script,
-    spec: dict,
-    user: User,
-) -> Timeline:
-    timeline = Timeline(
-        episode_id=episode.id,
-        episode_business_id=episode.business_id,
-        script_id=script.id,
-        script_business_id=script.business_id,
-        title="Grid Storyboard Timeline",
-        status="draft",
-        spec=spec,
-        version=1,
-        source_audio_timeline_version=1,
-        created_by=user.id,
-        updated_by=user.id,
+    processor = GridStoryboardSheetProcessor(
+        db_session,
+        image_generator=unexpected_image_generator,
+        image_persister=fake_image_persister,
     )
-    db.add(timeline)
-    db.flush()
-    timeline.spec = TimelineRevisionService(db).spec_with_identity(timeline)
-    db.commit()
-    db.refresh(timeline)
-    return timeline
 
+    with pytest.raises(RuntimeError, match="timeline version conflict"):
+        anyio.run(processor.process_grid_sheet_task, task.id, payload, user.id)
 
-def _processor_payload(timeline: Timeline) -> dict:
-    return {
-        "kind": "timeline_storyboard_grid",
-        "timeline_id": timeline.id,
-        "timeline_version": timeline.version,
-        "expected_version": timeline.version,
-        "panel_count": 4,
-        "columns": 2,
-        "rows": 2,
-        "style": "3d_cartoon",
-        "model": "fake-image",
-        "generation_profile": "storyboard_grid",
-        "size": "1536x1536",
-        "aspect_ratio": "1:1",
-        "panels": [
-            {
-                "panel_id": "grid_panel_001",
-                "panel_index": 1,
-                "clip_id": "video_scene_001_beat_001_001",
-                "visual_prompt": "林晚站在雨夜门口，霓虹反光，中景",
-                "video_prompt": "镜头缓慢推近，雨水落在她肩头",
-            },
-            {
-                "panel_id": "grid_panel_002",
-                "panel_index": 2,
-                "clip_id": "video_scene_001_beat_002_001",
-                "visual_prompt": "陈哲坐在车内，侧脸被手机屏照亮。",
-                "video_prompt": "陈哲坐在车内，侧脸被手机屏照亮。",
-            },
-        ],
-        "sheet_prompt": "sheet prompt",
-    }
+    db_session.refresh(timeline)
+    db_session.refresh(task)
+    assert task.status == TaskStatus.FAILED
+    assert "support_views" not in timeline.spec

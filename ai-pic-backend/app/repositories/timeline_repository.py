@@ -18,6 +18,15 @@ class TimelineRepository(BaseRepository[Timeline]):
     def __init__(self, session: Session):
         super().__init__(Timeline, session)
 
+    def get_by_id_for_update(self, timeline_id: int) -> Optional[Timeline]:
+        return (
+            self.session.query(Timeline)
+            .filter(Timeline.id == timeline_id)
+            .populate_existing()
+            .with_for_update()
+            .first()
+        )
+
     def list_for_episode(
         self,
         episode_id: int,
