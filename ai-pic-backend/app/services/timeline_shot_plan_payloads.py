@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 class TimelineShot(BaseModel):
     clip_id: str
     duration_ms: int = Field(..., ge=1)
-    plot: str = Field(..., min_length=1)
-    dialogue_source: str = Field(..., min_length=1)
+    plot: str
+    dialogue_source: str
     visual_prompt: str = Field(..., min_length=1)
     video_prompt: str = Field(..., min_length=1)
     character_anchor: str = Field(..., min_length=1)
@@ -41,7 +41,9 @@ def build_timeline_shot_plan_prompt(spec: dict[str, Any], *, style: str) -> str:
         "a bare character name. Supporting characters may appear only as secondary "
         "props/figures and must not replace the protagonist. "
         "Each video_prompt must include plot, dialogue_source, character_anchor, "
-        "camera, action, style, and duration. Timeline clips: "
+        "camera, action, style, and duration. For silent pause/placeholder clips, "
+        "do not invent dialogue; set dialogue_source to an empty string and keep "
+        "plot empty only when the source clip has no text. Timeline clips: "
         f"{clips}"
     )
 
@@ -63,13 +65,26 @@ def validate_timeline_shot_plan_matches(
             "extra": extra,
         }
     for clip_id, shot in shot_by_id.items():
-        expected = int(video_by_id[clip_id].get("duration_ms") or 0)
+        clip = video_by_id[clip_id]
+        expected = int(clip.get("duration_ms") or 0)
         if int(shot.get("duration_ms") or 0) != expected:
             return {
                 "message": "timeline shot plan duration mismatch",
                 "clip_id": clip_id,
                 "expected_duration_ms": expected,
                 "actual_duration_ms": shot.get("duration_ms"),
+            }
+        source_text = _strip_text(clip.get("text"))
+        dialogue_text = _dialogue_text_for_video_clip(clip, spec)
+        if source_text and not _strip_text(shot.get("plot")):
+            return {
+                "message": "timeline shot plan plot missing",
+                "clip_id": clip_id,
+            }
+        if dialogue_text and not _strip_text(shot.get("dialogue_source")):
+            return {
+                "message": "timeline shot plan dialogue source missing",
+                "clip_id": clip_id,
             }
     return None
 
@@ -172,3 +187,23 @@ def _clips_by_scene_beat(
 
 def _scene_beat_key(clip: dict[str, Any]) -> tuple[Any, Any, Any]:
     return (clip.get("scene_id"), clip.get("beat_id"), clip.get("ordinal"))
+
+
+def _dialogue_text_for_video_clip(clip: dict[str, Any], spec: dict[str, Any]) -> str:
+    key = _scene_beat_key(clip)
+    matches = [_clips_by_scene_beat(spec, t).get(key) for t in ("dialogue", "subtitle")]
+    primary = next((item for item in matches if item), {})
+    beat_type = str(clip.get("beat_type") or primary.get("beat_type") or "").lower()
+    if beat_type != "dialogue" and not _strip_text(primary.get("speaker_name")):
+        return ""
+    for matched in matches:
+        if not matched:
+            continue
+        text = _strip_text(matched.get("text"))
+        if text:
+            return text
+    return ""
+
+
+def _strip_text(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""

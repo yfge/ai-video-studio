@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import threading
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar, cast
@@ -12,7 +13,7 @@ from app.models.story_structure import Scene
 from app.models.task import Task
 from app.models.user import User
 from app.repositories.script_repository import ScriptRepository
-from fastapi import Response
+from fastapi import HTTPException, Response
 from sqlalchemy.orm import Session
 
 T = TypeVar("T")
@@ -121,3 +122,26 @@ def run_async_task_sync(entrypoint: Callable[[], Awaitable[T]]) -> T:
     if "error" in result:
         raise cast(Exception, result["error"])
     return cast(T, result["value"])
+
+
+def format_pipeline_error(exc: Exception) -> str:
+    if isinstance(exc, HTTPException):
+        detail = _format_http_exception_detail(exc.detail)
+        if detail:
+            return detail
+    message = str(exc).strip()
+    return message or exc.__class__.__name__
+
+
+def _format_http_exception_detail(detail: object) -> str:
+    if isinstance(detail, str):
+        return detail.strip()
+    if isinstance(detail, dict):
+        for key in ("message", "detail", "error"):
+            value = detail.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return json.dumps(detail, ensure_ascii=False, default=str)
+    if isinstance(detail, list):
+        return json.dumps(detail, ensure_ascii=False, default=str)
+    return ""

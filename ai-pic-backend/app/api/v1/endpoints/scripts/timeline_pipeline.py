@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 
 from .audio_pipeline_utils import (
     episode_has_audio_timeline,
+    format_pipeline_error,
     load_script_with_access,
     run_async_task_sync,
     scene_has_dialogue_audio,
@@ -45,16 +46,10 @@ router = APIRouter()
 
 class TimelinePipelineGenerateRequest(BaseModel):
     tts_model: str | None = Field(None, description="TTS model (default speech-2.6-hd)")
-    timing_model: str | None = Field(
-        None,
-        description="Timeline LLM model (uses system default when empty)",
-    )
+    timing_model: str | None = Field(None, description="Timeline LLM model")
     overwrite_audio: bool = Field(False, description="Overwrite existing scene audio")
     overwrite_timeline: bool = Field(False, description="Overwrite existing timeline")
-    overwrite_storyboard: bool = Field(
-        False,
-        description="Overwrite existing storyboard frame placeholders",
-    )
+    overwrite_storyboard: bool = Field(False, description="Overwrite storyboard")
     min_pause_seconds: float = Field(
         1.5,
         description="Minimum pause duration for storyboard placeholders",
@@ -293,8 +288,9 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
     except Exception as exc:
         task = TaskRepository(db).get_by_id(task_id)
         if task:
+            error_message = format_pipeline_error(exc)
             task.status = TaskStatus.FAILED
-            task.error_message = str(exc)
-            update_task_progress(db, task, f"流水线失败：{exc}")
+            task.error_message = error_message
+            update_task_progress(db, task, f"流水线失败：{error_message}")
     finally:
         db.close()

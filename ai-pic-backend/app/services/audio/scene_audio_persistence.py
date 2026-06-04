@@ -8,7 +8,10 @@ from typing import Any
 from app.core.logging import get_logger
 from app.models.script import Script
 from app.models.story_structure import Scene, SceneBeat
-from app.repositories.audio_timeline_repository import list_active_scene_beats
+from app.repositories.audio_timeline_repository import (
+    list_active_scene_beats,
+    prune_soft_deleted_scene_beats,
+)
 from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
@@ -56,8 +59,10 @@ def persist_beats(
     overwrite_beats: bool,
 ) -> None:
     if overwrite_beats:
+        prune_soft_deleted_scene_beats(db, scene.id)
         for beat in list_active_scene_beats(db, scene.id):
             beat.soft_delete(reason="dialogue_audio_overwrite")
+        db.flush()
 
     start_ms = 0
     for idx, beat in enumerate(beats, start=1):

@@ -129,7 +129,7 @@ class TimelineShotPlanService:
             model=payload.model,
             prefer_provider=payload.prefer_provider,
             temperature=payload.temperature,
-            max_tokens=2800,
+            max_tokens=_shot_plan_max_tokens(spec),
             json_schema={"name": "timeline_shot_plan", "schema": SHOT_PLAN_SCHEMA},
             system_prompt="You are a strict JSON writer. Output JSON only.",
             stream=False,
@@ -148,7 +148,7 @@ class TimelineShotPlanService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail={
                     "message": "timeline shot plan JSON invalid",
-                    "errors": exc.errors(),
+                    "errors": _validation_errors_for_response(exc),
                 },
             ) from exc
 
@@ -185,3 +185,12 @@ class TimelineShotPlanService:
         ):
             return None
         return current_user.id
+
+
+def _validation_errors_for_response(exc: ValidationError) -> list[dict[str, Any]]:
+    return exc.errors(include_context=False, include_input=False)
+
+
+def _shot_plan_max_tokens(spec: dict[str, Any]) -> int:
+    clip_count = len(clips_for_track(spec, "video"))
+    return min(12000, max(4000, clip_count * 650))
