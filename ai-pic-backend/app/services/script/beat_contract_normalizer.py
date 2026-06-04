@@ -9,6 +9,7 @@ from app.schemas.script_beat_contract import (
     StructuredScriptContract,
 )
 from app.services.ai.script_text import build_script_text
+from app.services.script.beat_contract_canonicalizer import canonicalize_contract_enums
 from app.services.script.scene_utils import to_int
 
 _SCENE_ROLES = set(SceneRole.__args__)
@@ -18,9 +19,13 @@ _BEAT_TYPES = set(BeatType.__args__)
 def normalize_script_beat_contract(payload: dict[str, Any]) -> StructuredScriptContract:
     raw_contract = _extract_embedded_contract(payload)
     if raw_contract is not None:
-        return StructuredScriptContract.model_validate(raw_contract)
+        return StructuredScriptContract.model_validate(
+            canonicalize_contract_enums(raw_contract)
+        )
     if _looks_like_contract(payload):
-        return StructuredScriptContract.model_validate(payload)
+        return StructuredScriptContract.model_validate(
+            canonicalize_contract_enums(payload)
+        )
     return _legacy_payload_to_contract(payload)
 
 
@@ -150,7 +155,9 @@ def _legacy_payload_to_contract(payload: dict[str, Any]) -> StructuredScriptCont
                     scene.get("estimated_duration_seconds")
                     or scene.get("duration_seconds")
                 ),
-                "dramatic_role": _scene_role(scene.get("dramatic_role")),
+                "dramatic_role": _literal_or_default(
+                    scene.get("dramatic_role"), _SCENE_ROLES, "transition"
+                ),
                 "conflict": {
                     "question": scene.get("conflict_question") or str(summary),
                     "stakes": scene.get("stakes") or "本场必须推进剧情信息。",
@@ -160,7 +167,9 @@ def _legacy_payload_to_contract(payload: dict[str, Any]) -> StructuredScriptCont
                 "beats": [
                     {
                         "order_index": 1,
-                        "beat_type": _beat_type(scene.get("beat_type")),
+                        "beat_type": _literal_or_default(
+                            scene.get("beat_type"), _BEAT_TYPES, "setup"
+                        ),
                         "dramatic_purpose": scene.get("notes") or str(summary),
                         "visible_event": str(summary),
                         "action_lines": [
@@ -222,14 +231,9 @@ def _has_fallback(items: list[Any]) -> bool:
     return any(isinstance(item, dict) and item.get("fallback") for item in items)
 
 
-def _scene_role(value: Any) -> str:
+def _literal_or_default(value: Any, allowed: set[str], default: str) -> str:
     raw = str(value or "").strip()
-    return raw if raw in _SCENE_ROLES else "transition"
-
-
-def _beat_type(value: Any) -> str:
-    raw = str(value or "").strip()
-    return raw if raw in _BEAT_TYPES else "setup"
+    return raw if raw in allowed else default
 
 
 def _line_content(item: dict[str, Any], *, fallback: str) -> str:

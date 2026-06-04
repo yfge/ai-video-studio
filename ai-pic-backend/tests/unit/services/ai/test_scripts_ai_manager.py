@@ -6,7 +6,6 @@ import pytest
 from app.services.ai.scripts_ai_manager import (
     _BEAT_CONTRACT_MAX_TOKENS,
     _MAX_DIALOGUE_SCENES,
-    _REPAIR_MAX_TOKENS,
     _SCENE_PLAN_MAX_TOKENS,
     ScriptManagerMixin,
 )
@@ -166,7 +165,7 @@ async def test_call_ai_manager_script_passes_max_tokens_and_repairs_json():
     assert len(manager.calls) == 3
     assert manager.calls[0]["max_tokens"] == _SCENE_PLAN_MAX_TOKENS
     assert manager.calls[1]["max_tokens"] == _BEAT_CONTRACT_MAX_TOKENS
-    assert manager.calls[2]["max_tokens"] == _REPAIR_MAX_TOKENS
+    assert manager.calls[2]["max_tokens"] == _BEAT_CONTRACT_MAX_TOKENS
     assert manager.calls[0]["json_schema"]["name"] == "script_scenes"
     assert manager.calls[1]["json_schema"]["name"] == "script_beat_contract"
     assert manager.calls[2]["json_schema"]["name"] == "script_beat_contract"

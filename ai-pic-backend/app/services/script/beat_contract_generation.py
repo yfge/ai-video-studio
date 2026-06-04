@@ -8,7 +8,9 @@ from app.services.ai.scripts_ai_manager_payloads import (
     _BEAT_CONTRACT_MAX_TOKENS,
     _BEAT_CONTRACT_REPAIR_HINT,
     _BEAT_CONTRACT_SCHEMA_PAYLOAD,
-    _REPAIR_MAX_TOKENS,
+)
+from app.services.providers.deepseek_strict_json import (
+    deepseek_v4_pro_strict_json_kwargs,
 )
 from app.services.script.beat_contract_normalizer import (
     flatten_contract_to_script_payload,
@@ -85,6 +87,10 @@ async def generate_beat_contract_payload(
         json_schema=_BEAT_CONTRACT_SCHEMA_PAYLOAD,
         system_prompt="你是专业短剧结构编剧，请严格按 JSON 返回。",
         stream=False,
+        **deepseek_v4_pro_strict_json_kwargs(
+            prefer_provider=prefer_provider,
+            model=model,
+        ),
     )
     if not response.success:
         raise BeatContractGenerationError(
@@ -104,7 +110,12 @@ async def generate_beat_contract_payload(
         )
     if not parsed or not isinstance(parsed, dict):
         raise BeatContractGenerationError(
-            "beat_contract_invalid_json", raw=response.data
+            "beat_contract_invalid_json",
+            raw=response.data,
+            detail=_response_diagnostics(
+                response,
+                max_tokens=_BEAT_CONTRACT_MAX_TOKENS,
+            ),
         )
 
     try:
@@ -152,12 +163,16 @@ async def _repair_payload(
         temperature=min(0.3, temperature),
         model=model,
         prefer_provider=prefer_provider,
-        max_tokens=_REPAIR_MAX_TOKENS,
+        max_tokens=_BEAT_CONTRACT_MAX_TOKENS,
         json_schema=_BEAT_CONTRACT_SCHEMA_PAYLOAD,
         system_prompt=prompt_manager.render_prompt(
             PromptTemplate.SYSTEM_PROMPT_JSON_STRICT.value, {}
         ),
         stream=False,
+        **deepseek_v4_pro_strict_json_kwargs(
+            prefer_provider=prefer_provider,
+            model=model,
+        ),
     )
     return _parse_payload(repair_resp.data), repair_resp
 
@@ -170,3 +185,27 @@ def _parse_payload(raw: Any) -> dict[str, Any] | None:
     if isinstance(raw, str):
         return extract_json_block(raw)
     return extract_json_block(str(raw))
+
+
+def _response_diagnostics(response: Any, *, max_tokens: int) -> str:
+    metadata = getattr(response, "metadata", None)
+    if not isinstance(metadata, dict):
+        metadata = {}
+    usage = getattr(response, "usage", None)
+    if not isinstance(usage, dict):
+        usage = {}
+    completion_details = usage.get("completion_tokens_details")
+    if not isinstance(completion_details, dict):
+        completion_details = {}
+
+    fields = {
+        "provider": getattr(response, "provider", None),
+        "model": getattr(response, "model", None),
+        "finish_reason": metadata.get("finish_reason"),
+        "max_tokens": max_tokens,
+        "completion_tokens": usage.get("completion_tokens"),
+        "reasoning_tokens": completion_details.get("reasoning_tokens"),
+    }
+    return ", ".join(
+        f"{key}={value}" for key, value in fields.items() if value is not None
+    )

@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Optional
 
+from app.services.providers.deepseek_strict_json import (
+    deepseek_v4_pro_strict_json_kwargs,
+)
 from app.utils.json_utils import extract_json_block
 
 
@@ -35,6 +38,10 @@ async def repair_quality_gate_payload(
         json_schema=schema,
         system_prompt="You repair narrative JSON. Return strict JSON only.",
         stream=False,
+        **deepseek_v4_pro_strict_json_kwargs(
+            prefer_provider=prefer_provider,
+            model=model,
+        ),
     )
     if not getattr(response, "success", False):
         return None
