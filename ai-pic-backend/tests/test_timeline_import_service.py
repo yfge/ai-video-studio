@@ -41,9 +41,18 @@ def _audio_timeline(script: Script, *, version: int = 3) -> dict:
                 "scene_id": 11,
                 "scene_number": 1,
                 "beat_id": 102,
+                "beat_type": "action",
+                "text": "Camera pans across the control room",
+                "start_ms": 1200,
+                "end_ms": 1600,
+            },
+            {
+                "scene_id": 11,
+                "scene_number": 1,
+                "beat_id": 103,
                 "beat_type": "pause",
                 "text": "",
-                "start_ms": 1200,
+                "start_ms": 1600,
                 "end_ms": 2000,
             },
         ],
@@ -75,9 +84,20 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
     assert spec["duration_ms"] == 2000
     tracks = {track["track_type"]: track for track in spec["tracks"]}
     assert set(tracks) == {"dialogue", "video", "subtitle"}
-    assert len(tracks["dialogue"]["clips"]) == 2
-    assert len(tracks["video"]["clips"]) == 2
+    assert len(tracks["dialogue"]["clips"]) == 1
+    assert len(tracks["video"]["clips"]) == 3
     assert len(tracks["subtitle"]["clips"]) == 1
+    assert all(
+        clip["beat_type"] == "dialogue" for clip in tracks["dialogue"]["clips"]
+    )
+    assert all(
+        clip["beat_type"] == "dialogue" for clip in tracks["subtitle"]["clips"]
+    )
+    assert [clip["beat_type"] for clip in tracks["video"]["clips"]] == [
+        "dialogue",
+        "action",
+        "pause",
+    ]
 
     dialogue_clip = tracks["dialogue"]["clips"][0]
     assert dialogue_clip["clip_id"] == stable_clip_id(
@@ -120,7 +140,6 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
         .all()
     )
     assert [link.media_asset_id for link in clip_assets] == [
-        audio_asset.id,
         audio_asset.id,
     ]
     assert dialogue_clip["clip_id"] in {link.clip_id for link in clip_assets}

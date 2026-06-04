@@ -18,6 +18,7 @@ def build_timeline_spec_from_audio_timeline(
 
     source_version = audio_timeline_version(audio_timeline)
     normalized_beats = _normalize_beats(beats)
+    dialogue_beats = _filter_dialogue_beats(normalized_beats)
     duration_ms = max((beat["end_ms"] for beat in normalized_beats), default=0)
     episode_audio = audio_timeline.get("episode_audio")
     if not isinstance(episode_audio, dict):
@@ -48,7 +49,7 @@ def build_timeline_spec_from_audio_timeline(
                 "track_type": "dialogue",
                 "clips": [
                     _clip("dialogue", beat, source_version, episode_audio)
-                    for beat in normalized_beats
+                    for beat in dialogue_beats
                 ],
             },
             {
@@ -62,7 +63,7 @@ def build_timeline_spec_from_audio_timeline(
                 "track_type": "subtitle",
                 "clips": [
                     _clip("subtitle", beat, source_version, episode_audio)
-                    for beat in normalized_beats
+                    for beat in dialogue_beats
                     if beat.get("text")
                 ],
             },
@@ -128,6 +129,10 @@ def _normalize_beats(beats: list[Any]) -> list[dict[str, Any]]:
     if not normalized:
         raise RuntimeError("audio_timeline_missing_beats")
     return normalized
+
+
+def _filter_dialogue_beats(beats: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [beat for beat in beats if beat.get("beat_type") == "dialogue"]
 
 
 def _clip(
