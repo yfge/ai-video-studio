@@ -3,6 +3,17 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
+PROMPT_LAYER_KEYS = (
+    "direction_anchor",
+    "aesthetic_reference",
+    "shot_type",
+    "camera_movement",
+    "composition_geometry",
+    "motion_timeline",
+    "emotional_landing",
+    "prompt_method",
+)
+
 
 def build_storyboard_frames_from_timeline_shot_plan(
     *,
@@ -61,9 +72,12 @@ def _frame_from_shot_plan(
     description = str(
         shot_plan.get("plot") or clip.get("text") or shot_plan.get("action") or ""
     ).strip()
-    prompt_description = str(
-        shot_plan.get("visual_prompt") or shot_plan.get("video_prompt") or description
-    ).strip()
+    prompt_layers = _shot_plan_prompt_layers(shot_plan)
+    prompt_description = _prompt_description_from_shot_plan(
+        shot_plan=shot_plan,
+        description=description,
+        prompt_layers=prompt_layers,
+    )
     frame = {
         "frame_id": str(uuid4()),
         "frame_number": frame_number,
@@ -90,6 +104,16 @@ def _frame_from_shot_plan(
         "source": _frame_source(clip, timeline_id, timeline_version),
         "timeline_shot_plan": shot_plan,
     }
+    if prompt_layers:
+        frame["shot_plan_prompt_layers"] = prompt_layers
+    if shot_plan.get("shot_type"):
+        frame["shot_type"] = str(shot_plan["shot_type"]).strip()
+    if shot_plan.get("camera_movement"):
+        frame["camera_movement"] = str(shot_plan["camera_movement"]).strip()
+    elif shot_plan.get("camera"):
+        frame["camera_movement"] = str(shot_plan["camera"]).strip()
+    if shot_plan.get("composition_geometry"):
+        frame["composition"] = str(shot_plan["composition_geometry"]).strip()
     if shot_plan.get("video_prompt"):
         frame["ai_prompt"] = str(shot_plan["video_prompt"]).strip()
     return frame
@@ -128,3 +152,81 @@ def _shot_plan_characters(shot_plan: dict[str, Any]) -> list[str]:
     if not isinstance(anchor, str) or not anchor.strip():
         return []
     return [anchor.strip()]
+
+
+def _shot_plan_prompt_layers(shot_plan: dict[str, Any]) -> dict[str, Any]:
+    layers: dict[str, Any] = {}
+    for key in PROMPT_LAYER_KEYS:
+        value = shot_plan.get(key)
+        if key == "motion_timeline":
+            normalized_motion = _normalize_motion_timeline(value)
+            if normalized_motion:
+                layers[key] = normalized_motion
+            continue
+        if isinstance(value, str) and value.strip():
+            layers[key] = value.strip()
+    return layers
+
+
+def _normalize_motion_timeline(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    points: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        action = item.get("action")
+        if not isinstance(action, str) or not action.strip():
+            continue
+        at_ms = item.get("at_ms")
+        try:
+            at_ms_int = int(at_ms)
+        except (TypeError, ValueError):
+            continue
+        points.append({"at_ms": at_ms_int, "action": action.strip()})
+    return points
+
+
+def _prompt_description_from_shot_plan(
+    *,
+    shot_plan: dict[str, Any],
+    description: str,
+    prompt_layers: dict[str, Any],
+) -> str:
+    fallback = str(
+        shot_plan.get("visual_prompt") or shot_plan.get("video_prompt") or description
+    ).strip()
+    if not prompt_layers:
+        return fallback
+
+    lines = [
+        f"Direction: {prompt_layers.get('direction_anchor') or fallback}",
+        f"Aesthetic reference: {prompt_layers.get('aesthetic_reference') or shot_plan.get('style') or ''}",
+        f"Shot: {prompt_layers.get('shot_type') or shot_plan.get('camera') or ''}",
+        f"Camera: {prompt_layers.get('camera_movement') or shot_plan.get('camera') or ''}",
+        f"Composition geometry: {prompt_layers.get('composition_geometry') or ''}",
+    ]
+    motion = _motion_timeline_text(prompt_layers.get("motion_timeline"))
+    if motion:
+        lines.append(f"Motion timeline: {motion}")
+    landing = prompt_layers.get("emotional_landing")
+    if landing:
+        lines.append(f"Emotional landing: {landing}")
+    if fallback:
+        lines.append(f"Visual prompt: {fallback}")
+    return "\n".join(line for line in lines if line.strip())
+
+
+def _motion_timeline_text(value: Any) -> str:
+    if not isinstance(value, list):
+        return ""
+    parts = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        at_ms = item.get("at_ms")
+        action = item.get("action")
+        if at_ms is None or not action:
+            continue
+        parts.append(f"{at_ms}ms: {action}")
+    return " / ".join(parts)

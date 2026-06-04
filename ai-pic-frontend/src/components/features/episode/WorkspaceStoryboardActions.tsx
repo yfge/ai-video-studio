@@ -10,6 +10,7 @@ import {
 import type {
   TimelineResponse,
   TimelineStoryboardGridGenerateRequest,
+  TimelineStoryboardGridStyle,
 } from "@/utils/api/types";
 
 type ShowAlert = (options: {
@@ -40,6 +41,8 @@ export function WorkspaceStoryboardActions({
 }: WorkspaceStoryboardActionsProps) {
   const [generatingGrid, setGeneratingGrid] = useState(false);
   const [syncingAudioStoryboard, setSyncingAudioStoryboard] = useState(false);
+  const [gridStyle, setGridStyle] =
+    useState<TimelineStoryboardGridStyle>("live_action");
   const canGenerateGrid = Boolean(
     selectedTimelineSpec && videoClipCount > 0 && !generatingGrid,
   );
@@ -60,6 +63,7 @@ export function WorkspaceStoryboardActions({
         buildStoryboardGridGenerateRequest(
           selectedTimelineSpec,
           videoClipCount,
+          gridStyle,
         ),
       );
       if (!res.success || !res.data) {
@@ -136,14 +140,30 @@ export function WorkspaceStoryboardActions({
   return (
     <div className="flex flex-wrap justify-end gap-2">
       {selectedTimelineSpec ? (
-        <button
-          type="button"
-          disabled={!canGenerateGrid}
-          className={operatorButtonClass("primary")}
-          onClick={handleGenerateGrid}
-        >
-          {generatingGrid ? "提交中..." : "生成宫格分镜"}
-        </button>
+        <>
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            分镜风格
+            <select
+              value={gridStyle}
+              onChange={(event) =>
+                setGridStyle(event.target.value as TimelineStoryboardGridStyle)
+              }
+              className="h-8 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800"
+            >
+              <option value="live_action">真人电影</option>
+              <option value="3d_cartoon">3D 卡通</option>
+              <option value="2d_cartoon">2D 卡通</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={!canGenerateGrid}
+            className={operatorButtonClass("primary")}
+            onClick={handleGenerateGrid}
+          >
+            {generatingGrid ? "提交中..." : "生成宫格分镜"}
+          </button>
+        </>
       ) : (
         <button
           type="button"
@@ -164,11 +184,12 @@ export function WorkspaceStoryboardActions({
 function buildStoryboardGridGenerateRequest(
   timeline: TimelineResponse,
   videoClipCount: number,
+  style: TimelineStoryboardGridStyle,
 ): TimelineStoryboardGridGenerateRequest {
   return {
     expected_version: timeline.version,
     panel_count: Math.min(9, Math.max(2, videoClipCount || 9)),
-    style: "3d_cartoon",
+    style,
     generation_profile: "storyboard_grid",
     size: "1536x1536",
     aspect_ratio: "1:1",

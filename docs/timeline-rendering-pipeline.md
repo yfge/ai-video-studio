@@ -145,6 +145,36 @@ locators; Timeline create/update/import/rollback and render completion sync
 those locators into `media_assets` and `timeline_clip_assets` lineage where the
 current code can resolve them.
 
+### Timeline Shot Plan Prompt Bundle
+
+Timeline video clips may carry a generated prompt bundle under
+`clip.source_refs.timeline_shot_plan`. This bundle is support data for image,
+video, storyboard-frame, and grid-storyboard generation. It must not replace
+Timeline clip ordering, timing, duration, identity, render selection, or export
+state.
+
+New shot-plan generation uses a five-layer prompt method:
+
+- `direction_anchor`: the shot's creative direction without locking the model to
+  one fixed template.
+- `aesthetic_reference`: objective visual references such as camera/lens, film
+  stock, named production style, color pairing, or design era.
+- `composition_geometry`: explicit screen-space relationships such as
+  left/right/center, foreground/background, thirds, symmetry, or split lines.
+- `motion_timeline`: two to four `{ "at_ms": int, "action": str }` beats inside
+  the clip duration.
+- `emotional_landing`: the final mood, rhythm, and light temperature of the
+  shot.
+
+The bundle also keeps compatibility fields such as `visual_prompt`,
+`video_prompt`, `character_anchor`, `camera`, and `action`. Consumers must
+fallback to those older fields when five-layer fields are absent, because older
+Timeline rows and storyboard frames can still be valid.
+
+Allowed shot-plan styles are `2d_cartoon`, `3d_cartoon`, and `live_action`.
+`live_action` means believable human actors and real camera/lens language; it
+does not make visual-first generation a v1 main-chain path.
+
 ### Minimal JSON Shape
 
 ```json
@@ -368,16 +398,22 @@ context. It must not become the primary route for render/export decisions.
 ### Grid Storyboard Support Mode
 
 Grid storyboard mode is an optional support-view artifact under
-`timeline.spec.support_views.storyboard_grid`. It generates a multi-panel sheet
-from Timeline video clips and their `source_refs.timeline_shot_plan` prompt
-bundle, then maps each panel back to the stable `clip_id`.
+`timeline.spec.support_views.storyboard_grid`. After Timeline has video clips
+and shot-plan prompt bundles, visual generation has two supported forms:
 
+- start/end frame mode: generate per-clip first/last images, then generate each
+  video clip from those keyframes;
+- grid storyboard mode: generate one storyboard sheet image from Timeline clips,
+  then use that sheet as the visual reference for video generation.
+
+In grid storyboard mode, the sheet itself is the storyboard artifact. It may be
+laid out as panels, rows, shot blocks, or a production-board style sheet, but it
+must still map each usable visual unit back to stable Timeline `clip_id` values.
 The sheet is persisted as a `media_assets` image with the
 `storyboard_grid_sheet` role. Video clip rework may use the sheet as a provider
 reference through `reference_mode="storyboard_grid_panel"` and a panel-specific
-prompt, but Timeline still owns clip order, duration, asset selection, render,
-and export. Providers that cannot use sheet references must keep the existing
-per-clip start/end-frame path as the fallback.
+prompt, while Timeline still owns clip order, duration, asset selection, render,
+and export.
 
 ## Validation Contract
 

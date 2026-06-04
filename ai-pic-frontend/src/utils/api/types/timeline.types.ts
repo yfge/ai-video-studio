@@ -64,6 +64,14 @@ export interface TimelineListResponse {
   items: TimelineResponse[];
 }
 
+export interface TimelineUpdateRequest {
+  expected_version: number;
+  title?: string | null;
+  status?: string | null;
+  spec?: TimelineSpec | null;
+  source_audio_timeline_version?: number | null;
+}
+
 export type TimelineRenderType = "proxy" | "final" | "export";
 export type TimelineRenderStatus =
   | "queued"
@@ -132,6 +140,7 @@ export type TimelineStoryboardGridStyle =
   | "2d_cartoon"
   | "3d_cartoon"
   | "live_action";
+export type TimelineShotPlanStyle = "2d_cartoon" | "3d_cartoon" | "live_action";
 
 export interface TimelineClipReworkRequest {
   expected_version: number;

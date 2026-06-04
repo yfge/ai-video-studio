@@ -33,6 +33,15 @@ def test_build_grid_storyboard_panels_prefers_timeline_shot_plan_prompts():
                                 "shot_id": "shot-1",
                                 "visual_prompt": "林晚站在雨夜门口，霓虹反光，中景",
                                 "video_prompt": "镜头缓慢推近，雨水落在她肩头",
+                                "direction_anchor": "朝向雨夜门口的孤独寻找",
+                                "aesthetic_reference": "IMAX film, Panavision C lens",
+                                "composition_geometry": "林晚在左三分线，门框切分右侧负空间",
+                                "motion_timeline": [
+                                    {"at_ms": 0, "action": "林晚停在门口"},
+                                    {"at_ms": 1400, "action": "雨水落在肩头"},
+                                    {"at_ms": 2800, "action": "她抬头看向门内"},
+                                ],
+                                "emotional_landing": "冷雨中的克制孤独",
                             }
                         },
                         "ai_prompt": "fallback image prompt",
@@ -52,8 +61,14 @@ def test_build_grid_storyboard_panels_prefers_timeline_shot_plan_prompts():
     assert panel["clip_id"] == "clip-1"
     assert panel["visual_prompt"] == "林晚站在雨夜门口，霓虹反光，中景"
     assert panel["video_prompt"] == "镜头缓慢推近，雨水落在她肩头"
+    assert panel["direction_anchor"] == "朝向雨夜门口的孤独寻找"
+    assert panel["aesthetic_reference"] == "IMAX film, Panavision C lens"
+    assert panel["composition_geometry"] == "林晚在左三分线，门框切分右侧负空间"
+    assert panel["motion_timeline"][2]["at_ms"] == 2800
+    assert panel["emotional_landing"] == "冷雨中的克制孤独"
     assert "fallback image prompt" not in panel["storyboard_panel_prompt"]
     assert "Panel 1" in panel["storyboard_panel_prompt"]
+    assert "门框切分右侧负空间" in panel["storyboard_panel_prompt"]
 
 
 def test_build_grid_storyboard_panels_falls_back_to_clip_text():
@@ -87,6 +102,14 @@ def test_grid_sheet_and_video_prompts_constrain_text_and_panel_scope():
             "clip_id": "clip-1",
             "visual_prompt": "林晚站在雨夜门口，霓虹反光，中景",
             "video_prompt": "镜头缓慢推近，雨水落在她肩头",
+            "direction_anchor": "朝向雨夜门口的孤独寻找",
+            "aesthetic_reference": "IMAX film, Panavision C lens",
+            "composition_geometry": "林晚在左三分线，门框切分右侧负空间",
+            "motion_timeline": [
+                {"at_ms": 0, "action": "林晚停在门口"},
+                {"at_ms": 2800, "action": "她抬头看向门内"},
+            ],
+            "emotional_landing": "冷雨中的克制孤独",
         },
         {
             "panel_index": 2,
@@ -107,6 +130,10 @@ def test_grid_sheet_and_video_prompts_constrain_text_and_panel_scope():
     assert "panel numbers" in sheet_prompt
     assert "No subtitles" in sheet_prompt
     assert "林晚站在雨夜门口" in sheet_prompt
+    assert "IMAX film" in sheet_prompt
+    assert "门框切分右侧负空间" in sheet_prompt
+    assert "0ms 林晚停在门口" in sheet_prompt
+    assert "冷雨中的克制孤独" in sheet_prompt
     assert "Use panel 2 only" in video_prompt
     assert "clip-2" in video_prompt
     assert "Generate only this shot" in video_prompt

@@ -91,6 +91,7 @@ export function useEpisodeMetadata(
     episodeMeta,
     selectedAudioTimeline,
     selectedTimelineSpec: timelineSpec,
+    setSelectedTimelineSpec: setTimelineSpec,
     selectedStoryboard,
   };
 }

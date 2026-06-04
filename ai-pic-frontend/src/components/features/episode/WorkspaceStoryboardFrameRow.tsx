@@ -1,9 +1,29 @@
-import type { StoryboardSupportFrame } from "./WorkspaceStoryboardSupportModel";
+"use client";
+
+import type { TimelineResponse } from "@/utils/api/types";
+import {
+  PromptLayerEditor,
+  PromptLayerSummary,
+} from "./WorkspaceStoryboardPromptLayerEditor";
+import type {
+  StoryboardSupportFrame,
+} from "./WorkspaceStoryboardSupportModel";
+
+type ShowAlert = (options: {
+  message: string;
+  variant: "info" | "success" | "warning" | "error";
+}) => void;
 
 export function StoryboardSupportFrameRow({
   frame,
+  selectedTimelineSpec,
+  showAlert,
+  onTimelineUpdated,
 }: {
   frame: StoryboardSupportFrame;
+  selectedTimelineSpec?: TimelineResponse | null;
+  showAlert?: ShowAlert;
+  onTimelineUpdated?: (timeline: TimelineResponse) => void;
 }) {
   return (
     <div className="grid gap-3 px-4 py-3 text-xs text-gray-600 lg:grid-cols-[120px_minmax(0,1fr)_180px]">
@@ -23,6 +43,13 @@ export function StoryboardSupportFrameRow({
         <div className="mt-2 line-clamp-2 text-gray-600">
           {frame.promptDescription ?? frame.aiPrompt ?? "暂无镜头提示"}
         </div>
+        <PromptLayerSummary layers={frame.promptLayers} />
+        <PromptLayerEditor
+          frame={frame}
+          selectedTimelineSpec={selectedTimelineSpec}
+          showAlert={showAlert}
+          onTimelineUpdated={onTimelineUpdated}
+        />
         {frame.clipId ? (
           <div className="mt-2 font-mono text-[11px] text-gray-500">
             {frame.clipId}

@@ -9,7 +9,7 @@ RenderType = Literal["proxy", "final", "export"]
 TimelineClipReworkAction = Literal["re_dub", "re_cut", "re_render"]
 TimelineClipVideoReworkAction = Literal["re_cut", "re_render"]
 TimelineClipVideoReferenceMode = Literal["start_end", "storyboard_grid_panel"]
-TimelineShotPlanStyle = Literal["2d_cartoon", "3d_cartoon"]
+TimelineShotPlanStyle = Literal["2d_cartoon", "3d_cartoon", "live_action"]
 TimelineStoryboardGridStyle = Literal["2d_cartoon", "3d_cartoon", "live_action"]
 
 

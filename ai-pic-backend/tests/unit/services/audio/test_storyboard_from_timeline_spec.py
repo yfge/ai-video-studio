@@ -82,6 +82,18 @@ def _timeline_spec_with_shot_plan(
                             "character_anchor": "blue cartoon robot",
                             "camera": "slow push-in",
                             "action": "studies the lock",
+                            "direction_anchor": "朝向机器人发现门锁秘密的悬疑镜头",
+                            "aesthetic_reference": "Pixar-like 3D cartoon, blue-orange contrast",
+                            "shot_type": "medium close-up",
+                            "camera_movement": "slow push-in",
+                            "composition_geometry": "lock at center, robot face on left third",
+                            "motion_timeline": [
+                                {"at_ms": 0, "action": "robot leans toward the lock"},
+                                {"at_ms": 700, "action": "robot raises one hand"},
+                                {"at_ms": 1200, "action": "lock light flickers"},
+                            ],
+                            "emotional_landing": "curious tension with a quiet pause",
+                            "prompt_method": "direction_reference_geometry_timeline_emotion_v1",
                             "style": "3d_cartoon",
                             "provider": "deepseek",
                             "model": "deepseek-v4-flash",
@@ -130,7 +142,13 @@ def test_build_storyboard_frames_from_timeline_spec_prefers_shot_plan():
     assert frames[0]["source"]["kind"] == "timeline_clip"
     assert frames[0]["source"]["shot_plan"] == "timeline_shot_plan"
     assert frames[0]["timeline_shot_plan"]["provider"] == "deepseek"
-    assert frames[0]["prompt_description"] == "Cartoon robot studies a locked door."
+    assert frames[0]["shot_plan_prompt_layers"]["direction_anchor"] == (
+        "朝向机器人发现门锁秘密的悬疑镜头"
+    )
+    assert "Pixar-like 3D cartoon" in frames[0]["prompt_description"]
+    assert "lock at center" in frames[0]["prompt_description"]
+    assert "0ms: robot leans toward the lock" in frames[0]["prompt_description"]
+    assert "curious tension" in frames[0]["prompt_description"]
 
 
 def test_generate_storyboard_support_from_timeline_spec_persists_meta(db_session):
@@ -219,3 +237,5 @@ def test_generate_storyboard_support_from_timeline_spec_persists_shot_plan_meta(
     frame = script.extra_metadata["storyboard"]["frames"][0]
     assert frame["timeline_clip_id"] == "video_scene_1_beat_2_001"
     assert frame["timeline_shot_plan"]["model"] == "deepseek-v4-flash"
+    assert frame["shot_plan_prompt_layers"]["motion_timeline"][2]["at_ms"] == 1200
+    assert "lock at center" in frame["ai_prompt"]

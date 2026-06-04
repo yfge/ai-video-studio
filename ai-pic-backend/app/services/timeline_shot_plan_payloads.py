@@ -4,7 +4,12 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+class MotionTimelinePoint(BaseModel):
+    at_ms: int = Field(..., ge=0)
+    action: str = Field(..., min_length=1)
 
 
 class TimelineShot(BaseModel):
@@ -17,6 +22,21 @@ class TimelineShot(BaseModel):
     character_anchor: str = Field(..., min_length=1)
     camera: str = Field(..., min_length=1)
     action: str = Field(..., min_length=1)
+    direction_anchor: str = Field(..., min_length=1)
+    aesthetic_reference: str = Field(..., min_length=1)
+    shot_type: str = Field(..., min_length=1)
+    camera_movement: str = Field(..., min_length=1)
+    composition_geometry: str = Field(..., min_length=1)
+    motion_timeline: list[MotionTimelinePoint] = Field(..., min_length=1, max_length=4)
+    emotional_landing: str = Field(..., min_length=1)
+    prompt_method: str = Field(..., min_length=1)
+
+    @model_validator(mode="after")
+    def validate_motion_timeline_bounds(self) -> "TimelineShot":
+        for point in self.motion_timeline:
+            if point.at_ms > self.duration_ms:
+                raise ValueError("motion_timeline at_ms must not exceed duration_ms")
+        return self
 
 
 class TimelineShotPlan(BaseModel):
@@ -34,27 +54,38 @@ def build_timeline_shot_plan_prompt(spec: dict[str, Any], *, style: str) -> str:
         "the provided Timeline fields as story source. The output schema is: "
         '{"shots":[{"clip_id":str,"duration_ms":int,"plot":str,'
         '"dialogue_source":str,"visual_prompt":str,"video_prompt":str,'
-        '"character_anchor":str,"camera":str,"action":str}]}. '
-        f"Style must be {style}; use non-real cartoon characters only. "
-        "Use the same protagonist anchor across all shots when character_anchor_hint "
-        "is present. character_anchor must be a reusable visual descriptor, not only "
+        '"character_anchor":str,"camera":str,"action":str,'
+        '"direction_anchor":str,"aesthetic_reference":str,"shot_type":str,'
+        '"camera_movement":str,"composition_geometry":str,'
+        '"motion_timeline":[{"at_ms":int,"action":str}],'
+        '"emotional_landing":str,"prompt_method":str}]}. '
+        f"Style must be {style}. {_style_prompt_instruction(style)} "
+        "Use the five-layer prompting method for every shot: "
+        "1) direction_anchor gives the AI a direction, not a locked template; "
+        "2) aesthetic_reference uses objective references such as camera/lens, "
+        "film stock, named visual style, color pairing, or production design; "
+        "3) composition_geometry describes screen positions, left/right/center, "
+        "foreground/background, and geometric relationships; "
+        "4) motion_timeline has 2-4 ordered action beats inside the clip duration, "
+        "or 1 beat for very short silent pause clips; "
+        "5) emotional_landing states the shot's final mood, rhythm, and light temperature. "
+        "Set prompt_method to direction_reference_geometry_timeline_emotion_v1. "
+        "Use the same protagonist anchor across all shots when character_anchor_hint is present. "
+        "character_anchor must be a reusable visual descriptor, not only "
         "a bare character name. Supporting characters may appear only as secondary "
         "props/figures and must not replace the protagonist. "
-        "Each video_prompt must include plot, dialogue_source, character_anchor, "
-        "camera, action, style, and duration. For silent pause/placeholder clips, "
-        "do not invent dialogue; set dialogue_source to an empty string and keep "
-        "plot empty only when the source clip has no text. Timeline clips: "
+        "Each video_prompt must include plot, dialogue_source, character_anchor, camera, action, "
+        "style, duration, composition_geometry, motion_timeline, and emotional_landing. "
+        "For silent pause/placeholder clips, do not invent dialogue; set dialogue_source "
+        "to an empty string and describe only the visual pause/action. Timeline clips: "
         f"{clips}"
     )
 
 
 def validate_timeline_shot_plan_matches(
-    plan: dict[str, Any],
-    spec: dict[str, Any],
+    plan: dict[str, Any], spec: dict[str, Any]
 ) -> dict[str, Any] | None:
-    video_by_id = {
-        str(clip.get("clip_id")): clip for clip in clips_for_track(spec, "video")
-    }
+    video_by_id = {str(clip.get("clip_id")): clip for clip in clips_for_track(spec, "video")}
     shot_by_id = {str(shot.get("clip_id")): shot for shot in plan.get("shots") or []}
     missing = sorted(set(video_by_id) - set(shot_by_id))
     extra = sorted(set(shot_by_id) - set(video_by_id))
@@ -84,6 +115,12 @@ def validate_timeline_shot_plan_matches(
         if dialogue_text and not _strip_text(shot.get("dialogue_source")):
             return {
                 "message": "timeline shot plan dialogue source missing",
+                "clip_id": clip_id,
+            }
+        beat_type = str(clip.get("beat_type") or "").lower()
+        if beat_type not in {"pause", "placeholder"} and len(shot.get("motion_timeline") or []) < 2:
+            return {
+                "message": "timeline shot plan motion timeline too short",
                 "clip_id": clip_id,
             }
     return None
@@ -149,9 +186,8 @@ def _timeline_prompt_clips(spec: dict[str, Any]) -> list[dict[str, Any]]:
         key = _scene_beat_key(clip)
         dialogue_clip = dialogue_by_key.get(key) or {}
         subtitle_clip = subtitle_by_key.get(key) or {}
-        source_refs = clip.get("source_refs") if isinstance(clip, dict) else {}
-        if not isinstance(source_refs, dict):
-            source_refs = {}
+        source_refs = clip.get("source_refs") or {}
+        source_refs = source_refs if isinstance(source_refs, dict) else {}
         prompt_clips.append(
             {
                 "clip_id": clip.get("clip_id"),
@@ -162,16 +198,12 @@ def _timeline_prompt_clips(spec: dict[str, Any]) -> list[dict[str, Any]]:
                 "end_ms": clip.get("end_ms"),
                 "duration_ms": clip.get("duration_ms"),
                 "plot": clip.get("text") or dialogue_clip.get("text") or "",
-                "dialogue": dialogue_clip.get("text")
-                or subtitle_clip.get("text")
-                or "",
+                "dialogue": dialogue_clip.get("text") or subtitle_clip.get("text") or "",
                 "speaker_name": dialogue_clip.get("speaker_name"),
                 "dialogue_action": dialogue_clip.get("dialogue_action"),
                 "dialogue_emotion": dialogue_clip.get("dialogue_emotion"),
                 "character_name": source_refs.get("character_name"),
-                "character_appearance_prompt": source_refs.get(
-                    "character_appearance_prompt"
-                ),
+                "character_appearance_prompt": source_refs.get("character_appearance_prompt"),
                 "character_anchor_hint": source_refs.get("character_anchor_hint"),
             }
         )
@@ -207,3 +239,15 @@ def _dialogue_text_for_video_clip(clip: dict[str, Any], spec: dict[str, Any]) ->
 
 def _strip_text(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
+
+
+def _style_prompt_instruction(style: str) -> str:
+    if style == "live_action":
+        return (
+            "真人电影 style: use believable human actors, practical production "
+            "design, cinematic lighting, real camera/lens language, and "
+            "non-cartoon treatment; do not force cartoon styling."
+        )
+    if style == "2d_cartoon":
+        return "Use non-real 2D cartoon characters and graphic animation styling."
+    return "Use non-real 3D cartoon characters and stylized animated lighting."

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   OperatorPanel,
   OperatorSectionHeader,
@@ -30,6 +30,7 @@ interface WorkspaceStoryboardTabContentProps {
   hasStoryboard?: boolean;
   selectedAudioTimeline?: Record<string, unknown> | null;
   selectedTimelineSpec?: TimelineResponse | null;
+  onTimelineUpdated?: (timeline: TimelineResponse) => void;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
   showAlert?: ShowAlert;
@@ -41,25 +42,35 @@ export function WorkspaceStoryboardTabContent({
   hasStoryboard,
   selectedAudioTimeline,
   selectedTimelineSpec,
+  onTimelineUpdated,
   selectedStoryboard,
   normalizedScenes,
   showAlert,
 }: WorkspaceStoryboardTabContentProps) {
   const [mode, setMode] = useState<"frames" | "grid">("frames");
   const [gridTaskId, setGridTaskId] = useState<number | null>(null);
+  const [localTimelineSpec, setLocalTimelineSpec] =
+    useState<TimelineResponse | null>(selectedTimelineSpec ?? null);
+  useEffect(() => {
+    setLocalTimelineSpec(selectedTimelineSpec ?? null);
+  }, [selectedTimelineSpec]);
+  const handleTimelineUpdated = (timeline: TimelineResponse) => {
+    setLocalTimelineSpec(timeline);
+    onTimelineUpdated?.(timeline);
+  };
   const timelineHref = episodeWorkspaceHref(episodeKey, {
     tab: "timeline",
     scriptId: selectedScriptId,
   });
-  const videoClipCount = countTimelineVideoClips(selectedTimelineSpec);
+  const videoClipCount = countTimelineVideoClips(localTimelineSpec);
   const summary = buildStoryboardSupportSummary(
     selectedStoryboard,
-    selectedTimelineSpec,
+    localTimelineSpec,
   );
   const frames = buildStoryboardSupportFrames(
     selectedStoryboard,
     normalizedScenes,
-    selectedTimelineSpec,
+    localTimelineSpec,
   );
   const storyboardStatus = frames.length
     ? "已有占位"
@@ -77,7 +88,7 @@ export function WorkspaceStoryboardTabContent({
             <WorkspaceStoryboardActions
               selectedScriptId={selectedScriptId}
               selectedAudioTimeline={selectedAudioTimeline}
-              selectedTimelineSpec={selectedTimelineSpec}
+              selectedTimelineSpec={localTimelineSpec}
               videoClipCount={videoClipCount}
               timelineHref={timelineHref}
               showAlert={showAlert}
@@ -131,7 +142,13 @@ export function WorkspaceStoryboardTabContent({
           {frames.length ? (
             <div className="divide-y divide-gray-100">
               {frames.map((frame) => (
-                <StoryboardSupportFrameRow key={frame.id} frame={frame} />
+                <StoryboardSupportFrameRow
+                  key={frame.id}
+                  frame={frame}
+                  selectedTimelineSpec={localTimelineSpec}
+                  showAlert={showAlert}
+                  onTimelineUpdated={handleTimelineUpdated}
+                />
               ))}
             </div>
           ) : (
@@ -145,7 +162,7 @@ export function WorkspaceStoryboardTabContent({
         </OperatorPanel>
       ) : (
         <WorkspaceStoryboardGridContent
-          selectedTimelineSpec={selectedTimelineSpec}
+          selectedTimelineSpec={localTimelineSpec}
           gridTaskId={gridTaskId}
         />
       )}

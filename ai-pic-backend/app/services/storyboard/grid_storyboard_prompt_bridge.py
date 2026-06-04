@@ -5,6 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
+from app.services.storyboard.grid_storyboard_prompt_layers import (
+    build_panel_prompt,
+    motion_timeline_text,
+    shot_plan_prompt_layers,
+)
+
 
 SUPPORTED_PANEL_COUNTS = (2, 4, 6, 9)
 
@@ -69,33 +75,27 @@ def build_grid_storyboard_panels(
             clip.get("video_prompt"),
             visual_prompt,
         )
+        prompt_layers = shot_plan_prompt_layers(shot_plan)
         row = ((index - 1) // layout.columns) + 1
         column = ((index - 1) % layout.columns) + 1
-
-        panels.append(
-            {
-                "panel_id": f"grid_panel_{index:03d}",
-                "panel_index": index,
-                "row": row,
-                "column": column,
-                "clip_id": clip_id,
-                "scene_id": clip.get("scene_id"),
-                "beat_id": clip.get("beat_id"),
-                "start_ms": clip.get("start_ms"),
-                "end_ms": clip.get("end_ms"),
-                "duration_ms": _duration_ms(clip),
-                "visual_prompt": visual_prompt,
-                "video_prompt": video_prompt,
-                "storyboard_panel_prompt": _build_panel_prompt(
-                    index=index,
-                    row=row,
-                    column=column,
-                    clip_id=clip_id,
-                    visual_prompt=visual_prompt,
-                ),
-                "source_refs": clip.get("source_refs") or {},
-            }
-        )
+        panel = {
+            "panel_id": f"grid_panel_{index:03d}",
+            "panel_index": index,
+            "row": row,
+            "column": column,
+            "clip_id": clip_id,
+            "scene_id": clip.get("scene_id"),
+            "beat_id": clip.get("beat_id"),
+            "start_ms": clip.get("start_ms"),
+            "end_ms": clip.get("end_ms"),
+            "duration_ms": _duration_ms(clip),
+            "visual_prompt": visual_prompt,
+            "video_prompt": video_prompt,
+            "source_refs": clip.get("source_refs") or {},
+        }
+        panel.update(prompt_layers)
+        panel["storyboard_panel_prompt"] = build_panel_prompt(panel)
+        panels.append(panel)
 
     return panels
 
@@ -131,7 +131,16 @@ def build_grid_storyboard_sheet_prompt(
         panel_index = panel.get("panel_index")
         clip_id = panel.get("clip_id") or "unknown"
         visual_prompt = panel.get("visual_prompt") or ""
-        lines.append(f"- Panel {panel_index} / clip {clip_id}: {visual_prompt}")
+        lines.append(
+            (
+                f"- Panel {panel_index} / clip {clip_id}: {visual_prompt}; "
+                f"direction: {panel.get('direction_anchor') or ''}; "
+                f"aesthetic: {panel.get('aesthetic_reference') or ''}; "
+                f"composition: {panel.get('composition_geometry') or ''}; "
+                f"motion: {motion_timeline_text(panel.get('motion_timeline'), separator=' ')}; "
+                f"emotional landing: {panel.get('emotional_landing') or ''}"
+            ).strip()
+        )
 
     return "\n".join(lines)
 
@@ -147,6 +156,11 @@ def build_grid_storyboard_video_prompt(panel: Mapping[str, Any]) -> str:
             f"Use panel {panel_index} only from the storyboard sheet as the visual reference for clip {clip_id}.",
             "Generate only this shot; do not animate or reveal other panels from the sheet.",
             "Preserve the character, costume, environment, composition, and lighting shown in the selected panel.",
+            f"Direction anchor: {panel.get('direction_anchor') or ''}",
+            f"Aesthetic reference: {panel.get('aesthetic_reference') or ''}",
+            f"Composition geometry: {panel.get('composition_geometry') or ''}",
+            f"Motion timeline: {motion_timeline_text(panel.get('motion_timeline'))}",
+            f"Emotional landing: {panel.get('emotional_landing') or ''}",
             str(video_prompt),
         ]
     )
@@ -193,17 +207,3 @@ def _duration_ms(clip: Mapping[str, Any]) -> Optional[int]:
     if isinstance(start_ms, (int, float)) and isinstance(end_ms, (int, float)):
         return max(0, int(end_ms - start_ms))
     return None
-
-
-def _build_panel_prompt(
-    *,
-    index: int,
-    row: int,
-    column: int,
-    clip_id: Any,
-    visual_prompt: str,
-) -> str:
-    return (
-        f"Panel {index} (row {row}, column {column}, clip {clip_id or 'unknown'}): "
-        f"{visual_prompt}"
-    )

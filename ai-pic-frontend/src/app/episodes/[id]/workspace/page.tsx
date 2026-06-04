@@ -43,6 +43,7 @@ export default function EpisodeWorkspacePage() {
     normalizedScenesError,
     selectedAudioTimeline,
     selectedTimelineSpec,
+    setSelectedTimelineSpec,
     selectedStoryboard,
     timingModel,
     setTimingModel,
@@ -166,6 +167,7 @@ export default function EpisodeWorkspacePage() {
             selectedScript={selectedScript}
             scriptSceneCount={mainScriptSceneCount}
             selectedTimelineSpec={selectedTimelineSpec}
+            onTimelineUpdated={setSelectedTimelineSpec}
             selectedAudioTimeline={selectedAudioTimeline}
             selectedStoryboard={selectedStoryboard}
             normalizedScenes={normalizedScenes}

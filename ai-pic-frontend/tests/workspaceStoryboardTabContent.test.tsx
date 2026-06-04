@@ -61,6 +61,48 @@ describe("WorkspaceStoryboardTabContent", () => {
     );
 
     assert.ok(utils.getByRole("button", { name: "生成宫格分镜" }));
+    const styleSelect = utils.getByLabelText("分镜风格") as HTMLSelectElement;
+    assert.equal(styleSelect.value, "live_action");
+    assert.ok(utils.getByRole("option", { name: "真人电影" }));
+  });
+
+  it("renders editable prompt-layer context for storyboard frames", () => {
+    const utils = render(
+      <WorkspaceStoryboardTabContent
+        episodeKey="episode_7"
+        selectedScriptId={131}
+        hasStoryboard
+        selectedTimelineSpec={timelineWithVideo}
+        selectedStoryboard={{
+          frames: [
+            {
+              frame_id: "frame-1",
+              frame_number: 1,
+              timeline_clip_id: "video_scene_1_beat_1_001",
+              start_ms: 0,
+              end_ms: 1200,
+              description: "主角推开实验室门",
+              shot_plan_prompt_layers: {
+                direction_anchor: "朝向实验室门口的悬疑进入",
+                aesthetic_reference: "IMAX film, Panavision C lens",
+                composition_geometry: "门在中心线，主角位于左三分线",
+                motion_timeline: [
+                  { at_ms: 0, action: "主角伸手推门" },
+                  { at_ms: 1200, action: "门缝透出冷光" },
+                ],
+                emotional_landing: "冷光里的紧张停顿",
+              },
+            },
+          ],
+        }}
+        normalizedScenes={[]}
+      />,
+      { container: dom.window.document.body },
+    );
+
+    assert.ok(utils.getByText("五层提示词"));
+    assert.ok(utils.getByText("朝向实验室门口的悬疑进入"));
+    assert.ok(utils.getByText("0ms 主角伸手推门 / 1200ms 门缝透出冷光"));
   });
 
   it("falls back to audio timeline storyboard sync when native Timeline is absent", () => {

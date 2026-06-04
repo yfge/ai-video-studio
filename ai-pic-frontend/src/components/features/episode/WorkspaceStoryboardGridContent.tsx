@@ -12,6 +12,7 @@ import {
   buildStoryboardGridSupport,
   type StoryboardGridPanel,
 } from "./WorkspaceStoryboardSupportModel";
+import { motionTimelineLabel } from "./WorkspaceStoryboardPromptLayers";
 
 export function WorkspaceStoryboardGridContent({
   selectedTimelineSpec,
@@ -116,6 +117,20 @@ function GridPanelRow({ panel }: { panel: StoryboardGridPanel }) {
         <div className="mt-1 line-clamp-2 text-gray-500">
           {panel.videoPrompt ?? "暂无视频提示"}
         </div>
+        {panel.promptLayers ? (
+          <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 p-2 text-[11px] text-gray-600">
+            <div className="font-semibold text-gray-900">五层提示词</div>
+            <div className="mt-1">
+              {panel.promptLayers.directionAnchor || "暂无方向锚点"}
+            </div>
+            <div className="mt-1">
+              {panel.promptLayers.compositionGeometry || "暂无几何构图"}
+            </div>
+            <div className="mt-1">
+              {motionTimelineLabel(panel.promptLayers) || "暂无秒级动作轴"}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

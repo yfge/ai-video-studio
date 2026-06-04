@@ -1,5 +1,9 @@
 import { asRecord, getString, parseMs } from "@/hooks/episodeDetailUtils";
 import type { NormalizedScene, TimelineResponse } from "@/utils/api/types";
+import {
+  parseShotPlanPromptLayers,
+  type ShotPlanPromptLayers,
+} from "./WorkspaceStoryboardPromptLayers";
 
 export type StoryboardSupportFrame = {
   id: string;
@@ -18,6 +22,7 @@ export type StoryboardSupportFrame = {
   videoUrl: string | null;
   sourceKind: string | null;
   gridPanelIndex: number | null;
+  promptLayers: ShotPlanPromptLayers | null;
 };
 
 export type StoryboardSupportSummary = {
@@ -39,6 +44,7 @@ export type StoryboardGridPanel = {
   timeLabel: string;
   visualPrompt: string | null;
   videoPrompt: string | null;
+  promptLayers: ShotPlanPromptLayers | null;
 };
 
 export type StoryboardGridSupport = {
@@ -120,6 +126,9 @@ export function buildStoryboardSupportFrames(
       gridPanelIndex:
         gridPanelsByClipId.get(getString(frame.timeline_clip_id) ?? "")
           ?.panelIndex ?? null,
+      promptLayers: parseShotPlanPromptLayers(
+        asRecord(frame.shot_plan_prompt_layers) ?? frame,
+      ),
     };
   });
 }
@@ -150,6 +159,7 @@ export function buildStoryboardGridSupport(
           timeLabel: timeLabel(startMs, endMs, panel.duration_ms),
           visualPrompt: getString(panel.visual_prompt) ?? null,
           videoPrompt: getString(panel.video_prompt) ?? null,
+          promptLayers: parseShotPlanPromptLayers(panel),
         };
       }),
   };

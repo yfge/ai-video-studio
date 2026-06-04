@@ -18,6 +18,7 @@ import {
   buildStoryboardSupportFrames,
   buildStoryboardSupportSummary,
 } from "../src/components/features/episode/WorkspaceStoryboardSupportModel";
+import { buildShotPlanPromptLayerPatch } from "../src/components/features/episode/WorkspaceStoryboardPromptLayers";
 import { hasTimeline } from "../src/components/features/stories/StoryProductionModel";
 import type { TimelineTrack } from "../src/components/features/Timeline/Timeline";
 import type { TimelineResponse } from "../src/utils/api/types";
@@ -293,6 +294,16 @@ describe("timeline workspace helpers", () => {
           end_ms: 1800,
           description: "主角推门进入实验室",
           prompt_description: "2D cartoon, vertical short drama shot",
+          shot_plan_prompt_layers: {
+            direction_anchor: "朝向实验室门口的悬疑进入",
+            aesthetic_reference: "IMAX film, Panavision C lens",
+            composition_geometry: "门在中心线，主角位于左三分线",
+            motion_timeline: [
+              { at_ms: 0, action: "主角伸手推门" },
+              { at_ms: 1800, action: "门缝透出冷光" },
+            ],
+            emotional_landing: "冷光里的紧张停顿",
+          },
           image_url: "https://example.com/frame.png",
           video_url: "https://example.com/clip.mp4",
           source: { kind: "timeline_clip" },
@@ -326,6 +337,11 @@ describe("timeline workspace helpers", () => {
     assert.equal(frames[0].imageUrl, "https://example.com/frame.png");
     assert.equal(frames[0].videoUrl, "https://example.com/clip.mp4");
     assert.equal(frames[0].sourceKind, "timeline_clip");
+    assert.equal(
+      frames[0].promptLayers?.compositionGeometry,
+      "门在中心线，主角位于左三分线",
+    );
+    assert.equal(frames[0].promptLayers?.motionTimeline[1].atMs, 1800);
   });
 
   it("builds storyboard grid support metadata from Timeline support views", () => {
@@ -363,6 +379,14 @@ describe("timeline workspace helpers", () => {
                 end_ms: 1200,
                 visual_prompt: "主角推门",
                 video_prompt: "镜头推近",
+                direction_anchor: "朝向门口的动作起势",
+                aesthetic_reference: "analog film still",
+                composition_geometry: "门框居中，主角从右侧入画",
+                motion_timeline: [
+                  { at_ms: 0, action: "主角推门" },
+                  { at_ms: 1200, action: "众人回头" },
+                ],
+                emotional_landing: "突然被注视的压迫感",
               },
             ],
           },
@@ -379,5 +403,92 @@ describe("timeline workspace helpers", () => {
     assert.equal(grid.panels[0].panelIndex, 1);
     assert.equal(grid.panels[0].clipId, "video_scene_1_beat_1_001");
     assert.equal(grid.panels[0].timeLabel, "0:00.000 - 0:01.200");
+    assert.equal(
+      grid.panels[0].promptLayers?.directionAnchor,
+      "朝向门口的动作起势",
+    );
+    assert.equal(grid.panels[0].promptLayers?.motionTimeline[1].atMs, 1200);
+  });
+
+  it("patches shot plan prompt layers without changing clip identity or timing", () => {
+    const timeline = {
+      id: 9,
+      business_id: "timeline_9",
+      episode_id: 1,
+      script_id: 2,
+      title: "Timeline",
+      status: "draft",
+      version: 4,
+      created_at: "2026-05-12T00:00:00Z",
+      updated_at: "2026-05-12T00:00:00Z",
+      spec: {
+        spec_version: "timeline.v1",
+        episode_id: 1,
+        script_id: 2,
+        version: 4,
+        support_views: {
+          storyboard_grid: {
+            sheet: { file_url: "https://example.com/grid.png" },
+            panels: [],
+          },
+        },
+        tracks: [
+          {
+            track_type: "video",
+            clips: [
+              {
+                clip_id: "video_scene_1_beat_1_001",
+                track_type: "video",
+                start_ms: 0,
+                end_ms: 1200,
+                duration_ms: 1200,
+                source_refs: {
+                  grid_storyboard_panel: { panel_index: 1 },
+                  timeline_shot_plan: {
+                    clip_id: "video_scene_1_beat_1_001",
+                    duration_ms: 1200,
+                    visual_prompt: "old visual",
+                    video_prompt: "old video",
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    } satisfies TimelineResponse;
+
+    const patched = buildShotPlanPromptLayerPatch(
+      timeline,
+      "video_scene_1_beat_1_001",
+      {
+        directionAnchor: "朝向门口的动作起势",
+        aestheticReference: "analog film still",
+        shotType: "low angle medium shot",
+        cameraMovement: "slow push-in",
+        compositionGeometry: "门框居中，主角从右侧入画",
+        motionTimeline: [
+          { atMs: 0, action: "主角推门" },
+          { atMs: 1200, action: "众人回头" },
+        ],
+        emotionalLanding: "突然被注视的压迫感",
+        promptMethod: "direction_reference_geometry_timeline_emotion_v1",
+      },
+    );
+
+    assert.ok(patched);
+    const clip = patched.tracks[0].clips[0];
+    assert.equal(clip.clip_id, "video_scene_1_beat_1_001");
+    assert.equal(clip.start_ms, 0);
+    assert.equal(clip.end_ms, 1200);
+    const refs = clip.source_refs as Record<string, unknown>;
+    assert.equal(refs.grid_storyboard_panel, undefined);
+    const shotPlan = refs.timeline_shot_plan as Record<string, unknown>;
+    assert.equal(shotPlan.direction_anchor, "朝向门口的动作起势");
+    assert.deepEqual(shotPlan.motion_timeline, [
+      { at_ms: 0, action: "主角推门" },
+      { at_ms: 1200, action: "众人回头" },
+    ]);
+    assert.equal(patched.support_views?.storyboard_grid, undefined);
   });
 });

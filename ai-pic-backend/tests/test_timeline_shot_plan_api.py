@@ -173,6 +173,18 @@ def _valid_shots() -> list[dict]:
             "character_anchor": "non-real blue robot with LED eyes",
             "camera": "slow push-in",
             "action": "points at the first glowing timeline bead",
+            "direction_anchor": "朝向孤独清道夫发现线索的冷幽默镜头",
+            "aesthetic_reference": "1960s atomic-punk, IMAX film, Panavision C lens",
+            "shot_type": "low angle medium close-up",
+            "camera_movement": "slow push-in",
+            "composition_geometry": "subject centered, glowing bead lower third",
+            "motion_timeline": [
+                {"at_ms": 0, "action": "robot leans into frame"},
+                {"at_ms": 1800, "action": "finger points at the bead"},
+                {"at_ms": 4000, "action": "LED eyes brighten"},
+            ],
+            "emotional_landing": "quiet discovery with lonely hero restraint",
+            "prompt_method": "direction_reference_geometry_timeline_emotion_v1",
         }
     ]
 
@@ -212,6 +224,17 @@ def test_timeline_shot_plan_api_updates_timeline_with_stable_clip_ids(
     assert shot_plan["provider"] == "deepseek"
     assert shot_plan["model"] == "deepseek-v4-flash"
     assert shot_plan["style"] == "3d_cartoon"
+    assert shot_plan["direction_anchor"] == "朝向孤独清道夫发现线索的冷幽默镜头"
+    assert shot_plan["aesthetic_reference"] == (
+        "1960s atomic-punk, IMAX film, Panavision C lens"
+    )
+    assert shot_plan["composition_geometry"] == (
+        "subject centered, glowing bead lower third"
+    )
+    assert shot_plan["motion_timeline"][1]["at_ms"] == 1800
+    assert shot_plan["emotional_landing"] == (
+        "quiet discovery with lonely hero restraint"
+    )
     assert "时间线先走" in fake_ai.calls[0]["prompt"]
     assert fake_ai.calls[0]["prefer_provider"] == "deepseek"
     assert fake_ai.calls[0]["model"] == "deepseek-v4-flash"
