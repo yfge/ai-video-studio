@@ -75,5 +75,3 @@ export function CreationOverlay({
     </div>
   );
 }
-
-export default CreationOverlay;

@@ -7,7 +7,6 @@
 export { WorkbenchDashboard } from "./workbench/WorkbenchDashboard";
 export { SceneStructurePanel, type SceneNode } from "./SceneStructurePanel";
 export {
-  default as StoryboardFrameCard,
   SceneTag,
   formatText,
   type StoryboardFrame,
@@ -51,12 +50,6 @@ export {
   VoiceSettingsPanel,
 } from "./virtual-ip-detail";
 export { VirtualIPListSection, VirtualIPCreateModal } from "./virtual-ip";
-export {
-  StoryGenerateForm,
-  StoryProductionBoard,
-} from "./stories";
-export {
-  EpisodeGeneratePanel,
-  StoryReadinessPanel,
-} from "./story-detail";
+export { StoryGenerateForm, StoryProductionBoard } from "./stories";
+export { EpisodeGeneratePanel, StoryReadinessPanel } from "./story-detail";
 export { EnvironmentCreateOverlay, EnvironmentList } from "./environments";

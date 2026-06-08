@@ -134,5 +134,3 @@ export function HookTagBadge({
     </span>
   );
 }
-
-export default HookTagBadge;

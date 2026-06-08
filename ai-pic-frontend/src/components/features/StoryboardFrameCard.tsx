@@ -152,5 +152,3 @@ export const FrameCard = ({ frame }: { frame: StoryboardFrame }) => (
     )}
   </article>
 );
-
-export default FrameCard;
