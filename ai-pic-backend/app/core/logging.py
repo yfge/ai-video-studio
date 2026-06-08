@@ -180,7 +180,6 @@ def setup_logging(
     enable_jsonl_logging: bool = True,
     feishu_webhook_url: Optional[str] = None,
     jsonl_log_path: str = "logs/ai-video-studio.jsonl",
-    max_log_file_size: str = "10MB",
     backup_count: int = 7,
 ) -> logging.Logger:
     """
@@ -195,7 +194,6 @@ def setup_logging(
         enable_jsonl_logging: 是否启用 JSONL 日志
         feishu_webhook_url: 飞书Webhook URL（可选）
         jsonl_log_path: JSONL 日志文件路径
-        max_log_file_size: 最大日志文件大小
         backup_count: 日志备份数量
 
     Returns:
