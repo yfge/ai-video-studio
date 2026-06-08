@@ -17,7 +17,6 @@ PAGE_LIMIT = 200
 HANDLER_LIMIT = 50
 
 ALLOWED_OVERSIZE = {
-    "ai-pic-backend/app/services/dialogue_audio_service.py": 1720,
     "ai-pic-backend/app/services/ai_service_manager.py": 1510,
     "ai-pic-backend/app/services/script_agent.py": 1479,
     "ai-pic-backend/app/services/voice_catalog.py": 1171,
@@ -27,7 +26,7 @@ ALLOWED_OVERSIZE = {
 ALLOWED_ROUTE_HANDLERS: dict[str, int] = {}
 ALLOWED_DIRECT_QUERIES: dict[str, int] = {}
 LEGACY_IMPORT_RE = re.compile(
-    r"(scripts_legacy|dialogue_audio_service|ai_service_manager|script_agent)"
+    r"(scripts_legacy|ai_service_manager|script_agent)"
 )
 QUERY_RE = re.compile(r"\b(?:db|session|self\.db|self\.session)\.query\(")
 DECORATOR_RE = re.compile(r"^\s*@router\.(get|post|put|patch|delete)")

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any, Dict, Optional
 
 from ..base import AIModelType
@@ -17,19 +16,8 @@ from .video_models import (
 from .video_request_params import (
     apply_generation_params,
     apply_task_params,
-    coerce_duration,
-    coerce_fps,
-    normalize_resolution,
     supports_reference_media,
 )
-
-
-def _contains_flag(text: str, flag: str) -> bool:
-    return re.search(rf"(^|\s){re.escape(flag)}(\s|$)", text) is not None
-
-
-def _normalize_resolution_flag(value: Optional[str]) -> Optional[str]:
-    return normalize_resolution(value)
 
 
 def _normalize_model(model: Optional[str], has_image: bool = False) -> str:
@@ -61,23 +49,6 @@ def _normalize_model(model: Optional[str], has_image: bool = False) -> str:
     if normalized.startswith("seedream-i2v"):
         return SEEDANCE_10_PRO_MODEL
     return raw
-
-
-def _build_prompt_with_flags(
-    prompt: Optional[str],
-    resolution: Optional[str],
-    ratio: Optional[str],
-    duration: int,
-    fps: int,
-    watermark: Optional[bool],
-    seed: Optional[int],
-    camera_fixed: Optional[bool],
-) -> tuple[str, int, int, Optional[str], Optional[str]]:
-    """Compatibility helper retained for older imports."""
-    base_prompt = (prompt or "").strip() or "生成一段符合描述的视频"
-    dur = coerce_duration(SEEDANCE_10_PRO_MODEL, duration)
-    fps_int = coerce_fps(fps)
-    return base_prompt, dur, fps_int, normalize_resolution(resolution), ratio
 
 
 def build_video_request(

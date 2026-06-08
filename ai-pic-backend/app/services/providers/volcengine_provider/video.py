@@ -9,18 +9,12 @@ from typing import Any, Callable, Dict, Optional
 import httpx
 
 from ..base import AIModelType, AIResponse, AITaskType
-from .video_request import (
-    _build_prompt_with_flags,
-    _normalize_model,
-    build_video_request,
-    has_visual_reference,
-)
+from .video_request import _normalize_model, build_video_request, has_visual_reference
 from .video_response import extract_error, extract_output_urls, extract_task_id
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "_build_prompt_with_flags",
     "_normalize_model",
     "generate_video",
     "poll_task_status",
