@@ -86,19 +86,6 @@ export function timelineClipStoryboardSheetUrl(item: TimelineItem | null) {
   );
 }
 
-export function timelineClipGridPanelIndex(item: TimelineItem | null) {
-  const meta = timelineItemMeta(item);
-  const sourceRefs = asRecord(meta.source_refs);
-  const gridPanel = asRecord(sourceRefs?.grid_storyboard_panel);
-  const raw = gridPanel?.panel_index;
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  if (typeof raw === "string" && raw.trim()) {
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
 export function parseOptionalNumber(value: string) {
   if (!value.trim()) return null;
   const parsed = Number(value);

@@ -18,9 +18,7 @@ export {
   type TimelineProps,
 } from "./Timeline/Timeline";
 export {
-  EpisodeAspectRatioSelect,
   ScriptGenerationForm,
-  ScriptList,
   EpisodeWorkspaceHeader,
   EpisodeWorkflowSteps,
   WorkspaceScriptTabContent,

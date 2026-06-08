@@ -65,7 +65,10 @@ export function VirtualIPMetaStrip({ virtualIP }: { virtualIP: VirtualIP }) {
   return (
     <div className="bg-gray-50/60 p-5">
       <div className="grid gap-3 text-xs text-gray-600 md:grid-cols-3">
-        <MetaItem label="创建者" value={resolveCreatorLabel(virtualIP.creator)} />
+        <MetaItem
+          label="创建者"
+          value={resolveCreatorLabel(virtualIP.creator)}
+        />
         <MetaItem label="创建时间" value={formatDate(virtualIP.created_at)} />
         <MetaItem
           label="更新时间"
@@ -76,13 +79,7 @@ export function VirtualIPMetaStrip({ virtualIP }: { virtualIP: VirtualIP }) {
   );
 }
 
-export function ReadinessRow({
-  label,
-  ready,
-}: {
-  label: string;
-  ready: boolean;
-}) {
+function ReadinessRow({ label, ready }: { label: string; ready: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-gray-600">{label}</span>
@@ -114,67 +111,70 @@ export function VirtualIPInspectorPanel({
         <section>
           <h3 className="text-sm font-semibold text-gray-950">生产就绪检查</h3>
           <div className="mt-3 space-y-3 text-sm">
-          <ReadinessRow label="IP 资料" ready={Boolean(virtualIP.name)} />
-          <ReadinessRow
-            label="背景故事"
-            ready={Boolean(virtualIP.background_story)}
-          />
-          <ReadinessRow
-            label="声音"
-            ready={Boolean(virtualIP.voice_config?.voice_id)}
-          />
-          <ReadinessRow
-            label="形象素材"
-            ready={Boolean(virtualIP.default_avatar_url)}
-          />
-          <ReadinessRow label="环境资产" ready={linkedEnvironmentCount > 0} />
+            <ReadinessRow label="IP 资料" ready={Boolean(virtualIP.name)} />
+            <ReadinessRow
+              label="背景故事"
+              ready={Boolean(virtualIP.background_story)}
+            />
+            <ReadinessRow
+              label="声音"
+              ready={Boolean(virtualIP.voice_config?.voice_id)}
+            />
+            <ReadinessRow
+              label="形象素材"
+              ready={Boolean(virtualIP.default_avatar_url)}
+            />
+            <ReadinessRow label="环境资产" ready={linkedEnvironmentCount > 0} />
           </div>
         </section>
         <section className="border-t border-gray-200 pt-4">
           <h3 className="text-sm font-semibold text-gray-950">资产管理</h3>
           <div className="mt-3 space-y-3">
-          <a href="#ip-images" className={operatorButtonClass("secondary", "w-full")}>
-            图片管理
-          </a>
-          <a
-            href="#ip-environments"
-            className={operatorButtonClass("secondary", "w-full")}
-          >
-            环境资产
-          </a>
-          {editing ? (
-            <div className="grid grid-cols-2 gap-2">
+            <a
+              href="#ip-images"
+              className={operatorButtonClass("secondary", "w-full")}
+            >
+              图片管理
+            </a>
+            <a
+              href="#ip-environments"
+              className={operatorButtonClass("secondary", "w-full")}
+            >
+              环境资产
+            </a>
+            {editing ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className={operatorButtonClass("secondary")}
+                >
+                  取消编辑
+                </button>
+                <button
+                  type="submit"
+                  form={editFormId}
+                  className={operatorButtonClass("primary")}
+                >
+                  保存
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
-                onClick={() => setEditing(false)}
-                className={operatorButtonClass("secondary")}
+                onClick={() => setEditing(true)}
+                className={operatorButtonClass("primary", "w-full")}
               >
-                取消编辑
+                编辑 IP
               </button>
-              <button
-                type="submit"
-                form={editFormId}
-                className={operatorButtonClass("primary")}
-              >
-                保存
-              </button>
-            </div>
-          ) : (
+            )}
             <button
               type="button"
-              onClick={() => setEditing(true)}
-              className={operatorButtonClass("primary", "w-full")}
+              onClick={onDelete}
+              className="h-8 rounded-md px-2 text-xs font-medium text-red-600 hover:bg-red-50"
             >
-              编辑 IP
+              删除 IP
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onDelete}
-            className="h-8 rounded-md px-2 text-xs font-medium text-red-600 hover:bg-red-50"
-          >
-            删除 IP
-          </button>
           </div>
         </section>
       </div>

@@ -18,7 +18,7 @@ export const formatTimelineMs = (ms: number) => {
 export const timelineItemMeta = (item: TimelineItem | null) =>
   asRecord(item?.meta) ?? {};
 
-export function timelineSceneNumber(meta: Record<string, unknown>) {
+function timelineSceneNumber(meta: Record<string, unknown>) {
   const raw =
     getString(meta.scene_number) ||
     getString(meta.scene) ||
@@ -72,7 +72,7 @@ export function buildEpisodeTimelineTracks(
   );
 }
 
-export function legacyAudioTimelineToTimelineTracks(
+function legacyAudioTimelineToTimelineTracks(
   selectedAudioTimeline: Record<string, unknown> | null,
   selectedStoryboard: Record<string, unknown> | null,
 ): TimelineTrack[] {

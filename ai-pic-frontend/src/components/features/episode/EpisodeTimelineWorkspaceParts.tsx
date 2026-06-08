@@ -1,21 +1,9 @@
 "use client";
 
-import {
-  OperatorContextRail,
-  StatusPill,
-  operatorButtonClass,
-  operatorSelectClass,
-} from "@/components/shared";
-import { getString } from "@/hooks/useEpisodeDetail";
-import type { Environment, NormalizedScene } from "@/utils/api/types";
-import type { TimelineItem, TimelineTrack } from "@/components/features";
-import {
-  formatTimelineMs,
-  timelineItemMeta,
-} from "./EpisodeTimelineWorkspaceModel";
-import { timelineClipVideoStatus } from "./EpisodeTimelineRenderModel";
+import { OperatorContextRail } from "@/components/shared";
+import type { NormalizedScene } from "@/utils/api/types";
 
-export function ContextRow({
+function ContextRow({
   label,
   value,
   ready,
@@ -30,21 +18,6 @@ export function ContextRow({
       <span className={ready ? "text-green-700" : "text-gray-500"}>
         {value}
       </span>
-    </div>
-  );
-}
-
-export function InspectorRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="text-sm">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-1 text-gray-900">{value}</div>
     </div>
   );
 }
@@ -104,141 +77,5 @@ export function EpisodeTimelineContextRail({
         )}
       </div>
     </OperatorContextRail>
-  );
-}
-
-export function EpisodeTimelineInspectorContent({
-  item,
-  track,
-  scene,
-  selectedStoryboard,
-  environments,
-  selectedEnvironmentId,
-  environmentSaving,
-  onEnvironmentChange,
-  onSaveEnvironment,
-  onNavigateToScript,
-  onNavigateToStoryboard,
-  onNavigateToTasks,
-}: {
-  item: TimelineItem | null;
-  track: TimelineTrack | null;
-  scene: NormalizedScene | null;
-  selectedStoryboard: Record<string, unknown> | null;
-  environments: Environment[];
-  selectedEnvironmentId: number | null;
-  environmentSaving: boolean;
-  onEnvironmentChange: (value: number | null) => void;
-  onSaveEnvironment: () => void;
-  onNavigateToScript: () => void;
-  onNavigateToStoryboard: () => void;
-  onNavigateToTasks: () => void;
-}) {
-  if (!item) {
-    return <div className="mt-4 text-sm text-gray-500">请选择时间轴片段。</div>;
-  }
-
-  const meta = timelineItemMeta(item);
-  const videoStatus = timelineClipVideoStatus(meta, selectedStoryboard);
-  return (
-    <div className="mt-4 space-y-4">
-      <StatusPill tone={track?.id === "storyboard" ? "blue" : "green"}>
-        {track?.label || "片段"}
-      </StatusPill>
-      <InspectorRow label="内容" value={item.label || "未命名"} />
-      <InspectorRow
-        label="时间"
-        value={`${formatTimelineMs(item.startMs)} - ${formatTimelineMs(
-          item.endMs,
-        )}`}
-      />
-      <InspectorRow label="角色" value={getString(meta.character) || "—"} />
-      <InspectorRow
-        label="镜头"
-        value={getString(meta.shot_type) || getString(meta.camera_notes) || "—"}
-      />
-      <InspectorRow label="状态" value={getString(meta.status) || "待复核"} />
-      <InspectorRow
-        label="视频素材"
-        value={
-          videoStatus.ready
-            ? `已关联 · ${videoStatus.source || "素材"}`
-            : "缺少视频素材"
-        }
-      />
-
-      <section className="rounded-md border border-gray-200 p-3">
-        <div className="text-sm font-semibold text-gray-950">场景环境</div>
-        {scene ? (
-          <div className="mt-3 space-y-2">
-            <div className="text-xs text-gray-500">
-              场景 {scene.scene_number} · {scene.slug_line}
-            </div>
-            <select
-              value={selectedEnvironmentId ?? ""}
-              onChange={(event) =>
-                onEnvironmentChange(
-                  event.target.value ? Number(event.target.value) : null,
-                )
-              }
-              className={operatorSelectClass("w-full")}
-            >
-              <option value="" disabled>
-                选择场景环境
-              </option>
-              {environments.map((env) => (
-                <option key={env.id} value={env.id}>
-                  {env.name}
-                  {(env.linked_virtual_ip_count || 0) > 0 ? " · IP资产" : ""}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={onSaveEnvironment}
-              disabled={environmentSaving || selectedEnvironmentId === null}
-              className={operatorButtonClass("primary", "w-full")}
-            >
-              {environmentSaving ? "保存中..." : "保存场景环境"}
-            </button>
-          </div>
-        ) : (
-          <div className="mt-2 text-xs text-amber-700">
-            未找到对应规范化场景，请先生成剧本结构或时间轴。
-          </div>
-        )}
-      </section>
-
-      {!videoStatus.ready ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          此片段缺少视频素材，需先在分镜辅助中生成或替换。
-        </div>
-      ) : null}
-      <div className="flex gap-2 border-t border-gray-100 pt-4">
-        <button
-          type="button"
-          onClick={onNavigateToScript}
-          className={operatorButtonClass("secondary")}
-        >
-          剧本
-        </button>
-        <button
-          type="button"
-          onClick={onNavigateToStoryboard}
-          className={operatorButtonClass(
-            videoStatus.ready ? "secondary" : "primary",
-          )}
-        >
-          替换片段
-        </button>
-        <button
-          type="button"
-          onClick={onNavigateToTasks}
-          className={operatorButtonClass("secondary")}
-        >
-          任务
-        </button>
-      </div>
-    </div>
   );
 }
