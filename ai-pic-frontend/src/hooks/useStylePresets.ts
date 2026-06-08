@@ -69,15 +69,3 @@ export function useStylePresets(options: UseStylePresetsOptions = {}) {
     refresh: load,
   };
 }
-
-export function clearStylePresetsCache(prefix?: string) {
-  if (!prefix) {
-    presetCache.clear();
-    return;
-  }
-  Array.from(presetCache.keys()).forEach((key) => {
-    if (key.startsWith(prefix)) {
-      presetCache.delete(key);
-    }
-  });
-}

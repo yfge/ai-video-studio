@@ -72,15 +72,3 @@ export function useStyleSchema(options: UseStyleSchemaOptions = {}) {
     refresh: load,
   };
 }
-
-export function clearStyleSchemaCache(prefix?: string) {
-  if (!prefix) {
-    schemaCache.clear();
-    return;
-  }
-  Array.from(schemaCache.keys()).forEach((key) => {
-    if (key.startsWith(prefix)) {
-      schemaCache.delete(key);
-    }
-  });
-}

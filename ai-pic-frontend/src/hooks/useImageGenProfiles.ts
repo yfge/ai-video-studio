@@ -119,15 +119,3 @@ export function useImageGenProfiles(options: UseImageGenProfilesOptions) {
     refresh: load,
   };
 }
-
-export function clearImageGenProfilesCache(prefix?: string) {
-  if (!prefix) {
-    profileCache.clear();
-    return;
-  }
-  Array.from(profileCache.keys()).forEach((key) => {
-    if (key.startsWith(prefix)) {
-      profileCache.delete(key);
-    }
-  });
-}

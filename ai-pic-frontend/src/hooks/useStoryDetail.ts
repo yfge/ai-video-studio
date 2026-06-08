@@ -30,11 +30,6 @@ export interface UseStoryDetailOptions {
 
 export type { EpisodeGenForm } from "@/hooks/storyEpisodeGenerationForm";
 
-export {
-  extractEpisodeScenes,
-  getEpisodeSceneCount,
-} from "@/hooks/storyDetailUtils";
-
 export function useStoryDetail({ storyKey, showAlert }: UseStoryDetailOptions) {
   const router = useRouter();
 

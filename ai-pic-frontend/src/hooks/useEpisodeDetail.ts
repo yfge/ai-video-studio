@@ -15,14 +15,7 @@ import { sortScriptsNewestFirst } from "@/hooks/episode/scriptSort";
 import { useSelectedScriptDetailHydration } from "@/hooks/episode/useSelectedScriptDetailHydration";
 import { SCRIPT_GENERATION_DEFAULTS } from "@/utils/scriptGenerationDefaults";
 
-export {
-  asRecord,
-  extractScenes,
-  getSceneCount,
-  getNumber,
-  getString,
-  parseMs,
-} from "@/hooks/episodeDetailUtils";
+export { asRecord, getString, parseMs } from "@/hooks/episodeDetailUtils";
 
 export interface UseEpisodeDetailOptions {
   episodeKey: string;
