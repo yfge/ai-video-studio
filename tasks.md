@@ -85,7 +85,8 @@
 
 - 场景音轨、episode 音轨、beats、分镜占位已经收敛到 Timeline Spec 导入；legacy storyboard 视频迁移桥已可生成可渲染 video track，first-class clip asset 关联已有后端基础。
 - 重新配音、重新切分、重新导出已有后端 replacement lineage API 挂在稳定 clip identity 上，operator 可以查看选中片段的源/输出/替换资产历史，也可以把已有 `media_asset_id` 记录为重做资产；backend 也能为选中 video clip 排 provider-backed rework task，并在视频任务成功后写回 `provider_rework` replacement lineage；operator 已接入 provider rework API，生成成功后会自动排一个带 rework 指纹的 final render job。
-- `scripts_legacy.py`、`dialogue_audio_service.py`、`ai_service_manager.py` 仍是主链旁边的稳定性风险。
+- 老 script compatibility wrapper 与旧 dialogue-audio facade 已下线；剩余主链旁边的稳定性风险集中在
+  `ai_service_manager.py` 和 `script_agent.py`。
 
 ### 任务（功能→后端→验证）
 
@@ -96,9 +97,9 @@
 - [x] 将 operator rework 控制接入 provider-backed video generation API。
 - [x] 将 provider rework 成功结果接入 render queue / export 自动编排。
 - [x] 将首尾帧、分镜图、分镜视频都视为 clip asset，和 timeline clip 显式关联。
-- [x] 继续拆分并下线 `scripts_legacy.py`，让 timeline/audio/storyboard 主链不再依赖 legacy router。
+- [x] 继续拆分并下线老 script compatibility wrapper，让 timeline/audio/storyboard 主链不再依赖 legacy router。
   - [x] 已把 legacy router 和 audio/timeline pipeline endpoints 的任务标题 helper 收敛到
-        `services/script/task_titles.py`，并清掉 `scripts_legacy.py` 中已无引用的
+        `services/script/task_titles.py`，并清掉旧 router 中已无引用的
         URL/UUID/datetime helper。
   - [x] 已补齐脚本生成测试 mock 对质量闸悬念判断和 repair JSON 的响应，恢复
         `/api/v1/scripts/generate` 真实质量闸路径测试。
@@ -124,14 +125,14 @@
         `services/script/generation_task_processor.py`，上下文、attempt/scoring 和持久化
         helper 拆成 focused service，worker 不再从 legacy router 导入。
   - [x] 已把主 `/scripts` router 组装迁到 `api/v1/endpoints/scripts/__init__.py`，
-        `scripts_legacy.py` 只保留老导入兼容 wrapper，不再承载主要用户路径。
-- [x] 拆分 `dialogue_audio_service.py`，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
-  - [x] 已把 episode 拼接/写回迁到 `services/audio/episode_audio_builder.py`，并把 episode timeline beat 构造迁到 `services/audio/episode_timeline_beats.py`；旧服务只保留兼容导入。
+        并删除老导入兼容 wrapper。
+- [x] 拆分旧 dialogue-audio facade，至少分离 scene audio 生成、episode 拼接、beats 落库、timeline 占位转换。
+  - [x] 已把 episode 拼接/写回迁到 `services/audio/episode_audio_builder.py`，并把 episode timeline beat 构造迁到 `services/audio/episode_timeline_beats.py`。
   - [x] 已把 scene beat 落库、scene audio metadata 写回和单场时长校验迁到 `services/audio/scene_audio_persistence.py`。
-  - [x] 已把 timeline 占位转换从 `dialogue_audio_service.py` 迁到 `services/audio/storyboard_from_timeline.py`，旧服务只保留兼容导入。
+  - [x] 已把 timeline 占位转换迁到 `services/audio/storyboard_from_timeline.py`。
   - [x] 已把 duration-control 和 deprecated dialogue-audio endpoint 的 scene 音轨生成入口切到 `services/audio/scene_audio_generator.py`。
   - [x] 已把 duration-control 的逐场景生成循环迁到 `services/duration_controlled_scene_runner.py`，并清掉 touched endpoint 的直接 query。
-  - [x] 已把历史 `dialogue_audio_service.py` 收成兼容 facade，旧导入转发到 `services/audio/*`，固定段落规划和文本清理兼容逻辑拆到小 helper。
+  - [x] 已删除历史 dialogue-audio 兼容 facade，固定段落规划和文本清理兼容逻辑也已下线。
 - [x] 拆分 `ai_service_manager.py`，把 provider routing、fallback、model cache、request logging 收成独立模块。
   - [x] 已把 request/response/prompt 日志和截断逻辑迁到 `services/ai_manager_logging.py`，manager 继续保留兼容 wrapper。
   - [x] 已把模型列表 cache key、读取和写入迁到 `services/ai_manager_model_cache.py`。
@@ -181,7 +182,8 @@
 
 - [x] 至少 1 个 episode 可以从 audio-driven timeline 重建到最终导出。
 - [x] re-dub / re-render 从 operator UI 到真实生成/导出都不会打断 stable `clip_id`。
-- [x] 不再有主要用户路径依赖 `scripts_legacy.py`。
+- [x] 老 script compatibility wrapper 已删除，主要用户路径统一挂载在
+      `api/v1/endpoints/scripts/__init__.py`。
 - [x] storyboard 页面不再是系统主编排入口。
 - [x] 真实 `Episode -> Timeline -> Render -> Export` 浏览器/API 证据通过。
 - [x] 10 条窄垂类样片完成并记录生产指标。
