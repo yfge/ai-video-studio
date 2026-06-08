@@ -5,8 +5,8 @@ from app.schemas.script_quality import (
     ScriptLintMetrics,
     ScriptLintOptions,
     ScriptLintResult,
+    ScriptLintRuleResult,
 )
-from app.services.script_quality.cliffhanger import check_cliffhanger_with_prompt
 from app.services.script_quality.checks import (
     check_cliffhanger,
     check_dialogue_length,
@@ -17,6 +17,7 @@ from app.services.script_quality.checks import (
     check_tempo_tags,
     check_visual_language,
 )
+from app.services.script_quality.cliffhanger import check_cliffhanger_with_prompt
 from app.services.script_quality.constants import (
     COMMERCIAL_ACTION_MARKERS,
     SFX_TAG_KEYWORDS,

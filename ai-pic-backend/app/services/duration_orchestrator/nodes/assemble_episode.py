@@ -30,7 +30,6 @@ def assemble_episode_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     budgets: List[SceneBudget] = state.get("scene_budgets", [])
     committed_scenes = state.get("committed_scenes", {})
-    generated_dialogues = state.get("generated_dialogues", {})
     episode_id = state.get("episode_id")
     script_id = state.get("script_id")
     total_duration_minutes = state.get("total_duration_minutes", 0)

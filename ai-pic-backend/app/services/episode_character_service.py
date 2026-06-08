@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from app.models.episode_character import EpisodeCharacter
 from app.models.virtual_ip import VirtualIP
@@ -20,7 +20,9 @@ def resolve_character_resources(
     # Load VirtualIP if not already loaded
     virtual_ip = character.virtual_ip
     if not virtual_ip:
-        virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == character.virtual_ip_id).first()
+        virtual_ip = (
+            db.query(VirtualIP).filter(VirtualIP.id == character.virtual_ip_id).first()
+        )
 
     if not virtual_ip:
         return {
@@ -64,9 +66,7 @@ def resolve_character_resources(
 
     # Display name: priority order
     display_name = (
-        character.character_name
-        or virtual_ip.name
-        or f"临时角色{character.id}"
+        character.character_name or virtual_ip.name or f"临时角色{character.id}"
     )
 
     return {
@@ -88,7 +88,9 @@ def get_character_display_name(character: EpisodeCharacter, db: Session) -> str:
 
     virtual_ip = character.virtual_ip
     if not virtual_ip:
-        virtual_ip = db.query(VirtualIP).filter(VirtualIP.id == character.virtual_ip_id).first()
+        virtual_ip = (
+            db.query(VirtualIP).filter(VirtualIP.id == character.virtual_ip_id).first()
+        )
 
     if virtual_ip and virtual_ip.name:
         return virtual_ip.name
@@ -116,11 +118,16 @@ def get_episode_characters(
     query = db.query(EpisodeCharacter).filter(EpisodeCharacter.episode_id == episode_id)
 
     if not include_deleted:
-        query = query.filter(EpisodeCharacter.is_deleted == False)
+        query = query.filter(EpisodeCharacter.is_deleted.is_(False))
 
     total = query.count()
     offset = (page - 1) * page_size
-    items = query.order_by(EpisodeCharacter.importance.desc(), EpisodeCharacter.created_at).offset(offset).limit(page_size).all()
+    items = (
+        query.order_by(EpisodeCharacter.importance.desc(), EpisodeCharacter.created_at)
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
 
     has_more = (offset + len(items)) < total
 

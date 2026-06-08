@@ -8,8 +8,6 @@ Defines specific context structures for different agent types:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
 from app.services.agent_core.context_spec import (
     ContextSpec,
     FieldPriority,
@@ -18,7 +16,6 @@ from app.services.agent_core.context_spec import (
     is_non_empty_list,
     is_non_empty_string,
     is_positive_int,
-    normalize_newlines,
     strip_whitespace,
 )
 

@@ -27,6 +27,16 @@ from app.services.task_worker_storyboard_media import (  # noqa: F401
     storyboard_video_generate_task,
 )
 
+__all__ = [
+    "environment_image_generate_task",
+    "environment_image_variant_task",
+    "grid_storyboard_sheet_generate_task",
+    "storyboard_image_generate_task",
+    "storyboard_video_generate_task",
+    "virtual_ip_image_generate_task",
+    "virtual_ip_image_variant_task",
+]
+
 EPISODE_GENERATE_SOFT_TIME_LIMIT = 7200
 EPISODE_GENERATE_TIME_LIMIT = 7500
 

@@ -7,6 +7,7 @@ precheck → generate_plan → validate_plan → generate_frames → validate �
 
 from __future__ import annotations
 
+from importlib.util import find_spec
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from app.core.logging import get_logger
@@ -30,12 +31,7 @@ from app.services.storyboard.validators import (
     TimelineValidator,
 )
 
-try:
-    import langgraph  # noqa: F401
-
-    LANGGRAPH_AVAILABLE = True
-except ImportError:
-    LANGGRAPH_AVAILABLE = False
+LANGGRAPH_AVAILABLE = find_spec("langgraph") is not None
 
 if TYPE_CHECKING:
     from app.models.script import Episode, Script

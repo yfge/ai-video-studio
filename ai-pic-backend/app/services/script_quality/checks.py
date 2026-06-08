@@ -5,6 +5,7 @@ from app.schemas.script_quality import (
     ScriptLintOptions,
     ScriptLintRuleResult,
 )
+from app.services.script_quality.cliffhanger import check_cliffhanger
 from app.services.script_quality.constants import (
     COMMERCIAL_ACTION_MARKERS,
     EMOTION_TAG_KEYWORDS,
@@ -13,9 +14,19 @@ from app.services.script_quality.constants import (
     SFX_TAG_KEYWORDS,
     TEMPO_TAGS,
 )
-from app.services.script_quality.cliffhanger import check_cliffhanger
 from app.services.script_quality.utils import estimate_visible_chars
 from app.services.script_quality.visual_language import check_visual_language
+
+__all__ = [
+    "check_cliffhanger",
+    "check_dialogue_length",
+    "check_emotion_goal",
+    "check_hook_3s",
+    "check_scene_headers",
+    "check_sfx_lines",
+    "check_tempo_tags",
+    "check_visual_language",
+]
 
 
 def check_scene_headers(
@@ -43,6 +54,7 @@ def check_scene_headers(
         ),
         issues,
     )
+
 
 def check_tempo_tags(
     all_tags: list[str],

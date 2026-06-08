@@ -63,6 +63,8 @@ from app.services.script_missing_parts import (
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+_ai_service_for_monkeypatch = ai_service
+
 router = APIRouter()
 router.include_router(catalog_router)
 router.include_router(prompt_router)

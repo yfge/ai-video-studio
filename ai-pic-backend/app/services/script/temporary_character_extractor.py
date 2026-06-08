@@ -58,7 +58,6 @@ def extract_temporary_characters(
     if not isinstance(script_content, dict):
         return []
 
-    scenes = script_content.get("scenes", [])
     dialogues = script_content.get("dialogues", [])
     stage_directions = script_content.get("stage_directions", [])
 

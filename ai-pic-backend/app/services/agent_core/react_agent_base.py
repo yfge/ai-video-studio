@@ -10,7 +10,6 @@ Provides a standardized base class for building AI agents with:
 
 from __future__ import annotations
 
-import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -263,9 +262,7 @@ class ReactAgentBase(ABC, Generic[T]):
         return AgentResult.fail(state.errors, {"attempts": state.attempt})
 
     @abstractmethod
-    async def _generate(
-        self, input_data: Dict[str, Any], state: AgentState
-    ) -> Any:
+    async def _generate(self, input_data: Dict[str, Any], state: AgentState) -> Any:
         """Core generation logic. Must be implemented by subclasses.
 
         Args:
@@ -324,9 +321,7 @@ class ReactAgentBase(ABC, Generic[T]):
         Returns:
             Modified input data for retry
         """
-        strategy = self.repair_strategies.get(
-            error.error_type, RepairStrategy.RETRY
-        )
+        strategy = self.repair_strategies.get(error.error_type, RepairStrategy.RETRY)
         logger.info(f"Applying repair strategy: {strategy.value}")
 
         if strategy == RepairStrategy.REFINE:

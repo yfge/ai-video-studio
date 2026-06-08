@@ -75,9 +75,9 @@ def load_image_ref_context(db, script: Script, script_id: int) -> ImageRefContex
     all_char_ids = {cid for ids in ctx.scene_char_ids.values() for cid in ids}
     try:
         from app.services.storyboard.storyboard_character_anchors import (
-            extract_virtual_ip_name_aliases,
             get_story_character_virtual_ip_ids,
         )
+
         episode = db.query(Episode).filter(Episode.id == script.episode_id).first()
         story_id = int(episode.story_id) if episode and episode.story_id else None
         if story_id:
@@ -166,7 +166,11 @@ def build_frame_references(
 
     # 3) Character anchor references
     char_anchor_refs = _resolve_character_refs(
-        frame, scene_no, ctx, prompt, reference_notes,
+        frame,
+        scene_no,
+        ctx,
+        prompt,
+        reference_notes,
     )
 
     # 4) Environment references
@@ -210,8 +214,11 @@ def _resolve_character_refs(frame, scene_no, ctx, prompt, reference_notes):
             from app.services.storyboard.storyboard_character_anchors import (
                 infer_character_ids_from_text,
             )
+
             candidate_char_ids = infer_character_ids_from_text(
-                prompt, ctx.name_to_vip_id, max_matches=4,
+                prompt,
+                ctx.name_to_vip_id,
+                max_matches=4,
             )
             if candidate_char_ids:
                 source = "prompt"
@@ -229,6 +236,7 @@ def _resolve_character_refs(frame, scene_no, ctx, prompt, reference_notes):
                 from app.services.storyboard.storyboard_character_anchors import (
                     fallback_virtual_ip_anchor_url,
                 )
+
                 img_url = fallback_virtual_ip_anchor_url(vip)
             except Exception:
                 img_url = None

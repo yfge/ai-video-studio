@@ -5,9 +5,6 @@ from typing import Any, Dict, List, Optional
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.services.ai.scripts_ai_manager_payloads import (
-    _BEAT_CONTRACT_MAX_TOKENS as _BEAT_CONTRACT_MAX_TOKENS,
-)
-from app.services.ai.scripts_ai_manager_payloads import (
     _MAX_DIALOGUE_SCENES,
     _REPAIR_MAX_TOKENS,
     _SCENE_PLAN_MAX_TOKENS,

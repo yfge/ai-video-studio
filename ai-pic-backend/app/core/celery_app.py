@@ -6,6 +6,7 @@ Celery 应用配置
 
 import sys
 from datetime import timedelta
+from importlib import import_module
 
 from app.core.config import settings
 from celery import Celery
@@ -69,8 +70,11 @@ celery_app.conf.update(
 # 确保在 Celery 应用初始化后注册所有任务
 # 任务定义位于 app.services.task_worker 等模块中，使用显式 name（如 "tasks.virtual_ip_image_generate"）
 # 通过导入该模块完成注册，避免 worker 启动时出现 KeyError。
-import app.services.task_worker  # noqa: E402,F401
-import app.services.task_worker_script_quality  # noqa: E402,F401
-import app.services.task_worker_storyboard_media  # noqa: E402,F401
-import app.services.task_worker_timeline_render  # noqa: E402,F401
-import app.services.task_worker_timeline_rework  # noqa: E402,F401
+for _task_module in (
+    "app.services.task_worker",
+    "app.services.task_worker_script_quality",
+    "app.services.task_worker_storyboard_media",
+    "app.services.task_worker_timeline_render",
+    "app.services.task_worker_timeline_rework",
+):
+    import_module(_task_module)

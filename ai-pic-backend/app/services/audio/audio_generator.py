@@ -17,12 +17,6 @@ from typing import Any, Sequence
 import httpx
 from app.core.logging import get_logger
 from app.services.ai_service import ai_service
-from app.services.audio.audio_emotions import (
-    ALLOWED_TTS_EMOTIONS as ALLOWED_TTS_EMOTIONS,
-)
-from app.services.audio.audio_emotions import (
-    normalize_tts_emotion as normalize_tts_emotion,
-)
 
 logger = get_logger(__name__)
 _MISSING_OSS = object()

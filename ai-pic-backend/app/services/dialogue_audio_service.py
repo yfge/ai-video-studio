@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Any
 
 from app.services.ai_service import ai_service
+from app.services.audio.audio_emotions import (
+    normalize_tts_emotion as _normalize_tts_emotion,
+)
 from app.services.audio.audio_generator import concat_mp3s as _concat_mp3s
 from app.services.audio.audio_generator import concat_wavs as _concat_wavs
 from app.services.audio.audio_generator import download_to_file as _download_to_file
@@ -20,9 +23,6 @@ from app.services.audio.audio_generator import (
 )
 from app.services.audio.audio_generator import (
     generate_silence_wav as _generate_silence_wav,
-)
-from app.services.audio.audio_generator import (
-    normalize_tts_emotion as _normalize_tts_emotion,
 )
 from app.services.audio.audio_generator import normalize_wav as _normalize_wav
 from app.services.audio.audio_generator import run_ffmpeg as _run_ffmpeg

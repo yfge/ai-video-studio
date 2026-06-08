@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from .helpers import get_episode_by_identifier, get_story_by_identifier
 
 router = APIRouter()
+_ai_service_for_monkeypatch = ai_service
 
 
 def _collect_previous_episodes(

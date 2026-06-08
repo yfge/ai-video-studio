@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from importlib.util import find_spec
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from app.prompts.manager import prompt_manager
@@ -17,12 +18,7 @@ from app.utils.json_utils import extract_json_block
 
 logger = logging.getLogger(__name__)
 
-try:  # pragma: no cover - optional dependency
-    import langgraph  # noqa: F401
-
-    LANGGRAPH_AVAILABLE = True
-except ImportError:  # pragma: no cover - optional dependency
-    LANGGRAPH_AVAILABLE = False
+LANGGRAPH_AVAILABLE = find_spec("langgraph") is not None
 
 if TYPE_CHECKING:
     from .ai_service import AIService
@@ -96,7 +92,9 @@ class StoryLangGraphAgent:
         # Build profiles from input characters
         profiles = self._build_character_profiles(input_characters)
         if not profiles:
-            results["character_warnings"].append("No input characters to validate against")
+            results["character_warnings"].append(
+                "No input characters to validate against"
+            )
             return results
 
         self._character_validator = CharacterConsistencyValidator()
@@ -130,8 +128,10 @@ class StoryLangGraphAgent:
                         attrs["personality"] = char["personality"]
 
                     if attrs:
-                        attr_results = self._character_validator.validate_character_attributes(
-                            name, attrs
+                        attr_results = (
+                            self._character_validator.validate_character_attributes(
+                                name, attrs
+                            )
                         )
                         for r in attr_results:
                             results["character_validation_results"].append(r.to_dict())
@@ -288,7 +288,9 @@ class StoryLangGraphAgent:
                 if quality_validation["story_quality_warnings"]:
                     logger.warning(
                         "Story quality validation warnings",
-                        extra={"warnings": quality_validation["story_quality_warnings"]},
+                        extra={
+                            "warnings": quality_validation["story_quality_warnings"]
+                        },
                     )
                 return {
                     "content": latest_text,
@@ -312,7 +314,9 @@ class StoryLangGraphAgent:
                 try:
                     StoryOutlineModel.model_validate(parsed)
                     # Run character consistency validation
-                    char_validation = self._validate_story_characters(parsed, characters)
+                    char_validation = self._validate_story_characters(
+                        parsed, characters
+                    )
                     if char_validation["character_warnings"]:
                         logger.warning(
                             "Story character validation warnings (repair attempt)",
@@ -325,7 +329,9 @@ class StoryLangGraphAgent:
                     if quality_validation["story_quality_warnings"]:
                         logger.warning(
                             "Story quality validation warnings (repair attempt)",
-                            extra={"warnings": quality_validation["story_quality_warnings"]},
+                            extra={
+                                "warnings": quality_validation["story_quality_warnings"]
+                            },
                         )
                     return {
                         "content": latest_text,

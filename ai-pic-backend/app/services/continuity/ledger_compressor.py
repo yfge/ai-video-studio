@@ -6,7 +6,6 @@ critical continuity information when compacting for prompts.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set
 
@@ -29,8 +28,25 @@ IMPORTANCE_KEYWORDS_ZH = {
 }
 
 IMPORTANCE_KEYWORDS_EN = {
-    "high": ["critical", "key", "core", "fatal", "truth", "secret", "identity", "death"],
-    "medium": ["conflict", "twist", "suspense", "discovery", "reveal", "hidden", "clue"],
+    "high": [
+        "critical",
+        "key",
+        "core",
+        "fatal",
+        "truth",
+        "secret",
+        "identity",
+        "death",
+    ],
+    "medium": [
+        "conflict",
+        "twist",
+        "suspense",
+        "discovery",
+        "reveal",
+        "hidden",
+        "clue",
+    ],
 }
 
 # Info types ranked by importance
@@ -244,7 +260,9 @@ def compress_ledger_by_priority(
     base = ledger if isinstance(ledger, dict) else {}
 
     # Extract metadata for scoring
-    characters = base.get("characters") if isinstance(base.get("characters"), dict) else {}
+    characters = (
+        base.get("characters") if isinstance(base.get("characters"), dict) else {}
+    )
     known_chars = _get_known_characters(characters)
     timeline = base.get("timeline") if isinstance(base.get("timeline"), list) else []
     max_episode = _get_max_episode(timeline)

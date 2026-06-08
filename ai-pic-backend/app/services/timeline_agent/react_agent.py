@@ -14,7 +14,6 @@ from app.core.logging import get_logger
 from app.services.agent_core import (
     AgentError,
     AgentErrorType,
-    AgentResult,
     AgentState,
     FailureMode,
     FailurePatternMatcher,
@@ -450,9 +449,7 @@ class TimelineReactAgent(ReactAgentBase[TimingPlan]):
         if target_duration_seconds:
             target_ms = target_duration_seconds * 1000
             available_gap_ms = max(0, target_ms - total_dialogue_ms)
-            avg_gap_per_dialogue = (
-                available_gap_ms // len(contexts) if contexts else 0
-            )
+            avg_gap_per_dialogue = available_gap_ms // len(contexts) if contexts else 0
 
             duration_info = ""
             if has_actual_durations and total_dialogue_ms > 0:

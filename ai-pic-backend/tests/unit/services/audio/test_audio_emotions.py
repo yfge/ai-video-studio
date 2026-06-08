@@ -1,6 +1,6 @@
 """Tests for audio emotion normalization."""
 
-from app.services.audio.audio_generator import (
+from app.services.audio.audio_emotions import (
     ALLOWED_TTS_EMOTIONS,
     normalize_tts_emotion,
 )

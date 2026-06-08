@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 
 class StoryQualitySeverity(str, Enum):
@@ -100,19 +100,27 @@ class StoryQualityResult:
         return {
             "passed": self.passed,
             "issues": [i.to_dict() for i in self.issues],
-            "three_act_analysis": {
-                "act1_ratio": self.three_act_analysis.act1_ratio,
-                "act2_ratio": self.three_act_analysis.act2_ratio,
-                "act3_ratio": self.three_act_analysis.act3_ratio,
-                "is_balanced": self.three_act_analysis.is_balanced,
-            } if self.three_act_analysis else None,
-            "pacing_analysis": {
-                "opening_score": self.pacing_analysis.opening_score,
-                "buildup_score": self.pacing_analysis.buildup_score,
-                "climax_score": self.pacing_analysis.climax_score,
-                "resolution_score": self.pacing_analysis.resolution_score,
-                "overall_score": self.pacing_analysis.overall_score,
-            } if self.pacing_analysis else None,
+            "three_act_analysis": (
+                {
+                    "act1_ratio": self.three_act_analysis.act1_ratio,
+                    "act2_ratio": self.three_act_analysis.act2_ratio,
+                    "act3_ratio": self.three_act_analysis.act3_ratio,
+                    "is_balanced": self.three_act_analysis.is_balanced,
+                }
+                if self.three_act_analysis
+                else None
+            ),
+            "pacing_analysis": (
+                {
+                    "opening_score": self.pacing_analysis.opening_score,
+                    "buildup_score": self.pacing_analysis.buildup_score,
+                    "climax_score": self.pacing_analysis.climax_score,
+                    "resolution_score": self.pacing_analysis.resolution_score,
+                    "overall_score": self.pacing_analysis.overall_score,
+                }
+                if self.pacing_analysis
+                else None
+            ),
             "hook_score": self.hook_score,
             "cliffhanger_score": self.cliffhanger_score,
             "worldbuilding_score": self.worldbuilding_score,
@@ -136,28 +144,76 @@ class StoryQualityValidator:
     # Hook quality indicators
     HOOK_KEYWORDS = {
         "strong": [
-            "突然", "震惊", "意外", "神秘", "危机", "紧急", "发现",
-            "sudden", "shocking", "mysterious", "crisis", "urgent", "discovery",
-            "问题", "冲突", "秘密", "悬念", "疑问",
-            "conflict", "secret", "suspense", "question",
+            "突然",
+            "震惊",
+            "意外",
+            "神秘",
+            "危机",
+            "紧急",
+            "发现",
+            "sudden",
+            "shocking",
+            "mysterious",
+            "crisis",
+            "urgent",
+            "discovery",
+            "问题",
+            "冲突",
+            "秘密",
+            "悬念",
+            "疑问",
+            "conflict",
+            "secret",
+            "suspense",
+            "question",
         ],
         "weak": [
-            "平静", "普通", "日常", "一如既往",
-            "ordinary", "usual", "normal", "routine",
+            "平静",
+            "普通",
+            "日常",
+            "一如既往",
+            "ordinary",
+            "usual",
+            "normal",
+            "routine",
         ],
     }
 
     # Cliffhanger quality indicators
     CLIFFHANGER_KEYWORDS = {
         "strong": [
-            "但是", "然而", "突然", "谁知", "没想到", "危险", "紧张",
-            "but", "however", "suddenly", "unexpectedly", "danger", "tension",
-            "悬念", "未知", "等待", "即将", "转折",
-            "suspense", "unknown", "waiting", "turning point",
+            "但是",
+            "然而",
+            "突然",
+            "谁知",
+            "没想到",
+            "危险",
+            "紧张",
+            "but",
+            "however",
+            "suddenly",
+            "unexpectedly",
+            "danger",
+            "tension",
+            "悬念",
+            "未知",
+            "等待",
+            "即将",
+            "转折",
+            "suspense",
+            "unknown",
+            "waiting",
+            "turning point",
         ],
         "weak": [
-            "结束", "完成", "解决", "平静",
-            "ended", "completed", "resolved", "calm",
+            "结束",
+            "完成",
+            "解决",
+            "平静",
+            "ended",
+            "completed",
+            "resolved",
+            "calm",
         ],
     }
 
@@ -174,16 +230,44 @@ class StoryQualityValidator:
     # Pacing keywords for analysis
     PACING_KEYWORDS = {
         "tension_build": [
-            "紧张", "压力", "危机", "冲突", "对抗", "升级",
-            "tension", "pressure", "crisis", "conflict", "escalate",
+            "紧张",
+            "压力",
+            "危机",
+            "冲突",
+            "对抗",
+            "升级",
+            "tension",
+            "pressure",
+            "crisis",
+            "conflict",
+            "escalate",
         ],
         "climax": [
-            "高潮", "决战", "对决", "真相", "揭示", "爆发",
-            "climax", "showdown", "confrontation", "truth", "reveal", "explosion",
+            "高潮",
+            "决战",
+            "对决",
+            "真相",
+            "揭示",
+            "爆发",
+            "climax",
+            "showdown",
+            "confrontation",
+            "truth",
+            "reveal",
+            "explosion",
         ],
         "resolution": [
-            "解决", "和解", "结局", "收尾", "完结", "尾声",
-            "resolve", "reconcile", "ending", "conclusion", "epilogue",
+            "解决",
+            "和解",
+            "结局",
+            "收尾",
+            "完结",
+            "尾声",
+            "resolve",
+            "reconcile",
+            "ending",
+            "conclusion",
+            "epilogue",
         ],
     }
 
@@ -210,10 +294,7 @@ class StoryQualityValidator:
         issues: List[StoryQualityIssue] = []
         result = StoryQualityResult(passed=True, issues=issues)
 
-        # Extract story content for analysis
         episodes = story.get("episodes", [])
-        outline = story.get("outline", "") or story.get("summary", "")
-        plot_points = story.get("plot_points", [])
 
         # 1. Three-act structure validation
         three_act = self._analyze_three_act_structure(story)
@@ -336,8 +417,12 @@ class StoryQualityValidator:
             act2_end = max(act1_end + 1, 3 * total_episodes // 4)
 
         act1_ratio = act1_end / total_episodes if total_episodes > 0 else 0.25
-        act2_ratio = (act2_end - act1_end) / total_episodes if total_episodes > 0 else 0.50
-        act3_ratio = (total_episodes - act2_end) / total_episodes if total_episodes > 0 else 0.25
+        act2_ratio = (
+            (act2_end - act1_end) / total_episodes if total_episodes > 0 else 0.50
+        )
+        act3_ratio = (
+            (total_episodes - act2_end) / total_episodes if total_episodes > 0 else 0.25
+        )
 
         # Check balance
         act1_ok = abs(act1_ratio - self.ACT1_IDEAL) <= self.STRUCTURE_TOLERANCE
@@ -382,8 +467,6 @@ class StoryQualityValidator:
             all_text += " " + str(ep.get("summary", ""))
             all_text += " " + str(ep.get("plot_points", ""))
 
-        all_text_lower = all_text.lower()
-
         # Score opening (first 20% of content)
         opening_text = all_text[: len(all_text) // 5]
         opening_score = self._score_text_engagement(opening_text)
@@ -401,7 +484,9 @@ class StoryQualityValidator:
         # Score resolution (last 20%)
         resolution_text = all_text[4 * len(all_text) // 5 :]
         resolution_keywords = self.PACING_KEYWORDS["resolution"]
-        resolution_score = self._count_keyword_density(resolution_text, resolution_keywords)
+        resolution_score = self._count_keyword_density(
+            resolution_text, resolution_keywords
+        )
 
         # Overall score
         overall_score = (
@@ -434,9 +519,7 @@ class StoryQualityValidator:
         strong_count = sum(
             1 for kw in self.HOOK_KEYWORDS["strong"] if kw in text.lower()
         )
-        weak_count = sum(
-            1 for kw in self.HOOK_KEYWORDS["weak"] if kw in text.lower()
-        )
+        weak_count = sum(1 for kw in self.HOOK_KEYWORDS["weak"] if kw in text.lower())
 
         # Normalize score
         score = (strong_count - weak_count * 0.5) / max(1, len(text.split()) / 50)
@@ -535,12 +618,10 @@ class StoryQualityValidator:
             ending = ep.get("ending", "") or ep.get("summary", "")[-200:]
 
             strong_count = sum(
-                1 for kw in self.CLIFFHANGER_KEYWORDS["strong"]
-                if kw in ending.lower()
+                1 for kw in self.CLIFFHANGER_KEYWORDS["strong"] if kw in ending.lower()
             )
             weak_count = sum(
-                1 for kw in self.CLIFFHANGER_KEYWORDS["weak"]
-                if kw in ending.lower()
+                1 for kw in self.CLIFFHANGER_KEYWORDS["weak"] if kw in ending.lower()
             )
 
             score = 0.5 + (strong_count - weak_count) * 0.1
@@ -564,9 +645,6 @@ class StoryQualityValidator:
 
         # Extract world-building elements
         setting = story.get("setting", {})
-        world = story.get("world", {})
-        rules = story.get("rules", []) or story.get("world_rules", [])
-
         # Check for contradictory settings
         time_period = setting.get("time_period", "")
         technology = setting.get("technology", [])
@@ -583,7 +661,10 @@ class StoryQualityValidator:
                                     issue_type=StoryQualityIssueType.WORLDBUILDING_INCONSISTENCY,
                                     severity=StoryQualitySeverity.WARNING,
                                     message=f"世界观矛盾：古代设定中出现现代科技 '{t}'",
-                                    suggestions=["移除不符合时代设定的元素", "调整时代设定"],
+                                    suggestions=[
+                                        "移除不符合时代设定的元素",
+                                        "调整时代设定",
+                                    ],
                                 )
                             )
                             score -= 0.2

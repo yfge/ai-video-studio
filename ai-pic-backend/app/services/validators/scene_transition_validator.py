@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional
 
 
 class TransitionSeverity(str, Enum):
@@ -130,7 +130,9 @@ class SceneTransitionValidator:
 
     def __init__(self) -> None:
         """Initialize the validator."""
-        self._character_states: Dict[str, Dict[str, str]] = {}  # char -> scene_num -> state
+        self._character_states: Dict[str, Dict[str, str]] = (
+            {}
+        )  # char -> scene_num -> state
 
     def _normalize_time(self, time_str: Optional[str]) -> Optional[str]:
         """Normalize time of day string to category.
@@ -213,7 +215,7 @@ class SceneTransitionValidator:
                 message=f"时间跳跃不连贯：从 {from_time}({from_scene.time_of_day}) 到 {to_time}({to_scene.time_of_day})",
                 from_scene=from_scene.scene_number,
                 to_scene=to_scene.scene_number,
-                fix_suggestion=f"添加过渡场景或时间标记说明时间流逝（如'数小时后'、'第二天'）",
+                fix_suggestion="添加过渡场景或时间标记说明时间流逝（如'数小时后'、'第二天'）",
             )
 
         return None
@@ -315,7 +317,9 @@ class SceneTransitionValidator:
         issues = []
 
         # Find common characters between scenes
-        common_chars = set(from_scene.characters_present) & set(to_scene.characters_present)
+        common_chars = set(from_scene.characters_present) & set(
+            to_scene.characters_present
+        )
 
         for char in common_chars:
             # Check if character had a restrictive state in previous scene
@@ -446,7 +450,11 @@ class SceneTransitionValidator:
                 all_issues.append(geo_issue)
 
             # Check character state transitions
-            scene_content = scene_contents[i + 1] if scene_contents and i + 1 < len(scene_contents) else None
+            scene_content = (
+                scene_contents[i + 1]
+                if scene_contents and i + 1 < len(scene_contents)
+                else None
+            )
             state_issues = self._check_character_state_transition(
                 from_scene, to_scene, scene_content
             )
@@ -454,9 +462,7 @@ class SceneTransitionValidator:
 
         return all_issues
 
-    def generate_fix_suggestions(
-        self, issues: List[TransitionIssue]
-    ) -> List[Dict]:
+    def generate_fix_suggestions(self, issues: List[TransitionIssue]) -> List[Dict]:
         """Generate actionable fix suggestions for issues.
 
         Args:
@@ -486,7 +492,7 @@ class SceneTransitionValidator:
                 ]
             elif issue.issue_type == TransitionIssueType.CHARACTER_STATE_VIOLATION:
                 suggestion["suggested_actions"] = [
-                    f"添加角色恢复/状态变化的过渡",
+                    "添加角色恢复/状态变化的过渡",
                     "修改角色在新场景的动作",
                     "在场景开头说明时间已过去足够久",
                 ]

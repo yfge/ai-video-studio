@@ -15,8 +15,12 @@ import click
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.core.config import settings
-from app.core.migrations import MigrationError, data_seeder, migration_manager
+from app.core.config import settings  # noqa: E402
+from app.core.migrations import (  # noqa: E402
+    MigrationError,
+    data_seeder,
+    migration_manager,
+)
 
 # 配置日志
 logging.basicConfig(
@@ -31,10 +35,10 @@ def migration():
     pass
 
 
-@migration.command()
+@migration.command(name="create")
 @click.option("--message", "-m", required=True, help="迁移描述信息")
 @click.option("--autogenerate/--no-autogenerate", default=True, help="是否自动生成迁移")
-def create(message: str, autogenerate: bool):
+def create_migration_command(message: str, autogenerate: bool):
     """创建新的数据库迁移"""
     try:
         click.echo(f"🔄 创建迁移: {message}")
@@ -285,9 +289,9 @@ def seed():
     pass
 
 
-@seed.command()
+@seed.command(name="create")
 @click.option("--name", "-n", required=True, help="种子名称")
-def create(name: str):
+def create_seed_command(name: str):
     """创建数据种子文件"""
     try:
         click.echo(f"🌱 创建种子文件: {name}")

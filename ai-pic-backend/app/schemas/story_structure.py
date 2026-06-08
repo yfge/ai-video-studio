@@ -14,6 +14,16 @@ from app.schemas.environment_assets import (
 )
 from pydantic import BaseModel, Field
 
+_ENVIRONMENT_SCHEMA_COMPAT_EXPORTS = (
+    EnvironmentCreate,
+    EnvironmentImageResponse,
+    EnvironmentImagesResponse,
+    EnvironmentResponse,
+    EnvironmentSummaryResponse,
+    EnvironmentUpdate,
+    LinkedVirtualIPSummary,
+)
+
 
 class ORMModel(BaseModel):
     class Config:

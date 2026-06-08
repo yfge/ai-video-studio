@@ -8,8 +8,8 @@ from typing import Any
 from app.core.logging import get_logger
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene
+from app.services.audio.audio_emotions import normalize_tts_emotion
 from app.services.audio.audio_generator import (
-    normalize_tts_emotion,
     normalize_wav,
     tts_to_wav_file,
     wav_duration_ms,

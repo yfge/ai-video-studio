@@ -6,7 +6,7 @@ for temporary characters based on their dialogues and script context.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from app.services.script.temporary_character_extractor import TemporaryCharacterInfo
 
@@ -252,7 +252,9 @@ def _generate_with_heuristics_from_prompt(prompt: str) -> Dict[str, str]:
     # Extract appearance hints
     appearance_match = re.search(r"外观线索：(.+)", prompt)
     appearance = (
-        appearance_match.group(1).strip() if appearance_match else f"{char_name}的外观特征"
+        appearance_match.group(1).strip()
+        if appearance_match
+        else f"{char_name}的外观特征"
     )
 
     # Generic fallback

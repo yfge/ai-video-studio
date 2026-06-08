@@ -7,7 +7,7 @@ auditable capability resolution for video generation tasks.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
 
@@ -237,11 +237,15 @@ def resolve_video_duration(
     - audit_notes: Human-readable notes about the resolution
     """
     cap = find_capability(provider=provider, model=model, resolution=resolution)
-    allowed = get_allowed_durations(provider=provider, model=model, resolution=resolution)
+    allowed = get_allowed_durations(
+        provider=provider, model=model, resolution=resolution
+    )
     norm_resolution = _normalize_resolution(resolution)
 
     # Build capability source identifier
-    if cap.resolution_constraints and norm_resolution in (cap.resolution_constraints or {}):
+    if cap.resolution_constraints and norm_resolution in (
+        cap.resolution_constraints or {}
+    ):
         source = f"{cap.provider}/{cap.model_pattern or 'default'}@{norm_resolution}"
     elif cap.model_pattern:
         source = f"{cap.provider}/{cap.model_pattern}"
@@ -279,9 +283,7 @@ def resolve_video_duration(
                 provider_seconds = candidate
                 break
         if abs(provider_seconds - target) > 0.01:
-            audit_notes.append(
-                f"Target {target}s ceiled to {provider_seconds}s"
-            )
+            audit_notes.append(f"Target {target}s ceiled to {provider_seconds}s")
 
     if cap.notes:
         audit_notes.append(cap.notes)

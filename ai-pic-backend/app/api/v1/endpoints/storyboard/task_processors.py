@@ -4,7 +4,7 @@ Provides synchronous entry points for storyboard generation and video
 generation background tasks.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def _process_storyboard_generation_task(
@@ -16,7 +16,6 @@ def _process_storyboard_generation_task(
     import anyio
     from app.core.database import SessionLocal
     from app.models.task import Task, TaskStatus
-    from app.models.user import User
 
     db = SessionLocal()
     try:
@@ -29,6 +28,7 @@ def _process_storyboard_generation_task(
 
         async def _run():
             from app.models.script import Script
+
             from .legacy_generate import generate_storyboard_logic
 
             script = db.query(Script).filter(Script.id == script_id).first()
@@ -47,15 +47,14 @@ def _process_storyboard_generation_task(
             if scene_numbers:
                 try:
                     selected_scenes = [
-                        int(x.strip())
-                        for x in scene_numbers.split(",")
-                        if x.strip()
+                        int(x.strip()) for x in scene_numbers.split(",") if x.strip()
                     ]
                 except Exception:
                     pass
 
             await generate_storyboard_logic(
-                script, db,
+                script,
+                db,
                 model=model,
                 temperature=temperature,
                 frames_per_scene=frames_per_scene,

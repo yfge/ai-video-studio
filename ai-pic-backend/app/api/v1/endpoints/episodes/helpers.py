@@ -17,7 +17,6 @@ from app.repositories.episode_repository import (
 )
 from app.schemas.generation import EpisodeStepOutlineModel
 from app.schemas.story_structure import StoryStepOutlineCreate
-from app.services.episode.episode_scene_normalization import ensure_scenes
 from app.utils.json_utils import extract_json_block
 from fastapi import HTTPException
 from pydantic import ValidationError

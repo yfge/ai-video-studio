@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 
 class ScriptQualityIssueType(Enum):
@@ -98,7 +98,9 @@ class ScriptQualityResult:
             "dialogue_authenticity_score": self.dialogue_authenticity_score,
             "exposition_ratio": self.exposition_ratio,
             "dialogue_action_ratio": self.dialogue_action_ratio,
-            "scene_emotional_arcs": [arc.to_dict() for arc in self.scene_emotional_arcs],
+            "scene_emotional_arcs": [
+                arc.to_dict() for arc in self.scene_emotional_arcs
+            ],
         }
 
 
@@ -107,18 +109,41 @@ class ScriptQualityValidator:
 
     # Keywords indicating unnatural/expository dialogue (Chinese)
     EXPOSITION_KEYWORDS = [
-        "正如你所知", "你知道", "众所周知", "我来告诉你",
-        "让我解释", "事情是这样的", "你可能不知道", "我必须告诉你",
-        "其实", "原来", "换句话说", "也就是说", "简单来说",
-        "总而言之", "长话短说", "事实上", "实际上", "说实话",
+        "正如你所知",
+        "你知道",
+        "众所周知",
+        "我来告诉你",
+        "让我解释",
+        "事情是这样的",
+        "你可能不知道",
+        "我必须告诉你",
+        "其实",
+        "原来",
+        "换句话说",
+        "也就是说",
+        "简单来说",
+        "总而言之",
+        "长话短说",
+        "事实上",
+        "实际上",
+        "说实话",
     ]
 
     # Keywords indicating natural dialogue patterns
     NATURAL_DIALOGUE_PATTERNS = [
-        r"\.{3}", r"！", r"？", r"…",  # Hesitation, emotion, questions
-        r"嗯", r"啊", r"哦", r"呃",  # Interjections
-        r"不是吗", r"对吧", r"是吗",  # Tag questions
-        r"你说呢", r"怎么样",  # Seeking opinion
+        r"\.{3}",
+        r"！",
+        r"？",
+        r"…",  # Hesitation, emotion, questions
+        r"嗯",
+        r"啊",
+        r"哦",
+        r"呃",  # Interjections
+        r"不是吗",
+        r"对吧",
+        r"是吗",  # Tag questions
+        r"你说呢",
+        r"怎么样",  # Seeking opinion
     ]
 
     # Emotion categories for arc analysis (ordered: intense checked first for priority)
@@ -212,16 +237,15 @@ class ScriptQualityValidator:
 
         # Determine overall pass/fail
         error_count = sum(
-            1 for issue in result.issues
+            1
+            for issue in result.issues
             if issue.severity == ScriptQualitySeverity.ERROR
         )
         result.passed = error_count == 0
 
         return result
 
-    def _score_dialogue_authenticity(
-        self, dialogues: List[Dict[str, Any]]
-    ) -> float:
+    def _score_dialogue_authenticity(self, dialogues: List[Dict[str, Any]]) -> float:
         """Score how natural/authentic the dialogues sound."""
         if not dialogues:
             return 0.5  # Neutral default
@@ -270,9 +294,7 @@ class ScriptQualityValidator:
 
         return max(0.0, min(1.0, score))
 
-    def _calculate_exposition_ratio(
-        self, dialogues: List[Dict[str, Any]]
-    ) -> float:
+    def _calculate_exposition_ratio(self, dialogues: List[Dict[str, Any]]) -> float:
         """Calculate the ratio of expository dialogue."""
         if not dialogues:
             return 0.0

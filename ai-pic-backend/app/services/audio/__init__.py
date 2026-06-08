@@ -9,13 +9,15 @@ Provides services for AI-powered audio generation including:
 - Voice catalog and configuration constants
 """
 
-from app.services.audio.audio_generator import (
+from app.services.audio.audio_emotions import (
     ALLOWED_TTS_EMOTIONS,
+    normalize_tts_emotion,
+)
+from app.services.audio.audio_generator import (
     concat_mp3s,
     concat_wavs,
     encode_mp3,
     generate_silence_wav,
-    normalize_tts_emotion,
     tts_to_wav_file,
     wav_duration_ms,
 )

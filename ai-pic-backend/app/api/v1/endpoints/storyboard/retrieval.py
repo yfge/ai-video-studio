@@ -3,18 +3,17 @@
 GET operations for storyboard data and prompt preview.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.middleware import get_current_active_user
-from app.models.script import Episode, Script, Story
+from app.models.script import Script
 from app.models.user import User
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.services.ai.storyboard_utils import build_storyboard_context
 from app.utils.marketing_meta import merge_marketing_meta
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from .utils import get_script_with_auth
 

@@ -12,10 +12,9 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Sequence
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
-
     from app.models.script import Script
     from app.models.story_structure import Scene, SceneBeat
+    from sqlalchemy.orm import Session
 
 
 @dataclass
@@ -76,7 +75,6 @@ class ScriptStructureSync:
             update_existing: Update existing Scene/SceneBeat from JSON
         """
         from app.models.story_structure import Scene as SceneModel
-        from app.models.story_structure import SceneBeat as SceneBeatModel
 
         result = SyncResult(success=True, message="")
 
@@ -326,7 +324,11 @@ class ScriptStructureSync:
             beat_type="dialogue",
             dialogue_excerpt=content,
             characters_involved=[character],
-            beat_summary=f"{character}: {content[:50]}..." if len(content) > 50 else f"{character}: {content}",
+            beat_summary=(
+                f"{character}: {content[:50]}..."
+                if len(content) > 50
+                else f"{character}: {content}"
+            ),
         )
 
     def _scene_to_json(self, scene: "Scene") -> dict[str, Any]:

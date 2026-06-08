@@ -342,9 +342,9 @@ class TimelineLangGraphAgent:
             # Use tighter tolerance (±20%) when using actual TTS durations
             # Use wider tolerance (±40%) when using estimated durations
             if has_actual_durations:
-                tolerance_low, tolerance_high = 0.8, 1.2
+                tolerance_high = 1.2
             else:
-                tolerance_low, tolerance_high = 0.6, 1.4
+                tolerance_high = 1.4
 
             # NOTE: 目标时长对齐的“补足”由 audio segment padding 负责（见 segment_padding.py），
             # Timeline Agent 只负责节奏合理的间隔计算；因此不把“时长不足”视为硬错误，

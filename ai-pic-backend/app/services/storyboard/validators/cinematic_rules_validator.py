@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from app.services.storyboard.pipeline.pipeline_state import (
     ValidationResult,
@@ -37,32 +37,57 @@ class CinematicRulesValidator:
     # Shot types for classification
     SHOT_TYPES = {
         "extreme_close_up": [
-            "extreme close-up", "extreme closeup", "ECU",
-            "特写", "大特写", "超特写",
+            "extreme close-up",
+            "extreme closeup",
+            "ECU",
+            "特写",
+            "大特写",
+            "超特写",
         ],
         "close_up": [
-            "close-up", "closeup", "close up", "CU",
-            "近景", "特写镜头",
+            "close-up",
+            "closeup",
+            "close up",
+            "CU",
+            "近景",
+            "特写镜头",
         ],
         "medium_close_up": [
-            "medium close-up", "MCU", "medium closeup",
+            "medium close-up",
+            "MCU",
+            "medium closeup",
             "中近景",
         ],
         "medium": [
-            "medium shot", "MS", "waist shot",
-            "中景", "半身",
+            "medium shot",
+            "MS",
+            "waist shot",
+            "中景",
+            "半身",
         ],
         "medium_wide": [
-            "medium wide", "MWS", "medium long",
+            "medium wide",
+            "MWS",
+            "medium long",
             "中全景",
         ],
         "wide": [
-            "wide shot", "WS", "full shot", "long shot", "LS",
-            "全景", "远景", "广角",
+            "wide shot",
+            "WS",
+            "full shot",
+            "long shot",
+            "LS",
+            "全景",
+            "远景",
+            "广角",
         ],
         "extreme_wide": [
-            "extreme wide", "EWS", "establishing",
-            "大全景", "极远景", "建立镜头",
+            "extreme wide",
+            "EWS",
+            "establishing",
+            "大全景",
+            "极远景",
+            "建立镜头",
         ],
     }
 
@@ -77,12 +102,32 @@ class CinematicRulesValidator:
 
     # Lighting keywords
     LIGHTING_DAY = [
-        "day", "daylight", "daytime", "morning", "afternoon", "noon",
-        "白天", "日光", "早晨", "上午", "下午", "正午", "阳光",
+        "day",
+        "daylight",
+        "daytime",
+        "morning",
+        "afternoon",
+        "noon",
+        "白天",
+        "日光",
+        "早晨",
+        "上午",
+        "下午",
+        "正午",
+        "阳光",
     ]
     LIGHTING_NIGHT = [
-        "night", "nighttime", "evening", "midnight", "dark",
-        "夜晚", "夜间", "傍晚", "深夜", "黑暗", "月光",
+        "night",
+        "nighttime",
+        "evening",
+        "midnight",
+        "dark",
+        "夜晚",
+        "夜间",
+        "傍晚",
+        "深夜",
+        "黑暗",
+        "月光",
     ]
 
     # Minimum shot variety threshold (percentage of dominant shot type)
@@ -268,17 +313,9 @@ class CinematicRulesValidator:
 
         return results
 
-    def _extract_character_positions(
-        self, description: str
-    ) -> Dict[str, str]:
+    def _extract_character_positions(self, description: str) -> Dict[str, str]:
         """Extract character names and their screen positions from description."""
         positions: Dict[str, str] = {}
-
-        # Patterns like "张三在画面左侧" or "Li on the right"
-        patterns = [
-            r"(\w+).*?(在|位于|stands on|on the)\s*(左|右|left|right)",
-            r"(左|右|left|right).*?的\s*(\w+)",
-        ]
 
         desc_lower = description.lower()
         for position, keywords in self.CAMERA_POSITIONS.items():

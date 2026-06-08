@@ -13,11 +13,9 @@ Duration Orchestrator Agent
 7. final_validation: 验证总时长 ±10%
 """
 
-import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from app.core.logging import get_logger
-
 from app.services.duration_orchestrator.nodes import (
     allocate_budget_node,
     assemble_episode_node,
@@ -274,12 +272,15 @@ class DurationOrchestratorAgent:
         )
 
         # Emit orchestration_started event
-        self._emit_progress("orchestration_started", {
-            "episode_id": episode_id,
-            "script_id": script_id,
-            "total_duration_minutes": total_duration_minutes,
-            "scene_count": len(scenes),
-        })
+        self._emit_progress(
+            "orchestration_started",
+            {
+                "episode_id": episode_id,
+                "script_id": script_id,
+                "total_duration_minutes": total_duration_minutes,
+                "scene_count": len(scenes),
+            },
+        )
 
         # 构建并执行图
         graph = self._build_graph()
@@ -353,20 +354,23 @@ class DurationOrchestratorAgent:
         )
 
         # Emit orchestration_completed event
-        self._emit_progress("orchestration_completed", {
-            "episode_id": episode_id,
-            "success": success,
-            "scene_count": statistics.get("scene_count", len(scene_budgets)),
-            "total_actual_duration_seconds": statistics.get(
-                "total_actual_duration_seconds", 0
-            ),
-            "total_target_duration_seconds": statistics.get(
-                "total_target_duration_seconds", 0
-            ),
-            "duration_ratio": statistics.get("duration_ratio", 0),
-            "total_retries": statistics.get("total_retries", 0),
-            "error_count": len(errors),
-        })
+        self._emit_progress(
+            "orchestration_completed",
+            {
+                "episode_id": episode_id,
+                "success": success,
+                "scene_count": statistics.get("scene_count", len(scene_budgets)),
+                "total_actual_duration_seconds": statistics.get(
+                    "total_actual_duration_seconds", 0
+                ),
+                "total_target_duration_seconds": statistics.get(
+                    "total_target_duration_seconds", 0
+                ),
+                "duration_ratio": statistics.get("duration_ratio", 0),
+                "total_retries": statistics.get("total_retries", 0),
+                "error_count": len(errors),
+            },
+        )
 
         return {
             "success": success,

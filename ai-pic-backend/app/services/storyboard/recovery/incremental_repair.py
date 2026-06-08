@@ -8,7 +8,6 @@ without regenerating everything from scratch.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -175,7 +174,7 @@ class IncrementalRepair:
                 fixed.append("Renumbered frames sequentially")
             elif "description" in issue.message.lower():
                 # Missing descriptions require regeneration
-                remaining.append(f"Missing descriptions require regeneration")
+                remaining.append("Missing descriptions require regeneration")
             else:
                 remaining.append(issue.message)
 
@@ -216,7 +215,8 @@ class IncrementalRepair:
         timeline_validator = TimelineValidator()
         if timeline_validator.can_auto_fix():
             timeline_issues = [
-                v for v in state.get_failed_validations()
+                v
+                for v in state.get_failed_validations()
                 if v.validator_name == "timeline_validator"
             ]
             if timeline_issues:
@@ -227,7 +227,8 @@ class IncrementalRepair:
         frame_validator = FrameIntegrityValidator()
         if frame_validator.can_auto_fix():
             frame_issues = [
-                v for v in state.get_failed_validations()
+                v
+                for v in state.get_failed_validations()
                 if v.validator_name == "frame_integrity_validator"
             ]
             if frame_issues:
@@ -247,7 +248,8 @@ class IncrementalRepair:
     def _fix_timeline_overlaps(self, frames: list[dict[str, Any]]) -> None:
         """Fix overlapping frames by adjusting end times."""
         timed_frames = [
-            f for f in frames
+            f
+            for f in frames
             if f.get("start_ms") is not None and f.get("end_ms") is not None
         ]
 
@@ -294,13 +296,15 @@ class IncrementalRepair:
         target_frames = state.frames_per_scene
         for sn, count in frames_by_scene.items():
             if count < target_frames:
-                candidates.append({
-                    "scene_number": sn,
-                    "reason": "insufficient_frames",
-                    "current_count": count,
-                    "target_count": target_frames,
-                    "frames_needed": target_frames - count,
-                })
+                candidates.append(
+                    {
+                        "scene_number": sn,
+                        "reason": "insufficient_frames",
+                        "current_count": count,
+                        "target_count": target_frames,
+                        "frames_needed": target_frames - count,
+                    }
+                )
 
         # Find scenes without any frames
         scene_numbers = {s.scene_number for s in context.scenes}
@@ -308,12 +312,14 @@ class IncrementalRepair:
         missing_scenes = scene_numbers - scenes_with_frames
 
         for sn in missing_scenes:
-            candidates.append({
-                "scene_number": sn,
-                "reason": "no_frames",
-                "current_count": 0,
-                "target_count": target_frames,
-                "frames_needed": target_frames,
-            })
+            candidates.append(
+                {
+                    "scene_number": sn,
+                    "reason": "no_frames",
+                    "current_count": 0,
+                    "target_count": target_frames,
+                    "frames_needed": target_frames,
+                }
+            )
 
         return candidates

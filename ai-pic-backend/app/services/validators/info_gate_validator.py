@@ -126,7 +126,22 @@ class InfoGateValidator:
             List of keywords (Chinese words or English words)
         """
         keywords = []
-        common_words = {"的", "是", "在", "和", "了", "有", "与", "为", "被", "把", "a", "the", "is", "are"}
+        common_words = {
+            "的",
+            "是",
+            "在",
+            "和",
+            "了",
+            "有",
+            "与",
+            "为",
+            "被",
+            "把",
+            "a",
+            "the",
+            "is",
+            "are",
+        }
 
         # Remove punctuation
         cleaned = re.sub(r"[^\w\s\u4e00-\u9fff]", " ", text)
@@ -304,8 +319,10 @@ class InfoGateValidator:
             dialogues = scene.get("dialogues", []) or scene.get("dialogue", [])
             for dialogue in dialogues:
                 speaker = dialogue.get("speaker") or dialogue.get("character")
-                text = dialogue.get("text") or dialogue.get("content") or dialogue.get(
-                    "dialogue"
+                text = (
+                    dialogue.get("text")
+                    or dialogue.get("content")
+                    or dialogue.get("dialogue")
                 )
                 if not speaker or not text:
                     continue
@@ -341,7 +358,7 @@ class InfoGateValidator:
                 ]
             elif v.violation_type == InfoGateViolationType.REFERENCES_FUTURE_EVENT:
                 suggestion["suggested_actions"] = [
-                    f"删除对白中对未来事件的引用",
+                    "删除对白中对未来事件的引用",
                     "改为角色的猜测或预感（而非确定性陈述）",
                 ]
 
