@@ -17,7 +17,6 @@ PAGE_LIMIT = 200
 HANDLER_LIMIT = 50
 
 ALLOWED_OVERSIZE = {
-    "ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py": 2101,
     "ai-pic-backend/app/services/dialogue_audio_service.py": 1720,
     "ai-pic-backend/app/services/ai_service_manager.py": 1510,
     "ai-pic-backend/app/services/script_agent.py": 1479,
@@ -25,12 +24,8 @@ ALLOWED_OVERSIZE = {
     "ai-pic-frontend/src/components/shared/modals/UserDetailsModal.tsx": 643,
     "ai-pic-frontend/src/app/admin/users/page.tsx": 571,
 }
-ALLOWED_ROUTE_HANDLERS = {
-    "ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py": 250,
-}
-ALLOWED_DIRECT_QUERIES = {
-    "ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py": 23,
-}
+ALLOWED_ROUTE_HANDLERS: dict[str, int] = {}
+ALLOWED_DIRECT_QUERIES: dict[str, int] = {}
 LEGACY_IMPORT_RE = re.compile(
     r"(scripts_legacy|dialogue_audio_service|ai_service_manager|script_agent)"
 )

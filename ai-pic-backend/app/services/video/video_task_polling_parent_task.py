@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from app.models.task import Task, TaskStatus
+from app.models.task import TaskStatus
 from app.models.video_generation_task import VideoGenerationTaskStatus
-from app.services.task_agent_run_persistence import persist_task_agent_run
+from app.repositories.task_repository import TaskRepository
+from app.services.task_agent_run import persist_task_agent_run
 
 
 def refresh_parent_task_status(db, video_task_repo, task_id: Optional[int]) -> None:
@@ -12,7 +13,7 @@ def refresh_parent_task_status(db, video_task_repo, task_id: Optional[int]) -> N
     if not task_id:
         return
 
-    task = db.query(Task).filter(Task.id == task_id).first()
+    task = TaskRepository(db).get_by_id(task_id)
     if not task:
         return
 
@@ -31,7 +32,8 @@ def refresh_parent_task_status(db, video_task_repo, task_id: Optional[int]) -> N
         return
 
     if any(
-        t.status in {VideoGenerationTaskStatus.FAILED, VideoGenerationTaskStatus.TIMEOUT}
+        t.status
+        in {VideoGenerationTaskStatus.FAILED, VideoGenerationTaskStatus.TIMEOUT}
         for t in tasks
     ):
         task.status = TaskStatus.FAILED
@@ -56,4 +58,3 @@ def refresh_parent_task_status(db, video_task_repo, task_id: Optional[int]) -> N
             kind="video_generation",
             db_session=db,
         )
-

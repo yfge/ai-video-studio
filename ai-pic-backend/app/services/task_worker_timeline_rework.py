@@ -13,7 +13,7 @@ def timeline_clip_rework_video_generate_task(
 ) -> None:
     from app.core.database import get_task_db
     from app.services.ai_service import ai_service
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
     from app.services.timeline_clip_video_rework_submission import (
         TimelineClipVideoReworkSubmissionService,
     )

@@ -3,7 +3,7 @@ import json
 from app.models.script import Episode, Script, Story
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.services.task_agent_run_persistence import persist_task_agent_run
+from app.services.task_agent_run import persist_task_agent_run
 
 
 def _create_user(db_session) -> User:

@@ -20,7 +20,7 @@ def virtual_ip_image_generate_task(
     from app.api.v1.endpoints.virtual_ip_images import process_virtual_ip_image_task
 
     process_virtual_ip_image_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -39,7 +39,7 @@ def virtual_ip_image_variant_task(
     )
 
     process_virtual_ip_image_variant_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -56,7 +56,7 @@ def environment_image_generate_task(
     from app.api.v1.endpoints.story_structure import process_environment_image_task
 
     process_environment_image_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -75,7 +75,7 @@ def environment_image_variant_task(
     )
 
     process_environment_image_variant_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,

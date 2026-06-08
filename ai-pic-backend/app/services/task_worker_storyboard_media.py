@@ -73,7 +73,7 @@ def storyboard_image_generate_task(
         end_enabled=payload.get("end_enabled", True),
         require_reference_images=bool(payload.get("require_reference_images")),
     )
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -118,7 +118,7 @@ def storyboard_video_generate_task(
             options=options,
         )
     finally:
-        from app.services.task_agent_run_persistence import persist_task_agent_run
+        from app.services.task_agent_run import persist_task_agent_run
 
         persist_task_agent_run(
             task_id=task_id,

@@ -53,7 +53,7 @@ def story_generate_task(
     from app.api.v1.endpoints.stories import _process_story_generation_task
 
     _process_story_generation_task(task_id, request_dict, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -71,7 +71,7 @@ def story_novel_generate_task(
     from app.api.v1.endpoints.stories import process_story_novel_export_task
 
     process_story_novel_export_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -92,7 +92,7 @@ def episode_generate_task(
     from app.api.v1.endpoints.episodes import process_episode_generation_task
 
     process_episode_generation_task(task_id, request_dict, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -112,7 +112,7 @@ def script_generate_task(
     )
 
     process_script_generation_task(task_id, request_dict, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -132,7 +132,7 @@ def script_regenerate_task(
     )
 
     process_script_regeneration_task(task_id, request_dict, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -150,7 +150,7 @@ def script_dialogue_audio_generate_task(
     from app.api.v1.endpoints.scripts import _process_script_dialogue_audio_task
 
     _process_script_dialogue_audio_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -167,7 +167,7 @@ def script_audio_timeline_generate_task(
     from app.api.v1.endpoints.scripts import _process_script_audio_timeline_task
 
     _process_script_audio_timeline_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -184,7 +184,7 @@ def script_audio_storyboard_generate_task(
     from app.api.v1.endpoints.scripts import _process_script_audio_storyboard_task
 
     _process_script_audio_storyboard_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -201,7 +201,7 @@ def storyboard_generate_task(
     from app.api.v1.endpoints.scripts import _process_storyboard_generation_task
 
     _process_storyboard_generation_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,
@@ -218,7 +218,7 @@ def timeline_pipeline_generate_task(
     from app.api.v1.endpoints.scripts import _process_timeline_pipeline_task
 
     _process_timeline_pipeline_task(task_id, payload, user_id)
-    from app.services.task_agent_run_persistence import persist_task_agent_run
+    from app.services.task_agent_run import persist_task_agent_run
 
     persist_task_agent_run(
         task_id=task_id,

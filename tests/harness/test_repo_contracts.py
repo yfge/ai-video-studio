@@ -63,7 +63,7 @@ def test_diff_collectors_flag_direct_queries(tmp_path, monkeypatch) -> None:
 
 def test_diff_collectors_allow_legacy_baseline_debt(tmp_path, monkeypatch) -> None:
     repo_root = tmp_path
-    rel = "ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py"
+    rel = "ai-pic-backend/app/api/v1/endpoints/baseline_debt.py"
     monkeypatch.setattr(contract_audit_core, "REPO_ROOT", repo_root)
     monkeypatch.setattr(contract_audit_core, "HANDLER_LIMIT", 1)
     monkeypatch.setattr(contract_audit_core, "ALLOWED_ROUTE_HANDLERS", {rel: 4})

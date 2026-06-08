@@ -34,8 +34,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.core.database import SessionLocal  # noqa: E402
 from app.models.task import Task, TaskStatus, TaskType  # noqa: E402
+from app.services.task_agent_run import persist_task_agent_run  # noqa: E402
 from app.services.task_agent_run.utils import loads_task_parameters  # noqa: E402
-from app.services.task_agent_run_persistence import persist_task_agent_run  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("backfill_task_agent_runs")
