@@ -14,9 +14,6 @@ export * from "./admin.endpoints";
 export * from "./task.endpoints";
 export * from "./workbench.endpoints";
 
-// Image endpoints
-export * from "./image.endpoints";
-
 // Image generation profiles endpoints
 export * from "./image-gen.endpoints";
 
