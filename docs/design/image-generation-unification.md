@@ -48,7 +48,7 @@
 ### 非目标（本阶段不做）
 
 - 不重构现有 provider 实现细节（OpenAI/Keling/Volcengine/Jimeng/Google 等）
-- 不立即拆分/重写 `scripts_legacy.py`（分镜逻辑在此文件中较大；统一化先以“抽公共能力、减少重复”为主）
+- 不重写现有分镜生成端到端链路；统一化先以“抽公共能力、减少重复”为主
 - 不立即引入复杂的“自动质量评分/门禁/多轮重试”（可作为后续增强，设计中预留接口）
 
 ---
@@ -96,8 +96,9 @@
 
 ### 分镜 图像生成（按帧生成，可能走 img2img）
 
-- API：`ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py::generate_storyboard_images`
-- Worker：`ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py::_process_storyboard_image_task`
+- API：`ai-pic-backend/app/api/v1/endpoints/storyboard/media.py::generate_storyboard_images`
+- Worker：`ai-pic-backend/app/services/task_worker_storyboard_media.py::storyboard_image_generate_task`
+- Processor：`ai-pic-backend/app/api/v1/endpoints/storyboard/image_task_processor.py::_process_storyboard_image_task`
 - 策略：
   - 合并参考图来源：帧已有 refs、用户传入 refs、角色锚点（VirtualIPImage）、环境锚点（Environment.reference_images）
   - 有参考图时走 `ai_manager.image_to_image`，否则走 `ai_manager.generate_image`

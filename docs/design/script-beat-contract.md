@@ -27,8 +27,7 @@ first version focused on structured quality plus concrete dramatic quality.
 - No frontend changes in the first implementation slice.
 - No database migration in the first implementation slice.
 - No direct Timeline Spec generation from the script agent in this slice.
-- No broad rewrite of `scripts_legacy.py`, `dialogue_audio_service.py`, or
-  `ai_service_manager.py`.
+- No broad rewrite of `ai_service_manager.py`.
 - No provider-spend live proof is required to land the contract and local tests.
 
 ## Current Context

@@ -25,9 +25,7 @@ ALLOWED_OVERSIZE = {
 }
 ALLOWED_ROUTE_HANDLERS: dict[str, int] = {}
 ALLOWED_DIRECT_QUERIES: dict[str, int] = {}
-LEGACY_IMPORT_RE = re.compile(
-    r"(scripts_legacy|ai_service_manager|script_agent)"
-)
+LEGACY_IMPORT_RE = re.compile(r"(ai_service_manager|script_agent)")
 QUERY_RE = re.compile(r"\b(?:db|session|self\.db|self\.session)\.query\(")
 DECORATOR_RE = re.compile(r"^\s*@router\.(get|post|put|patch|delete)")
 DEF_RE = re.compile(r"^\s*(?:async\s+)?def\s+")

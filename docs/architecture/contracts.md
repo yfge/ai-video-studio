@@ -42,10 +42,8 @@ The report must track:
 
 ## Choke-Point Policy
 
-Known legacy hotspots are tolerated as debt, not as expansion points:
+Remaining legacy hotspots are tolerated as debt, not as expansion points:
 
-- `ai-pic-backend/app/api/v1/endpoints/scripts_legacy.py`
-- `ai-pic-backend/app/services/dialogue_audio_service.py`
 - `ai-pic-backend/app/services/ai_service_manager.py`
 - `ai-pic-backend/app/services/script_agent.py`
 

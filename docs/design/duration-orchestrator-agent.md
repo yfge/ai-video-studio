@@ -618,12 +618,12 @@ ai-pic-backend/app/services/
 
 ### Phase 5: 剧集组装与最终验证 (P1, 3天)
 
-| 任务 | 描述                               | 依赖 | 产出                                      |
-| ---- | ---------------------------------- | ---- | ----------------------------------------- |
-| 5.1  | 实现 `assemble_episode` 节点       | 4.3  | `nodes/assemble_episode.py`               |
-| 5.2  | 实现 `final_validation` 节点       | 5.1  | `nodes/final_validation.py`               |
-| 5.3  | 集成到 `dialogue_audio_service.py` | 5.2  | 修改现有服务                              |
-| 5.4  | 编写端到端测试                     | 5.3  | `tests/e2e/test_duration_orchestrator.py` |
+| 任务 | 描述                         | 依赖 | 产出                                      |
+| ---- | ---------------------------- | ---- | ----------------------------------------- |
+| 5.1  | 实现 `assemble_episode` 节点 | 4.3  | `nodes/assemble_episode.py`               |
+| 5.2  | 实现 `final_validation` 节点 | 5.1  | `nodes/final_validation.py`               |
+| 5.3  | 集成到音频生成服务           | 5.2  | 修改现有服务                              |
+| 5.4  | 编写端到端测试               | 5.3  | `tests/e2e/test_duration_orchestrator.py` |
 
 ### Phase 6: API 与异步任务 (P2, 2天)
 

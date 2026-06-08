@@ -306,15 +306,14 @@ Latest validation:
   rework context has `auto_render=true`. The render preset carries a rework
   fingerprint so a prior final render for the same Timeline version does not
   block the new render through idempotency.
-- `dialogue_audio_service.py` is now a compatibility facade: storyboard timeline
-  placeholder conversion, scene audio generation, episode concatenation, beats
-  persistence, and episode/storyboard timeline helpers live under
-  `app.services.audio.*`.
+- The old dialogue-audio facade has been retired: storyboard
+  timeline placeholder conversion, scene audio generation, episode
+  concatenation, beats persistence, and episode/storyboard timeline helpers now
+  live under focused `app.services.audio.*` modules and script production
+  services.
 - Episode audio timeline concatenation and persistence now live behind
   `app.services.audio.episode_audio_builder`, with episode beat construction in
-  `app.services.audio.episode_timeline_beats`; `dialogue_audio_service.py`
-  remains a compatibility import surface for those helpers. Scene-level TTS
-  generation and beat persistence are still the remaining split target.
+  `app.services.audio.episode_timeline_beats`.
 - Scene beat persistence, scene audio metadata writeback, and per-scene duration
   validation now live in `app.services.audio.scene_audio_persistence`; historical
   imports no longer own the implementation.
@@ -326,28 +325,24 @@ Latest validation:
   `app.services.duration_controlled_scene_runner`, and the touched deprecated
   dialogue-audio endpoint now uses repository helpers instead of direct
   SQLAlchemy queries.
-- Historical dialogue-audio fixed segment planning and text cleanup compatibility
-  now live in `app.services.audio.dialogue_service_compat` and
-  `app.services.audio.dialogue_service_text_compat`, keeping the old service file
-  below the service-size limit.
-- `scripts_legacy.py` no longer owns the shared script task-title formatter:
-  legacy regeneration and the split audio/timeline pipeline endpoints now use
-  `app.services.script.task_titles`. The cleanup also removed unused
-  URL/UUID/datetime helpers from the legacy router.
+- Historical dialogue-audio fixed segment planning and text cleanup helpers were
+  retired after their production callers moved to the focused audio modules.
+- Split audio/timeline pipeline endpoints now use
+  `app.services.script.task_titles` for script task-title formatting.
 - The backend mock AI service now returns schema-matched responses for script
   cliffhanger judgement and script quality-gate repair, so the script generation
   API test exercises the current quality-gate path instead of failing on a
   generic scoring payload.
 - Static script catalog routes for `/scripts/formats` and `/scripts/languages`
-  now live in `app.api.v1.endpoints.scripts_catalog` and are mounted inside the
-  legacy router before dynamic `/{script_id}` routes.
+  now live in `app.api.v1.endpoints.scripts_catalog` and are mounted by
+  `app.api.v1.endpoints.scripts` before dynamic `/{script_id}` routes.
 - Script list, episode list, record CRUD, soft-delete, and export endpoints now
   live in `app.api.v1.endpoints.scripts_lists` and
   `app.api.v1.endpoints.scripts_records`, with shared lookup helpers in
   `app.api.v1.endpoints.scripts_route_utils`.
 - Script regeneration queue endpoints for `script_id` and `script_business_id`
-  now live in `app.api.v1.endpoints.scripts_regeneration`; the legacy router
-  only mounts them after script record routes.
+  now live in `app.api.v1.endpoints.scripts_regeneration`; the main script
+  router mounts them after script record routes.
 - Script prompt preview now lives in `app.api.v1.endpoints.scripts_prompt`,
   with episode lookup moved behind `app.repositories.scripts_route_repository`.
 - Script async generation queueing now lives in
@@ -365,12 +360,10 @@ Latest validation:
 - Script async generation worker processing now lives under
   `app.services.script.generation_task_processor`; context construction,
   attempt/scoring, and persistence were split into focused service modules, and
-  `task_worker` now dispatches directly to the service instead of importing the
-  legacy router package.
+  `task_worker` now dispatches directly to the service.
 - The main `/scripts` API router is now assembled in
-  `app.api.v1.endpoints.scripts`; `scripts_legacy.py` remains only as a
-  compatibility wrapper for old imports and no longer carries the primary user
-  route mount.
+  `app.api.v1.endpoints.scripts`; the old script compatibility wrapper has
+  been removed.
 - `ai_service_manager.py` request/prompt/response logging and shared truncation
   now live in `app.services.ai_manager_logging`; the manager keeps wrapper
   methods for existing callers such as video task dispatching.

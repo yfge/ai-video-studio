@@ -30,7 +30,7 @@ sample scale.
 
 The default production path is now wired into Timeline Spec v1:
 
-- `scripts_legacy.py` passes `user_id` into
+- `app.services.script.generation_task_persistence` passes `user_id` into
   `run_auto_timeline_placeholders`.
 - `production_storyboard.py` generates scene dialogue audio when needed,
   builds episode `audio_timeline`, imports it into Timeline Spec v1, then
@@ -193,7 +193,7 @@ audio timeline:
 
 - `app/services/audio/storyboard_from_timeline.py`
 - `app/services/audio/timeline_processor.py`
-- legacy functions inside `app/services/dialogue_audio_service.py`
+- deprecated compatibility builders in `app/services/audio/timeline_processor.py`
 
 The active endpoints use `storyboard_from_timeline.py`, while tests still cover
 old builders and `app/services/audio/__init__.py` exports the older
