@@ -1,18 +1,18 @@
-export type HookBeat = {
+type HookBeat = {
   beat_type?: string;
   description: string;
   timing?: string;
   intensity?: string;
 };
 
-export type HookPlan = {
+type HookPlan = {
   opening_hook?: string;
   escalation_plan?: string;
   payoff_plan?: string;
   key_reversals?: HookBeat[];
 };
 
-export type AdSnippet = {
+type AdSnippet = {
   duration_seconds?: number;
   hook: string;
   visual_summary?: string;

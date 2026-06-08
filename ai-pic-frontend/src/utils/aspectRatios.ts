@@ -1,4 +1,4 @@
-export const ALLOWED_ASPECT_RATIOS = ["9:16", "16:9"] as const;
+const ALLOWED_ASPECT_RATIOS = ["9:16", "16:9"] as const;
 
 const allowedSet = new Set<string>(ALLOWED_ASPECT_RATIOS);
 
