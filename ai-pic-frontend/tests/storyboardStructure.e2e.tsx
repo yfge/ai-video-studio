@@ -1,6 +1,5 @@
 import { describe, it, afterEach } from "node:test";
 import assert from "node:assert";
-import React from "react";
 import { render, cleanup } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 import { FrameCard } from "../src/components/features/StoryboardFrameCard";

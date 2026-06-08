@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { HookTagBadge } from "./HookTagBadge";
 import { AdSnippetCard, AdSnippetData } from "./AdSnippetCard";
 

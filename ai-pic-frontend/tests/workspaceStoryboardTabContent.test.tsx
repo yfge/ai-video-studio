@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import React from "react";
 import { cleanup, render } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
@@ -114,7 +113,10 @@ describe("WorkspaceStoryboardTabContent", () => {
     assert.ok(utils.getByText("2 轨 · 2 clips"));
     assert.ok(utils.getByText("时长 1.2s"));
     const audio = utils.container.querySelector("audio");
-    assert.equal(audio?.getAttribute("src"), "https://example.com/episode-audio.mp3");
+    assert.equal(
+      audio?.getAttribute("src"),
+      "https://example.com/episode-audio.mp3",
+    );
   });
 
   it("renders editable prompt-layer context for storyboard frames", () => {

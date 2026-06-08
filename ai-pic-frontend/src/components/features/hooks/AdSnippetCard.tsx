@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 /**
  * 投流素材数据类型
  */
