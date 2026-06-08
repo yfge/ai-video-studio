@@ -7,7 +7,6 @@ export {
   OperatorPanel,
   OperatorSectionHeader,
   OperatorState,
-  operatorClassNames,
   operatorButtonClass,
   operatorInputClass,
   operatorSelectClass,
@@ -26,4 +25,4 @@ export {
   OperatorToolbar,
   OperatorWorkspace,
 } from "./OperatorLayout";
-export { OperatorDrawer, OperatorModalFrame } from "./OperatorOverlay";
+export { OperatorModalFrame } from "./OperatorOverlay";

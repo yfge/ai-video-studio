@@ -5,35 +5,13 @@
  */
 
 export { WorkbenchDashboard } from "./workbench/WorkbenchDashboard";
-export { SceneStructurePanel, type SceneNode } from "./SceneStructurePanel";
-export {
-  SceneTag,
-  formatText,
-  type StoryboardFrame,
-} from "./StoryboardFrameCard";
+export type { SceneNode } from "./SceneStructurePanel";
 export {
   Timeline,
   type TimelineTrack,
   type TimelineItem,
-  type TimelineProps,
 } from "./Timeline/Timeline";
-export {
-  ScriptGenerationForm,
-  EpisodeWorkspaceHeader,
-  EpisodeWorkflowSteps,
-  WorkspaceScriptTabContent,
-  WorkspaceTimelineTabContent,
-  type WorkflowStatus,
-  type WorkflowStepStatus,
-  type WorkflowStep,
-} from "./episode";
-export {
-  ImageGenerationForm,
-  ImageUploadForm,
-  CategoryFilter,
-  ImageGrid,
-  VirtualIPImageManager,
-} from "./virtual-ip-images";
+export { VirtualIPImageManager } from "./virtual-ip-images/VirtualIPImageManager";
 export {
   ScriptHeader,
   WorkflowSteps,
@@ -47,7 +25,7 @@ export {
   VirtualIPInfoSection,
   VoiceSettingsPanel,
 } from "./virtual-ip-detail";
-export { VirtualIPListSection, VirtualIPCreateModal } from "./virtual-ip";
-export { StoryGenerateForm, StoryProductionBoard } from "./stories";
-export { EpisodeGeneratePanel, StoryReadinessPanel } from "./story-detail";
+export { VirtualIPListSection } from "./virtual-ip/VirtualIPListSection";
+export { VirtualIPCreateModal } from "./virtual-ip/VirtualIPCreateModal";
+export { StoryProductionBoard } from "./stories/StoryProductionBoard";
 export { EnvironmentCreateOverlay, EnvironmentList } from "./environments";

@@ -2,15 +2,9 @@
 
 import { useState } from "react";
 import type { Script, ScriptGenerationRequest } from "@/utils/api/types";
-import {
-  ScriptOverviewTab,
-  ScriptScenesTab,
-  ScriptGenerationForm,
-} from "@/components/features";
-import {
-  OperatorPanel,
-  OperatorSectionHeader,
-} from "@/components/shared";
+import { ScriptOverviewTab, ScriptScenesTab } from "@/components/features";
+import { OperatorPanel, OperatorSectionHeader } from "@/components/shared";
+import { ScriptGenerationForm } from "./ScriptGenerationForm";
 import {
   ScriptRegenerateModal,
   ScriptTabToolbar,
@@ -84,19 +78,19 @@ export function WorkspaceScriptTabContent({
           subtitle="请配置参数并生成剧本以继续工作流"
         />
         <div className="p-4">
-        <ScriptGenerationForm
-          generateForm={generateForm}
-          setGenerateForm={setGenerateForm}
-          formats={formats}
-          languages={languages}
-          useAsync={useAsync}
-          setUseAsync={setUseAsync}
-          promptPreview={promptPreview}
-          setPromptPreview={setPromptPreview}
-          generating={generating}
-          onGenerate={onGenerate}
-          onCancel={() => {}}
-        />
+          <ScriptGenerationForm
+            generateForm={generateForm}
+            setGenerateForm={setGenerateForm}
+            formats={formats}
+            languages={languages}
+            useAsync={useAsync}
+            setUseAsync={setUseAsync}
+            promptPreview={promptPreview}
+            setPromptPreview={setPromptPreview}
+            generating={generating}
+            onGenerate={onGenerate}
+            onCancel={() => {}}
+          />
         </div>
       </OperatorPanel>
     );

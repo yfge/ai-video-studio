@@ -5,7 +5,7 @@ import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import {
   VirtualIPCreateModal,
   VirtualIPListSection,
-} from "@/components/features/virtual-ip";
+} from "@/components/features";
 import { useVirtualIPCreateForm } from "@/hooks/useVirtualIPCreateForm";
 import { useVirtualIPList } from "@/hooks/useVirtualIPList";
 

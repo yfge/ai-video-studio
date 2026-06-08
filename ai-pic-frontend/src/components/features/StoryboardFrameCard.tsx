@@ -34,7 +34,7 @@ export type StoryboardFrame = {
   updated_at?: string;
 };
 
-export const SceneTag = ({ label }: { label: string }) => (
+const SceneTag = ({ label }: { label: string }) => (
   <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
     {label}
   </span>
@@ -52,7 +52,7 @@ export const formatText = (
 };
 
 /** 格式化毫秒为 MM:SS.ms 格式 */
-export const formatMs = (ms?: number): string => {
+const formatMs = (ms?: number): string => {
   if (ms === undefined || ms === null) return "—";
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
