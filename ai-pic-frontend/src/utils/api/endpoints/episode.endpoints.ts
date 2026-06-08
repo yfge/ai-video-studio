@@ -29,7 +29,7 @@ function episodePath(
 /**
  * Get list of episodes.
  */
-export async function getEpisodes(params?: {
+async function getEpisodes(params?: {
   story_id?: number;
   story_business_id?: string;
   skip?: number;
@@ -51,7 +51,7 @@ export async function getEpisodes(params?: {
 /**
  * Get a specific episode.
  */
-export async function getEpisode(
+async function getEpisode(
   idOrBusinessId: number | string,
 ): Promise<ApiResponse<Episode>> {
   return httpClient<Episode>(episodePath(idOrBusinessId));
@@ -60,7 +60,7 @@ export async function getEpisode(
 /**
  * Generate episodes for a story.
  */
-export async function generateEpisodes(
+async function generateEpisodes(
   data: EpisodeGenerationRequest,
 ): Promise<ApiResponse<Episode[]>> {
   return httpClient<Episode[]>("/api/v1/episodes/generate", {
@@ -72,7 +72,7 @@ export async function generateEpisodes(
 /**
  * Preview episode generation prompt.
  */
-export async function previewEpisodePrompt(
+async function previewEpisodePrompt(
   data: EpisodeGenerationRequest,
 ): Promise<ApiResponse<{ prompt: string }>> {
   return httpClient<{ prompt: string }>("/api/v1/episodes/prompt/preview", {
@@ -84,7 +84,7 @@ export async function previewEpisodePrompt(
 /**
  * Generate episodes asynchronously.
  */
-export async function generateEpisodesAsync(
+async function generateEpisodesAsync(
   data: EpisodeGenerationRequest,
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   return httpClient<{ task_id: number; status: string }>(
@@ -99,7 +99,7 @@ export async function generateEpisodesAsync(
 /**
  * Update an episode.
  */
-export async function updateEpisode(
+async function updateEpisode(
   idOrBusinessId: number | string,
   data: Partial<Episode>,
 ): Promise<ApiResponse<Episode>> {
@@ -112,7 +112,7 @@ export async function updateEpisode(
 /**
  * Delete an episode.
  */
-export async function deleteEpisode(
+async function deleteEpisode(
   idOrBusinessId: number | string,
 ): Promise<ApiResponse<void>> {
   return httpClient<void>(episodePath(idOrBusinessId), { method: "DELETE" });
@@ -121,7 +121,7 @@ export async function deleteEpisode(
 /**
  * Get episodes for a story.
  */
-export async function getStoryEpisodes(
+async function getStoryEpisodes(
   storyIdOrBusinessId: number | string,
 ): Promise<ApiResponse<Episode[]>> {
   const endpoint = isBusinessIdentifier(storyIdOrBusinessId)
@@ -133,7 +133,7 @@ export async function getStoryEpisodes(
 /**
  * Regenerate an episode.
  */
-export async function regenerateEpisode(
+async function regenerateEpisode(
   idOrBusinessId: number | string,
 ): Promise<ApiResponse<Episode>> {
   return httpClient<Episode>(episodePath(idOrBusinessId, "/regenerate"), {

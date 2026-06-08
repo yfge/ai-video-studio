@@ -9,23 +9,21 @@ import type { ApiResponse } from "../types/common.types";
 /**
  * Get style schema (dimensions and defaults).
  */
-export async function getStyleSchema(): Promise<
-  ApiResponse<StyleSchemaResponse>
-> {
+async function getStyleSchema(): Promise<ApiResponse<StyleSchemaResponse>> {
   return httpClient<StyleSchemaResponse>("/api/v1/styles/schema");
 }
 
 /**
  * List all style presets.
  */
-export async function listStylePresets(): Promise<ApiResponse<StylePreset[]>> {
+async function listStylePresets(): Promise<ApiResponse<StylePreset[]>> {
   return httpClient<StylePreset[]>("/api/v1/styles/presets");
 }
 
 /**
  * Get a specific style preset by ID.
  */
-export async function getStylePreset(
+async function getStylePreset(
   presetId: string,
 ): Promise<ApiResponse<StylePreset>> {
   return httpClient<StylePreset>(`/api/v1/styles/presets/${presetId}`);

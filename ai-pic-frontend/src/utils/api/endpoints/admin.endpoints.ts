@@ -15,7 +15,7 @@ import type { ApiResponse } from "../types/common.types";
 /**
  * Get paginated list of users (admin only).
  */
-export async function getUsers(params?: {
+async function getUsers(params?: {
   page?: number;
   size?: number;
   status_filter?: string;
@@ -42,14 +42,14 @@ export async function getUsers(params?: {
 /**
  * Get a specific user by ID.
  */
-export async function getUser(userId: number): Promise<ApiResponse<AdminUser>> {
+async function getUser(userId: number): Promise<ApiResponse<AdminUser>> {
   return httpClient<AdminUser>(`/api/v1/admin/users/${userId}`);
 }
 
 /**
  * Approve or reject a user.
  */
-export async function approveUser(
+async function approveUser(
   userId: number,
   data: UserApprovalRequest,
 ): Promise<ApiResponse<AdminUser>> {
@@ -62,7 +62,7 @@ export async function approveUser(
 /**
  * Update user role (admin/superuser).
  */
-export async function updateUserRole(
+async function updateUserRole(
   userId: number,
   data: {
     is_admin?: boolean;
@@ -88,7 +88,7 @@ export async function updateUserRole(
 /**
  * Suspend a user account.
  */
-export async function suspendUser(
+async function suspendUser(
   userId: number,
   data: { duration_hours?: number; reason?: string },
 ): Promise<ApiResponse<AdminUser>> {
@@ -108,9 +108,7 @@ export async function suspendUser(
 /**
  * Reactivate a suspended user.
  */
-export async function reactivateUser(
-  userId: number,
-): Promise<ApiResponse<AdminUser>> {
+async function reactivateUser(userId: number): Promise<ApiResponse<AdminUser>> {
   return httpClient<AdminUser>(`/api/v1/admin/users/${userId}/reactivate`, {
     method: "PUT",
   });
@@ -119,7 +117,7 @@ export async function reactivateUser(
 /**
  * Delete a user account.
  */
-export async function deleteUser(
+async function deleteUser(
   userId: number,
 ): Promise<ApiResponse<{ message: string; success: boolean }>> {
   return httpClient<{ message: string; success: boolean }>(
@@ -133,14 +131,14 @@ export async function deleteUser(
 /**
  * Get user statistics.
  */
-export async function getUserStats(): Promise<ApiResponse<UserStatsResponse>> {
+async function getUserStats(): Promise<ApiResponse<UserStatsResponse>> {
   return httpClient<UserStatsResponse>("/api/v1/admin/stats");
 }
 
 /**
  * Get audit logs for a user.
  */
-export async function getUserAuditLogs(
+async function getUserAuditLogs(
   userId: number,
   params?: { page?: number; size?: number },
 ): Promise<ApiResponse<UserAuditLog[]>> {
@@ -159,7 +157,7 @@ export async function getUserAuditLogs(
 /**
  * Reset failed login attempts for a user.
  */
-export async function resetUserLoginAttempts(
+async function resetUserLoginAttempts(
   userId: number,
 ): Promise<ApiResponse<AdminUser>> {
   return httpClient<AdminUser>(
@@ -173,7 +171,7 @@ export async function resetUserLoginAttempts(
 /**
  * Generate activation token for a user.
  */
-export async function generateUserActivationToken(
+async function generateUserActivationToken(
   userId: number,
 ): Promise<ApiResponse<{ activation_token: string; message: string }>> {
   return httpClient<{ activation_token: string; message: string }>(
@@ -185,7 +183,7 @@ export async function generateUserActivationToken(
 /**
  * Update user admin fields.
  */
-export async function updateUserAdmin(
+async function updateUserAdmin(
   userId: number,
   data: {
     is_active?: boolean;

@@ -9,7 +9,7 @@ import type { ApiResponse } from "../types/common.types";
 /**
  * Get paginated list of tasks.
  */
-export async function getTasks(params?: {
+async function getTasks(params?: {
   page?: number;
   size?: number;
   status_filter?: string;
@@ -39,7 +39,7 @@ export async function getTasks(params?: {
 /**
  * Create a new task.
  */
-export async function createTask(
+async function createTask(
   taskData: CreateTaskRequest,
 ): Promise<ApiResponse<Task>> {
   const backendPayload = {
@@ -63,21 +63,21 @@ export async function createTask(
 /**
  * Get a specific task by ID.
  */
-export async function getTask(id: string): Promise<ApiResponse<Task>> {
+async function getTask(id: string): Promise<ApiResponse<Task>> {
   return httpClient<Task>(`/api/v1/tasks/${id}`);
 }
 
 /**
  * Delete a task.
  */
-export async function deleteTask(id: string): Promise<ApiResponse<void>> {
+async function deleteTask(id: string): Promise<ApiResponse<void>> {
   return httpClient<void>(`/api/v1/tasks/${id}`, { method: "DELETE" });
 }
 
 /**
  * Start a task execution.
  */
-export async function startTask(
+async function startTask(
   id: number,
 ): Promise<ApiResponse<{ message: string; task_id: number }>> {
   return httpClient<{ message: string; task_id: number }>(

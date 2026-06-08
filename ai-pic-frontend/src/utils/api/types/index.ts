@@ -38,9 +38,6 @@ export * from "./story.types";
 export * from "./episode-character.types";
 export * from "./timeline.types";
 
-// Story novel export types
-export * from "./story-novel.types";
-
 // Script types
 export * from "./script.types";
 

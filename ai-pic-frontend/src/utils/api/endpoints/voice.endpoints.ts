@@ -13,14 +13,14 @@ import type { ApiResponse } from "../types/common.types";
 /**
  * Get voice configuration enums (providers, models, emotions, etc.).
  */
-export async function getVoiceEnums(): Promise<ApiResponse<VoiceEnums>> {
+async function getVoiceEnums(): Promise<ApiResponse<VoiceEnums>> {
   return httpClient<VoiceEnums>("/api/v1/voice/enums");
 }
 
 /**
  * Get available voices.
  */
-export async function getVoices(params?: {
+async function getVoices(params?: {
   voice_type?: string;
   provider?: string;
   refresh?: boolean;
@@ -40,7 +40,7 @@ export async function getVoices(params?: {
 /**
  * Preview voice with text-to-speech.
  */
-export async function previewVoice(payload: {
+async function previewVoice(payload: {
   text: string;
   model: string;
   voice_id?: string;

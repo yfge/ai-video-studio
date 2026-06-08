@@ -9,7 +9,7 @@ import type { ApiResponse } from "../types/common.types";
 /**
  * Get available AI models by type.
  */
-export async function getAvailableModels(params?: {
+async function getAvailableModels(params?: {
   type?: "text" | "image" | "video" | string;
 }): Promise<ApiResponse<AvailableModelsResponse>> {
   const t = params?.type ?? "text";

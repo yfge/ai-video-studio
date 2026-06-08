@@ -21,7 +21,7 @@ import type {
   TimelineUpdateRequest,
 } from "../types/timeline.types";
 
-export async function listEpisodeTimelines(
+async function listEpisodeTimelines(
   episodeId: number | string,
 ): Promise<ApiResponse<TimelineListResponse>> {
   return httpClient<TimelineListResponse>(
@@ -29,13 +29,13 @@ export async function listEpisodeTimelines(
   );
 }
 
-export async function getTimeline(
+async function getTimeline(
   timelineId: number | string,
 ): Promise<ApiResponse<TimelineResponse>> {
   return httpClient<TimelineResponse>(`/api/v1/timelines/${timelineId}`);
 }
 
-export async function updateTimeline(
+async function updateTimeline(
   timelineId: number | string,
   payload: TimelineUpdateRequest,
 ): Promise<ApiResponse<TimelineResponse>> {
@@ -45,7 +45,7 @@ export async function updateTimeline(
   });
 }
 
-export async function queueTimelineRender(
+async function queueTimelineRender(
   timelineId: number | string,
   payload: TimelineRenderJobCreate,
 ): Promise<ApiResponse<TimelineRenderJobResponse>> {
@@ -58,7 +58,7 @@ export async function queueTimelineRender(
   );
 }
 
-export async function listTimelineRenderJobs(
+async function listTimelineRenderJobs(
   timelineId: number | string,
 ): Promise<ApiResponse<TimelineRenderJobListResponse>> {
   return httpClient<TimelineRenderJobListResponse>(
@@ -66,7 +66,7 @@ export async function listTimelineRenderJobs(
   );
 }
 
-export async function listTimelineClipAssets(
+async function listTimelineClipAssets(
   timelineId: number | string,
   params: TimelineClipAssetListParams = {},
 ): Promise<ApiResponse<TimelineClipAssetListResponse>> {
@@ -86,7 +86,7 @@ export async function listTimelineClipAssets(
   );
 }
 
-export async function reworkTimelineClip(
+async function reworkTimelineClip(
   timelineId: number | string,
   clipId: string,
   payload: TimelineClipReworkRequest,
@@ -102,7 +102,7 @@ export async function reworkTimelineClip(
   );
 }
 
-export async function queueTimelineClipVideoRework(
+async function queueTimelineClipVideoRework(
   timelineId: number | string,
   clipId: string,
   payload: TimelineClipVideoReworkTaskRequest,
@@ -118,7 +118,7 @@ export async function queueTimelineClipVideoRework(
   );
 }
 
-export async function generateTimelineClipStoryboard(
+async function generateTimelineClipStoryboard(
   timelineId: number | string,
   clipId: string,
   payload: TimelineClipStoryboardGenerateRequest,

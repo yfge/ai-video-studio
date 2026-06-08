@@ -10,7 +10,7 @@ import type { ApiResponse } from "../types/common.types";
  * Login with email and password.
  * Returns access token on success.
  */
-export async function login(
+async function login(
   credentials: LoginRequest,
 ): Promise<ApiResponse<{ access_token: string; token_type: string }>> {
   // Backend expects application/x-www-form-urlencoded format
@@ -41,9 +41,7 @@ export async function login(
 /**
  * Register a new user account.
  */
-export async function register(
-  userData: RegisterRequest,
-): Promise<ApiResponse<User>> {
+async function register(userData: RegisterRequest): Promise<ApiResponse<User>> {
   return httpClient<User>("/api/v1/auth/register", {
     method: "POST",
     body: JSON.stringify(userData),
@@ -53,7 +51,7 @@ export async function register(
 /**
  * Logout current user (clears local token).
  */
-export async function logout(): Promise<ApiResponse<void>> {
+async function logout(): Promise<ApiResponse<void>> {
   clearAuthToken();
   return { success: true };
 }
@@ -61,7 +59,7 @@ export async function logout(): Promise<ApiResponse<void>> {
 /**
  * Get current authenticated user.
  */
-export async function getCurrentUser(): Promise<ApiResponse<User>> {
+async function getCurrentUser(): Promise<ApiResponse<User>> {
   return httpClient<User>("/api/v1/auth/me");
 }
 

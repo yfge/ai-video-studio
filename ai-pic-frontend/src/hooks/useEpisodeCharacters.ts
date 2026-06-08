@@ -3,13 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  listEpisodeCharacters,
-  createEpisodeCharacter,
-  updateEpisodeCharacter,
-  deleteEpisodeCharacter,
-  getEpisodeCharacterResources,
-} from "@/utils/api/endpoints";
+import { episodeCharacterAPI } from "@/utils/api/endpoints";
 import type {
   EpisodeCharacter,
   EpisodeCharacterCreate,
@@ -42,10 +36,13 @@ export function useEpisodeCharacters({
       setError(null);
 
       try {
-        const response = await listEpisodeCharacters(episodeId, {
-          page: pageNum,
-          page_size: pageSize,
-        });
+        const response = await episodeCharacterAPI.listEpisodeCharacters(
+          episodeId,
+          {
+            page: pageNum,
+            page_size: pageSize,
+          },
+        );
 
         setCharacters(response.items);
         setTotal(response.total);
@@ -79,7 +76,10 @@ export function useEpisodeCharacters({
       setError(null);
 
       try {
-        const newCharacter = await createEpisodeCharacter(episodeId, data);
+        const newCharacter = await episodeCharacterAPI.createEpisodeCharacter(
+          episodeId,
+          data,
+        );
 
         // Reload list to get updated data
         await loadCharacters(page);
@@ -110,7 +110,7 @@ export function useEpisodeCharacters({
       setError(null);
 
       try {
-        const updated = await updateEpisodeCharacter(
+        const updated = await episodeCharacterAPI.updateEpisodeCharacter(
           episodeId,
           characterId,
           data,
@@ -144,7 +144,11 @@ export function useEpisodeCharacters({
       setError(null);
 
       try {
-        await deleteEpisodeCharacter(episodeId, characterId, reason);
+        await episodeCharacterAPI.deleteEpisodeCharacter(
+          episodeId,
+          characterId,
+          reason,
+        );
 
         // Remove from local state
         setCharacters((prev) => prev.filter((char) => char.id !== characterId));
@@ -172,7 +176,10 @@ export function useEpisodeCharacters({
       if (!episodeId) return null;
 
       try {
-        return await getEpisodeCharacterResources(episodeId, characterId);
+        return await episodeCharacterAPI.getEpisodeCharacterResources(
+          episodeId,
+          characterId,
+        );
       } catch (err: unknown) {
         console.error("Failed to get character resources:", err);
         return null;

@@ -40,7 +40,7 @@ function virtualIPPath(
 /**
  * Get list of virtual IPs.
  */
-export async function getVirtualIPs(params?: {
+async function getVirtualIPs(params?: {
   search?: string;
   tags?: string[];
   page?: number;
@@ -64,7 +64,7 @@ export async function getVirtualIPs(params?: {
 /**
  * Get a specific virtual IP by ID or business ID.
  */
-export async function getVirtualIP(
+async function getVirtualIP(
   id: number | string,
 ): Promise<ApiResponse<VirtualIP>> {
   return httpClient<VirtualIP>(virtualIPPath(id));
@@ -73,7 +73,7 @@ export async function getVirtualIP(
 /**
  * Create a new virtual IP.
  */
-export async function createVirtualIP(
+async function createVirtualIP(
   data: CreateVirtualIPRequest,
 ): Promise<ApiResponse<VirtualIP>> {
   return httpClient<VirtualIP>("/api/v1/virtual-ips/", {
@@ -85,7 +85,7 @@ export async function createVirtualIP(
 /**
  * Update a virtual IP.
  */
-export async function updateVirtualIP(
+async function updateVirtualIP(
   id: number | string,
   data: UpdateVirtualIPRequest,
 ): Promise<ApiResponse<VirtualIP>> {
@@ -98,7 +98,7 @@ export async function updateVirtualIP(
 /**
  * Delete a virtual IP.
  */
-export async function deleteVirtualIP(
+async function deleteVirtualIP(
   id: number | string,
 ): Promise<ApiResponse<void>> {
   return httpClient<void>(virtualIPPath(id), { method: "DELETE" });
@@ -107,7 +107,7 @@ export async function deleteVirtualIP(
 /**
  * Generate AI content for virtual IP (description, backstory, etc.).
  */
-export async function generateAIContent(
+async function generateAIContent(
   data: VirtualIPAIGenerationRequest,
 ): Promise<ApiResponse<VirtualIPAIGenerationResponse>> {
   return httpClient<VirtualIPAIGenerationResponse>(
@@ -122,7 +122,7 @@ export async function generateAIContent(
 /**
  * Generate AI content with detailed generation info.
  */
-export async function generateAIContentDetailed(
+async function generateAIContentDetailed(
   data: VirtualIPAIGenerationRequest,
 ): Promise<ApiResponse<VirtualIPAIGenerationDetailedResponse>> {
   return httpClient<VirtualIPAIGenerationDetailedResponse>(
@@ -137,7 +137,7 @@ export async function generateAIContentDetailed(
 /**
  * Create virtual IP with AI-generated content.
  */
-export async function createVirtualIPWithAI(
+async function createVirtualIPWithAI(
   data: VirtualIPAICreateRequest,
 ): Promise<ApiResponse<VirtualIP>> {
   return httpClient<VirtualIP>("/api/v1/virtual-ips/create-with-ai", {
@@ -146,23 +146,28 @@ export async function createVirtualIPWithAI(
   });
 }
 
-export async function listVirtualIPEnvironments(
+async function listVirtualIPEnvironments(
   id: number | string,
 ): Promise<ApiResponse<VirtualIPEnvironmentLink[]>> {
-  return httpClient<VirtualIPEnvironmentLink[]>(virtualIPPath(id, "/environments"));
+  return httpClient<VirtualIPEnvironmentLink[]>(
+    virtualIPPath(id, "/environments"),
+  );
 }
 
-export async function linkVirtualIPEnvironment(
+async function linkVirtualIPEnvironment(
   id: number | string,
   data: LinkVirtualIPEnvironmentRequest,
 ): Promise<ApiResponse<VirtualIPEnvironmentLink>> {
-  return httpClient<VirtualIPEnvironmentLink>(virtualIPPath(id, "/environments"), {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  return httpClient<VirtualIPEnvironmentLink>(
+    virtualIPPath(id, "/environments"),
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
 }
 
-export async function updateVirtualIPEnvironmentLink(
+async function updateVirtualIPEnvironmentLink(
   id: number | string,
   environmentId: number | string,
   data: UpdateVirtualIPEnvironmentLinkRequest,
@@ -176,7 +181,7 @@ export async function updateVirtualIPEnvironmentLink(
   );
 }
 
-export async function unlinkVirtualIPEnvironment(
+async function unlinkVirtualIPEnvironment(
   id: number | string,
   environmentId: number | string,
 ): Promise<ApiResponse<void>> {

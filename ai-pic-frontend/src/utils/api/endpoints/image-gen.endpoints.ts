@@ -9,7 +9,7 @@ import type {
   ImageGenProfilesResponse,
 } from "../types/image-gen.types";
 
-export async function getImageGenProfiles(params: {
+async function getImageGenProfiles(params: {
   model: string;
   mode: ImageGenMode;
 }): Promise<ApiResponse<ImageGenProfilesResponse>> {

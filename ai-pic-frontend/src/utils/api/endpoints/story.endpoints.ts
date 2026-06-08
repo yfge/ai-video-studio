@@ -33,7 +33,7 @@ function storyPath(storyIdOrBiz: number | string, suffix: string = ""): string {
 /**
  * Get list of stories.
  */
-export async function getStories(params?: {
+async function getStories(params?: {
   skip?: number;
   limit?: number;
   genre?: string;
@@ -51,7 +51,7 @@ export async function getStories(params?: {
 /**
  * Get a specific story.
  */
-export async function getStory(
+async function getStory(
   idOrBusinessId: number | string,
 ): Promise<ApiResponse<Story>> {
   return httpClient<Story>(storyPath(idOrBusinessId));
@@ -60,7 +60,7 @@ export async function getStory(
 /**
  * Generate a new story with AI.
  */
-export async function generateStory(
+async function generateStory(
   data: StoryGenerationRequest,
 ): Promise<ApiResponse<Story>> {
   return httpClient<Story>("/api/v1/stories/generate", {
@@ -72,7 +72,7 @@ export async function generateStory(
 /**
  * Generate story asynchronously (returns task ID).
  */
-export async function generateStoryAsync(
+async function generateStoryAsync(
   data: StoryGenerationRequest,
 ): Promise<ApiResponse<{ task_id: number; status: string }>> {
   return httpClient<{ task_id: number; status: string }>(
@@ -87,7 +87,7 @@ export async function generateStoryAsync(
 /**
  * Preview story generation prompt.
  */
-export async function previewStoryPrompt(
+async function previewStoryPrompt(
   data: StoryGenerationRequest,
 ): Promise<ApiResponse<{ prompt: string }>> {
   return httpClient<{ prompt: string }>("/api/v1/stories/prompt/preview", {
@@ -99,7 +99,7 @@ export async function previewStoryPrompt(
 /**
  * Update a story.
  */
-export async function updateStory(
+async function updateStory(
   idOrBusinessId: number | string,
   data: Partial<Story>,
 ): Promise<ApiResponse<Story>> {
@@ -112,7 +112,7 @@ export async function updateStory(
 /**
  * Delete a story.
  */
-export async function deleteStory(
+async function deleteStory(
   idOrBusinessId: number | string,
 ): Promise<ApiResponse<void>> {
   return httpClient<void>(storyPath(idOrBusinessId), { method: "DELETE" });
@@ -121,7 +121,7 @@ export async function deleteStory(
 /**
  * Get characters in a story.
  */
-export async function getStoryCharacters(
+async function getStoryCharacters(
   storyId: number | string,
 ): Promise<ApiResponse<StoryCharacter[]>> {
   return httpClient<StoryCharacter[]>(storyPath(storyId, "/characters"));
@@ -130,7 +130,7 @@ export async function getStoryCharacters(
 /**
  * Get available story genres.
  */
-export async function getStoryGenres(): Promise<
+async function getStoryGenres(): Promise<
   ApiResponse<Array<{ value: string; label: string }>>
 > {
   return httpClient<Array<{ value: string; label: string }>>(
@@ -141,18 +141,21 @@ export async function getStoryGenres(): Promise<
 /**
  * Check story readiness for episode generation.
  */
-export async function checkStoryReadiness(
+async function checkStoryReadiness(
   storyIdOrBiz: number | string,
 ): Promise<ApiResponse<ReadinessResult>> {
-  return httpClient<ReadinessResult>(storyPath(storyIdOrBiz, "/readiness-check"), {
-    method: "POST",
-  });
+  return httpClient<ReadinessResult>(
+    storyPath(storyIdOrBiz, "/readiness-check"),
+    {
+      method: "POST",
+    },
+  );
 }
 
 /**
  * Check episode readiness for script generation.
  */
-export async function checkEpisodeReadiness(
+async function checkEpisodeReadiness(
   storyIdOrBiz: number | string,
   episodeIdOrBiz: number | string,
 ): Promise<ApiResponse<ReadinessResult>> {
@@ -170,7 +173,7 @@ export async function checkEpisodeReadiness(
 /**
  * Auto-fix missing story fields using AI generation.
  */
-export async function quickFixStory(
+async function quickFixStory(
   storyIdOrBiz: number | string,
   request?: QuickFixRequest,
 ): Promise<ApiResponse<QuickFixResponse>> {

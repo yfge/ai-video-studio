@@ -25,7 +25,7 @@ const request = async <T>(endpoint: string, options: RequestInit = {}) => {
 /**
  * List episode characters with pagination.
  */
-export async function listEpisodeCharacters(
+async function listEpisodeCharacters(
   episodeId: number | string,
   params?: {
     page?: number;
@@ -49,7 +49,7 @@ export async function listEpisodeCharacters(
 /**
  * Get one episode character.
  */
-export async function getEpisodeCharacter(
+async function getEpisodeCharacter(
   episodeId: number | string,
   characterId: number | string,
 ): Promise<EpisodeCharacter> {
@@ -62,7 +62,7 @@ export async function getEpisodeCharacter(
 /**
  * Get one episode character with resolved resources.
  */
-export async function getEpisodeCharacterResources(
+async function getEpisodeCharacterResources(
   episodeId: number | string,
   characterId: number | string,
 ): Promise<EpisodeCharacterWithResources> {
@@ -75,7 +75,7 @@ export async function getEpisodeCharacterResources(
 /**
  * Create one episode character.
  */
-export async function createEpisodeCharacter(
+async function createEpisodeCharacter(
   episodeId: number | string,
   data: EpisodeCharacterCreate,
 ): Promise<EpisodeCharacter> {
@@ -88,7 +88,7 @@ export async function createEpisodeCharacter(
 /**
  * Update one episode character.
  */
-export async function updateEpisodeCharacter(
+async function updateEpisodeCharacter(
   episodeId: number | string,
   characterId: number | string,
   data: EpisodeCharacterUpdate,
@@ -105,7 +105,7 @@ export async function updateEpisodeCharacter(
 /**
  * Soft-delete one episode character.
  */
-export async function deleteEpisodeCharacter(
+async function deleteEpisodeCharacter(
   episodeId: number | string,
   characterId: number | string,
   reason?: string,

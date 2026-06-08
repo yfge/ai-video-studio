@@ -26,7 +26,7 @@ export interface HttpResponse<T = unknown> {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-export function getAuthToken(): string | null {
+function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("auth_token");
 }
