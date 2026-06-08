@@ -13,9 +13,7 @@ from app.models.virtual_ip import VirtualIP, VirtualIPImage
 
 
 @pytest.mark.asyncio
-async def test_fastapi_full_image_generation_flow(
-    client, db_session, mock_ai_service
-):
+async def test_fastapi_full_image_generation_flow(client, db_session, mock_ai_service):
     """测试FastAPI应用的完整图像生成流程"""
 
     print("\n🧪 测试FastAPI完整图像生成流程")
@@ -64,7 +62,6 @@ async def test_fastapi_full_image_generation_flow(
     auth_headers = {"Authorization": f"Bearer {token}"}
 
     virtual_ip_id = test_virtual_ip.id
-    virtual_ip_name = test_virtual_ip.name
 
     # 2. 检查生成前的图像数量
     initial_count = (

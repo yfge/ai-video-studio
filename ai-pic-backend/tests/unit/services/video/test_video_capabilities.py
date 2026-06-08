@@ -1,10 +1,8 @@
 """Tests for video capabilities registry."""
 
-import pytest
-
 from app.services.video.video_capabilities import (
-    CapabilityMatch,
     DEFAULT_CAPABILITY,
+    CapabilityMatch,
     find_capability,
     get_allowed_durations,
     get_capability_summary,

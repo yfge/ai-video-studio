@@ -40,7 +40,7 @@ class TestUserModel:
         """测试用户名唯一性"""
         setup_factories(db_session)
 
-        user1 = UserFactory(username="testuser")
+        UserFactory(username="testuser")
 
         with pytest.raises(IntegrityError):
             UserFactory(username="testuser")
@@ -49,7 +49,7 @@ class TestUserModel:
         """测试邮箱唯一性"""
         setup_factories(db_session)
 
-        user1 = UserFactory(email="test@example.com")
+        UserFactory(email="test@example.com")
 
         with pytest.raises(IntegrityError):
             UserFactory(email="test@example.com")
@@ -82,7 +82,7 @@ class TestVirtualIPModel:
         setup_factories(db_session)
 
         owner = UserFactory()
-        vip1 = VirtualIPFactory(name="TestIP", owner=owner)
+        VirtualIPFactory(name="TestIP", owner=owner)
 
         with pytest.raises(IntegrityError):
             VirtualIPFactory(name="TestIP", owner=owner)

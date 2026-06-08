@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 class TestScriptStructureSyncBasics:
     """Test basic sync functionality."""
@@ -42,7 +40,9 @@ class TestJsonToStructure:
 
     def test_empty_json_returns_message(self):
         """Test handling of empty JSON scenes."""
-        from app.services.storyboard.sync.script_structure_sync import ScriptStructureSync
+        from app.services.storyboard.sync.script_structure_sync import (
+            ScriptStructureSync,
+        )
 
         mock_db = MagicMock()
         sync = ScriptStructureSync(mock_db)
@@ -59,7 +59,9 @@ class TestJsonToStructure:
 
     def test_creates_scenes_from_json(self):
         """Test scene creation from JSON data."""
-        from app.services.storyboard.sync.script_structure_sync import ScriptStructureSync
+        from app.services.storyboard.sync.script_structure_sync import (
+            ScriptStructureSync,
+        )
 
         mock_db = MagicMock()
         mock_db.query.return_value.filter.return_value.all.return_value = []
@@ -92,10 +94,14 @@ class TestStructureToJson:
 
     def test_empty_structure_returns_message(self):
         """Test handling of empty story structure."""
-        from app.services.storyboard.sync.script_structure_sync import ScriptStructureSync
+        from app.services.storyboard.sync.script_structure_sync import (
+            ScriptStructureSync,
+        )
 
         mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
+            []
+        )
 
         sync = ScriptStructureSync(mock_db)
 
@@ -113,10 +119,14 @@ class TestReconcile:
 
     def test_reconcile_empty_both(self):
         """Test reconcile when both sources are empty."""
-        from app.services.storyboard.sync.script_structure_sync import ScriptStructureSync
+        from app.services.storyboard.sync.script_structure_sync import (
+            ScriptStructureSync,
+        )
 
         mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
+            []
+        )
 
         sync = ScriptStructureSync(mock_db)
 
@@ -131,10 +141,14 @@ class TestReconcile:
 
     def test_reconcile_json_only(self):
         """Test reconcile when only JSON has data."""
-        from app.services.storyboard.sync.script_structure_sync import ScriptStructureSync
+        from app.services.storyboard.sync.script_structure_sync import (
+            ScriptStructureSync,
+        )
 
         mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
+            []
+        )
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
         sync = ScriptStructureSync(mock_db)
@@ -146,18 +160,22 @@ class TestReconcile:
 
         with patch.object(sync, "json_to_structure") as mock_sync:
             mock_sync.return_value = MagicMock(success=True, message="Synced")
-            result = sync.reconcile(mock_script)
+            sync.reconcile(mock_script)
 
         mock_sync.assert_called_once()
 
     def test_reconcile_structure_only(self):
         """Test reconcile when only structure has data."""
-        from app.services.storyboard.sync.script_structure_sync import ScriptStructureSync
+        from app.services.storyboard.sync.script_structure_sync import (
+            ScriptStructureSync,
+        )
 
         mock_db = MagicMock()
         mock_scene = MagicMock()
         mock_scene.scene_number = "1"
-        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [mock_scene]
+        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [
+            mock_scene
+        ]
         mock_db.query.return_value.filter.return_value.all.return_value = [mock_scene]
 
         sync = ScriptStructureSync(mock_db)
@@ -169,7 +187,7 @@ class TestReconcile:
 
         with patch.object(sync, "structure_to_json") as mock_sync:
             mock_sync.return_value = MagicMock(success=True, message="Synced")
-            result = sync.reconcile(mock_script)
+            sync.reconcile(mock_script)
 
         mock_sync.assert_called_once()
 
@@ -179,7 +197,9 @@ class TestSceneConversion:
 
     def test_create_scene_from_json(self):
         """Test scene model creation from JSON."""
-        from app.services.storyboard.sync.script_structure_sync import ScriptStructureSync
+        from app.services.storyboard.sync.script_structure_sync import (
+            ScriptStructureSync,
+        )
 
         mock_db = MagicMock()
         sync = ScriptStructureSync(mock_db)
@@ -199,7 +219,7 @@ class TestSceneConversion:
             mock_instance = MagicMock()
             MockScene.return_value = mock_instance
 
-            result = sync._create_scene_from_json(mock_script, json_scene)
+            sync._create_scene_from_json(mock_script, json_scene)
 
         MockScene.assert_called_once()
         call_kwargs = MockScene.call_args.kwargs
@@ -209,7 +229,9 @@ class TestSceneConversion:
 
     def test_scene_to_json(self):
         """Test scene model to JSON conversion."""
-        from app.services.storyboard.sync.script_structure_sync import ScriptStructureSync
+        from app.services.storyboard.sync.script_structure_sync import (
+            ScriptStructureSync,
+        )
 
         mock_db = MagicMock()
         sync = ScriptStructureSync(mock_db)

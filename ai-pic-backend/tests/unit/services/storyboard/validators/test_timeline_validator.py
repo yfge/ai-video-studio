@@ -1,7 +1,6 @@
 """Tests for TimelineValidator."""
 
 import pytest
-
 from app.services.storyboard.pipeline.pipeline_context import PipelineContext
 from app.services.storyboard.pipeline.pipeline_state import (
     PipelineState,
@@ -127,7 +126,9 @@ class TestTimeOverlapValidation:
 class TestDurationConsistency:
     """Test duration consistency validation."""
 
-    def test_consistent_durations_pass(self, validator, state_with_frames, empty_context):
+    def test_consistent_durations_pass(
+        self, validator, state_with_frames, empty_context
+    ):
         """Test consistent durations pass."""
         results = validator.validate(state_with_frames, empty_context)
         duration_results = [r for r in results if "duration" in r.message.lower()]
@@ -165,7 +166,6 @@ class TestDurationConsistency:
         ]
 
         results = validator.validate(state, empty_context)
-        duration_results = [r for r in results if "inconsisten" in r.message.lower()]
 
         # Should pass due to tolerance
         assert all(r.passed for r in results)
@@ -177,7 +177,11 @@ class TestTimelineGaps:
     def test_no_gaps_passes(self, validator, state_with_frames, empty_context):
         """Test no gaps passes validation."""
         results = validator.validate(state_with_frames, empty_context)
-        gap_results = [r for r in results if "gap" in r.message.lower() or "continuous" in r.message.lower()]
+        gap_results = [
+            r
+            for r in results
+            if "gap" in r.message.lower() or "continuous" in r.message.lower()
+        ]
 
         assert any(r.passed for r in gap_results)
 
@@ -208,7 +212,9 @@ class TestTimelineGaps:
         ]
 
         results = validator.validate(state, empty_context)
-        gap_results = [r for r in results if "gap" in r.message.lower() and not r.passed]
+        gap_results = [
+            r for r in results if "gap" in r.message.lower() and not r.passed
+        ]
 
         # Small gaps under threshold should not be reported as failures
         assert len(gap_results) == 0
@@ -235,7 +241,12 @@ class TestAutoFix:
         state = PipelineState(script_id=1)
         state.frames = [
             {"frame_id": "f1", "start_ms": 0, "end_ms": 2000, "duration_seconds": 5.0},
-            {"frame_id": "f2", "start_ms": 2000, "end_ms": 4000, "duration_seconds": 1.0},
+            {
+                "frame_id": "f2",
+                "start_ms": 2000,
+                "end_ms": 4000,
+                "duration_seconds": 1.0,
+            },
         ]
 
         issues = validator.validate(state, empty_context)

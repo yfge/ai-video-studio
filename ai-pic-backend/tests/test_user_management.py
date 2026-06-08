@@ -357,7 +357,7 @@ class TestUserManagementService:
     def test_get_user_stats(self, db_session: Session):
         """测试获取用户统计"""
         # 创建不同状态的用户
-        admin = self.create_admin_user(db_session)
+        self.create_admin_user(db_session)
 
         # 创建几个不同状态的用户用于统计
         for i in range(3):
@@ -481,7 +481,9 @@ class TestAdminAPI:
         assert "total" in data
         assert "page" in data
 
-    def test_regular_user_cannot_access_admin_endpoints(self, db_session: Session, client):
+    def test_regular_user_cannot_access_admin_endpoints(
+        self, db_session: Session, client
+    ):
         """测试普通用户无法访问管理员接口"""
         user = self.create_regular_user(db_session)
         token = self.get_admin_token(user)

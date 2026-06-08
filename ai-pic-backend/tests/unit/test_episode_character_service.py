@@ -1,12 +1,12 @@
 """Unit tests for episode character service."""
 
-import pytest
 from unittest.mock import MagicMock
+
 from app.models.episode_character import EpisodeCharacter
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.services.episode_character_service import (
-    resolve_character_resources,
     get_character_display_name,
+    resolve_character_resources,
 )
 
 

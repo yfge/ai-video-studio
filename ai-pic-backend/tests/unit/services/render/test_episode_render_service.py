@@ -3,9 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from app.services.render.episode_render_service import EpisodeRenderService
-from app.services.render.video_concat import VideoClip
 
 
 class TestGetStoryboardClips:
@@ -52,9 +50,15 @@ class TestGetStoryboardClips:
         mock_script.extra_metadata = {
             "storyboard": {
                 "frames": [
-                    {"video_url": "https://example.com/v1.mp4", "duration_seconds": 3.0},
+                    {
+                        "video_url": "https://example.com/v1.mp4",
+                        "duration_seconds": 3.0,
+                    },
                     {"duration_seconds": 5.0},  # No video_url
-                    {"video_url": "https://example.com/v3.mp4", "duration_seconds": 4.0},
+                    {
+                        "video_url": "https://example.com/v3.mp4",
+                        "duration_seconds": 4.0,
+                    },
                 ]
             }
         }
@@ -95,9 +99,7 @@ class TestGetStoryboardClips:
         mock_script = MagicMock()
         mock_script.extra_metadata = {
             "storyboard": {
-                "frames": [
-                    {"video_url": "https://example.com/v1.mp4"}  # No duration
-                ]
+                "frames": [{"video_url": "https://example.com/v1.mp4"}]  # No duration
             }
         }
 
@@ -129,9 +131,7 @@ class TestGetEpisodeAudioUrl:
 
         mock_episode = MagicMock()
         mock_episode.extra_metadata = {
-            "dialogue_audio": {
-                "oss_url": "https://example.com/audio.mp3"
-            }
+            "dialogue_audio": {"oss_url": "https://example.com/audio.mp3"}
         }
 
         url = service.get_episode_audio_url(mock_episode)
@@ -225,8 +225,14 @@ class TestRenderEpisode:
         mock_script.extra_metadata = {
             "storyboard": {
                 "frames": [
-                    {"video_url": "https://example.com/v1.mp4", "duration_seconds": 5.0},
-                    {"video_url": "https://example.com/v2.mp4", "duration_seconds": 5.0},
+                    {
+                        "video_url": "https://example.com/v1.mp4",
+                        "duration_seconds": 5.0,
+                    },
+                    {
+                        "video_url": "https://example.com/v2.mp4",
+                        "duration_seconds": 5.0,
+                    },
                 ]
             }
         }
@@ -281,5 +287,7 @@ class TestSaveRenderResults:
 
         assert "episode_renders" in mock_episode.extra_metadata
         assert "latest" in mock_episode.extra_metadata["episode_renders"]
-        assert mock_episode.extra_metadata["episode_renders"]["latest"]["frame_count"] == 3
+        assert (
+            mock_episode.extra_metadata["episode_renders"]["latest"]["frame_count"] == 3
+        )
         mock_db.commit.assert_called_once()

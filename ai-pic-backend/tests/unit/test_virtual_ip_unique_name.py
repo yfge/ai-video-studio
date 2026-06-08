@@ -25,7 +25,6 @@ def test_update_virtual_ip_duplicate_name_returns_400(client):
 
     res_a = client.post("/api/v1/virtual-ips/", json={"name": name_a})
     assert res_a.status_code == 200
-    vip_a_id = res_a.json()["data"]["id"]
 
     res_b = client.post("/api/v1/virtual-ips/", json={"name": name_b})
     assert res_b.status_code == 200

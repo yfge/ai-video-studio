@@ -1,9 +1,8 @@
 """Tests for StoryboardPipeline."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 from app.services.storyboard.pipeline.pipeline_context import PipelineContext
 from app.services.storyboard.pipeline.pipeline_state import (
     PipelinePhase,
@@ -266,7 +265,9 @@ class TestLangGraphExecution:
         mock_db = MagicMock()
         pipeline = StoryboardPipeline(mock_db)
 
-        with patch.object(pipeline.precheck, "check_from_context") as mock_check, patch.object(
+        with patch.object(
+            pipeline.precheck, "check_from_context"
+        ) as mock_check, patch.object(
             pipeline, "_node_validate_plan"
         ) as mock_validate_plan:
             mock_check.return_value = MagicMock(
@@ -284,7 +285,8 @@ class TestLangGraphExecution:
         assert result["success"] is False
         assert result["phase"] == PipelinePhase.FAILED.value
         assert any(
-            v.get("validator_name") == "precheck" and "Missing required data" in v.get("message", "")
+            v.get("validator_name") == "precheck"
+            and "Missing required data" in v.get("message", "")
             for v in result.get("validation_results", [])
         )
 

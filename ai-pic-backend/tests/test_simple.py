@@ -91,7 +91,7 @@ def test_alembic_import():
 def test_sqlalchemy_import():
     """测试SQLAlchemy导入"""
     try:
-        from sqlalchemy import Column, Integer, String, create_engine
+        from sqlalchemy import Column, create_engine
         from sqlalchemy.ext.declarative import declarative_base
         from sqlalchemy.orm import sessionmaker
 

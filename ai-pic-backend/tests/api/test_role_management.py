@@ -76,7 +76,7 @@ def test_role_management_ui():
                 )
             )
             print("✅ 用户详情模态框已显示")
-        except:
+        except Exception:
             print("❌ 用户详情模态框未显示")
             return False
 
@@ -95,7 +95,7 @@ def test_role_management_ui():
 
             # 6. 检查角色管理模态框是否出现
             try:
-                role_modal = WebDriverWait(driver, 10).until(
+                WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located(
                         (By.XPATH, "//h3[contains(text(), '角色管理')]")
                     )

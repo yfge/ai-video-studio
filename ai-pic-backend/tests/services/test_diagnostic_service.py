@@ -44,7 +44,7 @@ class TestDiagnosticService:
     @pytest.mark.asyncio
     async def test_test_environment_config(self, diagnostic_service):
         """测试环境配置检查"""
-        success = await diagnostic_service.test_environment_config()
+        await diagnostic_service.test_environment_config()
 
         # 检查测试结果记录
         assert "环境配置检查" in diagnostic_service.test_results
@@ -62,7 +62,7 @@ class TestDiagnosticService:
     @pytest.mark.database
     async def test_test_database_connection(self, diagnostic_service):
         """测试数据库连接测试"""
-        success = await diagnostic_service.test_database_connection()
+        await diagnostic_service.test_database_connection()
 
         assert "数据库连接" in diagnostic_service.test_results
         result = diagnostic_service.test_results["数据库连接"]
@@ -146,9 +146,7 @@ class TestDiagnosticService:
             # Mock文件存在
             with patch("os.path.exists", return_value=True):
                 with patch("os.path.getsize", return_value=1024):
-                    success = (
-                        await diagnostic_service.test_end_to_end_image_generation()
-                    )
+                    await diagnostic_service.test_end_to_end_image_generation()
 
                     assert "端到端测试" in diagnostic_service.test_results
                     result = diagnostic_service.test_results["端到端测试"]

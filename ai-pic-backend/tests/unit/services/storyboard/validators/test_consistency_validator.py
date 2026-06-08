@@ -1,7 +1,6 @@
 """Tests for ConsistencyValidator."""
 
 import pytest
-
 from app.services.storyboard.pipeline.pipeline_context import (
     PipelineContext,
     SceneContext,
@@ -68,7 +67,9 @@ class TestConsistencyValidatorBasics:
 class TestSceneCountValidation:
     """Test scene count validation."""
 
-    def test_matching_scene_counts_pass(self, validator, empty_state, context_with_scenes):
+    def test_matching_scene_counts_pass(
+        self, validator, empty_state, context_with_scenes
+    ):
         """Test validation passes when scene counts match."""
         results = validator.validate(empty_state, context_with_scenes)
         count_results = [r for r in results if "count" in r.message.lower()]
@@ -123,10 +124,11 @@ class TestSceneCountValidation:
 class TestSceneNumberValidation:
     """Test scene number consecutive validation."""
 
-    def test_consecutive_numbers_pass(self, validator, empty_state, context_with_scenes):
+    def test_consecutive_numbers_pass(
+        self, validator, empty_state, context_with_scenes
+    ):
         """Test consecutive scene numbers pass."""
         results = validator.validate(empty_state, context_with_scenes)
-        consecutive_results = [r for r in results if "consecutive" in r.message.lower()]
 
         # Should have a success message
         assert any(r.passed for r in results)
@@ -145,10 +147,17 @@ class TestSceneNumberValidation:
         ctx.is_synchronized = True
 
         results = validator.validate(empty_state, ctx)
-        gap_results = [r for r in results if "gap" in r.message.lower() or "consecutive" in r.message.lower()]
+        gap_results = [
+            r
+            for r in results
+            if "gap" in r.message.lower() or "consecutive" in r.message.lower()
+        ]
 
         assert len(gap_results) > 0
-        assert any("missing" in r.message.lower() or "non-consecutive" in r.message.lower() for r in gap_results)
+        assert any(
+            "missing" in r.message.lower() or "non-consecutive" in r.message.lower()
+            for r in gap_results
+        )
 
     def test_duplicate_numbers_error(self, validator, empty_state):
         """Test duplicate scene numbers generate error."""
@@ -173,7 +182,9 @@ class TestSceneNumberValidation:
 class TestDialogueValidation:
     """Test dialogue scene reference validation."""
 
-    def test_valid_dialogue_references_pass(self, validator, empty_state, context_with_scenes):
+    def test_valid_dialogue_references_pass(
+        self, validator, empty_state, context_with_scenes
+    ):
         """Test valid dialogue references pass."""
         results = validator.validate(empty_state, context_with_scenes)
 
@@ -200,7 +211,8 @@ class TestDialogueValidation:
 
         results = validator.validate(empty_state, ctx)
         invalid_results = [
-            r for r in results
+            r
+            for r in results
             if "invalid" in r.message.lower() and "scene" in r.message.lower()
         ]
 

@@ -1,7 +1,5 @@
 """Integration tests for readiness check API endpoints."""
 
-import pytest
-
 from app.models.script import Episode, Story, StoryCharacter
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
@@ -83,9 +81,7 @@ def _create_story(
     return story
 
 
-def _create_story_character(
-    db_session, story: Story, vip: VirtualIP
-) -> StoryCharacter:
+def _create_story_character(db_session, story: Story, vip: VirtualIP) -> StoryCharacter:
     """Link a VirtualIP to a story as a character."""
     char = StoryCharacter(
         story_id=story.id,
@@ -327,7 +323,10 @@ class TestReadinessResultFormat:
         data = response.json()
 
         assert "summary" in data
-        assert "critical" in data["summary"].lower() or "not ready" in data["summary"].lower()
+        assert (
+            "critical" in data["summary"].lower()
+            or "not ready" in data["summary"].lower()
+        )
 
 
 class TestQuickFixEndpoint:
@@ -351,6 +350,7 @@ class TestQuickFixEndpoint:
             return "A" * 60  # Long enough for synopsis
 
         from app.services.readiness import story_quick_fix
+
         monkeypatch.setattr(
             story_quick_fix.StoryQuickFixService,
             "_generate_text",
@@ -397,6 +397,7 @@ class TestQuickFixEndpoint:
             return "Generated content"
 
         from app.services.readiness import story_quick_fix
+
         monkeypatch.setattr(
             story_quick_fix.StoryQuickFixService,
             "_generate_text",

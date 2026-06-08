@@ -1,6 +1,5 @@
 """Tests for Quality Closed Loop System."""
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
@@ -317,7 +316,9 @@ class TestRepairMonitor:
             )
 
         json_rate = monitor.get_success_rate(failure_mode=FailureMode.JSON_PARSE)
-        schema_rate = monitor.get_success_rate(failure_mode=FailureMode.SCHEMA_VIOLATION)
+        schema_rate = monitor.get_success_rate(
+            failure_mode=FailureMode.SCHEMA_VIOLATION
+        )
 
         assert abs(json_rate - 2 / 3) < 0.01
         assert schema_rate == 0.5
@@ -513,9 +514,7 @@ class TestIntegration:
 
             monitor.record(
                 failure_mode=(
-                    FailureMode.SCHEMA_VIOLATION
-                    if not success
-                    else FailureMode.UNKNOWN
+                    FailureMode.SCHEMA_VIOLATION if not success else FailureMode.UNKNOWN
                 ),
                 strategy="refine",
                 success=success,

@@ -136,7 +136,7 @@ def _bootstrap_schema(engine: sa.Engine, include_server_defaults: bool = True) -
         sa.Column("storyboard_plan", sa.JSON, nullable=True),
     )
     users = sa.Table("users", metadata, sa.Column("id", sa.Integer, primary_key=True))
-    images = sa.Table("images", metadata, sa.Column("id", sa.Integer, primary_key=True))
+    sa.Table("images", metadata, sa.Column("id", sa.Integer, primary_key=True))
 
     sa.Table(
         "story_treatments",

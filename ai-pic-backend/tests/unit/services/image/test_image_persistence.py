@@ -244,7 +244,7 @@ class TestSaveBase64Image:
         test_b64 = base64.b64encode(b"test_image_data").decode()
 
         with patch("app.services.image.image_persistence.settings") as mock_settings:
-            with patch("builtins.open", mock_open()) as mock_file:
+            with patch("builtins.open", mock_open()):
                 mock_settings.UPLOAD_DIR = "/tmp/uploads"
 
                 result = await save_base64_image(test_b64, "stability")

@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
 from unittest.mock import MagicMock
 
 import pytest
-
 from app.services.storyboard.pipeline.pipeline_state import (
     PipelineState,
     ValidationSeverity,
@@ -40,15 +37,11 @@ def base_state() -> PipelineState:
 class TestVisualContinuityValidator:
     """Tests for VisualContinuityValidator."""
 
-    def test_validator_name(
-        self, validator: VisualContinuityValidator
-    ) -> None:
+    def test_validator_name(self, validator: VisualContinuityValidator) -> None:
         """Test validator name property."""
         assert validator.name == "visual_continuity_validator"
 
-    def test_validator_description(
-        self, validator: VisualContinuityValidator
-    ) -> None:
+    def test_validator_description(self, validator: VisualContinuityValidator) -> None:
         """Test validator description property."""
         assert "visual continuity" in validator.description.lower()
 
@@ -103,7 +96,8 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         costume_warnings = [
-            r for r in results
+            r
+            for r in results
             if "costume" in r.message.lower()
             and r.severity == ValidationSeverity.WARNING
         ]
@@ -131,7 +125,8 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         costume_warnings = [
-            r for r in results
+            r
+            for r in results
             if "costume" in r.message.lower()
             and r.severity == ValidationSeverity.WARNING
         ]
@@ -163,7 +158,8 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         hair_warnings = [
-            r for r in results
+            r
+            for r in results
             if "hairstyle" in r.message.lower()
             and r.severity == ValidationSeverity.WARNING
         ]
@@ -191,9 +187,9 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         hair_warnings = [
-            r for r in results
-            if "hair" in r.message.lower()
-            and r.severity == ValidationSeverity.WARNING
+            r
+            for r in results
+            if "hair" in r.message.lower() and r.severity == ValidationSeverity.WARNING
         ]
         assert len(hair_warnings) > 0
 
@@ -223,9 +219,9 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         prop_warnings = [
-            r for r in results
-            if "prop" in r.message.lower()
-            and r.severity == ValidationSeverity.WARNING
+            r
+            for r in results
+            if "prop" in r.message.lower() and r.severity == ValidationSeverity.WARNING
         ]
         assert len(prop_warnings) == 0
 
@@ -256,9 +252,9 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         prop_warnings = [
-            r for r in results
-            if "prop" in r.message.lower()
-            and r.severity == ValidationSeverity.WARNING
+            r
+            for r in results
+            if "prop" in r.message.lower() and r.severity == ValidationSeverity.WARNING
         ]
         assert len(prop_warnings) > 0
 
@@ -288,7 +284,8 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         teleport_warnings = [
-            r for r in results
+            r
+            for r in results
             if "teleport" in r.message.lower()
             and r.severity == ValidationSeverity.WARNING
         ]
@@ -316,7 +313,8 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         teleport_warnings = [
-            r for r in results
+            r
+            for r in results
             if "teleport" in r.message.lower()
             and r.severity == ValidationSeverity.WARNING
         ]
@@ -348,9 +346,9 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         pose_warnings = [
-            r for r in results
-            if "pose" in r.message.lower()
-            and r.severity == ValidationSeverity.WARNING
+            r
+            for r in results
+            if "pose" in r.message.lower() and r.severity == ValidationSeverity.WARNING
         ]
         assert len(pose_warnings) == 0
 
@@ -376,9 +374,9 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         pose_warnings = [
-            r for r in results
-            if "pose" in r.message.lower()
-            and r.severity == ValidationSeverity.WARNING
+            r
+            for r in results
+            if "pose" in r.message.lower() and r.severity == ValidationSeverity.WARNING
         ]
         assert len(pose_warnings) > 0
 
@@ -406,7 +404,8 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         composition_info = [
-            r for r in results
+            r
+            for r in results
             if "composition" in r.message.lower()
             and r.severity == ValidationSeverity.INFO
         ]
@@ -433,7 +432,8 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         composition_info = [
-            r for r in results
+            r
+            for r in results
             if "composition" in r.message.lower()
             and r.severity == ValidationSeverity.INFO
         ]
@@ -469,7 +469,8 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         sync_warnings = [
-            r for r in results
+            r
+            for r in results
             if "dialogue" in r.message.lower()
             and r.severity == ValidationSeverity.WARNING
         ]
@@ -501,8 +502,10 @@ class TestVisualContinuityValidator:
         results = validator.validate(base_state, mock_context)
 
         sync_warnings = [
-            r for r in results
-            if "speaking" in r.message.lower() or "dialogue" in r.message.lower()
+            r
+            for r in results
+            if "speaking" in r.message.lower()
+            or "dialogue" in r.message.lower()
             and r.severity == ValidationSeverity.WARNING
         ]
         assert len(sync_warnings) > 0
@@ -543,26 +546,20 @@ class TestVisualContinuityValidator:
         assert validator._extract_position("in the center") == "center"
         assert validator._extract_position("on the right side") == "right"
 
-    def test_extract_pose(
-        self, validator: VisualContinuityValidator
-    ) -> None:
+    def test_extract_pose(self, validator: VisualContinuityValidator) -> None:
         """Test pose extraction."""
         assert validator._extract_pose("他坐在椅子上") == "sitting"
         assert validator._extract_pose("她站着") == "standing"
         assert validator._extract_pose("he is running") == "running"
 
-    def test_is_teleportation(
-        self, validator: VisualContinuityValidator
-    ) -> None:
+    def test_is_teleportation(self, validator: VisualContinuityValidator) -> None:
         """Test teleportation detection."""
         assert validator._is_teleportation("left", "right") is True
         assert validator._is_teleportation("left", "center") is False
         assert validator._is_teleportation("center", "center") is False
         assert validator._is_teleportation("foreground", "background") is True
 
-    def test_can_auto_fix(
-        self, validator: VisualContinuityValidator
-    ) -> None:
+    def test_can_auto_fix(self, validator: VisualContinuityValidator) -> None:
         """Test that auto-fix is disabled."""
         assert validator.can_auto_fix() is False
 
@@ -632,7 +629,6 @@ class TestVisualContinuityValidator:
 
         # Should detect costume inconsistency and teleportation
         warning_count = sum(
-            1 for r in results
-            if r.severity == ValidationSeverity.WARNING
+            1 for r in results if r.severity == ValidationSeverity.WARNING
         )
         assert warning_count >= 2

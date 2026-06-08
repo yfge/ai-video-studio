@@ -2,6 +2,7 @@
 测试数据库配置和工具
 """
 
+from importlib import import_module
 from typing import AsyncGenerator, Generator
 
 from alembic import command
@@ -38,7 +39,7 @@ class TestDatabase:
         )
 
         # 确保所有模型被加载以注册到 Base.metadata
-        from app import models  # noqa: F401
+        import_module("app.models")
 
         # 创建会话工厂
         self.SessionLocal = sessionmaker(

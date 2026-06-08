@@ -364,8 +364,7 @@ class TestMigrationIntegration:
 
     def test_full_migration_workflow(self, temp_engine):
         """测试完整的迁移工作流"""
-        # 1. 创建迁移管理器
-        manager = MigrationManager(temp_engine)
+        # 1. 创建迁移验证器
         validator = MigrationValidator(temp_engine)
 
         # 2. 迁移前检查

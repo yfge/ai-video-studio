@@ -4,17 +4,15 @@ These tests verify that P0 validators are properly wired into the generation
 pipelines without requiring full E2E generation (which needs AI API calls).
 """
 
-import pytest
-
+from app.services.storyboard.validators.cinematic_rules_validator import (
+    CinematicRulesValidator,
+)
 from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
 )
 from app.services.validators.info_gate_validator import InfoGateValidator
 from app.services.validators.scene_transition_validator import SceneTransitionValidator
-from app.services.storyboard.validators.cinematic_rules_validator import (
-    CinematicRulesValidator,
-)
 
 
 class TestCharacterConsistencyIntegration:
@@ -23,15 +21,17 @@ class TestCharacterConsistencyIntegration:
     def test_validator_detects_gender_violation(self):
         """P0 1.8: Verify character validator catches gender contradiction."""
         validator = CharacterConsistencyValidator()
-        validator.register_profiles([
-            CharacterProfile(
-                name="张三",
-                aliases=["老张"],
-                gender="male",
-                age="middle-aged",
-                personality=["calm", "wise"],
-            ),
-        ])
+        validator.register_profiles(
+            [
+                CharacterProfile(
+                    name="张三",
+                    aliases=["老张"],
+                    gender="male",
+                    age="middle-aged",
+                    personality=["calm", "wise"],
+                ),
+            ]
+        )
 
         # Test violation case: wrong gender
         results = validator.validate_character_attributes(
@@ -46,12 +46,14 @@ class TestCharacterConsistencyIntegration:
     def test_validator_detects_personality_conflict(self):
         """P0 1.8: Verify character validator catches personality conflict."""
         validator = CharacterConsistencyValidator()
-        validator.register_profiles([
-            CharacterProfile(
-                name="李四",
-                personality=["introverted", "shy"],
-            ),
-        ])
+        validator.register_profiles(
+            [
+                CharacterProfile(
+                    name="李四",
+                    personality=["introverted", "shy"],
+                ),
+            ]
+        )
 
         # Test violation case: opposite personality
         results = validator.validate_character_attributes(
@@ -65,13 +67,15 @@ class TestCharacterConsistencyIntegration:
     def test_validator_passes_consistent_character(self):
         """P0 1.8: Verify validator passes when attributes match."""
         validator = CharacterConsistencyValidator()
-        validator.register_profiles([
-            CharacterProfile(
-                name="王五",
-                gender="male",
-                age="young",
-            ),
-        ])
+        validator.register_profiles(
+            [
+                CharacterProfile(
+                    name="王五",
+                    gender="male",
+                    age="young",
+                ),
+            ]
+        )
 
         results = validator.validate_character_attributes(
             "王五",
@@ -91,14 +95,16 @@ class TestInfoGateIntegration:
         validator = InfoGateValidator()
 
         # Register revealed info - only revealed to audience, not to 张三
-        validator.register_revealed_info([
-            RevealedInfoItem(
-                info_key="villain_identity",
-                info_content="李四是幕后黑手",
-                revealed_to=["观众"],  # Only revealed to audience
-                revealed_at_episode=1,
-            )
-        ])
+        validator.register_revealed_info(
+            [
+                RevealedInfoItem(
+                    info_key="villain_identity",
+                    info_content="李四是幕后黑手",
+                    revealed_to=["观众"],  # Only revealed to audience
+                    revealed_at_episode=1,
+                )
+            ]
+        )
 
         # Build context for episode 2
         context = validator.build_context(episode_number=2)
@@ -114,7 +120,9 @@ class TestInfoGateIntegration:
         # Should detect violation - 张三 shouldn't know this
         # Violations are InfoGateViolation objects
         assert len(results) >= 1
-        assert any(v.violation_type.value == "character_knows_too_much" for v in results)
+        assert any(
+            v.violation_type.value == "character_knows_too_much" for v in results
+        )
 
     def test_validator_passes_revealed_info(self):
         """P0 2.7: Verify validator passes when character knows the info."""
@@ -123,14 +131,16 @@ class TestInfoGateIntegration:
         validator = InfoGateValidator()
 
         # Register info revealed to the character
-        validator.register_revealed_info([
-            RevealedInfoItem(
-                info_key="secret_location",
-                info_content="宝藏在山洞里",
-                revealed_to=["张三", "观众"],  # Revealed to 张三
-                revealed_at_episode=1,
-            )
-        ])
+        validator.register_revealed_info(
+            [
+                RevealedInfoItem(
+                    info_key="secret_location",
+                    info_content="宝藏在山洞里",
+                    revealed_to=["张三", "观众"],  # Revealed to 张三
+                    revealed_at_episode=1,
+                )
+            ]
+        )
 
         # Build context for episode 2
         context = validator.build_context(episode_number=2)
@@ -143,7 +153,9 @@ class TestInfoGateIntegration:
         )
 
         # Should pass or have no "character_knows_too_much" violations
-        serious_violations = [v for v in results if v.violation_type.value == "character_knows_too_much"]
+        serious_violations = [
+            v for v in results if v.violation_type.value == "character_knows_too_much"
+        ]
         assert len(serious_violations) == 0
 
 
@@ -173,7 +185,10 @@ class TestSceneTransitionIntegration:
 
         # Should detect geographic impossibility
         issues = [r for r in results if not r.passed]
-        assert len(issues) >= 1 or any("distance" in str(r.details).lower() or "travel" in str(r.details).lower() for r in results)
+        assert len(issues) >= 1 or any(
+            "distance" in str(r.details).lower() or "travel" in str(r.details).lower()
+            for r in results
+        )
 
     def test_validator_passes_reasonable_transition(self):
         """P0 3.7: Verify validator passes reasonable scene transitions."""
@@ -269,6 +284,4 @@ class TestCinematicRulesIntegration:
 
         # Should detect shot variety issue
         assert isinstance(results, list)
-        # Check for variety-related validation
-        variety_issues = [r for r in results if "variety" in str(r).lower() or "distribution" in str(r).lower()]
         # May or may not detect depending on thresholds

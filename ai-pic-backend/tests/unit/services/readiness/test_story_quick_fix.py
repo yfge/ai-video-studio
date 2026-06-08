@@ -5,9 +5,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from app.models.script import Story
-from app.schemas.readiness import FixApplied, QuickFixResponse
+from app.schemas.readiness import QuickFixResponse
 from app.services.readiness.story_quick_fix import (
     AUTO_FIXABLE_CHECKS,
     StoryQuickFixService,
@@ -104,7 +103,9 @@ class TestQuickFixService:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         mock_db.query.side_effect = [char_query, vip_query, img_query]
 
@@ -115,14 +116,18 @@ class TestQuickFixService:
         assert result.improvement.fixed_count == 0
 
     @pytest.mark.asyncio
-    async def test_dry_run_does_not_apply_fixes(self, service, story_with_missing_fields, mock_db):
+    async def test_dry_run_does_not_apply_fixes(
+        self, service, story_with_missing_fields, mock_db
+    ):
         """Test that dry_run=True doesn't apply fixes."""
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
         with patch.object(
             service, "_generate_text", new_callable=AsyncMock
         ) as mock_gen:
-            mock_gen.return_value = "Generated synopsis that is long enough for validation"
+            mock_gen.return_value = (
+                "Generated synopsis that is long enough for validation"
+            )
 
             result = await service.fix_story(story_with_missing_fields, dry_run=True)
 
@@ -142,7 +147,9 @@ class TestQuickFixService:
         with patch.object(
             service, "_generate_text", new_callable=AsyncMock
         ) as mock_gen:
-            mock_gen.return_value = "Generated synopsis that is long enough for validation test"
+            mock_gen.return_value = (
+                "Generated synopsis that is long enough for validation test"
+            )
 
             result = await service.fix_story(story_with_missing_fields, dry_run=False)
 
@@ -172,7 +179,9 @@ class TestQuickFixService:
             assert fix.new_value == generated_synopsis
 
     @pytest.mark.asyncio
-    async def test_fix_synopsis_too_short(self, service, story_with_missing_fields, mock_db):
+    async def test_fix_synopsis_too_short(
+        self, service, story_with_missing_fields, mock_db
+    ):
         """Test that short synopsis is rejected."""
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
@@ -202,7 +211,9 @@ class TestQuickFixService:
             assert fix.field == "main_conflict"
 
     @pytest.mark.asyncio
-    async def test_fix_setting_with_context(self, service, story_with_missing_fields, mock_db):
+    async def test_fix_setting_with_context(
+        self, service, story_with_missing_fields, mock_db
+    ):
         """Test fixing setting_time with context."""
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
@@ -235,7 +246,9 @@ class TestQuickFixService:
         assert fix.new_value == "当代"
 
     @pytest.mark.asyncio
-    async def test_fix_world_building(self, service, story_with_missing_fields, mock_db):
+    async def test_fix_world_building(
+        self, service, story_with_missing_fields, mock_db
+    ):
         """Test fixing world_building."""
         mock_db.query.return_value.filter.return_value.all.return_value = []
         story_with_missing_fields.setting_time = "Present day"
@@ -273,14 +286,18 @@ class TestQuickFixResponse:
     """Tests for QuickFixResponse structure."""
 
     @pytest.mark.asyncio
-    async def test_response_structure(self, service, story_with_missing_fields, mock_db):
+    async def test_response_structure(
+        self, service, story_with_missing_fields, mock_db
+    ):
         """Test that response has correct structure."""
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
         with patch.object(
             service, "_generate_text", new_callable=AsyncMock
         ) as mock_gen:
-            mock_gen.return_value = "Generated content that is long enough to pass validation"
+            mock_gen.return_value = (
+                "Generated content that is long enough to pass validation"
+            )
 
             result = await service.fix_story(story_with_missing_fields)
 
@@ -300,7 +317,9 @@ class TestQuickFixResponse:
         with patch.object(
             service, "_generate_text", new_callable=AsyncMock
         ) as mock_gen:
-            mock_gen.return_value = "Generated content that is long enough to pass all checks"
+            mock_gen.return_value = (
+                "Generated content that is long enough to pass all checks"
+            )
 
             result = await service.fix_story(story_with_missing_fields, dry_run=True)
 

@@ -1,11 +1,11 @@
 """Tests for Timeline ReactAgent implementation."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+from app.services.agent_core import AgentError, AgentErrorType, AgentState
 from app.services.timeline_agent.react_agent import TimelineReactAgent
 from app.services.timeline_agent.schemas import TimingDecision, TimingPlan
-from app.services.agent_core import AgentError, AgentErrorType, AgentState
 
 
 class TestTimelineReactAgent:
@@ -65,7 +65,9 @@ class TestTimelineReactAgent:
         assert result.fallback_used is True
 
     @pytest.mark.asyncio
-    async def test_compute_timing_success(self, agent, sample_dialogues, sample_scene_context):
+    async def test_compute_timing_success(
+        self, agent, sample_dialogues, sample_scene_context
+    ):
         """Should return timing plan on successful LLM call."""
         # Mock LLM response
         agent.service.ai_manager.generate_text.return_value = MagicMock(

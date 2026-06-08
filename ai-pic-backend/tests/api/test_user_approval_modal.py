@@ -101,13 +101,13 @@ def test_user_approval_modal():
 
         # 5. 检查审批模态框是否出现
         try:
-            modal = WebDriverWait(driver, 10).until(
+            WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located(
                     (By.XPATH, "//h3[contains(text(), '用户审批')]")
                 )
             )
             print("✅ 用户审批模态框已显示")
-        except:
+        except Exception:
             print("❌ 用户审批模态框未显示")
             return False
 
@@ -241,9 +241,6 @@ def test_backend_approval_api():
 
         user_id = pending_users[0]["id"]
         print(f"✅ 找到待审批用户ID: {user_id}")
-
-        # 3. 测试审批API - 这里只测试API结构，不实际执行
-        approval_data = {"approved": True, "reason": "测试审批原因"}
 
         # 检查API端点是否存在（使用HEAD请求或者OPTIONS）
         # 这里我们使用一个无效的请求来检查端点结构

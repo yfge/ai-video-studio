@@ -76,11 +76,11 @@ def test_user_details_modal():
 
         # 6. 检查模态框是否出现
         try:
-            modal = WebDriverWait(driver, 10).until(
+            WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".fixed.inset-0"))
             )
             print("✅ 用户详情模态框已显示")
-        except:
+        except Exception:
             print("❌ 用户详情模态框未显示")
             return False
 

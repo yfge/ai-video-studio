@@ -1,10 +1,6 @@
 """Tests for frame duration splitter."""
 
-import pytest
-
 from app.services.storyboard.frame_duration_splitter import (
-    DEFAULT_MAX_DURATION_SECONDS,
-    DEFAULT_MIN_DURATION_SECONDS,
     SplitResult,
     adjust_frame_durations,
     merge_short_frames,
@@ -25,7 +21,12 @@ class TestSplitLongFrames:
         """Frames under max duration pass through unchanged."""
         frames = [
             {"frame_id": "f1", "duration_seconds": 5.0, "start_ms": 0, "end_ms": 5000},
-            {"frame_id": "f2", "duration_seconds": 7.5, "start_ms": 5000, "end_ms": 12500},
+            {
+                "frame_id": "f2",
+                "duration_seconds": 7.5,
+                "start_ms": 5000,
+                "end_ms": 12500,
+            },
         ]
         result = split_long_frames(frames, max_duration_seconds=8.0)
 
@@ -91,8 +92,18 @@ class TestSplitLongFrames:
         """Frame numbers are sequential after splitting."""
         frames = [
             {"frame_id": "f1", "duration_seconds": 5.0, "start_ms": 0, "end_ms": 5000},
-            {"frame_id": "f2", "duration_seconds": 12.0, "start_ms": 5000, "end_ms": 17000},
-            {"frame_id": "f3", "duration_seconds": 3.0, "start_ms": 17000, "end_ms": 20000},
+            {
+                "frame_id": "f2",
+                "duration_seconds": 12.0,
+                "start_ms": 5000,
+                "end_ms": 17000,
+            },
+            {
+                "frame_id": "f3",
+                "duration_seconds": 3.0,
+                "start_ms": 17000,
+                "end_ms": 20000,
+            },
         ]
         result = split_long_frames(frames, max_duration_seconds=8.0)
 
@@ -102,7 +113,12 @@ class TestSplitLongFrames:
     def test_linkage_metadata_present(self):
         """Split frames contain linkage metadata."""
         frames = [
-            {"frame_id": "original", "duration_seconds": 10.0, "start_ms": 0, "end_ms": 10000},
+            {
+                "frame_id": "original",
+                "duration_seconds": 10.0,
+                "start_ms": 0,
+                "end_ms": 10000,
+            },
         ]
         result = split_long_frames(frames, max_duration_seconds=8.0)
 
@@ -129,7 +145,12 @@ class TestMergeShortFrames:
         """Frames above min duration pass through unchanged."""
         frames = [
             {"frame_id": "f1", "duration_seconds": 5.0, "start_ms": 0, "end_ms": 5000},
-            {"frame_id": "f2", "duration_seconds": 6.0, "start_ms": 5000, "end_ms": 11000},
+            {
+                "frame_id": "f2",
+                "duration_seconds": 6.0,
+                "start_ms": 5000,
+                "end_ms": 11000,
+            },
         ]
         result = merge_short_frames(frames, min_duration_seconds=4.0)
 
@@ -318,7 +339,12 @@ class TestAdjustFrameDurations:
         """Frames within valid range are unchanged."""
         frames = [
             {"frame_id": "f1", "duration_seconds": 5.0, "start_ms": 0, "end_ms": 5000},
-            {"frame_id": "f2", "duration_seconds": 6.0, "start_ms": 5000, "end_ms": 11000},
+            {
+                "frame_id": "f2",
+                "duration_seconds": 6.0,
+                "start_ms": 5000,
+                "end_ms": 11000,
+            },
         ]
         result = adjust_frame_durations(
             frames,
@@ -413,7 +439,12 @@ class TestEdgeCases:
             {"frame_id": "f1", "duration_seconds": 5.0, "start_ms": 0, "end_ms": 5000},
             None,  # Invalid
             "invalid",  # Invalid
-            {"frame_id": "f2", "duration_seconds": 5.0, "start_ms": 5000, "end_ms": 10000},
+            {
+                "frame_id": "f2",
+                "duration_seconds": 5.0,
+                "start_ms": 5000,
+                "end_ms": 10000,
+            },
         ]
         result = split_long_frames(frames)
 

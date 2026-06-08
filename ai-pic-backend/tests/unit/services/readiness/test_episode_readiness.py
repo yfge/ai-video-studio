@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-
-from app.models.script import Episode, Script, Story, StoryCharacter
+from app.models.script import Episode, Story, StoryCharacter
 from app.services.readiness.episode_readiness import EpisodeReadinessChecker
 
 
@@ -71,7 +70,9 @@ class TestEpisodeExistsCheck:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         # For previous episodes check (none for first episode)
         prev_ep_query = MagicMock()
@@ -115,7 +116,9 @@ class TestStoryMatchesCheck:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         prev_ep_query = MagicMock()
         prev_ep_query.filter.return_value.all.return_value = []
@@ -161,7 +164,9 @@ class TestPreviousEpisodesCheck:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         prev_ep_query = MagicMock()
         prev_ep_query.filter.return_value.all.return_value = []  # No earlier episodes
@@ -169,7 +174,9 @@ class TestPreviousEpisodesCheck:
         mock_db.query.side_effect = [char_query, vip_query, img_query, prev_ep_query]
 
         result = checker.check(valid_story, valid_episode)
-        prev_checks = [c for c in result.checks if c.name == "previous_episodes_complete"]
+        prev_checks = [
+            c for c in result.checks if c.name == "previous_episodes_complete"
+        ]
         assert len(prev_checks) == 0  # Should not have this check
 
     def test_previous_episodes_complete_passes(
@@ -193,7 +200,9 @@ class TestPreviousEpisodesCheck:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         # Previous episodes (ep 1 and 2)
         prev_ep1 = MagicMock(spec=Episode)
@@ -228,7 +237,9 @@ class TestPreviousEpisodesCheck:
         ]
 
         result = checker.check(valid_story, valid_episode)
-        prev_check = next(c for c in result.checks if c.name == "previous_episodes_complete")
+        prev_check = next(
+            c for c in result.checks if c.name == "previous_episodes_complete"
+        )
         assert prev_check.passed is True
         assert "2 previous episode(s)" in prev_check.message
 
@@ -252,7 +263,9 @@ class TestPreviousEpisodesCheck:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         # Previous episodes
         prev_ep1 = MagicMock(spec=Episode)
@@ -271,7 +284,9 @@ class TestPreviousEpisodesCheck:
         script1.episode_id = 8
 
         script_query = MagicMock()
-        script_query.filter.return_value.distinct.return_value.all.return_value = [script1]
+        script_query.filter.return_value.distinct.return_value.all.return_value = [
+            script1
+        ]
 
         mock_db.query.side_effect = [
             char_query,
@@ -282,7 +297,9 @@ class TestPreviousEpisodesCheck:
         ]
 
         result = checker.check(valid_story, valid_episode)
-        prev_check = next(c for c in result.checks if c.name == "previous_episodes_complete")
+        prev_check = next(
+            c for c in result.checks if c.name == "previous_episodes_complete"
+        )
         assert prev_check.passed is False
         assert prev_check.severity == "WARNING"
         assert "2" in prev_check.message  # Episode 2 missing
@@ -320,7 +337,9 @@ class TestEpisodeReadinessResult:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         prev_ep_query = MagicMock()
         prev_ep_query.filter.return_value.all.return_value = []

@@ -1,10 +1,9 @@
 """Tests for ReAct Agent Base Class."""
 
-import pytest
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime
+from typing import Any, Dict, List
 
+import pytest
 from app.services.agent_core.react_agent_base import (
     AgentError,
     AgentErrorType,
@@ -199,17 +198,13 @@ class ConcreteTestAgent(ReactAgentBase[Dict[str, Any]]):
         self._validation_errors = validation_errors or []
         self.generate_call_count = 0
 
-    async def _generate(
-        self, input_data: Dict[str, Any], state: AgentState
-    ) -> Any:
+    async def _generate(self, input_data: Dict[str, Any], state: AgentState) -> Any:
         self.generate_call_count += 1
         if self._generate_raises:
             raise self._generate_raises
         return self._generate_returns
 
-    def _validate(
-        self, result: Dict[str, Any], state: AgentState
-    ) -> List[AgentError]:
+    def _validate(self, result: Dict[str, Any], state: AgentState) -> List[AgentError]:
         return self._validation_errors
 
 

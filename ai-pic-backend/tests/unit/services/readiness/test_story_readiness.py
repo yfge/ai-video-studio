@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-
 from app.models.script import Story, StoryCharacter
-from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.services.readiness.story_readiness import StoryReadinessChecker
 
 
@@ -105,7 +103,9 @@ class TestCharacterChecks:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         # Chain all queries
         mock_db.query.side_effect = [char_query, vip_query, img_query]
@@ -137,7 +137,9 @@ class TestCharacterChecks:
         mock_db.query.side_effect = [char_query, vip_query]
 
         result = checker.check(valid_story)
-        valid_check = next(c for c in result.checks if c.name == "main_characters_valid")
+        valid_check = next(
+            c for c in result.checks if c.name == "main_characters_valid"
+        )
         assert valid_check.passed is False
         assert valid_check.severity == "ERROR"
 
@@ -152,7 +154,9 @@ class TestMarketingMetaChecks:
 
         result = checker.check(valid_story)
         marketing_checks = [
-            c for c in result.checks if c.name in ("market_region_set", "micro_genre_set")
+            c
+            for c in result.checks
+            if c.name in ("market_region_set", "micro_genre_set")
         ]
         assert len(marketing_checks) == 0
 
@@ -229,7 +233,9 @@ class TestReadinessResult:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         mock_db.query.side_effect = [char_query, vip_query, img_query]
 
@@ -263,7 +269,9 @@ class TestReadinessResult:
         img_query = MagicMock()
         img_result = MagicMock()
         img_result.virtual_ip_id = 10
-        img_query.filter.return_value.distinct.return_value.all.return_value = [img_result]
+        img_query.filter.return_value.distinct.return_value.all.return_value = [
+            img_result
+        ]
 
         mock_db.query.side_effect = [char_query, vip_query, img_query]
 

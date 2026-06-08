@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.agents.dialogue_audio_agent import (
     CharacterVoiceProfile,
     DialogueAudioAgent,
-    DialogueAudioResult,
     DialogueQualityIssue,
     DialogueQualityIssueType,
     DialogueQualitySeverity,
@@ -178,9 +176,7 @@ class TestDialogueAudioAgent:
         assert agent.get_voice_profile("Alice") is not None
         assert agent.get_voice_profile("Bob") is not None
 
-    def test_get_voice_registry(
-        self, agent_with_voices: DialogueAudioAgent
-    ) -> None:
+    def test_get_voice_registry(self, agent_with_voices: DialogueAudioAgent) -> None:
         """Test getting full voice registry."""
         registry = agent_with_voices.get_voice_registry()
         assert len(registry) == 2
@@ -224,9 +220,7 @@ class TestDialogueAudioAgent:
 
     def test_detect_emotion_neutral(self, agent: DialogueAudioAgent) -> None:
         """Test neutral emotion detection."""
-        emotion, _ = agent.detect_dialogue_emotion(
-            "今天天气不错", language="zh"
-        )
+        emotion, _ = agent.detect_dialogue_emotion("今天天气不错", language="zh")
         assert emotion == EmotionCategory.CALM  # Default
 
     def test_detect_emotion_english(self, agent: DialogueAudioAgent) -> None:
@@ -240,9 +234,7 @@ class TestDialogueAudioAgent:
     # Emotion Alignment Validation Tests
     # ============================================
 
-    def test_validate_emotion_alignment_pass(
-        self, agent: DialogueAudioAgent
-    ) -> None:
+    def test_validate_emotion_alignment_pass(self, agent: DialogueAudioAgent) -> None:
         """Test emotion alignment with matching emotions."""
         dialogues = [
             {
@@ -259,7 +251,8 @@ class TestDialogueAudioAgent:
         issues = agent.validate_emotion_alignment(dialogues)
 
         mismatch_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DialogueQualityIssueType.EMOTION_MISMATCH
         ]
         assert len(mismatch_issues) == 0
@@ -278,7 +271,8 @@ class TestDialogueAudioAgent:
         issues = agent.validate_emotion_alignment(dialogues)
 
         mismatch_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DialogueQualityIssueType.EMOTION_MISMATCH
         ]
         assert len(mismatch_issues) > 0
@@ -294,7 +288,8 @@ class TestDialogueAudioAgent:
         issues = agent.validate_emotion_alignment(dialogues)
 
         transition_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DialogueQualityIssueType.EMOTION_TRANSITION_ABRUPT
         ]
         assert len(transition_issues) > 0
@@ -303,9 +298,7 @@ class TestDialogueAudioAgent:
     # Speech Rhythm Validation Tests
     # ============================================
 
-    def test_validate_speech_rhythm_normal(
-        self, agent: DialogueAudioAgent
-    ) -> None:
+    def test_validate_speech_rhythm_normal(self, agent: DialogueAudioAgent) -> None:
         """Test normal speech rhythm."""
         dialogues = [
             {
@@ -317,17 +310,17 @@ class TestDialogueAudioAgent:
         issues = agent.validate_speech_rhythm(dialogues, "zh")
 
         rhythm_issues = [
-            i for i in issues
-            if i.issue_type in (
+            i
+            for i in issues
+            if i.issue_type
+            in (
                 DialogueQualityIssueType.SPEECH_TOO_FAST,
                 DialogueQualityIssueType.SPEECH_TOO_SLOW,
             )
         ]
         assert len(rhythm_issues) == 0
 
-    def test_validate_speech_rhythm_too_fast(
-        self, agent: DialogueAudioAgent
-    ) -> None:
+    def test_validate_speech_rhythm_too_fast(self, agent: DialogueAudioAgent) -> None:
         """Test detection of too fast speech."""
         dialogues = [
             {
@@ -339,14 +332,13 @@ class TestDialogueAudioAgent:
         issues = agent.validate_speech_rhythm(dialogues, "zh")
 
         fast_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DialogueQualityIssueType.SPEECH_TOO_FAST
         ]
         assert len(fast_issues) > 0
 
-    def test_validate_speech_rhythm_too_slow(
-        self, agent: DialogueAudioAgent
-    ) -> None:
+    def test_validate_speech_rhythm_too_slow(self, agent: DialogueAudioAgent) -> None:
         """Test detection of too slow speech."""
         dialogues = [
             {
@@ -358,7 +350,8 @@ class TestDialogueAudioAgent:
         issues = agent.validate_speech_rhythm(dialogues, "zh")
 
         slow_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DialogueQualityIssueType.SPEECH_TOO_SLOW
         ]
         assert len(slow_issues) > 0
@@ -367,9 +360,7 @@ class TestDialogueAudioAgent:
     # Turn Taking Validation Tests
     # ============================================
 
-    def test_validate_turn_taking_normal(
-        self, agent: DialogueAudioAgent
-    ) -> None:
+    def test_validate_turn_taking_normal(self, agent: DialogueAudioAgent) -> None:
         """Test normal turn taking."""
         dialogues = [
             {
@@ -386,17 +377,17 @@ class TestDialogueAudioAgent:
         issues = agent.validate_turn_taking(dialogues)
 
         turn_issues = [
-            i for i in issues
-            if i.issue_type in (
+            i
+            for i in issues
+            if i.issue_type
+            in (
                 DialogueQualityIssueType.DIALOGUE_OVERLAP,
                 DialogueQualityIssueType.SPEAKER_CHANGE_TOO_FAST,
             )
         ]
         assert len(turn_issues) == 0
 
-    def test_validate_turn_taking_overlap(
-        self, agent: DialogueAudioAgent
-    ) -> None:
+    def test_validate_turn_taking_overlap(self, agent: DialogueAudioAgent) -> None:
         """Test overlap detection."""
         dialogues = [
             {
@@ -414,14 +405,13 @@ class TestDialogueAudioAgent:
         issues = agent.validate_turn_taking(dialogues)
 
         overlap_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DialogueQualityIssueType.DIALOGUE_OVERLAP
         ]
         assert len(overlap_issues) > 0
 
-    def test_validate_turn_taking_fast_change(
-        self, agent: DialogueAudioAgent
-    ) -> None:
+    def test_validate_turn_taking_fast_change(self, agent: DialogueAudioAgent) -> None:
         """Test detection of too fast speaker change."""
         dialogues = [
             {
@@ -439,7 +429,8 @@ class TestDialogueAudioAgent:
         issues = agent.validate_turn_taking(dialogues)
 
         fast_change_issues = [
-            i for i in issues
+            i
+            for i in issues
             if i.issue_type == DialogueQualityIssueType.SPEAKER_CHANGE_TOO_FAST
         ]
         assert len(fast_change_issues) > 0
@@ -486,7 +477,8 @@ class TestDialogueAudioAgent:
 
         assert result.success is False
         voice_issues = [
-            i for i in result.issues
+            i
+            for i in result.issues
             if i.issue_type == DialogueQualityIssueType.VOICE_NOT_ASSIGNED
         ]
         assert len(voice_issues) > 0
@@ -538,9 +530,7 @@ class TestDialogueAudioAgent:
     # Integration Tests
     # ============================================
 
-    def test_full_workflow(
-        self, agent_with_voices: DialogueAudioAgent
-    ) -> None:
+    def test_full_workflow(self, agent_with_voices: DialogueAudioAgent) -> None:
         """Test full dialogue audio workflow."""
         dialogues = [
             {
@@ -574,9 +564,7 @@ class TestDialogueAudioAgent:
             assert plan.voice_id is not None
             assert plan.emotion is not None
 
-    def test_result_to_dict(
-        self, agent_with_voices: DialogueAudioAgent
-    ) -> None:
+    def test_result_to_dict(self, agent_with_voices: DialogueAudioAgent) -> None:
         """Test result serialization."""
         dialogues = [
             {

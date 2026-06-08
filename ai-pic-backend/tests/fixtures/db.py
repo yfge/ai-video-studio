@@ -1,3 +1,4 @@
+from importlib import import_module
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,7 @@ def test_db():
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    from app import models  # noqa: F401  # ensure models are registered
+    import_module("app.models")
 
     Base.metadata.create_all(bind=engine)
 

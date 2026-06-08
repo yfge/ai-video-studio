@@ -1,7 +1,6 @@
 """Tests for CharacterConsistencyValidator."""
 
 import pytest
-
 from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
@@ -97,38 +96,42 @@ class TestCharacterConsistencyValidator:
     def validator(self):
         """Create validator with sample profiles."""
         v = CharacterConsistencyValidator()
-        v.register_profiles([
-            CharacterProfile(
-                name="张三",
-                aliases=["老张", "Zhang San"],
-                gender="male",
-                age="middle-aged",
-                personality=["calm", "introverted"],
-            ),
-            CharacterProfile(
-                name="李四",
-                aliases=["小李"],
-                gender="male",
-                age="young",
-                personality=["outgoing", "brave"],
-            ),
-            CharacterProfile(
-                name="王美",
-                aliases=["小美", "Mei"],
-                gender="female",
-                age="young",
-                personality=["kind", "shy"],
-            ),
-        ])
+        v.register_profiles(
+            [
+                CharacterProfile(
+                    name="张三",
+                    aliases=["老张", "Zhang San"],
+                    gender="male",
+                    age="middle-aged",
+                    personality=["calm", "introverted"],
+                ),
+                CharacterProfile(
+                    name="李四",
+                    aliases=["小李"],
+                    gender="male",
+                    age="young",
+                    personality=["outgoing", "brave"],
+                ),
+                CharacterProfile(
+                    name="王美",
+                    aliases=["小美", "Mei"],
+                    gender="female",
+                    age="young",
+                    personality=["kind", "shy"],
+                ),
+            ]
+        )
         return v
 
     def test_register_profiles_from_dict(self):
         """Test registering profiles from dictionaries."""
         v = CharacterConsistencyValidator()
-        v.register_profiles([
-            {"name": "Alice", "aliases": ["A"], "gender": "female"},
-            {"name": "Bob", "gender": "male"},
-        ])
+        v.register_profiles(
+            [
+                {"name": "Alice", "aliases": ["A"], "gender": "female"},
+                {"name": "Bob", "gender": "male"},
+            ]
+        )
 
         assert v.get_profile("Alice") is not None
         assert v.get_profile("A") is not None
@@ -212,12 +215,6 @@ class TestCharacterConsistencyValidator:
 """
         results = validator.validate_names_in_text(text)
 
-        # Should detect "张三三" as similar to "张三"
-        typo_warnings = [
-            r for r in results
-            if r.severity == ValidationSeverity.WARNING
-            and "typo" in r.message.lower()
-        ]
         # May or may not detect depending on similarity threshold
         assert len(results) >= 1
 
@@ -231,10 +228,7 @@ Narrator: And so the story begins.
         results = validator.validate_names_in_text(text)
 
         # Should not report narrator as unknown
-        unknown_warnings = [
-            r for r in results
-            if "unknown" in r.message.lower()
-        ]
+        unknown_warnings = [r for r in results if "unknown" in r.message.lower()]
         assert not any("旁白" in str(r.details) for r in unknown_warnings)
         assert not any("Narrator" in str(r.details) for r in unknown_warnings)
 
@@ -258,7 +252,10 @@ Narrator: And so the story begins.
         errors = [r for r in results if not r.passed]
         assert len(errors) == 1
         assert "contradiction" in errors[0].message.lower()
-        assert any(c["attribute"] == "gender" for c in errors[0].details.get("contradictions", []))
+        assert any(
+            c["attribute"] == "gender"
+            for c in errors[0].details.get("contradictions", [])
+        )
 
     def test_validate_character_attributes_age_contradiction(self, validator):
         """Test detecting age contradiction."""
@@ -269,7 +266,9 @@ Narrator: And so the story begins.
 
         errors = [r for r in results if not r.passed]
         assert len(errors) == 1
-        assert any(c["attribute"] == "age" for c in errors[0].details.get("contradictions", []))
+        assert any(
+            c["attribute"] == "age" for c in errors[0].details.get("contradictions", [])
+        )
 
     def test_validate_character_attributes_personality_conflict(self, validator):
         """Test detecting personality conflict."""
@@ -280,7 +279,10 @@ Narrator: And so the story begins.
 
         errors = [r for r in results if not r.passed]
         assert len(errors) == 1
-        assert any(c["attribute"] == "personality" for c in errors[0].details.get("contradictions", []))
+        assert any(
+            c["attribute"] == "personality"
+            for c in errors[0].details.get("contradictions", [])
+        )
 
     def test_validate_character_attributes_unknown_character(self, validator):
         """Test validating attributes for unknown character."""
@@ -347,31 +349,33 @@ class TestViolationScenarios:
     def validator(self):
         """Create validator with diverse character profiles."""
         v = CharacterConsistencyValidator()
-        v.register_profiles([
-            CharacterProfile(
-                name="林医生",
-                aliases=["Dr. Lin", "林大夫"],
-                gender="female",
-                age="middle-aged",
-                personality=["calm", "professional", "冷静"],
-                voice_style="authoritative",
-            ),
-            CharacterProfile(
-                name="小明",
-                aliases=["Ming", "明明"],
-                gender="male",
-                age="child",
-                personality=["curious", "shy"],
-                voice_style="childlike",
-            ),
-            CharacterProfile(
-                name="王老板",
-                aliases=["Boss Wang", "王总"],
-                gender="male",
-                age="elderly",
-                personality=["shrewd", "aggressive", "暴躁"],
-            ),
-        ])
+        v.register_profiles(
+            [
+                CharacterProfile(
+                    name="林医生",
+                    aliases=["Dr. Lin", "林大夫"],
+                    gender="female",
+                    age="middle-aged",
+                    personality=["calm", "professional", "冷静"],
+                    voice_style="authoritative",
+                ),
+                CharacterProfile(
+                    name="小明",
+                    aliases=["Ming", "明明"],
+                    gender="male",
+                    age="child",
+                    personality=["curious", "shy"],
+                    voice_style="childlike",
+                ),
+                CharacterProfile(
+                    name="王老板",
+                    aliases=["Boss Wang", "王总"],
+                    gender="male",
+                    age="elderly",
+                    personality=["shrewd", "aggressive", "暴躁"],
+                ),
+            ]
+        )
         return v
 
     def test_multiple_contradictions_at_once(self, validator):
@@ -403,7 +407,10 @@ class TestViolationScenarios:
 
         errors = [r for r in results if not r.passed]
         assert len(errors) == 1
-        assert any(c["attribute"] == "gender" for c in errors[0].details.get("contradictions", []))
+        assert any(
+            c["attribute"] == "gender"
+            for c in errors[0].details.get("contradictions", [])
+        )
 
     def test_child_to_elderly_age_contradiction(self, validator):
         """Test detecting child to elderly contradiction."""
@@ -414,7 +421,9 @@ class TestViolationScenarios:
 
         errors = [r for r in results if not r.passed]
         assert len(errors) == 1
-        assert any(c["attribute"] == "age" for c in errors[0].details.get("contradictions", []))
+        assert any(
+            c["attribute"] == "age" for c in errors[0].details.get("contradictions", [])
+        )
 
     def test_personality_opposite_traits(self, validator):
         """Test detecting opposite personality traits."""
@@ -496,9 +505,11 @@ class TestEdgeCases:
     @pytest.fixture
     def validator(self):
         v = CharacterConsistencyValidator()
-        v.register_profiles([
-            CharacterProfile(name="TestChar", aliases=["TC"]),
-        ])
+        v.register_profiles(
+            [
+                CharacterProfile(name="TestChar", aliases=["TC"]),
+            ]
+        )
         return v
 
     def test_empty_text(self, validator):
@@ -539,9 +550,11 @@ class TestEdgeCases:
     def test_profile_without_optional_fields(self):
         """Test profile with only required name field."""
         v = CharacterConsistencyValidator()
-        v.register_profiles([
-            CharacterProfile(name="Minimal"),
-        ])
+        v.register_profiles(
+            [
+                CharacterProfile(name="Minimal"),
+            ]
+        )
 
         profile = v.get_profile("Minimal")
         assert profile is not None
@@ -551,9 +564,11 @@ class TestEdgeCases:
         """Test handling very long character names."""
         v = CharacterConsistencyValidator()
         long_name = "A" * 100
-        v.register_profiles([
-            CharacterProfile(name=long_name),
-        ])
+        v.register_profiles(
+            [
+                CharacterProfile(name=long_name),
+            ]
+        )
 
         # Should handle without issues
         assert v.get_profile(long_name) is not None
@@ -561,10 +576,12 @@ class TestEdgeCases:
     def test_special_characters_in_name(self):
         """Test handling special characters in names."""
         v = CharacterConsistencyValidator()
-        v.register_profiles([
-            CharacterProfile(name="O'Brien"),
-            CharacterProfile(name="Jean-Pierre"),
-        ])
+        v.register_profiles(
+            [
+                CharacterProfile(name="O'Brien"),
+                CharacterProfile(name="Jean-Pierre"),
+            ]
+        )
 
         assert v.get_profile("O'Brien") is not None
         assert v.get_profile("Jean-Pierre") is not None
@@ -576,22 +593,24 @@ class TestPassingScenarios:
     @pytest.fixture
     def validator(self):
         v = CharacterConsistencyValidator()
-        v.register_profiles([
-            CharacterProfile(
-                name="Alice",
-                aliases=["小爱", "A"],
-                gender="female",
-                age="young",
-                personality=["kind", "brave", "curious"],
-            ),
-            CharacterProfile(
-                name="Bob",
-                aliases=["小鲍", "B"],
-                gender="male",
-                age="middle-aged",
-                personality=["calm", "wise"],
-            ),
-        ])
+        v.register_profiles(
+            [
+                CharacterProfile(
+                    name="Alice",
+                    aliases=["小爱", "A"],
+                    gender="female",
+                    age="young",
+                    personality=["kind", "brave", "curious"],
+                ),
+                CharacterProfile(
+                    name="Bob",
+                    aliases=["小鲍", "B"],
+                    gender="male",
+                    age="middle-aged",
+                    personality=["calm", "wise"],
+                ),
+            ]
+        )
         return v
 
     def test_all_known_characters_pass(self, validator):

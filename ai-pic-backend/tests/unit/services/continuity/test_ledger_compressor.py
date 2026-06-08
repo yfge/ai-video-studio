@@ -1,7 +1,5 @@
 """Tests for priority-based continuity ledger compression."""
 
-import pytest
-
 from app.services.continuity.ledger_compressor import (
     CompressionConfig,
     compress_ledger_by_priority,
@@ -42,7 +40,9 @@ class TestScoreFact:
         # Need > 50 chars for first bonus, > 100 for second bonus
         medium_text = "张三在深夜独自去了城东的商店买东西回家" * 3  # ~54 chars (>50)
         medium = score_fact(medium_text, set())
-        very_long_text = "张三在深夜独自去了城东的商店买了一些食物和生活用品然后回家" * 4  # ~116 chars (>100)
+        very_long_text = (
+            "张三在深夜独自去了城东的商店买了一些食物和生活用品然后回家" * 4
+        )  # ~116 chars (>100)
         long = score_fact(very_long_text, set())
         assert medium > short
         assert long > medium
@@ -131,7 +131,12 @@ class TestScoreInfoEvent:
 
     def test_known_character_boosts_score(self):
         chars = {"张三"}
-        unknown_who = {"episode_number": 5, "who": "路人", "what": "信息", "how": "揭示"}
+        unknown_who = {
+            "episode_number": 5,
+            "who": "路人",
+            "what": "信息",
+            "how": "揭示",
+        }
         known_who = {"episode_number": 5, "who": "张三", "what": "信息", "how": "揭示"}
         assert score_info_event(known_who, 10, chars) > score_info_event(
             unknown_who, 10, chars
@@ -140,7 +145,9 @@ class TestScoreInfoEvent:
     def test_audience_knowledge_boosts_score(self):
         other = {"episode_number": 5, "who": "路人", "what": "信息", "how": "对话"}
         audience = {"episode_number": 5, "who": "观众", "what": "信息", "how": "对话"}
-        assert score_info_event(audience, 10, set()) > score_info_event(other, 10, set())
+        assert score_info_event(audience, 10, set()) > score_info_event(
+            other, 10, set()
+        )
 
     def test_important_how_method_boosts_score(self):
         simple = {"episode_number": 5, "who": "观众", "what": "信息", "how": "对话"}
