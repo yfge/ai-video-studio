@@ -3,7 +3,7 @@
  */
 
 // Task status enum
-export type TaskStatus =
+type TaskStatus =
   | "pending"
   | "processing"
   | "completed"

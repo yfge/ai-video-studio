@@ -8,11 +8,7 @@ import type {
 } from "@/utils/api/types";
 import type { ImageGenAdvancedValue } from "../../imageGenAdvancedTypes";
 
-export type ReferenceImageType =
-  | "character"
-  | "environment"
-  | "primary"
-  | "other";
+type ReferenceImageType = "character" | "environment" | "primary" | "other";
 
 export type LabeledReferenceImage = {
   url: string;
@@ -27,7 +23,7 @@ export type ReferenceSection = {
   imageLabel?: string;
 };
 
-export type ImageToImageSubmitPayload = {
+type ImageToImageSubmitPayload = {
   prompt: string;
   model?: string;
   generation_profile?: string;

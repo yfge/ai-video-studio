@@ -3,7 +3,7 @@
  */
 
 // Style option for dropdowns
-export interface StyleOption {
+interface StyleOption {
   value: string;
   label: string;
 }

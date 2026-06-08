@@ -23,8 +23,6 @@ export const AIModelType = {
   EMBEDDING: "embedding",
 } as const;
 
-export type AIModelTypeValue = (typeof AIModelType)[keyof typeof AIModelType];
-
 // AI model entity
 export interface AIModel {
   model_id: string;

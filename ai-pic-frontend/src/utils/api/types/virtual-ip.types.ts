@@ -123,7 +123,7 @@ export interface VirtualIPAIGenerationResponse {
 }
 
 // AI generation details
-export interface AIGenerationDetails {
+interface AIGenerationDetails {
   model: string;
   temperature: number;
   prompts_used: string[];

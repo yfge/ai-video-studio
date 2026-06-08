@@ -3,7 +3,7 @@
  */
 
 // Voice option for selection
-export interface VoiceOption {
+interface VoiceOption {
   value: string;
   label_zh: string;
   label_en: string;

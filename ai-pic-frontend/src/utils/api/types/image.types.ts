@@ -4,21 +4,6 @@
 
 import type { StyleSpec } from "./style.types";
 
-// Platform types for image generation
-export type ImagePlatform = "gpt" | "keling" | "jimeng";
-
-// Basic image item
-export interface ImageItem {
-  id: string;
-  title: string;
-  prompt: string;
-  platform: ImagePlatform;
-  imageUrl: string;
-  createdAt: string;
-  tags: string[];
-  userId: string;
-}
-
 // Virtual IP image entity
 export interface VirtualIPImage {
   id: number;
@@ -38,16 +23,6 @@ export interface VirtualIPImage {
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
-}
-
-// Create virtual IP image request
-export interface VirtualIPImageCreate {
-  virtual_ip_id: number;
-  file_path: string;
-  category: string;
-  tags: string[];
-  is_default: boolean;
-  metadata?: Record<string, unknown>;
 }
 
 // Update virtual IP image request

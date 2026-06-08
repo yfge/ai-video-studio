@@ -16,16 +16,3 @@ export interface ApiResponse<T = unknown> {
   error?: string;
   trace?: ApiTraceMeta;
 }
-
-// Pagination response
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
-  pages: number;
-}
-
-// Generic ID types
-export type BusinessId = string;
-export type NumericId = number;

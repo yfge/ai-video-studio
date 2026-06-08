@@ -1,11 +1,11 @@
-export interface WorkbenchMetrics {
+interface WorkbenchMetrics {
   pending_tasks: number;
   running_tasks: number;
   failed_tasks: number;
   continuable_episodes: number;
 }
 
-export interface WorkbenchEpisode {
+interface WorkbenchEpisode {
   story_id: number;
   story_business_id: string;
   story_title: string;

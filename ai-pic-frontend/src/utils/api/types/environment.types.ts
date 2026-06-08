@@ -18,7 +18,7 @@ export interface Environment {
   updated_at: string;
 }
 
-export interface LinkedVirtualIPSummary {
+interface LinkedVirtualIPSummary {
   id: number;
   business_id: string;
   name: string;

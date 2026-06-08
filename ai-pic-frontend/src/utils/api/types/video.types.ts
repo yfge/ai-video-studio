@@ -28,7 +28,7 @@ export interface StoryboardVideoGenerationOptions {
 }
 
 // Video generation metadata
-export type StoryboardVideoGenerationMeta = {
+type StoryboardVideoGenerationMeta = {
   duration?: number;
   provider?: string;
   model?: string;
@@ -88,7 +88,7 @@ export type StoryboardFrame = {
 } & Record<string, unknown>;
 
 // Duration adjustment audit info (from frame_duration_splitter)
-export type DurationAdjustmentAudit = {
+type DurationAdjustmentAudit = {
   frame_count?: number;
   splits_performed?: number;
   merges_performed?: number;
@@ -96,7 +96,7 @@ export type DurationAdjustmentAudit = {
 };
 
 // Storyboard metadata
-export type StoryboardMeta = {
+type StoryboardMeta = {
   version?: number;
   updated_at?: string;
   generation_source?: string;
@@ -108,7 +108,7 @@ export type StoryboardMeta = {
 } & Record<string, unknown>;
 
 // Storyboard plan frame
-export type StoryboardPlanFrame = {
+type StoryboardPlanFrame = {
   shot_type?: string;
   camera_movement?: string;
   composition?: string;
@@ -116,14 +116,14 @@ export type StoryboardPlanFrame = {
 } & Record<string, unknown>;
 
 // Storyboard plan scene
-export type StoryboardPlanScene = {
+type StoryboardPlanScene = {
   scene_number: number;
   target_frames: number;
   frames: StoryboardPlanFrame[];
 };
 
 // Storyboard plan
-export type StoryboardPlan = {
+type StoryboardPlan = {
   scenes: StoryboardPlanScene[];
 } & Record<string, unknown>;
 

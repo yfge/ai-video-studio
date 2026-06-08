@@ -4,7 +4,7 @@ import { StatusPill, operatorButtonClass } from "@/components/shared";
 
 export type WorkflowStepStatus = "pending" | "ready" | "generating";
 
-export interface WorkflowStep {
+interface WorkflowStep {
   key: string;
   label: string;
   description: string;

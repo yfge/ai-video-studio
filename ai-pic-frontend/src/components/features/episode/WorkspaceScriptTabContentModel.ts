@@ -1,8 +1,4 @@
-import type {
-  NormalizedScene,
-  SceneBeat,
-  NormalizedShot,
-} from "@/utils/api/types";
+import type { NormalizedScene } from "@/utils/api/types";
 import type { SceneNode } from "../SceneStructurePanel";
 
 export type ScriptScene = {
@@ -84,8 +80,3 @@ export const sceneViewsFromNodes = (scenes: SceneNode[]): ScriptScene[] =>
     description:
       scene.slug_line || scene.status || `场景 ${scene.scene_number}`,
   }));
-
-export type SceneStructureMaps = {
-  beats: Record<number, SceneBeat[]>;
-  shots: Record<number, NormalizedShot[]>;
-};

@@ -3,7 +3,7 @@
  */
 
 // Hook/traffic planning types
-export interface HookBeat {
+interface HookBeat {
   beat_type?: string;
   description: string;
   timing?: string;
@@ -165,7 +165,7 @@ export interface EpisodeGenerationRequest {
 }
 
 // Readiness check types
-export type ReadinessSeverity = "CRITICAL" | "ERROR" | "WARNING" | "INFO";
+type ReadinessSeverity = "CRITICAL" | "ERROR" | "WARNING" | "INFO";
 
 export interface ReadinessCheck {
   name: string;
@@ -191,19 +191,19 @@ export interface ReadinessResult {
 }
 
 // Quick-fix types
-export interface FixApplied {
+interface FixApplied {
   check_name: string;
   field: string;
   old_value: string | null;
   new_value: string;
 }
 
-export interface FixSkipped {
+interface FixSkipped {
   check_name: string;
   reason: string;
 }
 
-export interface QuickFixImprovement {
+interface QuickFixImprovement {
   initial_failed: number;
   final_failed: number;
   fixed_count: number;

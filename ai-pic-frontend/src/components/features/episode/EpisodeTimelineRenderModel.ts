@@ -3,7 +3,7 @@
 import { asRecord, getString, parseMs } from "@/hooks/useEpisodeDetail";
 import type { TimelineClip, TimelineResponse } from "@/utils/api/types";
 
-export type MissingTimelineClip = {
+type MissingTimelineClip = {
   clipId: string;
   sceneNumber?: string | null;
   startMs?: number | null;
@@ -84,14 +84,25 @@ function timelineVideoClips(
 }
 
 function directClipVideoUrl(record: Record<string, unknown>) {
-  for (const key of ["video_url", "video_oss_url", "result_video_url", "file_url"]) {
+  for (const key of [
+    "video_url",
+    "video_oss_url",
+    "result_video_url",
+    "file_url",
+  ]) {
     const value = getString(record[key]);
     if (value) return value;
   }
 
   const assetRef = asRecord(record.asset_ref);
   if (assetRef) {
-    for (const key of ["file_url", "url", "video_url", "video_oss_url", "file_path"]) {
+    for (const key of [
+      "file_url",
+      "url",
+      "video_url",
+      "video_oss_url",
+      "file_path",
+    ]) {
       const value = getString(assetRef[key]);
       if (value) return value;
     }

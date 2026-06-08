@@ -73,14 +73,14 @@ export interface TimelineUpdateRequest {
 }
 
 export type TimelineRenderType = "proxy" | "final" | "export";
-export type TimelineRenderStatus =
+type TimelineRenderStatus =
   | "queued"
   | "running"
   | "succeeded"
   | "failed"
   | "cancelled";
 
-export interface TimelineMediaAssetResponse {
+interface TimelineMediaAssetResponse {
   id: number;
   business_id: string;
   asset_type: string;
@@ -133,16 +133,12 @@ export interface TimelineClipAssetListParams {
 
 export type TimelineClipReworkAction = "re_dub" | "re_cut" | "re_render";
 export type TimelineClipVideoReworkAction = "re_cut" | "re_render";
-export type TimelineClipVideoReferenceMode =
+type TimelineClipVideoReferenceMode =
   | "start_end"
   | "clip_storyboard_panel"
   | "storyboard_grid_panel";
-export type TimelineStoryboardGridStyle =
-  | "2d_cartoon"
-  | "3d_cartoon"
-  | "live_action";
+type TimelineStoryboardGridStyle = "2d_cartoon" | "3d_cartoon" | "live_action";
 export type TimelineClipStoryboardStyle = TimelineStoryboardGridStyle;
-export type TimelineShotPlanStyle = "2d_cartoon" | "3d_cartoon" | "live_action";
 
 export interface TimelineClipReworkRequest {
   expected_version: number;
@@ -172,24 +168,6 @@ export interface TimelineClipVideoReworkTaskRequest {
 }
 
 export interface TimelineClipVideoReworkTaskResponse {
-  task_id: number;
-  status: string;
-}
-
-export interface TimelineStoryboardGridGenerateRequest {
-  expected_version: number;
-  panel_count?: number;
-  style?: TimelineStoryboardGridStyle;
-  model?: string | null;
-  generation_profile?: string | null;
-  size?: string | null;
-  aspect_ratio?: string | null;
-  width?: number | null;
-  height?: number | null;
-  reference_images?: string[] | null;
-}
-
-export interface TimelineStoryboardGridGenerateResponse {
   task_id: number;
   status: string;
 }
