@@ -1,14 +1,10 @@
-export interface ApiTraceMeta {
-  clientRequestId?: string;
-  harnessRunId?: string;
-  requestId?: string;
-}
+import type { ApiTraceMeta } from "@/utils/api/types";
 
 function randomId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export function getHarnessRunId(): string | undefined {
+function getHarnessRunId(): string | undefined {
   if (typeof window !== "undefined") {
     const fromStorage = window.sessionStorage.getItem("harness_run_id");
     if (fromStorage) {
@@ -18,11 +14,11 @@ export function getHarnessRunId(): string | undefined {
   return process.env.NEXT_PUBLIC_HARNESS_RUN_ID || undefined;
 }
 
-export function createClientRequestId(): string {
+function createClientRequestId(): string {
   return `req-${Date.now()}-${randomId()}`;
 }
 
-export function buildTraceHeaders(): ApiTraceMeta {
+function buildTraceHeaders(): ApiTraceMeta {
   const harnessRunId = getHarnessRunId();
   return {
     clientRequestId: createClientRequestId(),
@@ -30,7 +26,9 @@ export function buildTraceHeaders(): ApiTraceMeta {
   };
 }
 
-export function applyTraceHeaders(headers: Record<string, string>): ApiTraceMeta {
+export function applyTraceHeaders(
+  headers: Record<string, string>,
+): ApiTraceMeta {
   const trace = buildTraceHeaders();
   if (trace.clientRequestId) {
     headers["X-Client-Request-ID"] = trace.clientRequestId;
@@ -41,7 +39,10 @@ export function applyTraceHeaders(headers: Record<string, string>): ApiTraceMeta
   return trace;
 }
 
-export function readTraceHeaders(response: Response, trace: ApiTraceMeta): ApiTraceMeta {
+export function readTraceHeaders(
+  response: Response,
+  trace: ApiTraceMeta,
+): ApiTraceMeta {
   return {
     ...trace,
     requestId: response.headers.get("x-request-id") || undefined,

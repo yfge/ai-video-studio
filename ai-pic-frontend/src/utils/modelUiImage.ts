@@ -6,7 +6,7 @@ import {
 } from "./aspectRatios";
 import type { ModelMetadata, ModelUiMetadata } from "./modelUiTypes";
 
-export type ImageUiOptions = {
+type ImageUiOptions = {
   sizeOptions: string[];
   aspectRatioOptions: string[];
   supportsAspectRatio: boolean;

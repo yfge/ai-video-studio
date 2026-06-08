@@ -9,7 +9,7 @@ import {
   type PacingTemplate,
 } from "@/utils/marketingTemplates";
 
-export type MarketingFormValues = {
+type MarketingFormValues = {
   market_region?: string;
   micro_genre?: string;
   hook_plan?: HookPlan;

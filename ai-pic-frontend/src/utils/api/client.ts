@@ -180,32 +180,3 @@ export async function httpClient<T = unknown>(
     };
   }
 }
-
-export const http = {
-  get: <T>(endpoint: string, options?: HttpClientOptions) =>
-    httpClient<T>(endpoint, { ...options, method: "GET" }),
-
-  post: <T>(endpoint: string, body?: unknown, options?: HttpClientOptions) =>
-    httpClient<T>(endpoint, {
-      ...options,
-      method: "POST",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-
-  put: <T>(endpoint: string, body?: unknown, options?: HttpClientOptions) =>
-    httpClient<T>(endpoint, {
-      ...options,
-      method: "PUT",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-
-  delete: <T>(endpoint: string, options?: HttpClientOptions) =>
-    httpClient<T>(endpoint, { ...options, method: "DELETE" }),
-
-  patch: <T>(endpoint: string, body?: unknown, options?: HttpClientOptions) =>
-    httpClient<T>(endpoint, {
-      ...options,
-      method: "PATCH",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-};

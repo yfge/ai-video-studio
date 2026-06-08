@@ -1,4 +1,4 @@
-export type EpisodeWorkspaceTab =
+type EpisodeWorkspaceTab =
   | "overview"
   | "script"
   | "timeline"
