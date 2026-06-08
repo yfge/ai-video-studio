@@ -34,25 +34,3 @@ class ImageOpsMixin:
         except Exception as exc:
             print(f"AI服务调用失败: {exc}")
             return None
-
-    async def edit_image(
-        self, image_path: str, prompt: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> Optional[str]:
-        """编辑图片"""
-        if not self.base_url or not self.api_key:
-            raise ValueError("AI服务配置不完整")
-
-        # 这里应该实现图片上传和编辑逻辑
-        # 具体实现取决于AI服务的API
-        return None
-
-    async def enhance_image(
-        self, image_path: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> Optional[str]:
-        """增强图片"""
-        if not self.base_url or not self.api_key:
-            raise ValueError("AI服务配置不完整")
-
-        # 这里应该实现图片增强逻辑
-        # 具体实现取决于AI服务的API
-        return None

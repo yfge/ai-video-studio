@@ -20,7 +20,7 @@ from .video_request_params import (
 )
 
 
-def _normalize_model(model: Optional[str], has_image: bool = False) -> str:
+def _normalize_model(model: Optional[str]) -> str:
     """Normalize UI aliases to Ark model IDs."""
     raw = (model or "").strip()
     normalized = raw.lower() if raw else ""
@@ -70,7 +70,7 @@ def build_video_request(
     extra_kwargs: Dict[str, Any],
 ) -> tuple[str, AIModelType, Dict[str, Any], Dict[str, Any]]:
     """Return normalized model, model type, request body, and metadata."""
-    ark_model = _normalize_model(model, bool(image_url))
+    ark_model = _normalize_model(model)
     final_prompt = (prompt or "").strip() or "生成一段符合描述的视频"
     content = _build_content(
         final_prompt,

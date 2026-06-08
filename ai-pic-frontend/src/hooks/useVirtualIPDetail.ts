@@ -1,14 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { virtualIPAPI, voiceAPI } from "@/utils/api/endpoints";
-import type {
-  VirtualIP,
-  VoiceConfig,
-  VoiceEnums,
-  VoiceList,
-  VoiceItem,
-} from "@/utils/api/types";
+import { useCallback, useEffect, useState } from "react";
+import { virtualIPAPI } from "@/utils/api/endpoints";
+import type { VirtualIP } from "@/utils/api/types";
+import { useVirtualIPDetailVoice } from "./useVirtualIPDetailVoice";
 
 export interface UseVirtualIPDetailOptions {
   ipKey: string;
@@ -34,40 +29,6 @@ export interface EditFormState {
   is_public: boolean;
 }
 
-const buildDefaultVoiceSettings = (enums: VoiceEnums): VoiceConfig => {
-  const provider = enums.providers?.[0]?.value;
-  const model =
-    enums.defaults?.tts_model || enums.tts_models?.[0]?.value || undefined;
-  const voice_id = enums.defaults?.voice_id || undefined;
-  const voice_type = enums.voice_types?.[0]?.value || "system";
-  return { provider, model, voice_type, voice_id };
-};
-
-const mergeVoiceSettings = (
-  current: VoiceConfig,
-  defaults: VoiceConfig,
-  incoming?: VoiceConfig,
-): VoiceConfig => ({
-  provider: incoming?.provider ?? current.provider ?? defaults.provider,
-  model: incoming?.model ?? current.model ?? defaults.model,
-  voice_type:
-    incoming?.voice_type ??
-    current.voice_type ??
-    defaults.voice_type ??
-    "system",
-  voice_id: incoming?.voice_id ?? current.voice_id ?? defaults.voice_id,
-  display_name: incoming?.display_name ?? current.display_name,
-  sample_url: incoming?.sample_url ?? current.sample_url,
-});
-
-export const hexToAudioUrl = (hexString: string): string => {
-  const bytes = new Uint8Array(
-    hexString.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [],
-  );
-  const blob = new Blob([bytes], { type: "audio/mpeg" });
-  return URL.createObjectURL(blob);
-};
-
 export function useVirtualIPDetail({
   ipKey,
   showAlert,
@@ -89,59 +50,24 @@ export function useVirtualIPDetail({
     is_public: false,
   });
 
-  // Voice state
-  const [voiceEnums, setVoiceEnums] = useState<VoiceEnums | null>(null);
-  const [voiceList, setVoiceList] = useState<VoiceList | null>(null);
-  const [voiceTypeFilter, setVoiceTypeFilter] = useState("system");
-  const [voiceSettings, setVoiceSettings] = useState<VoiceConfig>({
-    provider: undefined,
-    model: undefined,
-    voice_type: "system",
-    voice_id: undefined,
+  const {
+    voiceEnums,
+    voiceTypeFilter,
+    setVoiceTypeFilter,
+    voiceSettings,
+    setVoiceSettings,
+    voicePreviewText,
+    setVoicePreviewText,
+    voiceLoading,
+    previewLoading,
+    previewAudioUrl,
+    voiceOptions,
+    syncVirtualIPVoice,
+    handlePreviewVoice,
+  } = useVirtualIPDetailVoice({
+    showAlert,
+    virtualIPName: virtualIP?.name,
   });
-  const [voicePreviewText, setVoicePreviewText] = useState("");
-  const [voiceLoading, setVoiceLoading] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null);
-
-  // Fetch voice enums
-  const fetchVoiceEnums = useCallback(async () => {
-    try {
-      const res = await voiceAPI.getEnums();
-      if (res.success && res.data) {
-        setVoiceEnums(res.data);
-        if (!voicePreviewText) {
-          setVoicePreviewText("你好，我是你的虚拟角色，很高兴认识你。");
-        }
-        const defaults = buildDefaultVoiceSettings(res.data);
-        setVoiceSettings((prev) => mergeVoiceSettings(prev, defaults));
-      }
-    } catch (error) {
-      console.error("Failed to fetch voice enums", error);
-    }
-  }, [voicePreviewText]);
-
-  // Fetch voice list
-  const fetchVoiceList = useCallback(
-    async (voiceType: string, provider?: string) => {
-      if (!provider) return;
-      try {
-        setVoiceLoading(true);
-        const res = await voiceAPI.getVoices({
-          voice_type: voiceType,
-          provider,
-        });
-        if (res.success && res.data) {
-          setVoiceList(res.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch voice list", error);
-      } finally {
-        setVoiceLoading(false);
-      }
-    },
-    [],
-  );
 
   // Fetch virtual IP
   const fetchVirtualIP = useCallback(async () => {
@@ -162,18 +88,7 @@ export function useVirtualIPDetail({
           is_active: response.data.is_active ?? true,
           is_public: response.data.is_public ?? false,
         });
-        const incomingVoice = response.data.voice_config;
-        setVoiceSettings((prev) => {
-          const defaults = voiceEnums
-            ? buildDefaultVoiceSettings(voiceEnums)
-            : prev;
-          return mergeVoiceSettings(prev, defaults, incomingVoice);
-        });
-        if (!voicePreviewText) {
-          setVoicePreviewText(
-            `你好，我是${response.data.name}，很高兴认识你。`,
-          );
-        }
+        syncVirtualIPVoice(response.data);
       } else {
         console.error("Failed to fetch virtual IP:", response.error);
         showAlert({ message: "获取虚拟IP失败", variant: "error" });
@@ -184,7 +99,7 @@ export function useVirtualIPDetail({
     } finally {
       setLoading(false);
     }
-  }, [ipKey, showAlert, voiceEnums, voicePreviewText]);
+  }, [ipKey, showAlert, syncVirtualIPVoice]);
 
   // Update virtual IP
   const handleUpdateIP = async (e: React.FormEvent) => {
@@ -253,167 +168,12 @@ export function useVirtualIPDetail({
     });
   };
 
-  // Voice options
-  const voiceOptions = useMemo(() => {
-    const options: { value: string; label: string }[] = [];
-    const pushVoices = (items?: VoiceItem[]) => {
-      if (!items) return;
-      items.forEach((item) => {
-        if (item?.voice_id) {
-          options.push({
-            value: item.voice_id,
-            label: item.voice_name || item.voice_id,
-          });
-        }
-      });
-    };
-
-    if (voiceList) {
-      if (voiceTypeFilter === "all") {
-        pushVoices(voiceList.system_voice);
-        pushVoices(voiceList.voice_cloning);
-        pushVoices(voiceList.voice_generation);
-      } else if (voiceTypeFilter === "system") {
-        pushVoices(voiceList.system_voice);
-      } else if (voiceTypeFilter === "voice_cloning") {
-        pushVoices(voiceList.voice_cloning);
-      } else if (voiceTypeFilter === "voice_generation") {
-        pushVoices(voiceList.voice_generation);
-      }
-    }
-    if (
-      !options.length &&
-      voiceEnums?.system_voices &&
-      voiceTypeFilter !== "voice_cloning" &&
-      voiceTypeFilter !== "voice_generation"
-    ) {
-      voiceEnums.system_voices.forEach((item) => {
-        options.push({
-          value: item.value,
-          label: item.label_zh || item.label_en || item.value,
-        });
-      });
-    }
-    return options;
-  }, [voiceList, voiceTypeFilter, voiceEnums?.system_voices]);
-
-  // Voice preview
-  const handlePreviewVoice = async () => {
-    const fallbackModel =
-      voiceSettings.model ||
-      voiceEnums?.defaults?.tts_model ||
-      voiceEnums?.tts_models?.[0]?.value;
-    const fallbackVoiceId =
-      voiceSettings.voice_id ||
-      voiceEnums?.defaults?.voice_id ||
-      voiceOptions[0]?.value;
-    const fallbackProvider =
-      voiceSettings.provider || voiceEnums?.providers?.[0]?.value;
-
-    if (!fallbackProvider) {
-      showAlert({ message: "请先选择服务商", variant: "error" });
-      return;
-    }
-    if (!fallbackModel) {
-      showAlert({ message: "请先选择语音模型", variant: "error" });
-      return;
-    }
-
-    if (
-      fallbackModel !== voiceSettings.model ||
-      fallbackVoiceId !== voiceSettings.voice_id ||
-      fallbackProvider !== voiceSettings.provider
-    ) {
-      setVoiceSettings((prev) => ({
-        ...prev,
-        provider: fallbackProvider,
-        model: fallbackModel,
-        voice_id: fallbackVoiceId,
-      }));
-    }
-
-    const text =
-      voicePreviewText ||
-      `你好，我是${virtualIP?.name || "角色"}，很高兴认识你。`;
-    setPreviewLoading(true);
-    try {
-      const res = await voiceAPI.preview({
-        text,
-        model: fallbackModel,
-        voice_id: fallbackVoiceId,
-        provider: fallbackProvider,
-        output_format: "url",
-      });
-      if (res.success && res.data) {
-        const audioUrl =
-          res.data.audio_url ||
-          (res.data.audio_hex ? hexToAudioUrl(res.data.audio_hex) : null);
-        if (audioUrl) {
-          if (previewAudioUrl) {
-            URL.revokeObjectURL(previewAudioUrl);
-          }
-          setPreviewAudioUrl(audioUrl);
-        }
-        showAlert({ message: "试听已生成", variant: "success" });
-      } else {
-        showAlert({
-          message: `试听失败：${res.error || "未知错误"}`,
-          variant: "error",
-        });
-      }
-    } catch (error) {
-      console.error("Preview failed", error);
-      showAlert({ message: "试听失败，请稍后重试", variant: "error" });
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
   // Effects
-  useEffect(() => {
-    void fetchVoiceEnums();
-  }, [fetchVoiceEnums]);
-
   useEffect(() => {
     if (ipKey) {
       void fetchVirtualIP();
     }
   }, [fetchVirtualIP, ipKey]);
-
-  useEffect(() => {
-    if (voiceSettings.provider) {
-      void fetchVoiceList(voiceTypeFilter, voiceSettings.provider);
-    }
-  }, [fetchVoiceList, voiceSettings.provider, voiceTypeFilter]);
-
-  useEffect(() => {
-    setVoiceSettings((prev) => {
-      if (prev.voice_type === voiceTypeFilter) return prev;
-      return { ...prev, voice_type: voiceTypeFilter, voice_id: undefined };
-    });
-  }, [voiceTypeFilter]);
-
-  useEffect(() => {
-    if (!voiceList) return;
-    if (!voiceSettings.voice_id) {
-      const first = voiceOptions[0];
-      if (first) {
-        setVoiceSettings((prev) => ({
-          ...prev,
-          voice_id: prev.voice_id || first.value,
-        }));
-      }
-    }
-  }, [voiceList, voiceTypeFilter, voiceSettings.voice_id, voiceOptions]);
-
-  useEffect(() => {
-    if (
-      voiceSettings.voice_type &&
-      voiceSettings.voice_type !== voiceTypeFilter
-    ) {
-      setVoiceTypeFilter(voiceSettings.voice_type);
-    }
-  }, [voiceSettings.voice_type, voiceTypeFilter]);
 
   return {
     // Core state
