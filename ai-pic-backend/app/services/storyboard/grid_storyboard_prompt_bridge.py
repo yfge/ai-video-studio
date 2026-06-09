@@ -2,45 +2,29 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional
 
+from app.services.storyboard.grid_storyboard_layout import grid_layout
 from app.services.storyboard.grid_storyboard_prompt_layers import (
     build_panel_prompt,
-    motion_timeline_text,
     shot_plan_prompt_layers,
 )
+from app.services.storyboard.grid_storyboard_prompt_rendering import (
+    build_clip_storyboard_sheet_prompt,
+    build_clip_storyboard_video_prompt,
+    build_grid_storyboard_sheet_prompt,
+    build_grid_storyboard_video_prompt,
+)
 
-SUPPORTED_PANEL_COUNTS = (2, 4, 6, 9)
-
-
-@dataclass(frozen=True)
-class GridLayout:
-    panel_count: int
-    columns: int
-    rows: int
-
-    @property
-    def label(self) -> str:
-        return f"{self.columns}x{self.rows}"
-
-
-def grid_layout(panel_count: int) -> GridLayout:
-    """Return the smallest supported storyboard grid layout for a clip count."""
-
-    requested_count = max(1, panel_count)
-    normalized_count = next(
-        (count for count in SUPPORTED_PANEL_COUNTS if requested_count <= count),
-        SUPPORTED_PANEL_COUNTS[-1],
-    )
-
-    if normalized_count == 2:
-        return GridLayout(panel_count=2, columns=2, rows=1)
-    if normalized_count == 4:
-        return GridLayout(panel_count=4, columns=2, rows=2)
-    if normalized_count == 6:
-        return GridLayout(panel_count=6, columns=3, rows=2)
-    return GridLayout(panel_count=9, columns=3, rows=3)
+__all__ = [
+    "build_clip_storyboard_panels",
+    "build_clip_storyboard_sheet_prompt",
+    "build_clip_storyboard_video_prompt",
+    "build_grid_storyboard_panels",
+    "build_grid_storyboard_sheet_prompt",
+    "build_grid_storyboard_video_prompt",
+    "grid_layout",
+]
 
 
 def build_grid_storyboard_panels(
@@ -147,137 +131,6 @@ def build_clip_storyboard_panels(
         panel["storyboard_panel_prompt"] = build_panel_prompt(panel)
         panels.append(panel)
     return panels
-
-
-def build_grid_storyboard_sheet_prompt(
-    panels: Sequence[Mapping[str, Any]],
-    *,
-    style: Optional[str] = None,
-) -> str:
-    """Compose a prompt for one generated storyboard sheet image."""
-
-    if not panels:
-        raise ValueError("grid_storyboard_panels_required")
-
-    layout = grid_layout(len(panels))
-    lines = [
-        (
-            f"Create a {layout.panel_count}-panel {layout.label} storyboard sheet "
-            "for a vertical short-drama sequence."
-        ),
-        "Arrange panels left-to-right, top-to-bottom with clean gutters and stable character continuity.",
-    ]
-    if style:
-        lines.append(f"Visual style: {style}.")
-    lines.extend(
-        [
-            "Small panel numbers are allowed only in the panel borders.",
-            "No subtitles, speech bubbles, captions, readable UI text, watermarks, or title cards inside panels.",
-            "Panel briefs:",
-        ]
-    )
-    for panel in panels:
-        panel_index = panel.get("panel_index")
-        clip_id = panel.get("clip_id") or "unknown"
-        visual_prompt = panel.get("visual_prompt") or ""
-        lines.append(
-            (
-                f"- Panel {panel_index} / clip {clip_id}: {visual_prompt}; "
-                f"direction: {panel.get('direction_anchor') or ''}; "
-                f"aesthetic: {panel.get('aesthetic_reference') or ''}; "
-                f"composition: {panel.get('composition_geometry') or ''}; "
-                f"motion: {motion_timeline_text(panel.get('motion_timeline'), separator=' ')}; "
-                f"emotional landing: {panel.get('emotional_landing') or ''}"
-            ).strip()
-        )
-
-    return "\n".join(lines)
-
-
-def build_clip_storyboard_sheet_prompt(
-    panels: Sequence[Mapping[str, Any]],
-    *,
-    style: Optional[str] = None,
-) -> str:
-    """Compose a storyboard sheet prompt for one selected clip."""
-
-    if not panels:
-        raise ValueError("clip_storyboard_panels_required")
-
-    layout = grid_layout(len(panels))
-    clip_id = panels[0].get("clip_id") or "unknown"
-    lines = [
-        (
-            f"Create a {layout.panel_count}-panel {layout.label} storyboard sheet "
-            f"for one selected Timeline clip: {clip_id}."
-        ),
-        "Each panel is a key visual moment inside the same shot, not a different episode or Timeline clip.",
-        "Arrange panels left-to-right, top-to-bottom with clean gutters and stable character continuity.",
-    ]
-    if style:
-        lines.append(f"Visual style: {style}.")
-    lines.extend(
-        [
-            "Small panel numbers are allowed only in the panel borders.",
-            "No subtitles, speech bubbles, captions, readable UI text, watermarks, or title cards inside panels.",
-            "Panel briefs:",
-        ]
-    )
-    for panel in panels:
-        lines.append(
-            (
-                f"- Panel {panel.get('panel_index')} / clip {clip_id}: "
-                f"{panel.get('visual_prompt') or ''}; "
-                f"direction: {panel.get('direction_anchor') or ''}; "
-                f"aesthetic: {panel.get('aesthetic_reference') or ''}; "
-                f"composition: {panel.get('composition_geometry') or ''}; "
-                f"motion: {motion_timeline_text(panel.get('motion_timeline'), separator=' ')}; "
-                f"emotional landing: {panel.get('emotional_landing') or ''}"
-            ).strip()
-        )
-    return "\n".join(lines)
-
-
-def build_grid_storyboard_video_prompt(panel: Mapping[str, Any]) -> str:
-    """Compose the per-clip image-to-video prompt for one grid panel."""
-
-    panel_index = panel.get("panel_index")
-    clip_id = panel.get("clip_id") or "unknown"
-    video_prompt = panel.get("video_prompt") or panel.get("visual_prompt") or ""
-    return "\n".join(
-        [
-            f"Use panel {panel_index} only from the storyboard sheet as the visual reference for clip {clip_id}.",
-            "Generate only this shot; do not animate or reveal other panels from the sheet.",
-            "Preserve the character, costume, environment, composition, and lighting shown in the selected panel.",
-            f"Direction anchor: {panel.get('direction_anchor') or ''}",
-            f"Aesthetic reference: {panel.get('aesthetic_reference') or ''}",
-            f"Composition geometry: {panel.get('composition_geometry') or ''}",
-            f"Motion timeline: {motion_timeline_text(panel.get('motion_timeline'))}",
-            f"Emotional landing: {panel.get('emotional_landing') or ''}",
-            str(video_prompt),
-        ]
-    )
-
-
-def build_clip_storyboard_video_prompt(panel: Mapping[str, Any]) -> str:
-    """Compose the per-clip image-to-video prompt from one clip storyboard panel."""
-
-    panel_index = panel.get("panel_index")
-    clip_id = panel.get("clip_id") or "unknown"
-    video_prompt = panel.get("video_prompt") or panel.get("visual_prompt") or ""
-    return "\n".join(
-        [
-            f"Use panel {panel_index} only from the clip storyboard sheet as the visual reference for clip {clip_id}.",
-            "Generate only this selected Timeline clip; do not animate other panels or imply a full-episode storyboard.",
-            "Preserve the character, costume, environment, composition, and lighting shown in the selected panel.",
-            f"Direction anchor: {panel.get('direction_anchor') or ''}",
-            f"Aesthetic reference: {panel.get('aesthetic_reference') or ''}",
-            f"Composition geometry: {panel.get('composition_geometry') or ''}",
-            f"Motion timeline: {motion_timeline_text(panel.get('motion_timeline'))}",
-            f"Emotional landing: {panel.get('emotional_landing') or ''}",
-            str(video_prompt),
-        ]
-    )
 
 
 def _timeline_video_clips(timeline_spec: Mapping[str, Any]) -> List[Mapping[str, Any]]:

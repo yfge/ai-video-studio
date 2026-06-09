@@ -135,16 +135,13 @@ def test_storyboard_image_task_persists_image_gen_start_end(
         "render_prompt",
         lambda *_args, **_kwargs: "test-prompt",
     )
-    monkeypatch.setattr(
-        sb_image_task,
-        "render_keyframe_prompt",
-        lambda base, role: f"{role}::{base}",
-    )
 
     def _image_gen_factory(prompt: str) -> dict:
         role = "single"
-        if isinstance(prompt, str) and "::" in prompt:
-            role = prompt.split("::", 1)[0]
+        if isinstance(prompt, str) and "Opening keyframe" in prompt:
+            role = "start"
+        elif isinstance(prompt, str) and "Ending keyframe" in prompt:
+            role = "end"
         return {
             "keyframe_role": role,
             "generation_profile": "identity",

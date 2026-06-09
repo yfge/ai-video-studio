@@ -1,0 +1,128 @@
+"""Prompt rendering helpers for grid and clip storyboard sheets."""
+
+from __future__ import annotations
+
+from typing import Any, Mapping, Sequence
+
+from app.services.storyboard.grid_storyboard_layout import grid_layout
+from app.services.storyboard.grid_storyboard_prompt_context import (
+    bound_context_lines,
+    panel_context_text,
+    panel_motion_prompt,
+)
+from app.services.storyboard.grid_storyboard_prompt_layers import motion_timeline_text
+
+
+def build_grid_storyboard_sheet_prompt(
+    panels: Sequence[Mapping[str, Any]],
+    *,
+    style: str | None = None,
+) -> str:
+    """Compose a prompt for one generated storyboard sheet image."""
+
+    if not panels:
+        raise ValueError("grid_storyboard_panels_required")
+
+    layout = grid_layout(len(panels))
+    lines = [
+        (
+            f"Create a {layout.panel_count}-panel {layout.label} storyboard sheet "
+            "for a vertical short-drama sequence."
+        ),
+        "Arrange panels left-to-right, top-to-bottom with clean gutters and stable character continuity.",
+    ]
+    if style:
+        lines.append(f"Visual style: {style}.")
+    lines.extend(_sheet_constraints())
+    for panel in panels:
+        panel_index = panel.get("panel_index")
+        clip_id = panel.get("clip_id") or "unknown"
+        visual_prompt = panel.get("visual_prompt") or ""
+        lines.append(
+            (
+                f"- Panel {panel_index} / clip {clip_id}: {visual_prompt}; "
+                f"direction: {panel.get('direction_anchor') or ''}; "
+                f"aesthetic: {panel.get('aesthetic_reference') or ''}; "
+                f"composition: {panel.get('composition_geometry') or ''}; "
+                f"motion: {motion_timeline_text(panel.get('motion_timeline'), separator=' ')}; "
+                f"emotional landing: {panel.get('emotional_landing') or ''}"
+            ).strip()
+        )
+
+    return "\n".join(lines)
+
+
+def build_clip_storyboard_sheet_prompt(
+    panels: Sequence[Mapping[str, Any]],
+    *,
+    style: str | None = None,
+) -> str:
+    """Compose a storyboard sheet prompt for one selected clip."""
+
+    if not panels:
+        raise ValueError("clip_storyboard_panels_required")
+
+    layout = grid_layout(len(panels))
+    clip_id = panels[0].get("clip_id") or "unknown"
+    lines = [
+        (
+            f"Create a {layout.panel_count}-panel {layout.label} storyboard sheet "
+            f"for one selected Timeline clip: {clip_id}."
+        ),
+        "Each panel is a key visual moment inside the same shot, not a different episode or Timeline clip.",
+        "Arrange panels left-to-right, top-to-bottom with clean gutters and stable character continuity.",
+    ]
+    if style:
+        lines.append(f"Visual style: {style}.")
+    lines.extend(bound_context_lines(panels[0]))
+    lines.extend(_sheet_constraints())
+    for panel in panels:
+        lines.append(
+            (
+                f"- Panel {panel.get('panel_index')} / clip {clip_id}: "
+                f"{panel.get('visual_prompt') or ''}; "
+                f"direction: {panel.get('direction_anchor') or ''}; "
+                f"aesthetic: {panel.get('aesthetic_reference') or ''}; "
+                f"composition: {panel.get('composition_geometry') or ''}; "
+                f"motion: {motion_timeline_text(panel.get('motion_timeline'), separator=' ')}; "
+                f"emotional landing: {panel.get('emotional_landing') or ''}; "
+                f"{panel_context_text(panel)}"
+            ).strip()
+        )
+    return "\n".join(lines)
+
+
+def build_grid_storyboard_video_prompt(panel: Mapping[str, Any]) -> str:
+    """Compose the per-clip image-to-video prompt for one grid panel."""
+
+    panel_index = panel.get("panel_index")
+    clip_id = panel.get("clip_id") or "unknown"
+    return "\n".join(
+        [
+            f"Use panel {panel_index} only from the storyboard sheet as the visual reference for clip {clip_id}.",
+            "Generate only this shot; do not animate or reveal other panels from the sheet.",
+            panel_motion_prompt(panel),
+        ]
+    )
+
+
+def build_clip_storyboard_video_prompt(panel: Mapping[str, Any]) -> str:
+    """Compose the per-clip image-to-video prompt from one clip storyboard panel."""
+
+    panel_index = panel.get("panel_index")
+    clip_id = panel.get("clip_id") or "unknown"
+    return "\n".join(
+        [
+            f"Use panel {panel_index} only from the clip storyboard sheet as the visual reference for clip {clip_id}.",
+            "Generate only this selected Timeline clip; do not animate other panels or imply a full-episode storyboard.",
+            panel_motion_prompt(panel),
+        ]
+    )
+
+
+def _sheet_constraints() -> list[str]:
+    return [
+        "Small panel numbers are allowed only in the panel borders.",
+        "No subtitles, speech bubbles, captions, readable UI text, watermarks, or title cards inside panels.",
+        "Panel briefs:",
+    ]

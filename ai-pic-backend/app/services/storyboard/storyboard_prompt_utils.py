@@ -10,6 +10,7 @@ from app.services.storyboard.langgraph_utils import (
     MOVEMENT_CYCLE,
     SHOT_CYCLE,
 )
+from app.services.storyboard.storyboard_prompt_compiler import StoryboardPromptCompiler
 
 _SYSTEM_PREFIX_RE = re.compile(
     r"^\s*(?:\u7cfb\u7edf|system|assistant)\s*[\uFF1A:\uFF0C,]\s*",
@@ -186,6 +187,7 @@ def render_keyframe_prompt(base_prompt: str, role: str) -> str:
 
 def apply_storyboard_prompt_optimizations(frames: Iterable[Dict[str, Any]]) -> None:
     prev_frame: Optional[Dict[str, Any]] = None
+    compiler = StoryboardPromptCompiler()
     for index, frame in enumerate(frames):
         if not isinstance(frame, dict):
             continue
@@ -201,30 +203,38 @@ def apply_storyboard_prompt_optimizations(frames: Iterable[Dict[str, Any]]) -> N
             frame["description"] = _truncate(display_description, 200)
 
         transition = resolve_transition_data(prev_frame, frame)
-        prompt_description = normalize_storyboard_text(
-            str(
-                frame.get("prompt_description")
-                or frame.get("description")
-                or frame.get("ai_prompt")
-                or ""
-            )
+        raw_prompt_description = str(
+            frame.get("prompt_description")
+            or frame.get("description")
+            or frame.get("ai_prompt")
+            or ""
         )
+        source_refs = frame.get("source_refs")
+        source_shot_plan = (
+            source_refs.get("timeline_shot_plan")
+            if isinstance(source_refs, dict)
+            else None
+        )
+        if (
+            frame.get("shot_plan_prompt_layers")
+            or frame.get("timeline_shot_plan")
+            or source_shot_plan
+        ):
+            prompt_description = _compact_text(raw_prompt_description)
+        else:
+            prompt_description = normalize_storyboard_text(raw_prompt_description)
         prompt_text = render_storyboard_shot_prompt(
             description=prompt_description or (frame.get("description") or ""),
             frame=frame,
             transition=transition,
         )
         if prompt_text:
-            frame["ai_prompt"] = _truncate(prompt_text, 500)
-
-        base_prompt = frame.get("ai_prompt") or frame.get("description") or ""
-        if base_prompt:
-            frame["start_keyframe_prompt"] = _truncate(
-                render_keyframe_prompt(base_prompt, "start"), 600
-            )
-            frame["end_keyframe_prompt"] = _truncate(
-                render_keyframe_prompt(base_prompt, "end"), 600
-            )
+            compiled = compiler.compile_frame(frame, base_prompt=prompt_text)
+            frame["storyboard_prompt_v2"] = compiled
+            frame["ai_prompt"] = compiled["image_prompt"]
+            frame["start_keyframe_prompt"] = compiled["start_keyframe_prompt"]
+            frame["end_keyframe_prompt"] = compiled["end_keyframe_prompt"]
+            frame["i2v_motion_prompt"] = compiled["i2v_motion_prompt"]
 
         prev_frame = frame
         if "characters" in frame:
