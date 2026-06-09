@@ -12,9 +12,11 @@ import { TimelineClipProviderReworkCards } from "./TimelineClipProviderReworkCar
 import {
   buildTimelineClipVideoReworkTaskPayload,
   isTimelineVideoClip,
+  parseReferenceImagesInput,
   parseOptionalNumber,
   timelineClipStoryboardPanelIndex,
   timelineClipStoryboardSheetUrl,
+  type TimelineVideoReferenceChoice,
 } from "./TimelineClipProviderReworkModel";
 
 type NotifyVariant = "success" | "error" | "warning" | "info";
@@ -41,7 +43,9 @@ export function TimelineClipProviderReworkControls({
   const [resolution, setResolution] = useState("720p");
   const [ratio, setRatio] = useState("");
   const [reason, setReason] = useState("");
-  const [useClipStoryboard, setUseClipStoryboard] = useState(false);
+  const [videoReferenceChoice, setVideoReferenceChoice] =
+    useState<TimelineVideoReferenceChoice>("start_end");
+  const [referenceImagesInput, setReferenceImagesInput] = useState("");
   const [storyboardStyle, setStoryboardStyle] =
     useState<TimelineClipStoryboardStyle>("live_action");
   const [storyboardPanelCount, setStoryboardPanelCount] = useState("4");
@@ -54,6 +58,11 @@ export function TimelineClipProviderReworkControls({
   const storyboardPanelIndex = timelineClipStoryboardPanelIndex(item);
   const storyboardSheetUrl = timelineClipStoryboardSheetUrl(item);
   const parsedDuration = parseOptionalNumber(duration);
+  const referenceImages = parseReferenceImagesInput(referenceImagesInput);
+  const effectiveReferenceChoice =
+    videoReferenceChoice === "clip_storyboard_panel" && !storyboardPanelIndex
+      ? "start_end"
+      : videoReferenceChoice;
   const canSubmit = Boolean(
     timelineId && timelineVersion && clipId && !submitting,
   );
@@ -82,6 +91,9 @@ export function TimelineClipProviderReworkControls({
           generation_profile: "clip_storyboard",
           size: "1536x1536",
           aspect_ratio: "1:1",
+          reference_images: referenceImages.length
+            ? referenceImages
+            : undefined,
         },
       );
       if (!res.success || !res.data) {
@@ -122,7 +134,8 @@ export function TimelineClipProviderReworkControls({
       resolution,
       ratio,
       reason,
-      useClipStoryboard: Boolean(useClipStoryboard && storyboardPanelIndex),
+      referenceChoice: effectiveReferenceChoice,
+      referenceImages,
     });
     try {
       const res = await timelineAPI.queueTimelineClipVideoRework(
@@ -154,7 +167,8 @@ export function TimelineClipProviderReworkControls({
       resolution={resolution}
       ratio={ratio}
       reason={reason}
-      useClipStoryboard={useClipStoryboard}
+      videoReferenceChoice={videoReferenceChoice}
+      referenceImagesInput={referenceImagesInput}
       storyboardStyle={storyboardStyle}
       storyboardPanelCount={storyboardPanelCount}
       storyboardPanelIndex={storyboardPanelIndex}
@@ -171,7 +185,8 @@ export function TimelineClipProviderReworkControls({
       onResolutionChange={setResolution}
       onRatioChange={setRatio}
       onReasonChange={setReason}
-      onUseClipStoryboardChange={setUseClipStoryboard}
+      onVideoReferenceChoiceChange={setVideoReferenceChoice}
+      onReferenceImagesInputChange={setReferenceImagesInput}
       onStoryboardStyleChange={setStoryboardStyle}
       onStoryboardPanelCountChange={setStoryboardPanelCount}
       onGenerateStoryboard={handleGenerateStoryboard}

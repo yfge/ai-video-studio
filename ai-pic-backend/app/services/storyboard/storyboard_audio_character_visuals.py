@@ -4,13 +4,16 @@ from dataclasses import dataclass
 from typing import Optional
 
 from app.core.validators.character_registry import normalize_character_name_token
-from app.models.script import Story, StoryCharacter
+from app.models.script import StoryCharacter
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
+from app.repositories.story_character_visual_repository import (
+    StoryCharacterVisualRepository,
+)
 from app.services.script.script_character_policy import build_story_alias_map
 from app.services.storyboard.storyboard_character_anchors import (
     fallback_virtual_ip_anchor_url,
 )
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from .storyboard_audio_context_utils import compact, truncate
 
@@ -40,7 +43,11 @@ def _select_virtual_ip_anchor_url(vip: Optional[VirtualIP]) -> Optional[str]:
                 category = (getattr(img, "category", None) or "").strip().lower()
                 is_avatar = 1 if category == "avatar" else 0
                 created_at = getattr(img, "created_at", None)
-                ts = int(getattr(created_at, "timestamp", lambda: 0)()) if created_at else 0
+                ts = (
+                    int(getattr(created_at, "timestamp", lambda: 0)())
+                    if created_at
+                    else 0
+                )
                 return (is_default, is_avatar, ts)
 
             best = sorted(candidates, key=_score, reverse=True)[0]
@@ -70,6 +77,7 @@ def _build_character_card_brief(canonical_name: str, vip: VirtualIP) -> str:
 @dataclass(frozen=True, slots=True)
 class StoryCharacterVisual:
     canonical_name: str
+    virtual_ip_id: int
     card_brief: str
     anchor_url: Optional[str]
     importance: int
@@ -81,16 +89,7 @@ def load_story_character_visuals(
     story_id: int,
 ) -> tuple[dict[str, StoryCharacterVisual], dict[str, str]]:
     """Return (canonical_name -> visual), plus alias_to_canonical mapping."""
-    story = (
-        db.query(Story)
-        .options(
-            joinedload(Story.story_characters)
-            .joinedload(StoryCharacter.virtual_ip)
-            .joinedload(VirtualIP.images)
-        )
-        .filter(Story.id == story_id, Story.is_deleted.is_(False))
-        .first()
-    )
+    story = StoryCharacterVisualRepository(db).get_story_with_character_images(story_id)
     if not story:
         return {}, {}
 
@@ -117,10 +116,10 @@ def load_story_character_visuals(
 
         visuals[canonical] = StoryCharacterVisual(
             canonical_name=canonical,
+            virtual_ip_id=int(getattr(vip, "id")),
             card_brief=_build_character_card_brief(canonical, vip),
             anchor_url=_select_virtual_ip_anchor_url(vip),
             importance=int(getattr(sc, "importance", 1) or 1),
         )
 
     return visuals, alias_to_canonical
-

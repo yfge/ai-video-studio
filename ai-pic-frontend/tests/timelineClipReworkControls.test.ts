@@ -20,6 +20,9 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 (globalThis as any).self = dom.window;
 (globalThis as any).document = dom.window.document;
 (globalThis as any).HTMLElement = dom.window.HTMLElement;
+(globalThis as any).HTMLInputElement = dom.window.HTMLInputElement;
+(globalThis as any).HTMLSelectElement = dom.window.HTMLSelectElement;
+(globalThis as any).HTMLTextAreaElement = dom.window.HTMLTextAreaElement;
 (globalThis as any).localStorage = dom.window.localStorage;
 
 const originalFetch = globalThis.fetch;
@@ -170,7 +173,9 @@ describe("timeline clip rework controls", () => {
     assert.ok(utils.getByText("片段视频"));
     assert.ok(utils.getByRole("button", { name: "生成故事板参考图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
-    assert.ok(utils.getByLabelText("使用故事板 Panel 4"));
+    assert.ok(utils.getByLabelText("视频参考来源"));
+    assert.ok(utils.getByRole("option", { name: "故事板 Panel 4" }));
+    assert.ok(utils.getByLabelText("附加参考图 URL"));
   });
 
   it("keeps storyboard and video submit paths clip-scoped from the two-step controls", async () => {
@@ -193,6 +198,9 @@ describe("timeline clip rework controls", () => {
       { container: dom.window.document.body },
     );
 
+    fireEvent.input(utils.getByLabelText("附加参考图 URL"), {
+      target: { value: "https://manual.example/ref.png" },
+    });
     fireEvent.click(utils.getByRole("button", { name: "生成故事板参考图" }));
     await waitFor(() => assert.equal(calls.length, 1));
     assert.equal(
@@ -208,10 +216,13 @@ describe("timeline clip rework controls", () => {
         generation_profile: "clip_storyboard",
         size: "1536x1536",
         aspect_ratio: "1:1",
+        reference_images: ["https://manual.example/ref.png"],
       }),
     );
 
-    fireEvent.click(utils.getByLabelText("使用故事板 Panel 4"));
+    fireEvent.change(utils.getByLabelText("视频参考来源"), {
+      target: { value: "clip_storyboard_panel" },
+    });
     fireEvent.click(utils.getByRole("button", { name: "生成/重做此片段视频" }));
     await waitFor(() => assert.equal(calls.length, 2));
     assert.equal(
@@ -229,6 +240,56 @@ describe("timeline clip rework controls", () => {
         return_last_frame: true,
         reference_mode: "clip_storyboard_panel",
         use_clip_storyboard: true,
+        reference_images: ["https://manual.example/ref.png"],
+      }),
+    );
+  });
+
+  it("submits manual reference images as an explicit generation choice", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 89, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithStoryboardPanel(),
+      }),
+      { container: dom.window.document.body },
+    );
+
+    fireEvent.change(utils.getByLabelText("视频参考来源"), {
+      target: { value: "manual_refs" },
+    });
+    fireEvent.input(utils.getByLabelText("附加参考图 URL"), {
+      target: {
+        value: "https://manual.example/a.png\nhttps://manual.example/b.png",
+      },
+    });
+    fireEvent.click(utils.getByRole("button", { name: "生成/重做此片段视频" }));
+    await waitFor(() => assert.equal(calls.length, 1));
+
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        action: "re_cut",
+        resolution: "720p",
+        asset_role: "generated_video",
+        use_end_frame: false,
+        return_last_frame: true,
+        reference_mode: "start_end",
+        reference_images: [
+          "https://manual.example/a.png",
+          "https://manual.example/b.png",
+        ],
       }),
     );
   });

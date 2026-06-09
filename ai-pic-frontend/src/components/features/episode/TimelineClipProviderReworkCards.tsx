@@ -2,10 +2,12 @@
 
 import type { FormEvent } from "react";
 import { operatorButtonClass, operatorSelectClass } from "@/components/shared";
-import type {
-  TimelineClipStoryboardStyle,
-  TimelineClipVideoReworkAction,
-} from "@/utils/api/types";
+import type { TimelineClipVideoReworkAction } from "@/utils/api/types";
+import {
+  StoryboardReferenceCard,
+  VideoReferenceSelect,
+} from "./TimelineClipProviderReworkCardSections";
+import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 
 const VIDEO_ACTION_OPTIONS: Array<{
   value: TimelineClipVideoReworkAction;
@@ -33,7 +35,8 @@ export function TimelineClipProviderReworkCards({
   resolution,
   ratio,
   reason,
-  useClipStoryboard,
+  videoReferenceChoice,
+  referenceImagesInput,
   storyboardStyle,
   storyboardPanelCount,
   storyboardPanelIndex,
@@ -50,7 +53,8 @@ export function TimelineClipProviderReworkCards({
   onResolutionChange,
   onRatioChange,
   onReasonChange,
-  onUseClipStoryboardChange,
+  onVideoReferenceChoiceChange,
+  onReferenceImagesInputChange,
   onStoryboardStyleChange,
   onStoryboardPanelCountChange,
   onGenerateStoryboard,
@@ -63,8 +67,9 @@ export function TimelineClipProviderReworkCards({
   resolution: string;
   ratio: string;
   reason: string;
-  useClipStoryboard: boolean;
-  storyboardStyle: TimelineClipStoryboardStyle;
+  videoReferenceChoice: TimelineVideoReferenceChoice;
+  referenceImagesInput: string;
+  storyboardStyle: "2d_cartoon" | "3d_cartoon" | "live_action";
   storyboardPanelCount: string;
   storyboardPanelIndex?: number | null;
   storyboardSheetUrl?: string | null;
@@ -80,8 +85,11 @@ export function TimelineClipProviderReworkCards({
   onResolutionChange: (value: string) => void;
   onRatioChange: (value: string) => void;
   onReasonChange: (value: string) => void;
-  onUseClipStoryboardChange: (value: boolean) => void;
-  onStoryboardStyleChange: (value: TimelineClipStoryboardStyle) => void;
+  onVideoReferenceChoiceChange: (value: TimelineVideoReferenceChoice) => void;
+  onReferenceImagesInputChange: (value: string) => void;
+  onStoryboardStyleChange: (
+    value: "2d_cartoon" | "3d_cartoon" | "live_action",
+  ) => void;
   onStoryboardPanelCountChange: (value: string) => void;
   onGenerateStoryboard: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -89,58 +97,18 @@ export function TimelineClipProviderReworkCards({
   return (
     <form className="mt-3 border-t border-gray-100 pt-3" onSubmit={onSubmit}>
       <div className="grid gap-3">
-        <section className={CARD_CLASS}>
-          <div className="mb-3">
-            <div className={CARD_TITLE_CLASS}>故事板参考</div>
-            <div className={CARD_DESCRIPTION_CLASS}>
-              生成当前 video clip 的宫格参考图，供片段视频重做时引用。
-            </div>
-          </div>
-          <div className={FIELD_GRID_CLASS}>
-            <select
-              value={storyboardStyle}
-              onChange={(event) =>
-                onStoryboardStyleChange(
-                  event.target.value as TimelineClipStoryboardStyle,
-                )
-              }
-              className={operatorSelectClass("w-full")}
-            >
-              <option value="live_action">真人电影</option>
-              <option value="3d_cartoon">3D 卡通</option>
-              <option value="2d_cartoon">2D 卡通</option>
-            </select>
-            <input
-              type="number"
-              min={2}
-              max={9}
-              step={1}
-              value={storyboardPanelCount}
-              onChange={(event) =>
-                onStoryboardPanelCountChange(event.target.value)
-              }
-              className={FIELD_CLASS}
-              aria-label="故事板 panel 数"
-            />
-          </div>
-          <button
-            type="button"
-            disabled={!canGenerateStoryboard}
-            className={operatorButtonClass("secondary", "mt-3 w-full")}
-            onClick={onGenerateStoryboard}
-          >
-            {generatingStoryboard ? "提交中..." : "生成故事板参考图"}
-          </button>
-          {storyboardSheetUrl ? (
-            <div className="mt-3 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-              <img
-                src={storyboardSheetUrl}
-                alt="故事板参考图预览"
-                className="max-h-48 w-full object-contain"
-              />
-            </div>
-          ) : null}
-        </section>
+        <StoryboardReferenceCard
+          referenceImagesInput={referenceImagesInput}
+          storyboardStyle={storyboardStyle}
+          storyboardPanelCount={storyboardPanelCount}
+          storyboardSheetUrl={storyboardSheetUrl}
+          generatingStoryboard={generatingStoryboard}
+          canGenerateStoryboard={canGenerateStoryboard}
+          onReferenceImagesInputChange={onReferenceImagesInputChange}
+          onStoryboardStyleChange={onStoryboardStyleChange}
+          onStoryboardPanelCountChange={onStoryboardPanelCountChange}
+          onGenerateStoryboard={onGenerateStoryboard}
+        />
 
         <section className={CARD_CLASS}>
           <div className="mb-3">
@@ -150,18 +118,11 @@ export function TimelineClipProviderReworkCards({
             </div>
           </div>
           <div className="grid gap-2">
-            {storyboardPanelIndex ? (
-              <label className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={useClipStoryboard}
-                  onChange={(event) =>
-                    onUseClipStoryboardChange(event.target.checked)
-                  }
-                />
-                使用故事板 Panel {storyboardPanelIndex}
-              </label>
-            ) : null}
+            <VideoReferenceSelect
+              value={videoReferenceChoice}
+              storyboardPanelIndex={storyboardPanelIndex}
+              onChange={onVideoReferenceChoiceChange}
+            />
             <select
               value={action}
               onChange={(event) =>

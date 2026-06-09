@@ -133,7 +133,7 @@ export interface TimelineClipAssetListParams {
 
 export type TimelineClipReworkAction = "re_dub" | "re_cut" | "re_render";
 export type TimelineClipVideoReworkAction = "re_cut" | "re_render";
-type TimelineClipVideoReferenceMode =
+export type TimelineClipVideoReferenceMode =
   | "start_end"
   | "clip_storyboard_panel"
   | "storyboard_grid_panel";

@@ -18,6 +18,9 @@ from app.schemas.timeline import (
     TimelineStoryboardGridGenerateRequest,
     TimelineStoryboardGridGenerateResponse,
 )
+from app.services.storyboard.clip_storyboard_context import (
+    build_clip_storyboard_context,
+)
 from app.services.storyboard.grid_storyboard_prompt_bridge import (
     build_clip_storyboard_panels,
     build_clip_storyboard_sheet_prompt,
@@ -61,8 +64,7 @@ class GridStoryboardSheetService:
         self.db.refresh(task)
         dispatch_grid_storyboard_sheet_task(task, task_payload, current_user)
         return TimelineStoryboardGridGenerateResponse(
-            task_id=task.id,
-            status=_status_value(task.status),
+            task_id=task.id, status=_status_value(task.status)
         )
 
     def queue_clip_sheet(
@@ -99,8 +101,7 @@ class GridStoryboardSheetService:
         self.db.refresh(task)
         dispatch_grid_storyboard_sheet_task(task, task_payload, current_user)
         return TimelineClipStoryboardGenerateResponse(
-            task_id=task.id,
-            status=_status_value(task.status),
+            task_id=task.id, status=_status_value(task.status)
         )
 
     def _task_payload(
@@ -124,8 +125,7 @@ class GridStoryboardSheetService:
                 "panel_count": layout.panel_count,
                 "style": payload.style,
                 "panel_briefs": [
-                    panel.get("storyboard_panel_prompt") or ""
-                    for panel in panels
+                    panel.get("storyboard_panel_prompt") or "" for panel in panels
                 ],
             },
         )
@@ -164,11 +164,16 @@ class GridStoryboardSheetService:
                 detail="clip storyboard panels missing",
             )
 
-        layout = grid_layout(payload.panel_count)
-        sheet_prompt = build_clip_storyboard_sheet_prompt(
-            panels,
-            style=payload.style,
+        context = build_clip_storyboard_context(
+            self.db,
+            timeline=timeline,
+            clip=clip,
+            panels=panels,
+            request_reference_images=payload.reference_images or [],
         )
+        panels = context.panels
+        layout = grid_layout(payload.panel_count)
+        sheet_prompt = build_clip_storyboard_sheet_prompt(panels, style=payload.style)
         return {
             "kind": "timeline_clip_storyboard",
             "timeline_id": timeline.id,
@@ -186,7 +191,8 @@ class GridStoryboardSheetService:
             "aspect_ratio": payload.aspect_ratio,
             "width": payload.width,
             "height": payload.height,
-            "reference_images": payload.reference_images or [],
+            "reference_images": context.reference_images,
+            "bound_context": context.bound_context,
             "panels": panels,
             "sheet_prompt": sheet_prompt,
         }
@@ -211,7 +217,10 @@ class GridStoryboardSheetService:
                 continue
             track_type = track.get("track_type") or track.get("type")
             for clip in track.get("clips") or []:
-                if isinstance(clip, dict) and (clip.get("clip_id") or clip.get("id")) == clip_id:
+                if (
+                    isinstance(clip, dict)
+                    and (clip.get("clip_id") or clip.get("id")) == clip_id
+                ):
                     return {**clip, "track_type": clip.get("track_type") or track_type}
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

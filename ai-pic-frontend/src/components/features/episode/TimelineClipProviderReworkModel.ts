@@ -1,10 +1,15 @@
 import type { TimelineItem } from "@/components/features";
 import { asRecord, getString } from "@/hooks/useEpisodeDetail";
 import type {
+  TimelineClipVideoReferenceMode,
   TimelineClipVideoReworkAction,
   TimelineClipVideoReworkTaskRequest,
 } from "@/utils/api/types";
 import { timelineItemMeta } from "./EpisodeTimelineWorkspaceModel";
+
+export type TimelineVideoReferenceChoice =
+  | TimelineClipVideoReferenceMode
+  | "manual_refs";
 
 export function isTimelineVideoClip(item: TimelineItem | null) {
   const meta = timelineItemMeta(item);
@@ -20,6 +25,8 @@ export function buildTimelineClipVideoReworkTaskPayload({
   resolution,
   ratio,
   reason,
+  referenceChoice = "start_end",
+  referenceImages,
   useClipStoryboard,
 }: {
   expectedVersion: number;
@@ -30,6 +37,8 @@ export function buildTimelineClipVideoReworkTaskPayload({
   resolution?: string | null;
   ratio?: string | null;
   reason?: string | null;
+  referenceChoice?: TimelineVideoReferenceChoice;
+  referenceImages?: string[] | null;
   useClipStoryboard?: boolean;
 }): TimelineClipVideoReworkTaskRequest {
   const payload: TimelineClipVideoReworkTaskRequest = {
@@ -51,10 +60,17 @@ export function buildTimelineClipVideoReworkTaskPayload({
   if (cleanedRatio) payload.ratio = cleanedRatio;
   const cleanedReason = reason?.trim();
   if (cleanedReason) payload.reason = cleanedReason;
-  if (useClipStoryboard) {
+  const cleanedRefs = dedupeReferenceImages(referenceImages);
+  if (useClipStoryboard || referenceChoice === "clip_storyboard_panel") {
     payload.reference_mode = "clip_storyboard_panel";
     payload.use_clip_storyboard = true;
     payload.use_end_frame = false;
+  } else if (referenceChoice === "manual_refs") {
+    payload.reference_mode = "start_end";
+    payload.use_end_frame = false;
+  }
+  if (cleanedRefs.length > 0) {
+    payload.reference_images = cleanedRefs;
   }
   return payload;
 }
@@ -90,4 +106,20 @@ export function parseOptionalNumber(value: string) {
   if (!value.trim()) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function parseReferenceImagesInput(value: string) {
+  return dedupeReferenceImages(value.split(/\s+/));
+}
+
+function dedupeReferenceImages(
+  values?: Array<string | null | undefined> | null,
+) {
+  const deduped: string[] = [];
+  for (const value of values || []) {
+    const cleaned = value?.trim();
+    if (!cleaned || deduped.includes(cleaned)) continue;
+    deduped.push(cleaned);
+  }
+  return deduped;
 }
