@@ -1,7 +1,10 @@
 "use client";
 
 import { StatusPill } from "@/components/shared";
-import type { StoryCharacter, VirtualIPEnvironmentLink } from "@/utils/api/types";
+import type {
+  StoryCharacter,
+  VirtualIPEnvironmentLink,
+} from "@/utils/api/types";
 
 export function ReadyCell({ ready }: { ready: boolean }) {
   return (
@@ -14,11 +17,27 @@ export function ReadyCell({ ready }: { ready: boolean }) {
 }
 
 export function CharacterChip({ character }: { character: StoryCharacter }) {
-  const name = character.character_name || character.name || "未命名 IP";
+  const name = storyCharacterDisplayName(character, "未命名 IP");
   return (
     <span className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600">
       IP: {name}
     </span>
+  );
+}
+
+export function storyCharacterDisplayName(
+  character: StoryCharacter,
+  fallback = "未命名",
+) {
+  return (
+    [
+      character.character_name,
+      character.display_name,
+      character.name,
+      character.virtual_ip_name,
+    ]
+      .find((value) => typeof value === "string" && value.trim())
+      ?.trim() || fallback
   );
 }
 

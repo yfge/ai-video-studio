@@ -12,6 +12,7 @@ import {
 import { GENRES, STATUSES } from "@/hooks/useStories";
 import type { Story, StoryCharacter } from "@/utils/api/types";
 import { storyDisplayText } from "./StoryProductionModel";
+import { storyCharacterDisplayName } from "./StoryProductionDetailParts";
 
 interface StoryListSectionProps {
   stories: Story[];
@@ -200,11 +201,7 @@ function StoryProjectCard({
   );
 }
 
-function StoryCharacterChips({
-  characters,
-}: {
-  characters: StoryCharacter[];
-}) {
+function StoryCharacterChips({ characters }: { characters: StoryCharacter[] }) {
   if (!characters.length) {
     return (
       <div className="mt-4">
@@ -222,7 +219,7 @@ function StoryCharacterChips({
           key={character.id}
           className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600"
         >
-          IP: {character.character_name || character.name || "未命名"}
+          IP: {storyCharacterDisplayName(character)}
         </span>
       ))}
       {characters.length > 3 ? (

@@ -9,7 +9,10 @@ export interface EpisodeCharacter {
   episode_business_id: string;
   virtual_ip_id: number;
   virtual_ip_business_id: string;
-  character_name: string;
+  virtual_ip_name?: string | null;
+  name?: string | null;
+  display_name?: string | null;
+  character_name: string | null;
   role_type: string;
   importance: number;
   personality?: string;

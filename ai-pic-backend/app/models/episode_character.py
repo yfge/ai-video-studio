@@ -2,16 +2,7 @@ from datetime import datetime
 
 from app.core.database import Base
 from app.models.base import SoftDeleteBusinessMixin
-from sqlalchemy import (
-    JSON,
-    Column,
-    DateTime,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 
@@ -29,10 +20,16 @@ class EpisodeCharacter(SoftDeleteBusinessMixin, Base):
 
     # Foreign keys
     episode_id = Column(
-        Integer, ForeignKey("episodes.id", ondelete="CASCADE"), nullable=False, comment="Episode ID"
+        Integer,
+        ForeignKey("episodes.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="Episode ID",
     )
     episode_business_id = Column(
-        String(32), index=True, nullable=True, comment="Business key: episode business_id"
+        String(32),
+        index=True,
+        nullable=True,
+        comment="Business key: episode business_id",
     )
     virtual_ip_id = Column(
         Integer,
@@ -41,7 +38,10 @@ class EpisodeCharacter(SoftDeleteBusinessMixin, Base):
         comment="VirtualIP ID (resource provider)",
     )
     virtual_ip_business_id = Column(
-        String(32), index=True, nullable=True, comment="Business key: VirtualIP business_id"
+        String(32),
+        index=True,
+        nullable=True,
+        comment="Business key: VirtualIP business_id",
     )
 
     # Character metadata
@@ -54,13 +54,17 @@ class EpisodeCharacter(SoftDeleteBusinessMixin, Base):
     importance = Column(Integer, default=1, comment="Importance level 1-5, default 1")
 
     # Override fields (optional)
-    personality = Column(Text, nullable=True, comment="Personality (overrides VirtualIP)")
+    personality = Column(
+        Text, nullable=True, comment="Personality (overrides VirtualIP)"
+    )
     background = Column(Text, nullable=True, comment="Background (overrides VirtualIP)")
     appearance_override = Column(
         Text, nullable=True, comment="Appearance supplement to VirtualIP.style_prompt"
     )
     voice_config_override = Column(
-        JSON, nullable=True, comment="Voice config override (replaces VirtualIP.voice_config)"
+        JSON,
+        nullable=True,
+        comment="Voice config override (replaces VirtualIP.voice_config)",
     )
 
     # Scene tracking
@@ -69,17 +73,37 @@ class EpisodeCharacter(SoftDeleteBusinessMixin, Base):
         nullable=True,
         comment="List of scene appearances: [{scene_number, role_in_scene}]",
     )
-    first_appearance_scene = Column(Integer, nullable=True, comment="First appearance scene number")
-    last_appearance_scene = Column(Integer, nullable=True, comment="Last appearance scene number")
+    first_appearance_scene = Column(
+        Integer, nullable=True, comment="First appearance scene number"
+    )
+    last_appearance_scene = Column(
+        Integer, nullable=True, comment="Last appearance scene number"
+    )
 
     extra_metadata = Column(JSON, nullable=True, comment="Additional metadata")
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, comment="Creation time")
     updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="Update time"
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        comment="Update time",
     )
 
     # Relationships
     episode = relationship("Episode", back_populates="episode_characters")
     virtual_ip = relationship("VirtualIP")
+
+    @property
+    def virtual_ip_name(self):
+        virtual_ip = getattr(self, "virtual_ip", None)
+        return getattr(virtual_ip, "name", None) if virtual_ip else None
+
+    @property
+    def name(self):
+        return self.character_name or self.virtual_ip_name
+
+    @property
+    def display_name(self):
+        return self.name or f"临时角色{self.id}"

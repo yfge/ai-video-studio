@@ -244,6 +244,19 @@ class StoryCharacter(SoftDeleteBusinessMixin, Base):
     story = relationship("Story", back_populates="story_characters")
     virtual_ip = relationship("VirtualIP")
 
+    @property
+    def virtual_ip_name(self):
+        virtual_ip = getattr(self, "virtual_ip", None)
+        return getattr(virtual_ip, "name", None) if virtual_ip else None
+
+    @property
+    def name(self):
+        return self.character_name or self.virtual_ip_name
+
+    @property
+    def display_name(self):
+        return self.name or f"角色{self.id}"
+
 
 class ScriptTemplate(SoftDeleteBusinessMixin, Base):
     """剧本模板模型"""

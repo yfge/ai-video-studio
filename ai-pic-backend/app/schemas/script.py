@@ -1,50 +1,12 @@
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
+from app.schemas.story_character import StoryCharacterCreate, StoryCharacterResponse
 from app.schemas.user import UserSummary
 from pydantic import BaseModel, Field, field_validator
 
 
 # 故事概要相关schemas
-class StoryCharacterBase(BaseModel):
-    virtual_ip_id: int
-    character_name: Optional[str] = None
-    role_type: Optional[str] = Field(
-        None, description="角色类型：protagonist, antagonist, supporting"
-    )
-    importance: int = Field(1, ge=1, le=5, description="重要度：1-5")
-    personality: Optional[str] = None
-    background: Optional[str] = None
-    motivation: Optional[str] = None
-    character_arc: Optional[str] = None
-    relationships: Optional[Dict[str, Any]] = None
-
-
-class StoryCharacterCreate(StoryCharacterBase):
-    pass
-
-
-class StoryCharacterUpdate(BaseModel):
-    character_name: Optional[str] = None
-    role_type: Optional[str] = None
-    importance: Optional[int] = Field(None, ge=1, le=5)
-    personality: Optional[str] = None
-    background: Optional[str] = None
-    motivation: Optional[str] = None
-    character_arc: Optional[str] = None
-    relationships: Optional[Dict[str, Any]] = None
-
-
-class StoryCharacterResponse(StoryCharacterBase):
-    id: int
-    story_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 class StoryBase(BaseModel):
     title: str = Field(..., max_length=255)
     story_format: str = Field(

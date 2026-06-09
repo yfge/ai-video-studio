@@ -1,6 +1,7 @@
 "use client";
 
 import type { EpisodeCharacter } from "@/utils/api/types";
+import { episodeCharacterDisplayName } from "./episodeCharacterDisplay";
 
 export function StoryboardCharacterIpSelector({
   characters,
@@ -28,7 +29,7 @@ export function StoryboardCharacterIpSelector({
       ) : options.length ? (
         <div className="grid gap-1.5">
           {options.map((character) => {
-            const label = character.character_name || "未命名角色";
+            const label = episodeCharacterDisplayName(character);
             const virtualIpId = character.virtual_ip_id;
             return (
               <label

@@ -2,6 +2,7 @@
 
 import type { EpisodeCharacter } from "@/utils/api/types";
 import { StatusPill, operatorButtonClass } from "@/components/shared";
+import { episodeCharacterDisplayName } from "./episodeCharacterDisplay";
 
 interface CharacterRowProps {
   character: EpisodeCharacter;
@@ -15,22 +16,19 @@ export function CharacterRow({
   onDelete,
 }: CharacterRowProps) {
   const importanceLabels = ["", "次要", "重要", "主要", "核心", "关键"];
+  const displayName = episodeCharacterDisplayName(character);
 
   return (
     <div className="p-4 hover:bg-gray-50">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-gray-900">
-              {character.character_name}
-            </h3>
+            <h3 className="text-sm font-medium text-gray-900">{displayName}</h3>
             <StatusPill tone={character.importance >= 4 ? "blue" : "gray"}>
               {importanceLabels[character.importance] || "次要"}
             </StatusPill>
             {character.role_type && (
-              <StatusPill tone="gray">
-                {character.role_type}
-              </StatusPill>
+              <StatusPill tone="gray">{character.role_type}</StatusPill>
             )}
           </div>
 
