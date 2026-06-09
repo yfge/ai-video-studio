@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { TimelineItem, TimelineTrack } from "@/components/features";
 import { Timeline } from "@/components/features";
 import {
@@ -43,6 +44,7 @@ export function EpisodeTimelineMainPanel({
   renderJobsLoading,
   renderBusy,
   renderError,
+  clipProductionPanel,
   onQueueRender,
   onRetryRender,
 }: {
@@ -64,6 +66,7 @@ export function EpisodeTimelineMainPanel({
   renderJobsLoading: boolean;
   renderBusy: boolean;
   renderError: string | null;
+  clipProductionPanel?: ReactNode;
   onQueueRender: (renderType: TimelineRenderType) => void;
   onRetryRender: (renderType: TimelineRenderType) => void;
 }) {
@@ -130,6 +133,7 @@ export function EpisodeTimelineMainPanel({
             <OperatorState title="选择剧本并生成时间轴后，这里会显示对白和分镜轨道。" />
           )}
         </div>
+        {clipProductionPanel}
         <TimelineRenderPanel
           readiness={renderReadiness}
           latestJob={latestRenderJob}

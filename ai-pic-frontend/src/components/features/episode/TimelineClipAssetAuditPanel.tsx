@@ -27,6 +27,7 @@ export function TimelineClipAssetAuditPanel({
   error,
   onReworkRecorded,
   onNotify,
+  showProviderControls = true,
 }: {
   item: TimelineItem | null;
   timelineId?: number | string | null;
@@ -39,6 +40,7 @@ export function TimelineClipAssetAuditPanel({
     message: string,
     variant: "success" | "error" | "warning" | "info",
   ) => void;
+  showProviderControls?: boolean;
 }) {
   const clipId = selectedTimelineClipId(item);
   const matches = clipId
@@ -88,14 +90,16 @@ export function TimelineClipAssetAuditPanel({
         onRecorded={onReworkRecorded}
         onNotify={onNotify}
       />
-      <TimelineClipProviderReworkControls
-        timelineId={timelineId}
-        timelineVersion={timelineVersion}
-        clipId={clipId}
-        item={item}
-        onQueued={onReworkRecorded}
-        onNotify={onNotify}
-      />
+      {showProviderControls ? (
+        <TimelineClipProviderReworkControls
+          timelineId={timelineId}
+          timelineVersion={timelineVersion}
+          clipId={clipId}
+          item={item}
+          onQueued={onReworkRecorded}
+          onNotify={onNotify}
+        />
+      ) : null}
     </section>
   );
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { TimelineTrack } from "@/components/features";
 import type {
   NormalizedScene,
   Script,
   TimelineResponse,
 } from "@/utils/api/types";
-import { OperatorInspector, OperatorWorkspace } from "@/components/shared";
+import { OperatorWorkspace } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 import {
@@ -19,12 +20,9 @@ import {
   timelineItemMeta,
 } from "./EpisodeTimelineWorkspaceModel";
 import { buildTimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
-import {
-  EpisodeTimelineContextRail,
-  EpisodeTimelineInspectorContent,
-} from "./EpisodeTimelineWorkspaceParts";
+import { EpisodeTimelineContextRail } from "./EpisodeTimelineWorkspaceParts";
+import { EpisodeTimelineClipProductionPanel } from "./EpisodeTimelineClipProductionPanel";
 import { EpisodeTimelineMainPanel } from "./EpisodeTimelineMainPanel";
-import { TimelineClipAssetAuditPanel } from "./TimelineClipAssetAuditPanel";
 import { useTimelineClipAssets } from "./useTimelineClipAssets";
 import { useTimelineSceneEnvironments } from "./useTimelineSceneEnvironments";
 import { useTimelineRenderJobs } from "./useTimelineRenderJobs";
@@ -130,7 +128,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
   });
 
   useEffect(() => {
-    if (!selection.item) setSelectedItemId(firstTimelineItemId(tracks));
+    if (!selection.item) setSelectedItemId(preferredTimelineItemId(tracks));
   }, [selection.item, tracks]);
 
   useEffect(() => {
@@ -173,40 +171,41 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
           renderJobsLoading={renderJobsLoading}
           renderBusy={renderBusy}
           renderError={renderError}
+          clipProductionPanel={
+            <EpisodeTimelineClipProductionPanel
+              item={selection.item}
+              track={selection.track}
+              scene={selectedScene}
+              selectedStoryboard={selectedStoryboard}
+              environments={environments}
+              selectedEnvironmentId={selectedEnvironmentId}
+              environmentSaving={environmentSaving}
+              timelineId={selectedTimelineSpec?.id}
+              timelineVersion={selectedTimelineSpec?.version}
+              clipAssets={clipAssets}
+              clipAssetsLoading={clipAssetsLoading}
+              clipAssetsError={clipAssetsError}
+              onEnvironmentChange={setSelectedEnvironmentId}
+              onSaveEnvironment={() => void saveEnvironment(selectedScene)}
+              onNavigateToScript={onNavigateToScript}
+              onNavigateToStoryboard={onNavigateToStoryboard}
+              onNavigateToTasks={onNavigateToTasks}
+              onReworkRecorded={reloadClipAssets}
+              onNotify={(message, variant) => showAlert({ message, variant })}
+            />
+          }
           onQueueRender={(renderType) => void queueRender(renderType, false)}
           onRetryRender={(renderType) => void queueRender(renderType, true)}
         />
       }
-      inspector={
-        <OperatorInspector title="片段检查器" subtitle="选中 beat 的生成控制">
-          <EpisodeTimelineInspectorContent
-            item={selection.item}
-            track={selection.track}
-            scene={selectedScene}
-            selectedStoryboard={selectedStoryboard}
-            environments={environments}
-            selectedEnvironmentId={selectedEnvironmentId}
-            environmentSaving={environmentSaving}
-            onEnvironmentChange={setSelectedEnvironmentId}
-            onSaveEnvironment={() => void saveEnvironment(selectedScene)}
-            onNavigateToScript={onNavigateToScript}
-            onNavigateToStoryboard={onNavigateToStoryboard}
-            onNavigateToTasks={onNavigateToTasks}
-          />
-          <div className="mt-4">
-            <TimelineClipAssetAuditPanel
-              item={selection.item}
-              timelineId={selectedTimelineSpec?.id}
-              timelineVersion={selectedTimelineSpec?.version}
-              clipAssets={clipAssets}
-              loading={clipAssetsLoading}
-              error={clipAssetsError}
-              onReworkRecorded={reloadClipAssets}
-              onNotify={(message, variant) => showAlert({ message, variant })}
-            />
-          </div>
-        </OperatorInspector>
-      }
     />
   );
+}
+
+function preferredTimelineItemId(tracks: TimelineTrack[]) {
+  for (const track of tracks) {
+    const videoItem = track.items.find((item) => item.type === "video");
+    if (videoItem) return videoItem.id;
+  }
+  return firstTimelineItemId(tracks);
 }
