@@ -2,7 +2,10 @@
 
 import type { FormEvent } from "react";
 import { operatorButtonClass, operatorSelectClass } from "@/components/shared";
-import type { TimelineClipVideoReworkAction } from "@/utils/api/types";
+import type {
+  EpisodeCharacter,
+  TimelineClipVideoReworkAction,
+} from "@/utils/api/types";
 import {
   StoryboardReferenceCard,
   VideoReferenceSelect,
@@ -41,6 +44,10 @@ export function TimelineClipProviderReworkCards({
   storyboardPanelCount,
   storyboardPanelIndex,
   storyboardSheetUrl,
+  episodeCharacters,
+  episodeCharactersLoading,
+  episodeCharactersError,
+  selectedStoryboardVirtualIpIds,
   generatingStoryboard,
   submitting,
   submitError,
@@ -57,6 +64,7 @@ export function TimelineClipProviderReworkCards({
   onReferenceImagesInputChange,
   onStoryboardStyleChange,
   onStoryboardPanelCountChange,
+  onStoryboardVirtualIpToggle,
   onGenerateStoryboard,
   onSubmit,
 }: {
@@ -73,6 +81,10 @@ export function TimelineClipProviderReworkCards({
   storyboardPanelCount: string;
   storyboardPanelIndex?: number | null;
   storyboardSheetUrl?: string | null;
+  episodeCharacters: EpisodeCharacter[];
+  episodeCharactersLoading: boolean;
+  episodeCharactersError: string | null;
+  selectedStoryboardVirtualIpIds: number[];
   generatingStoryboard: boolean;
   submitting: boolean;
   submitError: string | null;
@@ -91,6 +103,7 @@ export function TimelineClipProviderReworkCards({
     value: "2d_cartoon" | "3d_cartoon" | "live_action",
   ) => void;
   onStoryboardPanelCountChange: (value: string) => void;
+  onStoryboardVirtualIpToggle: (virtualIpId: number, checked: boolean) => void;
   onGenerateStoryboard: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
@@ -102,11 +115,16 @@ export function TimelineClipProviderReworkCards({
           storyboardStyle={storyboardStyle}
           storyboardPanelCount={storyboardPanelCount}
           storyboardSheetUrl={storyboardSheetUrl}
+          episodeCharacters={episodeCharacters}
+          episodeCharactersLoading={episodeCharactersLoading}
+          episodeCharactersError={episodeCharactersError}
+          selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
           generatingStoryboard={generatingStoryboard}
           canGenerateStoryboard={canGenerateStoryboard}
           onReferenceImagesInputChange={onReferenceImagesInputChange}
           onStoryboardStyleChange={onStoryboardStyleChange}
           onStoryboardPanelCountChange={onStoryboardPanelCountChange}
+          onCharacterVirtualIpToggle={onStoryboardVirtualIpToggle}
           onGenerateStoryboard={onGenerateStoryboard}
         />
 

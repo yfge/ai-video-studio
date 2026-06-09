@@ -102,6 +102,33 @@ export function timelineClipStoryboardSheetUrl(item: TimelineItem | null) {
   );
 }
 
+export function timelineClipCharacterVirtualIpIds(item: TimelineItem | null) {
+  const meta = timelineItemMeta(item);
+  const sourceRefs = asRecord(meta.source_refs);
+  return dedupeNumbers([
+    ...extractNumberValues(meta.virtual_ip_id),
+    ...extractNumberValues(meta.virtual_ip_ids),
+    ...extractNumberValues(meta.character_ids),
+    ...extractNumberValues(sourceRefs?.virtual_ip_id),
+    ...extractNumberValues(sourceRefs?.virtual_ip_ids),
+    ...extractNumberValues(sourceRefs?.character_ids),
+  ]);
+}
+
+export function dedupeVirtualIpIds(values: Array<number | null | undefined>) {
+  const deduped: number[] = [];
+  for (const value of values) {
+    if (!value || deduped.includes(value)) continue;
+    deduped.push(value);
+  }
+  return deduped;
+}
+
+export function sameVirtualIpIds(left: number[], right: number[]) {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
+
 export function parseOptionalNumber(value: string) {
   if (!value.trim()) return null;
   const parsed = Number(value);
@@ -122,4 +149,20 @@ function dedupeReferenceImages(
     deduped.push(cleaned);
   }
   return deduped;
+}
+
+function extractNumberValues(value: unknown): number[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => extractNumberValues(item));
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return [value];
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? [parsed] : [];
+  }
+  return [];
+}
+
+function dedupeNumbers(values: number[]) {
+  return dedupeVirtualIpIds(values);
 }

@@ -10,6 +10,7 @@ import type {
 import { OperatorWorkspace } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
+import { useEpisodeCharacters } from "@/hooks/useEpisodeCharacters";
 import {
   firstTimelineItemId,
   resolveTimelineSelection,
@@ -28,6 +29,7 @@ import { useTimelineSceneEnvironments } from "./useTimelineSceneEnvironments";
 import { useTimelineRenderJobs } from "./useTimelineRenderJobs";
 
 interface EpisodeTimelineWorkspaceProps {
+  episodeId?: number | string | null;
   selectedScriptId: number | null;
   selectedScript: Script | null;
   selectedTimelineSpec: TimelineResponse | null;
@@ -51,6 +53,7 @@ interface EpisodeTimelineWorkspaceProps {
 export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
   const {
     selectedScriptId,
+    episodeId,
     selectedScript,
     selectedTimelineSpec,
     selectedAudioTimeline,
@@ -71,6 +74,16 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
   } = props;
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const { showAlert } = useAlertModal();
+  const effectiveEpisodeId =
+    episodeId ?? selectedTimelineSpec?.episode_id ?? null;
+  const {
+    characters: episodeCharacters,
+    loading: episodeCharactersLoading,
+    error: episodeCharactersError,
+  } = useEpisodeCharacters({
+    episodeId: effectiveEpisodeId ?? "",
+    autoLoad: Boolean(effectiveEpisodeId),
+  });
   const { models, loading: modelsLoading } = useAvailableModels({
     modelType: "text",
     enabled: true,
@@ -182,6 +195,9 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
               environmentSaving={environmentSaving}
               timelineId={selectedTimelineSpec?.id}
               timelineVersion={selectedTimelineSpec?.version}
+              episodeCharacters={episodeCharacters}
+              episodeCharactersLoading={episodeCharactersLoading}
+              episodeCharactersError={episodeCharactersError}
               clipAssets={clipAssets}
               clipAssetsLoading={clipAssetsLoading}
               clipAssetsError={clipAssetsError}

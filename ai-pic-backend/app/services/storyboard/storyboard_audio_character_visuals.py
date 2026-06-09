@@ -3,7 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from app.core.validators.character_registry import normalize_character_name_token
+from app.core.validators.character_registry import (
+    build_alias_to_canonical_map,
+    extract_name_aliases,
+    normalize_character_name_token,
+    preferred_display_name,
+)
+from app.models.episode_character import EpisodeCharacter
 from app.models.script import StoryCharacter
 from app.models.virtual_ip import VirtualIP, VirtualIPImage
 from app.repositories.story_character_visual_repository import (
@@ -123,3 +129,64 @@ def load_story_character_visuals(
         )
 
     return visuals, alias_to_canonical
+
+
+def load_episode_character_visuals(
+    db: Session,
+    *,
+    episode_id: int,
+) -> tuple[dict[str, StoryCharacterVisual], dict[str, str]]:
+    """Return episode temporary character visuals keyed by canonical display name."""
+    rows = StoryCharacterVisualRepository(db).list_episode_characters_with_images(
+        episode_id
+    )
+    canonical_names: list[str] = []
+    extra_aliases: dict[str, list[str]] = {}
+    visuals: dict[str, StoryCharacterVisual] = {}
+
+    for row in rows:
+        if not isinstance(row, EpisodeCharacter):
+            continue
+        vip = getattr(row, "virtual_ip", None)
+        if not isinstance(vip, VirtualIP) or getattr(vip, "is_deleted", False):
+            continue
+        canonical = normalize_character_name_token(
+            str(
+                getattr(row, "character_name", None)
+                or preferred_display_name(getattr(vip, "name", None))
+                or getattr(vip, "name", "")
+                or ""
+            )
+        )
+        if not canonical:
+            continue
+        canonical_names.append(canonical)
+        extra_aliases[canonical] = [
+            *extract_name_aliases(canonical),
+            *extract_name_aliases(getattr(vip, "name", None)),
+        ]
+        visuals[canonical] = StoryCharacterVisual(
+            canonical_name=canonical,
+            virtual_ip_id=int(getattr(vip, "id")),
+            card_brief=_build_episode_character_card_brief(canonical, row, vip),
+            anchor_url=_select_virtual_ip_anchor_url(vip),
+            importance=int(getattr(row, "importance", 1) or 1),
+        )
+
+    alias_to_canonical = build_alias_to_canonical_map(
+        canonical_names=canonical_names,
+        extra_aliases=extra_aliases,
+    )
+    return visuals, alias_to_canonical
+
+
+def _build_episode_character_card_brief(
+    canonical_name: str,
+    row: EpisodeCharacter,
+    vip: VirtualIP,
+) -> str:
+    brief = _build_character_card_brief(canonical_name, vip)
+    override = str(getattr(row, "appearance_override", "") or "").strip()
+    if override:
+        return f"{brief}；{truncate(compact(override), 90)}"
+    return brief

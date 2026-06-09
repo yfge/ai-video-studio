@@ -1,31 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { TimelineItem } from "@/components/features";
 import { timelineAPI } from "@/utils/api/endpoints";
 import type {
+  EpisodeCharacter,
   TimelineClipStoryboardStyle,
   TimelineClipVideoReworkAction,
 } from "@/utils/api/types";
 import { TimelineClipProviderReworkCards } from "./TimelineClipProviderReworkCards";
 import {
   buildTimelineClipVideoReworkTaskPayload,
+  dedupeVirtualIpIds,
   isTimelineVideoClip,
   parseReferenceImagesInput,
   parseOptionalNumber,
+  sameVirtualIpIds,
+  timelineClipCharacterVirtualIpIds,
   timelineClipStoryboardPanelIndex,
   timelineClipStoryboardSheetUrl,
   type TimelineVideoReferenceChoice,
 } from "./TimelineClipProviderReworkModel";
 
 type NotifyVariant = "success" | "error" | "warning" | "info";
+const EMPTY_EPISODE_CHARACTERS: EpisodeCharacter[] = [];
 
 export function TimelineClipProviderReworkControls({
   timelineId,
   timelineVersion,
   clipId,
   item,
+  episodeCharacters = EMPTY_EPISODE_CHARACTERS,
+  episodeCharactersLoading = false,
+  episodeCharactersError = null,
   onQueued,
   onNotify,
 }: {
@@ -33,6 +41,9 @@ export function TimelineClipProviderReworkControls({
   timelineVersion?: number | null;
   clipId?: string | null;
   item: TimelineItem | null;
+  episodeCharacters?: EpisodeCharacter[];
+  episodeCharactersLoading?: boolean;
+  episodeCharactersError?: string | null;
   onQueued?: () => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
 }) {
@@ -49,16 +60,22 @@ export function TimelineClipProviderReworkControls({
   const [storyboardStyle, setStoryboardStyle] =
     useState<TimelineClipStoryboardStyle>("live_action");
   const [storyboardPanelCount, setStoryboardPanelCount] = useState("4");
+  const [selectedStoryboardVirtualIpIds, setSelectedStoryboardVirtualIpIds] =
+    useState<number[]>([]);
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  if (!isTimelineVideoClip(item)) return null;
-
+  const isVideoClip = isTimelineVideoClip(item);
   const storyboardPanelIndex = timelineClipStoryboardPanelIndex(item);
   const storyboardSheetUrl = timelineClipStoryboardSheetUrl(item);
   const parsedDuration = parseOptionalNumber(duration);
   const referenceImages = parseReferenceImagesInput(referenceImagesInput);
+  const availableVirtualIpIds = useMemo(
+    () =>
+      dedupeVirtualIpIds(episodeCharacters.map((item) => item.virtual_ip_id)),
+    [episodeCharacters],
+  );
   const effectiveReferenceChoice =
     videoReferenceChoice === "clip_storyboard_panel" && !storyboardPanelIndex
       ? "start_end"
@@ -69,6 +86,32 @@ export function TimelineClipProviderReworkControls({
   const canGenerateStoryboard = Boolean(
     timelineId && timelineVersion && clipId && !generatingStoryboard,
   );
+
+  useEffect(() => {
+    const clipVirtualIpIds = timelineClipCharacterVirtualIpIds(item).filter(
+      (id) => availableVirtualIpIds.includes(id),
+    );
+    const defaults = clipVirtualIpIds.length
+      ? clipVirtualIpIds
+      : availableVirtualIpIds.length === 1
+      ? availableVirtualIpIds
+      : [];
+    setSelectedStoryboardVirtualIpIds((prev) =>
+      sameVirtualIpIds(prev, defaults) ? prev : defaults,
+    );
+  }, [availableVirtualIpIds, item]);
+
+  if (!isVideoClip) return null;
+
+  const handleStoryboardVirtualIpToggle = (
+    virtualIpId: number,
+    checked: boolean,
+  ) => {
+    setSelectedStoryboardVirtualIpIds((prev) => {
+      if (checked) return dedupeVirtualIpIds([...prev, virtualIpId]);
+      return prev.filter((id) => id !== virtualIpId);
+    });
+  };
 
   const handleGenerateStoryboard = async () => {
     if (!timelineId || !timelineVersion || !clipId) {
@@ -93,6 +136,9 @@ export function TimelineClipProviderReworkControls({
           aspect_ratio: "1:1",
           reference_images: referenceImages.length
             ? referenceImages
+            : undefined,
+          character_virtual_ip_ids: selectedStoryboardVirtualIpIds.length
+            ? selectedStoryboardVirtualIpIds
             : undefined,
         },
       );
@@ -173,6 +219,10 @@ export function TimelineClipProviderReworkControls({
       storyboardPanelCount={storyboardPanelCount}
       storyboardPanelIndex={storyboardPanelIndex}
       storyboardSheetUrl={storyboardSheetUrl}
+      episodeCharacters={episodeCharacters}
+      episodeCharactersLoading={episodeCharactersLoading}
+      episodeCharactersError={episodeCharactersError}
+      selectedStoryboardVirtualIpIds={selectedStoryboardVirtualIpIds}
       generatingStoryboard={generatingStoryboard}
       submitting={submitting}
       submitError={submitError}
@@ -189,6 +239,7 @@ export function TimelineClipProviderReworkControls({
       onReferenceImagesInputChange={setReferenceImagesInput}
       onStoryboardStyleChange={setStoryboardStyle}
       onStoryboardPanelCountChange={setStoryboardPanelCount}
+      onStoryboardVirtualIpToggle={handleStoryboardVirtualIpToggle}
       onGenerateStoryboard={handleGenerateStoryboard}
       onSubmit={handleSubmit}
     />

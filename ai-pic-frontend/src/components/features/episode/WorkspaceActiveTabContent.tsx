@@ -115,6 +115,7 @@ export function WorkspaceActiveTabContent({
   if (activeTab === "timeline") {
     return (
       <WorkspaceTimelineTabContent
+        episodeId={episode.id}
         scripts={orderedScripts}
         selectedScriptId={selectedScriptId}
         selectedScript={selectedScript}

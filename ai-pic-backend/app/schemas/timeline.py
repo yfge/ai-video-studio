@@ -72,6 +72,7 @@ class TimelineClipStoryboardGenerateRequest(TimelineVersionRequest):
     width: Optional[int] = Field(None, ge=1)
     height: Optional[int] = Field(None, ge=1)
     reference_images: Optional[List[str]] = None
+    character_virtual_ip_ids: Optional[List[int]] = None
 
 
 class TimelineClipStoryboardGenerateResponse(BaseModel):

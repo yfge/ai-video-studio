@@ -12,6 +12,7 @@ import { OperatorState } from "@/components/shared";
 import { EpisodeTimelineWorkspace } from "./EpisodeTimelineWorkspace";
 
 interface WorkspaceTimelineTabContentProps {
+  episodeId: number | string;
   scripts: Script[];
   selectedScriptId: number | null;
   selectedScript: Script | null;
@@ -34,6 +35,7 @@ interface WorkspaceTimelineTabContentProps {
 }
 
 export function WorkspaceTimelineTabContent({
+  episodeId,
   scripts,
   selectedScriptId,
   selectedScript,
@@ -155,6 +157,7 @@ export function WorkspaceTimelineTabContent({
 
   return (
     <EpisodeTimelineWorkspace
+      episodeId={episodeId}
       selectedScriptId={selectedScriptId}
       selectedScript={selectedScript}
       selectedTimelineSpec={selectedTimelineSpec}

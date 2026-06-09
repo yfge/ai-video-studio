@@ -4,6 +4,7 @@ import type { TimelineItem, TimelineTrack } from "@/components/features";
 import { OperatorPanel, OperatorSectionHeader } from "@/components/shared";
 import type {
   Environment,
+  EpisodeCharacter,
   NormalizedScene,
   TimelineClipAssetResponse,
 } from "@/utils/api/types";
@@ -33,6 +34,9 @@ export function EpisodeTimelineClipProductionPanel({
   environmentSaving,
   timelineId,
   timelineVersion,
+  episodeCharacters,
+  episodeCharactersLoading,
+  episodeCharactersError,
   clipAssets,
   clipAssetsLoading,
   clipAssetsError,
@@ -53,6 +57,9 @@ export function EpisodeTimelineClipProductionPanel({
   environmentSaving: boolean;
   timelineId?: number | string | null;
   timelineVersion?: number | null;
+  episodeCharacters: EpisodeCharacter[];
+  episodeCharactersLoading: boolean;
+  episodeCharactersError: string | null;
   clipAssets: TimelineClipAssetResponse[];
   clipAssetsLoading: boolean;
   clipAssetsError: string | null;
@@ -132,6 +139,9 @@ export function EpisodeTimelineClipProductionPanel({
                   timelineVersion={timelineVersion}
                   clipId={clipId}
                   item={item}
+                  episodeCharacters={episodeCharacters}
+                  episodeCharactersLoading={episodeCharactersLoading}
+                  episodeCharactersError={episodeCharactersError}
                   onQueued={onReworkRecorded}
                   onNotify={onNotify}
                 />
