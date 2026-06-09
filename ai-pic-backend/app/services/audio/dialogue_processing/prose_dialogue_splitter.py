@@ -24,7 +24,8 @@ _QUOTED_SPAN_RE = re.compile(
     r"“(?P<c1>[^”]{1,2000})”"
     r"|「(?P<c2>[^」]{1,2000})」"
     r"|『(?P<c3>[^』]{1,2000})』"
-    r'|"(?P<c4>[^"]{1,2000})"'
+    r"|‘(?P<c4>[^’]{1,2000})’"
+    r'|"(?P<c5>[^"]{1,2000})"'
 )
 
 # Hints that a quoted span is UI text / label rather than spoken dialogue.
@@ -53,7 +54,7 @@ def _prev_non_space_char(text: str, idx: int) -> str | None:
 
 
 def _quote_text(match: re.Match[str]) -> str:
-    for key in ("c1", "c2", "c3", "c4"):
+    for key in ("c1", "c2", "c3", "c4", "c5"):
         value = match.group(key)
         if value is not None:
             return value
@@ -146,7 +147,9 @@ def split_prose_dialogue_block(
         prefix = text[:start]
 
         if strong:
-            speaker = _infer_speaker_from_prefix(prefix, alias_to_canonical=alias_to_canonical)
+            speaker = _infer_speaker_from_prefix(
+                prefix, alias_to_canonical=alias_to_canonical
+            )
         else:
             # Continuation quote: only if we already have a speaker and it doesn't
             # look like UI/screen text.
@@ -169,46 +172,6 @@ def split_prose_dialogue_block(
         last_speaker = normalized
 
     return results
-
-
-def repair_scene_dialogues_for_audio(
-    dialogues: Sequence[dict[str, Any]],
-    *,
-    alias_to_canonical: dict[str, str],
-) -> list[dict[str, Any]]:
-    """Repair a scene dialogue list by splitting narrations when possible."""
-    if not alias_to_canonical:
-        return list(dialogues or [])
-
-    repaired: list[dict[str, Any]] = []
-    for dlg in dialogues or []:
-        if not isinstance(dlg, dict):
-            continue
-        speaker = str(dlg.get("character") or "旁白")
-        content = str(dlg.get("content") or "").strip()
-        if not content:
-            continue
-
-        # Only attempt to split generic/narrator blocks that contain quotes.
-        if speaker in {"旁白", "路人", "店员"} and any(q in content for q in ("“", '"', "「", "『")):
-            split = split_prose_dialogue_block(
-                content,
-                alias_to_canonical=alias_to_canonical,
-                default_speaker="旁白",
-            )
-            if len(split) >= 2:
-                for seg in split:
-                    seg_out = dict(seg)
-                    if dlg.get("emotion") is not None:
-                        seg_out["emotion"] = dlg.get("emotion")
-                    if dlg.get("action") is not None:
-                        seg_out["action"] = dlg.get("action")
-                    repaired.append(seg_out)
-                continue
-
-        repaired.append(dlg)
-
-    return repaired
 
 
 def sanitize_stage_directions_for_audio(
@@ -238,4 +201,3 @@ def sanitize_stage_directions_for_audio(
         out["content"] = content2
         cleaned.append(out)
     return cleaned
-

@@ -283,14 +283,21 @@ import `audio_timeline.beats` into Timeline Spec v1 as compatibility bridges.
 Import rules:
 
 - Preserve beat ordering by `start_ms`, then `scene_number`, then beat order.
-- Create matching dialogue, video, and subtitle clips for each dialogue/action
-  beat.
+- Create `dialogue` and `subtitle` clips only for spoken dialogue beats.
+- Treat generic narrator fallback prose such as `冲突升级：` / `爽点：` /
+  `卡点：` blocks as silent action timing even when legacy source data labels
+  them as `dialogue`.
+- Create `video` clips for dialogue, action, and intentionally preserved pause
+  beats.
 - Skip short pauses by default unless the audio pipeline already preserved them
   as storyboard-worthy beats.
 - Use TTS-derived `start_ms/end_ms/duration_ms` as the default duration source.
 - Copy `speaker_name`, `characters_involved`, `scene_id`, `scene_number`, and
   `beat_id` into clip source/audit fields.
 - Write `source_audio_timeline_version` on the timeline envelope.
+- Repair legacy imports when an existing Timeline has action, pause, or generic
+  narrator fallback prose on `dialogue` / `subtitle` tracks for the same
+  `source_audio_timeline_version`.
 
 ## Timeline API Contract
 

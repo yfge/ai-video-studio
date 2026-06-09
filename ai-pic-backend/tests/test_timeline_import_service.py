@@ -55,6 +55,16 @@ def _audio_timeline(script: Script, *, version: int = 3) -> dict:
                 "start_ms": 1600,
                 "end_ms": 2000,
             },
+            {
+                "scene_id": 12,
+                "scene_number": 2,
+                "beat_id": 104,
+                "beat_type": "dialogue",
+                "speaker_name": "旁白",
+                "text": "冲突升级：女主整理资料。她对着镜子说：‘我必须进去。’",
+                "start_ms": 2000,
+                "end_ms": 2600,
+            },
         ],
     }
 
@@ -81,23 +91,22 @@ def test_import_audio_timeline_creates_timeline_spec_tracks(db_session):
     assert spec["timeline_id"] == timeline.id
     assert spec["fps"] == 24
     assert spec["resolution"] == "1080x1920"
-    assert spec["duration_ms"] == 2000
+    assert spec["duration_ms"] == 2600
     tracks = {track["track_type"]: track for track in spec["tracks"]}
     assert set(tracks) == {"dialogue", "video", "subtitle"}
     assert len(tracks["dialogue"]["clips"]) == 1
-    assert len(tracks["video"]["clips"]) == 3
+    assert len(tracks["video"]["clips"]) == 4
     assert len(tracks["subtitle"]["clips"]) == 1
-    assert all(
-        clip["beat_type"] == "dialogue" for clip in tracks["dialogue"]["clips"]
-    )
-    assert all(
-        clip["beat_type"] == "dialogue" for clip in tracks["subtitle"]["clips"]
-    )
+    assert all(clip["beat_type"] == "dialogue" for clip in tracks["dialogue"]["clips"])
+    assert all(clip["beat_type"] == "dialogue" for clip in tracks["subtitle"]["clips"])
     assert [clip["beat_type"] for clip in tracks["video"]["clips"]] == [
         "dialogue",
         "action",
         "pause",
+        "action",
     ]
+    assert tracks["video"]["clips"][-1]["audio_excluded_reason"] == "fallback_narration"
+    assert tracks["video"]["clips"][-1]["source_beat_type"] == "dialogue"
 
     dialogue_clip = tracks["dialogue"]["clips"][0]
     assert dialogue_clip["clip_id"] == stable_clip_id(

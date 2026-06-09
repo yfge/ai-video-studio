@@ -1,5 +1,9 @@
-from app.services.audio.dialogue_processing.prose_dialogue_splitter import (
+from app.services.audio.dialogue_processing.audio_dialogue_filter import (
     repair_scene_dialogues_for_audio,
+    should_treat_dialogue_as_action_for_audio,
+    split_audio_dialogues_and_action_blocks,
+)
+from app.services.audio.dialogue_processing.prose_dialogue_splitter import (
     split_prose_dialogue_block,
 )
 
@@ -53,3 +57,44 @@ def test_repair_scene_dialogues_for_audio_splits_narrator_prose_block() -> None:
     )
     assert [d["character"] for d in repaired] == ["文闻", "老拐"]
     assert repaired[0]["content"].startswith("你说你能帮我")
+
+
+def test_split_prose_dialogue_block_handles_chinese_single_quotes() -> None:
+    alias_to_canonical = {"李总": "李总", "苏晴": "苏晴"}
+    text = "李总追问：‘有具体标的吗？’ 苏晴回答：‘比如，科讯科技。’"
+
+    parts = split_prose_dialogue_block(text, alias_to_canonical=alias_to_canonical)
+
+    assert [p["character"] for p in parts] == ["李总", "苏晴"]
+    assert [p["content"] for p in parts] == ["有具体标的吗？", "比如，科讯科技。"]
+
+
+def test_split_audio_dialogues_moves_fallback_narrator_prose_to_action() -> None:
+    dialogues = [
+        {
+            "character": "旁白",
+            "scene_number": 3,
+            "fallback": True,
+            "fallback_reason": "missing_dialogues",
+            "content": (
+                "冲突升级：面试现场。女主坐在长桌一侧。" "李总追问：‘有具体标的吗？’"
+            ),
+        }
+    ]
+
+    repaired, action_blocks = split_audio_dialogues_and_action_blocks(
+        dialogues,
+        alias_to_canonical={},
+    )
+
+    assert repaired == []
+    assert action_blocks == [
+        {
+            "type": "action",
+            "timing": "mid",
+            "content": dialogues[0]["content"],
+            "scene_number": 3,
+            "source": "dialogue_fallback",
+        }
+    ]
+    assert should_treat_dialogue_as_action_for_audio(dialogues[0]) is True

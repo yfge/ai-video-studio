@@ -7,6 +7,9 @@ from app.models.script import Episode, Script
 from app.models.timeline import Timeline
 from app.repositories.timeline_repository import TimelineRepository
 from app.services.timeline_clip_asset_lineage import TimelineClipAssetLineageService
+from app.services.timeline_import_repair import (
+    existing_timeline_needs_audio_track_repair,
+)
 from app.services.timeline_revision_service import TimelineRevisionService
 from app.services.timeline_spec_builder import (
     audio_timeline_version,
@@ -41,6 +44,7 @@ def import_audio_timeline_to_timeline_spec(
     if timeline_payload.get("script_id") != script.id:
         raise RuntimeError("audio_timeline_script_mismatch")
 
+    source_version = audio_timeline_version(timeline_payload)
     repo = TimelineRepository(db)
     revisions = TimelineRevisionService(db)
     clip_lineage = TimelineClipAssetLineageService(db)
@@ -48,11 +52,18 @@ def import_audio_timeline_to_timeline_spec(
         episode_id=episode.id,
         script_id=script.id,
     )
-    if existing is not None and not overwrite:
+    if (
+        existing is not None
+        and not overwrite
+        and not existing_timeline_needs_audio_track_repair(
+            existing,
+            audio_timeline=timeline_payload,
+            source_version=source_version,
+        )
+    ):
         return TimelineImportResult(timeline=existing, action="skipped")
 
     next_version = 1 if existing is None else (existing.version or 0) + 1
-    source_version = audio_timeline_version(timeline_payload)
     spec = _build_import_spec(
         episode=episode,
         script=script,

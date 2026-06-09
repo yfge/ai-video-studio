@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.audio.dialogue_processing.audio_dialogue_filter import (
+    should_treat_dialogue_as_action_for_audio,
+)
 from app.services.timeline_spec_source_validation import validate_clip_source_and_assets
 from app.services.timeline_spec_validation_types import fail as _fail
 from app.services.timeline_spec_validation_types import (
@@ -66,6 +69,7 @@ def validate_timeline_spec(
                 previous_end_ms=previous_end,
                 seen_clip_ids=seen_clip_ids,
             )
+            _validate_track_clip_semantics(clip, clip_path, track_type=track_type)
             previous_end = end_ms
             max_end_ms = max(max_end_ms, end_ms)
 
@@ -191,3 +195,28 @@ def _validate_clip(
 
     validate_clip_source_and_assets(clip, path)
     return end_ms
+
+
+def _validate_track_clip_semantics(
+    clip: dict[str, Any],
+    path: str,
+    *,
+    track_type: str,
+) -> None:
+    beat_type = clip.get("beat_type")
+    if track_type not in {"dialogue", "subtitle"}:
+        return
+    if should_treat_dialogue_as_action_for_audio(clip):
+        _fail(
+            "timeline_spec_track_dialogue_prose_invalid",
+            path,
+            f"{track_type} clips must not contain fallback narrator action prose",
+        )
+    if beat_type is None:
+        return
+    if str(beat_type) != "dialogue":
+        _fail(
+            "timeline_spec_track_beat_type_invalid",
+            f"{path}.beat_type",
+            f"{track_type} clips must reference dialogue beats",
+        )

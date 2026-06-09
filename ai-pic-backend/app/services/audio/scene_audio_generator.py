@@ -15,8 +15,10 @@ from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene
 from app.services.ai_service import ai_service
 from app.services.audio.audio_generator import ensure_oss_configured
+from app.services.audio.dialogue_processing.audio_dialogue_filter import (
+    split_audio_dialogues_and_action_blocks,
+)
 from app.services.audio.dialogue_processing.prose_dialogue_splitter import (
-    repair_scene_dialogues_for_audio,
     sanitize_stage_directions_for_audio,
 )
 from app.services.audio.dialogue_processing.scene_extractors import (
@@ -66,9 +68,12 @@ async def generate_scene_dialogue_audio(
 
     story_char_map = get_story_character_map(db, story.id)
     alias_to_canonical = build_story_alias_map(story)
-    dialogues = repair_scene_dialogues_for_audio(
-        dialogues, alias_to_canonical=alias_to_canonical
+    dialogues, fallback_action_blocks = split_audio_dialogues_and_action_blocks(
+        dialogues,
+        alias_to_canonical=alias_to_canonical,
     )
+    if fallback_action_blocks:
+        stage = [*stage, *fallback_action_blocks]
     stage = sanitize_stage_directions_for_audio(
         stage, alias_to_canonical=alias_to_canonical
     )

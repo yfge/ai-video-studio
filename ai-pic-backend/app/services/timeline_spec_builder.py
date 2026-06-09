@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 from app.models.script import Episode, Script
+from app.services.audio.dialogue_processing.audio_dialogue_filter import (
+    should_treat_dialogue_as_action_for_audio,
+)
 
 
 def build_timeline_spec_from_audio_timeline(
@@ -115,7 +118,12 @@ def _normalize_beats(beats: list[Any]) -> list[dict[str, Any]]:
             raise RuntimeError("audio_timeline_beat_missing_timing")
         if end_ms < start_ms:
             raise RuntimeError("audio_timeline_beat_invalid_timing")
-        normalized.append({**beat, "start_ms": start_ms, "end_ms": end_ms})
+        normalized_beat = {**beat, "start_ms": start_ms, "end_ms": end_ms}
+        if should_treat_dialogue_as_action_for_audio(normalized_beat):
+            normalized_beat["source_beat_type"] = normalized_beat.get("beat_type")
+            normalized_beat["beat_type"] = "action"
+            normalized_beat["audio_excluded_reason"] = "fallback_narration"
+        normalized.append(normalized_beat)
 
     normalized.sort(key=lambda item: (item["start_ms"], item["end_ms"]))
     previous_end = 0
@@ -173,6 +181,10 @@ def _clip(
         },
         "text": beat.get("text"),
     }
+    if beat.get("audio_excluded_reason"):
+        clip["audio_excluded_reason"] = beat.get("audio_excluded_reason")
+    if beat.get("source_beat_type"):
+        clip["source_beat_type"] = beat.get("source_beat_type")
     if track_type == "dialogue":
         clip["asset_ref"] = {
             "kind": "episode_audio",

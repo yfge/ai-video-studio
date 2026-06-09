@@ -34,6 +34,7 @@ def _clip(clip_id: str, ordinal: int, start_ms: int, end_ms: int) -> dict:
         "track_type": "dialogue",
         "scene_id": "scene_1",
         "beat_id": beat_id,
+        "beat_type": "dialogue",
         "ordinal": ordinal,
         "start_ms": start_ms,
         "end_ms": end_ms,
@@ -96,3 +97,19 @@ def test_timeline_spec_validation_rejects_invalid_source_reference():
     spec["tracks"][0]["clips"][0]["source_refs"]["scene_beat_id"] = "wrong"
 
     _expect_code(spec, "timeline_spec_source_mismatch")
+
+
+def test_timeline_spec_validation_rejects_non_dialogue_audio_track_clip():
+    spec = deepcopy(_valid_spec())
+    spec["tracks"][0]["clips"][0]["beat_type"] = "action"
+
+    _expect_code(spec, "timeline_spec_track_beat_type_invalid")
+
+
+def test_timeline_spec_validation_rejects_fallback_prose_audio_track_clip():
+    spec = deepcopy(_valid_spec())
+    clip = spec["tracks"][0]["clips"][0]
+    clip["speaker_name"] = "旁白"
+    clip["text"] = "冲突升级：女主整理资料。她对着镜子说：‘我必须进去。’"
+
+    _expect_code(spec, "timeline_spec_track_dialogue_prose_invalid")
