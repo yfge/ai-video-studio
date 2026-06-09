@@ -28,6 +28,7 @@ export function EpisodeTimelineClipProductionPanel({
   item,
   track,
   scene,
+  episodeId,
   selectedStoryboard,
   environments,
   selectedEnvironmentId,
@@ -51,6 +52,7 @@ export function EpisodeTimelineClipProductionPanel({
   item: TimelineItem | null;
   track: TimelineTrack | null;
   scene: NormalizedScene | null;
+  episodeId?: number | string | null;
   selectedStoryboard: Record<string, unknown> | null;
   environments: Environment[];
   selectedEnvironmentId: number | null;
@@ -135,6 +137,7 @@ export function EpisodeTimelineClipProductionPanel({
                   {clipId || "未关联稳定片段 ID"}
                 </div>
                 <TimelineClipProviderReworkControls
+                  episodeId={episodeId}
                   timelineId={timelineId}
                   timelineVersion={timelineVersion}
                   clipId={clipId}
@@ -142,6 +145,8 @@ export function EpisodeTimelineClipProductionPanel({
                   episodeCharacters={episodeCharacters}
                   episodeCharactersLoading={episodeCharactersLoading}
                   episodeCharactersError={episodeCharactersError}
+                  environments={environments}
+                  selectedEnvironmentId={selectedEnvironmentId}
                   onQueued={onReworkRecorded}
                   onNotify={onNotify}
                 />

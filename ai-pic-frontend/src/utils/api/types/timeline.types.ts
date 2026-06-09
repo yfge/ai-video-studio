@@ -184,6 +184,8 @@ export interface TimelineClipStoryboardGenerateRequest {
   height?: number | null;
   reference_images?: string[] | null;
   character_virtual_ip_ids?: number[] | null;
+  character_reference_images?: string[] | null;
+  environment_reference_images?: string[] | null;
 }
 
 export interface TimelineClipStoryboardGenerateResponse {

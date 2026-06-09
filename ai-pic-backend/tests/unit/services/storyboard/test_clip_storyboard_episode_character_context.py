@@ -120,6 +120,42 @@ def test_clip_storyboard_context_prefers_request_ip_selection(db_session):
     assert result.reference_images == ["https://cdn.example/courier.png"]
 
 
+def test_clip_storyboard_context_prioritizes_selected_reference_images(
+    db_session,
+):
+    user, episode, script = bootstrap_episode(db_session)
+    courier = _add_episode_character(db_session, episode.id, user.id, "快递员")
+    timeline = create_timeline(
+        db_session,
+        episode,
+        script,
+        timeline_spec(episode, script),
+        user,
+    )
+
+    result = build_clip_storyboard_context(
+        db_session,
+        timeline=timeline,
+        clip={
+            "clip_id": "clip-1",
+            "track_type": "video",
+            "text": "快递员把包裹递进门。",
+        },
+        panels=[{"panel_id": "panel-1", "visual_prompt": "快递员递包裹"}],
+        request_reference_images=["https://manual.example/ref.png"],
+        request_character_virtual_ip_ids=[courier.id],
+        request_character_reference_images=["https://selected.example/ip.png"],
+        request_environment_reference_images=["https://selected.example/env.png"],
+    )
+
+    assert result.reference_images == [
+        "https://selected.example/ip.png",
+        "https://selected.example/env.png",
+        "https://manual.example/ref.png",
+        "https://cdn.example/courier.png",
+    ]
+
+
 def _add_story_character(
     db_session, story_id: int, user_id: int, name: str
 ) -> VirtualIP:

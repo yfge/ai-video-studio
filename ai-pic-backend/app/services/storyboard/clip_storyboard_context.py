@@ -31,8 +31,12 @@ def build_clip_storyboard_context(
     panels: Sequence[dict[str, Any]],
     request_reference_images: Sequence[str] | None,
     request_character_virtual_ip_ids: Sequence[int] | None = None,
+    request_character_reference_images: Sequence[str] | None = None,
+    request_environment_reference_images: Sequence[str] | None = None,
 ) -> ClipStoryboardContext:
     manual_refs = dedupe_strs(request_reference_images or [])
+    selected_character_refs = dedupe_strs(request_character_reference_images or [])
+    selected_environment_refs = dedupe_strs(request_environment_reference_images or [])
     story_id = _story_id(db, timeline)
     episode_id = _maybe_int(getattr(timeline, "episode_id", None))
     script_id = _maybe_int(getattr(timeline, "script_id", None))
@@ -42,7 +46,11 @@ def build_clip_storyboard_context(
         "characters": [],
         "warnings": warnings,
     }
-    reference_images = list(manual_refs)
+    reference_images = [
+        *selected_character_refs,
+        *selected_environment_refs,
+        *manual_refs,
+    ]
 
     character_context = build_clip_storyboard_character_context(
         db,

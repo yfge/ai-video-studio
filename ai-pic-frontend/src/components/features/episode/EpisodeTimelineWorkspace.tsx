@@ -189,6 +189,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
               item={selection.item}
               track={selection.track}
               scene={selectedScene}
+              episodeId={effectiveEpisodeId}
               selectedStoryboard={selectedStoryboard}
               environments={environments}
               selectedEnvironmentId={selectedEnvironmentId}

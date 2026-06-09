@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
-import type { TimelineItem } from "@/components/features";
 import { timelineAPI } from "@/utils/api/endpoints";
 import type {
+  Environment,
   EpisodeCharacter,
   TimelineClipStoryboardStyle,
   TimelineClipVideoReworkAction,
@@ -12,41 +12,36 @@ import type {
 import { TimelineClipProviderReworkCards } from "./TimelineClipProviderReworkCards";
 import {
   buildTimelineClipVideoReworkTaskPayload,
-  dedupeVirtualIpIds,
   isTimelineVideoClip,
   parseReferenceImagesInput,
   parseOptionalNumber,
-  sameVirtualIpIds,
-  timelineClipCharacterVirtualIpIds,
   timelineClipStoryboardPanelIndex,
   timelineClipStoryboardSheetUrl,
   type TimelineVideoReferenceChoice,
 } from "./TimelineClipProviderReworkModel";
+import { useTimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
+import { useTimelineClipStoryboardVirtualIpSelection } from "./useTimelineClipStoryboardVirtualIpSelection";
+import type { TimelineClipProviderReworkControlsProps } from "./TimelineClipProviderReworkControlsTypes";
 
-type NotifyVariant = "success" | "error" | "warning" | "info";
 const EMPTY_EPISODE_CHARACTERS: EpisodeCharacter[] = [];
+const EMPTY_ENVIRONMENTS: Environment[] = [];
 
 export function TimelineClipProviderReworkControls({
   timelineId,
   timelineVersion,
   clipId,
   item,
+  episodeId = null,
   episodeCharacters = EMPTY_EPISODE_CHARACTERS,
   episodeCharactersLoading = false,
   episodeCharactersError = null,
+  environments = EMPTY_ENVIRONMENTS,
+  selectedEnvironmentId = null,
+  storyboardCharacterImageOptions,
+  storyboardEnvironmentImageOptions,
   onQueued,
   onNotify,
-}: {
-  timelineId?: number | string | null;
-  timelineVersion?: number | null;
-  clipId?: string | null;
-  item: TimelineItem | null;
-  episodeCharacters?: EpisodeCharacter[];
-  episodeCharactersLoading?: boolean;
-  episodeCharactersError?: string | null;
-  onQueued?: () => void | Promise<void>;
-  onNotify?: (message: string, variant: NotifyVariant) => void;
-}) {
+}: TimelineClipProviderReworkControlsProps) {
   const [action, setAction] = useState<TimelineClipVideoReworkAction>("re_cut");
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState("");
@@ -60,8 +55,6 @@ export function TimelineClipProviderReworkControls({
   const [storyboardStyle, setStoryboardStyle] =
     useState<TimelineClipStoryboardStyle>("live_action");
   const [storyboardPanelCount, setStoryboardPanelCount] = useState("4");
-  const [selectedStoryboardVirtualIpIds, setSelectedStoryboardVirtualIpIds] =
-    useState<number[]>([]);
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -71,11 +64,21 @@ export function TimelineClipProviderReworkControls({
   const storyboardSheetUrl = timelineClipStoryboardSheetUrl(item);
   const parsedDuration = parseOptionalNumber(duration);
   const referenceImages = parseReferenceImagesInput(referenceImagesInput);
-  const availableVirtualIpIds = useMemo(
-    () =>
-      dedupeVirtualIpIds(episodeCharacters.map((item) => item.virtual_ip_id)),
-    [episodeCharacters],
-  );
+  const { selectedStoryboardVirtualIpIds, handleStoryboardVirtualIpToggle } =
+    useTimelineClipStoryboardVirtualIpSelection({
+      item,
+      episodeCharacters,
+    });
+  const storyboardReferenceSelection =
+    useTimelineClipStoryboardReferenceSelection({
+      episodeId,
+      episodeCharacters,
+      environments,
+      selectedEnvironmentId,
+      selectedStoryboardVirtualIpIds,
+      storyboardCharacterImageOptions,
+      storyboardEnvironmentImageOptions,
+    });
   const effectiveReferenceChoice =
     videoReferenceChoice === "clip_storyboard_panel" && !storyboardPanelIndex
       ? "start_end"
@@ -87,31 +90,7 @@ export function TimelineClipProviderReworkControls({
     timelineId && timelineVersion && clipId && !generatingStoryboard,
   );
 
-  useEffect(() => {
-    const clipVirtualIpIds = timelineClipCharacterVirtualIpIds(item).filter(
-      (id) => availableVirtualIpIds.includes(id),
-    );
-    const defaults = clipVirtualIpIds.length
-      ? clipVirtualIpIds
-      : availableVirtualIpIds.length === 1
-      ? availableVirtualIpIds
-      : [];
-    setSelectedStoryboardVirtualIpIds((prev) =>
-      sameVirtualIpIds(prev, defaults) ? prev : defaults,
-    );
-  }, [availableVirtualIpIds, item]);
-
   if (!isVideoClip) return null;
-
-  const handleStoryboardVirtualIpToggle = (
-    virtualIpId: number,
-    checked: boolean,
-  ) => {
-    setSelectedStoryboardVirtualIpIds((prev) => {
-      if (checked) return dedupeVirtualIpIds([...prev, virtualIpId]);
-      return prev.filter((id) => id !== virtualIpId);
-    });
-  };
 
   const handleGenerateStoryboard = async () => {
     if (!timelineId || !timelineVersion || !clipId) {
@@ -139,6 +118,14 @@ export function TimelineClipProviderReworkControls({
             : undefined,
           character_virtual_ip_ids: selectedStoryboardVirtualIpIds.length
             ? selectedStoryboardVirtualIpIds
+            : undefined,
+          character_reference_images: storyboardReferenceSelection
+            .selectedStoryboardCharacterReferenceImages.length
+            ? storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
+            : undefined,
+          environment_reference_images: storyboardReferenceSelection
+            .selectedStoryboardEnvironmentReferenceImages.length
+            ? storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
             : undefined,
         },
       );
@@ -223,6 +210,7 @@ export function TimelineClipProviderReworkControls({
       episodeCharactersLoading={episodeCharactersLoading}
       episodeCharactersError={episodeCharactersError}
       selectedStoryboardVirtualIpIds={selectedStoryboardVirtualIpIds}
+      storyboardReferenceSelection={storyboardReferenceSelection}
       generatingStoryboard={generatingStoryboard}
       submitting={submitting}
       submitError={submitError}

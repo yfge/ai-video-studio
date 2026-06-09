@@ -150,6 +150,54 @@ def test_timeline_clip_storyboard_binds_request_character_ip_selection(
     assert dispatched["payload"]["bound_context"] == params["bound_context"]
 
 
+def test_timeline_clip_storyboard_prioritizes_selected_reference_images(
+    client,
+    db_session,
+    monkeypatch,
+):
+    dispatched = {}
+
+    def fake_dispatch(task, payload, current_user):
+        dispatched["payload"] = payload
+
+    monkeypatch.setattr(
+        "app.services.storyboard.grid_storyboard_sheet_service."
+        "dispatch_grid_storyboard_sheet_task",
+        fake_dispatch,
+    )
+    user, episode, script = _bootstrap_episode(db_session)
+    virtual_ip = _add_episode_character(db_session, episode.id, user.id, "快递员")
+    spec = _append_video_clips(_timeline_spec(episode, script))
+    timeline = _create_timeline(client, episode, script, spec)
+
+    response = client.post(
+        "/api/v1/timelines/"
+        f"{timeline['id']}/clips/video_scene_001_beat_001_001/storyboard/generate",
+        json={
+            "expected_version": timeline["version"],
+            "panel_count": 4,
+            "character_virtual_ip_ids": [virtual_ip.id],
+            "character_reference_images": ["https://selected.example/ip.png"],
+            "environment_reference_images": ["https://selected.example/env.png"],
+            "reference_images": ["https://manual.example/ref.png"],
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    params = json.loads(db_session.get(Task, response.json()["task_id"]).parameters)
+    assert params["character_reference_images"] == ["https://selected.example/ip.png"]
+    assert params["environment_reference_images"] == [
+        "https://selected.example/env.png"
+    ]
+    assert params["reference_images"] == [
+        "https://selected.example/ip.png",
+        "https://selected.example/env.png",
+        "https://manual.example/ref.png",
+        "https://cdn.example/courier.png",
+    ]
+    assert dispatched["payload"]["reference_images"] == params["reference_images"]
+
+
 def _add_story_character(
     db: Session,
     story_id: int,

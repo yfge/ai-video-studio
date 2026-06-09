@@ -288,6 +288,143 @@ describe("timeline clip rework controls", () => {
     );
   });
 
+  it("submits selected IP and environment thumbnail images with storyboard generation", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 91, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithStoryboardPanel(),
+        episodeCharacters: [episodeCharacter("快递员", 32)],
+        storyboardCharacterImageOptions: {
+          32: [
+            {
+              url: "https://cdn.example/courier-pose.png",
+              label: "快递员 正面",
+            },
+          ],
+        },
+        storyboardEnvironmentImageOptions: [
+          {
+            url: "https://cdn.example/interior-env.png",
+            label: "室内环境",
+          },
+        ],
+      }),
+      { container: dom.window.document.body },
+    );
+
+    assert.ok(utils.getByAltText("IP 图 快递员 正面"));
+    assert.ok(utils.getByAltText("环境图 室内环境"));
+    fireEvent.click(utils.getByLabelText("选择 IP 图 快递员 正面"));
+    fireEvent.click(utils.getByLabelText("选择环境图 室内环境"));
+    fireEvent.click(utils.getByRole("button", { name: "生成故事板参考图" }));
+    await waitFor(() => assert.equal(calls.length, 1));
+
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        panel_count: 4,
+        style: "live_action",
+        generation_profile: "clip_storyboard",
+        size: "1536x1536",
+        aspect_ratio: "1:1",
+        character_virtual_ip_ids: [32],
+        character_reference_images: ["https://cdn.example/courier-pose.png"],
+        environment_reference_images: ["https://cdn.example/interior-env.png"],
+      }),
+    );
+  });
+
+  it("loads selected environment details before showing environment thumbnails", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      if (String(url) === "/api/v1/story-structure/environments/1") {
+        return new Response(
+          JSON.stringify({
+            id: 1,
+            name: "办公室",
+            reference_images: ["https://cdn.example/office-env.png"],
+            created_at: "2026-06-09T00:00:00Z",
+            updated_at: "2026-06-09T00:00:00Z",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ task_id: 92, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithStoryboardPanel(),
+        episodeCharacters: [episodeCharacter("快递员", 32)],
+        environments: [
+          {
+            id: 1,
+            name: "办公室",
+            created_at: "2026-06-09T00:00:00Z",
+            updated_at: "2026-06-09T00:00:00Z",
+          },
+        ],
+        selectedEnvironmentId: 1,
+        storyboardCharacterImageOptions: {
+          32: [
+            {
+              url: "https://cdn.example/courier-pose.png",
+              label: "快递员 正面",
+            },
+          ],
+        },
+      }),
+      { container: dom.window.document.body },
+    );
+
+    await waitFor(() => assert.ok(utils.getByAltText("环境图 办公室 1")));
+    fireEvent.click(utils.getByLabelText("选择 IP 图 快递员 正面"));
+    fireEvent.click(utils.getByLabelText("选择环境图 办公室 1"));
+    fireEvent.click(utils.getByRole("button", { name: "生成故事板参考图" }));
+    await waitFor(() =>
+      assert.ok(
+        calls.some((call) => String(call.url).includes("/storyboard/generate")),
+      ),
+    );
+
+    const storyboardCall = calls.find((call) =>
+      String(call.url).includes("/storyboard/generate"),
+    );
+    assert.equal(
+      storyboardCall?.init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        panel_count: 4,
+        style: "live_action",
+        generation_profile: "clip_storyboard",
+        size: "1536x1536",
+        aspect_ratio: "1:1",
+        character_virtual_ip_ids: [32],
+        character_reference_images: ["https://cdn.example/courier-pose.png"],
+        environment_reference_images: ["https://cdn.example/office-env.png"],
+      }),
+    );
+  });
+
   it("submits manual reference images as an explicit generation choice", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {

@@ -174,6 +174,9 @@ class GridStoryboardSheetService:
             panels=panels,
             request_reference_images=payload.reference_images or [],
             request_character_virtual_ip_ids=payload.character_virtual_ip_ids or [],
+            request_character_reference_images=payload.character_reference_images or [],
+            request_environment_reference_images=payload.environment_reference_images
+            or [],
         )
         panels = context.panels
         layout = grid_layout(payload.panel_count)
@@ -197,6 +200,8 @@ class GridStoryboardSheetService:
             "height": payload.height,
             "reference_images": context.reference_images,
             "character_virtual_ip_ids": payload.character_virtual_ip_ids or [],
+            "character_reference_images": payload.character_reference_images or [],
+            "environment_reference_images": payload.environment_reference_images or [],
             "bound_context": context.bound_context,
             "panels": panels,
             "sheet_prompt": sheet_prompt,
