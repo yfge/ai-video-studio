@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
+from app.services.script_dialogue_extraction import (
+    character_names_for_scene,
+    extract_dialogues_from_scene_summary,
+)
+
 if TYPE_CHECKING:
-    from app.models.story import Story
+    from app.models.script import Story
 
 
 def _to_int(value: Any) -> Optional[int]:
@@ -29,9 +34,11 @@ def populate_dialogues_and_stage_if_missing(
       look valid yet are obviously wrong to users.
 
     Policy:
-    - If a scene has no dialogue lines, add a single narration line derived from
-      the scene summary/description (character="旁白"). This is at least
-      story-consistent and clearly a narration fallback.
+    - If a scene has no dialogue lines but its summary/description contains
+      quoted spoken lines, extract those lines before using narration fallback.
+    - If no quoted dialogue can be extracted, add a single narration line derived
+      from the scene summary/description (character="旁白"). This is clearly
+      marked as a fallback so quality gates can reject it for production output.
     - If a scene has no stage direction, add an action stage direction using
       the same summary/description.
     """
@@ -82,15 +89,23 @@ def populate_dialogues_and_stage_if_missing(
             or sc.get("slug_line")
             or f"场景 {scene_no}"
         )
-        generated_dialogues.append(
-            {
-                "scene_number": scene_no,
-                "character": "旁白",
-                "content": str(summary),
-                "fallback": True,
-                "fallback_reason": "missing_dialogues",
-            }
+        extracted = extract_dialogues_from_scene_summary(
+            str(summary),
+            scene_no,
+            character_names=character_names_for_scene(sc, story),
         )
+        if extracted:
+            generated_dialogues.extend(extracted)
+        else:
+            generated_dialogues.append(
+                {
+                    "scene_number": scene_no,
+                    "character": "旁白",
+                    "content": str(summary),
+                    "fallback": True,
+                    "fallback_reason": "missing_dialogues",
+                }
+            )
 
     for scene_no, sc in missing_stage_scenes:
         summary = (

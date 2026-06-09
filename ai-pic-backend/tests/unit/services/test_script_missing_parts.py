@@ -41,3 +41,58 @@ def test_missing_dialogue_adds_narration_from_summary():
     assert len(scene1_stage) == 1
     assert scene1_stage[0].get("type") == "action"
     assert scene1_stage[0].get("fallback") is True
+
+
+@pytest.mark.unit
+def test_missing_dialogue_extracts_quoted_scene_lines_before_narration():
+    scenes = [
+        {
+            "scene_number": 1,
+            "characters": ["老拐", "文闻"],
+            "description": (
+                "老拐坐在电脑前，屏幕滚动着代码。他微微一笑：'又一个自动化完成了。'"
+                "警报声大作，'什么情况？'他皱眉自言自语。"
+            ),
+        }
+    ]
+
+    out_dialogues, _ = populate_dialogues_and_stage_if_missing(
+        scenes, [], [], story=None
+    )
+
+    assert [
+        (item.get("character"), item.get("content"), item.get("fallback"))
+        for item in out_dialogues
+    ] == [
+        ("老拐", "又一个自动化完成了。", None),
+        ("老拐", "什么情况？", None),
+    ]
+
+
+@pytest.mark.unit
+def test_missing_dialogue_keeps_speakers_when_quotes_are_adjacent():
+    scenes = [
+        {
+            "scene_number": 3,
+            "characters": ["老拐", "文闻"],
+            "description": (
+                "文闻注意到了老拐的代码屏幕。'这些是什么？'她指着一串数据问。"
+                "老拐耸肩：'生存算法，计算每个人的价值。'"
+                "文闻皱眉：'你是在给人贴标签吗？'"
+                "老拐无奈：'效率至上。'"
+                "文闻坚定：'我会留下，帮你加点人性化。'"
+            ),
+        }
+    ]
+
+    out_dialogues, _ = populate_dialogues_and_stage_if_missing(
+        scenes, [], [], story=None
+    )
+
+    assert [(item.get("character"), item.get("content")) for item in out_dialogues] == [
+        ("文闻", "这些是什么？"),
+        ("老拐", "生存算法，计算每个人的价值。"),
+        ("文闻", "你是在给人贴标签吗？"),
+        ("老拐", "效率至上。"),
+        ("文闻", "我会留下，帮你加点人性化。"),
+    ]

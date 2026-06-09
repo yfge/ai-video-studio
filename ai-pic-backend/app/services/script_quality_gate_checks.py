@@ -52,6 +52,25 @@ def story_model_character_check(
     )
 
 
+def fallback_dialogue_check(dialogues: list[Dict[str, Any]]) -> Dict[str, Any]:
+    fallback_lines = [
+        {
+            "scene_number": item.get("scene_number"),
+            "character": item.get("character"),
+            "content": item.get("content"),
+            "fallback_reason": item.get("fallback_reason"),
+        }
+        for item in dialogues
+        if isinstance(item, dict) and item.get("fallback")
+    ]
+    return make_quality_check(
+        "script_dialogue_fallback",
+        not fallback_lines,
+        "fallback narration cannot pass as dialogue",
+        details={"fallback_lines": fallback_lines},
+    )
+
+
 def dict_character_check(
     story: Dict[str, Any], dialogues: list[Dict[str, Any]]
 ) -> Dict[str, Any]:

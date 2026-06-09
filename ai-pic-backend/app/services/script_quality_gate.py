@@ -21,6 +21,7 @@ from app.services.script_quality_gate_checks import (
     beat_contract_check,
     dict_character_check,
     duration_check,
+    fallback_dialogue_check,
     lint_check,
     result_flag_checks,
     schema_check,
@@ -75,6 +76,7 @@ async def evaluate_script_quality_gate(
             ),
         ]
     )
+    checks.append(fallback_dialogue_check(dialogues))
     checks.append(
         story_model_character_check(story_model, episode_id, db, scenes, dialogues)
         if story_model is not None
@@ -242,8 +244,4 @@ async def enforce_script_quality_gate_with_repair(
 def _with_script_gate(
     result: Dict[str, Any], content: Dict[str, Any], gate: Dict[str, Any]
 ) -> Dict[str, Any]:
-    updated = dict(result)
-    updated["content"] = content
-    updated["normalized"] = content
-    updated["quality_gate"] = gate
-    return updated
+    return {**result, "content": content, "normalized": content, "quality_gate": gate}

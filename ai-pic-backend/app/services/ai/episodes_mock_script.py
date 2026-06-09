@@ -21,91 +21,15 @@ class EpisodeMockScriptMixin:
 
         如果无法提取到对白，返回空列表。
         """
-        import re
-
-        dialogues: List[Dict[str, Any]] = []
-        seen_contents: set = set()  # 去重
-        known_chars = set(fallback_characters) if fallback_characters else set()
-
-        # 模式1：直接格式 - 角色名 + 冒号 + 引号对白
-        # 要求角色名前面是句子边界（句号/逗号/空格/开头）
-        direct_patterns = [
-            r"(?:^|[。，；\s])([^\s：:。，；]{2,4})[：:]\s*'([^']+)'",  # 中文单引号
-            r'(?:^|[。，；\s])([^\s：:。，；]{2,4})[：:]\s*"([^"]+)"',  # 中文双引号
-        ]
-
-        # 模式2：叙述格式 - 角色名 + 说话动词 + 冒号 + 引号对白
-        # 匹配：阿盖儿轻声说："...", 老拐问道："...", 她开口道："..."
-        # 说话动词：说、道、问、答、喊、叫、嘟囔、询问、回应、低语等
-        speech_verbs = (
-            r"(?:轻声|低声|大声|冷冷地|温柔地|急忙|缓缓)?"
-            r"(?:说|道|问|答|喊|叫|嘟囔|询问|回应|低语|开口|喃喃)"
+        from app.services.script_missing_parts import (
+            extract_dialogues_from_scene_summary,
         )
-        # 引号模式：支持中文引号和ASCII引号
-        quote_pairs = [
-            ("\u201c", "\u201d"),  # 中文双引号
-            ("\u2018", "\u2019"),  # 中文单引号
-            ('"', '"'),  # ASCII双引号
-            ("'", "'"),  # ASCII单引号
-        ]
 
-        narrative_patterns = []
-        for qopen, qclose in quote_pairs:
-            # 带冒号版本: 阿盖儿轻声说："..."
-            narrative_patterns.append(
-                rf"([^\s，。；]{{2,4}}){speech_verbs}[：:]\s*{re.escape(qopen)}([^{re.escape(qclose)}]+){re.escape(qclose)}"
-            )
-            # 无冒号版本：阿盖儿轻声说"..."
-            narrative_patterns.append(
-                rf"([^\s，。；]{{2,4}}){speech_verbs}\s*{re.escape(qopen)}([^{re.escape(qclose)}]+){re.escape(qclose)}"
-            )
-
-        # 模式3：后置角色格式 - "对白"，角色名说道。
-        # 匹配："我好像变得有些轻了。"阿盖儿转头看他...
-        postfix_patterns = []
-        for qopen, qclose in quote_pairs:
-            postfix_patterns.append(
-                rf"{re.escape(qopen)}([^{re.escape(qclose)}]+){re.escape(qclose)}[，,]?\s*([^\s，。；]{{2,4}})(?:转头|看着|望着|对着)"
-            )
-
-        def add_dialogue(character: str, content: str) -> None:
-            """Add a dialogue if valid and not duplicate."""
-            content = content.strip()
-            if not content or len(content) < 2:
-                return
-            if content in seen_contents:
-                return
-            seen_contents.add(content)
-            # 优先使用已知角色名
-            resolved_char = character.strip()
-            for known in known_chars:
-                if known in resolved_char or resolved_char in known:
-                    resolved_char = known
-                    break
-            dialogues.append(
-                {
-                    "scene_number": scene_number,
-                    "character": resolved_char,
-                    "content": content,
-                }
-            )
-
-        # 应用直接格式模式
-        for pattern in direct_patterns:
-            for match in re.finditer(pattern, summary):
-                add_dialogue(match.group(1), match.group(2))
-
-        # 应用叙述格式模式
-        for pattern in narrative_patterns:
-            for match in re.finditer(pattern, summary):
-                add_dialogue(match.group(1), match.group(2))
-
-        # 应用后置角色格式模式
-        for pattern in postfix_patterns:
-            for match in re.finditer(pattern, summary):
-                add_dialogue(match.group(2), match.group(1))
-
-        return dialogues
+        return extract_dialogues_from_scene_summary(
+            summary,
+            scene_number,
+            character_names=fallback_characters,
+        )
 
     async def _generate_mock_script(
         self,

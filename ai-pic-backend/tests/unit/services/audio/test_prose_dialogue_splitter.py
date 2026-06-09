@@ -4,6 +4,7 @@ from app.services.audio.dialogue_processing.audio_dialogue_filter import (
     split_audio_dialogues_and_action_blocks,
 )
 from app.services.audio.dialogue_processing.prose_dialogue_splitter import (
+    sanitize_stage_directions_for_audio,
     split_prose_dialogue_block,
 )
 
@@ -67,6 +68,19 @@ def test_split_prose_dialogue_block_handles_chinese_single_quotes() -> None:
 
     assert [p["character"] for p in parts] == ["李总", "苏晴"]
     assert [p["content"] for p in parts] == ["有具体标的吗？", "比如，科讯科技。"]
+
+
+def test_sanitize_stage_directions_removes_ascii_single_quoted_dialogue() -> None:
+    cleaned = sanitize_stage_directions_for_audio(
+        [
+            {
+                "scene_number": 1,
+                "content": "老拐抬头：'什么情况？' 他迅速切换屏幕。",
+            }
+        ]
+    )
+
+    assert cleaned[0]["content"] == "老拐抬头： 他迅速切换屏幕。"
 
 
 def test_split_audio_dialogues_moves_fallback_narrator_prose_to_action() -> None:

@@ -26,6 +26,7 @@ _QUOTED_SPAN_RE = re.compile(
     r"|『(?P<c3>[^』]{1,2000})』"
     r"|‘(?P<c4>[^’]{1,2000})’"
     r'|"(?P<c5>[^"]{1,2000})"'
+    r"|'(?P<c6>[^']{1,2000})'"
 )
 
 # Hints that a quoted span is UI text / label rather than spoken dialogue.
@@ -54,7 +55,7 @@ def _prev_non_space_char(text: str, idx: int) -> str | None:
 
 
 def _quote_text(match: re.Match[str]) -> str:
-    for key in ("c1", "c2", "c3", "c4", "c5"):
+    for key in ("c1", "c2", "c3", "c4", "c5", "c6"):
         value = match.group(key)
         if value is not None:
             return value
