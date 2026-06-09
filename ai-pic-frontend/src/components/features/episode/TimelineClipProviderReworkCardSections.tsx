@@ -28,6 +28,7 @@ export function StoryboardReferenceCard({
   episodeCharacters,
   episodeCharactersLoading,
   episodeCharactersError,
+  onNavigateToCharacters,
   selectedCharacterVirtualIpIds,
   storyboardReferenceSelection,
   generatingStoryboard,
@@ -45,6 +46,7 @@ export function StoryboardReferenceCard({
   episodeCharacters: EpisodeCharacter[];
   episodeCharactersLoading: boolean;
   episodeCharactersError: string | null;
+  onNavigateToCharacters?: () => void;
   selectedCharacterVirtualIpIds: number[];
   storyboardReferenceSelection: TimelineClipStoryboardReferenceSelection;
   generatingStoryboard: boolean;
@@ -107,6 +109,7 @@ export function StoryboardReferenceCard({
         characters={episodeCharacters}
         loading={episodeCharactersLoading}
         error={episodeCharactersError}
+        onNavigateToCharacters={onNavigateToCharacters}
         selectedVirtualIpIds={selectedCharacterVirtualIpIds}
         onToggle={onCharacterVirtualIpToggle}
       />

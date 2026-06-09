@@ -41,4 +41,39 @@ describe("timeline API endpoints", () => {
       JSON.stringify({ expected_version: 3, panel_count: 4 }),
     );
   });
+
+  it("queues clip-scoped keyframe generation through the selected clip endpoint", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 78, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const res = await timelineAPI.generateTimelineClipKeyframes(
+      8,
+      "video_scene_001_beat_002_001",
+      {
+        expected_version: 3,
+        generation_profile: "clip_keyframes",
+      },
+    );
+
+    assert.equal(res.success, true);
+    assert.equal(res.data?.task_id, 78);
+    assert.equal(
+      calls[0].url,
+      "/api/v1/timelines/8/clips/video_scene_001_beat_002_001/keyframes/generate",
+    );
+    assert.equal(calls[0].init?.method, "POST");
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        generation_profile: "clip_keyframes",
+      }),
+    );
+  });
 });

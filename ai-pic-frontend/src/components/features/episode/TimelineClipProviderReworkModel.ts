@@ -28,6 +28,9 @@ export function buildTimelineClipVideoReworkTaskPayload({
   referenceChoice = "start_end",
   referenceImages,
   useClipStoryboard,
+  characterVirtualIpIds,
+  characterReferenceImages,
+  environmentReferenceImages,
 }: {
   expectedVersion: number;
   action: TimelineClipVideoReworkAction;
@@ -40,6 +43,9 @@ export function buildTimelineClipVideoReworkTaskPayload({
   referenceChoice?: TimelineVideoReferenceChoice;
   referenceImages?: string[] | null;
   useClipStoryboard?: boolean;
+  characterVirtualIpIds?: number[] | null;
+  characterReferenceImages?: string[] | null;
+  environmentReferenceImages?: string[] | null;
 }): TimelineClipVideoReworkTaskRequest {
   const payload: TimelineClipVideoReworkTaskRequest = {
     expected_version: expectedVersion,
@@ -71,6 +77,20 @@ export function buildTimelineClipVideoReworkTaskPayload({
   }
   if (cleanedRefs.length > 0) {
     payload.reference_images = cleanedRefs;
+  }
+  const cleanedCharacterIds = dedupeVirtualIpIds(characterVirtualIpIds || []);
+  if (cleanedCharacterIds.length > 0) {
+    payload.character_virtual_ip_ids = cleanedCharacterIds;
+  }
+  const cleanedCharacterRefs = dedupeReferenceImages(characterReferenceImages);
+  if (cleanedCharacterRefs.length > 0) {
+    payload.character_reference_images = cleanedCharacterRefs;
+  }
+  const cleanedEnvironmentRefs = dedupeReferenceImages(
+    environmentReferenceImages,
+  );
+  if (cleanedEnvironmentRefs.length > 0) {
+    payload.environment_reference_images = cleanedEnvironmentRefs;
   }
   return payload;
 }

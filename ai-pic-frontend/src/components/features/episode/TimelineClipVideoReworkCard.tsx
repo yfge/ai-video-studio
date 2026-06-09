@@ -1,9 +1,13 @@
 "use client";
 
 import { operatorButtonClass, operatorSelectClass } from "@/components/shared";
-import type { TimelineClipVideoReworkAction } from "@/utils/api/types";
+import type {
+  EpisodeCharacter,
+  TimelineClipVideoReworkAction,
+} from "@/utils/api/types";
 import { VideoReferenceSelect } from "./TimelineClipProviderReworkCardSections";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
+import { TimelineClipVideoBindingSummary } from "./TimelineClipVideoBindingSummary";
 
 const VIDEO_ACTION_OPTIONS: Array<{
   value: TimelineClipVideoReworkAction;
@@ -33,6 +37,10 @@ export function TimelineClipVideoReworkCard({
   reason,
   videoReferenceChoice,
   storyboardPanelIndex,
+  episodeCharacters,
+  selectedCharacterVirtualIpIds,
+  selectedCharacterReferenceUrls,
+  selectedEnvironmentReferenceUrls,
   submitting,
   submitError,
   canSubmit,
@@ -54,6 +62,10 @@ export function TimelineClipVideoReworkCard({
   reason: string;
   videoReferenceChoice: TimelineVideoReferenceChoice;
   storyboardPanelIndex?: number | null;
+  episodeCharacters: EpisodeCharacter[];
+  selectedCharacterVirtualIpIds: number[];
+  selectedCharacterReferenceUrls: string[];
+  selectedEnvironmentReferenceUrls: string[];
   submitting: boolean;
   submitError: string | null;
   canSubmit: boolean;
@@ -75,6 +87,12 @@ export function TimelineClipVideoReworkCard({
         </div>
       </div>
       <div className="grid gap-2">
+        <TimelineClipVideoBindingSummary
+          episodeCharacters={episodeCharacters}
+          selectedCharacterVirtualIpIds={selectedCharacterVirtualIpIds}
+          selectedCharacterReferenceUrls={selectedCharacterReferenceUrls}
+          selectedEnvironmentReferenceUrls={selectedEnvironmentReferenceUrls}
+        />
         <VideoReferenceSelect
           value={videoReferenceChoice}
           storyboardPanelIndex={storyboardPanelIndex}

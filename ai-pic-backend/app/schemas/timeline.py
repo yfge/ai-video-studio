@@ -201,6 +201,9 @@ class TimelineClipVideoReworkTaskRequest(TimelineVersionRequest):
     use_clip_storyboard: bool = False
     use_storyboard_grid: bool = False
     reference_images: Optional[List[str]] = None
+    character_virtual_ip_ids: Optional[List[int]] = None
+    character_reference_images: Optional[List[str]] = None
+    environment_reference_images: Optional[List[str]] = None
 
 
 class TimelineClipVideoReworkTaskResponse(BaseModel):

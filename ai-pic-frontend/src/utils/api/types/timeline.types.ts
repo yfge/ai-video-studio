@@ -165,6 +165,9 @@ export interface TimelineClipVideoReworkTaskRequest {
   use_clip_storyboard?: boolean;
   use_storyboard_grid?: boolean;
   reference_images?: string[] | null;
+  character_virtual_ip_ids?: number[] | null;
+  character_reference_images?: string[] | null;
+  environment_reference_images?: string[] | null;
 }
 
 export interface TimelineClipVideoReworkTaskResponse {
@@ -189,6 +192,26 @@ export interface TimelineClipStoryboardGenerateRequest {
 }
 
 export interface TimelineClipStoryboardGenerateResponse {
+  task_id: number;
+  status: string;
+}
+
+export interface TimelineClipKeyframeGenerateRequest {
+  expected_version: number;
+  prompt?: string | null;
+  model?: string | null;
+  generation_profile?: string | null;
+  size?: string | null;
+  aspect_ratio?: string | null;
+  width?: number | null;
+  height?: number | null;
+  reference_images?: string[] | null;
+  character_virtual_ip_ids?: number[] | null;
+  character_reference_images?: string[] | null;
+  environment_reference_images?: string[] | null;
+}
+
+export interface TimelineClipKeyframeGenerateResponse {
   task_id: number;
   status: string;
 }

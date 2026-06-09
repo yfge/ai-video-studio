@@ -42,6 +42,16 @@ def string_value(value: Any) -> str | None:
     return None
 
 
+def clip_prompt(clip: dict[str, Any], override: str | None) -> str | None:
+    if override and override.strip():
+        return override.strip()
+    for key in ("ai_prompt", "prompt", "description", "text", "label"):
+        value = string_value(clip.get(key))
+        if value:
+            return value
+    return None
+
+
 def maybe_int(value: Any) -> int | None:
     try:
         return int(value) if value is not None else None

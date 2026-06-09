@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { TimelineTrack } from "@/components/features";
 import type {
   NormalizedScene,
   Script,
@@ -11,15 +10,16 @@ import { OperatorWorkspace } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals";
 import { useAvailableModels } from "@/hooks/useAvailableModels";
 import { useEpisodeCharacters } from "@/hooks/useEpisodeCharacters";
-import {
-  firstTimelineItemId,
-  resolveTimelineSelection,
-} from "@/components/features/Timeline/timelineViewModel";
+import { resolveTimelineSelection } from "@/components/features/Timeline/timelineViewModel";
 import {
   buildEpisodeTimelineTracks,
   sceneForTimelineMeta,
   timelineItemMeta,
 } from "./EpisodeTimelineWorkspaceModel";
+import {
+  preferredTimelineItemId,
+  timelineItemIdForClipId,
+} from "./EpisodeTimelineSelectionModel";
 import { buildTimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
 import { EpisodeTimelineContextRail } from "./EpisodeTimelineWorkspaceParts";
 import { EpisodeTimelineClipProductionPanel } from "./EpisodeTimelineClipProductionPanel";
@@ -33,6 +33,7 @@ interface EpisodeTimelineWorkspaceProps {
   selectedScriptId: number | null;
   selectedScript: Script | null;
   selectedTimelineSpec: TimelineResponse | null;
+  initialSelectedClipId?: string | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
@@ -48,6 +49,7 @@ interface EpisodeTimelineWorkspaceProps {
   onNavigateToTasks: () => void;
   onNavigateToScript: () => void;
   onNavigateToStoryboard: () => void;
+  onNavigateToCharacters: () => void;
 }
 
 export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
@@ -56,6 +58,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     episodeId,
     selectedScript,
     selectedTimelineSpec,
+    initialSelectedClipId,
     selectedAudioTimeline,
     selectedStoryboard,
     normalizedScenes,
@@ -71,6 +74,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     onNavigateToTasks,
     onNavigateToScript,
     onNavigateToStoryboard,
+    onNavigateToCharacters,
   } = props;
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const { showAlert } = useAlertModal();
@@ -139,10 +143,27 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
       ? `${latestRenderJob.id}:${latestRenderJob.status}:${latestRenderJob.updated_at}`
       : null,
   });
+  const [appliedInitialClipId, setAppliedInitialClipId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
+    if (
+      initialSelectedClipId &&
+      appliedInitialClipId !== initialSelectedClipId
+    ) {
+      const linkedItemId = timelineItemIdForClipId(
+        tracks,
+        initialSelectedClipId,
+      );
+      if (linkedItemId) {
+        setSelectedItemId(linkedItemId);
+        setAppliedInitialClipId(initialSelectedClipId);
+        return;
+      }
+    }
     if (!selection.item) setSelectedItemId(preferredTimelineItemId(tracks));
-  }, [selection.item, tracks]);
+  }, [appliedInitialClipId, initialSelectedClipId, selection.item, tracks]);
 
   useEffect(() => {
     setSelectedEnvironmentId(selectedScene?.environment_id ?? null);
@@ -207,6 +228,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
               onNavigateToScript={onNavigateToScript}
               onNavigateToStoryboard={onNavigateToStoryboard}
               onNavigateToTasks={onNavigateToTasks}
+              onNavigateToCharacters={onNavigateToCharacters}
               onReworkRecorded={reloadClipAssets}
               onNotify={(message, variant) => showAlert({ message, variant })}
             />
@@ -217,12 +239,4 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
       }
     />
   );
-}
-
-function preferredTimelineItemId(tracks: TimelineTrack[]) {
-  for (const track of tracks) {
-    const videoItem = track.items.find((item) => item.type === "video");
-    if (videoItem) return videoItem.id;
-  }
-  return firstTimelineItemId(tracks);
 }

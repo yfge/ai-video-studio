@@ -78,7 +78,7 @@ const timelineWithAudio = {
 describe("WorkspaceStoryboardTabContent", () => {
   afterEach(() => cleanup());
 
-  it("does not expose whole-Timeline storyboard generation on the default storyboard tab", () => {
+  it("surfaces clip-scoped storyboard management without whole-Timeline generation", () => {
     const utils = render(
       <WorkspaceStoryboardTabContent
         episodeKey="episode_7"
@@ -94,6 +94,15 @@ describe("WorkspaceStoryboardTabContent", () => {
     assert.equal(utils.queryByRole("button", { name: "生成宫格分镜" }), null);
     assert.equal(utils.queryByText("宫格故事板"), null);
     assert.ok(utils.getByRole("button", { name: "同步分镜占位" }));
+    assert.ok(utils.getByText("片段分镜管理"));
+    assert.ok(utils.getAllByText("视频 1").length >= 1);
+    assert.ok(utils.getByText("环境/IP 待绑定"));
+    assert.ok(utils.getByText("故事板待生成"));
+    const link = utils.getByRole("link", { name: "进入分镜管理" });
+    assert.equal(
+      link.getAttribute("href"),
+      "/episodes/episode_7/workspace?tab=timeline&scriptId=131&clipId=video_scene_1_beat_1_001",
+    );
   });
 
   it("surfaces native Timeline context and audio playback on the storyboard tab", () => {

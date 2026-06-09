@@ -8,6 +8,8 @@ import type {
   TimelineClipAssetListParams,
   TimelineClipAssetListResponse,
   TimelineClipAssetResponse,
+  TimelineClipKeyframeGenerateRequest,
+  TimelineClipKeyframeGenerateResponse,
   TimelineClipReworkRequest,
   TimelineClipStoryboardGenerateRequest,
   TimelineClipStoryboardGenerateResponse,
@@ -134,6 +136,22 @@ async function generateTimelineClipStoryboard(
   );
 }
 
+async function generateTimelineClipKeyframes(
+  timelineId: number | string,
+  clipId: string,
+  payload: TimelineClipKeyframeGenerateRequest,
+): Promise<ApiResponse<TimelineClipKeyframeGenerateResponse>> {
+  return httpClient<TimelineClipKeyframeGenerateResponse>(
+    `/api/v1/timelines/${timelineId}/clips/${encodeURIComponent(
+      clipId,
+    )}/keyframes/generate`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export const timelineAPI = {
   listEpisodeTimelines,
   getTimeline,
@@ -144,4 +162,5 @@ export const timelineAPI = {
   reworkTimelineClip,
   queueTimelineClipVideoRework,
   generateTimelineClipStoryboard,
+  generateTimelineClipKeyframes,
 };

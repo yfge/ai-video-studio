@@ -46,6 +46,7 @@ export function EpisodeTimelineClipProductionPanel({
   onNavigateToScript,
   onNavigateToStoryboard,
   onNavigateToTasks,
+  onNavigateToCharacters,
   onReworkRecorded,
   onNotify,
 }: {
@@ -70,6 +71,7 @@ export function EpisodeTimelineClipProductionPanel({
   onNavigateToScript: () => void;
   onNavigateToStoryboard: () => void;
   onNavigateToTasks: () => void;
+  onNavigateToCharacters: () => void;
   onReworkRecorded?: () => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
 }) {
@@ -131,7 +133,7 @@ export function EpisodeTimelineClipProductionPanel({
             {isVideoClip ? (
               <section className="rounded-md border border-gray-200 p-3">
                 <div className="text-sm font-semibold text-gray-950">
-                  片段生成
+                  片段分镜管理
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
                   {clipId || "未关联稳定片段 ID"}
@@ -147,6 +149,7 @@ export function EpisodeTimelineClipProductionPanel({
                   episodeCharactersError={episodeCharactersError}
                   environments={environments}
                   selectedEnvironmentId={selectedEnvironmentId}
+                  onNavigateToCharacters={onNavigateToCharacters}
                   onQueued={onReworkRecorded}
                   onNotify={onNotify}
                 />

@@ -346,6 +346,128 @@ describe("timeline clip rework controls", () => {
     );
   });
 
+  it("shows and submits selected IP and environment bindings with video rework", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 93, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithStoryboardPanel(),
+        episodeCharacters: [episodeCharacter("快递员", 32)],
+        storyboardCharacterImageOptions: {
+          32: [
+            {
+              url: "https://cdn.example/courier-pose.png",
+              label: "快递员 正面",
+            },
+          ],
+        },
+        storyboardEnvironmentImageOptions: [
+          {
+            url: "https://cdn.example/interior-env.png",
+            label: "室内环境",
+          },
+        ],
+      }),
+      { container: dom.window.document.body },
+    );
+
+    fireEvent.click(utils.getByLabelText("选择 IP 图 快递员 正面"));
+    fireEvent.click(utils.getByLabelText("选择环境图 室内环境"));
+
+    assert.ok(utils.getByLabelText("视频生成绑定上下文"));
+    assert.ok(utils.getByText("视频生成绑定上下文"));
+    assert.ok(utils.getByText("已携带绑定"));
+    assert.ok(utils.getByText("角色 IP：快递员"));
+    assert.ok(utils.getByText("IP 图：1 张"));
+    assert.ok(utils.getByText("环境图：1 张"));
+    assert.ok(utils.getByText("视频任务会携带上方已选 IP 和环境图。"));
+
+    fireEvent.click(utils.getByRole("button", { name: "生成/重做此片段视频" }));
+    await waitFor(() => assert.equal(calls.length, 1));
+
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        action: "re_cut",
+        resolution: "720p",
+        asset_role: "generated_video",
+        use_end_frame: true,
+        return_last_frame: true,
+        character_virtual_ip_ids: [32],
+        character_reference_images: ["https://cdn.example/courier-pose.png"],
+        environment_reference_images: ["https://cdn.example/interior-env.png"],
+      }),
+    );
+  });
+
+  it("queues selected IP and environment bindings with keyframe generation", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ task_id: 94, status: "pending" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const utils = render(
+      React.createElement(TimelineClipProviderReworkControls, {
+        timelineId: 8,
+        timelineVersion: 3,
+        clipId: "video_scene_1_beat_1_001",
+        item: videoClipWithStoryboardPanel(),
+        episodeCharacters: [episodeCharacter("快递员", 32)],
+        storyboardCharacterImageOptions: {
+          32: [
+            {
+              url: "https://cdn.example/courier-pose.png",
+              label: "快递员 正面",
+            },
+          ],
+        },
+        storyboardEnvironmentImageOptions: [
+          {
+            url: "https://cdn.example/interior-env.png",
+            label: "室内环境",
+          },
+        ],
+      }),
+      { container: dom.window.document.body },
+    );
+
+    fireEvent.click(utils.getByLabelText("选择 IP 图 快递员 正面"));
+    fireEvent.click(utils.getByLabelText("选择环境图 室内环境"));
+    fireEvent.click(utils.getByRole("button", { name: "生成首尾帧" }));
+    await waitFor(() => assert.equal(calls.length, 1));
+
+    assert.equal(
+      calls[0].url,
+      "/api/v1/timelines/8/clips/video_scene_1_beat_1_001/keyframes/generate",
+    );
+    assert.equal(
+      calls[0].init?.body,
+      JSON.stringify({
+        expected_version: 3,
+        generation_profile: "clip_keyframes",
+        aspect_ratio: "9:16",
+        character_virtual_ip_ids: [32],
+        character_reference_images: ["https://cdn.example/courier-pose.png"],
+        environment_reference_images: ["https://cdn.example/interior-env.png"],
+      }),
+    );
+  });
+
   it("loads selected environment details before showing environment thumbnails", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {

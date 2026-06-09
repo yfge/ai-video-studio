@@ -5,6 +5,7 @@ import type {
   EpisodeCharacter,
   TimelineClipVideoReworkAction,
 } from "@/utils/api/types";
+import { TimelineClipKeyframeCard } from "./TimelineClipKeyframeCard";
 import { StoryboardReferenceCard } from "./TimelineClipProviderReworkCardSections";
 import { TimelineClipVideoReworkCard } from "./TimelineClipVideoReworkCard";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
@@ -27,12 +28,15 @@ export function TimelineClipProviderReworkCards({
   episodeCharacters,
   episodeCharactersLoading,
   episodeCharactersError,
+  onNavigateToCharacters,
   selectedStoryboardVirtualIpIds,
   storyboardReferenceSelection,
   generatingStoryboard,
+  generatingKeyframes,
   submitting,
   submitError,
   canGenerateStoryboard,
+  canGenerateKeyframes,
   canSubmit,
   onActionChange,
   onPromptChange,
@@ -47,6 +51,7 @@ export function TimelineClipProviderReworkCards({
   onStoryboardPanelCountChange,
   onStoryboardVirtualIpToggle,
   onGenerateStoryboard,
+  onGenerateKeyframes,
   onSubmit,
 }: {
   action: TimelineClipVideoReworkAction;
@@ -65,12 +70,15 @@ export function TimelineClipProviderReworkCards({
   episodeCharacters: EpisodeCharacter[];
   episodeCharactersLoading: boolean;
   episodeCharactersError: string | null;
+  onNavigateToCharacters?: () => void;
   selectedStoryboardVirtualIpIds: number[];
   storyboardReferenceSelection: TimelineClipStoryboardReferenceSelection;
   generatingStoryboard: boolean;
+  generatingKeyframes: boolean;
   submitting: boolean;
   submitError: string | null;
   canGenerateStoryboard: boolean;
+  canGenerateKeyframes: boolean;
   canSubmit: boolean;
   onActionChange: (value: TimelineClipVideoReworkAction) => void;
   onPromptChange: (value: string) => void;
@@ -87,6 +95,7 @@ export function TimelineClipProviderReworkCards({
   onStoryboardPanelCountChange: (value: string) => void;
   onStoryboardVirtualIpToggle: (virtualIpId: number, checked: boolean) => void;
   onGenerateStoryboard: () => void;
+  onGenerateKeyframes: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
@@ -100,6 +109,7 @@ export function TimelineClipProviderReworkCards({
           episodeCharacters={episodeCharacters}
           episodeCharactersLoading={episodeCharactersLoading}
           episodeCharactersError={episodeCharactersError}
+          onNavigateToCharacters={onNavigateToCharacters}
           selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
           storyboardReferenceSelection={storyboardReferenceSelection}
           generatingStoryboard={generatingStoryboard}
@@ -109,6 +119,12 @@ export function TimelineClipProviderReworkCards({
           onStoryboardPanelCountChange={onStoryboardPanelCountChange}
           onCharacterVirtualIpToggle={onStoryboardVirtualIpToggle}
           onGenerateStoryboard={onGenerateStoryboard}
+        />
+
+        <TimelineClipKeyframeCard
+          generating={generatingKeyframes}
+          canGenerate={canGenerateKeyframes}
+          onGenerate={onGenerateKeyframes}
         />
 
         <TimelineClipVideoReworkCard
@@ -121,6 +137,14 @@ export function TimelineClipProviderReworkCards({
           reason={reason}
           videoReferenceChoice={videoReferenceChoice}
           storyboardPanelIndex={storyboardPanelIndex}
+          episodeCharacters={episodeCharacters}
+          selectedCharacterVirtualIpIds={selectedStoryboardVirtualIpIds}
+          selectedCharacterReferenceUrls={
+            storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
+          }
+          selectedEnvironmentReferenceUrls={
+            storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
+          }
           submitting={submitting}
           submitError={submitError}
           canSubmit={canSubmit}

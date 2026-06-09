@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import { EpisodeTimelineWorkspace } from "../src/components/features/episode/EpisodeTimelineWorkspace";
@@ -15,6 +15,7 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 (globalThis as any).self = dom.window;
 (globalThis as any).document = dom.window.document;
 (globalThis as any).HTMLElement = dom.window.HTMLElement;
+(globalThis as any).HTMLSelectElement = dom.window.HTMLSelectElement;
 (globalThis as any).localStorage = dom.window.localStorage;
 
 const originalFetch = globalThis.fetch;
@@ -36,6 +37,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
 
     await waitFor(() => {
       assert.ok(utils.getByText("选中片段生产"));
+      assert.ok(utils.getByText("片段分镜管理"));
       assert.ok(utils.getByText("故事板参考"));
       assert.ok(utils.getByText("片段视频"));
     });
@@ -53,10 +55,27 @@ describe("EpisodeTimelineWorkspace layout", () => {
 
     await waitFor(() => {
       assert.ok(utils.getByText("选中片段生产"));
+      assert.ok(utils.getByText("片段分镜管理"));
       assert.ok(utils.getAllByText("视频 1").length >= 2);
     });
     assert.ok(utils.getByRole("button", { name: "生成故事板参考图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
+  });
+
+  it("honors a clip deep link when opening the Timeline workspace", async () => {
+    mockWorkspaceFetch();
+
+    const utils = render(
+      workspace(twoVideoTimeline(), "video_scene_1_beat_2_002"),
+      {
+        container: dom.window.document.body,
+      },
+    );
+
+    await waitFor(() => {
+      assert.ok(utils.getByText("选中片段生产"));
+      assert.ok(utils.getAllByText("第二个视频").length >= 2);
+    });
   });
 
   it("keeps provider generation hidden for non-video timeline clips", async () => {
@@ -78,13 +97,61 @@ describe("EpisodeTimelineWorkspace layout", () => {
       null,
     );
   });
+
+  it("keeps environment binding available for clips without normalized scenes", async () => {
+    mockWorkspaceFetch({
+      environments: [
+        {
+          id: 1,
+          name: "办公室",
+          created_at: "2026-06-09T00:00:00Z",
+          updated_at: "2026-06-09T00:00:00Z",
+        },
+      ],
+      environmentDetails: {
+        1: {
+          id: 1,
+          name: "办公室",
+          reference_images: ["https://cdn.example/office-env.png"],
+          created_at: "2026-06-09T00:00:00Z",
+          updated_at: "2026-06-09T00:00:00Z",
+        },
+      },
+    });
+
+    const utils = render(workspace(videoTimeline()), {
+      container: dom.window.document.body,
+    });
+
+    await waitFor(() => {
+      assert.ok(
+        utils.getByText("未匹配规范化场景，当前环境仅用于片段生成参考。"),
+      );
+      assert.ok(utils.getByLabelText("片段环境"));
+      assert.ok(utils.getByText("去临时角色绑定 IP"));
+    });
+
+    fireEvent.change(utils.getByLabelText("片段环境"), {
+      target: { value: "1" },
+    });
+
+    await waitFor(() => assert.ok(utils.getByAltText("环境图 办公室 1")));
+    fireEvent.click(utils.getByLabelText("选择环境图 办公室 1"));
+
+    assert.ok(utils.getByLabelText("视频生成绑定上下文"));
+    assert.ok(utils.getByText("环境图：1 张"));
+  });
 });
 
-function workspace(selectedTimelineSpec: TimelineResponse) {
+function workspace(
+  selectedTimelineSpec: TimelineResponse,
+  initialSelectedClipId?: string,
+) {
   return (
     <AlertModalProvider>
       <EpisodeTimelineWorkspace
         selectedScriptId={128}
+        initialSelectedClipId={initialSelectedClipId}
         selectedScript={{ version: "1.0" } as Script}
         selectedTimelineSpec={selectedTimelineSpec}
         selectedAudioTimeline={null}
@@ -99,19 +166,37 @@ function workspace(selectedTimelineSpec: TimelineResponse) {
         onNavigateToTasks={() => {}}
         onNavigateToScript={() => {}}
         onNavigateToStoryboard={() => {}}
+        onNavigateToCharacters={() => {}}
       />
     </AlertModalProvider>
   );
 }
 
-function mockWorkspaceFetch() {
+function mockWorkspaceFetch({
+  environments = [],
+  environmentDetails = {},
+}: {
+  environments?: unknown[];
+  environmentDetails?: Record<number, unknown>;
+} = {}) {
   globalThis.fetch = (async (url: RequestInfo | URL) => {
     const path = String(url);
     if (path.includes("/api/v1/ai/models/available")) {
       return jsonResponse({ models: [], default: "" });
     }
+    if (path.includes("/characters")) {
+      return jsonResponse({ items: [], total: 0, page: 1, page_size: 20 });
+    }
+    const environmentDetailMatch = path.match(
+      /\/api\/v1\/story-structure\/environments\/(\d+)$/,
+    );
+    if (environmentDetailMatch) {
+      return jsonResponse(
+        environmentDetails[Number(environmentDetailMatch[1])] || {},
+      );
+    }
     if (path.includes("/api/v1/story-structure/environments")) {
-      return jsonResponse([]);
+      return jsonResponse(environments);
     }
     if (path.includes("/render-jobs")) {
       return jsonResponse({ items: [] });
@@ -187,6 +272,30 @@ function dialogueBeforeVideoTimeline() {
           start_ms: 0,
           end_ms: 1200,
           text: "视频 1",
+        },
+      ],
+    },
+  ]);
+}
+
+function twoVideoTimeline() {
+  return baseTimeline([
+    {
+      track_type: "video",
+      clips: [
+        {
+          clip_id: "video_scene_1_beat_1_001",
+          track_type: "video",
+          start_ms: 0,
+          end_ms: 1200,
+          text: "第一个视频",
+        },
+        {
+          clip_id: "video_scene_1_beat_2_002",
+          track_type: "video",
+          start_ms: 1300,
+          end_ms: 2400,
+          text: "第二个视频",
         },
       ],
     },

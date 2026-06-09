@@ -30,6 +30,7 @@ interface WorkspaceActiveTabContentProps {
   scriptSceneCount?: number;
   selectedTimelineSpec: TimelineResponse | null;
   onTimelineUpdated?: (timeline: TimelineResponse) => void;
+  initialSelectedClipId?: string | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
@@ -63,6 +64,7 @@ export function WorkspaceActiveTabContent({
   scriptSceneCount,
   selectedTimelineSpec,
   onTimelineUpdated,
+  initialSelectedClipId,
   selectedAudioTimeline,
   selectedStoryboard,
   normalizedScenes,
@@ -120,6 +122,7 @@ export function WorkspaceActiveTabContent({
         selectedScriptId={selectedScriptId}
         selectedScript={selectedScript}
         selectedTimelineSpec={selectedTimelineSpec}
+        initialSelectedClipId={initialSelectedClipId}
         selectedAudioTimeline={selectedAudioTimeline}
         selectedStoryboard={selectedStoryboard}
         normalizedScenes={normalizedScenes}

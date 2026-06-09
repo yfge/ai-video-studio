@@ -21,6 +21,7 @@ import {
 } from "./TimelineClipProviderReworkModel";
 import { useTimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import { useTimelineClipStoryboardVirtualIpSelection } from "./useTimelineClipStoryboardVirtualIpSelection";
+import { useTimelineClipProviderGenerationActions } from "./useTimelineClipProviderGenerationActions";
 import type { TimelineClipProviderReworkControlsProps } from "./TimelineClipProviderReworkControlsTypes";
 
 const EMPTY_EPISODE_CHARACTERS: EpisodeCharacter[] = [];
@@ -39,6 +40,7 @@ export function TimelineClipProviderReworkControls({
   selectedEnvironmentId = null,
   storyboardCharacterImageOptions,
   storyboardEnvironmentImageOptions,
+  onNavigateToCharacters,
   onQueued,
   onNotify,
 }: TimelineClipProviderReworkControlsProps) {
@@ -55,9 +57,7 @@ export function TimelineClipProviderReworkControls({
   const [storyboardStyle, setStoryboardStyle] =
     useState<TimelineClipStoryboardStyle>("live_action");
   const [storyboardPanelCount, setStoryboardPanelCount] = useState("4");
-  const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const isVideoClip = isTimelineVideoClip(item);
   const storyboardPanelIndex = timelineClipStoryboardPanelIndex(item);
@@ -79,6 +79,24 @@ export function TimelineClipProviderReworkControls({
       storyboardCharacterImageOptions,
       storyboardEnvironmentImageOptions,
     });
+  const selectedCharacterReferenceImages =
+    storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages;
+  const selectedEnvironmentReferenceImages =
+    storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages;
+  const generationActions = useTimelineClipProviderGenerationActions({
+    timelineId,
+    timelineVersion,
+    clipId,
+    prompt,
+    model,
+    storyboardStyle,
+    storyboardPanelCount,
+    referenceImages,
+    selectedVirtualIpIds: selectedStoryboardVirtualIpIds,
+    selectedCharacterReferenceImages,
+    selectedEnvironmentReferenceImages,
+    onNotify,
+  });
   const effectiveReferenceChoice =
     videoReferenceChoice === "clip_storyboard_panel" && !storyboardPanelIndex
       ? "start_end"
@@ -86,78 +104,26 @@ export function TimelineClipProviderReworkControls({
   const canSubmit = Boolean(
     timelineId && timelineVersion && clipId && !submitting,
   );
-  const canGenerateStoryboard = Boolean(
-    timelineId && timelineVersion && clipId && !generatingStoryboard,
-  );
 
   if (!isVideoClip) return null;
-
-  const handleGenerateStoryboard = async () => {
-    if (!timelineId || !timelineVersion || !clipId) {
-      const message = "当前片段缺少稳定 Timeline 上下文";
-      setSubmitError(message);
-      onNotify?.(message, "warning");
-      return;
-    }
-    const panelCount = parseOptionalNumber(storyboardPanelCount) ?? 4;
-    setGeneratingStoryboard(true);
-    setSubmitError(null);
-    try {
-      const res = await timelineAPI.generateTimelineClipStoryboard(
-        timelineId,
-        clipId,
-        {
-          expected_version: timelineVersion,
-          panel_count: Math.min(9, Math.max(2, Math.round(panelCount))),
-          style: storyboardStyle,
-          generation_profile: "clip_storyboard",
-          size: "1536x1536",
-          aspect_ratio: "1:1",
-          reference_images: referenceImages.length
-            ? referenceImages
-            : undefined,
-          character_virtual_ip_ids: selectedStoryboardVirtualIpIds.length
-            ? selectedStoryboardVirtualIpIds
-            : undefined,
-          character_reference_images: storyboardReferenceSelection
-            .selectedStoryboardCharacterReferenceImages.length
-            ? storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages
-            : undefined,
-          environment_reference_images: storyboardReferenceSelection
-            .selectedStoryboardEnvironmentReferenceImages.length
-            ? storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages
-            : undefined,
-        },
-      );
-      if (!res.success || !res.data) {
-        const message = res.error || "提交故事板任务失败";
-        setSubmitError(message);
-        onNotify?.(message, "error");
-        return;
-      }
-      onNotify?.(`故事板任务已提交 #${res.data.task_id}`, "success");
-    } finally {
-      setGeneratingStoryboard(false);
-    }
-  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!timelineId || !timelineVersion || !clipId) {
       const message = "当前片段缺少稳定 Timeline 上下文";
-      setSubmitError(message);
+      generationActions.setSubmitError(message);
       onNotify?.(message, "warning");
       return;
     }
     if (duration.trim() && !parsedDuration) {
       const message = "请输入有效的视频时长";
-      setSubmitError(message);
+      generationActions.setSubmitError(message);
       onNotify?.(message, "warning");
       return;
     }
 
     setSubmitting(true);
-    setSubmitError(null);
+    generationActions.setSubmitError(null);
     const payload = buildTimelineClipVideoReworkTaskPayload({
       expectedVersion: timelineVersion,
       action,
@@ -169,6 +135,11 @@ export function TimelineClipProviderReworkControls({
       reason,
       referenceChoice: effectiveReferenceChoice,
       referenceImages,
+      characterVirtualIpIds: selectedStoryboardVirtualIpIds,
+      characterReferenceImages:
+        storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages,
+      environmentReferenceImages:
+        storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages,
     });
     try {
       const res = await timelineAPI.queueTimelineClipVideoRework(
@@ -178,7 +149,7 @@ export function TimelineClipProviderReworkControls({
       );
       if (!res.success || !res.data) {
         const message = res.error || "提交视频重做任务失败";
-        setSubmitError(message);
+        generationActions.setSubmitError(message);
         onNotify?.(message, "error");
         return;
       }
@@ -209,12 +180,15 @@ export function TimelineClipProviderReworkControls({
       episodeCharacters={episodeCharacters}
       episodeCharactersLoading={episodeCharactersLoading}
       episodeCharactersError={episodeCharactersError}
+      onNavigateToCharacters={onNavigateToCharacters}
       selectedStoryboardVirtualIpIds={selectedStoryboardVirtualIpIds}
       storyboardReferenceSelection={storyboardReferenceSelection}
-      generatingStoryboard={generatingStoryboard}
+      generatingStoryboard={generationActions.generatingStoryboard}
+      generatingKeyframes={generationActions.generatingKeyframes}
       submitting={submitting}
-      submitError={submitError}
-      canGenerateStoryboard={canGenerateStoryboard}
+      submitError={generationActions.submitError}
+      canGenerateStoryboard={generationActions.canGenerateStoryboard}
+      canGenerateKeyframes={generationActions.canGenerateKeyframes}
       canSubmit={canSubmit}
       onActionChange={setAction}
       onPromptChange={setPrompt}
@@ -228,7 +202,8 @@ export function TimelineClipProviderReworkControls({
       onStoryboardStyleChange={setStoryboardStyle}
       onStoryboardPanelCountChange={setStoryboardPanelCount}
       onStoryboardVirtualIpToggle={handleStoryboardVirtualIpToggle}
-      onGenerateStoryboard={handleGenerateStoryboard}
+      onGenerateStoryboard={generationActions.handleGenerateStoryboard}
+      onGenerateKeyframes={generationActions.handleGenerateKeyframes}
       onSubmit={handleSubmit}
     />
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { operatorButtonClass } from "@/components/shared";
 import type { EpisodeCharacter } from "@/utils/api/types";
 import { episodeCharacterDisplayName } from "./episodeCharacterDisplay";
 
@@ -7,12 +8,14 @@ export function StoryboardCharacterIpSelector({
   characters,
   loading,
   error,
+  onNavigateToCharacters,
   selectedVirtualIpIds,
   onToggle,
 }: {
   characters: EpisodeCharacter[];
   loading: boolean;
   error: string | null;
+  onNavigateToCharacters?: () => void;
   selectedVirtualIpIds: number[];
   onToggle: (virtualIpId: number, checked: boolean) => void;
 }) {
@@ -54,7 +57,20 @@ export function StoryboardCharacterIpSelector({
           })}
         </div>
       ) : (
-        <div className="text-[11px] text-gray-500">暂无角色 IP</div>
+        <div className="grid gap-2">
+          <div className="text-[11px] text-gray-500">
+            暂无角色 IP，请先在临时角色绑定 VirtualIP。
+          </div>
+          {onNavigateToCharacters ? (
+            <button
+              type="button"
+              onClick={onNavigateToCharacters}
+              className={operatorButtonClass("secondary", "w-fit text-xs")}
+            >
+              去临时角色绑定 IP
+            </button>
+          ) : null}
+        </div>
       )}
     </fieldset>
   );

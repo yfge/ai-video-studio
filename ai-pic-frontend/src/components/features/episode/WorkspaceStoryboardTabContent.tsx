@@ -15,6 +15,7 @@ import {
   type StoryboardTimelineOverview,
 } from "./WorkspaceStoryboardSupportModel";
 import { WorkspaceStoryboardActions } from "./WorkspaceStoryboardActions";
+import { WorkspaceStoryboardClipManagement } from "./WorkspaceStoryboardClipManagement";
 import { StoryboardSupportFrameRow } from "./WorkspaceStoryboardFrameRow";
 
 type ShowAlert = (options: {
@@ -114,6 +115,14 @@ export function WorkspaceStoryboardTabContent({
         ) : null}
       </OperatorPanel>
 
+      <WorkspaceStoryboardClipManagement
+        episodeKey={episodeKey}
+        selectedScriptId={selectedScriptId}
+        selectedTimelineSpec={localTimelineSpec}
+        selectedStoryboard={selectedStoryboard}
+        normalizedScenes={normalizedScenes}
+      />
+
       <OperatorPanel>
         <OperatorSectionHeader
           title="占位帧"
@@ -172,7 +181,9 @@ function StoryboardTimelineOverviewPanel({
             <span>{overview.trackSummary}</span>
             <span>对白 {overview.dialogueClipCount}</span>
             <span>视频 {overview.videoClipCount}</span>
-            {overview.audioVersion ? <span>音频 v{overview.audioVersion}</span> : null}
+            {overview.audioVersion ? (
+              <span>音频 v{overview.audioVersion}</span>
+            ) : null}
           </div>
         </div>
         {overview.audioUrl ? (

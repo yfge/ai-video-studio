@@ -184,6 +184,10 @@ class TimelineClipVideoReworkSubmissionService:
             "reference_mode": payload.get("reference_mode"),
             "clip_storyboard": payload.get("clip_storyboard"),
             "storyboard_grid": payload.get("storyboard_grid"),
+            "character_virtual_ip_ids": payload.get("character_virtual_ip_ids"),
+            "character_reference_images": payload.get("character_reference_images"),
+            "environment_reference_images": payload.get("environment_reference_images"),
+            "bound_context": payload.get("bound_context"),
         }
 
     @staticmethod

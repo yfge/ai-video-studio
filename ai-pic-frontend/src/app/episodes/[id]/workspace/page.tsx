@@ -68,6 +68,7 @@ export default function EpisodeWorkspacePage() {
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : null;
   }, [searchParams]);
+  const initialSelectedClipId = searchParams.get("clipId")?.trim() || null;
 
   const mainScript = selectedScript;
   const mainScriptSceneCount = Array.isArray(mainScript?.scenes)
@@ -168,6 +169,7 @@ export default function EpisodeWorkspacePage() {
             scriptSceneCount={mainScriptSceneCount}
             selectedTimelineSpec={selectedTimelineSpec}
             onTimelineUpdated={setSelectedTimelineSpec}
+            initialSelectedClipId={initialSelectedClipId}
             selectedAudioTimeline={selectedAudioTimeline}
             selectedStoryboard={selectedStoryboard}
             normalizedScenes={normalizedScenes}

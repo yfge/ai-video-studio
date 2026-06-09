@@ -82,33 +82,42 @@ export function ClipEnvironmentSection({
   onEnvironmentChange: (value: number | null) => void;
   onSaveEnvironment: () => void;
 }) {
+  const hasScene = Boolean(scene);
+
   return (
     <section className="rounded-md border border-gray-200 p-3">
       <div className="text-sm font-semibold text-gray-950">场景环境</div>
-      {scene ? (
-        <div className="mt-3 space-y-2">
+      <div className="mt-3 space-y-2">
+        {scene ? (
           <div className="text-xs text-gray-500">
             场景 {scene.scene_number} · {scene.slug_line}
           </div>
-          <select
-            value={selectedEnvironmentId ?? ""}
-            onChange={(event) =>
-              onEnvironmentChange(
-                event.target.value ? Number(event.target.value) : null,
-              )
-            }
-            className={operatorSelectClass("w-full")}
-          >
-            <option value="" disabled>
-              选择场景环境
+        ) : (
+          <div className="text-xs text-amber-700">
+            未匹配规范化场景，当前环境仅用于片段生成参考。
+          </div>
+        )}
+        <select
+          aria-label="片段环境"
+          value={selectedEnvironmentId ?? ""}
+          onChange={(event) =>
+            onEnvironmentChange(
+              event.target.value ? Number(event.target.value) : null,
+            )
+          }
+          className={operatorSelectClass("w-full")}
+        >
+          <option value="" disabled>
+            {environments.length ? "选择场景环境" : "暂无可选环境"}
+          </option>
+          {environments.map((env) => (
+            <option key={env.id} value={env.id}>
+              {env.name}
+              {(env.linked_virtual_ip_count || 0) > 0 ? " · IP资产" : ""}
             </option>
-            {environments.map((env) => (
-              <option key={env.id} value={env.id}>
-                {env.name}
-                {(env.linked_virtual_ip_count || 0) > 0 ? " · IP资产" : ""}
-              </option>
-            ))}
-          </select>
+          ))}
+        </select>
+        {hasScene ? (
           <button
             type="button"
             onClick={onSaveEnvironment}
@@ -117,12 +126,10 @@ export function ClipEnvironmentSection({
           >
             {environmentSaving ? "保存中..." : "保存场景环境"}
           </button>
-        </div>
-      ) : (
-        <div className="mt-2 text-xs text-amber-700">
-          未找到对应规范化场景，请先生成剧本结构或时间轴。
-        </div>
-      )}
+        ) : (
+          <StatusPill tone="gray">片段生成参考</StatusPill>
+        )}
+      </div>
     </section>
   );
 }

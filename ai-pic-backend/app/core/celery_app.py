@@ -74,6 +74,7 @@ for _task_module in (
     "app.services.task_worker",
     "app.services.task_worker_script_quality",
     "app.services.task_worker_storyboard_media",
+    "app.services.task_worker_timeline_keyframes",
     "app.services.task_worker_timeline_render",
     "app.services.task_worker_timeline_rework",
 ):

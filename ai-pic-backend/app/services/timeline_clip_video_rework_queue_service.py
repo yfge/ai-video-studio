@@ -21,11 +21,16 @@ from app.services.timeline_clip_video_grid_reference import (
     build_clip_storyboard_rework_payload,
     build_grid_storyboard_rework_payload,
 )
+from app.services.timeline_clip_video_rework_context import (
+    apply_video_rework_bound_context,
+    build_video_rework_bound_context,
+)
 from app.services.timeline_clip_video_rework_dispatch import (
     dispatch_timeline_clip_video_rework_task,
 )
 from app.services.timeline_clip_video_rework_helpers import (
     clip_duration_seconds,
+    clip_prompt,
     dedupe_strings,
     maybe_int,
     render_preset,
@@ -92,6 +97,12 @@ class TimelineClipVideoReworkQueueService:
         clip_storyboard_payload = None
         grid_payload = None
         reference_mode = payload.reference_mode or "start_end"
+        bound_context = build_video_rework_bound_context(
+            self.db,
+            timeline=timeline,
+            clip=clip,
+            payload=payload,
+        )
         if payload.use_clip_storyboard or reference_mode == "clip_storyboard_panel":
             reference_mode = "clip_storyboard_panel"
             clip_storyboard_payload = build_clip_storyboard_rework_payload(
@@ -100,7 +111,7 @@ class TimelineClipVideoReworkQueueService:
                 clip,
                 payload,
                 asset_ref_url=self._asset_ref_url,
-                fallback_prompt=self._prompt,
+                fallback_prompt=clip_prompt,
             )
             prompt = clip_storyboard_payload["prompt"]
             start_url = None
@@ -113,13 +124,13 @@ class TimelineClipVideoReworkQueueService:
                 clip,
                 payload,
                 asset_ref_url=self._asset_ref_url,
-                fallback_prompt=self._prompt,
+                fallback_prompt=clip_prompt,
             )
             prompt = grid_payload["prompt"]
             start_url = None
             end_url = None
         else:
-            prompt = self._prompt(clip, payload.prompt)
+            prompt = clip_prompt(clip, payload.prompt)
             start_url = self._start_frame_url(clip)
             end_url = self._end_frame_url(clip) if payload.use_end_frame else None
 
@@ -167,6 +178,12 @@ class TimelineClipVideoReworkQueueService:
             )
         elif payload.reference_images:
             task_payload["reference_images"] = dedupe_strings(payload.reference_images)
+        apply_video_rework_bound_context(
+            task_payload,
+            payload=payload,
+            context=bound_context,
+            reference_mode=reference_mode,
+        )
         return task_payload
 
     def _clip_or_404(self, timeline: Timeline, clip_id: str) -> dict[str, Any]:
@@ -225,13 +242,3 @@ class TimelineClipVideoReworkQueueService:
         if asset is None or asset.is_deleted:
             return None
         return asset.file_url or asset.file_path
-
-    @staticmethod
-    def _prompt(clip: dict[str, Any], override: str | None) -> str | None:
-        if override and override.strip():
-            return override.strip()
-        for key in ("ai_prompt", "prompt", "description", "text", "label"):
-            value = string_value(clip.get(key))
-            if value:
-                return value
-        return None

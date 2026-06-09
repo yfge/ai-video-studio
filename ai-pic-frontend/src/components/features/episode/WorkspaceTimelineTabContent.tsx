@@ -17,6 +17,7 @@ interface WorkspaceTimelineTabContentProps {
   selectedScriptId: number | null;
   selectedScript: Script | null;
   selectedTimelineSpec: TimelineResponse | null;
+  initialSelectedClipId?: string | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
@@ -40,6 +41,7 @@ export function WorkspaceTimelineTabContent({
   selectedScriptId,
   selectedScript,
   selectedTimelineSpec,
+  initialSelectedClipId,
   selectedAudioTimeline,
   selectedStoryboard,
   normalizedScenes,
@@ -146,6 +148,15 @@ export function WorkspaceTimelineTabContent({
     router.push(`${pathname}?${params.toString()}`);
   }, [pathname, router, searchParams, selectedScriptId]);
 
+  const handleNavigateToCharacters = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "characters");
+    if (selectedScriptId) {
+      params.set("scriptId", String(selectedScriptId));
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  }, [pathname, router, searchParams, selectedScriptId]);
+
   if (scripts.length === 0) {
     return (
       <OperatorState
@@ -161,6 +172,7 @@ export function WorkspaceTimelineTabContent({
       selectedScriptId={selectedScriptId}
       selectedScript={selectedScript}
       selectedTimelineSpec={selectedTimelineSpec}
+      initialSelectedClipId={initialSelectedClipId}
       selectedAudioTimeline={selectedAudioTimeline}
       selectedStoryboard={selectedStoryboard}
       normalizedScenes={normalizedScenes}
@@ -176,6 +188,7 @@ export function WorkspaceTimelineTabContent({
       onNavigateToTasks={handleNavigateToTasks}
       onNavigateToScript={handleNavigateToScript}
       onNavigateToStoryboard={handleNavigateToStoryboard}
+      onNavigateToCharacters={handleNavigateToCharacters}
     />
   );
 }
