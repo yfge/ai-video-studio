@@ -118,5 +118,6 @@ export function useTimelineRenderJobs({
     busy,
     error,
     queueRender,
+    reloadRenderJobs: loadRenderJobs,
   };
 }

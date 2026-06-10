@@ -12,15 +12,19 @@ export function useTimelineGenerationRefresh({
   timelineSpecId,
   onTimelineUpdated,
   reloadClipAssets,
+  reloadRenderJobs,
 }: {
   timelineSpecId: number | string | null;
   onTimelineUpdated?: (timeline: TimelineResponse) => void;
   reloadClipAssets?: () => void | Promise<void>;
+  reloadRenderJobs?: () => void | Promise<void>;
 }) {
   return useCallback(async () => {
     await reloadClipAssets?.();
+    // 片段视频成功后后端会自动排最终渲染，这里刷新渲染面板让新 job 立即可见
+    await reloadRenderJobs?.();
     if (!timelineSpecId || !onTimelineUpdated) return;
     const res = await timelineAPI.getTimeline(timelineSpecId);
     if (res.success && res.data) onTimelineUpdated(res.data);
-  }, [onTimelineUpdated, reloadClipAssets, timelineSpecId]);
+  }, [onTimelineUpdated, reloadClipAssets, reloadRenderJobs, timelineSpecId]);
 }

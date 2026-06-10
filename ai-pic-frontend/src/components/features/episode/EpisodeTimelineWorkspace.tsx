@@ -133,6 +133,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     busy: renderBusy,
     error: renderError,
     queueRender,
+    reloadRenderJobs,
   } = useTimelineRenderJobs({
     selectedTimelineSpec,
     renderReadiness,
@@ -153,6 +154,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     timelineSpecId: selectedTimelineSpec?.id ?? null,
     onTimelineUpdated,
     reloadClipAssets,
+    reloadRenderJobs,
   });
   useInitialTimelineClipSelection({
     tracks,
