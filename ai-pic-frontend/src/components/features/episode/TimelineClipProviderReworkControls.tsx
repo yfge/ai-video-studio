@@ -41,6 +41,8 @@ export function TimelineClipProviderReworkControls({
   selectedEnvironmentId = null,
   storyboardCharacterImageOptions,
   storyboardEnvironmentImageOptions,
+  videoModels,
+  videoModelsLoading,
   onNavigateToCharacters,
   onQueued,
   onGenerationCompleted,
@@ -197,6 +199,8 @@ export function TimelineClipProviderReworkControls({
       storyboardReferenceSelection={storyboardReferenceSelection}
       generationTasks={taskTracker.tasks}
       currentClipId={clipId ?? null}
+      videoModels={videoModels}
+      videoModelsLoading={videoModelsLoading}
       generatingStoryboard={generationActions.generatingStoryboard}
       generatingKeyframes={generationActions.generatingKeyframes}
       submitting={submitting}

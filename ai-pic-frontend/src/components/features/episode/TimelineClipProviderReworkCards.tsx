@@ -11,6 +11,7 @@ import { TimelineClipVideoReworkCard } from "./TimelineClipVideoReworkCard";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import type { TimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import type { ClipGenerationTaskMap } from "./useTimelineClipGenerationTaskTracker";
+import type { VideoModelOption } from "./TimelineClipProviderReworkControlsTypes";
 
 export function TimelineClipProviderReworkCards({
   action,
@@ -34,6 +35,8 @@ export function TimelineClipProviderReworkCards({
   storyboardReferenceSelection,
   generationTasks,
   currentClipId,
+  videoModels,
+  videoModelsLoading,
   generatingStoryboard,
   generatingKeyframes,
   submitting,
@@ -78,6 +81,8 @@ export function TimelineClipProviderReworkCards({
   storyboardReferenceSelection: TimelineClipStoryboardReferenceSelection;
   generationTasks?: ClipGenerationTaskMap;
   currentClipId?: string | null;
+  videoModels?: VideoModelOption[];
+  videoModelsLoading?: boolean;
   generatingStoryboard: boolean;
   generatingKeyframes: boolean;
   submitting: boolean;
@@ -159,6 +164,8 @@ export function TimelineClipProviderReworkCards({
           canSubmit={canSubmit}
           videoTask={generationTasks?.video}
           currentClipId={currentClipId ?? null}
+          videoModels={videoModels}
+          videoModelsLoading={videoModelsLoading}
           onActionChange={onActionChange}
           onPromptChange={onPromptChange}
           onModelChange={onModelChange}

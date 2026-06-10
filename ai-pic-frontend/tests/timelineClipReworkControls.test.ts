@@ -165,6 +165,13 @@ describe("timeline clip rework controls", () => {
         timelineVersion: 3,
         clipId: "video_scene_1_beat_1_001",
         item: videoClipWithStoryboardPanel(),
+        videoModels: [
+          {
+            id: "doubao-seedance-2-0-260128",
+            name: "Seedance 2.0",
+            provider: "volcengine",
+          },
+        ],
       }),
       { container: dom.window.document.body },
     );
@@ -176,6 +183,14 @@ describe("timeline clip rework controls", () => {
     assert.ok(utils.getByLabelText("视频参考来源"));
     assert.ok(utils.getByRole("option", { name: "故事板 Panel 4" }));
     assert.ok(utils.getByLabelText("附加参考图 URL"));
+    assert.ok(utils.getByLabelText("画面风格"));
+    assert.ok(utils.getByLabelText("故事板 panel 数"));
+    assert.ok(utils.getByLabelText("视频模型"));
+    assert.ok(utils.getByRole("option", { name: "自动选择模型" }));
+    assert.ok(utils.getByRole("option", { name: "Seedance 2.0" }));
+    assert.ok(utils.getByLabelText("画面比例"));
+    assert.ok(utils.getByRole("option", { name: "9:16" }));
+    assert.ok(utils.getByLabelText("重做动作"));
   });
 
   it("keeps storyboard and video submit paths clip-scoped from the two-step controls", async () => {

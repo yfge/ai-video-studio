@@ -78,39 +78,53 @@ export function StoryboardReferenceCard({
         </div>
       </div>
       <div className={FIELD_GRID_CLASS}>
-        <select
-          value={storyboardStyle}
-          onChange={(event) =>
-            onStoryboardStyleChange(
-              event.target.value as TimelineClipStoryboardStyle,
-            )
-          }
-          className={operatorSelectClass("w-full")}
-        >
-          <option value="live_action">真人电影</option>
-          <option value="3d_cartoon">3D 卡通</option>
-          <option value="2d_cartoon">2D 卡通</option>
-        </select>
-        <input
-          type="number"
-          min={2}
-          max={9}
-          step={1}
-          value={storyboardPanelCount}
-          onChange={(event) => onStoryboardPanelCountChange(event.target.value)}
-          className={FIELD_CLASS}
-          aria-label="故事板 panel 数"
-        />
+        <label className="grid gap-1 text-xs text-gray-700">
+          <span>画面风格</span>
+          <select
+            aria-label="画面风格"
+            value={storyboardStyle}
+            onChange={(event) =>
+              onStoryboardStyleChange(
+                event.target.value as TimelineClipStoryboardStyle,
+              )
+            }
+            className={operatorSelectClass("w-full")}
+          >
+            <option value="live_action">真人电影</option>
+            <option value="3d_cartoon">3D 卡通</option>
+            <option value="2d_cartoon">2D 卡通</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs text-gray-700">
+          <span>Panel 数</span>
+          <select
+            aria-label="故事板 panel 数"
+            value={storyboardPanelCount}
+            onChange={(event) =>
+              onStoryboardPanelCountChange(event.target.value)
+            }
+            className={operatorSelectClass("w-full")}
+          >
+            {["2", "3", "4", "6", "8", "9"].map((count) => (
+              <option key={count} value={count}>
+                {count} 格
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
-      <textarea
-        value={referenceImagesInput}
-        onChange={handleReferenceImagesInput}
-        onInput={handleReferenceImagesInput}
-        aria-label="附加参考图 URL"
-        placeholder="附加参考图 URL"
-        rows={2}
-        className={`mt-2 resize-none ${FIELD_CLASS}`}
-      />
+      <label className="mt-2 grid gap-1 text-xs text-gray-700">
+        <span>附加参考图 URL（可选，一行一个）</span>
+        <textarea
+          value={referenceImagesInput}
+          onChange={handleReferenceImagesInput}
+          onInput={handleReferenceImagesInput}
+          aria-label="附加参考图 URL"
+          placeholder="https://..."
+          rows={2}
+          className={`resize-none ${FIELD_CLASS}`}
+        />
+      </label>
       <StoryboardCharacterIpSelector
         characters={episodeCharacters}
         loading={episodeCharactersLoading}
@@ -186,6 +200,13 @@ export function StoryboardReferenceCard({
   );
 }
 
+const VIDEO_REFERENCE_HINTS: Record<TimelineVideoReferenceChoice, string> = {
+  start_end: "以本片段的首帧/尾帧图驱动视频生成，需先生成首尾帧。",
+  clip_storyboard_panel: "以本片段故事板 Panel 作为参考图驱动视频生成。",
+  storyboard_grid_panel: "以旧版整条 Timeline 宫格故事板 Panel 作为参考图。",
+  manual_refs: "仅使用上方「附加参考图 URL」中的图片作为参考。",
+};
+
 export function VideoReferenceSelect({
   value,
   storyboardPanelIndex,
@@ -210,10 +231,13 @@ export function VideoReferenceSelect({
         <option value="clip_storyboard_panel" disabled={!storyboardPanelIndex}>
           {storyboardPanelIndex
             ? `故事板 Panel ${storyboardPanelIndex}`
-            : "故事板 Panel"}
+            : "故事板 Panel（需先生成故事板）"}
         </option>
         <option value="manual_refs">手动参考图</option>
       </select>
+      <span className="text-[11px] text-gray-400">
+        {VIDEO_REFERENCE_HINTS[value]}
+      </span>
     </label>
   );
 }

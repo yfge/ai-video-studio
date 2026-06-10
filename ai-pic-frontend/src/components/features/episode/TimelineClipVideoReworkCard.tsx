@@ -1,6 +1,6 @@
 "use client";
 
-import { operatorButtonClass, operatorSelectClass } from "@/components/shared";
+import { operatorButtonClass } from "@/components/shared";
 import type {
   EpisodeCharacter,
   TimelineClipVideoReworkAction,
@@ -10,21 +10,17 @@ import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkM
 import { TimelineClipVideoBindingSummary } from "./TimelineClipVideoBindingSummary";
 import { TimelineClipTaskStatusLine } from "./TimelineClipTaskStatusLine";
 import type { TrackedClipGenerationTask } from "./useTimelineClipGenerationTaskTracker";
+import type { VideoModelOption } from "./TimelineClipProviderReworkControlsTypes";
+import {
+  VIDEO_FIELD_CLASS,
+  VIDEO_FIELD_GRID_CLASS,
+  VIDEO_LABEL_CLASS,
+  VideoActionSelect,
+  VideoModelSelect,
+  VideoRatioSelect,
+  VideoResolutionSelect,
+} from "./TimelineClipVideoReworkFields";
 
-const VIDEO_ACTION_OPTIONS: Array<{
-  value: TimelineClipVideoReworkAction;
-  label: string;
-}> = [
-  { value: "re_cut", label: "重新切分" },
-  { value: "re_render", label: "重新渲染" },
-];
-
-const RESOLUTION_OPTIONS = ["720p", "1080p"];
-const FIELD_CLASS = [
-  "rounded-md border border-gray-200 px-2 py-1.5 text-xs",
-  "outline-none focus:border-gray-400",
-].join(" ");
-const FIELD_GRID_CLASS = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2";
 const CARD_CLASS = "rounded-md border border-gray-200 bg-white p-3";
 const CARD_TITLE_CLASS = "text-xs font-semibold text-gray-900";
 const CARD_DESCRIPTION_CLASS = "text-[11px] leading-4 text-gray-500";
@@ -43,6 +39,8 @@ export function TimelineClipVideoReworkCard({
   selectedCharacterVirtualIpIds,
   selectedCharacterReferenceUrls,
   selectedEnvironmentReferenceUrls,
+  videoModels,
+  videoModelsLoading,
   submitting,
   submitError,
   canSubmit,
@@ -70,6 +68,8 @@ export function TimelineClipVideoReworkCard({
   selectedCharacterVirtualIpIds: number[];
   selectedCharacterReferenceUrls: string[];
   selectedEnvironmentReferenceUrls: string[];
+  videoModels?: VideoModelOption[];
+  videoModelsLoading?: boolean;
   submitting: boolean;
   submitError: string | null;
   canSubmit: boolean;
@@ -105,48 +105,53 @@ export function TimelineClipVideoReworkCard({
           onChange={onVideoReferenceChoiceChange}
         />
         <VideoActionSelect value={action} onChange={onActionChange} />
-        <textarea
-          value={prompt}
-          onChange={(event) => onPromptChange(event.target.value)}
-          placeholder="生成提示词"
-          rows={3}
-          className={`resize-none ${FIELD_CLASS}`}
-        />
-        <div className={FIELD_GRID_CLASS}>
-          <input
-            type="text"
+        <label className={VIDEO_LABEL_CLASS}>
+          <span>生成提示词</span>
+          <textarea
+            value={prompt}
+            onChange={(event) => onPromptChange(event.target.value)}
+            placeholder="留空则使用分镜规划的视频提示词"
+            rows={3}
+            className={`resize-none ${VIDEO_FIELD_CLASS}`}
+          />
+        </label>
+        <div className={VIDEO_FIELD_GRID_CLASS}>
+          <VideoModelSelect
             value={model}
-            onChange={(event) => onModelChange(event.target.value)}
-            placeholder="model"
-            className={FIELD_CLASS}
+            videoModels={videoModels}
+            videoModelsLoading={videoModelsLoading}
+            onChange={onModelChange}
           />
-          <input
-            type="number"
-            min={0.1}
-            step={0.1}
-            value={duration}
-            onChange={(event) => onDurationChange(event.target.value)}
-            placeholder="秒"
-            className={FIELD_CLASS}
-          />
+          <label className={VIDEO_LABEL_CLASS}>
+            <span>时长（秒）</span>
+            <input
+              type="number"
+              min={0.1}
+              step={0.1}
+              value={duration}
+              onChange={(event) => onDurationChange(event.target.value)}
+              placeholder="默认用片段时长"
+              className={VIDEO_FIELD_CLASS}
+            />
+          </label>
         </div>
-        <div className={FIELD_GRID_CLASS}>
-          <ResolutionSelect value={resolution} onChange={onResolutionChange} />
+        <div className={VIDEO_FIELD_GRID_CLASS}>
+          <VideoResolutionSelect
+            value={resolution}
+            onChange={onResolutionChange}
+          />
+          <VideoRatioSelect value={ratio} onChange={onRatioChange} />
+        </div>
+        <label className={VIDEO_LABEL_CLASS}>
+          <span>重做原因</span>
           <input
             type="text"
-            value={ratio}
-            onChange={(event) => onRatioChange(event.target.value)}
-            placeholder="ratio"
-            className={FIELD_CLASS}
+            value={reason}
+            onChange={(event) => onReasonChange(event.target.value)}
+            placeholder="可选，会记录到该片段的资产履历"
+            className={VIDEO_FIELD_CLASS}
           />
-        </div>
-        <input
-          type="text"
-          value={reason}
-          onChange={(event) => onReasonChange(event.target.value)}
-          placeholder="原因"
-          className={FIELD_CLASS}
-        />
+        </label>
         {submitError ? (
           <div className="text-xs text-red-600">{submitError}</div>
         ) : null}
@@ -164,51 +169,5 @@ export function TimelineClipVideoReworkCard({
         />
       </div>
     </section>
-  );
-}
-
-function VideoActionSelect({
-  value,
-  onChange,
-}: {
-  value: TimelineClipVideoReworkAction;
-  onChange: (value: TimelineClipVideoReworkAction) => void;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(event) =>
-        onChange(event.target.value as TimelineClipVideoReworkAction)
-      }
-      className={operatorSelectClass("w-full")}
-    >
-      {VIDEO_ACTION_OPTIONS.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function ResolutionSelect({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className={operatorSelectClass("w-full")}
-    >
-      {RESOLUTION_OPTIONS.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
   );
 }

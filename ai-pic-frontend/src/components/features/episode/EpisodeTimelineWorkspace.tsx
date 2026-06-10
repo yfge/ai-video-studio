@@ -92,6 +92,8 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     modelType: "text",
     enabled: true,
   });
+  const { models: videoModels, loading: videoModelsLoading } =
+    useAvailableModels({ modelType: "video", enabled: true });
   const {
     environments,
     sceneEnvOverrides,
@@ -213,6 +215,8 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
               clipAssets={clipAssets}
               clipAssetsLoading={clipAssetsLoading}
               clipAssetsError={clipAssetsError}
+              videoModels={videoModels}
+              videoModelsLoading={videoModelsLoading}
               onEnvironmentChange={setSelectedEnvironmentId}
               onSaveEnvironment={() => void saveEnvironment(selectedScene)}
               onNavigateToScript={onNavigateToScript}

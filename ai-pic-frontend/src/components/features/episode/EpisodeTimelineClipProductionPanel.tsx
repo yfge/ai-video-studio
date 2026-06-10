@@ -16,6 +16,7 @@ import {
   TimelineClipAssetAuditPanel,
 } from "./TimelineClipAssetAuditPanel";
 import { isTimelineVideoClip } from "./TimelineClipProviderReworkModel";
+import type { VideoModelOption } from "./TimelineClipProviderReworkControlsTypes";
 import {
   ClipEnvironmentSection,
   ClipNavigationActions,
@@ -41,6 +42,8 @@ export function EpisodeTimelineClipProductionPanel({
   clipAssets,
   clipAssetsLoading,
   clipAssetsError,
+  videoModels,
+  videoModelsLoading,
   onEnvironmentChange,
   onSaveEnvironment,
   onNavigateToScript,
@@ -67,6 +70,8 @@ export function EpisodeTimelineClipProductionPanel({
   clipAssets: TimelineClipAssetResponse[];
   clipAssetsLoading: boolean;
   clipAssetsError: string | null;
+  videoModels?: VideoModelOption[];
+  videoModelsLoading?: boolean;
   onEnvironmentChange: (value: number | null) => void;
   onSaveEnvironment: () => void;
   onNavigateToScript: () => void;
@@ -151,6 +156,8 @@ export function EpisodeTimelineClipProductionPanel({
                   episodeCharactersError={episodeCharactersError}
                   environments={environments}
                   selectedEnvironmentId={selectedEnvironmentId}
+                  videoModels={videoModels}
+                  videoModelsLoading={videoModelsLoading}
                   onNavigateToCharacters={onNavigateToCharacters}
                   onQueued={onReworkRecorded}
                   onGenerationCompleted={onGenerationCompleted}

@@ -7,6 +7,13 @@ import type {
 
 export type NotifyVariant = "success" | "error" | "warning" | "info";
 
+export type VideoModelOption = {
+  id?: string;
+  model_id?: string;
+  name?: string;
+  provider?: string;
+};
+
 export type TimelineClipProviderReworkControlsProps = {
   timelineId?: number | string | null;
   timelineVersion?: number | null;
@@ -20,6 +27,8 @@ export type TimelineClipProviderReworkControlsProps = {
   selectedEnvironmentId?: number | null;
   storyboardCharacterImageOptions?: StoryboardCharacterImageOptions;
   storyboardEnvironmentImageOptions?: StoryboardReferenceImageOption[];
+  videoModels?: VideoModelOption[];
+  videoModelsLoading?: boolean;
   onNavigateToCharacters?: () => void;
   onQueued?: () => void | Promise<void>;
   onGenerationCompleted?: () => void | Promise<void>;
