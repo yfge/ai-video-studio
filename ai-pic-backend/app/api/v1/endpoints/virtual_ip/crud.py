@@ -2,7 +2,13 @@ from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.user import User
 from app.models.virtual_ip import VirtualIP
-from app.schemas.virtual_ip import VirtualIPCreate, VirtualIPResponse, VirtualIPUpdate
+from app.schemas.virtual_ip import (
+    VirtualIPCreate,
+    VirtualIPReadiness,
+    VirtualIPResponse,
+    VirtualIPUpdate,
+)
+from app.services.virtual_ip_readiness import compute_virtual_ip_readiness
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -119,7 +125,13 @@ def get_virtual_ip(
     db: Session = Depends(get_db),
 ):
     ip = _get_owned_virtual_ip(db, current_user, ip_id)
-    return {"success": True, "data": VirtualIPResponse.from_orm(ip)}
+    return {"success": True, "data": _detail_response(ip)}
+
+
+def _detail_response(ip: VirtualIP) -> VirtualIPResponse:
+    data = VirtualIPResponse.from_orm(ip)
+    data.readiness = VirtualIPReadiness(**compute_virtual_ip_readiness(ip))
+    return data
 
 
 @router.get("/business/{ip_business_id}")
@@ -130,7 +142,7 @@ def get_virtual_ip_by_business_id(
 ):
     """按 business_id 获取虚拟 IP"""
     ip = _get_owned_virtual_ip(db, current_user, None, ip_business_id)
-    return {"success": True, "data": VirtualIPResponse.from_orm(ip)}
+    return {"success": True, "data": _detail_response(ip)}
 
 
 @router.put("/{ip_id}")

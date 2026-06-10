@@ -19,6 +19,7 @@ import {
   VirtualIPImageManager,
   VoiceSettingsPanel,
 } from "@/components/features";
+import { VirtualIPReadinessWarnings } from "@/components/features/virtual-ip-detail/VirtualIPReadinessWarnings";
 import { useVirtualIPDetail } from "@/hooks/useVirtualIPDetail";
 import {
   VirtualIPBackgroundStorySection,
@@ -103,6 +104,7 @@ export default function VirtualIPDetail() {
     >
       <div className="space-y-5">
         <VirtualIPProductionNotice />
+        <VirtualIPReadinessWarnings readiness={virtualIP.readiness} />
 
         <OperatorWorkspace
           variant="main-inspector"

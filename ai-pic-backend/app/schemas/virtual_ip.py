@@ -69,6 +69,12 @@ class VirtualIPUpdate(VirtualIPBase):
     pass
 
 
+class VirtualIPReadiness(BaseModel):
+    has_default_avatar: bool
+    voice_config_valid: bool
+    warnings: List[str] = []
+
+
 class VirtualIPResponse(VirtualIPBase):
     id: int
     business_id: str
@@ -77,6 +83,7 @@ class VirtualIPResponse(VirtualIPBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     images: Optional[List[VirtualIPImageResponse]] = []
+    readiness: Optional[VirtualIPReadiness] = None
 
     class Config:
         from_attributes = True

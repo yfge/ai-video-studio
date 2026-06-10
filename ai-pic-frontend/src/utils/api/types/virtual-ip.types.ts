@@ -4,6 +4,13 @@
 import type { VoiceConfig } from "./voice.types";
 import type { Environment } from "./environment.types";
 
+// Production readiness warnings computed by the backend (non-blocking)
+export interface VirtualIPReadiness {
+  has_default_avatar: boolean;
+  voice_config_valid: boolean;
+  warnings: string[];
+}
+
 // Virtual IP entity
 export interface VirtualIP {
   id: number;
@@ -19,6 +26,7 @@ export interface VirtualIP {
   is_active: boolean;
   is_public: boolean;
   default_avatar_url?: string;
+  readiness?: VirtualIPReadiness | null;
   created_at: string;
   updated_at?: string;
 }
