@@ -143,6 +143,12 @@ export function StoryboardReferenceCard({
         onEnvironmentImageToggle={
           storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImageToggle
         }
+        onCharacterImagesReplace={
+          storyboardReferenceSelection.handleStoryboardCharacterReferenceImagesReplace
+        }
+        onEnvironmentImagesReplace={
+          storyboardReferenceSelection.handleStoryboardEnvironmentReferenceImagesReplace
+        }
       />
       <button
         type="button"

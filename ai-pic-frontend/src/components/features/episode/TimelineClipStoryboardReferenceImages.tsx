@@ -15,6 +15,8 @@ export function StoryboardReferenceImageSelectors({
   characterImagesError,
   onCharacterImageToggle,
   onEnvironmentImageToggle,
+  onCharacterImagesReplace,
+  onEnvironmentImagesReplace,
 }: {
   characterImageOptions: StoryboardCharacterImageOptions;
   environmentImageOptions: StoryboardReferenceImageOption[];
@@ -25,6 +27,8 @@ export function StoryboardReferenceImageSelectors({
   characterImagesError: string | null;
   onCharacterImageToggle: (url: string, checked: boolean) => void;
   onEnvironmentImageToggle: (url: string, checked: boolean) => void;
+  onCharacterImagesReplace?: (urls: string[]) => void;
+  onEnvironmentImagesReplace?: (urls: string[]) => void;
 }) {
   const selectedCharacterOptions = selectedVirtualIpIds.flatMap(
     (virtualIpId) => characterImageOptions[virtualIpId] || [],
@@ -43,6 +47,7 @@ export function StoryboardReferenceImageSelectors({
           selectedVirtualIpIds.length ? "暂无可选 IP 图" : "先绑定角色 IP"
         }
         onToggle={onCharacterImageToggle}
+        onReplace={onCharacterImagesReplace}
       />
       <ReferenceImageGrid
         title="环境图"
@@ -52,6 +57,7 @@ export function StoryboardReferenceImageSelectors({
         selectedUrls={selectedEnvironmentUrls}
         emptyText="暂无可选环境图"
         onToggle={onEnvironmentImageToggle}
+        onReplace={onEnvironmentImagesReplace}
       />
     </>
   );
@@ -67,6 +73,7 @@ function ReferenceImageGrid({
   error = null,
   emptyText,
   onToggle,
+  onReplace,
 }: {
   title: string;
   ariaPrefix: string;
@@ -77,10 +84,41 @@ function ReferenceImageGrid({
   error?: string | null;
   emptyText: string;
   onToggle: (url: string, checked: boolean) => void;
+  onReplace?: (urls: string[]) => void;
 }) {
+  const selectedCount = options.filter((option) =>
+    selectedUrls.includes(option.url),
+  ).length;
   return (
     <fieldset className="mt-3 grid gap-2" aria-label={ariaPrefix}>
       <legend className="text-[11px] font-medium text-gray-700">{title}</legend>
+      {options.length && !loading && !error ? (
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-gray-500">
+            已选 {selectedCount}/{options.length}，选中的图会作为生成参考
+          </span>
+          {onReplace ? (
+            <span className="flex gap-2">
+              <button
+                type="button"
+                aria-label={`${title}全选`}
+                className="text-blue-600 hover:underline"
+                onClick={() => onReplace(options.map((option) => option.url))}
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                aria-label={`${title}清空`}
+                className="text-gray-500 hover:underline"
+                onClick={() => onReplace([])}
+              >
+                清空
+              </button>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {loading ? (
         <div className="text-[11px] text-gray-500">图片加载中...</div>
       ) : error ? (

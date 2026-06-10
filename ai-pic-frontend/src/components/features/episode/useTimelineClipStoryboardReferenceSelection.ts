@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  pruneReferenceImageUrls,
-  selectedCharacterReferenceImageUrls,
+  applyCharacterReferenceImageDefaults,
+  applyEnvironmentReferenceImageDefaults,
+  dedupeReferenceImageUrls,
   toggleReferenceImageUrl,
 } from "./TimelineClipStoryboardReferenceImagesModel";
 import { useTimelineClipStoryboardReferenceImages } from "./useTimelineClipStoryboardReferenceImages";
@@ -47,14 +48,6 @@ export function useTimelineClipStoryboardReferenceSelection({
     useState<string[]>([]);
   const [selectedStoryboardEnvironmentReferenceImages, setEnvironmentRefs] =
     useState<string[]>([]);
-  const allowedCharacterUrls = useMemo(
-    () =>
-      selectedCharacterReferenceImageUrls(
-        characterImageOptions,
-        selectedStoryboardVirtualIpIds,
-      ),
-    [characterImageOptions, selectedStoryboardVirtualIpIds],
-  );
   const allowedEnvironmentUrls = useMemo(
     () => environmentImageOptions.map((option) => option.url),
     [environmentImageOptions],
@@ -62,13 +55,17 @@ export function useTimelineClipStoryboardReferenceSelection({
 
   useEffect(() => {
     setCharacterRefs((prev) =>
-      pruneReferenceImageUrls(prev, allowedCharacterUrls),
+      applyCharacterReferenceImageDefaults(
+        prev,
+        characterImageOptions,
+        selectedStoryboardVirtualIpIds,
+      ),
     );
-  }, [allowedCharacterUrls]);
+  }, [characterImageOptions, selectedStoryboardVirtualIpIds]);
 
   useEffect(() => {
     setEnvironmentRefs((prev) =>
-      pruneReferenceImageUrls(prev, allowedEnvironmentUrls),
+      applyEnvironmentReferenceImageDefaults(prev, allowedEnvironmentUrls),
     );
   }, [allowedEnvironmentUrls]);
 
@@ -89,6 +86,10 @@ export function useTimelineClipStoryboardReferenceSelection({
       checked: boolean,
     ) =>
       setEnvironmentRefs((prev) => toggleReferenceImageUrl(prev, url, checked)),
+    handleStoryboardCharacterReferenceImagesReplace: (urls: string[]) =>
+      setCharacterRefs(dedupeReferenceImageUrls(urls)),
+    handleStoryboardEnvironmentReferenceImagesReplace: (urls: string[]) =>
+      setEnvironmentRefs(dedupeReferenceImageUrls(urls)),
   };
 }
 

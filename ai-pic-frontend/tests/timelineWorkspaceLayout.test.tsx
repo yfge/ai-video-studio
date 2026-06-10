@@ -136,7 +136,14 @@ describe("EpisodeTimelineWorkspace layout", () => {
     });
 
     await waitFor(() => assert.ok(utils.getByAltText("环境图 办公室 1")));
-    fireEvent.click(utils.getByLabelText("选择环境图 办公室 1"));
+    await waitFor(() =>
+      assert.equal(
+        utils
+          .getByLabelText("选择环境图 办公室 1")
+          .getAttribute("aria-pressed"),
+        "true",
+      ),
+    );
 
     assert.ok(utils.getByLabelText("视频生成绑定上下文"));
     assert.ok(utils.getByText("环境图：1 张"));

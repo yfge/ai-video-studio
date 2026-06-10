@@ -96,6 +96,42 @@ export function pruneReferenceImageUrls(previous: string[], allowed: string[]) {
   return previous.filter((url) => allowedSet.has(url));
 }
 
+/**
+ * Keep still-valid manual picks and default to the first image for any
+ * selected IP that has no picked image yet, so generation carries an anchor
+ * per character without forcing manual clicks.
+ */
+export function applyCharacterReferenceImageDefaults(
+  previous: string[],
+  optionsByVirtualIp: StoryboardCharacterImageOptions,
+  selectedVirtualIpIds: number[],
+) {
+  const next = pruneReferenceImageUrls(
+    previous,
+    selectedCharacterReferenceImageUrls(
+      optionsByVirtualIp,
+      selectedVirtualIpIds,
+    ),
+  );
+  for (const virtualIpId of selectedVirtualIpIds) {
+    const options = optionsByVirtualIp[virtualIpId] || [];
+    if (!options.length) continue;
+    if (options.some((option) => next.includes(option.url))) continue;
+    next.push(options[0].url);
+  }
+  return dedupeReferenceImageUrls(next);
+}
+
+/** Default to the first environment image when nothing valid is picked. */
+export function applyEnvironmentReferenceImageDefaults(
+  previous: string[],
+  allowedUrls: string[],
+) {
+  const next = pruneReferenceImageUrls(previous, allowedUrls);
+  if (!next.length && allowedUrls.length) return [allowedUrls[0]];
+  return next;
+}
+
 export function dedupeReferenceImageUrls(values: string[]) {
   const deduped: string[] = [];
   for (const value of values) {
