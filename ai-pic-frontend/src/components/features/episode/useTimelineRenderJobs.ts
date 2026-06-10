@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlertOptions } from "@/components/shared/modals";
+import { useToast } from "@/components/shared/notifications";
 import { timelineAPI } from "@/utils/api/endpoints";
 import type {
   TimelineRenderJobResponse,
@@ -59,6 +60,27 @@ export function useTimelineRenderJobs({
     const timer = setInterval(() => void loadRenderJobs(), 4000);
     return () => clearInterval(timer);
   }, [latestJob, loadRenderJobs]);
+
+  const { notify } = useToast();
+  const prevJobStatusRef = useRef<{ id: number; status: string } | null>(null);
+  useEffect(() => {
+    const prev = prevJobStatusRef.current;
+    if (latestJob) {
+      prevJobStatusRef.current = { id: latestJob.id, status: latestJob.status };
+    }
+    if (!latestJob || !prev || prev.id !== latestJob.id) return;
+    if (prev.status === latestJob.status) return;
+    const wasActive = prev.status === "queued" || prev.status === "running";
+    if (!wasActive) return;
+    if (latestJob.status === "succeeded") {
+      notify(
+        `渲染完成（job #${latestJob.id}），成片已就绪，可在渲染面板下载`,
+        "success",
+      );
+    } else if (latestJob.status === "failed") {
+      notify(`渲染失败（job #${latestJob.id}），详情见渲染面板`, "error");
+    }
+  }, [latestJob, notify]);
 
   const queueRender = useCallback(
     async (renderType: TimelineRenderType, forceNewAttempt = false) => {

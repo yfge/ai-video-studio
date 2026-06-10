@@ -5,6 +5,7 @@ import { JSDOM } from "jsdom";
 
 import { EpisodeTimelineWorkspace } from "../src/components/features/episode/EpisodeTimelineWorkspace";
 import { AlertModalProvider } from "../src/components/shared/modals";
+import { ToastProvider } from "../src/components/shared/notifications";
 import { clearAvailableModelsCache } from "../src/hooks/useAvailableModels";
 import type { Script, TimelineResponse } from "../src/utils/api/types";
 
@@ -156,7 +157,8 @@ function workspace(
 ) {
   return (
     <AlertModalProvider>
-      <EpisodeTimelineWorkspace
+      <ToastProvider>
+        <EpisodeTimelineWorkspace
         selectedScriptId={128}
         initialSelectedClipId={initialSelectedClipId}
         selectedScript={{ version: "1.0" } as Script}
@@ -174,7 +176,8 @@ function workspace(
         onNavigateToScript={() => {}}
         onNavigateToStoryboard={() => {}}
         onNavigateToCharacters={() => {}}
-      />
+        />
+      </ToastProvider>
     </AlertModalProvider>
   );
 }

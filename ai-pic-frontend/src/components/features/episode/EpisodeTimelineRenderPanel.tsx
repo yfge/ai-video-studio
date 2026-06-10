@@ -110,14 +110,28 @@ export function TimelineRenderPanel({
       ) : null}
 
       {outputUrl && latestJob?.status === "succeeded" ? (
-        <a
-          href={outputUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex text-xs font-medium text-blue-700 hover:text-blue-900"
-        >
-          打开输出文件
-        </a>
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-green-200 bg-green-50 px-3 py-2">
+          <span className="text-xs font-medium text-green-800">
+            {renderTypeLabel(latestJob.render_type)}已就绪
+          </span>
+          <a
+            href={outputUrl}
+            download
+            target="_blank"
+            rel="noreferrer"
+            className={operatorButtonClass("primary")}
+          >
+            下载成片
+          </a>
+          <a
+            href={outputUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-blue-700 hover:text-blue-900"
+          >
+            在新标签页打开
+          </a>
+        </div>
       ) : null}
 
       {renderInFlight ? (
