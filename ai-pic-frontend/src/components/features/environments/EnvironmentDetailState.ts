@@ -162,6 +162,7 @@ export function useEnvironmentDetailState(envKey: string) {
     images,
     loading,
     metaForm,
+    reload: load,
     savingMeta,
     setEditingMeta,
     setMetaForm,

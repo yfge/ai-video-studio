@@ -127,6 +127,7 @@ export function EnvironmentDetailView() {
                 <EnvironmentSidePanel
                   envKey={envKey}
                   onImageUploaded={state.handleImageUploaded}
+                  onImagesGenerated={state.reload}
                   variant="embedded"
                 />
               </div>

@@ -4,6 +4,11 @@ import { useState } from "react";
 
 import { operatorButtonClass } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals";
+import {
+  GenerationTaskStatusLine,
+  useToast,
+} from "@/components/shared/notifications";
+import { useGenerationTaskTracker } from "@/hooks/useGenerationTaskTracker";
 import { storyStructureAPI } from "@/utils/api/endpoints";
 
 import { EnvironmentGenerationFields } from "./EnvironmentGenerationFields";
@@ -12,15 +17,23 @@ import { EMPTY_GENERATION, type GenerationFormState } from "./types";
 interface EnvironmentSidePanelProps {
   envKey: string;
   onImageUploaded: (imageUrl: string) => void;
+  onImagesGenerated?: () => void | Promise<void>;
   variant?: "card" | "embedded";
 }
 
 export function EnvironmentSidePanel({
   envKey,
   onImageUploaded,
+  onImagesGenerated,
   variant = "card",
 }: EnvironmentSidePanelProps) {
   const { showAlert } = useAlertModal();
+  const { notify } = useToast();
+  const tracker = useGenerationTaskTracker<"environment-images">({
+    labels: { "environment-images": "环境参考图" },
+    onCompleted: () => onImagesGenerated?.(),
+    onNotify: notify,
+  });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generation, setGeneration] = useState<GenerationFormState>({
@@ -82,12 +95,12 @@ export function EnvironmentSidePanel({
               : undefined,
         },
       );
-      if (res.success) {
-        showAlert({
-          title: "已创建环境图生成任务",
-          message: "任务将在后台执行，完成后刷新本页查看新图片。",
-          variant: "success",
-        });
+      if (res.success && res.data) {
+        notify(
+          `环境参考图任务已提交 #${res.data.task_id}，完成后自动刷新图片列表`,
+          "info",
+        );
+        tracker.track("environment-images", res.data.task_id);
       } else {
         showAlert({ message: res.error || "生成失败", variant: "error" });
       }
@@ -150,6 +163,10 @@ export function EnvironmentSidePanel({
         >
           {generating ? "提交任务中..." : "创建生成任务"}
         </button>
+        <GenerationTaskStatusLine
+          label="环境参考图"
+          task={tracker.tasks["environment-images"]}
+        />
       </div>
     </div>
   );
