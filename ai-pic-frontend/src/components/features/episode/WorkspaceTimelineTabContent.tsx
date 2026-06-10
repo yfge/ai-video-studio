@@ -17,6 +17,7 @@ interface WorkspaceTimelineTabContentProps {
   selectedScriptId: number | null;
   selectedScript: Script | null;
   selectedTimelineSpec: TimelineResponse | null;
+  onTimelineUpdated?: (timeline: TimelineResponse) => void;
   initialSelectedClipId?: string | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
@@ -41,6 +42,7 @@ export function WorkspaceTimelineTabContent({
   selectedScriptId,
   selectedScript,
   selectedTimelineSpec,
+  onTimelineUpdated,
   initialSelectedClipId,
   selectedAudioTimeline,
   selectedStoryboard,
@@ -172,6 +174,7 @@ export function WorkspaceTimelineTabContent({
       selectedScriptId={selectedScriptId}
       selectedScript={selectedScript}
       selectedTimelineSpec={selectedTimelineSpec}
+      onTimelineUpdated={onTimelineUpdated}
       initialSelectedClipId={initialSelectedClipId}
       selectedAudioTimeline={selectedAudioTimeline}
       selectedStoryboard={selectedStoryboard}

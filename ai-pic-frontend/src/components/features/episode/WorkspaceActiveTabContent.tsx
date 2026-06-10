@@ -122,6 +122,7 @@ export function WorkspaceActiveTabContent({
         selectedScriptId={selectedScriptId}
         selectedScript={selectedScript}
         selectedTimelineSpec={selectedTimelineSpec}
+        onTimelineUpdated={onTimelineUpdated}
         initialSelectedClipId={initialSelectedClipId}
         selectedAudioTimeline={selectedAudioTimeline}
         selectedStoryboard={selectedStoryboard}

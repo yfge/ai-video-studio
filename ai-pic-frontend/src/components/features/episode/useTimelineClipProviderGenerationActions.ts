@@ -9,6 +9,7 @@ import {
 } from "./TimelineClipProviderGenerationPayloads";
 import { parseOptionalNumber } from "./TimelineClipProviderReworkModel";
 import type { NotifyVariant } from "./TimelineClipProviderReworkControlsTypes";
+import type { ClipGenerationTaskKind } from "./useTimelineClipGenerationTaskTracker";
 
 export function useTimelineClipProviderGenerationActions({
   timelineId,
@@ -22,6 +23,7 @@ export function useTimelineClipProviderGenerationActions({
   selectedVirtualIpIds,
   selectedCharacterReferenceImages,
   selectedEnvironmentReferenceImages,
+  onTaskQueued,
   onNotify,
 }: {
   timelineId?: number | string | null;
@@ -35,6 +37,7 @@ export function useTimelineClipProviderGenerationActions({
   selectedVirtualIpIds: number[];
   selectedCharacterReferenceImages: string[];
   selectedEnvironmentReferenceImages: string[];
+  onTaskQueued?: (kind: ClipGenerationTaskKind, taskId: number) => void;
   onNotify?: (message: string, variant: NotifyVariant) => void;
 }) {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
@@ -75,7 +78,8 @@ export function useTimelineClipProviderGenerationActions({
           onNotify,
         );
       }
-      onNotify?.(`故事板任务已提交 #${res.data.task_id}`, "success");
+      onNotify?.(`故事板任务已提交 #${res.data.task_id}，生成中…`, "success");
+      onTaskQueued?.("storyboard", res.data.task_id);
     } finally {
       setGeneratingStoryboard(false);
     }
@@ -108,7 +112,8 @@ export function useTimelineClipProviderGenerationActions({
           onNotify,
         );
       }
-      onNotify?.(`首尾帧任务已提交 #${res.data.task_id}`, "success");
+      onNotify?.(`首尾帧任务已提交 #${res.data.task_id}，生成中…`, "success");
+      onTaskQueued?.("keyframes", res.data.task_id);
     } finally {
       setGeneratingKeyframes(false);
     }

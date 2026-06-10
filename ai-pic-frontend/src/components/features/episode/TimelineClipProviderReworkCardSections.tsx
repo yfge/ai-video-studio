@@ -8,8 +8,10 @@ import type {
 } from "@/utils/api/types";
 import { StoryboardCharacterIpSelector } from "./TimelineClipStoryboardCharacterIpSelector";
 import { StoryboardReferenceImageSelectors } from "./TimelineClipStoryboardReferenceImages";
+import { TimelineClipTaskStatusLine } from "./TimelineClipTaskStatusLine";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import type { TimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
+import type { TrackedClipGenerationTask } from "./useTimelineClipGenerationTaskTracker";
 
 const FIELD_CLASS = [
   "rounded-md border border-gray-200 px-2 py-1.5 text-xs",
@@ -33,6 +35,8 @@ export function StoryboardReferenceCard({
   storyboardReferenceSelection,
   generatingStoryboard,
   canGenerateStoryboard,
+  storyboardTask,
+  currentClipId,
   onReferenceImagesInputChange,
   onStoryboardStyleChange,
   onStoryboardPanelCountChange,
@@ -51,6 +55,8 @@ export function StoryboardReferenceCard({
   storyboardReferenceSelection: TimelineClipStoryboardReferenceSelection;
   generatingStoryboard: boolean;
   canGenerateStoryboard: boolean;
+  storyboardTask?: TrackedClipGenerationTask;
+  currentClipId?: string | null;
   onReferenceImagesInputChange: (value: string) => void;
   onStoryboardStyleChange: (value: TimelineClipStoryboardStyle) => void;
   onStoryboardPanelCountChange: (value: string) => void;
@@ -146,15 +152,29 @@ export function StoryboardReferenceCard({
       >
         {generatingStoryboard ? "提交中..." : "生成故事板参考图"}
       </button>
+      <TimelineClipTaskStatusLine
+        kind="storyboard"
+        task={storyboardTask}
+        currentClipId={currentClipId ?? null}
+      />
       {storyboardSheetUrl ? (
-        <div className="mt-3 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+        <a
+          href={storyboardSheetUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 block overflow-hidden rounded-md border border-gray-200 bg-gray-50"
+          title="点击查看大图"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={storyboardSheetUrl}
             alt="故事板参考图预览"
-            className="max-h-48 w-full object-contain"
+            className="max-h-72 w-full object-contain"
           />
-        </div>
+          <div className="border-t border-gray-200 px-2 py-1 text-center text-[11px] text-gray-500">
+            点击查看大图
+          </div>
+        </a>
       ) : null}
     </section>
   );

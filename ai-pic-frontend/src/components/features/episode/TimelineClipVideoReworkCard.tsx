@@ -8,6 +8,8 @@ import type {
 import { VideoReferenceSelect } from "./TimelineClipProviderReworkCardSections";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import { TimelineClipVideoBindingSummary } from "./TimelineClipVideoBindingSummary";
+import { TimelineClipTaskStatusLine } from "./TimelineClipTaskStatusLine";
+import type { TrackedClipGenerationTask } from "./useTimelineClipGenerationTaskTracker";
 
 const VIDEO_ACTION_OPTIONS: Array<{
   value: TimelineClipVideoReworkAction;
@@ -44,6 +46,8 @@ export function TimelineClipVideoReworkCard({
   submitting,
   submitError,
   canSubmit,
+  videoTask,
+  currentClipId,
   onActionChange,
   onPromptChange,
   onModelChange,
@@ -69,6 +73,8 @@ export function TimelineClipVideoReworkCard({
   submitting: boolean;
   submitError: string | null;
   canSubmit: boolean;
+  videoTask?: TrackedClipGenerationTask;
+  currentClipId?: string | null;
   onActionChange: (value: TimelineClipVideoReworkAction) => void;
   onPromptChange: (value: string) => void;
   onModelChange: (value: string) => void;
@@ -151,6 +157,11 @@ export function TimelineClipVideoReworkCard({
         >
           {submitting ? "提交中..." : "生成/重做此片段视频"}
         </button>
+        <TimelineClipTaskStatusLine
+          kind="video"
+          task={videoTask}
+          currentClipId={currentClipId ?? null}
+        />
       </div>
     </section>
   );

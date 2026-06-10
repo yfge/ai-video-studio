@@ -48,6 +48,7 @@ export function EpisodeTimelineClipProductionPanel({
   onNavigateToTasks,
   onNavigateToCharacters,
   onReworkRecorded,
+  onGenerationCompleted,
   onNotify,
 }: {
   item: TimelineItem | null;
@@ -73,6 +74,7 @@ export function EpisodeTimelineClipProductionPanel({
   onNavigateToTasks: () => void;
   onNavigateToCharacters: () => void;
   onReworkRecorded?: () => void | Promise<void>;
+  onGenerationCompleted?: () => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
 }) {
   const clipId = selectedTimelineClipId(item);
@@ -151,6 +153,7 @@ export function EpisodeTimelineClipProductionPanel({
                   selectedEnvironmentId={selectedEnvironmentId}
                   onNavigateToCharacters={onNavigateToCharacters}
                   onQueued={onReworkRecorded}
+                  onGenerationCompleted={onGenerationCompleted}
                   onNotify={onNotify}
                 />
               </section>

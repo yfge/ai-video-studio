@@ -16,15 +16,13 @@ import {
   sceneForTimelineMeta,
   timelineItemMeta,
 } from "./EpisodeTimelineWorkspaceModel";
-import {
-  preferredTimelineItemId,
-  timelineItemIdForClipId,
-} from "./EpisodeTimelineSelectionModel";
+import { useInitialTimelineClipSelection } from "./useInitialTimelineClipSelection";
 import { buildTimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
 import { EpisodeTimelineContextRail } from "./EpisodeTimelineWorkspaceParts";
 import { EpisodeTimelineClipProductionPanel } from "./EpisodeTimelineClipProductionPanel";
 import { EpisodeTimelineMainPanel } from "./EpisodeTimelineMainPanel";
 import { useTimelineClipAssets } from "./useTimelineClipAssets";
+import { useTimelineGenerationRefresh } from "./useTimelineGenerationRefresh";
 import { useTimelineSceneEnvironments } from "./useTimelineSceneEnvironments";
 import { useTimelineRenderJobs } from "./useTimelineRenderJobs";
 
@@ -33,6 +31,7 @@ interface EpisodeTimelineWorkspaceProps {
   selectedScriptId: number | null;
   selectedScript: Script | null;
   selectedTimelineSpec: TimelineResponse | null;
+  onTimelineUpdated?: (timeline: TimelineResponse) => void;
   initialSelectedClipId?: string | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
@@ -58,6 +57,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     episodeId,
     selectedScript,
     selectedTimelineSpec,
+    onTimelineUpdated,
     initialSelectedClipId,
     selectedAudioTimeline,
     selectedStoryboard,
@@ -143,27 +143,17 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
       ? `${latestRenderJob.id}:${latestRenderJob.status}:${latestRenderJob.updated_at}`
       : null,
   });
-  const [appliedInitialClipId, setAppliedInitialClipId] = useState<
-    string | null
-  >(null);
-
-  useEffect(() => {
-    if (
-      initialSelectedClipId &&
-      appliedInitialClipId !== initialSelectedClipId
-    ) {
-      const linkedItemId = timelineItemIdForClipId(
-        tracks,
-        initialSelectedClipId,
-      );
-      if (linkedItemId) {
-        setSelectedItemId(linkedItemId);
-        setAppliedInitialClipId(initialSelectedClipId);
-        return;
-      }
-    }
-    if (!selection.item) setSelectedItemId(preferredTimelineItemId(tracks));
-  }, [appliedInitialClipId, initialSelectedClipId, selection.item, tracks]);
+  const handleGenerationCompleted = useTimelineGenerationRefresh({
+    timelineSpecId: selectedTimelineSpec?.id ?? null,
+    onTimelineUpdated,
+    reloadClipAssets,
+  });
+  useInitialTimelineClipSelection({
+    tracks,
+    initialSelectedClipId,
+    selectionItem: selection.item,
+    setSelectedItemId,
+  });
 
   useEffect(() => {
     setSelectedEnvironmentId(selectedScene?.environment_id ?? null);
@@ -230,6 +220,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
               onNavigateToTasks={onNavigateToTasks}
               onNavigateToCharacters={onNavigateToCharacters}
               onReworkRecorded={reloadClipAssets}
+              onGenerationCompleted={handleGenerationCompleted}
               onNotify={(message, variant) => showAlert({ message, variant })}
             />
           }

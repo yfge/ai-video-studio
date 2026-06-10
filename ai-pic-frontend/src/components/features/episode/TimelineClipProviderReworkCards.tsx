@@ -10,6 +10,7 @@ import { StoryboardReferenceCard } from "./TimelineClipProviderReworkCardSection
 import { TimelineClipVideoReworkCard } from "./TimelineClipVideoReworkCard";
 import type { TimelineVideoReferenceChoice } from "./TimelineClipProviderReworkModel";
 import type { TimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
+import type { ClipGenerationTaskMap } from "./useTimelineClipGenerationTaskTracker";
 
 export function TimelineClipProviderReworkCards({
   action,
@@ -31,6 +32,8 @@ export function TimelineClipProviderReworkCards({
   onNavigateToCharacters,
   selectedStoryboardVirtualIpIds,
   storyboardReferenceSelection,
+  generationTasks,
+  currentClipId,
   generatingStoryboard,
   generatingKeyframes,
   submitting,
@@ -73,6 +76,8 @@ export function TimelineClipProviderReworkCards({
   onNavigateToCharacters?: () => void;
   selectedStoryboardVirtualIpIds: number[];
   storyboardReferenceSelection: TimelineClipStoryboardReferenceSelection;
+  generationTasks?: ClipGenerationTaskMap;
+  currentClipId?: string | null;
   generatingStoryboard: boolean;
   generatingKeyframes: boolean;
   submitting: boolean;
@@ -114,6 +119,8 @@ export function TimelineClipProviderReworkCards({
           storyboardReferenceSelection={storyboardReferenceSelection}
           generatingStoryboard={generatingStoryboard}
           canGenerateStoryboard={canGenerateStoryboard}
+          storyboardTask={generationTasks?.storyboard}
+          currentClipId={currentClipId ?? null}
           onReferenceImagesInputChange={onReferenceImagesInputChange}
           onStoryboardStyleChange={onStoryboardStyleChange}
           onStoryboardPanelCountChange={onStoryboardPanelCountChange}
@@ -124,6 +131,8 @@ export function TimelineClipProviderReworkCards({
         <TimelineClipKeyframeCard
           generating={generatingKeyframes}
           canGenerate={canGenerateKeyframes}
+          keyframesTask={generationTasks?.keyframes}
+          currentClipId={currentClipId ?? null}
           onGenerate={onGenerateKeyframes}
         />
 
@@ -148,6 +157,8 @@ export function TimelineClipProviderReworkCards({
           submitting={submitting}
           submitError={submitError}
           canSubmit={canSubmit}
+          videoTask={generationTasks?.video}
+          currentClipId={currentClipId ?? null}
           onActionChange={onActionChange}
           onPromptChange={onPromptChange}
           onModelChange={onModelChange}

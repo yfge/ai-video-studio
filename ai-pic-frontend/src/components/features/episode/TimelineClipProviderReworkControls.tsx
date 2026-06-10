@@ -22,6 +22,7 @@ import {
 import { useTimelineClipStoryboardReferenceSelection } from "./useTimelineClipStoryboardReferenceSelection";
 import { useTimelineClipStoryboardVirtualIpSelection } from "./useTimelineClipStoryboardVirtualIpSelection";
 import { useTimelineClipProviderGenerationActions } from "./useTimelineClipProviderGenerationActions";
+import { useTimelineClipGenerationTaskTracker } from "./useTimelineClipGenerationTaskTracker";
 import type { TimelineClipProviderReworkControlsProps } from "./TimelineClipProviderReworkControlsTypes";
 
 const EMPTY_EPISODE_CHARACTERS: EpisodeCharacter[] = [];
@@ -42,6 +43,7 @@ export function TimelineClipProviderReworkControls({
   storyboardEnvironmentImageOptions,
   onNavigateToCharacters,
   onQueued,
+  onGenerationCompleted,
   onNotify,
 }: TimelineClipProviderReworkControlsProps) {
   const [action, setAction] = useState<TimelineClipVideoReworkAction>("re_cut");
@@ -83,6 +85,13 @@ export function TimelineClipProviderReworkControls({
     storyboardReferenceSelection.selectedStoryboardCharacterReferenceImages;
   const selectedEnvironmentReferenceImages =
     storyboardReferenceSelection.selectedStoryboardEnvironmentReferenceImages;
+  const taskTracker = useTimelineClipGenerationTaskTracker({
+    onCompleted: async () => {
+      await onGenerationCompleted?.();
+      await onQueued?.();
+    },
+    onNotify,
+  });
   const generationActions = useTimelineClipProviderGenerationActions({
     timelineId,
     timelineVersion,
@@ -95,6 +104,8 @@ export function TimelineClipProviderReworkControls({
     selectedVirtualIpIds: selectedStoryboardVirtualIpIds,
     selectedCharacterReferenceImages,
     selectedEnvironmentReferenceImages,
+    onTaskQueued: (kind, taskId) =>
+      taskTracker.track(kind, taskId, clipId ?? null),
     onNotify,
   });
   const effectiveReferenceChoice =
@@ -156,7 +167,8 @@ export function TimelineClipProviderReworkControls({
       setPrompt("");
       setReason("");
       await onQueued?.();
-      onNotify?.(`视频重做任务已提交 #${res.data.task_id}`, "success");
+      onNotify?.(`视频重做任务已提交 #${res.data.task_id}，生成中…`, "success");
+      taskTracker.track("video", res.data.task_id, clipId ?? null);
     } finally {
       setSubmitting(false);
     }
@@ -183,6 +195,8 @@ export function TimelineClipProviderReworkControls({
       onNavigateToCharacters={onNavigateToCharacters}
       selectedStoryboardVirtualIpIds={selectedStoryboardVirtualIpIds}
       storyboardReferenceSelection={storyboardReferenceSelection}
+      generationTasks={taskTracker.tasks}
+      currentClipId={clipId ?? null}
       generatingStoryboard={generationActions.generatingStoryboard}
       generatingKeyframes={generationActions.generatingKeyframes}
       submitting={submitting}

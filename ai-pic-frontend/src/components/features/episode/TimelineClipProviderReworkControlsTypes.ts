@@ -22,5 +22,6 @@ export type TimelineClipProviderReworkControlsProps = {
   storyboardEnvironmentImageOptions?: StoryboardReferenceImageOption[];
   onNavigateToCharacters?: () => void;
   onQueued?: () => void | Promise<void>;
+  onGenerationCompleted?: () => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
 };
