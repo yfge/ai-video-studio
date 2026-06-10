@@ -26,11 +26,8 @@ import {
   latestScript,
   storyDisplayText,
 } from "./StoryProductionModel";
-import {
-  CharacterChip,
-  ReadyCell,
-  StoryEnvironmentCoverage,
-} from "./StoryProductionDetailParts";
+// prettier-ignore
+import { CharacterChip, ReadyCell, StoryEnvironmentCoverage } from "./StoryProductionDetailParts";
 import { useEpisodeGenerationAnchor } from "./useEpisodeGenerationAnchor";
 
 export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
@@ -62,6 +59,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
     handlePreviewPrompt,
     handlePreviewContextPack,
     handleGenerateEpisodes,
+    episodesTask,
     readiness,
     readinessLoading,
     readinessError,
@@ -151,6 +149,7 @@ export function StoryProductionDetail({ storyKey }: { storyKey: string }) {
               onPreviewPrompt={handlePreviewPrompt}
               onGenerate={handleGenerateEpisodes}
               canGenerate={canGenerate}
+              episodesTask={episodesTask}
               contextPackPreviewProps={{
                 includeContinuityLedger,
                 setIncludeContinuityLedger,

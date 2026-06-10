@@ -5,6 +5,7 @@ import {
   OperatorSectionHeader,
   operatorButtonClass,
 } from "@/components/shared";
+import { GenerationTaskStatusLine } from "@/components/shared/notifications";
 import type { EpisodeGenForm } from "@/hooks/useStoryDetail";
 import {
   EpisodeContextPackPreview,
@@ -25,6 +26,11 @@ interface EpisodeGeneratePanelProps {
   canGenerate?: boolean;
   contextPackPreviewProps: EpisodeContextPackPreviewProps;
   readinessPanel?: ReactNode;
+  episodesTask?: {
+    taskId: number;
+    phase: string;
+    error: string | null;
+  } | null;
 }
 
 export function EpisodeGeneratePanel({
@@ -40,9 +46,11 @@ export function EpisodeGeneratePanel({
   canGenerate = true,
   contextPackPreviewProps,
   readinessPanel,
+  episodesTask,
 }: EpisodeGeneratePanelProps) {
   return (
     <div className="space-y-4">
+      <GenerationTaskStatusLine label="剧集" task={episodesTask} />
       <OperatorSectionHeader
         title="生成剧集"
         subtitle="继承当前 IP 和故事上下文"

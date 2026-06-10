@@ -5,6 +5,8 @@ import { useCallback, useState } from "react";
 import { episodeAPI } from "@/utils/api/endpoints";
 import { httpClient } from "@/utils/api/client";
 import type { EpisodeGenerationRequest } from "@/utils/api/types";
+import { useToast } from "@/components/shared/notifications";
+import { useGenerationTaskTracker } from "@/hooks/useGenerationTaskTracker";
 import { INITIAL_EPISODE_GEN_FORM } from "@/hooks/storyEpisodeGenerationForm";
 import type { EpisodeGenForm } from "@/hooks/storyEpisodeGenerationForm";
 
@@ -28,6 +30,12 @@ export function useStoryEpisodeGeneration({
   );
   const [promptPreview, setPromptPreview] = useState("");
   const [useAsync, setUseAsync] = useState(true);
+  const { notify } = useToast();
+  const episodesTracker = useGenerationTaskTracker<"episodes">({
+    labels: { episodes: "剧集" },
+    onCompleted: () => onRefreshAfterSync(),
+    onNotify: notify,
+  });
 
   // Context Pack preview + toggles (for debugging/context transparency).
   const [contextPackPreview, setContextPackPreview] = useState("");
@@ -122,11 +130,12 @@ export function useStoryEpisodeGeneration({
     const payload = buildEpisodePayload();
     if (useAsync) {
       const response = await episodeAPI.generateEpisodesAsync(payload);
-      if (response.success) {
-        showAlert({
-          message: "已创建任务，请稍后在任务页查看进度",
-          variant: "info",
-        });
+      if (response.success && response.data) {
+        notify(
+          `剧集生成任务已提交 #${response.data.task_id}，完成后自动刷新列表`,
+          "info",
+        );
+        episodesTracker.track("episodes", response.data.task_id);
       } else {
         showAlert({
           message: `生成失败：${response.error || "未知错误"}`,
@@ -146,9 +155,17 @@ export function useStoryEpisodeGeneration({
         variant: "error",
       });
     }
-  }, [buildEpisodePayload, onRefreshAfterSync, showAlert, useAsync]);
+  }, [
+    buildEpisodePayload,
+    episodesTracker,
+    notify,
+    onRefreshAfterSync,
+    showAlert,
+    useAsync,
+  ]);
 
   return {
+    episodesTask: episodesTracker.tasks.episodes ?? null,
     genOpen,
     setGenOpen,
     genForm,
