@@ -5,7 +5,9 @@ import type {
   StoryboardReferenceImageOption,
 } from "./TimelineClipStoryboardReferenceImagesModel";
 
-export type NotifyVariant = "success" | "error" | "warning" | "info";
+import type { NotifyVariant } from "@/components/shared/notifications";
+
+export type { NotifyVariant };
 
 export type VideoModelOption = {
   id?: string;
