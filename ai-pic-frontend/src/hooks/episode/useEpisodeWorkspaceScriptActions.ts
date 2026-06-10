@@ -64,6 +64,7 @@ export function useEpisodeWorkspaceScriptActions(args: {
       showAlert,
       onSelectScript,
       regenerateScriptId,
+      notify,
     });
 
   return { regenerating, handleGenerateScript, handleRegenerateScript };

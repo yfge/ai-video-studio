@@ -37,6 +37,7 @@ export function isGenerationTaskActive(
 export function useGenerationTaskTracker<K extends string>({
   labels,
   onCompleted,
+  onFailed,
   onNotify,
   pollIntervalMs = POLL_INTERVAL_MS,
   maxPollMs = MAX_POLL_MS,
@@ -46,6 +47,11 @@ export function useGenerationTaskTracker<K extends string>({
     kind: K,
     taskId: number,
     task: Task | null,
+  ) => void | Promise<void>;
+  onFailed?: (
+    kind: K,
+    taskId: number,
+    error: string | null,
   ) => void | Promise<void>;
   onNotify?: (message: string, variant: NotifyVariant) => void;
   pollIntervalMs?: number;
@@ -57,14 +63,16 @@ export function useGenerationTaskTracker<K extends string>({
   const timersRef = useRef(new Map<K, ReturnType<typeof setTimeout>>());
   const mountedRef = useRef(true);
   const onCompletedRef = useRef(onCompleted);
+  const onFailedRef = useRef(onFailed);
   const onNotifyRef = useRef(onNotify);
   const labelsRef = useRef(labels);
 
   useEffect(() => {
     onCompletedRef.current = onCompleted;
+    onFailedRef.current = onFailed;
     onNotifyRef.current = onNotify;
     labelsRef.current = labels;
-  }, [labels, onCompleted, onNotify]);
+  }, [labels, onCompleted, onFailed, onNotify]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -104,6 +112,7 @@ export function useGenerationTaskTracker<K extends string>({
           `${label}生成失败：${error || "未知错误"}`,
           "error",
         );
+        void onFailedRef.current?.(kind, taskId, error);
       } else if (phase === "timeout") {
         onNotifyRef.current?.(
           `${label}任务 #${taskId} 等待超时，请稍后在任务列表查看`,

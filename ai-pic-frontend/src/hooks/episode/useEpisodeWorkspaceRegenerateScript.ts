@@ -1,24 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { scriptAPI } from "@/utils/api/endpoints";
 import type { Script, Task } from "@/utils/api/types";
-import { httpClient } from "@/utils/api/client";
+import type { NotifyVariant } from "@/components/shared/notifications";
+import { useGenerationTaskTracker } from "@/hooks/useGenerationTaskTracker";
 import { sortScriptsNewestFirst } from "./scriptSort";
 import type {
   PendingRegenerateState,
   ShowAlert,
 } from "./episodeWorkspaceScriptActions.types";
 import { parsePendingRegenerateState } from "./episodeWorkspaceScriptActions.types";
-
-const resolveScriptIdFromTask = (task: Task) => {
-  const raw = task.result_file_path || "";
-  const match = /^script:(\\d+)$/.exec(raw);
-  if (!match) return null;
-  const parsed = Number(match[1]);
-  return Number.isFinite(parsed) ? parsed : null;
-};
+import { resolveScriptIdFromTask } from "./useEpisodeWorkspaceScriptTaskTracking";
 
 export function useEpisodeWorkspaceRegenerateScript(args: {
   episodeKey: string;
@@ -27,6 +21,8 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
   showAlert: ShowAlert;
   onSelectScript: (scriptId: number | null) => void;
   regenerateScriptId: number | null;
+  notify?: (message: string, variant: NotifyVariant) => void;
+  pollIntervalMs?: number;
 }) {
   const {
     episodeKey,
@@ -35,30 +31,16 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
     showAlert,
     onSelectScript,
     regenerateScriptId,
+    notify,
+    pollIntervalMs,
   } = args;
 
-  const [regenerating, setRegenerating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const knownIdsRef = useRef<Set<number>>(new Set());
   const pendingStorageKey = useMemo(
     () => `episode-workspace:pending-regenerate:${episodeKey}`,
     [episodeKey],
   );
-
-  const pollTaskUntilDone = useCallback(async (taskId: number) => {
-    const maxAttempts = 180;
-    const intervalMs = 2000;
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-      const res = await httpClient<Task>(`/api/v1/tasks/${taskId}`, {
-        retry: false,
-      });
-      if (!res.success || !res.data) continue;
-      const task = res.data;
-      if (task.status === "completed" || task.status === "failed") {
-        return task;
-      }
-    }
-    return null;
-  }, []);
 
   const setPendingRegenerate = useCallback(
     (payload: PendingRegenerateState) => {
@@ -87,47 +69,28 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
     return pending;
   }, [pendingStorageKey]);
 
-  const loadLatestScripts = useCallback(async () => {
-    const scriptsRes = await scriptAPI.getEpisodeScripts(episodeKey);
-    if (
-      !scriptsRes.success ||
-      !Array.isArray(scriptsRes.data) ||
-      scriptsRes.data.length === 0
-    ) {
-      return null;
-    }
-    const ordered = sortScriptsNewestFirst(scriptsRes.data);
-    setScripts(ordered);
-    return ordered;
-  }, [episodeKey, setScripts]);
-
-  const runRegenerateTaskFlow = useCallback(
-    async (taskId: number, knownIds: Set<number>) => {
-      const task = await pollTaskUntilDone(taskId);
-      if (task && task.status !== "completed") {
-        clearPendingRegenerate();
-        showAlert({
-          message: `剧本重新生成失败：${task.error_message || "未知错误"}`,
-          variant: "error",
-        });
-        return;
-      }
-
-      const scriptIdFromTask = task ? resolveScriptIdFromTask(task) : null;
-      const ordered = await loadLatestScripts();
-      if (!ordered) {
+  const handleCompleted = useCallback(
+    async (_kind: "regenerate", _taskId: number, task: Task | null) => {
+      clearPendingRegenerate();
+      const scriptIdFromTask = resolveScriptIdFromTask(task);
+      const scriptsRes = await scriptAPI.getEpisodeScripts(episodeKey);
+      if (
+        !scriptsRes.success ||
+        !Array.isArray(scriptsRes.data) ||
+        scriptsRes.data.length === 0
+      ) {
         showAlert({ message: "加载最新剧本列表失败", variant: "warning" });
         return;
       }
-
-      const pickedByTaskId =
-        typeof scriptIdFromTask === "number"
-          ? ordered.find((script) => script.id === scriptIdFromTask) || null
-          : null;
-      const pickedNewerThanBefore =
-        ordered.find((script) => !knownIds.has(script.id)) || null;
-      const picked = pickedByTaskId || pickedNewerThanBefore;
-
+      const ordered = sortScriptsNewestFirst(scriptsRes.data);
+      setScripts(ordered);
+      const known = knownIdsRef.current;
+      const picked =
+        (typeof scriptIdFromTask === "number"
+          ? ordered.find((script) => script.id === scriptIdFromTask)
+          : null) ||
+        ordered.find((script) => !known.has(script.id)) ||
+        null;
       if (!picked) {
         showAlert({
           message: "新剧本已生成，但暂未出现在列表中，请稍后刷新",
@@ -135,25 +98,32 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
         });
         return;
       }
-
-      clearPendingRegenerate();
       onSelectScript(picked.id);
       const bizIdHint = picked.business_id
         ? ` [${picked.business_id.slice(0, 8)}...]`
         : "";
-      showAlert({
-        message: `已生成新剧本（v${picked.version} / ID: ${picked.id}${bizIdHint}）`,
-        variant: "success",
-      });
+      notify?.(
+        `已生成新剧本（v${picked.version} / ID: ${picked.id}${bizIdHint}）`,
+        "success",
+      );
     },
     [
       clearPendingRegenerate,
-      loadLatestScripts,
+      episodeKey,
+      notify,
       onSelectScript,
-      pollTaskUntilDone,
+      setScripts,
       showAlert,
     ],
   );
+
+  const tracker = useGenerationTaskTracker<"regenerate">({
+    labels: { regenerate: "剧本新版本" },
+    onCompleted: handleCompleted,
+    onFailed: () => clearPendingRegenerate(),
+    onNotify: notify,
+    pollIntervalMs,
+  });
 
   const handleRegenerateScript = useCallback(
     async (model?: string) => {
@@ -162,23 +132,24 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
         return;
       }
       try {
-        setRegenerating(true);
+        setSubmitting(true);
         const knownIds = new Set((scripts || []).map((script) => script.id));
         const res = await scriptAPI.regenerateScript(
           regenerateScriptId,
           model ? { model } : undefined,
         );
         if (res.success && res.data?.task_id) {
+          knownIdsRef.current = knownIds;
           setPendingRegenerate({
             taskId: res.data.task_id,
             knownScriptIds: [...knownIds],
             createdAtMs: Date.now(),
           });
-          showAlert({
-            message: `剧本重新生成任务已提交（task_id=${res.data.task_id}），等待产出新版本...`,
-            variant: "info",
-          });
-          await runRegenerateTaskFlow(res.data.task_id, knownIds);
+          notify?.(
+            `剧本重新生成任务已提交 #${res.data.task_id}，完成后自动选中新版本`,
+            "info",
+          );
+          tracker.track("regenerate", res.data.task_id);
         } else {
           showAlert({
             message: `剧本重新生成失败：${res.error || "未知错误"}`,
@@ -189,34 +160,30 @@ export function useEpisodeWorkspaceRegenerateScript(args: {
         console.error("Failed to regenerate script:", error);
         showAlert({ message: "剧本重新生成失败", variant: "error" });
       } finally {
-        setRegenerating(false);
+        setSubmitting(false);
       }
     },
     [
+      notify,
       regenerateScriptId,
-      runRegenerateTaskFlow,
       scripts,
       setPendingRegenerate,
       showAlert,
+      tracker,
     ],
   );
 
+  const resumedRef = useRef(false);
   useEffect(() => {
-    if (regenerating) return;
+    if (resumedRef.current) return;
+    resumedRef.current = true;
     const pending = getPendingRegenerate();
     if (!pending) return;
-    void (async () => {
-      try {
-        setRegenerating(true);
-        await runRegenerateTaskFlow(
-          pending.taskId,
-          new Set(pending.knownScriptIds),
-        );
-      } finally {
-        setRegenerating(false);
-      }
-    })();
-  }, [getPendingRegenerate, regenerating, runRegenerateTaskFlow]);
+    knownIdsRef.current = new Set(pending.knownScriptIds);
+    tracker.track("regenerate", pending.taskId);
+  }, [getPendingRegenerate, tracker]);
+
+  const regenerating = submitting || tracker.isActive("regenerate");
 
   return { regenerating, handleRegenerateScript };
 }
