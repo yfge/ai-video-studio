@@ -120,6 +120,12 @@ async def generate_prepared_script_attempt(
         lint_threshold=request_dict.get("quality_threshold", 9.0),
         target_chars_per_episode=request_dict.get("target_chars_per_episode", 1300),
     )
+    # 自动创建的临时角色在 agent/quality gate 的顶层 result 上；并入 ai_content
+    # 后会随 build_generation_extra_metadata 持久化到 script.extra_metadata，
+    # 前端角色 tab 才能在 async 路径看到绑定提醒。
+    auto_created = result.get("auto_created_characters")
+    if isinstance(auto_created, list) and auto_created:
+        ai_content["auto_created_characters"] = auto_created
     return {
         "result": result,
         "agent_run": {**agent_run, "quality_gate": result.get("quality_gate")},

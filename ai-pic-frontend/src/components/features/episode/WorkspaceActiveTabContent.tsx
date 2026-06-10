@@ -10,6 +10,7 @@ import type {
   TimelineResponse,
 } from "@/utils/api/types";
 import { WorkspaceCharactersTabContent } from "./WorkspaceCharactersTabContent";
+import { autoCreatedCharactersFromScript } from "./autoCreatedCharactersFromScript";
 import { WorkspaceOverviewTabContent } from "./WorkspaceOverviewTabContent";
 import { WorkspaceScriptTabContent } from "./WorkspaceScriptTabContent";
 import { WorkspaceStoryboardTabContent } from "./WorkspaceStoryboardTabContent";
@@ -160,7 +161,7 @@ export function WorkspaceActiveTabContent({
   return (
     <WorkspaceCharactersTabContent
       episodeId={episode.id}
-      autoCreatedCharacters={[]}
+      autoCreatedCharacters={autoCreatedCharactersFromScript(selectedScript)}
     />
   );
 }
