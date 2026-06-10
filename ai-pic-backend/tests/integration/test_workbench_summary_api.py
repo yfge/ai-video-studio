@@ -136,6 +136,7 @@ def test_workbench_summary_aggregates_user_state(client, db_session):
     _, episode, script = _create_story_episode_script(
         db_session, user, with_timeline=True
     )
+    _create_timeline_spec(db_session, episode, script)
 
     _create_task(
         db_session,
@@ -186,6 +187,22 @@ def test_workbench_summary_aggregates_user_state(client, db_session):
         task for task in data["task_queue"] if task["status"] == "processing"
     )
     assert processing["progress"] == 62
+
+
+@pytest.mark.integration
+def test_workbench_summary_ignores_stale_audio_timeline_metadata(
+    client, db_session
+):
+    """旧 episode.extra_metadata.audio_timeline 不再让 timeline_ready 为真。"""
+    user = _admin_user(db_session)
+    _create_story_episode_script(db_session, user, with_timeline=True)
+
+    response = client.get("/api/v1/workbench/summary")
+
+    assert response.status_code == 200, response.text
+    item = response.json()["recent_episodes"][0]
+    assert item["timeline_ready"] is False
+    assert item["timeline_id"] is None
 
 
 @pytest.mark.integration

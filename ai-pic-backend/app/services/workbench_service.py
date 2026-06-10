@@ -38,20 +38,9 @@ def _latest_script(scripts: list[Script]) -> Script | None:
     )[0]
 
 
-def _timeline_ready(episode: Episode, script: Script | None) -> bool:
-    if script is None:
-        return False
-    timeline = _as_dict(_as_dict(episode.extra_metadata).get("audio_timeline"))
-    if not timeline:
-        return False
-    script_id = timeline.get("script_id")
-    try:
-        return int(script_id) == script.id
-    except (TypeError, ValueError):
-        return False
-
-
 def _timeline_row_ready(timeline: Timeline | None) -> bool:
+    # Timeline 表是唯一事实来源；episode.extra_metadata 里的旧 audio_timeline
+    # 不再参与判定，避免 timeline 删除后 dashboard 仍显示就绪。
     return timeline is not None and not getattr(timeline, "is_deleted", False)
 
 
@@ -131,9 +120,7 @@ class WorkbenchService:
             if script is not None
             else None
         )
-        timeline_ready = _timeline_row_ready(timeline) or _timeline_ready(
-            episode, script
-        )
+        timeline_ready = _timeline_row_ready(timeline)
         storyboard_ready = _storyboard_ready(script)
         stage, label = _episode_stage(script_ready, timeline_ready, storyboard_ready)
         story = episode.story
