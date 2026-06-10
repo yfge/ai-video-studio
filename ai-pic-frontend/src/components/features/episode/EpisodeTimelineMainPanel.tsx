@@ -15,6 +15,7 @@ import type {
   TimelineRenderJobResponse,
   TimelineRenderType,
 } from "@/utils/api/types";
+import { GenerationTaskStatusLine } from "@/components/shared/notifications";
 import type { TimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
 import { TimelineRenderPanel } from "./EpisodeTimelineRenderPanel";
 
@@ -38,7 +39,7 @@ export function EpisodeTimelineMainPanel({
   setUseDurationControl,
   pipelineBusy,
   onGenerateTimelinePipeline,
-  pipelineTaskId,
+  pipelineTask,
   renderReadiness,
   latestRenderJob,
   renderJobsLoading,
@@ -60,7 +61,11 @@ export function EpisodeTimelineMainPanel({
   setUseDurationControl: (value: boolean) => void;
   pipelineBusy?: boolean;
   onGenerateTimelinePipeline?: () => void;
-  pipelineTaskId?: number | null;
+  pipelineTask?: {
+    taskId: number;
+    phase: string;
+    error: string | null;
+  } | null;
   renderReadiness: TimelineRenderReadiness;
   latestRenderJob: TimelineRenderJobResponse | null;
   renderJobsLoading: boolean;
@@ -143,9 +148,9 @@ export function EpisodeTimelineMainPanel({
           onQueueRender={onQueueRender}
           onRetryRender={onRetryRender}
         />
-        {pipelineTaskId ? (
-          <div className="border-t border-gray-100 px-4 py-3 text-xs text-blue-700">
-            一键流水线任务已创建：task_id={pipelineTaskId}
+        {pipelineTask ? (
+          <div className="border-t border-gray-100 px-4 py-1.5">
+            <GenerationTaskStatusLine label="时间轴流水线" task={pipelineTask} />
           </div>
         ) : null}
       </OperatorPanel>

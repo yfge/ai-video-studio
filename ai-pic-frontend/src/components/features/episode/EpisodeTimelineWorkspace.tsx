@@ -44,7 +44,11 @@ interface EpisodeTimelineWorkspaceProps {
   useDurationControl: boolean;
   setUseDurationControl: (value: boolean) => void;
   onGenerateTimelinePipeline?: () => void;
-  pipelineTaskId?: number | null;
+  pipelineTask?: {
+    taskId: number;
+    phase: string;
+    error: string | null;
+  } | null;
   onNavigateToTasks: () => void;
   onNavigateToScript: () => void;
   onNavigateToStoryboard: () => void;
@@ -70,7 +74,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     useDurationControl,
     setUseDurationControl,
     onGenerateTimelinePipeline,
-    pipelineTaskId,
+    pipelineTask,
     onNavigateToTasks,
     onNavigateToScript,
     onNavigateToStoryboard,
@@ -191,7 +195,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
           setUseDurationControl={setUseDurationControl}
           pipelineBusy={pipelineBusy}
           onGenerateTimelinePipeline={onGenerateTimelinePipeline}
-          pipelineTaskId={pipelineTaskId}
+          pipelineTask={pipelineTask}
           renderReadiness={renderReadiness}
           latestRenderJob={latestRenderJob}
           renderJobsLoading={renderJobsLoading}

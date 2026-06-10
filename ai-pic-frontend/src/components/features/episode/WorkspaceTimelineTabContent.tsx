@@ -10,6 +10,7 @@ import type {
 } from "@/utils/api/types";
 import { OperatorState } from "@/components/shared";
 import { EpisodeTimelineWorkspace } from "./EpisodeTimelineWorkspace";
+import { useTimelinePipelineTracking } from "./useTimelinePipelineTracking";
 
 interface WorkspaceTimelineTabContentProps {
   episodeId: number | string;
@@ -57,8 +58,12 @@ export function WorkspaceTimelineTabContent({
   const router = useRouter();
   const pathname = usePathname();
   const [pipelineBusy, setPipelineBusy] = useState(false);
-  const [pipelineTaskId, setPipelineTaskId] = useState<number | null>(null);
   const [useDurationControl, setUseDurationControl] = useState(false);
+  const { pipelineTask, trackPipelineTask } = useTimelinePipelineTracking({
+    episodeId,
+    selectedScriptId,
+    onTimelineUpdated,
+  });
 
   const autoTimelinePipelineRunId = searchParams.get("autoTimelinePipeline");
 
@@ -82,9 +87,9 @@ export function WorkspaceTimelineTabContent({
         },
       );
       if (res.success && res.data) {
-        setPipelineTaskId(res.data.task_id);
+        trackPipelineTask(res.data.task_id);
         showAlert({
-          message: `一键流水线任务已创建（task_id=${res.data.task_id}）`,
+          message: `一键流水线任务已提交（task_id=${res.data.task_id}），完成后自动刷新时间轴`,
           variant: "info",
         });
       } else {
@@ -99,7 +104,13 @@ export function WorkspaceTimelineTabContent({
     } finally {
       setPipelineBusy(false);
     }
-  }, [selectedScriptId, timingModel, useDurationControl, showAlert]);
+  }, [
+    selectedScriptId,
+    showAlert,
+    timingModel,
+    trackPipelineTask,
+    useDurationControl,
+  ]);
 
   useEffect(() => {
     if (!autoTimelinePipelineRunId || pipelineBusy || !selectedScriptId) return;
@@ -187,7 +198,7 @@ export function WorkspaceTimelineTabContent({
       useDurationControl={useDurationControl}
       setUseDurationControl={setUseDurationControl}
       onGenerateTimelinePipeline={handleGenerateTimelinePipeline}
-      pipelineTaskId={pipelineTaskId}
+      pipelineTask={pipelineTask}
       onNavigateToTasks={handleNavigateToTasks}
       onNavigateToScript={handleNavigateToScript}
       onNavigateToStoryboard={handleNavigateToStoryboard}
