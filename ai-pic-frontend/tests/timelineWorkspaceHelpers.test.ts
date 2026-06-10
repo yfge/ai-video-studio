@@ -258,6 +258,57 @@ describe("timeline workspace helpers", () => {
 
     assert.equal(readiness.ready, false);
     assert.equal(readiness.missingClips[0].clipId, "video_scene_2_beat_3_001");
+    assert.equal(readiness.missingClips[0].reason, "missing_video_url");
+  });
+
+  it("marks missing clips with in-flight tasks as generating", () => {
+    const readiness = buildTimelineRenderReadiness(
+      {
+        id: 6,
+        business_id: "timeline_6",
+        episode_id: 1,
+        script_id: 2,
+        title: "Timeline",
+        status: "ready",
+        version: 1,
+        created_at: "2026-05-12T00:00:00Z",
+        updated_at: "2026-05-12T00:00:00Z",
+        spec: {
+          spec_version: "timeline.v1",
+          episode_id: 1,
+          script_id: 2,
+          version: 1,
+          tracks: [
+            {
+              track_type: "video",
+              clips: [
+                {
+                  clip_id: "video_a",
+                  track_type: "video",
+                  start_ms: 0,
+                  end_ms: 1000,
+                },
+                {
+                  clip_id: "video_b",
+                  track_type: "video",
+                  start_ms: 1000,
+                  end_ms: 2000,
+                },
+              ],
+            },
+          ],
+        },
+      } satisfies TimelineResponse,
+      null,
+      new Set(["video_a"]),
+    );
+
+    assert.equal(readiness.ready, false);
+    const reasons = Object.fromEntries(
+      readiness.missingClips.map((clip) => [clip.clipId, clip.reason]),
+    );
+    assert.equal(reasons.video_a, "generating");
+    assert.equal(reasons.video_b, "missing_video_url");
   });
 
   it("resolves selected clip video status from storyboard support frames", () => {

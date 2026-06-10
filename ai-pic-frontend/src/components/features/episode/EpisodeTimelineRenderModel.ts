@@ -27,21 +27,27 @@ export type TimelineClipVideoStatus = {
 export function buildTimelineRenderReadiness(
   selectedTimelineSpec: TimelineResponse | null,
   selectedStoryboard: Record<string, unknown> | null,
+  activeClipTaskIds?: ReadonlySet<string>,
 ): TimelineRenderReadiness {
   const clips = timelineVideoClips(selectedTimelineSpec);
   const missingClips = clips
     .filter((clip) => !timelineClipVideoStatus(clip, selectedStoryboard).ready)
-    .map((clip) => ({
-      clipId: getString(clip.clip_id) || getString(clip.id) || "unknown",
-      sceneNumber:
-        getString(clip.scene_number) ||
-        getString(clip.scene) ||
-        getString(clip.scene_id) ||
-        null,
-      startMs: parseMs(clip.start_ms),
-      endMs: parseMs(clip.end_ms),
-      reason: "missing_video_url",
-    }));
+    .map((clip) => {
+      const clipId = getString(clip.clip_id) || getString(clip.id) || "unknown";
+      return {
+        clipId,
+        sceneNumber:
+          getString(clip.scene_number) ||
+          getString(clip.scene) ||
+          getString(clip.scene_id) ||
+          null,
+        startMs: parseMs(clip.start_ms),
+        endMs: parseMs(clip.end_ms),
+        reason: activeClipTaskIds?.has(clipId)
+          ? "generating"
+          : "missing_video_url",
+      };
+    });
 
   return {
     ready: clips.length > 0 && missingClips.length === 0,

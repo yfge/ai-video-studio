@@ -17,10 +17,10 @@ import {
   timelineItemMeta,
 } from "./EpisodeTimelineWorkspaceModel";
 import { useInitialTimelineClipSelection } from "./useInitialTimelineClipSelection";
-import { buildTimelineRenderReadiness } from "./EpisodeTimelineRenderModel";
 import { EpisodeTimelineContextRail } from "./EpisodeTimelineWorkspaceParts";
 import { EpisodeTimelineClipProductionPanel } from "./EpisodeTimelineClipProductionPanel";
 import { EpisodeTimelineMainPanel } from "./EpisodeTimelineMainPanel";
+import { useTimelineRenderReadinessWithTasks } from "./useTimelineActiveClipTasks";
 import { useTimelineClipAssets } from "./useTimelineClipAssets";
 import { useTimelineGenerationRefresh } from "./useTimelineGenerationRefresh";
 import { useTimelineSceneEnvironments } from "./useTimelineSceneEnvironments";
@@ -122,11 +122,10 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     () => sceneForTimelineMeta(normalizedScenes, meta, sceneEnvOverrides),
     [normalizedScenes, meta, sceneEnvOverrides],
   );
-  const renderReadiness = useMemo(
-    () =>
-      buildTimelineRenderReadiness(selectedTimelineSpec, selectedStoryboard),
-    [selectedStoryboard, selectedTimelineSpec],
-  );
+  const { renderReadiness } = useTimelineRenderReadinessWithTasks({
+    selectedTimelineSpec,
+    selectedStoryboard,
+  });
   const {
     latestJob: latestRenderJob,
     loading: renderJobsLoading,

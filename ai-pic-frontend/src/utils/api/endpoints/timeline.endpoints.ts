@@ -13,6 +13,7 @@ import type {
   TimelineClipReworkRequest,
   TimelineClipStoryboardGenerateRequest,
   TimelineClipStoryboardGenerateResponse,
+  TimelineClipTaskListResponse,
   TimelineClipVideoReworkTaskRequest,
   TimelineClipVideoReworkTaskResponse,
   TimelineListResponse,
@@ -35,6 +36,14 @@ async function getTimeline(
   timelineId: number | string,
 ): Promise<ApiResponse<TimelineResponse>> {
   return httpClient<TimelineResponse>(`/api/v1/timelines/${timelineId}`);
+}
+
+async function listTimelineClipTasks(
+  timelineId: number | string,
+): Promise<ApiResponse<TimelineClipTaskListResponse>> {
+  return httpClient<TimelineClipTaskListResponse>(
+    `/api/v1/timelines/${timelineId}/clip-tasks`,
+  );
 }
 
 async function updateTimeline(
@@ -159,6 +168,7 @@ export const timelineAPI = {
   queueTimelineRender,
   listTimelineRenderJobs,
   listTimelineClipAssets,
+  listTimelineClipTasks,
   reworkTimelineClip,
   queueTimelineClipVideoRework,
   generateTimelineClipStoryboard,

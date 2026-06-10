@@ -125,6 +125,18 @@ export interface TimelineClipAssetListResponse {
   items: TimelineClipAssetResponse[];
 }
 
+export interface TimelineClipTaskItem {
+  task_id: number;
+  clip_id?: string | null;
+  status: string;
+  task_type: string;
+  title?: string | null;
+}
+
+export interface TimelineClipTaskListResponse {
+  items: TimelineClipTaskItem[];
+}
+
 export interface TimelineClipAssetListParams {
   timelineVersion?: number | null;
   clipId?: string | null;

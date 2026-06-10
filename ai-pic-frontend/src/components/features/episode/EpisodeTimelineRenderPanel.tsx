@@ -93,14 +93,7 @@ export function TimelineRenderPanel({
       ) : null}
 
       {!readiness.ready && readiness.missingClips.length > 0 ? (
-        <div className="mt-3 text-xs text-amber-800">
-          缺失片段：
-          {readiness.missingClips
-            .slice(0, 4)
-            .map((clip) => clip.clipId)
-            .join("、")}
-          {readiness.missingClips.length > 4 ? " ..." : ""}
-        </div>
+        <MissingClipsSummary missingClips={readiness.missingClips} />
       ) : null}
 
       {latestJob?.status === "failed" ? (
@@ -138,6 +131,34 @@ export function TimelineRenderPanel({
         <div className="mt-3 text-xs text-gray-500">
           render_job_id={latestJob?.id} 正在处理
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MissingClipsSummary({
+  missingClips,
+}: {
+  missingClips: TimelineRenderReadiness["missingClips"];
+}) {
+  const generating = missingClips.filter(
+    (clip) => clip.reason === "generating",
+  );
+  const missing = missingClips.filter((clip) => clip.reason !== "generating");
+  const joinIds = (clips: typeof missingClips) =>
+    clips
+      .slice(0, 4)
+      .map((clip) => clip.clipId)
+      .join("、") + (clips.length > 4 ? " ..." : "");
+  return (
+    <div className="mt-3 space-y-1 text-xs">
+      {generating.length > 0 ? (
+        <div className="text-blue-700">
+          生成中片段（完成后自动可渲染）：{joinIds(generating)}
+        </div>
+      ) : null}
+      {missing.length > 0 ? (
+        <div className="text-amber-800">缺失片段：{joinIds(missing)}</div>
       ) : null}
     </div>
   );
