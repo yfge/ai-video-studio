@@ -8,8 +8,10 @@ import {
   type ScriptGenerationRequest,
 } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
+import { useToast } from "@/components/shared/notifications";
 import { sortScriptsNewestFirst } from "./scriptSort";
 import { useEpisodeWorkspaceScriptActions } from "./useEpisodeWorkspaceScriptActions";
+import { useEpisodeWorkspaceScriptTaskTracking } from "./useEpisodeWorkspaceScriptTaskTracking";
 
 export type TabKey =
   | "overview"
@@ -160,6 +162,21 @@ export function useEpisodeWorkspaceController(args: {
     }
   }, [episode?.story_id, router]);
 
+  const { notify } = useToast();
+  const knownScriptIds = useMemo(
+    () => orderedScripts.map((script) => script.id),
+    [orderedScripts],
+  );
+  const { scriptTask, trackScriptTask } = useEpisodeWorkspaceScriptTaskTracking(
+    {
+      episodeKey,
+      knownScriptIds,
+      setScripts,
+      onSelectScript: handleScriptChange,
+      notify,
+    },
+  );
+
   const { regenerating, handleGenerateScript, handleRegenerateScript } =
     useEpisodeWorkspaceScriptActions({
       episodeKey,
@@ -172,6 +189,8 @@ export function useEpisodeWorkspaceController(args: {
       showAlert,
       onSelectScript: handleScriptChange,
       regenerateScriptId,
+      onScriptTaskQueued: trackScriptTask,
+      notify,
     });
 
   const handleGenerateTimeline = useCallback(() => {
@@ -190,6 +209,7 @@ export function useEpisodeWorkspaceController(args: {
     activeTab,
     orderedScripts,
     regenerating,
+    scriptTask,
     handleTabChange,
     handleScriptChange,
     handleNavigateBack,

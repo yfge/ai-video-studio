@@ -23,6 +23,11 @@ export function useEpisodeWorkspaceScriptActions(args: {
   showAlert: ShowAlert;
   onSelectScript: (scriptId: number | null) => void;
   regenerateScriptId: number | null;
+  onScriptTaskQueued?: (taskId: number) => void;
+  notify?: (
+    message: string,
+    variant: "success" | "error" | "warning" | "info",
+  ) => void;
 }) {
   const {
     episodeKey,
@@ -35,6 +40,8 @@ export function useEpisodeWorkspaceScriptActions(args: {
     showAlert,
     onSelectScript,
     regenerateScriptId,
+    onScriptTaskQueued,
+    notify,
   } = args;
 
   const { handleGenerateScript } = useEpisodeWorkspaceGenerateScript({
@@ -45,6 +52,8 @@ export function useEpisodeWorkspaceScriptActions(args: {
     setScripts,
     showAlert,
     onSelectScript,
+    onTaskQueued: onScriptTaskQueued,
+    notify,
   });
 
   const { regenerating, handleRegenerateScript } =

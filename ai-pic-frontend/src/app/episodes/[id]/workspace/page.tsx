@@ -97,6 +97,7 @@ export default function EpisodeWorkspacePage() {
     activeTab,
     orderedScripts,
     regenerating,
+    scriptTask,
     handleTabChange,
     handleScriptChange,
     handleNavigateBack,
@@ -187,6 +188,7 @@ export default function EpisodeWorkspacePage() {
             setPromptPreview={setPromptPreview}
             generating={generating}
             regenerating={regenerating}
+            scriptTask={scriptTask}
             hasStoryboard={workflowStatus.storyboard === "ready"}
             showAlert={showAlert}
             onGenerateScript={handleGenerateScript}

@@ -48,6 +48,11 @@ interface WorkspaceActiveTabContentProps {
   setPromptPreview: Dispatch<SetStateAction<string>>;
   generating: boolean;
   regenerating: boolean;
+  scriptTask?: {
+    taskId: number;
+    phase: string;
+    error: string | null;
+  } | null;
   hasStoryboard: boolean;
   showAlert: ShowAlert;
   onGenerateScript: () => void;
@@ -82,6 +87,7 @@ export function WorkspaceActiveTabContent({
   setPromptPreview,
   generating,
   regenerating,
+  scriptTask,
   hasStoryboard,
   showAlert,
   onGenerateScript,
@@ -111,6 +117,7 @@ export function WorkspaceActiveTabContent({
         onGenerate={onGenerateScript}
         onRegenerateScript={onRegenerateScript}
         regenerating={regenerating}
+        scriptTask={scriptTask}
       />
     );
   }

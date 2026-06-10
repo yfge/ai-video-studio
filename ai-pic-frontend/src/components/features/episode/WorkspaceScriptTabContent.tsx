@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Script, ScriptGenerationRequest } from "@/utils/api/types";
 import { ScriptOverviewTab, ScriptScenesTab } from "@/components/features";
 import { OperatorPanel, OperatorSectionHeader } from "@/components/shared";
+import { GenerationTaskStatusLine } from "@/components/shared/notifications";
 import { ScriptGenerationForm } from "./ScriptGenerationForm";
 import {
   ScriptRegenerateModal,
@@ -29,6 +30,11 @@ interface WorkspaceScriptTabContentProps {
   // Regeneration
   onRegenerateScript?: (model?: string) => void;
   regenerating?: boolean;
+  scriptTask?: {
+    taskId: number;
+    phase: string;
+    error: string | null;
+  } | null;
 }
 
 export function WorkspaceScriptTabContent({
@@ -45,6 +51,7 @@ export function WorkspaceScriptTabContent({
   onGenerate,
   onRegenerateScript,
   regenerating,
+  scriptTask,
 }: WorkspaceScriptTabContentProps) {
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "scenes">(
     "scenes",
@@ -78,6 +85,7 @@ export function WorkspaceScriptTabContent({
           subtitle="请配置参数并生成剧本以继续工作流"
         />
         <div className="p-4">
+          <GenerationTaskStatusLine label="剧本" task={scriptTask} />
           <ScriptGenerationForm
             generateForm={generateForm}
             setGenerateForm={setGenerateForm}
@@ -98,6 +106,7 @@ export function WorkspaceScriptTabContent({
 
   return (
     <div className="space-y-4">
+      <GenerationTaskStatusLine label="剧本" task={scriptTask} />
       <ScriptTabToolbar
         activeSubTab={activeSubTab}
         setActiveSubTab={setActiveSubTab}

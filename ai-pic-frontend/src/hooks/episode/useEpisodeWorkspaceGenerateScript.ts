@@ -19,6 +19,11 @@ export function useEpisodeWorkspaceGenerateScript(args: {
   setScripts: React.Dispatch<React.SetStateAction<Script[]>>;
   showAlert: ShowAlert;
   onSelectScript: (scriptId: number | null) => void;
+  onTaskQueued?: (taskId: number) => void;
+  notify?: (
+    message: string,
+    variant: "success" | "error" | "warning" | "info",
+  ) => void;
 }) {
   const {
     episode,
@@ -28,6 +33,8 @@ export function useEpisodeWorkspaceGenerateScript(args: {
     setScripts,
     showAlert,
     onSelectScript,
+    onTaskQueued,
+    notify,
   } = args;
 
   const handleGenerateScript = useCallback(async () => {
@@ -50,10 +57,10 @@ export function useEpisodeWorkspaceGenerateScript(args: {
       if (useAsync) {
         const res = await scriptAPI.generateScriptAsync(payload);
         if (res.success && res.data) {
-          showAlert({
-            message: `剧本生成任务已创建（task_id=${res.data.task_id}）`,
-            variant: "info",
-          });
+          const submitted = `剧本生成任务已提交 #${res.data.task_id}，完成后自动刷新并选中新剧本`;
+          if (notify) notify(submitted, "info");
+          else showAlert({ message: submitted, variant: "info" });
+          onTaskQueued?.(res.data.task_id);
         } else {
           showAlert({
             message: `创建剧本生成任务失败：${res.error || "未知错误"}`,
@@ -85,7 +92,9 @@ export function useEpisodeWorkspaceGenerateScript(args: {
   }, [
     episode?.id,
     generateForm,
+    notify,
     onSelectScript,
+    onTaskQueued,
     setGenerating,
     setScripts,
     showAlert,
