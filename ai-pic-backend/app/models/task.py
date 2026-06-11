@@ -16,6 +16,20 @@ class TaskStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
+# Valid status transitions: current_status -> {allowed_next_statuses}
+TASK_STATUS_TRANSITIONS = {
+    TaskStatus.PENDING: {TaskStatus.PROCESSING, TaskStatus.CANCELLED},
+    TaskStatus.PROCESSING: {
+        TaskStatus.COMPLETED,
+        TaskStatus.FAILED,
+        TaskStatus.CANCELLED,
+    },
+    TaskStatus.FAILED: {TaskStatus.PENDING},  # allow retry
+    TaskStatus.COMPLETED: set(),
+    TaskStatus.CANCELLED: {TaskStatus.PENDING},  # allow re-queue
+}
+
+
 class TaskType(str, enum.Enum):
     IMAGE_GENERATION = "image_generation"
     IMAGE_EDIT = "image_edit"

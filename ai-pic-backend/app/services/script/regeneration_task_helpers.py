@@ -56,6 +56,9 @@ def update_task_status(
     task = TaskRepository(db).get_by_id(task_id)
     if not task:
         return
+    if task.status == TaskStatus.CANCELLED:
+        # 用户已取消：worker 完成后不得把状态覆盖回 COMPLETED/FAILED
+        return
     task.status = status
     if result_file_path is not None:
         task.result_file_path = result_file_path

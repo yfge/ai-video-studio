@@ -3,7 +3,7 @@ import logging
 
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
-from app.models.task import Task, TaskStatus, TaskType
+from app.models.task import TASK_STATUS_TRANSITIONS, Task, TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskList, TaskResponse, TaskUpdate
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -18,14 +18,6 @@ def _not_deleted(query, model):
     return query.filter(model.is_deleted.is_(False))
 
 
-# Valid status transitions: current_status -> {allowed_next_statuses}
-_VALID_TRANSITIONS = {
-    TaskStatus.PENDING: {TaskStatus.PROCESSING, TaskStatus.CANCELLED},
-    TaskStatus.PROCESSING: {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED},
-    TaskStatus.FAILED: {TaskStatus.PENDING},  # allow retry
-    TaskStatus.COMPLETED: set(),
-    TaskStatus.CANCELLED: {TaskStatus.PENDING},  # allow re-queue
-}
 
 
 def _serialize_task(task: Task) -> TaskResponse:
@@ -183,7 +175,7 @@ def update_task(
     # Validate status transitions
     if "status" in update_data:
         new_status = update_data["status"]
-        allowed = _VALID_TRANSITIONS.get(task.status, set())
+        allowed = TASK_STATUS_TRANSITIONS.get(task.status, set())
         if new_status not in allowed:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
