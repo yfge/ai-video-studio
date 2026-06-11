@@ -60,6 +60,13 @@
 - 新增 `tests/unit/test_codex_image.py`（5 例：尺寸映射/payload/SSE 解析/错误透传）
 - `.gitignore` 增加 `.codex/`（auth token 永不入库）；`ai-pic-backend/.codex/auth.json` 为本机复制，不提交
 
+## 追加（同日第三轮）：端到端真实出图结论
+
+- **宫格图全链路成功**（task 6050）：DeepSeek v4-flash 动态分节提示词（prompt_source=llm_dynamic）→ Codex token 调 gpt-image-2 → 12 宫格电影级写实大图落 OSS（`ai-generated/scene-grid/.../d8645f49.png`），老拐/文闻/环境三张参考图全部带入（refs_used 含 character×2 + environment），编号与中文说明栏渲染清晰、人物形象贯穿一致。证据：`artifacts/runs/2026-06-11-scene-grid-dynamic-prompt/05-scene2-grid-sheet-codex.png`
+- 排障结论一（已修复）：ChatGPT 图像工具对 **base64 内联 input_image 必然 server_error**，公网 URL 透传即成功 → `inline_reference_images` 改为公网 URL 透传、仅内网 uploads 才内联兜底
+- 排障结论二（已修复）：normalize 层把 aspect_ratio 16:9 吞成 1024x1024 → `compute_image_ui` 增加 codex 分支（auto 优先 + 比例选项），`resolve_image_size` 对 auto 继续走比例映射，16:9→1536x1024 验证通过
+- 排障结论三（平台限制）：火山 Seedance 2.0 图生视频对含写实人脸的宫格图返回 `InputImageSensitiveContentDetected.PrivacyInformation`（疑似真人审核）拒绝生成；用无人物环境图验证 Seedance i2v 链路本身正常（4s 成片成功）。成片环节被平台内容策略阻断，需向火山申请真人内容权限或改用对真人审核宽松的 i2v 渠道
+
 ## Next Steps
 
 - 在配置了可用 LLM 文本模型与生图余额的环境开启 `STORYBOARD_DYNAMIC_PROMPT_ENABLED=true` 做真实出图对比与灰度

@@ -20,32 +20,49 @@ REFERENCE_FETCH_TIMEOUT = 20.0
 MAX_REFERENCE_IMAGES = 6
 
 
-async def inline_reference_images(urls: Sequence[str] | None) -> List[str]:
-    """Download reference images and inline them as base64 data URLs.
+INTERNAL_HOST_MARKERS = ("localhost", "127.0.0.1", "ai-video-backend")
 
-    The ChatGPT endpoint downloads URLs itself and cannot reach intranet
-    hosts (uploads served by the backend container), so references must be
-    inlined. Images are downscaled to bound the payload size; unreachable
-    references are skipped instead of failing the whole generation.
+
+def _is_public_url(url: str) -> bool:
+    lowered = url.lower()
+    if not lowered.startswith(("http://", "https://")):
+        return False
+    return not any(marker in lowered for marker in INTERNAL_HOST_MARKERS)
+
+
+async def inline_reference_images(urls: Sequence[str] | None) -> List[str]:
+    """Normalize reference images for the ChatGPT image tool.
+
+    Publicly reachable URLs are passed through untouched (the endpoint
+    downloads them itself; inlined base64 payloads have proven flaky).
+    Intranet URLs (backend uploads) are downloaded and inlined as downscaled
+    data URLs as a best effort; unreachable references are skipped instead of
+    failing the whole generation.
     """
-    inlined: List[str] = []
+    prepared: List[str] = []
+    pending_internal: List[str] = []
     if not urls:
-        return inlined
-    async with httpx.AsyncClient(timeout=REFERENCE_FETCH_TIMEOUT) as client:
-        for url in list(urls)[:MAX_REFERENCE_IMAGES]:
-            if not isinstance(url, str) or not url.strip():
-                continue
-            url = url.strip()
-            if url.startswith("data:"):
-                inlined.append(url)
-                continue
-            try:
-                resp = await client.get(url, follow_redirects=True)
-                resp.raise_for_status()
-                inlined.append(_downscale_to_data_url(resp.content))
-            except Exception:  # noqa: BLE001
-                continue
-    return inlined
+        return prepared
+    for url in list(urls)[:MAX_REFERENCE_IMAGES]:
+        if not isinstance(url, str) or not url.strip():
+            continue
+        url = url.strip()
+        if url.startswith("data:"):
+            prepared.append(url)
+        elif _is_public_url(url):
+            prepared.append(url)
+        else:
+            pending_internal.append(url)
+    if pending_internal:
+        async with httpx.AsyncClient(timeout=REFERENCE_FETCH_TIMEOUT) as client:
+            for url in pending_internal:
+                try:
+                    resp = await client.get(url, follow_redirects=True)
+                    resp.raise_for_status()
+                    prepared.append(_downscale_to_data_url(resp.content))
+                except Exception:  # noqa: BLE001
+                    continue
+    return prepared
 
 
 def _downscale_to_data_url(content: bytes) -> str:
@@ -73,7 +90,7 @@ def resolve_image_size(
     aspect_ratio: Optional[str],
 ) -> str:
     """Map arbitrary size hints onto the sizes the image tool accepts."""
-    if isinstance(size, str) and size in SUPPORTED_SIZES:
+    if isinstance(size, str) and size in SUPPORTED_SIZES and size != "auto":
         return size
     ratio = (aspect_ratio or "").strip()
     if not ratio and width and height:
