@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from app.schemas.user import UserSummary
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class VirtualIPImageBase(BaseModel):
@@ -59,6 +59,13 @@ class VirtualIPBase(BaseModel):
     voice_config: Optional[Dict[str, Any]] = None
     is_active: bool = True
     is_public: bool = False
+
+    @field_validator("tags", "style_reference_images", mode="before")
+    @classmethod
+    def _none_to_empty_list(cls, value):
+        # 自动创建的 IP（如临时角色默认形象）DB 中 tags 为 NULL；
+        # 序列化为 [] 避免前端 .length 崩溃。
+        return [] if value is None else value
 
 
 class VirtualIPCreate(VirtualIPBase):

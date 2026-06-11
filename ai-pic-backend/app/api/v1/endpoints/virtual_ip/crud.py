@@ -58,7 +58,7 @@ def list_virtual_ips(
         query = query.filter(VirtualIP.name.contains(search.strip()))
     if not current_user.is_admin and not current_user.is_superuser:
         query = query.filter(VirtualIP.user_id == current_user.id)
-    virtual_ips = query.offset(skip).limit(limit).all()
+    virtual_ips = query.order_by(VirtualIP.id.desc()).offset(skip).limit(limit).all()
     return {
         "success": True,
         "data": [VirtualIPResponse.from_orm(ip) for ip in virtual_ips],

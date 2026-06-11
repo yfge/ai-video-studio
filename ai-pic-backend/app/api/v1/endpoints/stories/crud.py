@@ -71,7 +71,7 @@ async def get_stories(
     if status:
         query = query.filter(Story.status == status)
 
-    stories = query.offset(skip).limit(limit).all()
+    stories = query.order_by(Story.id.desc()).offset(skip).limit(limit).all()
     return [StoryResponse.from_orm(story) for story in stories]
 
 

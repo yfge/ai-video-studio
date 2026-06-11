@@ -154,7 +154,7 @@ function IPProjectCard({
         <p className="mt-4 text-sm text-gray-400">暂无 IP 简介</p>
       )}
 
-      <TagList tags={ip.tags} />
+      <TagList tags={ip.tags ?? []} />
 
       <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-500">
         <span>{ip.background_story ? "背景故事已补充" : "背景故事待补充"}</span>

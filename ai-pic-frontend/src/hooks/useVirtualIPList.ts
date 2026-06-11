@@ -40,7 +40,7 @@ export function useVirtualIPList({ showAlert }: UseVirtualIPListOptions) {
   }, [fetchVirtualIPs]);
 
   const allTags = useMemo(
-    () => Array.from(new Set(virtualIPs.flatMap((ip) => ip.tags))),
+    () => Array.from(new Set(virtualIPs.flatMap((ip) => ip.tags ?? []))),
     [virtualIPs],
   );
 
