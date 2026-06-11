@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import {
   EpisodeWorkspaceHeader,
   WorkspaceActiveTabContent,
-  WorkspaceScriptSelector,
   type WorkflowStatus,
 } from "@/components/features/episode";
 import { OperatorShell, OperatorState } from "@/components/shared";
@@ -139,19 +138,17 @@ export default function EpisodeWorkspacePage() {
         <EpisodeWorkspaceHeader
           episode={episode!}
           script={mainScript}
+          scripts={orderedScripts}
+          selectedScriptId={selectedScriptId}
           workflowStatus={workflowStatus}
           activeTab={activeTab}
           onTabChange={handleTabChange}
           onNavigateBack={handleNavigateBack}
           onGenerateScript={handleGenerateScript}
           onGenerateTimeline={handleGenerateTimeline}
+          onSelectScript={handleScriptChange}
           storyboardActionLabel={storyboardActionLabel}
           onOpenStoryboard={handleOpenStoryboard}
-        />
-        <WorkspaceScriptSelector
-          scripts={orderedScripts}
-          selectedScriptId={selectedScriptId}
-          onSelectScript={handleScriptChange}
         />
         <div className="mt-6">
           <WorkspaceActiveTabContent

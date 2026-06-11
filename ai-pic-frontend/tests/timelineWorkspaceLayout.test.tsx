@@ -3,11 +3,15 @@ import { afterEach, describe, it } from "node:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
+import {
+  EpisodeWorkspaceHeader,
+  type WorkflowStatus,
+} from "../src/components/features/episode";
 import { EpisodeTimelineWorkspace } from "../src/components/features/episode/EpisodeTimelineWorkspace";
 import { AlertModalProvider } from "../src/components/shared/modals";
 import { ToastProvider } from "../src/components/shared/notifications";
 import { clearAvailableModelsCache } from "../src/hooks/useAvailableModels";
-import type { Script, TimelineResponse } from "../src/utils/api/types";
+import type { Episode, Script, TimelineResponse } from "../src/utils/api/types";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost",
@@ -45,6 +49,59 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.equal(utils.queryByText("片段检查器"), null);
     assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
+  });
+
+  it("renders a compact production path header with one primary next action", () => {
+    const selectedScript = script();
+    const workflowStatus: WorkflowStatus = {
+      script: "ready",
+      timeline: "pending",
+      storyboard: "pending",
+    };
+    const utils = render(
+      <EpisodeWorkspaceHeader
+        episode={episode()}
+        script={selectedScript}
+        scripts={[selectedScript]}
+        selectedScriptId={selectedScript.id}
+        workflowStatus={workflowStatus}
+        activeTab="timeline"
+        onTabChange={() => {}}
+        onNavigateBack={() => {}}
+        onGenerateScript={() => {}}
+        onGenerateTimeline={() => {}}
+        onSelectScript={() => {}}
+      />,
+      { container: dom.window.document.body },
+    );
+
+    assert.ok(utils.getByText("生产主线"));
+    assert.ok(utils.getByLabelText("当前剧本"));
+    assert.equal(
+      utils.getAllByRole("button", { name: "生成 Timeline" }).length,
+      1,
+    );
+    assert.equal(utils.queryByText("步骤 1"), null);
+    assert.equal(utils.queryByRole("button", { name: "剧集概要" }), null);
+    assert.ok(utils.getByRole("button", { name: "剧本设置" }));
+    assert.ok(utils.getByRole("button", { name: "分镜参考" }));
+    assert.ok(utils.getByRole("button", { name: "临时角色/IP 绑定" }));
+  });
+
+  it("keeps Timeline generation controls in a compact production setup row", async () => {
+    mockWorkspaceFetch();
+
+    const utils = render(workspace(videoTimeline()), {
+      container: dom.window.document.body,
+    });
+
+    await waitFor(() => {
+      assert.ok(utils.getByText("Timeline 生成设置"));
+      assert.equal(
+        utils.getAllByRole("button", { name: "生成 Timeline" }).length,
+        1,
+      );
+    });
   });
 
   it("defaults to the first video clip so production entries are visible on deep links", async () => {
@@ -177,6 +234,35 @@ function workspace(
       </ToastProvider>
     </AlertModalProvider>
   );
+}
+
+function episode(): Episode {
+  return {
+    id: 1,
+    business_id: "episode_1",
+    story_id: 7,
+    episode_number: 1,
+    title: "末日安全屋",
+    duration_minutes: 3,
+    status: "draft",
+    created_at: "2026-06-11T00:00:00Z",
+    updated_at: "2026-06-11T00:00:00Z",
+  };
+}
+
+function script(): Script {
+  return {
+    id: 128,
+    business_id: "script_128",
+    episode_id: 1,
+    title: "第1集剧本",
+    format_type: "screenplay",
+    language: "zh-CN",
+    status: "draft",
+    version: "1.0",
+    created_at: "2026-06-11T00:00:00Z",
+    updated_at: "2026-06-11T00:00:00Z",
+  };
 }
 
 function mockWorkspaceFetch({

@@ -2,33 +2,35 @@
 
 import type { Episode, Script } from "@/utils/api/types";
 import {
-  OperatorEntityHeader,
-  OperatorTabs,
-  OperatorToolbar,
+  OperatorPanel,
+  StatusPill,
   operatorButtonClass,
+  operatorSelectClass,
 } from "@/components/shared";
 import {
-  EpisodeWorkflowSteps,
-  type WorkflowStepStatus,
-} from "./EpisodeWorkflowSteps";
+  buildEpisodeProductionState,
+  productionStatusLabel,
+  productionStatusTone,
+  scriptOptionLabel,
+  type ProductionActionKind,
+  type WorkflowStatus,
+} from "./EpisodeWorkspaceProductionState";
+import type { TabKey } from "@/hooks/episode/useEpisodeWorkspaceController";
 
-export interface WorkflowStatus {
-  script: WorkflowStepStatus;
-  timeline: WorkflowStepStatus;
-  storyboard: WorkflowStepStatus;
-}
+export type { WorkflowStatus } from "./EpisodeWorkspaceProductionState";
 
 interface EpisodeWorkspaceHeaderProps {
   episode: Episode;
   script?: Script | null;
+  scripts: Script[];
+  selectedScriptId: number | null;
   workflowStatus: WorkflowStatus;
-  activeTab: "overview" | "script" | "timeline" | "storyboard" | "characters";
-  onTabChange: (
-    tab: "overview" | "script" | "timeline" | "storyboard" | "characters",
-  ) => void;
+  activeTab: TabKey;
+  onTabChange: (tab: TabKey) => void;
   onNavigateBack: () => void;
   onGenerateScript?: () => void;
   onGenerateTimeline?: () => void;
+  onSelectScript: (scriptId: number | null) => void;
   storyboardActionLabel?: string;
   onOpenStoryboard?: () => void;
 }
@@ -36,80 +38,47 @@ interface EpisodeWorkspaceHeaderProps {
 export function EpisodeWorkspaceHeader({
   episode,
   script,
+  scripts,
+  selectedScriptId,
   workflowStatus,
   activeTab,
   onTabChange,
   onNavigateBack,
   onGenerateScript,
   onGenerateTimeline,
+  onSelectScript,
   storyboardActionLabel = "打开分镜辅助",
   onOpenStoryboard,
 }: EpisodeWorkspaceHeaderProps) {
-  const workflowSteps = [
-    {
-      key: "script",
-      label: "剧本",
-      description: "查看和编辑剧本内容、场景对白",
-      status: workflowStatus.script,
-      actionLabel: script ? "查看剧本" : "生成剧本",
-      onAction: () => {
-        if (script) {
-          onTabChange("script");
-        } else {
-          onGenerateScript?.();
-        }
-      },
-    },
-    {
-      key: "timeline",
-      label: "时间轴",
-      description: "生成对白音轨和时间轴数据",
-      status: workflowStatus.timeline,
-      actionLabel:
-        workflowStatus.timeline === "ready" ? "进入时间轴" : "生成时间轴",
-      onAction: () => {
-        if (workflowStatus.timeline === "ready") {
-          onTabChange("timeline");
-        } else {
-          onGenerateTimeline?.();
-        }
-      },
-    },
-    {
-      key: "storyboard",
-      label: "分镜",
-      description:
-        storyboardActionLabel === "进入片段分镜"
-          ? "按视频片段生成分镜、首尾帧和视频"
-          : "按时间轴辅助查看分镜占位",
-      status: workflowStatus.storyboard,
-      actionLabel: storyboardActionLabel,
-      onAction: () => {
-        if (onOpenStoryboard) {
-          onOpenStoryboard();
-        } else {
-          onTabChange("storyboard");
-        }
-      },
-    },
-  ];
+  const productionState = buildEpisodeProductionState({
+    activeTab,
+    script,
+    workflowStatus,
+    storyboardActionLabel,
+  });
 
-  const tabs = [
-    { key: "overview" as const, label: "剧集概要" },
-    { key: "script" as const, label: "剧本" },
-    { key: "timeline" as const, label: "时间轴" },
-    { key: "storyboard" as const, label: "分镜" },
-    { key: "characters" as const, label: "临时角色" },
-  ];
+  const runPrimaryAction = () => {
+    runProductionAction(productionState.primaryAction.kind, {
+      onGenerateScript,
+      onGenerateTimeline,
+      onOpenStoryboard,
+      onTabChange,
+    });
+  };
 
   return (
-    <div className="space-y-4">
-      <OperatorEntityHeader
-        eyebrow="IP 剧集工作台"
-        title={`第${episode.episode_number}集: ${episode.title}`}
-        subtitle={`${episode.duration_minutes}分钟 · Timeline-first 生产路径`}
-        meta={<EpisodeWorkflowSteps steps={workflowSteps} compact />}
-        action={
+    <OperatorPanel className="p-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <div className="text-xs font-medium text-gray-500">IP 剧集工作台</div>
+          <h1 className="mt-1 truncate text-lg font-semibold text-gray-950">
+            第{episode.episode_number}集: {episode.title}
+          </h1>
+          <p className="mt-1 truncate text-sm text-gray-600">
+            {episode.duration_minutes || "-"}分钟 · Timeline-first 生产控制台
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={onNavigateBack}
@@ -117,14 +86,117 @@ export function EpisodeWorkspaceHeader({
           >
             返回故事
           </button>
-        }
-      />
+          <button
+            type="button"
+            onClick={runPrimaryAction}
+            disabled={productionState.primaryAction.disabled}
+            className={operatorButtonClass("primary")}
+          >
+            {productionState.primaryAction.label}
+          </button>
+        </div>
+      </div>
 
-      <EpisodeWorkflowSteps steps={workflowSteps} />
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
+        <label className="min-w-0 text-xs font-medium text-gray-600">
+          当前剧本
+          <select
+            aria-label="当前剧本"
+            value={selectedScriptId ?? ""}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              onSelectScript(Number.isFinite(next) ? next : null);
+            }}
+            disabled={scripts.length === 0}
+            className={operatorSelectClass("mt-1 w-full")}
+          >
+            {scripts.length === 0 ? (
+              <option value="">未生成剧本</option>
+            ) : (
+              scripts.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {scriptOptionLabel(item)}
+                </option>
+              ))
+            )}
+          </select>
+        </label>
 
-      <OperatorToolbar>
-        <OperatorTabs tabs={tabs} active={activeTab} onChange={onTabChange} />
-      </OperatorToolbar>
-    </div>
+        <div className="min-w-0 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-600">
+              生产主线
+            </span>
+            {productionState.steps.map((step) => (
+              <span key={step.key} className="inline-flex items-center gap-1">
+                <span className="text-xs font-medium text-gray-800">
+                  {step.label}
+                </span>
+                <StatusPill tone={productionStatusTone(step.status)}>
+                  {productionStatusLabel(step.status)}
+                </StatusPill>
+              </span>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onTabChange("script")}
+              className={operatorButtonClass(
+                activeTab === "script" ? "secondary" : "ghost",
+              )}
+            >
+              剧本设置
+            </button>
+            <button
+              type="button"
+              onClick={() => onTabChange("storyboard")}
+              className={operatorButtonClass(
+                activeTab === "storyboard" ? "secondary" : "ghost",
+              )}
+            >
+              分镜参考
+            </button>
+            <button
+              type="button"
+              onClick={() => onTabChange("characters")}
+              className={operatorButtonClass(
+                activeTab === "characters" ? "secondary" : "ghost",
+              )}
+            >
+              临时角色/IP 绑定
+            </button>
+          </div>
+        </div>
+      </div>
+    </OperatorPanel>
   );
+}
+
+function runProductionAction(
+  kind: ProductionActionKind,
+  handlers: {
+    onGenerateScript?: () => void;
+    onGenerateTimeline?: () => void;
+    onOpenStoryboard?: () => void;
+    onTabChange: (tab: TabKey) => void;
+  },
+) {
+  if (kind === "generate-script") {
+    handlers.onGenerateScript?.();
+    return;
+  }
+  if (kind === "generate-timeline") {
+    handlers.onGenerateTimeline?.();
+    return;
+  }
+  if (kind === "open-clip") {
+    handlers.onOpenStoryboard?.();
+    return;
+  }
+  if (kind === "open-storyboard") {
+    handlers.onTabChange("storyboard");
+    return;
+  }
+  handlers.onTabChange("timeline");
 }

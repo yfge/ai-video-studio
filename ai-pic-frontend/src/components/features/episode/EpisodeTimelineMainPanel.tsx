@@ -83,6 +83,9 @@ export function EpisodeTimelineMainPanel({
           subtitle="对白音轨、时间轴、分镜占位按同一时间码对齐"
           action={
             <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-gray-600">
+                Timeline 生成设置
+              </span>
               <select
                 value={timingModel}
                 onChange={(event) => setTimingModel(event.target.value)}
@@ -121,7 +124,7 @@ export function EpisodeTimelineMainPanel({
                 disabled={pipelineBusy || !selectedScriptId}
                 className={operatorButtonClass("primary")}
               >
-                {pipelineBusy ? "生成中..." : "生成时间轴"}
+                {pipelineBusy ? "生成中..." : "生成 Timeline"}
               </button>
             </div>
           }
@@ -150,7 +153,10 @@ export function EpisodeTimelineMainPanel({
         />
         {pipelineTask ? (
           <div className="border-t border-gray-100 px-4 py-1.5">
-            <GenerationTaskStatusLine label="时间轴流水线" task={pipelineTask} />
+            <GenerationTaskStatusLine
+              label="时间轴流水线"
+              task={pipelineTask}
+            />
           </div>
         ) : null}
       </OperatorPanel>

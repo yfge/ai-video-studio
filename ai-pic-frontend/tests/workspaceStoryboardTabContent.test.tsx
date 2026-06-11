@@ -92,6 +92,8 @@ describe("WorkspaceStoryboardTabContent", () => {
     );
 
     assert.equal(utils.queryByRole("button", { name: "生成宫格分镜" }), null);
+    assert.equal(utils.queryByRole("button", { name: "生成故事板" }), null);
+    assert.equal(utils.queryByRole("button", { name: "生成整集故事板" }), null);
     assert.equal(utils.queryByText("宫格故事板"), null);
     assert.equal(utils.queryByRole("button", { name: "同步分镜占位" }), null);
     assert.ok(utils.getByText("片段分镜管理"));
