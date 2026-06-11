@@ -29,6 +29,16 @@ def build_agent_run(result: Dict[str, Any]) -> Dict[str, Any]:
         "usage": result.get("usage"),
         "reasoning": result.get("reasoning"),
     }
+    for key in (
+        "character_validation_passed",
+        "character_validation_results",
+        "character_warnings",
+        "story_quality_passed",
+        "story_quality_result",
+        "story_quality_warnings",
+    ):
+        if key in result:
+            payload[key] = result.get(key)
 
     # Persist structured output audit trail for tasks UI (Task.parameters.agent_run).
     raw_content = result.get("content")

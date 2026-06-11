@@ -98,6 +98,16 @@ class StoryOutlineMixin:
                 )
                 if lg:
                     return lg
+                self.logger.warning(
+                    "Story agent did not produce a quality-gated outline; "
+                    "skip weaker fallback path",
+                    extra={
+                        "prefer_provider": prefer_provider,
+                        "model": model,
+                        "story_format": story_format,
+                    },
+                )
+                return None
 
             resolved_template = resolve_template_name(
                 PromptTemplate.STORY_OUTLINE.value,

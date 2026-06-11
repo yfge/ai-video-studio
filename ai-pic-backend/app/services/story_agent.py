@@ -9,11 +9,11 @@ from app.prompts.manager import prompt_manager
 from app.prompts.template_resolver import resolve_template_name
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import StoryOutlineModel
-from app.services.validators.character_consistency_validator import (
-    CharacterConsistencyValidator,
-    CharacterProfile,
+from app.services.story.story_outline_character_validation import (
+    story_outline_validation_passed,
+    validate_story_outline_characters,
 )
-from app.services.validators.story_quality_validator import StoryQualityValidator
+from app.services.story.story_outline_quality import validate_story_outline_quality
 from app.utils.json_utils import extract_json_block
 
 logger = logging.getLogger(__name__)
@@ -47,148 +47,6 @@ class StoryLangGraphAgent:
 
     def __init__(self, service: "AIService") -> None:
         self.service = service
-        self._character_validator = CharacterConsistencyValidator()
-        self._quality_validator = StoryQualityValidator()
-
-    def _build_character_profiles(
-        self, characters: List[Dict[str, Any]]
-    ) -> List[CharacterProfile]:
-        """Convert input character dicts to CharacterProfile objects."""
-        profiles = []
-        for char in characters:
-            if not char.get("name"):
-                continue
-            profile = CharacterProfile(
-                name=char.get("name", ""),
-                aliases=char.get("aliases", []),
-                role_type=char.get("role_type") or char.get("role"),
-                gender=char.get("gender"),
-                age=char.get("age"),
-                personality=char.get("personality", []),
-                appearance=char.get("appearance") or char.get("description"),
-            )
-            profiles.append(profile)
-        return profiles
-
-    def _validate_story_characters(
-        self,
-        parsed: Dict[str, Any],
-        input_characters: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """
-        Validate that generated story characters are consistent with input.
-
-        Returns validation results dict with:
-        - character_validation_passed: bool
-        - character_validation_results: list of validation results
-        - character_warnings: list of warning messages
-        """
-        results: Dict[str, Any] = {
-            "character_validation_passed": True,
-            "character_validation_results": [],
-            "character_warnings": [],
-        }
-
-        # Build profiles from input characters
-        profiles = self._build_character_profiles(input_characters)
-        if not profiles:
-            results["character_warnings"].append(
-                "No input characters to validate against"
-            )
-            return results
-
-        self._character_validator = CharacterConsistencyValidator()
-        self._character_validator.register_profiles(profiles)
-
-        # Extract characters from generated story
-        story_characters = parsed.get("characters", [])
-        if isinstance(story_characters, list):
-            for char in story_characters:
-                if isinstance(char, dict):
-                    name = char.get("name") or char.get("character_name")
-                    if not name:
-                        continue
-
-                    # Check if character exists in input
-                    canonical = self._character_validator.resolve_name(name)
-                    if not canonical:
-                        results["character_warnings"].append(
-                            f"Generated character '{name}' not found in input characters"
-                        )
-                        results["character_validation_passed"] = False
-                        continue
-
-                    # Validate attributes
-                    attrs = {}
-                    if char.get("gender"):
-                        attrs["gender"] = char["gender"]
-                    if char.get("age"):
-                        attrs["age"] = char["age"]
-                    if char.get("personality"):
-                        attrs["personality"] = char["personality"]
-
-                    if attrs:
-                        attr_results = (
-                            self._character_validator.validate_character_attributes(
-                                name, attrs
-                            )
-                        )
-                        for r in attr_results:
-                            results["character_validation_results"].append(r.to_dict())
-                            if not r.passed:
-                                results["character_validation_passed"] = False
-                                results["character_warnings"].append(r.message)
-
-        # Also validate any character names in premise/synopsis
-        content_to_check = []
-        if parsed.get("premise"):
-            content_to_check.append(parsed["premise"])
-        if parsed.get("synopsis"):
-            content_to_check.append(parsed["synopsis"])
-
-        if content_to_check:
-            text_results = self._character_validator.validate_names_in_text(
-                "\n".join(content_to_check)
-            )
-            for r in text_results:
-                results["character_validation_results"].append(r.to_dict())
-                if r.severity.value == "warning":
-                    results["character_warnings"].append(r.message)
-
-        return results
-
-    def _validate_story_quality(
-        self,
-        parsed: Dict[str, Any],
-        hook_plan: Optional[Dict[str, Any]] = None,
-        content_restrictions: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Validate story quality including structure, pacing, hooks.
-
-        Returns validation results dict with:
-        - story_quality_passed: bool
-        - story_quality_result: dict with scores and issues
-        - story_quality_warnings: list of warning messages
-        """
-        results: Dict[str, Any] = {
-            "story_quality_passed": True,
-            "story_quality_result": {},
-            "story_quality_warnings": [],
-        }
-
-        quality_result = self._quality_validator.validate(
-            parsed, hook_plan, content_restrictions
-        )
-
-        results["story_quality_passed"] = quality_result.passed
-        results["story_quality_result"] = quality_result.to_dict()
-
-        for issue in quality_result.issues:
-            if issue.severity.value in ("error", "warning"):
-                results["story_quality_warnings"].append(issue.message)
-
-        return results
 
     async def generate(
         self,
@@ -275,14 +133,14 @@ class StoryLangGraphAgent:
             if parsed:
                 StoryOutlineModel.model_validate(parsed)
                 # Run character consistency validation
-                char_validation = self._validate_story_characters(parsed, characters)
+                char_validation = validate_story_outline_characters(parsed, characters)
                 if char_validation["character_warnings"]:
                     logger.warning(
                         "Story character validation warnings",
                         extra={"warnings": char_validation["character_warnings"]},
                     )
                 # Run story quality validation
-                quality_validation = self._validate_story_quality(
+                quality_validation = validate_story_outline_quality(
                     parsed, hook_plan, content_restrictions
                 )
                 if quality_validation["story_quality_warnings"]:
@@ -292,47 +150,7 @@ class StoryLangGraphAgent:
                             "warnings": quality_validation["story_quality_warnings"]
                         },
                     )
-                return {
-                    "content": latest_text,
-                    "normalized": parsed,
-                    "generation_method": "langgraph_story",
-                    "template_used": resolved_template,
-                    "provider_used": provider_used,
-                    "model_used": model_used,
-                    "usage": usage,
-                    "prompt": prompt,
-                    "reasoning": reasoning + ["validated"],
-                    **char_validation,
-                    **quality_validation,
-                }
-        except Exception:
-            pass
-
-        missing_fields: list[str] = []
-        for attempt in range(3):
-            if parsed:
-                try:
-                    StoryOutlineModel.model_validate(parsed)
-                    # Run character consistency validation
-                    char_validation = self._validate_story_characters(
-                        parsed, characters
-                    )
-                    if char_validation["character_warnings"]:
-                        logger.warning(
-                            "Story character validation warnings (repair attempt)",
-                            extra={"warnings": char_validation["character_warnings"]},
-                        )
-                    # Run story quality validation
-                    quality_validation = self._validate_story_quality(
-                        parsed, hook_plan, content_restrictions
-                    )
-                    if quality_validation["story_quality_warnings"]:
-                        logger.warning(
-                            "Story quality validation warnings (repair attempt)",
-                            extra={
-                                "warnings": quality_validation["story_quality_warnings"]
-                            },
-                        )
+                if story_outline_validation_passed(char_validation, quality_validation):
                     return {
                         "content": latest_text,
                         "normalized": parsed,
@@ -342,10 +160,54 @@ class StoryLangGraphAgent:
                         "model_used": model_used,
                         "usage": usage,
                         "prompt": prompt,
-                        "reasoning": reasoning + [f"validated_attempt_{attempt}"],
+                        "reasoning": reasoning + ["validated"],
                         **char_validation,
                         **quality_validation,
                     }
+        except Exception:
+            pass
+
+        missing_fields: list[str] = []
+        for attempt in range(3):
+            if parsed:
+                try:
+                    StoryOutlineModel.model_validate(parsed)
+                    # Run character consistency validation
+                    char_validation = validate_story_outline_characters(
+                        parsed, characters
+                    )
+                    if char_validation["character_warnings"]:
+                        logger.warning(
+                            "Story character validation warnings (repair attempt)",
+                            extra={"warnings": char_validation["character_warnings"]},
+                        )
+                    # Run story quality validation
+                    quality_validation = validate_story_outline_quality(
+                        parsed, hook_plan, content_restrictions
+                    )
+                    if quality_validation["story_quality_warnings"]:
+                        logger.warning(
+                            "Story quality validation warnings (repair attempt)",
+                            extra={
+                                "warnings": quality_validation["story_quality_warnings"]
+                            },
+                        )
+                    if story_outline_validation_passed(
+                        char_validation, quality_validation
+                    ):
+                        return {
+                            "content": latest_text,
+                            "normalized": parsed,
+                            "generation_method": "langgraph_story",
+                            "template_used": resolved_template,
+                            "provider_used": provider_used,
+                            "model_used": model_used,
+                            "usage": usage,
+                            "prompt": prompt,
+                            "reasoning": reasoning + [f"validated_attempt_{attempt}"],
+                            **char_validation,
+                            **quality_validation,
+                        }
                 except Exception as exc:  # pragma: no cover - schema guard
                     missing_fields = _extract_missing_fields(exc)
 

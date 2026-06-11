@@ -1,3 +1,6 @@
+import json
+from types import SimpleNamespace
+
 import pytest
 from app.core.logging import get_logger
 from app.services.ai.story_outline import (
@@ -28,6 +31,37 @@ class _FallbackStoryOutlineService(StoryOutlineMixin):
         return self.fallback_content
 
 
+class _FailingStoryAgent:
+    async def generate(self, **kwargs):
+        return None
+
+
+class _UnexpectedAIManager:
+    async def generate_text(self, **kwargs):
+        return SimpleNamespace(
+            success=True,
+            data=json.dumps(
+                {
+                    "premise": "A weak fallback premise.",
+                    "synopsis": "People talk, then the ordinary day ends.",
+                    "main_characters": [
+                        {"name": "Hero", "description": "A curious hero"}
+                    ],
+                }
+            ),
+            provider="fallback",
+            model="fallback",
+            usage={},
+        )
+
+
+class _QualityGateStoryOutlineService(StoryOutlineMixin):
+    def __init__(self):
+        self.ai_manager = _UnexpectedAIManager()
+        self.story_agent = _FailingStoryAgent()
+        self.logger = get_logger()
+
+
 @pytest.mark.asyncio
 async def test_story_outline_falls_back_to_mock_when_ai_manager_unavailable():
     service = _FallbackStoryOutlineService(_VALID_STORY_OUTLINE)
@@ -45,6 +79,22 @@ async def test_story_outline_falls_back_to_mock_when_ai_manager_unavailable():
     assert result.get("prompt")
     assert result.get("normalized")
     assert result["normalized"].get("premise")
+
+
+@pytest.mark.asyncio
+async def test_story_outline_does_not_bypass_failed_quality_gated_agent():
+    service = _QualityGateStoryOutlineService()
+
+    result = await service.generate_story_outline(
+        title="Quality Gated Story",
+        genre="drama",
+        characters=[{"name": "Hero", "description": "A curious hero"}],
+        theme="quality gate",
+        model="deepseek-v4-flash",
+        prefer_provider="deepseek",
+    )
+
+    assert result is None
 
 
 @pytest.mark.asyncio

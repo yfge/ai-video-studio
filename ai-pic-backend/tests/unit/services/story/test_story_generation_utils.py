@@ -52,5 +52,27 @@ def test_build_agent_run_extracts_expected_fields() -> None:
 
 
 @pytest.mark.unit
+def test_build_agent_run_keeps_story_validation_audit_fields() -> None:
+    payload = {
+        "generation_method": "langgraph_story",
+        "character_validation_passed": False,
+        "character_validation_results": [{"message": "bad name"}],
+        "character_warnings": ["bad name"],
+        "story_quality_passed": False,
+        "story_quality_result": {"passed": False},
+        "story_quality_warnings": ["weak hook"],
+    }
+
+    result = build_agent_run(payload)
+
+    assert result["character_validation_passed"] is False
+    assert result["character_validation_results"] == [{"message": "bad name"}]
+    assert result["character_warnings"] == ["bad name"]
+    assert result["story_quality_passed"] is False
+    assert result["story_quality_result"] == {"passed": False}
+    assert result["story_quality_warnings"] == ["weak hook"]
+
+
+@pytest.mark.unit
 def test_build_agent_run_handles_non_dict() -> None:
     assert build_agent_run("not-a-dict") == {}
