@@ -48,6 +48,18 @@
   - 阶段一动态提示词开关默认关闭，生图链路行为与现状一致（compiled dict 无覆写、无额外 warning）
 - 跳过说明：`./docker/build_prod_images.sh` 未运行（本机 dev 容器以源码挂载方式运行并已验证；如需发布请在发布前执行）
 
+## 追加（同日第二轮）：真实 provider 链路接入
+
+用户指定：DeepSeek v4-flash 跑提示词、用 Codex token 调 gpt-image-2 出图、Seedance 出成片，且必须带入 IP/环境参考图。
+
+- Codex 生图 provider：新增 `app/services/providers/codex_image.py`（Responses API `image_generation` 工具 payload/SSE 解析/尺寸映射/参考图下载内联为 base64——ChatGPT 端无法访问内网 uploads URL）与 `codex_models.py`；`codex_provider.py` 实现 `generate_image`（含 server_error 延迟重试与错误透传），声明 TEXT_TO_IMAGE 支持
+- `provider_params.py` 拆出 `provider_param_tables.py`（文件大小限制）并新增 codex t2i 参数白名单（reference_images 走 t2i 路径）
+- scene_grid LLM 调用读取 `STORYBOARD_DYNAMIC_PROMPT_MODEL`（.env 配 `deepseek:deepseek-v4-flash`，provider 前缀 pin 路由）
+- 前端：宫格面板新增生图模型选择（默认 `codex:gpt-image-2`）；剧集角色为空时回退加载故事角色（解决人物勾选列表为空）
+- 实测：DeepSeek 成功产出逐格分节宫格提示词（2192 tokens）；Codex 生图实测通过（含 1536x1024 + 参考图）；发现 ChatGPT 图像工具有约 10 分钟级冷却限流（连续调用 server_error），单张/低频可用
+- 新增 `tests/unit/test_codex_image.py`（5 例：尺寸映射/payload/SSE 解析/错误透传）
+- `.gitignore` 增加 `.codex/`（auth token 永不入库）；`ai-pic-backend/.codex/auth.json` 为本机复制，不提交
+
 ## Next Steps
 
 - 在配置了可用 LLM 文本模型与生图余额的环境开启 `STORYBOARD_DYNAMIC_PROMPT_ENABLED=true` 做真实出图对比与灰度

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
@@ -158,6 +159,7 @@ async def _generate_json(
             response = await ai_manager.generate_text(
                 prompt=prompt,
                 temperature=0.5,
+                model=settings.STORYBOARD_DYNAMIC_PROMPT_MODEL,
                 json_schema={
                     "name": schema_name,
                     "schema": schema_model.model_json_schema(),

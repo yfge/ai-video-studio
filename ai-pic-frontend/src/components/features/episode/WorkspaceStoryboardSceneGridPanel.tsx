@@ -35,6 +35,8 @@ export function WorkspaceStoryboardSceneGridPanel({
     sceneNumbers,
     gridSize,
     setGridSize,
+    imageModel,
+    setImageModel,
     characters,
     selectedIpIds,
     setSelectedIpIds,
@@ -100,6 +102,18 @@ export function WorkspaceStoryboardSceneGridPanel({
                     {value} 格
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-gray-600">
+              生图模型
+              <select
+                className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                value={imageModel}
+                onChange={(event) => setImageModel(event.target.value)}
+              >
+                <option value="codex:gpt-image-2">gpt-image-2 (Codex)</option>
+                <option value="gpt-image-2">gpt-image-2 (API key)</option>
+                <option value="">默认路由</option>
               </select>
             </label>
             <button

@@ -23,10 +23,16 @@ from .base import (
     ProviderConfig,
 )
 from .codex_auth import CodexAuthError, read_codex_auth, refresh_codex_auth
+from .codex_image import run_codex_image_generation
+from .codex_models import (
+    CODEX_IMAGE_MODEL_ID,
+    DEFAULT_CODEX_TEXT_MODEL,
+    build_codex_models,
+)
 from .codex_payload import build_codex_payload, parse_codex_sse
 
 DEFAULT_CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
-DEFAULT_CODEX_TEXT_MODEL = "gpt-5.4"
+CODEX_IMAGE_TIMEOUT_SECONDS = 600.0
 
 logger = get_logger(__name__)
 
@@ -48,26 +54,11 @@ class CodexProvider(BaseProvider):
 
     @property
     def supported_model_types(self) -> List[AIModelType]:
-        return [AIModelType.TEXT_GENERATION]
+        return [AIModelType.TEXT_GENERATION, AIModelType.TEXT_TO_IMAGE]
 
     @property
     def available_models(self) -> List[ModelInfo]:
-        model_ids = [self.default_model]
-        if DEFAULT_CODEX_TEXT_MODEL not in model_ids:
-            model_ids.append(DEFAULT_CODEX_TEXT_MODEL)
-        return [
-            ModelInfo(
-                model_id=model_id,
-                name=f"ChatGPT {model_id} (Codex)",
-                description=(
-                    "ChatGPT subscription model via the Codex responses endpoint"
-                ),
-                model_type=AIModelType.TEXT_GENERATION,
-                capabilities=["text_generation", "analysis", "code_generation"],
-                metadata={"auth": "codex_cli", "endpoint": "codex_responses"},
-            )
-            for model_id in model_ids
-        ]
+        return build_codex_models(self.default_model)
 
     async def _initialize_client(self):
         self._client = httpx.AsyncClient(timeout=self.config.timeout)
@@ -143,17 +134,58 @@ class CodexProvider(BaseProvider):
     async def generate_image(
         self, prompt: str, model: str = None, **kwargs
     ) -> AIResponse:
-        return AIResponse(
-            success=False,
-            error=(
-                "Codex provider only supports text generation; use "
-                "openai:chatgpt-img-2 for the ChatGPT image template alias."
-            ),
-            provider=self.name,
-            model=model or "unknown",
-            task_type=AITaskType.PORTRAIT_GENERATION,
-            model_type=AIModelType.TEXT_TO_IMAGE,
-        )
+        """Generate one image via the ChatGPT image_generation tool."""
+        model_id = model or CODEX_IMAGE_MODEL_ID
+        try:
+            client = await self.get_client()
+
+            async def _post(payload: dict[str, Any]) -> str:
+                try:
+                    return await self._post_raw(client, payload)
+                except _CodexUnauthorized:
+                    self._recover_after_unauthorized()
+                    return await self._post_raw(client, payload)
+
+            import anyio as _anyio
+
+            image_data, meta, size, ref_count = await run_codex_image_generation(
+                prompt=prompt,
+                references=kwargs.get("reference_images")
+                or kwargs.get("extra_images"),
+                size_hint=kwargs.get("size"),
+                width=kwargs.get("width"),
+                height=kwargs.get("height"),
+                aspect_ratio=kwargs.get("aspect_ratio"),
+                post_raw=_post,
+                sleep=_anyio.sleep,
+                logger=logger,
+            )
+            return AIResponse(
+                success=True,
+                data={
+                    "images": [image_data],
+                    "revised_prompt": meta.get("revised_prompt"),
+                },
+                provider=self.name,
+                model=model_id,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+                metadata={
+                    "endpoint": "codex_responses",
+                    "size": meta.get("size") or size,
+                    "reference_images_count": ref_count,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Codex generate_image error: %s", exc, exc_info=True)
+            return AIResponse(
+                success=False,
+                error=self.format_error(exc),
+                provider=self.name,
+                model=model_id,
+                task_type=AITaskType.PORTRAIT_GENERATION,
+                model_type=AIModelType.TEXT_TO_IMAGE,
+            )
 
     def _reload_auth(self) -> None:
         auth = read_codex_auth(self.auth_path)
@@ -185,8 +217,19 @@ class CodexProvider(BaseProvider):
     async def _post(
         self, client: httpx.AsyncClient, payload: dict[str, Any]
     ) -> tuple[str, Dict[str, Any]]:
+        return parse_codex_sse(await self._post_raw(client, payload))
+
+    async def _post_raw(
+        self, client: httpx.AsyncClient, payload: dict[str, Any]
+    ) -> str:
+        # Image tool calls stream for minutes; the read timeout must outlive them.
+        timeout = httpx.Timeout(CODEX_IMAGE_TIMEOUT_SECONDS, connect=30.0)
         async with client.stream(
-            "POST", self.endpoint, headers=self._headers(), json=payload
+            "POST",
+            self.endpoint,
+            headers=self._headers(),
+            json=payload,
+            timeout=timeout,
         ) as resp:
             if resp.status_code == 401:
                 raise _CodexUnauthorized("401 Unauthorized")
@@ -199,4 +242,4 @@ class CodexProvider(BaseProvider):
             chunks: list[str] = []
             async for chunk in resp.aiter_text():
                 chunks.append(chunk)
-        return parse_codex_sse("".join(chunks))
+        return "".join(chunks)

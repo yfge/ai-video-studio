@@ -1,14 +1,14 @@
 "use client";
 
 import type { SceneGridInfo } from "@/utils/api/endpoints";
-import type { EpisodeCharacter } from "@/utils/api/types";
+import type { SceneGridCharacterOption } from "./useWorkspaceSceneGridGeneration";
 
 export function SceneGridCharacterPicker({
   characters,
   selectedIpIds,
   onToggle,
 }: {
-  characters: EpisodeCharacter[];
+  characters: SceneGridCharacterOption[];
   selectedIpIds: number[];
   onToggle: (virtualIpId: number, checked: boolean) => void;
 }) {
@@ -22,14 +22,10 @@ export function SceneGridCharacterPicker({
         {characters.map((character) => {
           const ipId = character.virtual_ip_id;
           const checked = selectedIpIds.includes(ipId);
-          const label =
-            character.character_name ||
-            character.display_name ||
-            character.name ||
-            `角色${ipId}`;
+          const label = character.label;
           return (
             <label
-              key={`${character.id}-${ipId}`}
+              key={character.key}
               className={`cursor-pointer rounded-full border px-3 py-1 text-xs ${
                 checked
                   ? "border-gray-900 bg-gray-900 text-white"

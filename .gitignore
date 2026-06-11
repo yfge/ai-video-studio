@@ -317,3 +317,6 @@ site/
 # 内存转储
 *.dump
 *.dmp
+
+# Codex CLI auth tokens (never commit)
+.codex/

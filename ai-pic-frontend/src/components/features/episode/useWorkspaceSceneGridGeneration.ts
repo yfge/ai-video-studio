@@ -2,18 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  episodeAPI,
   episodeCharacterAPI,
   generateSceneGridSheet,
   generateSceneGridVideo,
   getSceneGrids,
+  storyAPI,
   type SceneGridInfo,
   type SceneGridMap,
 } from "@/utils/api/endpoints";
-import type { EpisodeCharacter, NormalizedScene } from "@/utils/api/types";
+import type { NormalizedScene } from "@/utils/api/types";
 import {
   isGenerationTaskActive,
   useGenerationTaskTracker,
 } from "@/hooks/useGenerationTaskTracker";
+
+export type SceneGridCharacterOption = {
+  key: string;
+  virtual_ip_id: number;
+  label: string;
+};
 
 type ShowAlert = (options: {
   message: string;
@@ -35,7 +43,8 @@ export function useWorkspaceSceneGridGeneration({
   const [grids, setGrids] = useState<SceneGridMap>({});
   const [sceneNumber, setSceneNumber] = useState<number | null>(null);
   const [gridSize, setGridSize] = useState(12);
-  const [characters, setCharacters] = useState<EpisodeCharacter[]>([]);
+  const [imageModel, setImageModel] = useState("codex:gpt-image-2");
+  const [characters, setCharacters] = useState<SceneGridCharacterOption[]>([]);
   const [selectedIpIds, setSelectedIpIds] = useState<number[]>([]);
   const [environmentUrls, setEnvironmentUrls] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -72,10 +81,56 @@ export function useWorkspaceSceneGridGeneration({
 
   useEffect(() => {
     if (!expanded || !episodeKey) return;
-    episodeCharacterAPI
-      .listEpisodeCharacters(episodeKey, { page_size: 50 })
-      .then((data) => setCharacters(data?.items || []))
-      .catch(() => setCharacters([]));
+    const load = async () => {
+      try {
+        const data = await episodeCharacterAPI.listEpisodeCharacters(
+          episodeKey,
+          { page_size: 50 },
+        );
+        const episodeOptions = (data?.items || [])
+          .filter((item) => item.virtual_ip_id)
+          .map((item) => ({
+            key: `ep-${item.id}`,
+            virtual_ip_id: item.virtual_ip_id,
+            label:
+              item.character_name ||
+              item.display_name ||
+              item.name ||
+              `角色${item.virtual_ip_id}`,
+          }));
+        if (episodeOptions.length) {
+          setCharacters(episodeOptions);
+          return;
+        }
+      } catch {
+        // fall through to story characters
+      }
+      try {
+        const episodeRes = await episodeAPI.getEpisode(episodeKey);
+        const storyId = episodeRes.success ? episodeRes.data?.story_id : null;
+        if (!storyId) return;
+        const charsRes = await storyAPI.getStoryCharacters(storyId);
+        if (charsRes.success && charsRes.data) {
+          setCharacters(
+            charsRes.data
+              .filter((item) => item.virtual_ip_id)
+              .map((item) => ({
+                key: `story-${item.id}`,
+                virtual_ip_id: item.virtual_ip_id,
+                label:
+                  item.character_name ||
+                  item.display_name ||
+                  item.name ||
+                  item.virtual_ip_name ||
+                  `角色${item.virtual_ip_id}`,
+              })),
+          );
+        }
+      } catch {
+        setCharacters([]);
+      }
+    };
+    void load();
   }, [expanded, episodeKey]);
 
   const { tasks, track } = useGenerationTaskTracker<"sheet" | "video">({
@@ -99,14 +154,7 @@ export function useWorkspaceSceneGridGeneration({
         const matched = characters.find(
           (character) => character.virtual_ip_id === virtualIpId,
         );
-        return {
-          virtual_ip_id: virtualIpId,
-          name:
-            matched?.character_name ||
-            matched?.display_name ||
-            matched?.name ||
-            undefined,
-        };
+        return { virtual_ip_id: virtualIpId, name: matched?.label };
       });
       const envRefs = environmentUrls
         .split(/[\n,]/)
@@ -115,6 +163,7 @@ export function useWorkspaceSceneGridGeneration({
       const res = await generateSceneGridSheet(selectedScriptId, {
         scene_number: sceneNumber,
         grid_size: gridSize,
+        model: imageModel || undefined,
         character_refs: characterRefs,
         environment_refs: envRefs,
       });
@@ -137,6 +186,7 @@ export function useWorkspaceSceneGridGeneration({
     characters,
     environmentUrls,
     gridSize,
+    imageModel,
     sceneNumber,
     selectedIpIds,
     selectedScriptId,
@@ -177,6 +227,8 @@ export function useWorkspaceSceneGridGeneration({
     sceneNumbers,
     gridSize,
     setGridSize,
+    imageModel,
+    setImageModel,
     characters,
     selectedIpIds,
     setSelectedIpIds,
