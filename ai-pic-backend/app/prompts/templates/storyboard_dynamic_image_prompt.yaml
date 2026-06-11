@@ -1,0 +1,51 @@
+name: storyboard_dynamic_image_prompt
+description: "分镜图生成时的动态提示词批量生成模板（按场景结合剧本上下文）"
+category: storyboard
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-06-11"
+updated_at: "2026-06-11"
+
+variables:
+  story_tone:
+    type: string
+    required: false
+    description: "故事基调摘要（标题/类型/世界观一句话）"
+  style:
+    type: string
+    required: false
+    description: "风格要求（style 字符串与 style_spec 摘要）"
+  scene:
+    type: dict
+    required: true
+    description: "场景信息（scene_number/location/time/description）"
+  characters:
+    type: list
+    required: false
+    description: "出场角色设定列表（dict: name/appearance）"
+  dialogues:
+    type: list
+    required: false
+    description: "该场景对白文本列表"
+  stage_notes:
+    type: list
+    required: false
+    description: "该场景舞台提示列表"
+  frames:
+    type: list
+    required: true
+    description: "待生成提示词的分镜帧列表（dict: frame_index/shot_type/camera_movement/composition/duration/description/prev_summary/next_summary）"
+
+usage_examples:
+  - story_tone: "《醉拳高光片》，武侠动作短剧，旧港风酒肆江湖"
+    scene:
+      scene_number: 1
+      location: "老街酒馆外"
+      time: "夜"
+      description: "主角醉态迎敌"
+    frames:
+      - frame_index: 0
+        shot_type: "中远景"
+        camera_movement: "推"
+        composition: "三分法"
+        description: "主角站在酒馆外石板地上，身体摇晃"

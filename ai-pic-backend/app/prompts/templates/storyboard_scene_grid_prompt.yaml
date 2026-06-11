@@ -1,0 +1,74 @@
+name: storyboard_scene_grid_prompt
+description: "场景宫格分镜大图的 LLM 提示词生成模板（分节式结构）"
+category: storyboard
+version: "1.0"
+author: "AI Video Studio"
+created_at: "2026-06-11"
+updated_at: "2026-06-11"
+
+variables:
+  story_tone:
+    type: string
+    required: false
+    description: "故事基调摘要"
+  style:
+    type: string
+    required: false
+    description: "风格要求"
+  scene:
+    type: dict
+    required: true
+    description: "场景信息（scene_number/location/time/description）"
+  characters:
+    type: list
+    required: false
+    description: "出场角色设定列表（dict: name/appearance）"
+  dialogues:
+    type: list
+    required: false
+    description: "该场景对白文本列表"
+  stage_notes:
+    type: list
+    required: false
+    description: "该场景舞台提示列表"
+  frames:
+    type: list
+    required: true
+    description: "该场景分镜帧列表（dict: shot_type/camera_movement/composition/duration/description）"
+  panel_count:
+    type: integer
+    required: true
+    description: "宫格数量"
+  rows:
+    type: integer
+    required: true
+    description: "宫格行数"
+  columns:
+    type: integer
+    required: true
+    description: "宫格列数"
+  aspect_ratio:
+    type: string
+    required: true
+    description: "画幅比例（如 16:9）"
+  has_character_refs:
+    type: boolean
+    required: false
+    description: "是否携带人物参考图"
+  has_environment_refs:
+    type: boolean
+    required: false
+    description: "是否携带环境参考图"
+
+usage_examples:
+  - story_tone: "《醉拳》武侠短剧"
+    scene:
+      scene_number: 1
+      location: "酒馆外"
+    frames:
+      - shot_type: "中远景"
+        description: "醉步入场"
+    panel_count: 12
+    rows: 3
+    columns: 4
+    aspect_ratio: "16:9"

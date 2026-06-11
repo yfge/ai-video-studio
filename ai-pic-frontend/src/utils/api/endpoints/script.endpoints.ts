@@ -6,6 +6,7 @@ export * from "./script/core.endpoints";
 export * from "./script/generation.endpoints";
 export * from "./script/audio.endpoints";
 export * from "./script/storyboard.endpoints";
+export * from "./script/storyboard-scene-grid.endpoints";
 
 import {
   deleteScript,
@@ -24,6 +25,11 @@ import {
   previewScriptPrompt,
 } from "./script/generation.endpoints";
 import { generateTimelinePipelineAsync } from "./script/audio.endpoints";
+import {
+  generateSceneGridSheet,
+  generateSceneGridVideo,
+  getSceneGrids,
+} from "./script/storyboard-scene-grid.endpoints";
 import {
   generateStoryboard,
   generateStoryboardAsync,
@@ -58,4 +64,7 @@ export const scriptAPI = {
   generateStoryboardVideo,
   generateStoryboardImages,
   updateStoryboard,
+  generateSceneGridSheet,
+  generateSceneGridVideo,
+  getSceneGrids,
 };

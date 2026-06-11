@@ -16,6 +16,7 @@ import {
 } from "./WorkspaceStoryboardSupportModel";
 import { WorkspaceStoryboardActions } from "./WorkspaceStoryboardActions";
 import { WorkspaceStoryboardClipManagement } from "./WorkspaceStoryboardClipManagement";
+import { WorkspaceStoryboardSceneGridPanel } from "./WorkspaceStoryboardSceneGridPanel";
 import { StoryboardSupportFrameRow } from "./WorkspaceStoryboardFrameRow";
 
 type ShowAlert = (options: {
@@ -121,6 +122,13 @@ export function WorkspaceStoryboardTabContent({
         selectedTimelineSpec={localTimelineSpec}
         selectedStoryboard={selectedStoryboard}
         normalizedScenes={normalizedScenes}
+      />
+
+      <WorkspaceStoryboardSceneGridPanel
+        episodeKey={episodeKey}
+        selectedScriptId={selectedScriptId}
+        normalizedScenes={normalizedScenes}
+        showAlert={showAlert}
       />
 
       <OperatorPanel>

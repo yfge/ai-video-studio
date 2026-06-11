@@ -11,6 +11,9 @@ Endpoints:
 - POST /{script_id}/storyboard/update - Save storyboard changes
 - POST /{script_id}/storyboard/generate-images - Generate frame images
 - POST /{script_id}/storyboard/generate-video - Generate frame videos
+- POST /{script_id}/storyboard/scene-grid/generate - Generate scene grid sheet
+- POST /{script_id}/storyboard/scene-grid/video - Generate grid-based video
+- GET /{script_id}/storyboard/scene-grid - List generated scene grids
 """
 
 from fastapi import APIRouter
@@ -18,6 +21,7 @@ from fastapi import APIRouter
 from .generation import router as generation_router
 from .media import router as media_router
 from .retrieval import router as retrieval_router
+from .scene_grid import router as scene_grid_router
 
 router = APIRouter()
 
@@ -25,6 +29,7 @@ router = APIRouter()
 router.include_router(retrieval_router, tags=["storyboard"])
 router.include_router(generation_router, tags=["storyboard"])
 router.include_router(media_router, tags=["storyboard"])
+router.include_router(scene_grid_router, tags=["storyboard"])
 
 # Re-export frame utilities used by tests and other modules
 from .frame_utils import (  # noqa: E402, F401

@@ -83,6 +83,19 @@ def _process_storyboard_image_task(
         w, h = resolve_dimensions(width, height, size)
         count_int = max(1, min(4, int(count) if count is not None else 1))
 
+        from app.services.storyboard.dynamic_prompt import build_dynamic_prompt_bundles
+
+        dynamic_prompt_bundles = build_dynamic_prompt_bundles(
+            script,
+            frames,
+            target_indexes,
+            ctx,
+            style=style,
+            style_spec=style_spec,
+            prompt_override=prompt_override,
+            ai_service=ai_service,
+        )
+
         resolved_style_spec_used: dict | None = None
         resolved_style_spec_resolution_used: Any = None
 
@@ -118,6 +131,7 @@ def _process_storyboard_image_task(
                     "end_enabled": end_enabled,
                     "require_reference_images": require_reference_images,
                     "script_id": script_id,
+                    "dynamic_prompt_bundle": dynamic_prompt_bundles.get(idx),
                 },
                 prompt_manager=prompt_manager,
                 ai_service=ai_service,

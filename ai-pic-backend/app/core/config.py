@@ -113,6 +113,11 @@ class Settings(BaseSettings):
     # 容器内部访问后端的基础地址（用于 Celery / Provider 拉取本机上传的图片等资源）
     INTERNAL_BACKEND_URL: Optional[str] = None
 
+    # 分镜图动态提示词（生图任务内按场景批量调用 LLM，结合剧本上下文生成提示词）
+    STORYBOARD_DYNAMIC_PROMPT_ENABLED: bool = False
+    STORYBOARD_DYNAMIC_PROMPT_MAX_FRAMES_PER_CALL: int = 8
+    STORYBOARD_DYNAMIC_PROMPT_MODEL: Optional[str] = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True

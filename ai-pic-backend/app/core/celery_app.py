@@ -72,6 +72,7 @@ celery_app.conf.update(
 # 通过导入该模块完成注册，避免 worker 启动时出现 KeyError。
 for _task_module in (
     "app.services.task_worker",
+    "app.services.task_worker_scene_grid",
     "app.services.task_worker_script_quality",
     "app.services.task_worker_storyboard_media",
     "app.services.task_worker_timeline_keyframes",

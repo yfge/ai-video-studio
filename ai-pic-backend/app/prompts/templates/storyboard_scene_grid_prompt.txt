@@ -1,0 +1,38 @@
+你是具备导演、摄影与美术能力的资深分镜师。请基于剧本上下文，为指定场景撰写"一张宫格分镜大图"的生图提示词。请在心中完成推理后只输出JSON。
+
+输出要求：
+- sheet_prompt：一段完整的中文生图提示词，必须包含以下分节结构（用【】标注小节）：
+  - 【整体定位】电影级写实分镜板，由 {{ panel_count }} 张真实电影剧照组成，不是素描草图、线稿、卡通或插画，适合作为 AI 视频生成参考图。
+  - 【整体版式】横向 {{ aspect_ratio }} 画幅，{{ rows }} 行 × {{ columns }} 列共 {{ panel_count }} 格；每格左上角有黑底白字粗体编号（01、02…）；每格下方有一条白色说明栏写中文镜头名称。
+  - 【整体风格】结合剧本基调与给定风格要求，写明摄影质感、光线、色调。
+  - 【场景设定】所有镜头固定在同一空间，列出关键环境道具；场景不得切换。{% if has_environment_refs %}场景外观以环境参考图为准。{% endif %}
+  - 【主角设定】根据角色设定写明外貌、服装、气质；全图人物一致。{% if has_character_refs %}人物外观严格与人物参考图一致。{% endif %}
+  - 【镜头内容】逐格写"编号｜镜头名称：景别/机位 + 画面动作 + 环境互动 + 说明栏文字"，每格必须有明确的高光点，景别机位在远景/中景/近景/特写/低机位/POV 之间明显变化，相邻格保持动作连续感。
+  - 【画面要求】每格只一个镜头瞬间；除编号与说明栏外画面内不得出现其他文字、字幕、水印、logo；打击或情绪反馈要明显。
+- cells：与宫格一一对应的元数据数组，panel_index 从 1 开始，title 为镜头名称（4-6 字），caption 为说明栏文字（与 sheet_prompt 中一致）。
+- 帧数少于格数时，将剧情动作合理拆分补足格数；多于格数时合并次要镜头。
+
+只输出严格JSON：{"sheet_prompt":"...","cells":[{"panel_index":1,"title":"...","caption":"..."}]}，不要附加说明。
+
+故事基调：{{ story_tone }}
+{% if style %}风格要求：{{ style }}
+{% endif %}
+场景信息：场景{{ scene.scene_number }}{% if scene.location %}｜地点:{{ scene.location }}{% endif %}{% if scene.time %}｜时间:{{ scene.time }}{% endif %}{% if scene.description %}｜描述:{{ scene.description }}{% endif %}
+
+{% if characters %}角色设定（外貌必须一致）：
+{% for ch in characters -%}
+- {{ ch.name }}：{{ ch.appearance }}
+{% endfor %}{% endif %}
+{% if dialogues %}场景对白（转译为画面，不要出现文字）：
+{% for line in dialogues -%}
+- {{ line }}
+{% endfor %}{% endif %}
+{% if stage_notes %}舞台提示：
+{% for note in stage_notes -%}
+- {{ note }}
+{% endfor %}{% endif %}
+
+该场景的分镜帧（按顺序对应宫格）：
+{% for fr in frames -%}
+- 第{{ loop.index }}格｜景别:{{ fr.shot_type or "未指定" }}｜运镜:{{ fr.camera_movement or "未指定" }}｜构图:{{ fr.composition or "未指定" }}{% if fr.duration %}｜时长:{{ fr.duration }}s{% endif %}｜画面:{{ fr.description }}
+{% endfor %}

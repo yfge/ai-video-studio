@@ -76,6 +76,11 @@ def _prepare_prompt_context(
         reference_notes=reference_notes,
         model=options.get("model"),
     )
+    from app.services.storyboard.dynamic_prompt import apply_dynamic_prompt_bundle
+
+    compiled_prompt = apply_dynamic_prompt_bundle(
+        compiled_prompt, options.get("dynamic_prompt_bundle")
+    )
     frame["storyboard_prompt_v2"] = compiled_prompt
     prompt = render_storyboard_image_prompt(
         compiled_prompt,

@@ -53,6 +53,50 @@ def resolve_storyboard_aspect_ratio(
     return None
 
 
+def load_scene_grids(db, script_id: int) -> dict[str, Any]:
+    script = get_script_by_id(db, script_id)
+    if not script:
+        return {}
+    storyboard = (script.extra_metadata or {}).get("storyboard")
+    if not isinstance(storyboard, dict):
+        return {}
+    grids = storyboard.get("scene_grids")
+    return grids if isinstance(grids, dict) else {}
+
+
+def save_scene_grid(
+    db,
+    *,
+    script_id: int,
+    scene_number: int,
+    grid_payload: dict[str, Any],
+) -> None:
+    """Merge one scene's grid payload into script storyboard metadata."""
+    script = get_script_by_id(db, script_id)
+    if not script:
+        return
+    extra = dict(script.extra_metadata or {})
+    storyboard = (
+        dict(extra.get("storyboard"))
+        if isinstance(extra.get("storyboard"), dict)
+        else {}
+    )
+    grids = (
+        dict(storyboard.get("scene_grids"))
+        if isinstance(storyboard.get("scene_grids"), dict)
+        else {}
+    )
+    existing = grids.get(str(scene_number))
+    merged = dict(existing) if isinstance(existing, dict) else {}
+    merged.update(grid_payload)
+    grids[str(scene_number)] = merged
+    storyboard["scene_grids"] = grids
+    extra["storyboard"] = storyboard
+    script.extra_metadata = extra
+    db.add(script)
+    db.commit()
+
+
 def save_storyboard_image_frames(
     db,
     *,
