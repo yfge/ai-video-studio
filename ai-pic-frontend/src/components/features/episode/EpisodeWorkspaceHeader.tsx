@@ -1,6 +1,10 @@
 "use client";
 
-import type { Episode, Script } from "@/utils/api/types";
+import type {
+  Episode,
+  Script,
+  TimelineResolvedVideoListResponse,
+} from "@/utils/api/types";
 import {
   OperatorPanel,
   StatusPill,
@@ -25,6 +29,7 @@ interface EpisodeWorkspaceHeaderProps {
   scripts: Script[];
   selectedScriptId: number | null;
   workflowStatus: WorkflowStatus;
+  resolvedVideos?: TimelineResolvedVideoListResponse | null;
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
   onNavigateBack: () => void;
@@ -41,6 +46,7 @@ export function EpisodeWorkspaceHeader({
   scripts,
   selectedScriptId,
   workflowStatus,
+  resolvedVideos,
   activeTab,
   onTabChange,
   onNavigateBack,
@@ -55,6 +61,7 @@ export function EpisodeWorkspaceHeader({
     script,
     workflowStatus,
     storyboardActionLabel,
+    resolvedVideos,
   });
 
   const runPrimaryAction = () => {

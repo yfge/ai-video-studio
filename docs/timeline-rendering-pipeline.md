@@ -312,6 +312,9 @@ Implemented timeline APIs:
 - `POST /api/v1/timelines/{timeline_id}/render`: queue proxy/final render job.
 - `GET /api/v1/timelines/{timeline_id}/render-jobs`: list render attempts,
   including `output_asset` when a render succeeds.
+- `GET /api/v1/timelines/{timeline_id}/resolved-videos`: list Timeline video
+  clips with resolved playback URLs, missing reasons, and active generating task
+  overlay for operator playback surfaces.
 - `GET /api/v1/timelines/{timeline_id}/clip-assets`: list source, generated,
   replacement, and render-output lineage for Timeline clips.
 - `POST /api/v1/timelines/{timeline_id}/clips/{clip_id}/rework`: record an
@@ -368,6 +371,9 @@ Current render behavior:
 
 - Resolve renderable video clips from Timeline video track, clip-asset
   replacement lineage, direct asset refs, or legacy storyboard frame videos.
+- Expose the same video-source resolution through the read-only
+  `resolved-videos` API so Timeline, storyboard support, and render readiness UI
+  consume one playback read model instead of independently guessing URLs.
 - Resolve Timeline dialogue audio from `source.episode_audio`, or resolve
   per-dialogue clip `asset_ref` URLs into audio segments and mix them by
   `start_ms`/`end_ms` before replacing the final video audio track with ffmpeg

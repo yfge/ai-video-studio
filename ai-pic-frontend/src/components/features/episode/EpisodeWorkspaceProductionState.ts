@@ -1,6 +1,7 @@
 "use client";
 
 import type { Script } from "@/utils/api/types";
+import type { TimelineResolvedVideoListResponse } from "@/utils/api/types";
 import type { TabKey } from "@/hooks/episode/useEpisodeWorkspaceController";
 
 export type WorkflowStepStatus = "pending" | "ready" | "generating";
@@ -38,15 +39,21 @@ export function buildEpisodeProductionState({
   script,
   workflowStatus,
   storyboardActionLabel,
+  resolvedVideos,
 }: {
   activeTab: TabKey;
   script?: Script | null;
   workflowStatus: WorkflowStatus;
   storyboardActionLabel?: string;
+  resolvedVideos?: TimelineResolvedVideoListResponse | null;
 }): ProductionState {
   const scriptReady = Boolean(script) || workflowStatus.script === "ready";
   const timelineReady = workflowStatus.timeline === "ready";
-  const clipReady = workflowStatus.storyboard === "ready";
+  const clipVideoStatus = clipVideoStepStatus(
+    timelineReady,
+    workflowStatus,
+    resolvedVideos,
+  );
   const hasTimelineClipEntry = storyboardActionLabel === "进入片段分镜";
 
   const steps: ProductionStep[] = [
@@ -59,7 +66,7 @@ export function buildEpisodeProductionState({
     {
       key: "clip-video",
       label: "片段视频",
-      status: clipReady ? "ready" : "pending",
+      status: clipVideoStatus,
     },
     { key: "render-export", label: "渲染/导出", status: "pending" },
   ];
@@ -96,6 +103,20 @@ export function buildEpisodeProductionState({
     steps,
     primaryAction: { kind: "open-storyboard", label: "查看分镜参考" },
   };
+}
+
+function clipVideoStepStatus(
+  timelineReady: boolean,
+  workflowStatus: WorkflowStatus,
+  resolvedVideos?: TimelineResolvedVideoListResponse | null,
+): WorkflowStepStatus {
+  if (!timelineReady) return "pending";
+  if (resolvedVideos) {
+    if (resolvedVideos.ready) return "ready";
+    if (resolvedVideos.generating_clip_count > 0) return "generating";
+    return "pending";
+  }
+  return workflowStatus.storyboard === "ready" ? "ready" : "pending";
 }
 
 export function productionStatusLabel(status: WorkflowStepStatus) {

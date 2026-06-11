@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   NormalizedScene,
   Script,
+  TimelineResolvedVideoListResponse,
   TimelineResponse,
 } from "@/utils/api/types";
 import { OperatorWorkspace } from "@/components/shared";
@@ -20,7 +21,7 @@ import { useInitialTimelineClipSelection } from "./useInitialTimelineClipSelecti
 import { EpisodeTimelineContextRail } from "./EpisodeTimelineWorkspaceParts";
 import { EpisodeTimelineClipProductionPanel } from "./EpisodeTimelineClipProductionPanel";
 import { EpisodeTimelineMainPanel } from "./EpisodeTimelineMainPanel";
-import { useTimelineRenderReadinessWithTasks } from "./useTimelineActiveClipTasks";
+import { buildTimelineRenderReadinessFromResolvedVideos } from "./EpisodeTimelineRenderModel";
 import { useTimelineClipAssets } from "./useTimelineClipAssets";
 import { useTimelineGenerationRefresh } from "./useTimelineGenerationRefresh";
 import { useTimelineSceneEnvironments } from "./useTimelineSceneEnvironments";
@@ -32,6 +33,9 @@ interface EpisodeTimelineWorkspaceProps {
   selectedScript: Script | null;
   selectedTimelineSpec: TimelineResponse | null;
   onTimelineUpdated?: (timeline: TimelineResponse) => void;
+  resolvedVideos?: TimelineResolvedVideoListResponse | null;
+  resolvedVideosError?: string | null;
+  reloadResolvedVideos?: () => void | Promise<void>;
   initialSelectedClipId?: string | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
@@ -62,6 +66,9 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     selectedScript,
     selectedTimelineSpec,
     onTimelineUpdated,
+    resolvedVideos = null,
+    resolvedVideosError,
+    reloadResolvedVideos,
     initialSelectedClipId,
     selectedAudioTimeline,
     selectedStoryboard,
@@ -122,10 +129,8 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     () => sceneForTimelineMeta(normalizedScenes, meta, sceneEnvOverrides),
     [normalizedScenes, meta, sceneEnvOverrides],
   );
-  const { renderReadiness } = useTimelineRenderReadinessWithTasks({
-    selectedTimelineSpec,
-    selectedStoryboard,
-  });
+  const renderReadiness =
+    buildTimelineRenderReadinessFromResolvedVideos(resolvedVideos);
   const {
     latestJob: latestRenderJob,
     loading: renderJobsLoading,
@@ -154,6 +159,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
     onTimelineUpdated,
     reloadClipAssets,
     reloadRenderJobs,
+    reloadResolvedVideos,
   });
   useInitialTimelineClipSelection({
     tracks,
@@ -164,11 +170,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
 
   useEffect(() => {
     setSelectedEnvironmentId(selectedScene?.environment_id ?? null);
-  }, [
-    selectedScene?.id,
-    selectedScene?.environment_id,
-    setSelectedEnvironmentId,
-  ]);
+  }, [selectedScene?.id, selectedScene?.environment_id, setSelectedEnvironmentId]);
 
   return (
     <OperatorWorkspace
@@ -209,6 +211,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
               scene={selectedScene}
               episodeId={effectiveEpisodeId}
               selectedStoryboard={selectedStoryboard}
+              resolvedVideos={resolvedVideos}
               environments={environments}
               selectedEnvironmentId={selectedEnvironmentId}
               environmentSaving={environmentSaving}
@@ -219,7 +222,7 @@ export function EpisodeTimelineWorkspace(props: EpisodeTimelineWorkspaceProps) {
               episodeCharactersError={episodeCharactersError}
               clipAssets={clipAssets}
               clipAssetsLoading={clipAssetsLoading}
-              clipAssetsError={clipAssetsError}
+              clipAssetsError={clipAssetsError || resolvedVideosError || null}
               videoModels={videoModels}
               videoModelsLoading={videoModelsLoading}
               onEnvironmentChange={setSelectedEnvironmentId}

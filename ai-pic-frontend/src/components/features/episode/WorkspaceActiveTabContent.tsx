@@ -7,6 +7,7 @@ import type {
   NormalizedScene,
   Script,
   ScriptGenerationRequest,
+  TimelineResolvedVideoListResponse,
   TimelineResponse,
 } from "@/utils/api/types";
 import { WorkspaceCharactersTabContent } from "./WorkspaceCharactersTabContent";
@@ -31,6 +32,9 @@ interface WorkspaceActiveTabContentProps {
   scriptSceneCount?: number;
   selectedTimelineSpec: TimelineResponse | null;
   onTimelineUpdated?: (timeline: TimelineResponse) => void;
+  resolvedVideos?: TimelineResolvedVideoListResponse | null;
+  resolvedVideosError?: string | null;
+  reloadResolvedVideos?: () => void | Promise<void>;
   initialSelectedClipId?: string | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
@@ -70,6 +74,9 @@ export function WorkspaceActiveTabContent({
   scriptSceneCount,
   selectedTimelineSpec,
   onTimelineUpdated,
+  resolvedVideos,
+  resolvedVideosError,
+  reloadResolvedVideos,
   initialSelectedClipId,
   selectedAudioTimeline,
   selectedStoryboard,
@@ -131,6 +138,9 @@ export function WorkspaceActiveTabContent({
         selectedScript={selectedScript}
         selectedTimelineSpec={selectedTimelineSpec}
         onTimelineUpdated={onTimelineUpdated}
+        resolvedVideos={resolvedVideos}
+        resolvedVideosError={resolvedVideosError}
+        reloadResolvedVideos={reloadResolvedVideos}
         initialSelectedClipId={initialSelectedClipId}
         selectedAudioTimeline={selectedAudioTimeline}
         selectedStoryboard={selectedStoryboard}
@@ -152,6 +162,7 @@ export function WorkspaceActiveTabContent({
         selectedAudioTimeline={selectedAudioTimeline}
         selectedTimelineSpec={selectedTimelineSpec}
         onTimelineUpdated={onTimelineUpdated}
+        resolvedVideos={resolvedVideos}
         selectedStoryboard={selectedStoryboard}
         normalizedScenes={normalizedScenes}
         showAlert={showAlert}

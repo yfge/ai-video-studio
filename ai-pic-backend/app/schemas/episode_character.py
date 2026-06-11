@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class EpisodeCharacterBase(BaseModel):
@@ -72,6 +72,22 @@ class EpisodeCharacterResponse(EpisodeCharacterBase):
     deleted_reason: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("scene_appearances", mode="before")
+    @classmethod
+    def normalize_scene_appearances(cls, value):
+        if value is None:
+            return value
+        if not isinstance(value, list):
+            return value
+
+        normalized = []
+        for item in value:
+            if isinstance(item, dict):
+                normalized.append(item)
+            elif item is not None:
+                normalized.append({"scene_number": item})
+        return normalized
 
     class Config:
         from_attributes = True

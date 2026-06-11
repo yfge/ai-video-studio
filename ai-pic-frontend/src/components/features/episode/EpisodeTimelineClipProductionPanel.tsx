@@ -7,9 +7,14 @@ import type {
   EpisodeCharacter,
   NormalizedScene,
   TimelineClipAssetResponse,
+  TimelineResolvedVideoListResponse,
 } from "@/utils/api/types";
 import { timelineItemMeta } from "./EpisodeTimelineWorkspaceModel";
-import { timelineClipVideoStatus } from "./EpisodeTimelineRenderModel";
+import {
+  resolvedVideoForClipId,
+  timelineClipVideoStatus,
+  timelineClipVideoStatusFromResolvedVideo,
+} from "./EpisodeTimelineRenderModel";
 import { TimelineClipProviderReworkControls } from "./TimelineClipProviderReworkControls";
 import {
   selectedTimelineClipId,
@@ -31,6 +36,7 @@ export function EpisodeTimelineClipProductionPanel({
   scene,
   episodeId,
   selectedStoryboard,
+  resolvedVideos,
   environments,
   selectedEnvironmentId,
   environmentSaving,
@@ -59,6 +65,7 @@ export function EpisodeTimelineClipProductionPanel({
   scene: NormalizedScene | null;
   episodeId?: number | string | null;
   selectedStoryboard: Record<string, unknown> | null;
+  resolvedVideos?: TimelineResolvedVideoListResponse | null;
   environments: Environment[];
   selectedEnvironmentId: number | null;
   environmentSaving: boolean;
@@ -84,6 +91,10 @@ export function EpisodeTimelineClipProductionPanel({
 }) {
   const clipId = selectedTimelineClipId(item);
   const isVideoClip = isTimelineVideoClip(item);
+  const resolvedVideo = resolvedVideoForClipId(resolvedVideos ?? null, clipId);
+  const videoStatus =
+    timelineClipVideoStatusFromResolvedVideo(resolvedVideo) ??
+    timelineClipVideoStatus(timelineItemMeta(item), selectedStoryboard);
 
   return (
     <OperatorPanel className="mt-4">
@@ -96,6 +107,7 @@ export function EpisodeTimelineClipProductionPanel({
           item={item}
           track={track}
           selectedStoryboard={selectedStoryboard}
+          resolvedVideo={resolvedVideo}
         />
         {item ? (
           <div
@@ -115,12 +127,7 @@ export function EpisodeTimelineClipProductionPanel({
                 onSaveEnvironment={onSaveEnvironment}
               />
               <ClipNavigationActions
-                videoReady={
-                  timelineClipVideoStatus(
-                    timelineItemMeta(item),
-                    selectedStoryboard,
-                  ).ready
-                }
+                videoReady={videoStatus.ready}
                 onNavigateToScript={onNavigateToScript}
                 onNavigateToStoryboard={onNavigateToStoryboard}
                 onNavigateToTasks={onNavigateToTasks}

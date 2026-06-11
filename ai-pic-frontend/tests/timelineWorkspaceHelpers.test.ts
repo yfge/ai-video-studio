@@ -10,6 +10,7 @@ import {
   sceneForTimelineMeta,
 } from "../src/components/features/episode/EpisodeTimelineWorkspaceModel";
 import {
+  buildTimelineRenderReadinessFromResolvedVideos,
   buildTimelineRenderReadiness,
   timelineClipVideoStatus,
 } from "../src/components/features/episode/EpisodeTimelineRenderModel";
@@ -309,6 +310,56 @@ describe("timeline workspace helpers", () => {
     );
     assert.equal(reasons.video_a, "generating");
     assert.equal(reasons.video_b, "missing_video_url");
+  });
+
+  it("preflights timeline render videos from resolved clip videos", () => {
+    const readiness = buildTimelineRenderReadinessFromResolvedVideos({
+      timeline_id: 8,
+      timeline_version: 3,
+      ready: false,
+      video_clip_count: 3,
+      missing_clip_count: 1,
+      generating_clip_count: 1,
+      items: [
+        {
+          clip_id: "video_ready",
+          status: "ready",
+          url: "https://example.com/ready.mp4",
+          source: "timeline_clip_asset:provider_rework",
+          start_ms: 0,
+          end_ms: 1000,
+          duration_seconds: 1,
+        },
+        {
+          clip_id: "video_generating",
+          status: "generating",
+          reason: "generating",
+          start_ms: 1000,
+          end_ms: 2000,
+          duration_seconds: 1,
+          task_id: 12,
+          task_type: "video_generation",
+        },
+        {
+          clip_id: "video_missing",
+          status: "missing",
+          reason: "missing_video_url",
+          start_ms: 2000,
+          end_ms: 3000,
+          duration_seconds: 1,
+        },
+      ],
+    });
+
+    assert.equal(readiness.ready, false);
+    assert.equal(readiness.videoClipCount, 3);
+    assert.deepEqual(
+      readiness.missingClips.map((clip) => [clip.clipId, clip.reason]),
+      [
+        ["video_generating", "generating"],
+        ["video_missing", "missing_video_url"],
+      ],
+    );
   });
 
   it("resolves selected clip video status from storyboard support frames", () => {

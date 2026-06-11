@@ -7,7 +7,11 @@ import {
   OperatorState,
 } from "@/components/shared";
 import { firstTimelineVideoClipId } from "@/hooks/episode/timelineClipUtils";
-import type { NormalizedScene, TimelineResponse } from "@/utils/api/types";
+import type {
+  NormalizedScene,
+  TimelineResolvedVideoListResponse,
+  TimelineResponse,
+} from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import {
   buildStoryboardTimelineOverview,
@@ -17,7 +21,6 @@ import {
 } from "./WorkspaceStoryboardSupportModel";
 import { WorkspaceStoryboardActions } from "./WorkspaceStoryboardActions";
 import { WorkspaceStoryboardClipManagement } from "./WorkspaceStoryboardClipManagement";
-import { WorkspaceStoryboardSceneGridPanel } from "./WorkspaceStoryboardSceneGridPanel";
 import { StoryboardSupportFrameRow } from "./WorkspaceStoryboardFrameRow";
 
 type ShowAlert = (options: {
@@ -32,6 +35,7 @@ interface WorkspaceStoryboardTabContentProps {
   selectedAudioTimeline?: Record<string, unknown> | null;
   selectedTimelineSpec?: TimelineResponse | null;
   onTimelineUpdated?: (timeline: TimelineResponse) => void;
+  resolvedVideos?: TimelineResolvedVideoListResponse | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
   showAlert?: ShowAlert;
@@ -44,6 +48,7 @@ export function WorkspaceStoryboardTabContent({
   selectedAudioTimeline,
   selectedTimelineSpec,
   onTimelineUpdated,
+  resolvedVideos,
   selectedStoryboard,
   normalizedScenes,
   showAlert,
@@ -133,13 +138,7 @@ export function WorkspaceStoryboardTabContent({
         selectedTimelineSpec={localTimelineSpec}
         selectedStoryboard={selectedStoryboard}
         normalizedScenes={normalizedScenes}
-      />
-
-      <WorkspaceStoryboardSceneGridPanel
-        episodeKey={episodeKey}
-        selectedScriptId={selectedScriptId}
-        normalizedScenes={normalizedScenes}
-        showAlert={showAlert}
+        resolvedVideos={resolvedVideos}
       />
 
       <OperatorPanel>

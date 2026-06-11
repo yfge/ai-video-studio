@@ -8,46 +8,62 @@ import {
   operatorSelectClass,
 } from "@/components/shared";
 import { getString } from "@/hooks/useEpisodeDetail";
-import type { Environment, NormalizedScene } from "@/utils/api/types";
+import type {
+  Environment,
+  NormalizedScene,
+  TimelineResolvedVideoItem,
+} from "@/utils/api/types";
 import {
   formatTimelineMs,
   timelineItemMeta,
 } from "./EpisodeTimelineWorkspaceModel";
-import { timelineClipVideoStatus } from "./EpisodeTimelineRenderModel";
+import {
+  timelineClipVideoStatus,
+  timelineClipVideoStatusFromResolvedVideo,
+} from "./EpisodeTimelineRenderModel";
 
 export function ClipProductionSummary({
   item,
   track,
   selectedStoryboard,
+  resolvedVideo,
 }: {
   item: TimelineItem | null;
   track: TimelineTrack | null;
   selectedStoryboard: Record<string, unknown> | null;
+  resolvedVideo?: TimelineResolvedVideoItem | null;
 }) {
   if (!item) {
     return <div className="text-sm text-gray-500">请选择时间轴片段。</div>;
   }
   const meta = timelineItemMeta(item);
-  const videoStatus = timelineClipVideoStatus(meta, selectedStoryboard);
+  const videoStatus =
+    timelineClipVideoStatusFromResolvedVideo(resolvedVideo ?? null) ??
+    timelineClipVideoStatus(meta, selectedStoryboard);
   return (
-    <div className="grid gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 md:grid-cols-5">
-      <SummaryCell label="类型">
-        <StatusPill tone={track?.id === "storyboard" ? "blue" : "green"}>
-          {track?.label || "片段"}
-        </StatusPill>
-      </SummaryCell>
-      <SummaryCell label="内容">{item.label || "未命名"}</SummaryCell>
-      <SummaryCell label="时间">
-        {formatTimelineMs(item.startMs)} - {formatTimelineMs(item.endMs)}
-      </SummaryCell>
-      <SummaryCell label="状态">
-        {getString(meta.status) || "待复核"}
-      </SummaryCell>
-      <SummaryCell label="视频素材">
-        {videoStatus.ready
-          ? `已关联 · ${videoStatus.source || "素材"}`
-          : "缺少视频素材"}
-      </SummaryCell>
+    <div className="grid gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 lg:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="grid gap-3 md:grid-cols-5">
+        <SummaryCell label="类型">
+          <StatusPill tone={track?.id === "storyboard" ? "blue" : "green"}>
+            {track?.label || "片段"}
+          </StatusPill>
+        </SummaryCell>
+        <SummaryCell label="内容">{item.label || "未命名"}</SummaryCell>
+        <SummaryCell label="时间">
+          {formatTimelineMs(item.startMs)} - {formatTimelineMs(item.endMs)}
+        </SummaryCell>
+        <SummaryCell label="状态">
+          {getString(meta.status) || "待复核"}
+        </SummaryCell>
+        <SummaryCell label="视频素材">
+          {videoStatus.ready
+            ? `已关联 · ${videoStatus.source || "素材"}`
+            : videoStatus.reason === "generating"
+              ? "视频生成中"
+              : "缺少视频素材"}
+        </SummaryCell>
+      </div>
+      <ClipVideoPreview url={videoStatus.url || null} label="播放选中片段视频" />
     </div>
   );
 }
@@ -64,6 +80,31 @@ function SummaryCell({
       <div className="text-gray-500">{label}</div>
       <div className="mt-1 truncate font-medium text-gray-950">{children}</div>
     </div>
+  );
+}
+
+function ClipVideoPreview({
+  url,
+  label,
+}: {
+  url: string | null;
+  label: string;
+}) {
+  if (!url) {
+    return (
+      <div className="flex min-h-28 items-center justify-center rounded-md border border-dashed border-gray-300 bg-white px-3 text-xs text-gray-500">
+        暂无可播放视频
+      </div>
+    );
+  }
+  return (
+    <video
+      aria-label={label}
+      className="w-full rounded-md border border-gray-200 bg-black"
+      controls
+      preload="none"
+      src={url}
+    />
   );
 }
 

@@ -10,7 +10,8 @@ import { OperatorShell, OperatorState } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
 import { useEpisodeWorkspaceController } from "@/hooks/episode/useEpisodeWorkspaceController";
-import { coerceWorkspaceTab } from "@/hooks/episode/workspaceTabUtils";
+import { useEpisodeWorkspaceUrlState } from "@/hooks/episode/useEpisodeWorkspaceUrlState";
+import { useTimelineResolvedVideos } from "@/components/features/episode/useTimelineResolvedVideos";
 
 export default function EpisodeWorkspacePage() {
   const params = useParams();
@@ -49,21 +50,24 @@ export default function EpisodeWorkspacePage() {
     selectedScript,
   } = state;
 
-  const initialTab = coerceWorkspaceTab(searchParams.get("tab"));
-  const urlScriptId = useMemo(() => {
-    const raw = searchParams.get("scriptId");
-    if (!raw) return null;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
-  }, [searchParams]);
-  const initialSelectedClipId = searchParams.get("clipId")?.trim() || null;
+  const { initialTab, urlScriptId, initialSelectedClipId } =
+    useEpisodeWorkspaceUrlState(searchParams);
+  const {
+    resolvedVideos,
+    error: resolvedVideosError,
+    reloadResolvedVideos,
+  } = useTimelineResolvedVideos({
+    selectedTimelineSpec,
+    refreshKey: selectedTimelineSpec
+      ? `${selectedTimelineSpec.id}:${selectedTimelineSpec.version}`
+      : null,
+  });
 
   const mainScript = selectedScript;
   const mainScriptSceneCount = Array.isArray(mainScript?.scenes)
     ? mainScript?.scenes.length
     : undefined;
 
-  // Calculate workflow status based on data
   const workflowStatus: WorkflowStatus = useMemo(() => {
     const hasScript = scripts.length > 0;
     const hasTimeline = Boolean(selectedTimelineSpec || selectedAudioTimeline);
@@ -141,6 +145,7 @@ export default function EpisodeWorkspacePage() {
           scripts={orderedScripts}
           selectedScriptId={selectedScriptId}
           workflowStatus={workflowStatus}
+          resolvedVideos={resolvedVideos}
           activeTab={activeTab}
           onTabChange={handleTabChange}
           onNavigateBack={handleNavigateBack}
@@ -161,6 +166,9 @@ export default function EpisodeWorkspacePage() {
             scriptSceneCount={mainScriptSceneCount}
             selectedTimelineSpec={selectedTimelineSpec}
             onTimelineUpdated={setSelectedTimelineSpec}
+            resolvedVideos={resolvedVideos}
+            resolvedVideosError={resolvedVideosError}
+            reloadResolvedVideos={reloadResolvedVideos}
             initialSelectedClipId={initialSelectedClipId}
             selectedAudioTimeline={selectedAudioTimeline}
             selectedStoryboard={selectedStoryboard}

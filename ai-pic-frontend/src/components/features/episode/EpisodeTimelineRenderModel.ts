@@ -1,7 +1,12 @@
 "use client";
 
 import { asRecord, getString, parseMs } from "@/hooks/useEpisodeDetail";
-import type { TimelineClip, TimelineResponse } from "@/utils/api/types";
+import type {
+  TimelineClip,
+  TimelineResolvedVideoItem,
+  TimelineResolvedVideoListResponse,
+  TimelineResponse,
+} from "@/utils/api/types";
 
 type MissingTimelineClip = {
   clipId: string;
@@ -23,6 +28,54 @@ export type TimelineClipVideoStatus = {
   source?: string | null;
   reason?: string | null;
 };
+
+export function buildTimelineRenderReadinessFromResolvedVideos(
+  resolvedVideos: TimelineResolvedVideoListResponse | null,
+): TimelineRenderReadiness {
+  if (!resolvedVideos) {
+    return { ready: false, videoClipCount: 0, missingClips: [] };
+  }
+  const missingClips = resolvedVideos.items
+    .filter((item) => item.status !== "ready")
+    .map((item) => ({
+      clipId: item.clip_id,
+      sceneNumber:
+        getString(item.scene_number) || getString(item.scene_id) || null,
+      startMs: parseMs(item.start_ms),
+      endMs: parseMs(item.end_ms),
+      reason:
+        item.status === "generating"
+          ? "generating"
+          : item.reason || "missing_video_url",
+    }));
+  return {
+    ready: resolvedVideos.ready,
+    videoClipCount: resolvedVideos.video_clip_count,
+    missingClips,
+  };
+}
+
+export function resolvedVideoForClipId(
+  resolvedVideos: TimelineResolvedVideoListResponse | null,
+  clipId?: string | null,
+): TimelineResolvedVideoItem | null {
+  if (!resolvedVideos || !clipId) return null;
+  return resolvedVideos.items.find((item) => item.clip_id === clipId) ?? null;
+}
+
+export function timelineClipVideoStatusFromResolvedVideo(
+  item: TimelineResolvedVideoItem | null,
+): TimelineClipVideoStatus | null {
+  if (!item) return null;
+  if (item.status === "ready" && item.url) {
+    return { ready: true, url: item.url, source: item.source || "resolved" };
+  }
+  return {
+    ready: false,
+    reason: item.status === "generating" ? "generating" : item.reason,
+    source: item.source,
+  };
+}
 
 export function buildTimelineRenderReadiness(
   selectedTimelineSpec: TimelineResponse | null,

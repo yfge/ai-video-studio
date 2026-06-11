@@ -8,6 +8,7 @@ import {
   operatorButtonClass,
 } from "@/components/shared";
 import type { NormalizedScene, TimelineResponse } from "@/utils/api/types";
+import type { TimelineResolvedVideoListResponse } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import {
   buildStoryboardClipManagementItems,
@@ -20,17 +21,20 @@ export function WorkspaceStoryboardClipManagement({
   selectedTimelineSpec,
   selectedStoryboard,
   normalizedScenes,
+  resolvedVideos,
 }: {
   episodeKey: string;
   selectedScriptId?: number | null;
   selectedTimelineSpec?: TimelineResponse | null;
   selectedStoryboard: Record<string, unknown> | null;
   normalizedScenes: NormalizedScene[];
+  resolvedVideos?: TimelineResolvedVideoListResponse | null;
 }) {
   const items = buildStoryboardClipManagementItems(
     selectedTimelineSpec ?? null,
     selectedStoryboard,
     normalizedScenes,
+    resolvedVideos,
   );
 
   if (!selectedTimelineSpec || items.length === 0) return null;
@@ -66,7 +70,7 @@ function StoryboardClipManagementRow({
   href: string;
 }) {
   return (
-    <div className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+    <div className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_220px_auto] lg:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <div className="truncate text-sm font-semibold text-gray-950">
@@ -93,6 +97,19 @@ function StoryboardClipManagementRow({
           </StatusPill>
         </div>
       </div>
+      {item.videoUrl ? (
+        <video
+          aria-label={`播放片段 ${item.clipId}`}
+          className="w-full rounded-md border border-gray-200 bg-black"
+          controls
+          preload="none"
+          src={item.videoUrl}
+        />
+      ) : (
+        <div className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500">
+          {item.videoStatusLabel}
+        </div>
+      )}
       <Link href={href} className={operatorButtonClass("primary")}>
         进入片段分镜
       </Link>

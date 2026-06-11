@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     tasks,
     timeline_clip_tasks,
     timeline_keyframes,
+    timeline_resolved_videos,
     timelines,
     virtual_ip,
     virtual_ip_images,
@@ -51,6 +52,7 @@ api_router.include_router(
 api_router.include_router(timelines.router, tags=["timelines"])
 api_router.include_router(timeline_keyframes.router, tags=["timelines"])
 api_router.include_router(timeline_clip_tasks.router, tags=["timelines"])
+api_router.include_router(timeline_resolved_videos.router, tags=["timelines"])
 api_router.include_router(task_control.router, tags=["tasks"])
 
 # 数据库迁移相关路由

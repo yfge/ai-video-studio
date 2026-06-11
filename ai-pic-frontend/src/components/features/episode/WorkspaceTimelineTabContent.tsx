@@ -6,6 +6,7 @@ import { scriptAPI } from "@/utils/api/endpoints";
 import type {
   NormalizedScene,
   Script,
+  TimelineResolvedVideoListResponse,
   TimelineResponse,
 } from "@/utils/api/types";
 import { OperatorState } from "@/components/shared";
@@ -19,6 +20,9 @@ interface WorkspaceTimelineTabContentProps {
   selectedScript: Script | null;
   selectedTimelineSpec: TimelineResponse | null;
   onTimelineUpdated?: (timeline: TimelineResponse) => void;
+  resolvedVideos?: TimelineResolvedVideoListResponse | null;
+  resolvedVideosError?: string | null;
+  reloadResolvedVideos?: () => void | Promise<void>;
   initialSelectedClipId?: string | null;
   selectedAudioTimeline: Record<string, unknown> | null;
   selectedStoryboard: Record<string, unknown> | null;
@@ -44,6 +48,9 @@ export function WorkspaceTimelineTabContent({
   selectedScript,
   selectedTimelineSpec,
   onTimelineUpdated,
+  resolvedVideos,
+  resolvedVideosError,
+  reloadResolvedVideos,
   initialSelectedClipId,
   selectedAudioTimeline,
   selectedStoryboard,
@@ -186,6 +193,9 @@ export function WorkspaceTimelineTabContent({
       selectedScript={selectedScript}
       selectedTimelineSpec={selectedTimelineSpec}
       onTimelineUpdated={onTimelineUpdated}
+      resolvedVideos={resolvedVideos}
+      resolvedVideosError={resolvedVideosError}
+      reloadResolvedVideos={reloadResolvedVideos}
       initialSelectedClipId={initialSelectedClipId}
       selectedAudioTimeline={selectedAudioTimeline}
       selectedStoryboard={selectedStoryboard}

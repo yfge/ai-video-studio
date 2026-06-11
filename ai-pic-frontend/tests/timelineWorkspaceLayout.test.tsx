@@ -11,7 +11,12 @@ import { EpisodeTimelineWorkspace } from "../src/components/features/episode/Epi
 import { AlertModalProvider } from "../src/components/shared/modals";
 import { ToastProvider } from "../src/components/shared/notifications";
 import { clearAvailableModelsCache } from "../src/hooks/useAvailableModels";
-import type { Episode, Script, TimelineResponse } from "../src/utils/api/types";
+import type {
+  Episode,
+  Script,
+  TimelineResolvedVideoListResponse,
+  TimelineResponse,
+} from "../src/utils/api/types";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost",
@@ -34,11 +39,18 @@ describe("EpisodeTimelineWorkspace layout", () => {
   });
 
   it("puts video clip generation in the main canvas instead of a right inspector", async () => {
-    mockWorkspaceFetch();
-
-    const utils = render(workspace(videoTimeline()), {
-      container: dom.window.document.body,
+    mockWorkspaceFetch({
+      resolvedVideos: resolvedVideos("https://example.com/clip-ready.mp4"),
     });
+
+    const utils = render(
+      workspace(
+        videoTimeline(),
+        undefined,
+        resolvedVideos("https://example.com/clip-ready.mp4"),
+      ),
+      { container: dom.window.document.body },
+    );
 
     await waitFor(() => {
       assert.ok(utils.getByText("选中片段生产"));
@@ -49,6 +61,53 @@ describe("EpisodeTimelineWorkspace layout", () => {
     assert.equal(utils.queryByText("片段检查器"), null);
     assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
+    const video = utils.getByLabelText("播放选中片段视频");
+    assert.equal(video.getAttribute("src"), "https://example.com/clip-ready.mp4");
+  });
+
+  it("renders succeeded timeline render output as an embedded player", async () => {
+    mockWorkspaceFetch({
+      resolvedVideos: resolvedVideos("https://example.com/clip-ready.mp4"),
+      renderJobs: [
+        {
+          id: 9,
+          business_id: "render_9",
+          timeline_id: 8,
+          timeline_version: 3,
+          render_type: "final",
+          preset_hash: "hash",
+          preset: {},
+          status: "succeeded",
+          progress: 100,
+          output_asset_id: 18,
+          output_asset: {
+            id: 18,
+            business_id: "asset_18",
+            asset_type: "video",
+            origin: "rendered",
+            file_url: "https://example.com/final.mp4",
+            created_at: "2026-06-11T00:00:00Z",
+            updated_at: "2026-06-11T00:00:00Z",
+          },
+          created_at: "2026-06-11T00:00:00Z",
+          updated_at: "2026-06-11T00:00:00Z",
+        },
+      ],
+    });
+
+    const utils = render(
+      workspace(
+        videoTimeline(),
+        undefined,
+        resolvedVideos("https://example.com/clip-ready.mp4"),
+      ),
+      { container: dom.window.document.body },
+    );
+
+    await waitFor(() => {
+      const video = utils.getByLabelText("播放渲染成片");
+      assert.equal(video.getAttribute("src"), "https://example.com/final.mp4");
+    });
   });
 
   it("renders a compact production path header with one primary next action", () => {
@@ -208,6 +267,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
 function workspace(
   selectedTimelineSpec: TimelineResponse,
   initialSelectedClipId?: string,
+  resolvedVideosPayload: TimelineResolvedVideoListResponse = resolvedVideosMissing(),
 ) {
   return (
     <AlertModalProvider>
@@ -217,6 +277,7 @@ function workspace(
           initialSelectedClipId={initialSelectedClipId}
           selectedScript={{ version: "1.0" } as Script}
           selectedTimelineSpec={selectedTimelineSpec}
+          resolvedVideos={resolvedVideosPayload}
           selectedAudioTimeline={null}
           selectedStoryboard={null}
           normalizedScenes={[]}
@@ -268,9 +329,13 @@ function script(): Script {
 function mockWorkspaceFetch({
   environments = [],
   environmentDetails = {},
+  resolvedVideos,
+  renderJobs = [],
 }: {
   environments?: unknown[];
   environmentDetails?: Record<number, unknown>;
+  resolvedVideos?: unknown;
+  renderJobs?: unknown[];
 } = {}) {
   globalThis.fetch = (async (url: RequestInfo | URL) => {
     const path = String(url);
@@ -291,14 +356,60 @@ function mockWorkspaceFetch({
     if (path.includes("/api/v1/story-structure/environments")) {
       return jsonResponse(environments);
     }
+    if (path.includes("/resolved-videos")) {
+      return jsonResponse(resolvedVideos || resolvedVideosMissing());
+    }
     if (path.includes("/render-jobs")) {
-      return jsonResponse({ items: [] });
+      return jsonResponse({ items: renderJobs });
     }
     if (path.includes("/clip-assets")) {
       return jsonResponse({ items: [] });
     }
     return jsonResponse({});
   }) as typeof fetch;
+}
+
+function resolvedVideos(url: string): TimelineResolvedVideoListResponse {
+  return {
+    timeline_id: 8,
+    timeline_version: 3,
+    ready: true,
+    video_clip_count: 1,
+    missing_clip_count: 0,
+    generating_clip_count: 0,
+    items: [
+      {
+        clip_id: "video_scene_1_beat_1_001",
+        status: "ready",
+        url,
+        source: "timeline_clip_asset:provider_rework",
+        start_ms: 0,
+        end_ms: 1200,
+        duration_seconds: 1.2,
+      },
+    ],
+  };
+}
+
+function resolvedVideosMissing(): TimelineResolvedVideoListResponse {
+  return {
+    timeline_id: 8,
+    timeline_version: 3,
+    ready: false,
+    video_clip_count: 1,
+    missing_clip_count: 1,
+    generating_clip_count: 0,
+    items: [
+      {
+        clip_id: "video_scene_1_beat_1_001",
+        status: "missing",
+        reason: "missing_video_url",
+        start_ms: 0,
+        end_ms: 1200,
+        duration_seconds: 1.2,
+      },
+    ],
+  };
 }
 
 function jsonResponse(body: unknown) {

@@ -2,8 +2,10 @@ import { asRecord, getString, parseMs } from "@/hooks/episodeDetailUtils";
 import type {
   NormalizedScene,
   TimelineClip,
+  TimelineResolvedVideoListResponse,
   TimelineResponse,
 } from "@/utils/api/types";
+import { resolvedVideoForClipId } from "./EpisodeTimelineRenderModel";
 import {
   clipContextStatus,
   clipKeyframeStatus,
@@ -26,12 +28,14 @@ export type StoryboardClipManagementItem = {
   keyframeReady: boolean;
   videoStatusLabel: string;
   videoReady: boolean;
+  videoUrl: string | null;
 };
 
 export function buildStoryboardClipManagementItems(
   selectedTimelineSpec: TimelineResponse | null,
   selectedStoryboard: Record<string, unknown> | null,
   normalizedScenes: NormalizedScene[] = [],
+  resolvedVideos?: TimelineResolvedVideoListResponse | null,
 ): StoryboardClipManagementItem[] {
   const clipStoryboards = timelineClipStoryboards(selectedTimelineSpec);
   return timelineVideoClips(selectedTimelineSpec).map((clip, index) => {
@@ -43,7 +47,16 @@ export function buildStoryboardClipManagementItems(
       clipStoryboards.get(clipId),
     );
     const keyframes = clipKeyframeStatus(clip, selectedStoryboard);
-    const videoReady = hasClipVideo(clip, selectedStoryboard);
+    const resolvedVideo = resolvedVideoForClipId(resolvedVideos ?? null, clipId);
+    const fallbackVideoReady = hasClipVideo(clip, selectedStoryboard);
+    const videoReady = resolvedVideo
+      ? resolvedVideo.status === "ready" && Boolean(resolvedVideo.url)
+      : fallbackVideoReady;
+    const videoStatusLabel = resolvedVideo
+      ? resolvedVideoStatusLabel(resolvedVideo.status)
+      : videoReady
+        ? "视频已生成"
+        : "视频待生成";
 
     return {
       clipId,
@@ -56,10 +69,17 @@ export function buildStoryboardClipManagementItems(
       storyboardReady,
       keyframeStatusLabel: keyframes.label,
       keyframeReady: keyframes.ready,
-      videoStatusLabel: videoReady ? "视频已生成" : "视频待生成",
+      videoStatusLabel,
       videoReady,
+      videoUrl: resolvedVideo?.url || null,
     };
   });
+}
+
+function resolvedVideoStatusLabel(status: string) {
+  if (status === "ready") return "视频已生成";
+  if (status === "generating") return "视频生成中";
+  return "视频待生成";
 }
 
 function timelineVideoClips(

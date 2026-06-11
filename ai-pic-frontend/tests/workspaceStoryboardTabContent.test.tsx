@@ -4,13 +4,19 @@ import { cleanup, render } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 
 import { WorkspaceStoryboardTabContent } from "../src/components/features/episode/WorkspaceStoryboardTabContent";
-import type { TimelineResponse } from "../src/utils/api/types";
+import type {
+  TimelineResolvedVideoListResponse,
+  TimelineResponse,
+} from "../src/utils/api/types";
 
-const dom = new JSDOM("<!doctype html><html><body></body></html>");
+const dom = new JSDOM("<!doctype html><html><body></body></html>", {
+  url: "http://localhost",
+});
 (globalThis as any).window = dom.window;
 (globalThis as any).self = dom.window;
 (globalThis as any).document = dom.window.document;
 (globalThis as any).HTMLElement = dom.window.HTMLElement;
+(globalThis as any).localStorage = dom.window.localStorage;
 
 const timelineWithVideo = {
   id: 8,
@@ -76,15 +82,18 @@ const timelineWithAudio = {
 } satisfies TimelineResponse;
 
 describe("WorkspaceStoryboardTabContent", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+  });
 
-  it("surfaces clip-scoped storyboard management without whole-Timeline generation", () => {
+  it("surfaces clip-scoped storyboard management without whole-Timeline generation", async () => {
     const utils = render(
       <WorkspaceStoryboardTabContent
         episodeKey="episode_7"
         selectedScriptId={131}
         hasStoryboard={false}
         selectedTimelineSpec={timelineWithVideo}
+        resolvedVideos={resolvedVideos("https://example.com/clip-ready.mp4")}
         selectedStoryboard={null}
         normalizedScenes={[]}
       />,
@@ -92,6 +101,9 @@ describe("WorkspaceStoryboardTabContent", () => {
     );
 
     assert.equal(utils.queryByRole("button", { name: "生成宫格分镜" }), null);
+    assert.equal(utils.queryByText("场景宫格分镜"), null);
+    assert.equal(utils.queryByRole("button", { name: "生成宫格分镜图" }), null);
+    assert.equal(utils.queryByRole("button", { name: "宫格图生成成片" }), null);
     assert.equal(utils.queryByRole("button", { name: "生成故事板" }), null);
     assert.equal(utils.queryByRole("button", { name: "生成整集故事板" }), null);
     assert.equal(utils.queryByText("宫格故事板"), null);
@@ -111,6 +123,10 @@ describe("WorkspaceStoryboardTabContent", () => {
       link.getAttribute("href"),
       "/episodes/episode_7/workspace?tab=timeline&scriptId=131&clipId=video_scene_1_beat_1_001",
     );
+    const video = await utils.findByLabelText(
+      "播放片段 video_scene_1_beat_1_001",
+    );
+    assert.equal(video.getAttribute("src"), "https://example.com/clip-ready.mp4");
   });
 
   it("surfaces native Timeline context and audio playback on the storyboard tab", () => {
@@ -120,6 +136,7 @@ describe("WorkspaceStoryboardTabContent", () => {
         selectedScriptId={131}
         hasStoryboard={false}
         selectedTimelineSpec={timelineWithAudio}
+        resolvedVideos={resolvedVideos(null)}
         selectedStoryboard={null}
         normalizedScenes={[]}
       />,
@@ -143,6 +160,7 @@ describe("WorkspaceStoryboardTabContent", () => {
         selectedScriptId={131}
         hasStoryboard
         selectedTimelineSpec={timelineWithVideo}
+        resolvedVideos={resolvedVideos(null)}
         selectedStoryboard={{
           frames: [
             {
@@ -193,3 +211,26 @@ describe("WorkspaceStoryboardTabContent", () => {
     assert.equal(button.hasAttribute("disabled"), false);
   });
 });
+
+function resolvedVideos(url: string | null): TimelineResolvedVideoListResponse {
+  return {
+    timeline_id: 8,
+    timeline_version: 3,
+    ready: Boolean(url),
+    video_clip_count: 1,
+    missing_clip_count: url ? 0 : 1,
+    generating_clip_count: 0,
+    items: [
+      {
+        clip_id: "video_scene_1_beat_1_001",
+        status: url ? "ready" : "missing",
+        url,
+        source: url ? "timeline_clip" : null,
+        reason: url ? null : "missing_video_url",
+        start_ms: 0,
+        end_ms: 1200,
+        duration_seconds: 1.2,
+      },
+    ],
+  };
+}
