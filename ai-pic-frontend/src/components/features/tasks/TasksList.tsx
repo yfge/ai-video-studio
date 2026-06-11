@@ -21,7 +21,9 @@ type TasksListProps = {
   persistedLoading: Record<number, boolean>;
   isStartingId: number | null;
   deletingTaskId: number | null;
+  cancellingTaskId: number | null;
   onStart: (taskId: number) => void;
+  onCancel: (taskId: number) => void;
   onDelete: (taskId: number) => void;
 };
 
@@ -35,6 +37,8 @@ const getStatusText = (status: APITask["status"]) => {
       return "已完成";
     case "failed":
       return "失败";
+    case "cancelled":
+      return "已取消";
     default:
       return "未知";
   }
@@ -57,7 +61,9 @@ export function TasksList({
   persistedLoading,
   isStartingId,
   deletingTaskId,
+  cancellingTaskId,
   onStart,
+  onCancel,
   onDelete,
 }: TasksListProps) {
   if (!loading && !fetchError && tasks.length === 0) {
@@ -125,6 +131,16 @@ export function TasksList({
                   className={operatorButtonClass("primary")}
                 >
                   {isStartingId === task.id ? "启动中..." : "开始"}
+                </button>
+              )}
+              {(task.status === "pending" ||
+                task.status === "processing") && (
+                <button
+                  onClick={() => onCancel(task.id)}
+                  disabled={cancellingTaskId === task.id}
+                  className={operatorButtonClass("secondary")}
+                >
+                  {cancellingTaskId === task.id ? "取消中..." : "取消"}
                 </button>
               )}
               <button

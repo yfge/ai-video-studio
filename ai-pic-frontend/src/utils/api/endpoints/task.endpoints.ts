@@ -89,11 +89,26 @@ async function startTask(
 }
 
 /**
+ * Cancel a pending/processing task (best-effort).
+ */
+async function cancelTask(
+  id: number,
+): Promise<ApiResponse<{ task_id: number; status: string }>> {
+  return httpClient<{ task_id: number; status: string }>(
+    `/api/v1/tasks/${id}/cancel`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+/**
  * Task API namespace.
  */
 export const taskAPI = {
   getTasks,
   createTask,
+  cancelTask,
   getTask,
   deleteTask,
   startTask,

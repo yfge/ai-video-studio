@@ -13,6 +13,7 @@ export function useTasks() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isStartingId, setIsStartingId] = useState<number | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
+  const [cancellingTaskId, setCancellingTaskId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
   const [total, setTotal] = useState(0);
@@ -106,6 +107,27 @@ export function useTasks() {
     [loadTasks],
   );
 
+  const cancelTask = useCallback(
+    async (taskId: number) => {
+      setCancellingTaskId(taskId);
+      try {
+        const res = await taskAPI.cancelTask(taskId);
+        if (!res.success) {
+          throw new Error(res.error || "取消任务失败");
+        }
+        await loadTasks({ silent: true });
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "取消任务失败";
+        console.error("取消任务失败:", error);
+        return { success: false, message };
+      } finally {
+        setCancellingTaskId(null);
+      }
+    },
+    [loadTasks],
+  );
+
   const deleteTask = useCallback(
     async (taskId: number) => {
       setDeletingTaskId(taskId);
@@ -135,6 +157,7 @@ export function useTasks() {
     setPoll,
     isStartingId,
     deletingTaskId,
+    cancellingTaskId,
     page,
     setPage,
     size,
@@ -144,6 +167,7 @@ export function useTasks() {
     setTaskTypeFilter,
     refresh,
     startTask,
+    cancelTask,
     deleteTask,
   };
 }

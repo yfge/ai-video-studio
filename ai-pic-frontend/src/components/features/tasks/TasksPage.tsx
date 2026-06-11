@@ -30,6 +30,7 @@ export function TasksPage() {
     setPoll,
     isStartingId,
     deletingTaskId,
+    cancellingTaskId,
     page,
     setPage,
     size,
@@ -39,11 +40,36 @@ export function TasksPage() {
     setTaskTypeFilter,
     refresh,
     startTask,
+    cancelTask,
     deleteTask,
   } = useTasks();
 
   const { expanded, toggleExpanded, persistedStyle, persistedLoading } =
     useTaskPersistedStyle();
+
+  const handleCancel = (id: APITask["id"]) => {
+    const taskId = toTaskId(id);
+    if (!taskId) {
+      showAlert({ message: "任务编号无效，无法取消任务", variant: "warning" });
+      return;
+    }
+    showAlert({
+      title: "取消任务",
+      message: `确认取消任务 #${taskId}？已在执行的任务会尽力终止。`,
+      variant: "warning",
+      confirmText: "确认取消",
+      onConfirm: () => {
+        void cancelTask(taskId).then((res) => {
+          if (!res.success) {
+            showAlert({
+              message: res.message || "取消任务失败",
+              variant: "error",
+            });
+          }
+        });
+      },
+    });
+  };
 
   const handleStart = async (id: APITask["id"]) => {
     const taskId = toTaskId(id);
@@ -129,7 +155,9 @@ export function TasksPage() {
             persistedLoading={persistedLoading}
             isStartingId={isStartingId}
             deletingTaskId={deletingTaskId}
+            cancellingTaskId={cancellingTaskId}
             onStart={(taskId) => void handleStart(taskId)}
+            onCancel={handleCancel}
             onDelete={handleDelete}
           />
           {!loading && !fetchError && tasks.length > 0 ? (
