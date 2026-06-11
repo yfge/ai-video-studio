@@ -67,6 +67,14 @@
 - 排障结论二（已修复）：normalize 层把 aspect_ratio 16:9 吞成 1024x1024 → `compute_image_ui` 增加 codex 分支（auto 优先 + 比例选项），`resolve_image_size` 对 auto 继续走比例映射，16:9→1536x1024 验证通过
 - 排障结论三（平台限制）：火山 Seedance 2.0 图生视频对含写实人脸的宫格图返回 `InputImageSensitiveContentDetected.PrivacyInformation`（疑似真人审核）拒绝生成；用无人物环境图验证 Seedance i2v 链路本身正常（4s 成片成功）。成片环节被平台内容策略阻断，需向火山申请真人内容权限或改用对真人审核宽松的 i2v 渠道
 
+## 追加（同日第四轮）：成片打通（MiniMax 备选渠道）
+
+- **原生链路成片成功**（task 6055）：DeepSeek 生成 Seedance 风格时间轴视频提示词（video_prompt_source=llm_dynamic）→ MiniMax-Hailuo-2.3 以宫格图为首帧参考生成 6s 连续成片 → CDN 落库（`ai-generated/videos/.../21c15be1.mp4`）→ 前端面板内可播放。MiniMax 不卡真实人脸审核，作为火山 Seedance 被真人审核拦截时的成片备选渠道
+- 修复一：`MinimaxProvider.generate_video` 增加统一管线参数别名（image_url/end_image_url → first_frame_image/last_frame_image），此前签名不兼容 ai_manager 统一调用（位置参数缺失报错，路径从未被走通）
+- 修复二：minimax video 轮询的 result_extractor 是 async 函数但 TaskPoller 同步调用（既有 bug，coroutine not iterable）→ 改为 poll 完成后自行 await 提取
+- 修复三：scene_grid video_processor 误判 VideoGenerationService 成功返回（成功 payload 无 success 键）→ 以 video_url 为准
+- 全链路证据：`05-scene2-grid-sheet-codex.png`（宫格图）、`07-scene2-grid-video-minimax.mp4`（成片）、`08-scene2-grid-and-video-in-panel.png`（前端展示）
+
 ## Next Steps
 
 - 在配置了可用 LLM 文本模型与生图余额的环境开启 `STORYBOARD_DYNAMIC_PROMPT_ENABLED=true` 做真实出图对比与灰度

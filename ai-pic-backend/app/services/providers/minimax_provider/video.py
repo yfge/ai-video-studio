@@ -172,17 +172,21 @@ async def _poll_video_task(
             }
         return {}
 
+    # TaskPoller invokes result_extractor synchronously; extract_result is a
+    # coroutine, so await it here on the raw completed payload instead.
     poller = TaskPoller(
         poll_fn=poll_fn,
         status_mapper=minimax_status_mapper,
-        result_extractor=extract_result,
         max_attempts=180,  # 30 minutes with 10s interval
         initial_delay=10.0,
         task_id=task_id,
         task_type="video",
     )
 
-    return await poller.poll()
+    data = await poller.poll()
+    if not isinstance(data, dict):
+        return None
+    return await extract_result(data)
 
 
 async def _retrieve_video_file(

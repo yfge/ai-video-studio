@@ -148,7 +148,7 @@ class MinimaxProvider(BaseProvider):
 
     async def generate_video(
         self,
-        first_frame_image: str,
+        first_frame_image: Optional[str] = None,
         prompt: Optional[str] = None,
         last_frame_image: Optional[str] = None,
         model: str = "MiniMax-Hailuo-2.3",
@@ -157,9 +157,25 @@ class MinimaxProvider(BaseProvider):
         prompt_optimizer: bool = True,
         fast_pretreatment: bool = False,
         aigc_watermark: bool = False,
+        # Unified ai_manager pipeline aliases (generate_video passes image_url/
+        # end_image_url); keep the MiniMax-native names as the primary API.
+        image_url: Optional[str] = None,
+        end_image_url: Optional[str] = None,
         **kwargs,
     ) -> AIResponse:
         """Generate video from image(s) using MiniMax video generation API."""
+        first_frame_image = first_frame_image or image_url
+        last_frame_image = last_frame_image or end_image_url
+        if not first_frame_image:
+            return AIResponse(
+                success=False,
+                error="MiniMax video generation requires a first frame image",
+                provider=self.name,
+                model=model,
+                task_type=AITaskType.VIDEO_GENERATION,
+                model_type=AIModelType.IMAGE_TO_VIDEO,
+            )
+        kwargs.pop("fps", None)
         return await video_module.generate_video(
             client=self.client,
             provider_name=self.name,

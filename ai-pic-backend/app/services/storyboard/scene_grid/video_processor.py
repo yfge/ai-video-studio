@@ -69,7 +69,10 @@ async def generate_video(db, task_id: int, payload: Dict[str, Any]) -> None:
         resolution=str(payload.get("resolution") or "720p"),
         **extra_kwargs,
     )
-    if not result.get("success"):
+    # Success payloads carry video_url without a "success" flag; only failures
+    # return success=False explicitly.
+    video_url = result.get("video_url") or result.get("oss_url")
+    if result.get("success") is False or not video_url:
         raise RuntimeError(result.get("error") or "宫格成片生成失败")
 
     save_scene_grid(
@@ -79,7 +82,7 @@ async def generate_video(db, task_id: int, payload: Dict[str, Any]) -> None:
         grid_payload={
             "video_prompt": prompt_data["video_prompt"],
             "video_prompt_source": prompt_data["prompt_source"],
-            "video_url": result.get("video_url") or result.get("oss_url"),
+            "video_url": video_url,
             "video_thumbnail_url": result.get("thumbnail_url"),
             "video_model": result.get("model_used") or payload.get("model"),
             "video_provider": result.get("provider_used"),
