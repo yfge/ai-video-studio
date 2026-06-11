@@ -6,9 +6,11 @@ import {
   type Episode,
   type Script,
   type ScriptGenerationRequest,
+  type TimelineResponse,
 } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import { useToast } from "@/components/shared/notifications";
+import { firstTimelineVideoClipId } from "./timelineClipUtils";
 import { sortScriptsNewestFirst } from "./scriptSort";
 import { useEpisodeWorkspaceScriptActions } from "./useEpisodeWorkspaceScriptActions";
 import { useEpisodeWorkspaceScriptTaskTracking } from "./useEpisodeWorkspaceScriptTaskTracking";
@@ -40,6 +42,7 @@ export function useEpisodeWorkspaceController(args: {
   urlScriptId: number | null;
   episode: Episode | null;
   scripts: Script[];
+  selectedTimelineSpec: TimelineResponse | null;
   selectedScriptId: number | null;
   setSelectedScriptId: (scriptId: number | null) => void;
   setScripts: React.Dispatch<React.SetStateAction<Script[]>>;
@@ -56,6 +59,7 @@ export function useEpisodeWorkspaceController(args: {
     urlScriptId,
     episode,
     scripts,
+    selectedTimelineSpec,
     selectedScriptId,
     setSelectedScriptId,
     setScripts,
@@ -205,6 +209,24 @@ export function useEpisodeWorkspaceController(args: {
     );
   }, [buildUrl, router, selectedScriptId]);
 
+  const storyboardEntryClipId = firstTimelineVideoClipId(selectedTimelineSpec);
+  const handleOpenStoryboard = useCallback(() => {
+    if (!storyboardEntryClipId) {
+      handleTabChange("storyboard");
+      return;
+    }
+    setActiveTab("timeline");
+    router.push(
+      buildUrl("timeline", selectedScriptId, { clipId: storyboardEntryClipId }),
+    );
+  }, [
+    buildUrl,
+    handleTabChange,
+    router,
+    selectedScriptId,
+    storyboardEntryClipId,
+  ]);
+
   return {
     activeTab,
     orderedScripts,
@@ -215,6 +237,10 @@ export function useEpisodeWorkspaceController(args: {
     handleNavigateBack,
     handleGenerateScript,
     handleGenerateTimeline,
+    handleOpenStoryboard,
     handleRegenerateScript,
+    storyboardActionLabel: storyboardEntryClipId
+      ? "进入片段分镜"
+      : "打开分镜辅助",
   };
 }

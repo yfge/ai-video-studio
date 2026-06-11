@@ -137,8 +137,8 @@ function assetRoleLabel(role: string) {
     end_frame: "尾帧",
     storyboard_image: "分镜图",
     storyboard_video: "分镜视频",
-    clip_storyboard_sheet: "故事板参考图",
-    storyboard_grid_sheet: "旧宫格故事板",
+    clip_storyboard_sheet: "片段分镜图",
+    storyboard_grid_sheet: "旧宫格分镜",
     generated_video: "生成视频",
     render_output: "渲染输出",
   };

@@ -176,15 +176,15 @@ describe("timeline clip rework controls", () => {
       { container: dom.window.document.body },
     );
 
-    assert.ok(utils.getByText("故事板参考"));
+    assert.ok(utils.getByText("片段分镜图"));
     assert.ok(utils.getByText("片段视频"));
-    assert.ok(utils.getByRole("button", { name: "生成故事板参考图" }));
+    assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
     assert.ok(utils.getByLabelText("视频参考来源"));
-    assert.ok(utils.getByRole("option", { name: "故事板 Panel 4" }));
+    assert.ok(utils.getByRole("option", { name: "分镜 Panel 4" }));
     assert.ok(utils.getByLabelText("附加参考图 URL"));
     assert.ok(utils.getByLabelText("画面风格"));
-    assert.ok(utils.getByLabelText("故事板 panel 数"));
+    assert.ok(utils.getByLabelText("分镜 panel 数"));
     assert.ok(utils.getByLabelText("视频模型"));
     assert.ok(utils.getByRole("option", { name: "自动选择模型" }));
     assert.ok(utils.getByRole("option", { name: "Seedance 2.0" }));
@@ -216,7 +216,7 @@ describe("timeline clip rework controls", () => {
     fireEvent.input(utils.getByLabelText("附加参考图 URL"), {
       target: { value: "https://manual.example/ref.png" },
     });
-    fireEvent.click(utils.getByRole("button", { name: "生成故事板参考图" }));
+    fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
     await waitFor(() => assert.equal(calls.length, 1));
     assert.equal(
       calls[0].url,
@@ -286,7 +286,7 @@ describe("timeline clip rework controls", () => {
 
     assert.ok(utils.getByText("绑定角色 IP"));
     fireEvent.click(utils.getByLabelText("绑定角色 IP 快递员"));
-    fireEvent.click(utils.getByRole("button", { name: "生成故事板参考图" }));
+    fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
     await waitFor(() => assert.equal(calls.length, 1));
 
     assert.equal(
@@ -348,7 +348,7 @@ describe("timeline clip rework controls", () => {
         "true",
       ),
     );
-    fireEvent.click(utils.getByRole("button", { name: "生成故事板参考图" }));
+    fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
     await waitFor(() => assert.equal(calls.length, 1));
 
     assert.equal(
@@ -416,7 +416,7 @@ describe("timeline clip rework controls", () => {
     );
     fireEvent.click(utils.getByLabelText("选择 IP 图 快递员 正面"));
     fireEvent.click(utils.getByLabelText("环境图清空"));
-    fireEvent.click(utils.getByRole("button", { name: "生成故事板参考图" }));
+    fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
     await waitFor(() => assert.equal(calls.length, 1));
 
     assert.equal(
@@ -626,7 +626,7 @@ describe("timeline clip rework controls", () => {
         "true",
       ),
     );
-    fireEvent.click(utils.getByRole("button", { name: "生成故事板参考图" }));
+    fireEvent.click(utils.getByRole("button", { name: "生成片段分镜图" }));
     await waitFor(() =>
       assert.ok(
         calls.some((call) => String(call.url).includes("/storyboard/generate")),

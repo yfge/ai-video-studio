@@ -39,11 +39,11 @@ describe("EpisodeTimelineWorkspace layout", () => {
     await waitFor(() => {
       assert.ok(utils.getByText("选中片段生产"));
       assert.ok(utils.getByText("片段分镜管理"));
-      assert.ok(utils.getByText("故事板参考"));
+      assert.ok(utils.getByText("片段分镜图"));
       assert.ok(utils.getByText("片段视频"));
     });
     assert.equal(utils.queryByText("片段检查器"), null);
-    assert.ok(utils.getByRole("button", { name: "生成故事板参考图" }));
+    assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
   });
 
@@ -59,7 +59,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
       assert.ok(utils.getByText("片段分镜管理"));
       assert.ok(utils.getAllByText("视频 1").length >= 2);
     });
-    assert.ok(utils.getByRole("button", { name: "生成故事板参考图" }));
+    assert.ok(utils.getByRole("button", { name: "生成片段分镜图" }));
     assert.ok(utils.getByRole("button", { name: "生成/重做此片段视频" }));
   });
 
@@ -89,10 +89,7 @@ describe("EpisodeTimelineWorkspace layout", () => {
     await waitFor(() => assert.ok(utils.getByText("选中片段生产")));
     assert.ok(utils.getAllByText("native dialogue").length >= 1);
     assert.equal(utils.queryByText("片段检查器"), null);
-    assert.equal(
-      utils.queryByRole("button", { name: "生成故事板参考图" }),
-      null,
-    );
+    assert.equal(utils.queryByRole("button", { name: "生成片段分镜图" }), null);
     assert.equal(
       utils.queryByRole("button", { name: "生成/重做此片段视频" }),
       null,
@@ -159,23 +156,23 @@ function workspace(
     <AlertModalProvider>
       <ToastProvider>
         <EpisodeTimelineWorkspace
-        selectedScriptId={128}
-        initialSelectedClipId={initialSelectedClipId}
-        selectedScript={{ version: "1.0" } as Script}
-        selectedTimelineSpec={selectedTimelineSpec}
-        selectedAudioTimeline={null}
-        selectedStoryboard={null}
-        normalizedScenes={[]}
-        normalizedScenesLoading={false}
-        normalizedScenesError={null}
-        timingModel=""
-        setTimingModel={() => {}}
-        useDurationControl={false}
-        setUseDurationControl={() => {}}
-        onNavigateToTasks={() => {}}
-        onNavigateToScript={() => {}}
-        onNavigateToStoryboard={() => {}}
-        onNavigateToCharacters={() => {}}
+          selectedScriptId={128}
+          initialSelectedClipId={initialSelectedClipId}
+          selectedScript={{ version: "1.0" } as Script}
+          selectedTimelineSpec={selectedTimelineSpec}
+          selectedAudioTimeline={null}
+          selectedStoryboard={null}
+          normalizedScenes={[]}
+          normalizedScenesLoading={false}
+          normalizedScenesError={null}
+          timingModel=""
+          setTimingModel={() => {}}
+          useDurationControl={false}
+          setUseDurationControl={() => {}}
+          onNavigateToTasks={() => {}}
+          onNavigateToScript={() => {}}
+          onNavigateToStoryboard={() => {}}
+          onNavigateToCharacters={() => {}}
         />
       </ToastProvider>
     </AlertModalProvider>

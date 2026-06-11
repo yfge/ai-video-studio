@@ -72,9 +72,9 @@ export function StoryboardReferenceCard({
   return (
     <section className={CARD_CLASS}>
       <div className="mb-3">
-        <div className={CARD_TITLE_CLASS}>故事板参考</div>
+        <div className={CARD_TITLE_CLASS}>片段分镜图</div>
         <div className={CARD_DESCRIPTION_CLASS}>
-          生成当前 video clip 的宫格参考图，供片段视频重做时引用。
+          生成当前 video clip 的宫格分镜图，供首尾帧和片段视频引用。
         </div>
       </div>
       <div className={FIELD_GRID_CLASS}>
@@ -96,9 +96,9 @@ export function StoryboardReferenceCard({
           </select>
         </label>
         <label className="grid gap-1 text-xs text-gray-700">
-          <span>Panel 数</span>
+          <span>分镜格数</span>
           <select
-            aria-label="故事板 panel 数"
+            aria-label="分镜 panel 数"
             value={storyboardPanelCount}
             onChange={(event) =>
               onStoryboardPanelCountChange(event.target.value)
@@ -170,7 +170,7 @@ export function StoryboardReferenceCard({
         className={operatorButtonClass("secondary", "mt-3 w-full")}
         onClick={onGenerateStoryboard}
       >
-        {generatingStoryboard ? "提交中..." : "生成故事板参考图"}
+        {generatingStoryboard ? "提交中..." : "生成片段分镜图"}
       </button>
       <TimelineClipTaskStatusLine
         kind="storyboard"
@@ -188,7 +188,7 @@ export function StoryboardReferenceCard({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={storyboardSheetUrl}
-            alt="故事板参考图预览"
+            alt="片段分镜图预览"
             className="max-h-72 w-full object-contain"
           />
           <div className="border-t border-gray-200 px-2 py-1 text-center text-[11px] text-gray-500">
@@ -202,8 +202,8 @@ export function StoryboardReferenceCard({
 
 const VIDEO_REFERENCE_HINTS: Record<TimelineVideoReferenceChoice, string> = {
   start_end: "以本片段的首帧/尾帧图驱动视频生成，需先生成首尾帧。",
-  clip_storyboard_panel: "以本片段故事板 Panel 作为参考图驱动视频生成。",
-  storyboard_grid_panel: "以旧版整条 Timeline 宫格故事板 Panel 作为参考图。",
+  clip_storyboard_panel: "以本片段分镜 Panel 作为参考图驱动视频生成。",
+  storyboard_grid_panel: "以旧版整条 Timeline 宫格分镜 Panel 作为参考图。",
   manual_refs: "仅使用上方「附加参考图 URL」中的图片作为参考。",
 };
 
@@ -230,8 +230,8 @@ export function VideoReferenceSelect({
         <option value="start_end">首尾帧</option>
         <option value="clip_storyboard_panel" disabled={!storyboardPanelIndex}>
           {storyboardPanelIndex
-            ? `故事板 Panel ${storyboardPanelIndex}`
-            : "故事板 Panel（需先生成故事板）"}
+            ? `分镜 Panel ${storyboardPanelIndex}`
+            : "分镜 Panel（需先生成片段分镜）"}
         </option>
         <option value="manual_refs">手动参考图</option>
       </select>

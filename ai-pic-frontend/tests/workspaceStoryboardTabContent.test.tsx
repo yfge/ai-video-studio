@@ -93,12 +93,18 @@ describe("WorkspaceStoryboardTabContent", () => {
 
     assert.equal(utils.queryByRole("button", { name: "生成宫格分镜" }), null);
     assert.equal(utils.queryByText("宫格故事板"), null);
-    assert.ok(utils.getByRole("button", { name: "同步分镜占位" }));
+    assert.equal(utils.queryByRole("button", { name: "同步分镜占位" }), null);
     assert.ok(utils.getByText("片段分镜管理"));
     assert.ok(utils.getAllByText("视频 1").length >= 1);
     assert.ok(utils.getByText("环境/IP 待绑定"));
-    assert.ok(utils.getByText("故事板待生成"));
-    const link = utils.getByRole("link", { name: "进入分镜管理" });
+    assert.ok(utils.getByText("分镜待生成"));
+    assert.equal(
+      utils
+        .getByRole("link", { name: "进入第一个片段分镜" })
+        .getAttribute("href"),
+      "/episodes/episode_7/workspace?tab=timeline&scriptId=131&clipId=video_scene_1_beat_1_001",
+    );
+    const link = utils.getByRole("link", { name: "进入片段分镜" });
     assert.equal(
       link.getAttribute("href"),
       "/episodes/episode_7/workspace?tab=timeline&scriptId=131&clipId=video_scene_1_beat_1_001",

@@ -73,12 +73,12 @@ export function useTimelineClipProviderGenerationActions({
       );
       if (!res.success || !res.data) {
         return reportError(
-          res.error || "提交故事板任务失败",
+          res.error || "提交片段分镜任务失败",
           setSubmitError,
           onNotify,
         );
       }
-      onNotify?.(`故事板任务已提交 #${res.data.task_id}，生成中…`, "success");
+      onNotify?.(`片段分镜任务已提交 #${res.data.task_id}，生成中…`, "success");
       onTaskQueued?.("storyboard", res.data.task_id);
     } finally {
       setGeneratingStoryboard(false);

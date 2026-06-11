@@ -6,6 +6,7 @@ import {
   OperatorSectionHeader,
   OperatorState,
 } from "@/components/shared";
+import { firstTimelineVideoClipId } from "@/hooks/episode/timelineClipUtils";
 import type { NormalizedScene, TimelineResponse } from "@/utils/api/types";
 import { episodeWorkspaceHref } from "@/utils/routes";
 import {
@@ -68,6 +69,7 @@ export function WorkspaceStoryboardTabContent({
     localTimelineSpec,
     selectedAudioTimeline,
   );
+  const firstVideoClipId = firstTimelineVideoClipId(localTimelineSpec);
   const frames = buildStoryboardSupportFrames(
     selectedStoryboard,
     normalizedScenes,
@@ -84,12 +86,21 @@ export function WorkspaceStoryboardTabContent({
       <OperatorPanel>
         <OperatorSectionHeader
           title="分镜辅助工作区"
-          subtitle="分镜按时间轴 beat 对齐，用于图像和视频生成"
+          subtitle="按视频片段汇总分镜、首尾帧和视频状态"
           action={
             <WorkspaceStoryboardActions
               selectedScriptId={selectedScriptId}
               selectedAudioTimeline={selectedAudioTimeline}
               timelineHref={timelineHref}
+              clipStoryboardHref={
+                firstVideoClipId
+                  ? episodeWorkspaceHref(episodeKey, {
+                      tab: "timeline",
+                      scriptId: selectedScriptId,
+                      extraParams: { clipId: firstVideoClipId },
+                    })
+                  : null
+              }
               showAlert={showAlert}
             />
           }

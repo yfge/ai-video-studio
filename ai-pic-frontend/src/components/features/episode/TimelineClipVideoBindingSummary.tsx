@@ -63,7 +63,7 @@ export function TimelineClipVideoBindingSummary({
       <div className="mt-2 leading-4 text-gray-500">
         {hasAnyBinding
           ? "视频任务会携带上方已选 IP 和环境图。"
-          : "先在上方故事板参考里绑定角色 IP 和环境图，视频任务会一并携带。"}
+          : "先在上方片段分镜里绑定角色 IP 和环境图，视频任务会一并携带。"}
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ export function TimelineClipKeyframeCard({
       <div className="mb-3">
         <div className={CARD_TITLE_CLASS}>首尾帧</div>
         <div className={CARD_DESCRIPTION_CLASS}>
-          基于上方故事板/IP/环境参考生成片段首帧和尾帧，供视频生成的首尾帧模式使用。
+          基于上方分镜/IP/环境参考生成片段首帧和尾帧，供视频生成的首尾帧模式使用。
         </div>
       </div>
       <button

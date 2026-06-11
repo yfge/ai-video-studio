@@ -10,19 +10,8 @@ import {
 import { OperatorShell, OperatorState } from "@/components/shared";
 import { useAlertModal } from "@/components/shared/modals/AlertModalProvider";
 import { useEpisodeDetail } from "@/hooks/useEpisodeDetail";
-import {
-  type TabKey,
-  useEpisodeWorkspaceController,
-} from "@/hooks/episode/useEpisodeWorkspaceController";
-
-const coerceTab = (value: string | null): TabKey => {
-  if (value === "script") return "script";
-  if (value === "timeline") return "timeline";
-  if (value === "storyboard") return "storyboard";
-  if (value === "characters") return "characters";
-  if (value === "overview") return "overview";
-  return "timeline";
-};
+import { useEpisodeWorkspaceController } from "@/hooks/episode/useEpisodeWorkspaceController";
+import { coerceWorkspaceTab } from "@/hooks/episode/workspaceTabUtils";
 
 export default function EpisodeWorkspacePage() {
   const params = useParams();
@@ -61,7 +50,7 @@ export default function EpisodeWorkspacePage() {
     selectedScript,
   } = state;
 
-  const initialTab = coerceTab(searchParams.get("tab"));
+  const initialTab = coerceWorkspaceTab(searchParams.get("tab"));
   const urlScriptId = useMemo(() => {
     const raw = searchParams.get("scriptId");
     if (!raw) return null;
@@ -103,7 +92,9 @@ export default function EpisodeWorkspacePage() {
     handleNavigateBack,
     handleGenerateScript,
     handleGenerateTimeline,
+    handleOpenStoryboard,
     handleRegenerateScript,
+    storyboardActionLabel,
   } = useEpisodeWorkspaceController({
     episodeKey,
     router,
@@ -111,6 +102,7 @@ export default function EpisodeWorkspacePage() {
     urlScriptId,
     episode,
     scripts,
+    selectedTimelineSpec,
     selectedScriptId,
     setSelectedScriptId,
     setScripts,
@@ -153,6 +145,8 @@ export default function EpisodeWorkspacePage() {
           onNavigateBack={handleNavigateBack}
           onGenerateScript={handleGenerateScript}
           onGenerateTimeline={handleGenerateTimeline}
+          storyboardActionLabel={storyboardActionLabel}
+          onOpenStoryboard={handleOpenStoryboard}
         />
         <WorkspaceScriptSelector
           scripts={orderedScripts}

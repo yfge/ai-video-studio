@@ -25,7 +25,7 @@ export type ClipGenerationTaskMap = Partial<
 >;
 
 const KIND_LABELS: Record<ClipGenerationTaskKind, string> = {
-  storyboard: "故事板参考图",
+  storyboard: "片段分镜图",
   keyframes: "首尾帧",
   video: "片段视频",
 };

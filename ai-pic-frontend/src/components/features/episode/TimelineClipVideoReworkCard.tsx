@@ -89,7 +89,7 @@ export function TimelineClipVideoReworkCard({
       <div className="mb-3">
         <div className={CARD_TITLE_CLASS}>片段视频</div>
         <div className={CARD_DESCRIPTION_CLASS}>
-          基于提示词、参数和可选故事板参考生成当前片段视频。
+          基于提示词、参数和可选分镜参考生成当前片段视频。
         </div>
       </div>
       <div className="grid gap-2">

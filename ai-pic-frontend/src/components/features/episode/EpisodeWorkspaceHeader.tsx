@@ -29,6 +29,8 @@ interface EpisodeWorkspaceHeaderProps {
   onNavigateBack: () => void;
   onGenerateScript?: () => void;
   onGenerateTimeline?: () => void;
+  storyboardActionLabel?: string;
+  onOpenStoryboard?: () => void;
 }
 
 export function EpisodeWorkspaceHeader({
@@ -40,6 +42,8 @@ export function EpisodeWorkspaceHeader({
   onNavigateBack,
   onGenerateScript,
   onGenerateTimeline,
+  storyboardActionLabel = "打开分镜辅助",
+  onOpenStoryboard,
 }: EpisodeWorkspaceHeaderProps) {
   const workflowSteps = [
     {
@@ -74,11 +78,18 @@ export function EpisodeWorkspaceHeader({
     {
       key: "storyboard",
       label: "分镜",
-      description: "按时间轴辅助生成图像和视频",
+      description:
+        storyboardActionLabel === "进入片段分镜"
+          ? "按视频片段生成分镜、首尾帧和视频"
+          : "按时间轴辅助查看分镜占位",
       status: workflowStatus.storyboard,
-      actionLabel: "打开分镜辅助",
+      actionLabel: storyboardActionLabel,
       onAction: () => {
-        onTabChange("storyboard");
+        if (onOpenStoryboard) {
+          onOpenStoryboard();
+        } else {
+          onTabChange("storyboard");
+        }
       },
     },
   ];

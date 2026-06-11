@@ -52,7 +52,7 @@ export function buildStoryboardClipManagementItems(
       sceneLabel: scene ? `${scene.scene_number} · ${scene.slug_line}` : null,
       contextStatusLabel: context.label,
       contextStatusReady: context.ready,
-      storyboardStatusLabel: storyboardReady ? "故事板已生成" : "故事板待生成",
+      storyboardStatusLabel: storyboardReady ? "分镜已生成" : "分镜待生成",
       storyboardReady,
       keyframeStatusLabel: keyframes.label,
       keyframeReady: keyframes.ready,

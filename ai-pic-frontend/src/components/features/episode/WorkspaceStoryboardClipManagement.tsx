@@ -39,7 +39,7 @@ export function WorkspaceStoryboardClipManagement({
     <OperatorPanel>
       <OperatorSectionHeader
         title="片段分镜管理"
-        subtitle={`${items.length} 个 video clip 的环境/IP、故事板参考、首尾帧和视频生成状态`}
+        subtitle={`${items.length} 个 video clip 的环境/IP、分镜、首尾帧和视频生成状态`}
       />
       <div className="divide-y divide-gray-100">
         {items.map((item) => (
@@ -94,7 +94,7 @@ function StoryboardClipManagementRow({
         </div>
       </div>
       <Link href={href} className={operatorButtonClass("primary")}>
-        进入分镜管理
+        进入片段分镜
       </Link>
     </div>
   );
