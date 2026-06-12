@@ -2,24 +2,19 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
+from sqlalchemy.orm import Session
+
 from app.models.script import Episode, Script, Story
-from app.services import story_structure_service as story_structure_svc
-from app.services.audio.episode_audio_builder import generate_episode_audio_timeline
-from app.services.audio.scene_audio_generator import generate_scene_dialogue_audio
 from app.services.audio.storyboard_from_timeline_spec import (
     generate_storyboard_support_from_timeline_spec,
 )
 from app.services.script.production_storyboard_hooks import (
     annotate_storyboard_frames_with_hooks,
 )
-from app.services.script.timeline_shot_plan_step import (
-    generate_timeline_shot_plan_from_current_version,
-)
 from app.services.storyboard.storyboard_image_autogen import (
     queue_storyboard_image_generation,
 )
-from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
-from sqlalchemy.orm import Session
+from app.services.timeline_pipeline_runner import run_timeline_main_chain
 
 ProgressCallback = Callable[[str], None]
 
@@ -40,55 +35,27 @@ async def run_auto_timeline_placeholders(
 ) -> Dict[str, Any]:
     """Generate dialogue audio, episode audio timeline, and storyboard placeholders."""
 
-    scenes = story_structure_svc.list_scenes_by_script(db, script.id)
-    scenes = sorted(scenes, key=lambda scene: _safe_int(scene.scene_number))
-    if not scenes:
-        raise RuntimeError("production_pipeline_no_scenes_for_timeline")
-
-    total = len(scenes)
-    for idx, scene in enumerate(scenes, start=1):
+    def _progress(message: str) -> None:
         if progress_callback:
-            progress_callback(f"生产级链路：对白音轨 {idx}/{total}")
-        has_dialogue_audio = _scene_has_dialogue_audio(scene, script.id)
-        has_scene_beats = bool(story_structure_svc.list_beats_by_scene(db, scene.id))
-        if has_dialogue_audio and has_scene_beats:
-            continue
-        await generate_scene_dialogue_audio(
-            db,
-            story=story,
-            episode=episode,
-            script=script,
-            scene=scene,
-            tts_model=tts_model,
-            overwrite_beats=True,
-            timing_model=timing_model,
-            target_duration_seconds=getattr(scene, "estimated_duration_seconds", None),
-        )
+            progress_callback(f"生产级链路：{message}")
 
-    if progress_callback:
-        progress_callback("生产级链路：生成 episode audio timeline")
-    timeline = await generate_episode_audio_timeline(
+    owner_user_id = user_id or getattr(story, "user_id", None)
+    main_chain = await run_timeline_main_chain(
         db,
         story=story,
         episode=episode,
         script=script,
+        tts_model=tts_model,
+        timing_model=timing_model,
+        overwrite_audio=True,
+        overwrite_timeline=True,
+        use_duration_control=True,
+        user_id=owner_user_id,
+        progress_callback=_progress,
     )
-    import_result = import_audio_timeline_to_timeline_spec(
-        db,
-        episode=episode,
-        script=script,
-        audio_timeline=timeline,
-        overwrite=True,
-        user_id=user_id or getattr(story, "user_id", None),
-    )
-
-    if progress_callback:
-        progress_callback("生产级链路：生成 Timeline 镜头计划")
-    timeline_with_shot_plan = await generate_timeline_shot_plan_from_current_version(
-        db,
-        import_result.timeline,
-        user_id=user_id or getattr(story, "user_id", None),
-    )
+    timeline = main_chain.audio_timeline
+    import_result = main_chain.import_result
+    timeline_with_shot_plan = main_chain.timeline
 
     if progress_callback:
         progress_callback("生产级链路：生成分镜占位")
@@ -121,7 +88,7 @@ async def run_auto_timeline_placeholders(
     image_result = queue_storyboard_image_generation(
         db,
         script_id=script.id,
-        user_id=user_id or getattr(story, "user_id", None),
+        user_id=owner_user_id,
         frames=storyboard.get("frames") or [],
         aspect_ratio=getattr(episode, "aspect_ratio", None),
         require_reference_images=True,
@@ -143,20 +110,3 @@ async def run_auto_timeline_placeholders(
         "hook_annotation_count": changed,
         "storyboard_image_generation": image_result.to_metadata(),
     }
-
-
-def _scene_has_dialogue_audio(scene: Any, script_id: int) -> bool:
-    meta = getattr(scene, "extra_metadata", None)
-    if not isinstance(meta, dict):
-        return False
-    payload = meta.get("dialogue_audio")
-    if not isinstance(payload, dict):
-        return False
-    return payload.get("script_id") == script_id and bool(payload.get("oss_url"))
-
-
-def _safe_int(value: Any) -> int:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return 0

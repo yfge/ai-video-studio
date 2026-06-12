@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
+
 from app.models.script import Episode, Script, Story
 from app.models.story_structure import Scene, SceneBeat
 from app.models.task import Task, TaskType
 from app.models.timeline import Timeline
 from app.models.user import User
 from app.services.script.production_pipeline import run_auto_timeline_placeholders
+from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
 
 
 @pytest.mark.unit
@@ -78,25 +82,15 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
     db_session.add_all([ready_scene, *beats])
     db_session.commit()
 
-    generated_scene_ids: list[int] = []
+    main_chain_call: dict[str, object] = {}
 
-    async def _fake_generate_scene_dialogue_audio(
-        db, *, scene: Scene, script: Script, **_: object
-    ) -> dict:
-        generated_scene_ids.append(int(scene.id))
-        meta = dict(scene.extra_metadata or {})
-        meta["dialogue_audio"] = {
-            "script_id": script.id,
-            "oss_url": f"https://cdn.example.com/scene-{scene.id}.mp3",
-        }
-        scene.extra_metadata = meta
-        db.add(scene)
-        db.commit()
-        return meta["dialogue_audio"]
+    async def _fail_generate_scene_dialogue_audio(*_: object, **__: object) -> dict:
+        raise AssertionError("auto production must use duration-control main chain")
 
-    async def _fake_generate_episode_audio_timeline(
-        db, *, episode: Episode, script: Script, **_: object
-    ) -> dict:
+    async def _fake_run_timeline_main_chain(
+        db, *, episode: Episode, script: Script, **kwargs: object
+    ) -> SimpleNamespace:
+        main_chain_call.update(kwargs)
         payload = {
             "script_id": script.id,
             "episode_audio": {
@@ -125,10 +119,35 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
                 },
             ],
         }
-        episode.extra_metadata = {"audio_timeline": payload}
-        db.add(episode)
+        import_result = import_audio_timeline_to_timeline_spec(
+            db,
+            episode=episode,
+            script=script,
+            audio_timeline=payload,
+            overwrite=True,
+            user_id=kwargs.get("user_id"),
+        )
+        timeline = import_result.timeline
+        spec = dict(timeline.spec or {})
+        spec["version"] = timeline.version + 1
+        source = dict(spec.get("source") or {})
+        source["timeline_shot_plan"] = {
+            "provider": "deepseek",
+            "model": "deepseek-v4-flash",
+            "clip_count": 2,
+        }
+        spec["source"] = source
+        timeline.spec = spec
+        timeline.version += 1
+        timeline.updated_by = kwargs.get("user_id")
+        db.add(timeline)
         db.commit()
-        return payload
+        db.refresh(timeline)
+        return SimpleNamespace(
+            audio_timeline=payload,
+            import_result=import_result,
+            timeline=timeline,
+        )
 
     def _fake_generate_storyboard_support_from_timeline_spec(
         *_: object, **__: object
@@ -144,38 +163,14 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
             "meta": {},
         }
 
-    async def _fake_generate_timeline_shot_plan(
-        _db, timeline: Timeline, *, user_id: int | None
-    ) -> Timeline:
-        spec = dict(timeline.spec or {})
-        spec["version"] = timeline.version + 1
-        source = dict(spec.get("source") or {})
-        source["timeline_shot_plan"] = {
-            "provider": "deepseek",
-            "model": "deepseek-v4-flash",
-            "clip_count": 2,
-        }
-        spec["source"] = source
-        timeline.spec = spec
-        timeline.version += 1
-        timeline.updated_by = user_id
-        db_session.add(timeline)
-        db_session.commit()
-        db_session.refresh(timeline)
-        return timeline
-
     import app.services.script.production_storyboard as production_storyboard
     import app.services.storyboard.storyboard_image_autogen as storyboard_image_autogen
 
     monkeypatch.setattr(
         production_storyboard,
         "generate_scene_dialogue_audio",
-        _fake_generate_scene_dialogue_audio,
-    )
-    monkeypatch.setattr(
-        production_storyboard,
-        "generate_episode_audio_timeline",
-        _fake_generate_episode_audio_timeline,
+        _fail_generate_scene_dialogue_audio,
+        raising=False,
     )
     monkeypatch.setattr(
         production_storyboard,
@@ -184,8 +179,9 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
     )
     monkeypatch.setattr(
         production_storyboard,
-        "generate_timeline_shot_plan_from_current_version",
-        _fake_generate_timeline_shot_plan,
+        "run_timeline_main_chain",
+        _fake_run_timeline_main_chain,
+        raising=False,
     )
     queued_image_task: dict[str, object] = {}
 
@@ -210,7 +206,9 @@ async def test_auto_timeline_placeholders_imports_timeline_spec_and_checks_audio
         user_id=user.id,
     )
 
-    assert generated_scene_ids == [missing_audio_scene.id]
+    assert main_chain_call["use_duration_control"] is True
+    assert main_chain_call["overwrite_audio"] is True
+    assert main_chain_call["overwrite_timeline"] is True
     timeline = db_session.query(Timeline).filter(Timeline.script_id == script.id).one()
     assert timeline.source_audio_timeline_version == 5
     assert timeline.created_by == user.id

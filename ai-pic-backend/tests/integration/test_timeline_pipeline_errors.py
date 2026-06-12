@@ -13,6 +13,7 @@ def test_process_timeline_pipeline_persists_http_exception_detail(
     db_session, test_db, monkeypatch
 ):
     import app.api.v1.endpoints.scripts.timeline_pipeline as timeline_pipeline_endpoint
+    import app.services.timeline_pipeline_runner as timeline_pipeline_runner
 
     user = _create_user(db_session, username="pipeline_http_error_admin")
     script, scene_ids = _create_script_with_scenes(db_session, user=user)
@@ -63,17 +64,17 @@ def test_process_timeline_pipeline_persists_http_exception_detail(
         )
 
     monkeypatch.setattr(
-        timeline_pipeline_endpoint,
+        timeline_pipeline_runner,
         "generate_dialogue_with_duration_control",
         _fake_generate_dialogue_with_duration_control,
     )
     monkeypatch.setattr(
-        timeline_pipeline_endpoint,
+        timeline_pipeline_runner,
         "generate_episode_audio_timeline",
         _fake_generate_episode_audio_timeline,
     )
     monkeypatch.setattr(
-        timeline_pipeline_endpoint,
+        timeline_pipeline_runner,
         "generate_timeline_shot_plan_from_current_version",
         _fake_generate_timeline_shot_plan_from_current_version,
     )

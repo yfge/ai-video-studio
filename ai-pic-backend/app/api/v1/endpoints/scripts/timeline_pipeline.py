@@ -2,23 +2,17 @@ from __future__ import annotations
 
 import json
 
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.middleware import get_current_active_user
 from app.models.task import Task, TaskStatus, TaskType
 from app.models.user import User
-from app.repositories.audio_timeline_repository import count_scene_beats
 from app.repositories.task_repository import TaskRepository
 from app.repositories.user_repository import UserRepository
-from app.services import story_structure_service as story_structure_svc
-from app.services.audio.episode_audio_builder import generate_episode_audio_timeline
-from app.services.audio.scene_audio_generator import generate_scene_dialogue_audio
-from app.services.duration_controlled_dialogue_service import (
-    generate_dialogue_with_duration_control,
-)
 from app.services.script.task_titles import friendly_task_title
-from app.services.script.timeline_shot_plan_step import (
-    generate_timeline_shot_plan_from_current_version,
-)
 from app.services.script.timeline_storyboard_queue import (
     generate_storyboard_placeholders_and_queue_images,
 )
@@ -26,18 +20,12 @@ from app.services.storyboard.storyboard_image_autogen import (
     storyboard_image_queue_progress_message,
 )
 from app.services.task_worker import timeline_pipeline_generate_task
-from app.services.timeline_import_service import import_audio_timeline_to_timeline_spec
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from app.services.timeline_pipeline_runner import run_timeline_main_chain
 
 from .audio_pipeline_utils import (
-    episode_has_audio_timeline,
     format_pipeline_error,
     load_script_with_access,
     run_async_task_sync,
-    scene_has_dialogue_audio,
-    scene_number_sort_key,
     update_task_progress,
 )
 
@@ -132,132 +120,23 @@ def _process_timeline_pipeline_task(task_id: int, payload: dict, user_id: int) -
             if not story:
                 raise RuntimeError("story_not_found")
 
-            scenes = story_structure_svc.list_scenes_by_script(db, script_id)
-            scenes = sorted(scenes, key=scene_number_sort_key)
-            if not scenes:
-                raise RuntimeError("no_scenes_found")
+            def _progress_cb(message: str) -> None:
+                update_task_progress(db, task, f"步骤 1-3/5：{message}")
 
-            if use_duration_control:
-                update_task_progress(
-                    db,
-                    task,
-                    f"步骤 1/4：时长精控模式 - 编排 {len(scenes)} 个场景…",
-                )
-
-                def _progress_cb(message: str) -> None:
-                    update_task_progress(db, task, f"步骤 1/4：{message}")
-
-                result = await generate_dialogue_with_duration_control(
-                    db,
-                    story=story,
-                    episode=episode,
-                    script=script,
-                    scenes=scenes,
-                    tts_model=str(tts_model),
-                    overwrite_beats=True,
-                    timing_model=timing_model,
-                    progress_callback=_progress_cb,
-                )
-                if not result.get("success", False):
-                    errors = result.get("errors", [])
-                    final_validation = result.get("final_validation", {})
-                    if final_validation and not final_validation.get("passed"):
-                        ratio = final_validation.get("duration_ratio", 0)
-                        update_task_progress(
-                            db,
-                            task,
-                            f"步骤 1/4：时长验证未通过 {ratio:.1%}（允许±10%）",
-                        )
-                    else:
-                        raise RuntimeError(
-                            f"Duration Orchestrator failed: {'; '.join(errors)}"
-                        )
-                else:
-                    ratio = result.get("statistics", {}).get("duration_ratio", 0)
-                    update_task_progress(
-                        db, task, f"步骤 1/4：时长精控完成 {ratio:.1%}"
-                    )
-            else:
-                update_task_progress(db, task, "步骤 1/4：生成对白音轨…")
-
-                episode_duration_minutes = getattr(episode, "duration_minutes", None)
-                fallback_target_seconds = None
-                if episode_duration_minutes and len(scenes) > 0:
-                    fallback_target_seconds = (episode_duration_minutes * 60) // len(
-                        scenes
-                    )
-
-                total = len(scenes)
-                skipped = 0
-                for idx, scene in enumerate(scenes, start=1):
-                    if not overwrite_audio and scene_has_dialogue_audio(
-                        scene, script_id
-                    ):
-                        beat_count = count_scene_beats(db, int(scene.id))
-                        if beat_count > 0:
-                            skipped += 1
-                            update_task_progress(
-                                db,
-                                task,
-                                f"步骤 1/4：对白音轨 {idx}/{total}（跳过 {skipped}）",
-                            )
-                            continue
-
-                    update_task_progress(
-                        db,
-                        task,
-                        f"步骤 1/4：对白音轨 {idx}/{total}（跳过 {skipped}）",
-                    )
-
-                    scene_target = getattr(scene, "estimated_duration_seconds", None)
-                    if scene_target is None:
-                        scene_target = fallback_target_seconds
-
-                    await generate_scene_dialogue_audio(
-                        db,
-                        story=story,
-                        episode=episode,
-                        script=script,
-                        scene=scene,
-                        tts_model=str(tts_model),
-                        overwrite_beats=True,
-                        timing_model=timing_model,
-                        target_duration_seconds=scene_target,
-                    )
-
-            update_task_progress(db, task, "步骤 2/4：生成时间轴…")
-            audio_timeline_payload = None
-            if not overwrite_timeline and episode_has_audio_timeline(
-                episode, script_id
-            ):
-                update_task_progress(
-                    db, task, "步骤 2/4：过渡时间轴已存在，导入 Timeline Spec…"
-                )
-            else:
-                audio_timeline_payload = await generate_episode_audio_timeline(
-                    db,
-                    story=story,
-                    episode=episode,
-                    script=script,
-                )
-            import_result = import_audio_timeline_to_timeline_spec(
+            main_chain = await run_timeline_main_chain(
                 db,
+                story=story,
                 episode=episode,
                 script=script,
-                audio_timeline=audio_timeline_payload,
-                overwrite=overwrite_timeline,
+                tts_model=str(tts_model),
+                timing_model=timing_model,
+                overwrite_audio=overwrite_audio,
+                overwrite_timeline=overwrite_timeline,
+                use_duration_control=use_duration_control,
                 user_id=user.id,
+                progress_callback=_progress_cb,
             )
-            update_task_progress(
-                db, task, f"步骤 2/5：Timeline Spec v1 {import_result.action}"
-            )
-
-            update_task_progress(db, task, "步骤 3/5：生成 Timeline 镜头计划…")
-            timeline = await generate_timeline_shot_plan_from_current_version(
-                db,
-                import_result.timeline,
-                user_id=user.id,
-            )
+            timeline = main_chain.timeline
 
             update_task_progress(db, task, "步骤 4/5：生成分镜帧占位…")
             image_result = generate_storyboard_placeholders_and_queue_images(
