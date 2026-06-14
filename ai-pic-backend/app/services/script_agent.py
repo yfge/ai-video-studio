@@ -29,6 +29,10 @@ from app.services.duration_orchestrator.constants import (
 )
 from app.services.duration_orchestrator.state import SceneBudget, SceneStatus
 from app.services.narrative_context import extract_story_characters
+from app.services.script_score_thresholds import (
+    PASS_DIMENSION_THRESHOLD,
+    PASS_OVERALL_THRESHOLD,
+)
 from app.services.validators.character_consistency_validator import (
     CharacterConsistencyValidator,
     CharacterProfile,
@@ -650,6 +654,7 @@ class ScriptLangGraphAgent:
         duration_minutes: Optional[float] = None,
         enable_react_validation: bool = True,
         continuity_ledger: Optional[Dict[str, Any]] = None,
+        generation_mode: str = "standard",
         db: Optional["Session"] = None,
     ) -> Optional[Dict[str, Any]]:
         if not LANGGRAPH_AVAILABLE or not self.service.ai_manager:
@@ -666,6 +671,11 @@ class ScriptLangGraphAgent:
         )
 
         prompt_story = story_with_default_script_format(story, episode)
+        production_mode = generation_mode == "production"
+        score_thresholds = {
+            "overall": PASS_OVERALL_THRESHOLD,
+            "dimension": PASS_DIMENSION_THRESHOLD,
+        }
 
         graph = StateGraph(dict)
 
@@ -686,6 +696,9 @@ class ScriptLangGraphAgent:
                     "duration_minutes": duration_minutes,
                     "min_scene_seconds": MIN_SCENE_DURATION_SECONDS,
                     "max_scene_seconds": MAX_SCENE_DURATION_SECONDS,
+                    "generation_mode": generation_mode,
+                    "production_mode": production_mode,
+                    "script_score_thresholds": score_thresholds,
                 },
             )
             # Build JSON schema - include duration fields if duration_minutes is set
@@ -955,6 +968,7 @@ class ScriptLangGraphAgent:
                     temperature=temperature,
                     model=model,
                     prefer_provider=prefer_provider,
+                    generation_mode=generation_mode,
                 )
             except BeatContractGenerationError as exc:
                 return {
@@ -1196,6 +1210,7 @@ class ScriptLangGraphAgent:
                 "total_scenes": len(scenes),
                 "total_dialogues": len(dialogues),
                 "estimated_duration": f"{episode.get('duration_minutes') or 0}min",
+                "generation_mode": generation_mode,
             }
             if state.get("structured_script_contract"):
                 metadata["structured_script_contract"] = state[

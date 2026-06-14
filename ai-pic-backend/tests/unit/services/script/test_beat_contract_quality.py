@@ -1,7 +1,7 @@
 import pytest
 from app.services.script.beat_contract_normalizer import normalize_script_beat_contract
 from app.services.script.beat_contract_quality import evaluate_beat_contract_quality
-from app.services.script_quality_gate_checks import beat_contract_check
+from app.services.script_quality_gate_beat_contract import beat_contract_check
 from tests.unit.services.script.test_beat_contract_normalizer import _valid_contract
 
 

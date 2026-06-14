@@ -14,19 +14,18 @@ from app.core.logging import get_logger
 from app.prompts.manager import prompt_manager
 from app.prompts.templates import PromptTemplate
 from app.schemas.generation import ScriptScoreDimensions, ScriptScoreResult
+from app.services.script_score_thresholds import (
+    PASS_DIMENSION_THRESHOLD,
+    PASS_OVERALL_THRESHOLD,
+    REVIEW_DIMENSION_MIN,
+    REVIEW_OVERALL_MIN,
+)
 from app.utils.json_utils import extract_json_block
 
 if TYPE_CHECKING:
     from app.services.ai_service import AIService
 
 logger = get_logger()
-
-
-# 评分阈值常量
-PASS_OVERALL_THRESHOLD = 4.0
-PASS_DIMENSION_THRESHOLD = 3.5
-REVIEW_OVERALL_MIN = 3.5
-REVIEW_DIMENSION_MIN = 3.0
 
 
 class ScriptScoreService:
@@ -212,70 +211,3 @@ class ScriptScoreService:
             rewrite_guidance=["请重新提交评分或人工审核"],
             suggested_ad_hooks=[],
         )
-
-
-async def score_script_from_db(
-    ai_service: "AIService",
-    script_id: int,
-    db_session: Any,
-    prefer_provider: Optional[str] = None,
-    prefer_model: Optional[str] = None,
-) -> ScriptScoreResult:
-    """
-    从数据库加载剧本并评分（便捷函数）。
-
-    Args:
-        ai_service: AI 服务实例
-        script_id: 剧本 ID
-        db_session: 数据库会话
-        prefer_provider: 优先使用的 AI 提供商
-        prefer_model: 优先使用的模型
-
-    Returns:
-        ScriptScoreResult: 评分结果
-    """
-    from app.models.script import Script
-
-    script = db_session.query(Script).filter(Script.id == script_id).first()
-    if not script:
-        raise ValueError(f"Script {script_id} not found")
-
-    # 加载关联的剧集和故事
-    episode = getattr(script, "episode", None)
-    story = getattr(episode, "story", None) if episode else None
-
-    # 构建上下文
-    story_ctx = None
-    if story:
-        extra = story.extra_metadata if isinstance(story.extra_metadata, dict) else {}
-        story_ctx = {
-            "title": story.title,
-            "genre": story.genre,
-            "market_region": extra.get("market_region"),
-            "micro_genre": extra.get("micro_genre"),
-        }
-
-    episode_ctx = None
-    if episode:
-        episode_ctx = {
-            "episode_number": episode.episode_number,
-            "title": episode.title,
-            "summary": episode.summary,
-        }
-
-    # 解析剧本数据
-    scenes = script.scenes or []
-    dialogues = script.dialogues or []
-    content = script.content or ""
-
-    # 评分
-    service = ScriptScoreService(ai_service)
-    return await service.score_script(
-        script_content=content,
-        story=story_ctx,
-        episode=episode_ctx,
-        scenes=scenes,
-        dialogues=dialogues,
-        prefer_provider=prefer_provider,
-        prefer_model=prefer_model,
-    )

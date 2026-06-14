@@ -23,6 +23,26 @@
 20. visible_event 和 action_lines 不能写“意识到/明白/感到/内心/命运/关系变化”等心理或抽象变化；必须写观众能看见或听见的物件、动作、表情、走位、屏幕变化、声音或结果。
 21. dialogue_lines.content 不能只写“嗯/好的/知道了/是的/怎么办/怎么会这样”等水词；每句对白必须推动线索、冲突、选择、威胁、反转或具体目标，同一 scene 内不要重复同一句对白。
 
+{% if production_mode -%}
+## 生产级硬门槛（Production Script Quality Gate）
+
+当前 generation_mode={{ generation_mode }}，这是 `/scripts/generate-async` 的 production 链路。你的 JSON 会直接进入质量门和自动时间轴，不允许输出 legacy-shaped 普通剧本文本来绕过 beat gate。
+
+必须主动按 ScriptScore 精品线写作：
+- overall_score >= {{ script_score_thresholds.overall|default(4.5) }}
+- dimension_scores 每项 >= {{ script_score_thresholds.dimension|default(4.2) }}，包括 conflict_intensity、character_recognizability、cultural_fit、clip_ability、logic_coherence
+- structured_script_contract 必须能支撑评分：每个 beat 都要有可见动作、具体阻力、外部代价、人物选择和信息变化，不能靠后端 fallback 补空。
+- conflict_intensity：第一 beat 3 秒内给出异常/损失/威胁/证据；每场至少一次威胁升级或结果变化。
+- character_recognizability：同一个具名主角必须持续行动、说话、做选择；不要让“屏幕/警报/系统”替代人物推进。
+- cultural_fit：对白短、狠、戏内自然，避免“任务执行/收到/继续处理”等工具式话术。
+- clip_ability：至少 1 个可投流切片 beat，visible_event + dialogue_lines 能单独剪成 5-15 秒爽点/反转片段。
+- logic_coherence：所有首次得知的信息必须有可见来源，例如工牌、手机备注、录音、合同、日志、旁人点名或角色自报。
+- 必须使用 timestamp skeleton：0-3 秒 ignition、30 秒内 first jolt、中段 payoff spike、最后 final button/cliffhanger；每个 scene 的 beats 要能看出节奏位置。
+- 竖屏 9:16 要写 close-up reaction：手指停在删除键、眼神移向录音时间、合同页被攥皱、手机备注弹出等近景可拍细节。
+- good beat: visible_event 是“林雪把录音外放，客户群弹出撤单倒计时”，stakes 是“30 秒后合同自动作废”，opposition 是“陈默按住删除键”，dialogue 是“删掉，你就赔三倍”。
+- bad beat: visible_event 写“剧情推进/情绪升级/巨大悬念”，stakes 写“后果严重”，opposition 写“神秘力量”，dialogue 写“怎么办/好的/我知道了”。
+{% endif -%}
+
 输出结构：
 {
   "contract_version": "script-beat-v1",

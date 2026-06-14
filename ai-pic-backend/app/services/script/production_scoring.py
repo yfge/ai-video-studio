@@ -4,9 +4,15 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from app.core.logging import get_logger
+from app.services.quality_gate_core import NarrativeQualityGateError
 from app.services.script.production_hooks import (
     build_hook_schedule,
     render_production_requirements,
+)
+from app.services.script.production_quality_gate import build_production_quality_gate
+from app.services.script_score_thresholds import (
+    PASS_DIMENSION_THRESHOLD,
+    PASS_OVERALL_THRESHOLD,
 )
 
 logger = get_logger(__name__)
@@ -14,9 +20,7 @@ logger = get_logger(__name__)
 AttemptGenerator = Callable[[int, str], Awaitable[Dict[str, Any]]]
 AttemptScorer = Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
 
-PASS_OVERALL_THRESHOLD = 4.0
-PASS_DIMENSION_THRESHOLD = 3.5
-MAX_PRODUCTION_REWRITES = 2
+MAX_PRODUCTION_REWRITES = 3
 
 
 @dataclass
@@ -89,12 +93,28 @@ async def run_production_script_generation(
 
     selected = select_best_attempt(attempts)
     selected_attempt = int(selected.get("attempt") or 1)
+    if not score_passes(_safe_dict(selected.get("scoring"))):
+        selected_scoring = _safe_dict(selected.get("scoring"))
+        raise NarrativeQualityGateError(
+            "script",
+            build_production_quality_gate(
+                attempt_summaries=[summarize_attempt(attempt) for attempt in attempts],
+                scores=[
+                    _safe_dict(_safe_dict(attempt.get("scoring")).get("script_score"))
+                    for attempt in attempts
+                ],
+                selected_score=_safe_dict(selected_scoring.get("script_score")),
+                selected_attempt=selected_attempt,
+                rewrite_guidance=extract_rewrite_guidance(selected_scoring),
+                score=min(1.0, max(0.0, score_overall(selected_scoring) / 5.0)),
+            ),
+        )
     return ProductionPipelineResult(
         selected=selected,
         hook_schedule=hook_schedule,
         attempts=attempts,
         selected_attempt=selected_attempt,
-        review_required=not score_passes(_safe_dict(selected.get("scoring"))),
+        review_required=False,
     )
 
 
@@ -160,12 +180,14 @@ def summarize_attempt(attempt: Dict[str, Any]) -> Dict[str, Any]:
         "provider_used": result.get("provider_used"),
         "model_used": result.get("model_used"),
         "usage": result.get("usage"),
-        "quality_gate": {
-            "passed": quality_gate.get("passed"),
-            "failed_checks": quality_gate.get("failed_checks"),
-        }
-        if quality_gate
-        else None,
+        "quality_gate": (
+            {
+                "passed": quality_gate.get("passed"),
+                "failed_checks": quality_gate.get("failed_checks"),
+            }
+            if quality_gate
+            else None
+        ),
         "score": _safe_dict(scoring.get("script_score")),
         "asset_tags": _safe_dict(scoring.get("asset_tags")),
     }

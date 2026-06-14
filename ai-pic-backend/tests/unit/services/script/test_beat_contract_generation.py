@@ -7,6 +7,10 @@ from app.services.script.beat_contract_generation import (
     BeatContractGenerationError,
     generate_beat_contract_payload,
 )
+from app.services.script_score_thresholds import (
+    PASS_DIMENSION_THRESHOLD,
+    PASS_OVERALL_THRESHOLD,
+)
 
 
 class _DummyResponse:
@@ -89,6 +93,26 @@ async def _generate(manager: _DummyManager) -> dict[str, Any]:
     )
 
 
+async def _generate_production(manager: _DummyManager) -> dict[str, Any]:
+    return await generate_beat_contract_payload(
+        manager,
+        episode={"episode_number": 1, "title": "Episode"},
+        story={"title": "Story"},
+        scenes=[{"scene_number": 1, "slug_line": "INT. Room - day"}],
+        format_type="screenplay",
+        language="zh-CN",
+        dialogue_style="natural",
+        template_style="commercial_vertical_drama",
+        target_chars_per_episode=1300,
+        quality_threshold=9.0,
+        additional_requirements=None,
+        temperature=0.7,
+        model="deepseek-v4-pro",
+        prefer_provider="deepseek",
+        generation_mode="production",
+    )
+
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_deepseek_v4_pro_beat_contract_disables_thinking_for_json_calls():
@@ -100,6 +124,38 @@ async def test_deepseek_v4_pro_beat_contract_disables_thinking_for_json_calls():
         "script-beat-v1"
     )
     assert manager.calls[0]["thinking"] == {"type": "disabled"}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_production_beat_contract_prompt_contains_strict_score_gate():
+    manager = _DummyManager([_DummyResponse(data=_contract_payload())])
+
+    await _generate_production(manager)
+
+    prompt = manager.calls[0]["prompt"]
+    assert "生产级硬门槛" in prompt
+    assert f"overall_score >= {PASS_OVERALL_THRESHOLD}" in prompt
+    assert f"dimension_scores 每项 >= {PASS_DIMENSION_THRESHOLD}" in prompt
+    assert "structured_script_contract" in prompt
+    assert "timestamp skeleton" in prompt
+    assert "0-3 秒 ignition" in prompt
+    assert "close-up reaction" in prompt
+    assert "good beat" in prompt
+    assert "bad beat" in prompt
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_standard_beat_contract_prompt_omits_production_gate():
+    manager = _DummyManager([_DummyResponse(data=_contract_payload())])
+
+    await _generate(manager)
+
+    prompt = manager.calls[0]["prompt"]
+    assert "生产级硬门槛" not in prompt
+    assert "overall_score >=" not in prompt
+    assert "timestamp skeleton" not in prompt
 
 
 @pytest.mark.unit

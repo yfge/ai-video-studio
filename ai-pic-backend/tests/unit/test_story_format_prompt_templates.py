@@ -237,3 +237,61 @@ def test_script_scenes_template_resolves_film_variant():
     )
 
     assert "电影模式" in prompt
+
+
+def test_script_scenes_short_drama_production_prompt_has_quality_brief():
+    prompt = prompt_manager.render_prompt(
+        PromptTemplate.SCRIPT_SCENES.value,
+        {
+            "story": {
+                "title": "测试短剧",
+                "genre": "剧情",
+                "story_format": "short_drama",
+            },
+            "episode": {"episode_number": 1, "title": "第一集"},
+            "scene_detail_level": "medium",
+            "format_type": "screenplay",
+            "language": "zh-CN",
+            "style_preferences": [],
+            "additional_requirements": "",
+            "duration_minutes": 3,
+            "min_scene_seconds": 10,
+            "max_scene_seconds": 120,
+            "generation_mode": "production",
+            "production_mode": True,
+            "script_score_thresholds": {"overall": 4.5, "dimension": 4.2},
+        },
+    )
+
+    assert "生产级场景规划硬门槛" in prompt
+    assert "timestamp skeleton" in prompt
+    assert "0-3 秒 ignition" in prompt
+    assert "close-up reaction" in prompt
+
+
+def test_script_scenes_short_drama_standard_prompt_omits_production_brief():
+    prompt = prompt_manager.render_prompt(
+        PromptTemplate.SCRIPT_SCENES.value,
+        {
+            "story": {
+                "title": "测试短剧",
+                "genre": "剧情",
+                "story_format": "short_drama",
+            },
+            "episode": {"episode_number": 1, "title": "第一集"},
+            "scene_detail_level": "medium",
+            "format_type": "screenplay",
+            "language": "zh-CN",
+            "style_preferences": [],
+            "additional_requirements": "",
+            "duration_minutes": 3,
+            "min_scene_seconds": 10,
+            "max_scene_seconds": 120,
+            "generation_mode": "standard",
+            "production_mode": False,
+            "script_score_thresholds": {"overall": 4.5, "dimension": 4.2},
+        },
+    )
+
+    assert "生产级场景规划硬门槛" not in prompt
+    assert "timestamp skeleton" not in prompt

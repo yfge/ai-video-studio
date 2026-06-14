@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from app.services.narrative_quality_gate import NarrativeQualityGateError
 from app.services.script.production_pipeline import (
     annotate_storyboard_frames_with_hooks,
     build_hook_schedule,
@@ -87,7 +88,7 @@ async def test_production_generation_skips_rewrite_when_score_passes():
         }
 
     async def score_attempt(_generated: dict) -> dict:
-        return _scoring("pass", 4.3)
+        return _scoring("pass", 4.6)
 
     result = await run_production_script_generation(
         story={"title": "T"},
@@ -108,7 +109,7 @@ async def test_production_generation_skips_rewrite_when_score_passes():
 @pytest.mark.asyncio
 async def test_production_generation_rewrites_and_selects_pass():
     generated_requirements: list[str] = []
-    scores = [_scoring("rewrite", 2.5, ["补强开场冲突"]), _scoring("pass", 4.2)]
+    scores = [_scoring("rewrite", 2.5, ["补强开场冲突"]), _scoring("pass", 4.6)]
 
     async def generate_attempt(attempt_no: int, requirements: str) -> dict:
         generated_requirements.append(requirements)
@@ -143,12 +144,13 @@ async def test_production_generation_rewrites_and_selects_pass():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_production_generation_uses_max_two_repair_attempts():
+async def test_production_generation_raises_after_four_low_quality_attempts():
     calls: list[int] = []
     scores = [
         _scoring("rewrite", 2.1, ["重写前3秒钩子"]),
         _scoring("rewrite", 3.2, ["压缩中段解释"]),
-        _scoring("pass", 3.8, ["仍需人工复核"]),
+        _scoring("review", 4.3, ["补强人物可辨识度"]),
+        _scoring("pass", 4.4, ["仍未达到精品线"]),
     ]
 
     async def generate_attempt(attempt_no: int, _requirements: str) -> dict:
@@ -166,24 +168,32 @@ async def test_production_generation_uses_max_two_repair_attempts():
     async def score_attempt(_generated: dict) -> dict:
         return scores.pop(0)
 
-    result = await run_production_script_generation(
-        story={"title": "T"},
-        episode={"summary": "S"},
-        marketing_overrides={},
-        base_additional_requirements=None,
-        generate_attempt=generate_attempt,
-        score_attempt=score_attempt,
-    )
+    with pytest.raises(NarrativeQualityGateError) as exc_info:
+        await run_production_script_generation(
+            story={"title": "T"},
+            episode={"summary": "S"},
+            marketing_overrides={},
+            base_additional_requirements=None,
+            generate_attempt=generate_attempt,
+            score_attempt=score_attempt,
+        )
 
-    assert calls == [1, 2, 3]
-    assert len(result.attempts) == 3
-    assert result.review_required is True
-    assert result.selected_attempt == 3
+    assert calls == [1, 2, 3, 4]
+    gate = exc_info.value.quality_gate
+    assert gate["passed"] is False
+    blocking_ids = {issue["id"] for issue in gate["blocking_issues"]}
+    assert "production_script_score" in blocking_ids
+    details = gate["blocking_issues"][0]["details"]
+    assert details["thresholds"] == {"overall": 4.5, "dimension": 4.2}
+    assert details["selected_attempt"] == 4
+    assert len(details["attempts"]) == 4
+    assert details["attempts"][-1]["overall_score"] == 4.4
+    assert details["rewrite_guidance"] == ["仍未达到精品线"]
 
 
 @pytest.mark.unit
 def test_score_pass_requires_thresholds_even_when_verdict_is_pass():
-    scoring = _scoring("pass", 3.9)
+    scoring = _scoring("pass", 4.4)
 
     assert score_passes(scoring) is False
 

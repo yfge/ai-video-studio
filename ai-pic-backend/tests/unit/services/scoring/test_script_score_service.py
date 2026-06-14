@@ -36,36 +36,36 @@ class TestScriptScoreService:
         """Test verdict computation for passing scripts."""
         dimensions = ScriptScoreDimensions(
             conflict_intensity=4.5,
-            character_recognizability=4.0,
+            character_recognizability=4.3,
             cultural_fit=4.5,
-            clip_ability=4.0,
-            logic_coherence=4.0,
+            clip_ability=4.3,
+            logic_coherence=4.4,
         )
-        verdict = score_service._compute_verdict(4.2, dimensions)
+        verdict = score_service._compute_verdict(4.5, dimensions)
         assert verdict == "pass"
 
     def test_compute_verdict_review_overall(self, score_service):
         """Test verdict for borderline overall score."""
         dimensions = ScriptScoreDimensions(
-            conflict_intensity=3.8,
-            character_recognizability=3.8,
-            cultural_fit=3.8,
-            clip_ability=3.8,
-            logic_coherence=3.8,
+            conflict_intensity=4.3,
+            character_recognizability=4.3,
+            cultural_fit=4.3,
+            clip_ability=4.3,
+            logic_coherence=4.3,
         )
-        verdict = score_service._compute_verdict(3.8, dimensions)
+        verdict = score_service._compute_verdict(4.3, dimensions)
         assert verdict == "review"
 
     def test_compute_verdict_review_dimension(self, score_service):
         """Test verdict when one dimension is borderline."""
         dimensions = ScriptScoreDimensions(
             conflict_intensity=4.5,
-            character_recognizability=3.2,  # Borderline
+            character_recognizability=4.0,  # Borderline
             cultural_fit=4.5,
             clip_ability=4.5,
             logic_coherence=4.5,
         )
-        verdict = score_service._compute_verdict(4.24, dimensions)
+        verdict = score_service._compute_verdict(4.4, dimensions)
         assert verdict == "review"
 
     def test_compute_verdict_rewrite_overall(self, score_service):
@@ -98,13 +98,13 @@ class TestScriptScoreService:
         Here is the score:
         ```json
         {
-            "overall_score": 4.2,
+            "overall_score": 4.6,
             "dimension_scores": {
                 "conflict_intensity": 4.5,
-                "character_recognizability": 4.0,
+                "character_recognizability": 4.3,
                 "cultural_fit": 4.5,
-                "clip_ability": 4.0,
-                "logic_coherence": 4.0
+                "clip_ability": 4.4,
+                "logic_coherence": 4.3
             },
             "verdict": "pass",
             "strengths": ["Strong opening hook", "Clear character arcs"],
@@ -116,7 +116,7 @@ class TestScriptScoreService:
         """
         result = score_service._parse_score_response(response)
 
-        assert result.overall_score == 4.2
+        assert result.overall_score == 4.6
         assert result.verdict == "pass"
         assert result.dimension_scores.conflict_intensity == 4.5
         assert len(result.strengths) == 2
@@ -146,7 +146,7 @@ class TestScriptScoreService:
 
         # Should compute average: 4.0
         assert result.overall_score == 4.0
-        assert result.verdict == "pass"
+        assert result.verdict == "review"
 
     def test_parse_score_response_invalid_json(self, score_service):
         """Test parsing invalid JSON returns default result."""
@@ -212,8 +212,8 @@ class TestScoreThresholds:
 
     def test_pass_thresholds(self):
         """Test pass threshold values."""
-        assert PASS_OVERALL_THRESHOLD == 4.0
-        assert PASS_DIMENSION_THRESHOLD == 3.5
+        assert PASS_OVERALL_THRESHOLD == 4.5
+        assert PASS_DIMENSION_THRESHOLD == 4.2
 
     def test_review_thresholds(self):
         """Test review threshold values."""

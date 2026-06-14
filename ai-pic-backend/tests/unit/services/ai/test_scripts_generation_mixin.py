@@ -25,9 +25,11 @@ class _DummyService(ScriptGenerationMixin):
         self.logger = logging.getLogger(__name__)
         self.script_agent = _DummyAgent()
         self.direct_called = False
+        self.direct_kwargs: dict[str, Any] | None = None
 
-    async def _call_ai_manager_script(self, **_: Any):
+    async def _call_ai_manager_script(self, **kwargs: Any):
         self.direct_called = True
+        self.direct_kwargs = kwargs
         return {
             "content": {"scenes": [], "dialogues": [], "stage_directions": []},
             "normalized": {"scenes": [], "dialogues": [], "stage_directions": []},
@@ -35,6 +37,9 @@ class _DummyService(ScriptGenerationMixin):
 
     async def _generate_mock_script(self, **_: Any):
         raise AssertionError("mock fallback should not be used")
+
+    def _build_script_text(self, *_args: Any, **_kwargs: Any) -> str:
+        return "# screenplay\nassembled"
 
 
 @pytest.mark.unit
@@ -83,3 +88,40 @@ async def test_generate_script_keeps_external_scene_budgets_authoritative(monkey
     assert service.script_agent.kwargs is not None
     assert service.script_agent.kwargs["scene_budgets"] == budgets
     assert service.script_agent.kwargs["duration_minutes"] == 0
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_generate_script_propagates_generation_mode_to_langgraph_and_direct(
+    monkeypatch,
+):
+    service = _DummyService()
+    monkeypatch.setattr(scripts_module, "_SCRIPT_AGENT_TIMEOUT_SECONDS", 0.01)
+
+    result = await service.generate_script(
+        episode={"duration_minutes": 2},
+        story={},
+        generation_mode="production",
+    )
+
+    assert result is None
+    assert service.script_agent.kwargs is not None
+    assert service.script_agent.kwargs["generation_mode"] == "production"
+    assert service.direct_kwargs is not None
+    assert service.direct_kwargs["generation_mode"] == "production"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_generate_script_standard_allows_legacy_direct_fallback(monkeypatch):
+    service = _DummyService()
+    monkeypatch.setattr(scripts_module, "_SCRIPT_AGENT_TIMEOUT_SECONDS", 0.01)
+
+    result = await service.generate_script(
+        episode={"duration_minutes": 2},
+        story={},
+    )
+
+    assert result is not None
+    assert service.direct_called is True
+    assert result["content"]["content"].startswith("# screenplay")

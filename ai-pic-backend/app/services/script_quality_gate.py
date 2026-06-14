@@ -17,8 +17,11 @@ from app.services.script_quality_gate_auto_characters import (
     auto_create_temporary_characters_for_gate,
     with_auto_created_characters,
 )
-from app.services.script_quality_gate_checks import (
+from app.services.script_quality_gate_beat_contract import (
     beat_contract_check,
+    required_beat_contract_check,
+)
+from app.services.script_quality_gate_checks import (
     dict_character_check,
     duration_check,
     fallback_dialogue_check,
@@ -49,6 +52,7 @@ async def evaluate_script_quality_gate(
     ai_manager: Any = None,
     model: Optional[str] = None,
     prefer_provider: Optional[str] = None,
+    require_beat_contract: bool = False,
 ) -> Dict[str, Any]:
     result = result or {}
     checks = [schema_check(content)]
@@ -88,6 +92,9 @@ async def evaluate_script_quality_gate(
     if quality_check:
         checks.append(quality_check)
 
+    if require_beat_contract:
+        checks.append(required_beat_contract_check(content))
+
     beat_check = beat_contract_check(content)
     if beat_check:
         checks.append(beat_check)
@@ -123,22 +130,27 @@ async def enforce_script_quality_gate_with_repair(
     max_repairs: int = MAX_QUALITY_GATE_REPAIRS,
     lint_threshold: float = 9.0,
     target_chars_per_episode: Optional[int] = None,
+    require_beat_contract: bool = False,
 ) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     attempts: list[Dict[str, Any]] = []
     content = deepcopy(content)
     auto_created_characters: list[Dict[str, Any]] = []
+    gate_options = {
+        "story": story,
+        "story_model": story_model,
+        "episode_id": episode_id,
+        "db": db,
+        "lint_threshold": lint_threshold,
+        "target_chars_per_episode": target_chars_per_episode,
+        "ai_manager": ai_manager,
+        "model": model,
+        "prefer_provider": prefer_provider,
+        "require_beat_contract": require_beat_contract,
+    }
     gate = await evaluate_script_quality_gate(
         content=content,
-        story=story,
         result=result,
-        story_model=story_model,
-        episode_id=episode_id,
-        db=db,
-        lint_threshold=lint_threshold,
-        target_chars_per_episode=target_chars_per_episode,
-        ai_manager=ai_manager,
-        model=model,
-        prefer_provider=prefer_provider,
+        **gate_options,
     )
     created = await auto_create_temporary_characters_for_gate(
         gate=gate,
@@ -152,16 +164,8 @@ async def enforce_script_quality_gate_with_repair(
         result = with_auto_created_characters(result, auto_created_characters)
         gate = await evaluate_script_quality_gate(
             content=content,
-            story=story,
             result=result,
-            story_model=story_model,
-            episode_id=episode_id,
-            db=db,
-            lint_threshold=lint_threshold,
-            target_chars_per_episode=target_chars_per_episode,
-            ai_manager=ai_manager,
-            model=model,
-            prefer_provider=prefer_provider,
+            **gate_options,
         )
     if gate["passed"]:
         return _with_script_gate(result, content, gate), content, gate
@@ -197,17 +201,9 @@ async def enforce_script_quality_gate_with_repair(
         content = repaired
         gate = await evaluate_script_quality_gate(
             content=content,
-            story=story,
             result=result,
-            story_model=story_model,
-            episode_id=episode_id,
-            db=db,
             repair_attempts=deepcopy(attempts),
-            lint_threshold=lint_threshold,
-            target_chars_per_episode=target_chars_per_episode,
-            ai_manager=ai_manager,
-            model=model,
-            prefer_provider=prefer_provider,
+            **gate_options,
         )
         created = await auto_create_temporary_characters_for_gate(
             gate=gate,
@@ -221,17 +217,9 @@ async def enforce_script_quality_gate_with_repair(
             result = with_auto_created_characters(result, auto_created_characters)
             gate = await evaluate_script_quality_gate(
                 content=content,
-                story=story,
                 result=result,
-                story_model=story_model,
-                episode_id=episode_id,
-                db=db,
                 repair_attempts=deepcopy(attempts),
-                lint_threshold=lint_threshold,
-                target_chars_per_episode=target_chars_per_episode,
-                ai_manager=ai_manager,
-                model=model,
-                prefer_provider=prefer_provider,
+                **gate_options,
             )
         attempts[-1]["output_gate"] = quality_gate_attempt_snapshot(gate)
         if gate["passed"]:

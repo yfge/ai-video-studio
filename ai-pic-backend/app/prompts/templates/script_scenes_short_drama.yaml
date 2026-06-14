@@ -66,6 +66,23 @@ variables:
     required: false
     description: "额外场景要求"
 
+  generation_mode:
+    type: string
+    required: false
+    description: "生成模式"
+    default: "standard"
+
+  production_mode:
+    type: boolean
+    required: false
+    description: "是否为 production async 生成"
+    default: false
+
+  script_score_thresholds:
+    type: dict
+    required: false
+    description: "production ScriptScore 通过阈值"
+
 usage_examples:
   - story: { title: "反击人生", story_format: "short_drama", genre: "都市爽剧" }
     episode:

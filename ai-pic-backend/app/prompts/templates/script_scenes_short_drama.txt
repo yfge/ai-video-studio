@@ -9,6 +9,18 @@
 5. **结尾卡点**：最后 1 个场景必须留下更大的悬念或危机升级（身份暴露/证据反转/反派出手/误会爆炸等），summary 必须以「卡点：」开头。
 6. **可拍性**：避免抽象描述（如“情绪复杂”“关系微妙”），必须写成可拍摄的动作/事件/台词触发点。
 
+{% if production_mode -%}
+## 【Production Script Quality Gate】生产级场景规划硬门槛
+
+这是 `/scripts/generate-async` 的 production 链路，不是草稿模式。场景规划必须为后续 ScriptScore 精品线服务：
+- overall_score >= {{ script_score_thresholds.overall|default(4.5) }}
+- dimension_scores 每项 >= {{ script_score_thresholds.dimension|default(4.2) }}，覆盖 conflict_intensity / character_recognizability / cultural_fit / clip_ability / logic_coherence
+- 每个场景 summary 必须显式承载一个可评分动作：冲突问题、外部代价、人物选择、可剪画面或结尾未解威胁；不要只写“情绪升级/剧情推进”。
+- 场景数量宁可少而狠：每场都要能被展开成 beat-level structured_script_contract，不能依赖 legacy-shaped prose 兜底。
+- 先按 timestamp skeleton 规划：0-3 秒 ignition、30 秒内 first jolt、中段 payoff spike、结尾 final button/cliffhanger；每个时间点都要对应可见事件。
+- 竖屏 9:16 以近景为主，summary 要预留 close-up reaction：手部动作、眼神停顿、手机/合同/录音/日志等可拍物件变化。
+{% endif -%}
+
 ## 时长约束（重要）
 
 {% if duration_minutes and duration_minutes > 0 %}

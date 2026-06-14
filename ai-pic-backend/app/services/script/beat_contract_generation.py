@@ -16,6 +16,10 @@ from app.services.script.beat_contract_normalizer import (
     flatten_contract_to_script_payload,
     normalize_script_beat_contract,
 )
+from app.services.script_score_thresholds import (
+    PASS_DIMENSION_THRESHOLD,
+    PASS_OVERALL_THRESHOLD,
+)
 from app.utils.json_utils import extract_json_block
 
 
@@ -62,7 +66,9 @@ async def generate_beat_contract_payload(
     temperature: float,
     model: str | None,
     prefer_provider: str | None,
+    generation_mode: str = "standard",
 ) -> dict[str, Any]:
+    production_mode = generation_mode == "production"
     prompt = prompt_manager.render_prompt(
         PromptTemplate.SCRIPT_BEATS.value,
         {
@@ -76,6 +82,12 @@ async def generate_beat_contract_payload(
             "target_chars_per_episode": target_chars_per_episode,
             "quality_threshold": quality_threshold,
             "additional_requirements": additional_requirements or "",
+            "generation_mode": generation_mode,
+            "production_mode": production_mode,
+            "script_score_thresholds": {
+                "overall": PASS_OVERALL_THRESHOLD,
+                "dimension": PASS_DIMENSION_THRESHOLD,
+            },
         },
     )
     response = await ai_manager.generate_text(

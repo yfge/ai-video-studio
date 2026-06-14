@@ -12,6 +12,10 @@ from app.services.ai.scripts_ai_manager_payloads import (
     _SCENE_PLAN_SCHEMA_PAYLOAD,
     _minify_episode_for_prompt,
 )
+from app.services.script_score_thresholds import (
+    PASS_DIMENSION_THRESHOLD,
+    PASS_OVERALL_THRESHOLD,
+)
 from app.utils.json_utils import extract_json_block
 
 
@@ -33,6 +37,7 @@ class ScriptManagerMixin:
         model: Optional[str] = None,
         prefer_provider: Optional[str] = None,
         temperature: float = 0.7,
+        generation_mode: str = "standard",
     ) -> Optional[Dict[str, Any]]:
         """AI 管理器直接生成剧本的兜底实现（结构化 JSON）。"""
         if not self.ai_manager:
@@ -86,6 +91,11 @@ class ScriptManagerMixin:
 
         prompt_story = story_with_default_script_format(story, episode_prompt)
         episode_prompt.setdefault("story_format", prompt_story["story_format"])
+        production_mode = generation_mode == "production"
+        score_thresholds = {
+            "overall": PASS_OVERALL_THRESHOLD,
+            "dimension": PASS_DIMENSION_THRESHOLD,
+        }
 
         duration_minutes = episode.get("duration_minutes") or 0
         should_plan_scenes = len(scenes) < 2 or len(scenes) > _MAX_DIALOGUE_SCENES
@@ -125,6 +135,9 @@ class ScriptManagerMixin:
                     "duration_minutes": duration_minutes,
                     "min_scene_seconds": min_scene_seconds,
                     "max_scene_seconds": max_scene_seconds,
+                    "generation_mode": generation_mode,
+                    "production_mode": production_mode,
+                    "script_score_thresholds": score_thresholds,
                 },
             )
             scene_plan_resp = await self.ai_manager.generate_text(
@@ -169,6 +182,7 @@ class ScriptManagerMixin:
                 temperature=temperature,
                 model=model,
                 prefer_provider=prefer_provider,
+                generation_mode=generation_mode,
             )
         except BeatContractGenerationError:
             if prefer_provider or model:
@@ -194,6 +208,7 @@ class ScriptManagerMixin:
                 "template_style": template_style,
                 "target_chars_per_episode": target_chars_per_episode,
                 "quality_threshold": quality_threshold,
+                "generation_mode": generation_mode,
                 "market_region": story.get("market_region")
                 or episode.get("market_region"),
                 "micro_genre": story.get("micro_genre") or episode.get("micro_genre"),

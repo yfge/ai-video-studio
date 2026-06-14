@@ -50,6 +50,7 @@ async def generate_prepared_script_attempt(
         model=model_id,
         prefer_provider=prefer_provider,
         temperature=request_dict.get("temperature", 0.7),
+        generation_mode=request_dict.get("generation_mode") or "production",
     )
     if not result:
         raise RuntimeError("AI剧本生成失败")
@@ -119,6 +120,7 @@ async def generate_prepared_script_attempt(
         temperature=request_dict.get("temperature", 0.7),
         lint_threshold=request_dict.get("quality_threshold", 9.0),
         target_chars_per_episode=request_dict.get("target_chars_per_episode", 1300),
+        require_beat_contract=request_dict.get("generation_mode") == "production",
     )
     # 自动创建的临时角色在 agent/quality gate 的顶层 result 上；并入 ai_content
     # 后会随 build_generation_extra_metadata 持久化到 script.extra_metadata，

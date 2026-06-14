@@ -6,3 +6,59 @@ output_format: "JSON"
 expected_fields:
   - contract_version
   - scenes
+
+variables:
+  story:
+    type: dict
+    required: true
+    description: "故事信息"
+
+  episode:
+    type: dict
+    required: true
+    description: "剧集信息"
+
+  scenes:
+    type: list
+    required: true
+    description: "场景列表"
+
+  language:
+    type: string
+    required: false
+    description: "语言"
+    default: "zh-CN"
+
+  dialogue_style:
+    type: string
+    required: false
+    description: "对白风格"
+    default: "natural"
+
+  target_chars_per_episode:
+    type: number
+    required: false
+    description: "目标正文长度"
+    default: 1300
+
+  additional_requirements:
+    type: string
+    required: false
+    description: "特殊要求"
+
+  generation_mode:
+    type: string
+    required: false
+    description: "生成模式"
+    default: "standard"
+
+  production_mode:
+    type: boolean
+    required: false
+    description: "是否为 production async 生成"
+    default: false
+
+  script_score_thresholds:
+    type: dict
+    required: false
+    description: "production ScriptScore 通过阈值"

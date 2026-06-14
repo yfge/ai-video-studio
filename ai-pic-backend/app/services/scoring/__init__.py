@@ -5,7 +5,8 @@
 提供 TrafficSheet 生成功能，从剧本中提炼 15/30/60 秒投流素材。
 """
 
-from .script_score_service import ScriptScoreService, score_script_from_db
+from .script_score_db import score_script_from_db
+from .script_score_service import ScriptScoreService
 from .traffic_sheet_service import TrafficSheetService, generate_traffic_sheet_from_db
 
 __all__ = [
